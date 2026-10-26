@@ -123,7 +123,7 @@ fn release_has_download(release: &github_client::Release, download: &url::Url) -
 }
 
 fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bool {
-    manifest == expected && crate::utils::version::is_version_newer(current, manifest)
+    manifest == expected && crate::utils::version::is_update_candidate(current, manifest)
 }
 
 // Rewrites the download URL to use the release tag path instead of the generic
@@ -210,6 +210,9 @@ mod tests {
     #[test]
     fn native_manifest_cannot_substitute_a_different_version() {
         assert!(manifest_matches_release("1.0.0", "1.0.10", "1.0.10"));
+        // Leaving a pre-release for an older stable release is a channel switch.
+        assert!(manifest_matches_release("1.1.0-beta.1", "1.0.0", "1.0.0"));
+        assert!(!manifest_matches_release("1.1.0", "1.0.0", "1.0.0"));
         for (manifest, expected) in [
             ("0.9.0", "1.1.0"),
             ("1.0.0", "1.1.0"),

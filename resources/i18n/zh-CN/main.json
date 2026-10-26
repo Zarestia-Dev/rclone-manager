@@ -2946,7 +2946,8 @@
       "updateRemoteUnsupported": "此 rclone 版本不支持远程更新",
       "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
       "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}",
-      "downloadCancelled": "用户已取消下载"
+      "downloadCancelled": "用户已取消下载",
+      "noUpdateAvailable": "没有可用的更新"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -3016,11 +3017,18 @@
       "relaunchFailed": "重新启动失败：{{error}}",
       "restartFailed": "重启失败：{{error}}",
       "notWritable": "更新路径不可写",
+      "rollback": {
+        "exited": "更新后的应用在确认启动前退出（代码 {{code}}）。",
+        "couldNotStart": "无法启动更新后的应用：{{error}}",
+        "interrupted": "更新后应用的启动被关机中断。",
+        "notConfirmed": "更新后的应用未能及时确认启动。",
+        "installFailed": "无法安装更新：{{error}}"
+      },
+      "rolledBack": "更新 {{version}} 已回滚：{{reason}}",
       "ioError": "IO 错误：{{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },

@@ -148,9 +148,40 @@ pub fn is_version_newer(current: &str, target: &str) -> bool {
     }
 }
 
+/// Whether `version` carries a pre-release suffix such as `-beta.1`.
+pub fn is_prerelease(version: &str) -> bool {
+    split_version_parts(clean_app_version(version)).1.is_some()
+}
+
+/// Whether `current` may be replaced by `target` through the update channel.
+///
+/// Besides strictly newer versions, a pre-release build may move to any stable
+/// release, so leaving the beta channel never waits for the next stable version.
+pub fn is_update_candidate(current: &str, target: &str) -> bool {
+    is_version_newer(current, target) || (is_prerelease(current) && !is_prerelease(target))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prereleases_may_switch_to_an_older_stable_release() {
+        // Leaving beta for the stable channel does not wait for the next stable version.
+        assert!(is_update_candidate("0.3.4-beta.1", "v0.3.3"));
+        assert!(is_update_candidate("0.3.4-rc.2", "headless-v0.3.3"));
+        assert!(is_update_candidate("0.3.4-beta.1", "0.3.4"));
+        // Everything else still requires a newer version.
+        assert!(is_update_candidate("0.3.3", "0.3.4-beta.1"));
+        assert!(!is_update_candidate("0.3.4", "0.3.3"));
+        assert!(!is_update_candidate("0.3.3", "0.3.3"));
+        assert!(!is_update_candidate("0.3.4", "0.3.3-beta.1"));
+        // A pre-release never "switches" to another pre-release that is not newer.
+        assert!(!is_update_candidate("0.3.4-beta.2", "0.3.4-beta.1"));
+        assert!(!is_update_candidate("0.3.4-beta.2", "0.3.3-beta.9"));
+        assert!(is_prerelease("v0.3.4-beta.1"));
+        assert!(!is_prerelease("headless-v0.3.4+build.5"));
+    }
 
     #[test]
     fn test_clean_app_version() {

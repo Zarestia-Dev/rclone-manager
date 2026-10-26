@@ -53,7 +53,7 @@ pub fn require_frontend(app: &AppHandle) {
 }
 
 /// Called after Angular's first completed render, including the locked-vault UI.
-pub async fn confirm_frontend_ready(app: AppHandle) {
+pub fn confirm_frontend_ready(app: AppHandle) {
     let health = app.state::<StartupHealth>();
     health.frontend.store(true, Ordering::SeqCst);
     report_if_ready(&health);
@@ -194,27 +194,27 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn render_and_listener_cannot_confirm_failed_or_pending_core_startup() {
+    #[test]
+    fn render_and_listener_cannot_confirm_failed_or_pending_core_startup() {
         let app = AppHandle::default();
         app.manage(StartupHealth::default());
         require_frontend(&app);
         host_ready(&app);
-        confirm_frontend_ready(app.clone()).await;
+        confirm_frontend_ready(app.clone());
         assert!(!app.state::<StartupHealth>().ready());
         core_ready(&app);
         assert!(app.state::<StartupHealth>().ready());
     }
 
-    #[tokio::test]
-    async fn a_visible_portable_window_requires_a_rendered_frontend() {
+    #[test]
+    fn a_visible_portable_window_requires_a_rendered_frontend() {
         let app = AppHandle::default();
         app.manage(StartupHealth::default());
         require_frontend(&app);
         core_ready(&app);
         host_ready(&app);
         assert!(!app.state::<StartupHealth>().ready());
-        confirm_frontend_ready(app.clone()).await;
+        confirm_frontend_ready(app.clone());
         assert!(app.state::<StartupHealth>().ready());
     }
 }

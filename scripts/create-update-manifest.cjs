@@ -48,7 +48,7 @@ function validateArtifact({ size, sha256, signature }) {
 
 function validateArchivePath({ kind, target, asset }, binaryPath) {
   if (
-    kind !== 'portable' ||
+    !['portable', 'server'].includes(kind) ||
     !/^(windows|linux|macos)-/.test(target) ||
     !asset.endsWith('.zip') ||
     typeof binaryPath !== 'string' ||
@@ -56,10 +56,11 @@ function validateArchivePath({ kind, target, asset }, binaryPath) {
     binaryPath.includes(':') ||
     /[\p{Cc}]/u.test(binaryPath) ||
     binaryPath.split('/').some(part => ['', '.', '..'].includes(part)) ||
-    (target.startsWith('macos-') &&
+    (kind === 'portable' &&
+      target.startsWith('macos-') &&
       !/^[^/]+\.app\/Contents\/MacOS\/rclone-manager$/.test(binaryPath))
   )
-    throw new Error('Invalid portable archive metadata');
+    throw new Error('Invalid update archive metadata');
 }
 
 function validateManifest(manifest) {
@@ -146,6 +147,7 @@ function sign(file) {
 function publish(kind, os, arch, version, input, output, archiveFile, binaryPath) {
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY)
     throw new Error('Production updates require TAURI_SIGNING_PRIVATE_KEY');
+  if (kind === 'server' && !archiveFile) throw new Error('Server updates must be ZIP archives');
   const target = `${os}-${arch}`;
   const extension = archiveFile
     ? '.zip'

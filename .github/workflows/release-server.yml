@@ -38,8 +38,11 @@ jobs:
             rust_target: 'aarch64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -51,7 +54,7 @@ jobs:
         if: matrix.os == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libdbus-1-dev libssl-dev
+          sudo apt-get install -y pkg-config libdbus-1-dev libssl-dev zip
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -65,11 +68,17 @@ jobs:
           key: server-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Get Version
         id: get_version
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
+
+      - name: Name server archive
+        shell: bash
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: echo "ARCHIVE=updater-assets/server-${{ matrix.os }}-${{ matrix.arch }}-$VERSION.zip" >> "$GITHUB_ENV"
 
       - name: Build browser UI
         run: npm run build
@@ -77,7 +86,44 @@ jobs:
       - name: Build standalone server
         run: cargo build --locked --release --manifest-path backend/Cargo.toml -p rclone-manager-server --target ${{ matrix.rust_target }}
 
-      - name: Sign server executable
+      - name: Prepare Package (Linux/macOS)
+        if: matrix.os != 'windows'
+        shell: bash
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          OS: ${{ matrix.os }}
+          TARGET: ${{ matrix.rust_target }}
+        run: |
+          DIR_NAME="rclone-manager-server"
+          mkdir -p "$DIR_NAME" updater-assets
+
+          cp "backend/target/$TARGET/release/rclone-manager-server" "$DIR_NAME/"
+          chmod +x "$DIR_NAME/rclone-manager-server"
+          cp LICENSE "$DIR_NAME/"
+          sed "s/\${VERSION}/$VERSION/g" backend/server/package/README.txt > "$DIR_NAME/README.txt"
+          if [ "$OS" = linux ]; then
+            cp backend/server/linux/rclone-manager-server.service "$DIR_NAME/"
+          fi
+
+          zip -qr "$ARCHIVE" "$DIR_NAME"
+
+      - name: Prepare Package (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          TARGET: ${{ matrix.rust_target }}
+        run: |
+          $dirName = "rclone-manager-server"
+          New-Item -ItemType Directory -Force -Path $dirName, updater-assets | Out-Null
+
+          Copy-Item "backend/target/$env:TARGET/release/rclone-manager-server.exe" "$dirName/"
+          Copy-Item LICENSE "$dirName/"
+          (Get-Content backend/server/package/README.txt).Replace('${VERSION}', $env:VERSION) | Set-Content "$dirName/README.txt"
+
+          Compress-Archive -Path $dirName -DestinationPath $env:ARCHIVE
+
+      - name: Sign server archive and executable
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -89,7 +135,7 @@ jobs:
         run: |
           binary=rclone-manager-server
           if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
-          node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" updater-assets
+          node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" updater-assets "$ARCHIVE" "rclone-manager-server/$binary"
 
       - name: Collect server release artifacts
         uses: actions/upload-artifact@v7
@@ -101,6 +147,7 @@ jobs:
   upload-server:
     needs: build-server
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     # Shares the headless-v<version> release with Release Headless.
@@ -110,6 +157,8 @@ jobs:
       queue: max
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
@@ -126,16 +175,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: node scripts/publish-custom-updater.cjs --check "headless-v$VERSION" "$VERSION"
-      - name: Upload server executables
+      - name: Upload server packages
         uses: softprops/action-gh-release@v3
         with:
           tag_name: headless-v${{ steps.get_version.outputs.VERSION }}
           name: 'RClone Manager Headless v${{ steps.get_version.outputs.VERSION }}'
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
-          files: |
-            artifacts/**/*
-            !artifacts/**/updater.json
+          files: artifacts/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish custom update catalog

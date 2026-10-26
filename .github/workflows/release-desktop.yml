@@ -16,25 +16,28 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-            type: 'aarch64'
+            rust_target: 'aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            type: 'x86_64'
+            rust_target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
           - platform: 'ubuntu-22.04-arm'
             args: ''
           - platform: 'windows-latest'
             args: '--target x86_64-pc-windows-msvc'
-            type: 'x86_64'
+            rust_target: 'x86_64-pc-windows-msvc'
           - platform: 'windows-11-arm'
             args: '--target aarch64-pc-windows-msvc'
-            type: 'aarch64'
+            rust_target: 'aarch64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: setup node
         uses: actions/setup-node@v7
@@ -42,21 +45,10 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      - name: install Rust stable (linux)
+      - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
-
-      - name: install Rust stable (macos)
-        uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'macos-latest'
         with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
-
-      - name: install Rust stable (windows)
-        uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
-        with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+          targets: ${{ matrix.rust_target }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -89,6 +81,22 @@ jobs:
           wget https://launchpadlibrarian.net/587202140/libjpeg-turbo8_2.1.2-0ubuntu1_amd64.deb
           wget https://launchpadlibrarian.net/592959859/xdg-desktop-portal-gtk_1.14.0-1build1_amd64.deb
 
+          # Verify the downloaded packages before installing them as root.
+          sha256sum -c - <<'SUMS'
+            2d1cd18ff678dc9002520f218bb797c9608856bd076636af28027b1f8ddbde3e  gir1.2-javascriptcoregtk-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            8f90034702d59568c457544c225eb448e5ed7f315f38ac12a28fea91f293d41d  gir1.2-webkit2-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            9e21493b82caccc05589777b24b5019d3dc2db349b7d3b97d5bd414188e1991b  icu-devtools_70.1-2ubuntu1_amd64.deb
+            223c1e6cebf2a6748637303227d8b84337c14a2d30eacbc46a68d02557dcff3e  libicu70_70.1-2ubuntu1_amd64.deb
+            e8285223ffd5cf251f6ce2fa1ccd2158b65e5c3816f9cfa66710cfc708d18229  libicu-dev_70.1-2ubuntu1_amd64.deb
+            f0ef11e1fec15e7704f126e2fc99cdcbc59a1a724d48e0d65d4d142e558f2f54  libjavascriptcoregtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            efdb313bc39c7758f3f3f176d0c38cb93cb5d00454673d07f7e706a9e4e2e2ba  libjavascriptcoregtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            869e3e6fbdbe7a645dffcb86b4e285957225a89b6a76840f4aab2bedaf0e4e88  libjpeg8_8c-2ubuntu10_amd64.deb
+            bb9538fa94f06bf6b7907105439f0a0a30e3ec27030832820a6c2cc2dc6578a8  libjpeg-turbo8_2.1.2-0ubuntu1_amd64.deb
+            952fbfc1bcba36b1ffa4dded55776ca246ddd59a5c47d0723a43b6e64d0aaa51  libwebkit2gtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            3fe974c03a92f57ad5211700e78ba07e7cb7cd8ea3d11a8589f8231a2b437f3b  libwebkit2gtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
+            d3d60526948e4a32a2a6a1c840fd6168fc03e1383a0ce50ff3740527d4bfb8c2  xdg-desktop-portal-gtk_1.14.0-1build1_amd64.deb
+          SUMS
+
           sudo apt-get install -y /tmp/ubuntu-packages/*.deb
 
       - name: install dependencies (ubuntu-22.04-arm)
@@ -105,12 +113,13 @@ jobs:
         run: |
           cargo install tauri-cli \
             --git https://github.com/tauri-apps/tauri \
-            --branch feat/truly-portable-appimage \
+            --rev 3b69f584e3a32a8607e0c2aa6543a88511085bfb \
+            --locked \
             --force
           echo "tauri-cli version: $(cargo tauri --version)"
 
       - name: install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Read release version
         id: release_version
@@ -132,4 +141,4 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: ${{ steps.release_version.outputs.PRERELEASE }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} -- --locked

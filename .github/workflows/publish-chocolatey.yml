@@ -8,17 +8,25 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   chocolatey:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Resolve version
         id: version
         shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          $inputVersion = "${{ inputs.version }}"
+          $inputVersion = "$env:INPUT_VERSION".Trim()
           if ($inputVersion) {
             $ver = $inputVersion.TrimStart('v')
           } else {
@@ -76,8 +84,10 @@ jobs:
 
       - name: Pack and push
         shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
         run: |
           $ver = "${{ steps.version.outputs.VERSION }}"
           cd backend/desktop/windows/chocolatey
           choco pack rclone-manager.nuspec
-          choco push "rclone-manager.$ver.nupkg" --source https://push.chocolatey.org/ --api-key ${{ secrets.CHOCO_API_KEY }}
+          choco push "rclone-manager.$ver.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY

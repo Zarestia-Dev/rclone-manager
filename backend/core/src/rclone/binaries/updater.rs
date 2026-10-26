@@ -324,7 +324,9 @@ async fn update_rclone_inner(
     if !update_check.metadata.update_available {
         return Ok(UpdateResult {
             success: false,
-            message: Some("No update available".to_string()),
+            message: Some(crate::localized_error!(
+                "backendErrors.rclone.noUpdateAvailable"
+            )),
             channel: Some(channel_enum.to_string()),
             ..Default::default()
         });
@@ -363,7 +365,9 @@ async fn update_rclone_inner(
             if cancel_token.is_cancelled() {
                 return Ok(UpdateResult {
                     success: false,
-                    message: Some("Download cancelled by user".to_string()),
+                    message: Some(crate::localized_error!(
+                        "backendErrors.rclone.downloadCancelled"
+                    )),
                     channel: Some(channel_enum.to_string()),
                     manual: false,
                     ..Default::default()
@@ -381,11 +385,9 @@ async fn update_rclone_inner(
                     Ok(UpdateResult {
                         success: true,
                         manual: true,
-                        message: Some(
-                            "Rclone update completed. Please restart it manually.".to_string(),
-                        ),
                         channel: Some(channel_enum.to_string()),
                         output: res.output,
+                        ..Default::default()
                     })
                 }
                 Err(e) => {
@@ -435,7 +437,9 @@ async fn update_rclone_inner(
     if cancel_token.is_cancelled() {
         return Ok(UpdateResult {
             success: false,
-            message: Some("Download cancelled by user".to_string()),
+            message: Some(crate::localized_error!(
+                "backendErrors.rclone.downloadCancelled"
+            )),
             channel: Some(channel_enum.to_string()),
             manual: false,
             ..Default::default()
@@ -890,7 +894,9 @@ async fn perform_rclone_selfupdate(
 
     let response = tokio::select! {
         () = cancel_token.cancelled() => {
-            return Err(Error::RcloneSelfUpdate("Download cancelled by user".to_string()));
+            return Err(Error::Backend(crate::localized_error!(
+                "backendErrors.rclone.downloadCancelled"
+            )));
         }
         res = transport.rpc(core::COMMAND, Some(&payload)) => {
             res.map_err(|e| Error::RcloneSelfUpdate(e.to_string()))?
@@ -913,10 +919,10 @@ async fn perform_rclone_selfupdate(
     info!("Rclone selfupdate finished via RC (binary downloaded)");
     Ok(UpdateResult {
         success: true,
-        message: Some("Rclone update downloaded successfully".to_string()),
         output: Some(result.trim().to_string()),
         channel: Some(channel.to_string()),
         manual: false,
+        ..Default::default()
     })
 }
 

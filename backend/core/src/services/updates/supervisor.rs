@@ -49,7 +49,7 @@ impl Trial {
             Decision::Rollback {
                 // A normal close is respected; don't reopen a deliberately closed app.
                 restart: code != 0,
-                reason: format!("Updated application exited before startup confirmation ({code})"),
+                reason: crate::localized_error!("backendErrors.updater.rollback.exited", "code" => code),
             }
         }
     }
@@ -102,7 +102,7 @@ pub(super) fn run(
             Err(error) => {
                 return Ok(Decision::Rollback {
                     restart: true,
-                    reason: format!("Updated application could not start: {error}"),
+                    reason: crate::localized_error!("backendErrors.updater.rollback.couldNotStart", "error" => error),
                 });
             }
         };
@@ -124,7 +124,7 @@ pub(super) fn run(
                 let _ = child.kill().await;
                 Ok(Decision::Rollback {
                     restart: true,
-                    reason: error,
+                    reason: crate::localized_error!("backendErrors.updater.rollback.couldNotStart", "error" => error),
                 })
             }
         }
@@ -209,7 +209,7 @@ async fn monitor(
                 log::info!("Update supervisor received shutdown: signal={signal}, committed={}", trial.committed);
                 stop_child(child, &tree, signal).await?;
                 return Ok(if trial.committed { Decision::Exit(0) } else {
-                    Decision::Rollback { restart: false, reason: "Update startup interrupted by shutdown".into() }
+                    Decision::Rollback { restart: false, reason: crate::localized_error!("backendErrors.updater.rollback.interrupted") }
                 });
             }
             status = child.wait() => {
@@ -252,7 +252,7 @@ async fn monitor(
                     child.wait().await.map_err(|e| e.to_string())?;
                     return Ok(Decision::Rollback {
                         restart: true,
-                        reason: "Updated application did not confirm startup before the deadline".into(),
+                        reason: crate::localized_error!("backendErrors.updater.rollback.notConfirmed"),
                     });
                 }
             }
@@ -582,8 +582,10 @@ mod tests {
             return;
         };
         let directory = std::path::PathBuf::from(directory);
-        let plan: StagedUpdate =
+        let mut plan: StagedUpdate =
             serde_json::from_slice(&std::fs::read(directory.join("plan.json")).unwrap()).unwrap();
+        plan.args =
+            serde_json::from_slice(&std::fs::read(directory.join("args.json")).unwrap()).unwrap();
         match run(&directory, &plan, "1.2.3").unwrap() {
             Completion::Exit(code) => std::process::exit(code),
             Completion::Next(_) => panic!("unexpected handoff"),
@@ -612,10 +614,15 @@ mod tests {
         std::fs::write(
             stage.path().join("plan.json"),
             serde_json::to_vec(&serde_json::json!({
-                "kind": "server", "target": target, "args": arguments,
+                "kind": "server", "target": target,
                 "working_directory": root.path(),
             }))
             .unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            stage.path().join("args.json"),
+            serde_json::to_vec(&arguments).unwrap(),
         )
         .unwrap();
         let status = std::process::Command::new(std::env::current_exe().unwrap())

@@ -8,15 +8,21 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   winget:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - name: Resolve version
         id: resolve
         shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          $inputVersion = "${{ inputs.version }}".Trim()
+          $inputVersion = "$env:INPUT_VERSION".Trim()
           if ($inputVersion) {
             if ($inputVersion.StartsWith('v')) {
               $tag = $inputVersion
@@ -29,10 +35,12 @@ jobs:
           }
           Write-Host "Resolved release tag: $tag"
           echo "TAG=$tag" >> $env:GITHUB_OUTPUT
-          echo "VERSION=$tag" >> $env:GITHUB_OUTPUT
+          # winget-releaser only strips the 'v' when `version` is empty, so strip it here
+          echo "VERSION=$($tag -replace '^v')" >> $env:GITHUB_OUTPUT
 
       - name: Submit to WinGet
-        uses: vedantmgoyal2009/winget-releaser@v2
+        # Pinned: this action receives WINGET_PAT. v2 at the time of pinning.
+        uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54
         with:
           identifier: RClone-Manager.rclone-manager
           version: ${{ steps.resolve.outputs.VERSION }}

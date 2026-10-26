@@ -2965,6 +2965,7 @@
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",
+      "noUpdateAvailable": "No update available",
       "mountPluginInstallFailed": "Failed to install mount plugin: {{error}}",
       "mountPluginVerificationFailed": "Installation succeeded but verification failed. Restart may be required.",
       "configEncrypted": "Configuration is encrypted and no password provided",
@@ -3057,11 +3058,18 @@
       "relaunchFailed": "Relaunch failed: {{error}}",
       "restartFailed": "Restart failed: {{error}}",
       "notWritable": "Update path is not writable",
+      "rollback": {
+        "exited": "The updated application exited before it confirmed startup (code {{code}}).",
+        "couldNotStart": "The updated application could not be started: {{error}}",
+        "interrupted": "Startup of the updated application was interrupted by a shutdown.",
+        "notConfirmed": "The updated application did not confirm startup in time.",
+        "installFailed": "The update could not be installed: {{error}}"
+      },
+      "rolledBack": "Update {{version}} was rolled back: {{reason}}",
       "ioError": "IO error: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },

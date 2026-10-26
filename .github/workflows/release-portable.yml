@@ -3,10 +3,11 @@ name: "Release Portable"
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-portable:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -40,8 +41,11 @@ jobs:
             rust_target: "aarch64-apple-darwin"
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -67,7 +71,7 @@ jobs:
           key: portable-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Tauri (Portable)
         if: matrix.os != 'macos'
@@ -201,6 +205,7 @@ jobs:
   upload-portable:
     needs: build-portable
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     # Android publishes into the same updater.json. Serialize read/merge/upload.
@@ -210,6 +215,8 @@ jobs:
       queue: max
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*

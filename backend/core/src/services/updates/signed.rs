@@ -91,7 +91,8 @@ async fn legacy_manifest(
 ) -> Result<Option<(Manifest, Vec<u8>, String)>, String> {
     let manifest_name = format!("{kind}-{target}.json");
     // Retain legacy signed metadata without announcing releases lacking this target.
-    if !release.assets.iter().any(|a| a.name == manifest_name) {
+    // Server packages were only ever published in the catalog.
+    if kind == "server" || !release.assets.iter().any(|a| a.name == manifest_name) {
         return Ok(None);
     }
     let bytes = fetch(

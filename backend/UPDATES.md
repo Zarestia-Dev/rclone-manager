@@ -29,7 +29,7 @@ Read-only or administratively disabled installations still check artifact
 availability, while installation remains disabled.
 
 External installations announce upstream availability using a matching Linux
-server executable for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
+server ZIP for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
 for RPM installations. Desktop and headless products and package architecture
 names are matched separately. This does not confirm that the corresponding
 container image, Flathub build, or AUR package has already been published there.
@@ -40,7 +40,8 @@ identifies portable/server/native execution separately from Cargo feature
 unification. Permissions are checked again before download and apply.
 
 `RCLONE_MANAGER_INSTALLATION_TYPE=docker|container|flatpak|aur|pacman|deb|rpm`
-declares external ownership. `RCLONE_MANAGER_DISABLE_UPDATES=1` (or `true`)
+declares external ownership. Docker and Podman containers are recognized without it
+(`/.dockerenv`, `/run/.containerenv`); on other container runtimes set `container`. `RCLONE_MANAGER_DISABLE_UPDATES=1` (or `true`)
 disables in-app installation while preserving release checks. Neither setting
 grants privileges.
 
@@ -48,7 +49,7 @@ grants privileges.
 
 Portable, server, and APK release workflows run
 `scripts/create-update-manifest.cjs`. They publish a shared signed catalog
-(`updater.json`) and versioned ZIPs, executables, or APKs. Signatures are embedded
+(`updater.json`) and versioned ZIPs or APKs. Signatures are embedded
 in the catalog rather than published as sidecars. See
 [release update manifests](../scripts/UPDATER.md) for the schema and packaging.
 
@@ -81,6 +82,14 @@ in sync, for example `0.3.3`. All five release workflows use
 Releases remain drafts until explicitly published. The stable update channel
 excludes prereleases; the beta channel includes prereleases and stable versions.
 
+A pre-release build can move to the latest stable release even when that release has
+a lower version number, so choosing the stable channel never waits for the next stable
+version. This applies to installers that replace the running build (Tauri, portable and
+server); package managers choose their own versions and Android version codes cannot
+decrease. A stable build is only offered newer versions. The Rclone engine already
+follows Rclone's own `selfupdate`, which installs the latest release of the selected
+channel whenever it differs from the installed one.
+
 Android builds through `npm run tauri android build` or `android dev` derive a
 reproducible versionCode, including local builds and every CI architecture. The
 wrapper supplies Tauri's Android versionCode override, with automatic increments
@@ -110,16 +119,16 @@ same filesystem holds staging files and the previous executable. Unix file
 permissions are preserved; the executable must belong to the effective user.
 
 Preparation writes the artifact and preserves the original before shutdown. It
-never changes the installed executable. Unix preserves the original with a hard
+never changes the installed executable. The launch arguments, which can include a
+password, reach the helper through its private environment and are never written
+to the staging directory; a handoff reuses the arguments of the running application. Unix preserves the original with a hard
 link on the same filesystem; Windows makes a synced backup copy. The complete
 update shutdown sequence has a 20-second deadline.
 
 On Unix the original process uses `exec` to enter the helper, retaining the
 service PID. On Windows the helper opens a handle to the original process and
 acknowledges readiness before apply succeeds. It waits for that actual process to
-exit, including slow cleanup, before touching the installation. There is no
-60-second race against application shutdown and no repeated payload hashing while
-waiting for the parent.
+exit, including slow cleanup, before touching the installation.
 
 The helper verifies the signed manifest and payload, replaces the executable,
 and verifies the installed file. Any installation failure, including a directory

@@ -49,6 +49,11 @@ fn stage(root: &Path, target: &Path, mode: &str, version: &str, next: &Path) -> 
     )
     .unwrap();
     write_private(
+        &directory.join("args.json"),
+        &serde_json::to_vec(&plan.args).unwrap(),
+    )
+    .unwrap();
+    write_private(
         &directory.join("path.json"),
         &serde_json::to_vec(&directory).unwrap(),
     )

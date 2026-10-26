@@ -1,3 +1,12 @@
+# Install:
+#   sudo useradd --system --create-home --home-dir /var/lib/rclone-manager --shell /usr/sbin/nologin rclone-manager
+#   sudo install -d -o rclone-manager -g rclone-manager /opt/rclone-manager
+#   sudo install -o rclone-manager -g rclone-manager -m 755 rclone-manager-server /opt/rclone-manager/
+#
+# The service user owns the executable and its directory so the application can
+# update itself. An executable owned by root (for example in /usr/bin) disables
+# in-app updates; replace it manually instead.
+
 [Unit]
 Description=RClone Manager Web Server
 Documentation=https://github.com/Zarestia-Dev/rclone-manager
@@ -19,7 +28,7 @@ PrivateTmp=true
 #     RCLONE_MANAGER_USER=admin
 #     RCLONE_MANAGER_PASS=<long random password>
 EnvironmentFile=-/etc/rclone-manager/server.env
-ExecStart=/usr/bin/rclone-manager-server \
+ExecStart=/opt/rclone-manager/rclone-manager-server \
     --host 0.0.0.0 \
     --port 8080
 

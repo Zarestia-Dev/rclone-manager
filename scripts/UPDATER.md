@@ -57,10 +57,23 @@ to this version before they can use catalog-only releases. If such clients have 
 distributed, keep the legacy signed manifests alongside the catalog for a transition
 release before removing them. Do not alter previously published releases.
 
-Standalone server releases publish only `server-<os>-<arch>-<version>` executables
-(`.exe` on Windows) and the custom catalog. The same executable serves manual
-downloads and automatic updates; there are no server archives or separate checksum
-files. Linux/macOS downloads need execute permission (`chmod +x`).
+Standalone server releases publish one ZIP per OS and architecture, plus the custom
+catalog:
+
+```text
+server-linux-x86_64-1.2.3.zip
+server-windows-aarch64-1.2.3.zip
+server-macos-aarch64-1.2.3.zip
+```
+
+Each ZIP contains `rclone-manager-server/` with the executable (`.exe` on Windows),
+`LICENSE`, `README.txt` and, on Linux, the systemd unit template. It uses the same
+signed `archive` metadata as portable packages, with `binaryPath` set to
+`rclone-manager-server/rclone-manager-server[.exe]`. The same ZIP serves manual
+downloads and automatic updates, which extract only the executable. Server ZIPs
+never contain an application bundle, including on macOS. A server manifest without
+`archive` is invalid, and server updates have no legacy per-target manifests.
+There are no separate checksum files.
 
 Android publishes one `android-<arch>-<version>.apk` per architecture from
 `updater-assets/`. Both manual downloads and automatic updates use that APK.

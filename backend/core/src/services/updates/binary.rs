@@ -7,16 +7,41 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Carries the launch arguments to the update helper. They may hold secrets such as
+/// `--pass`, so they travel in the helper's private environment instead of the
+/// staging directory.
+pub(super) const ARGS_ENV: &str = "RCMAN_UPDATE_ARGS";
+/// Windows limits an environment variable to 32,767 characters.
+const MAX_ENCODED_ARGUMENTS: usize = 30_000;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(super) struct StagedUpdate {
     pub(super) kind: String,
     pub(super) target: PathBuf,
+    /// Never written to disk; supplied through `ARGS_ENV` or reused from a previous plan.
+    #[serde(skip)]
     pub(super) args: Vec<std::ffi::OsString>,
     pub(super) working_directory: PathBuf,
     #[serde(default)]
     pub(super) parent_pid: u32,
     #[serde(default)]
     pub(super) log_directory: Option<PathBuf>,
+}
+
+fn encode_arguments(arguments: &[std::ffi::OsString]) -> Result<String, String> {
+    let encoded = serde_json::to_string(arguments).map_err(|e| e.to_string())?;
+    if encoded.len() > MAX_ENCODED_ARGUMENTS {
+        return Err("Launch arguments are too long to preserve across an update".into());
+    }
+    Ok(encoded)
+}
+
+fn take_launch_arguments() -> Result<Vec<std::ffi::OsString>, String> {
+    let encoded = std::env::var(ARGS_ENV).map_err(|_| "Missing launch arguments")?;
+    // Entry points call this before creating threads, and the application the
+    // helper starts must not inherit its own arguments as an environment variable.
+    unsafe { std::env::remove_var(ARGS_ENV) };
+    serde_json::from_str(&encoded).map_err(|e| e.to_string())
 }
 
 pub(crate) fn prepare(
@@ -39,6 +64,11 @@ pub(crate) fn prepare(
         return Err("Current update has not finished startup verification".into());
     }
     prune_completed(&target);
+    let arguments: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    #[cfg(windows)]
+    let encoded_arguments = encode_arguments(&arguments)?;
+    #[cfg(not(windows))]
+    encode_arguments(&arguments)?;
     let directory = tempfile::Builder::new()
         .prefix(".rcman-update-")
         .tempdir_in(installation_directory(&target).map_err(|e| e.to_string())?)
@@ -46,7 +76,7 @@ pub(crate) fn prepare(
     let plan = StagedUpdate {
         kind: kind.into(),
         target,
-        args: std::env::args_os().skip(1).collect(),
+        args: arguments,
         working_directory: std::env::current_dir().map_err(|e| e.to_string())?,
         parent_pid: std::process::id(),
         log_directory: Some(log_directory.to_owned()),
@@ -93,6 +123,7 @@ pub(crate) fn prepare(
         command
             .arg("--rcman-update-helper")
             .arg(stage)
+            .env(ARGS_ENV, encoded_arguments)
             .creation_flags(0x08000000);
         let mut child = command.spawn().map_err(|e| e.to_string())?;
         if let Err(error) = wait_for_helper(&mut child, stage, std::time::Duration::from_secs(30)) {
@@ -150,13 +181,18 @@ pub fn restart(
 ) -> Result<(), String> {
     use std::os::unix::process::CommandExt;
     let directory = previous.parent().ok_or("Missing recovery directory")?;
-    let error = std::process::Command::new(previous)
-        .arg("--rcman-update-supervisor")
-        .arg(directory)
-        .current_dir(working_directory)
-        .env_remove(super::health::DIRECTORY_ENV)
-        .env_remove(super::health::TOKEN_ENV)
-        .exec();
+    let error = match encode_arguments(arguments) {
+        Ok(encoded) => std::process::Command::new(previous)
+            .arg("--rcman-update-supervisor")
+            .arg(directory)
+            .current_dir(working_directory)
+            .env(ARGS_ENV, encoded)
+            .env_remove(super::health::DIRECTORY_ENV)
+            .env_remove(super::health::TOKEN_ENV)
+            .exec()
+            .to_string(),
+        Err(error) => error,
+    };
     // No replacement has happened yet. Restart the still-installed original.
     Err(format!(
         "Helper failed: {error}; restarting application failed: {}",
@@ -231,7 +267,7 @@ fn install_staged(
     key: &str,
 ) -> Result<String, String> {
     let manifest = read_manifest(directory, &plan.kind, key).map_err(|e| e.to_string())?;
-    if !super::is_version_newer(current_version, &manifest.version) {
+    if !manifest.version_allowed(current_version) {
         return Err("Update version must increase across supervisor handoffs".into());
     }
     let payload = std::fs::read(directory.join("payload")).map_err(|e| e.to_string())?;
@@ -406,7 +442,7 @@ fn take_failed_updates_in(parent: &Path, target: &Path) -> Vec<FailedUpdate> {
         {
             failures.push(FailedUpdate {
                 version,
-                reason: reason.chars().take(500).collect(),
+                reason: reason.chars().take(2000).collect(),
             });
         }
     }
@@ -431,6 +467,15 @@ fn read_plan(directory: &Path, target: Option<&Path>, kind: &str) -> Result<Stag
         &std::fs::read(directory.join("plan.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
+    // Tests stage arguments beside the plan; production never writes them to disk.
+    #[cfg(test)]
+    let plan = match std::fs::read(directory.join("args.json")) {
+        Ok(bytes) => StagedUpdate {
+            args: serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+            ..plan
+        },
+        Err(_) => plan,
+    };
     validate_stage(directory, &plan.target).map_err(|e| e.to_string())?;
     if plan.kind != kind || target.is_some_and(|target| target != plan.target) {
         return Err("Invalid update target or kind".into());
@@ -504,7 +549,8 @@ fn remove_completed(directory: &Path) -> std::io::Result<()> {
 }
 
 /// Runs before CLI/runtime/GUI setup. Never accepts elevated privileges.
-pub fn run_helper_if_requested(expected_kind: &str) -> bool {
+/// A process started as the update helper exits here; any other process returns.
+pub fn run_helper_if_requested(expected_kind: &str) {
     #[cfg(windows)]
     super::process_tree::wait_for_assignment();
     let mut args = std::env::args_os().skip(1);
@@ -513,7 +559,7 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
     #[cfg(not(windows))]
     let flag = "--rcman-update-supervisor";
     if args.next().as_deref() != Some(std::ffi::OsStr::new(flag)) {
-        return false;
+        return;
     }
     let result = (|| -> Result<i32, String> {
         let directory = PathBuf::from(args.next().ok_or("Missing staged update directory")?)
@@ -535,7 +581,8 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
             return Err("Invalid helper location".into());
         }
         let initial_lock = stage_lock(&directory).map_err(|e| e.to_string())?;
-        let plan = read_plan(&directory, None, expected_kind)?;
+        let mut plan = read_plan(&directory, None, expected_kind)?;
+        plan.args = take_launch_arguments()?;
         if let Err(error) =
             crate::utils::logging::log::init_helper_logging(plan.log_directory.as_deref())
         {
@@ -573,6 +620,14 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
     }
 }
 
+/// A handoff plan carries no arguments: the next version runs with the ones the
+/// running application was started with.
+fn inherit_arguments(next: &mut StagedUpdate, current: &mut StagedUpdate) {
+    if next.args.is_empty() {
+        next.args = std::mem::take(&mut current.args);
+    }
+}
+
 fn install_loop(mut directory: PathBuf, mut plan: StagedUpdate, key: &str) -> Result<i32, String> {
     let bootstrap = directory.clone();
     let mut current_version = env!("CARGO_PKG_VERSION").to_owned();
@@ -584,13 +639,17 @@ fn install_loop(mut directory: PathBuf, mut plan: StagedUpdate, key: &str) -> Re
         };
         let version = match install_staged(&directory, &plan, &current_version, key) {
             Ok(version) => version,
-            Err(error) => return super::supervisor::recover(&directory, &plan, true, &error),
+            Err(error) => {
+                let reason = crate::localized_error!("backendErrors.updater.rollback.installFailed", "error" => error);
+                return super::supervisor::recover(&directory, &plan, true, &reason);
+            }
         };
         current_version = version.clone();
         match super::supervisor::run(&directory, &plan, &version)? {
             super::supervisor::Completion::Exit(code) => return Ok(code),
             super::supervisor::Completion::Next(next) => {
-                let next_plan = read_plan(&next, Some(&plan.target), &plan.kind)?;
+                let mut next_plan = read_plan(&next, Some(&plan.target), &plan.kind)?;
+                inherit_arguments(&mut next_plan, &mut plan);
                 drop(lock);
                 if directory != bootstrap {
                     let _ = remove_completed(&directory);
@@ -907,7 +966,16 @@ mod tests {
             assert!(stage.path().exists());
         }
         drop(active);
-        assert!(!supervisor_active(stages[1].path(), &target));
+        // A process another test is spawning may briefly hold a copy of the lock
+        // until it execs, so wait for the lock to be released.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while supervisor_active(stages[1].path(), &target) {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "lock was never released"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         prune_completed(&target);
         assert!(!stages[1].path().exists());
     }
@@ -931,6 +999,83 @@ mod tests {
         drop(running);
         remove_completed(stage.path()).unwrap();
         assert!(!stage.path().exists());
+    }
+
+    fn plan_with(args: &[&str]) -> StagedUpdate {
+        StagedUpdate {
+            kind: "server".into(),
+            target: PathBuf::from("app"),
+            args: args.iter().map(std::ffi::OsString::from).collect(),
+            working_directory: PathBuf::from("."),
+            parent_pid: 1,
+            log_directory: None,
+        }
+    }
+
+    #[test]
+    fn launch_arguments_never_reach_the_staging_directory() {
+        let plan = plan_with(&["--user", "admin", "--pass", "s3cr3t"]);
+        let stored = String::from_utf8(serde_json::to_vec(&plan).unwrap()).unwrap();
+        assert!(!stored.contains("s3cr3t") && !stored.contains("--pass"));
+        let restored: StagedUpdate = serde_json::from_str(&stored).unwrap();
+        assert!(restored.args.is_empty());
+    }
+
+    #[test]
+    fn launch_arguments_survive_the_environment_round_trip_within_its_size_limit() {
+        let arguments: Vec<std::ffi::OsString> = ["--pass", "pa ss'\"ü", ""]
+            .iter()
+            .map(std::ffi::OsString::from)
+            .collect();
+        let decoded: Vec<std::ffi::OsString> =
+            serde_json::from_str(&encode_arguments(&arguments).unwrap()).unwrap();
+        assert_eq!(decoded, arguments);
+        assert!(encode_arguments(&[]).is_ok());
+        let huge = vec![std::ffi::OsString::from("x".repeat(MAX_ENCODED_ARGUMENTS))];
+        assert!(encode_arguments(&huge).is_err());
+    }
+
+    // Runs in a separate test process, which owns its environment.
+    #[test]
+    fn launch_arguments_fixture() {
+        let Some(expected) = std::env::var_os("RCMAN_TEST_EXPECTED_ARGUMENTS") else {
+            return;
+        };
+        let arguments = take_launch_arguments().unwrap();
+        assert_eq!(
+            serde_json::to_string(&arguments).unwrap(),
+            expected.to_str().unwrap()
+        );
+        assert!(std::env::var_os(ARGS_ENV).is_none());
+        assert!(take_launch_arguments().is_err());
+    }
+
+    #[test]
+    fn the_helper_takes_its_arguments_from_the_environment_and_removes_them() {
+        let encoded = encode_arguments(&["--pass".into(), "x y".into()]).unwrap();
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "services::updates::binary::tests::launch_arguments_fixture",
+                "--nocapture",
+            ])
+            .env(ARGS_ENV, &encoded)
+            .env("RCMAN_TEST_EXPECTED_ARGUMENTS", &encoded)
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn a_handoff_reuses_the_running_applications_arguments() {
+        let mut current = plan_with(&["--port", "8081"]);
+        let mut next = plan_with(&[]);
+        inherit_arguments(&mut next, &mut current);
+        assert_eq!(next.args, plan_with(&["--port", "8081"]).args);
+        // A plan that already carries arguments keeps them.
+        let mut explicit = plan_with(&["--port", "9"]);
+        inherit_arguments(&mut explicit, &mut plan_with(&["--port", "8081"]));
+        assert_eq!(explicit.args, plan_with(&["--port", "9"]).args);
     }
 
     #[test]

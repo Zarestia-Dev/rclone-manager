@@ -15,7 +15,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (can_auto_install, $crate::services::updates::policy::can_auto_install, [], [infallible]);
             #[cfg(feature = "updater")]
-            (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [infallible]);
+            (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [sync, infallible]);
             (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
             (check_pending_app_exit, $crate::services::lifecycle::exit::check_pending_app_exit, [], [sync, infallible]);

@@ -2946,7 +2946,8 @@
       "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}",
       "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}",
-      "downloadCancelled": "Téléchargement annulé par l'utilisateur"
+      "downloadCancelled": "Téléchargement annulé par l'utilisateur",
+      "noUpdateAvailable": "Aucune mise à jour disponible"
     },
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
@@ -3016,11 +3017,18 @@
       "relaunchFailed": "La relance a échoué : {{error}}",
       "restartFailed": "Redémarrage échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
+      "rollback": {
+        "exited": "L'application mise à jour s'est arrêtée avant de confirmer son démarrage (code {{code}}).",
+        "couldNotStart": "Impossible de démarrer l'application mise à jour : {{error}}",
+        "interrupted": "Le démarrage de l'application mise à jour a été interrompu par un arrêt.",
+        "notConfirmed": "L'application mise à jour n'a pas confirmé son démarrage à temps.",
+        "installFailed": "Impossible d'installer la mise à jour : {{error}}"
+      },
+      "rolledBack": "La mise à jour {{version}} a été annulée : {{reason}}",
       "ioError": "IO erreur : {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },

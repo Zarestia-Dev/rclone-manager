@@ -117,6 +117,29 @@ test('accepts Rust fixtures and rejects unknown catalog, entry, and archive fiel
   }
 });
 
+test('server ZIP metadata accepts the shared catalog format and rejects unsafe or non-ZIP archives', () => {
+  const fixtures = path.join(__dirname, '../backend/core/src/services/updates/fixtures');
+  const source = JSON.parse(fs.readFileSync(path.join(fixtures, 'server-catalog.json'), 'utf8'));
+  assert.equal(Object.keys(mergeCatalogs(source.version, [source]).entries).length, 3);
+  const manifest = JSON.parse(
+    Buffer.from(source.entries['server-macos-aarch64'].manifest, 'base64')
+  );
+  // Only portable macOS packages are app bundles; a server executable has no .app wrapper.
+  assert.equal(validateManifest(manifest), manifest);
+  for (const binaryPath of ['', '../rclone-manager-server', 'a\\b', 'dir//server', 'dir/']) {
+    assert.throws(() =>
+      validateManifest({ ...manifest, archive: { ...manifest.archive, binaryPath } })
+    );
+  }
+  for (const override of [
+    { asset: 'server-macos-aarch64-99.0.0' },
+    { asset: 'server-macos-aarch64-99.0.0.tar.gz' },
+    { kind: 'android' },
+    { target: 'android-aarch64' },
+  ])
+    assert.throws(() => validateManifest({ ...manifest, ...override }));
+});
+
 function catalog(overrides = {}) {
   const manifest = createManifest({ ...input, ...overrides });
   return {
@@ -201,28 +224,28 @@ test('publishes multiple signed targets into one catalog without signature sidec
     const inputFile = path.join(directory, 'payload');
     const output = path.join(directory, 'output');
     fs.writeFileSync(inputFile, 'abc');
-    publish('server', 'linux', 'x86_64', '1.2.3', inputFile, output);
-    publish('server', 'linux', 'aarch64', '1.2.3', inputFile, output);
-    publish('server', 'macos', 'aarch64', '1.2.3', inputFile, output);
-    publish('server', 'windows', 'x86_64', '1.2.3', inputFile, output);
+    // Servers are only published as ZIP archives.
+    assert.throws(() => publish('server', 'linux', 'x86_64', '1.2.3', inputFile, output));
     publish('portable', 'linux', 'x86_64', '1.2.3', inputFile, output);
+    publish('portable', 'linux', 'aarch64', '1.2.3', inputFile, output);
+    publish('portable', 'macos', 'aarch64', '1.2.3', inputFile, output);
+    publish('portable', 'windows', 'x86_64', '1.2.3', inputFile, output);
     publish('android', 'android', 'aarch64', '1.2.3', inputFile, output);
     assert.deepEqual(
       fs.readdirSync(output).sort(),
       [
         'android-aarch64-1.2.3.apk',
         MANIFEST_NAME,
+        'portable-linux-aarch64-1.2.3',
         'portable-linux-x86_64-1.2.3',
-        'server-linux-aarch64-1.2.3',
-        'server-linux-x86_64-1.2.3',
-        'server-macos-aarch64-1.2.3',
-        'server-windows-x86_64-1.2.3.exe',
+        'portable-macos-aarch64-1.2.3',
+        'portable-windows-x86_64-1.2.3.exe',
       ].sort()
     );
     const merged = mergeCatalogs('1.2.3', [
       JSON.parse(fs.readFileSync(path.join(output, MANIFEST_NAME), 'utf8')),
     ]);
-    assert.equal(Object.keys(merged.entries).length, 6);
+    assert.equal(Object.keys(merged.entries).length, 5);
     for (const entry of Object.values(merged.entries)) {
       assert.ok(entry.signature.length > 100);
       const manifest = JSON.parse(Buffer.from(entry.manifest, 'base64'));
@@ -264,6 +287,39 @@ test('publishes multiple signed targets into one catalog without signature sidec
         'portable-linux-x86_64-1.2.3.zip',
         'portable-macos-aarch64-1.2.3.zip',
         'portable-windows-x86_64-1.2.3.zip',
+      ].sort()
+    );
+    // Server releases use the same ZIP packaging around their single executable.
+    const serverOutput = path.join(directory, 'server-output');
+    for (const [os, arch, member] of [
+      ['windows', 'x86_64', 'rclone-manager-server/rclone-manager-server.exe'],
+      ['linux', 'x86_64', 'rclone-manager-server/rclone-manager-server'],
+      ['macos', 'aarch64', 'rclone-manager-server/rclone-manager-server'],
+    ]) {
+      const archive = path.join(fixtures, `server-${os}-${arch}-99.0.0.zip`);
+      const manifest = publish(
+        'server',
+        os,
+        arch,
+        '1.2.3',
+        inputFile,
+        serverOutput,
+        archive,
+        member
+      );
+      assert.equal(manifest.asset, `server-${os}-${arch}-1.2.3.zip`);
+      assert.equal(manifest.size, payload.length);
+      assert.equal(manifest.archive.binaryPath, member);
+      assert.equal(manifest.archive.size, fs.statSync(archive).size);
+      assert.notEqual(manifest.signature, manifest.archive.signature);
+    }
+    assert.deepEqual(
+      fs.readdirSync(serverOutput).sort(),
+      [
+        MANIFEST_NAME,
+        'server-linux-x86_64-1.2.3.zip',
+        'server-macos-aarch64-1.2.3.zip',
+        'server-windows-x86_64-1.2.3.zip',
       ].sort()
     );
   } finally {

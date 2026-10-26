@@ -26,7 +26,9 @@ pub(super) fn external_asset(
         .assets
         .iter()
         .find(|asset| match installation {
-            InstallationKind::Container => asset.name == format!("server-linux-{arch}-{version}"),
+            InstallationKind::Container => {
+                asset.name == format!("server-linux-{arch}-{version}.zip")
+            }
             InstallationKind::Flatpak | InstallationKind::Pacman | InstallationKind::Deb => {
                 asset.name == format!("{product}_{version}_{deb_arch}.deb")
             }
@@ -106,7 +108,7 @@ mod tests {
 
     #[test]
     fn containers_require_their_server_architecture_and_other_installations_do_not_guess() {
-        let release = release("headless-v1.2.3", &["server-linux-aarch64-1.2.3"]);
+        let release = release("headless-v1.2.3", &["server-linux-aarch64-1.2.3.zip"]);
         assert!(
             external_asset(&release, InstallationKind::Container, "linux", "aarch64").is_some()
         );

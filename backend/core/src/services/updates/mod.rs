@@ -56,7 +56,19 @@ impl Drop for CheckingGuard<'_> {
     }
 }
 
-use crate::utils::version::{clean_app_version, is_version_newer};
+use crate::utils::version::{clean_app_version, is_update_candidate, is_version_newer};
+
+/// Installers that replace the running build may move a pre-release to a stable
+/// release with a lower version number. Package managers decide for themselves,
+/// and Android version codes cannot decrease.
+fn is_offered(method: policy::UpdateMethod, current: &str, release: &str) -> bool {
+    match method {
+        policy::UpdateMethod::Tauri | policy::UpdateMethod::Binary => {
+            is_update_candidate(current, release)
+        }
+        _ => is_version_newer(current, release),
+    }
+}
 
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();
@@ -106,14 +118,7 @@ async fn fetch_update_inner(
         installation.reason,
     );
 
-    let releases = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        github_client::get_releases(OWNER, REPO),
-    )
-    .await
-    .map_err(|error| {
-        crate::utils::types::updater::UpdaterError::UpdateUnavailable(error.to_string())
-    })??;
+    let releases = github_client::get_releases(OWNER, REPO).await?;
     log::debug!("Received {} releases", releases.len());
     let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
@@ -149,13 +154,16 @@ async fn update_for_release(
     let current_version_str = env!("CARGO_PKG_VERSION").to_string();
     let release_version_str = clean_app_version(&release.tag_name);
 
-    let is_newer = is_version_newer(&current_version_str, release_version_str);
-    if !is_newer {
+    if !is_offered(
+        installation.method,
+        &current_version_str,
+        release_version_str,
+    ) {
         info!("App is up to date (current: {current_version_str}, latest: {release_version_str})");
         return Ok(None);
     }
 
-    info!("Newer version found: {release_version_str} (current: {current_version_str})");
+    info!("Update found: {release_version_str} (current: {current_version_str})");
 
     let update_metadata = UpdateMetadata {
         version: release_version_str.to_string(),
@@ -206,19 +214,15 @@ async fn update_for_release(
     let pending_action = if externally_managed {
         None
     } else {
-        let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
-            match installation.method {
-                policy::UpdateMethod::Tauri => {
-                    app.host().check_update(release, &mut update_metadata).await
-                }
-                policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
-                    signed::check(app, release, &installation).await
-                }
-                policy::UpdateMethod::Unavailable => Ok(None),
+        let result = match installation.method {
+            policy::UpdateMethod::Tauri => {
+                app.host().check_update(release, &mut update_metadata).await
             }
-        })
-        .await
-        .unwrap_or_else(|error| Err(error.to_string()));
+            policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
+                signed::check(app, release, &installation).await
+            }
+            policy::UpdateMethod::Unavailable => Ok(None),
+        };
         match result {
             Ok(Some(action)) => installation.can_install.then_some(action),
             Ok(None) => {
@@ -299,7 +303,11 @@ pub fn report_failed_updates(app: &AppHandle) {
         notify(
             app,
             NotificationEvent::AppUpdate(UpdateStage::Failed {
-                error: format!("{}: {}", failure.version, failure.reason),
+                error: crate::localized_error!(
+                    "backendErrors.updater.rolledBack",
+                    "version" => failure.version,
+                    "reason" => failure.reason
+                ),
             }),
         );
         let Some(manager) = app.try_state::<AppSettingsManager>() else {
@@ -345,11 +353,7 @@ fn is_release_for_channel(
             .1
             .is_some();
 
-    match channel {
-        "stable" => !is_pre,
-        "beta" => true,
-        _ => !is_pre,
-    }
+    channel == "beta" || !is_pre
 }
 
 fn latest_release<'a>(
@@ -374,6 +378,43 @@ fn latest_release<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn leaving_beta_does_not_wait_for_the_next_stable_version() {
+        use policy::UpdateMethod::{Android, Binary, Tauri, Unavailable};
+        for method in [Tauri, Binary] {
+            assert!(is_offered(method, "0.3.4-beta.1", "0.3.3"));
+            assert!(!is_offered(method, "0.3.4", "0.3.3"));
+            assert!(!is_offered(method, "0.3.4-beta.2", "0.3.4-beta.1"));
+        }
+        // Android version codes cannot decrease; package managers pick their own versions.
+        for method in [Android, Unavailable] {
+            assert!(!is_offered(method, "0.3.4-beta.1", "0.3.3"));
+            assert!(is_offered(method, "0.3.4-beta.1", "0.3.4"));
+        }
+    }
+
+    #[test]
+    fn the_stable_channel_offers_its_latest_release_to_a_beta_build() {
+        let release = |tag: &str, prerelease: bool| github_client::Release {
+            tag_name: tag.into(),
+            prerelease,
+            draft: false,
+            assets: vec![],
+            body: None,
+            published_at: None,
+            html_url: String::new(),
+        };
+        let releases = [
+            release("v0.3.3", false),
+            release("v0.3.4-beta.1", true),
+            release("headless-v0.3.3", false),
+        ];
+        let stable = latest_release(&releases, "stable", "v").unwrap();
+        assert_eq!(stable.tag_name, "v0.3.3");
+        let beta = latest_release(&releases, "beta", "v").unwrap();
+        assert_eq!(beta.tag_name, "v0.3.4-beta.1");
+    }
 
     #[tokio::test]
     async fn a_panicking_update_check_returns_to_idle_and_can_be_retried() {

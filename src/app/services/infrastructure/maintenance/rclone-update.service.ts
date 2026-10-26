@@ -77,7 +77,7 @@ export class RcloneUpdateService extends TauriBaseService {
 
       console.error('Failed to check for rclone updates:', error);
       this._isChecking.set(false);
-      this._error.set(String(error));
+      this._error.set(this.backendTranslation.translateBackendMessage(error));
       return null;
     } finally {
       if (checkId === this._latestCheckId) {
@@ -108,11 +108,13 @@ export class RcloneUpdateService extends TauriBaseService {
         return true;
       }
 
-      this._error.set(result.message ?? null);
+      this._error.set(
+        result.message ? this.backendTranslation.translateBackendMessage(result.message) : null
+      );
       return false;
     } catch (error) {
       console.error('Failed to update rclone:', error);
-      this._error.set(String(error));
+      this._error.set(this.backendTranslation.translateBackendMessage(error));
       return false;
     } finally {
       await this.restoreUpdateState();

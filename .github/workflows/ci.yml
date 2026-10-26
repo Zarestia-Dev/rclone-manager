@@ -109,7 +109,7 @@ jobs:
           for features in flatpak mobile; do
             cargo clippy --locked -p rclone-manager --no-default-features --features "$features" -- -D warnings
           done
-      - name: Server unit tests
+      - name: Core and server unit tests
         if: runner.os == 'Linux'
         run: |
           cargo test --locked -p rclone-manager-core
@@ -148,10 +148,10 @@ jobs:
         with:
           workspaces: './backend -> target'
           key: embedded-server
+          save-if: ${{ github.event_name == 'push' }}
       - run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libssl-dev pkg-config
       - run: cargo clippy --locked --release -p rclone-manager-server --all-targets -- -D warnings
       - run: cargo test --locked --release -p rclone-manager-server --lib
-      - run: cargo build --locked --release -p rclone-manager-server
 
   android:
     name: Android target

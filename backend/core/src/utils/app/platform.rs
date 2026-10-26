@@ -5,10 +5,23 @@ pub fn get_build_type() -> Option<&'static str> {
     installation_type(
         cfg!(feature = "flatpak"),
         cfg!(feature = "portable"),
-        std::env::var("RCLONE_MANAGER_INSTALLATION_TYPE")
-            .ok()
-            .as_deref(),
+        deployment_type().as_deref(),
     )
+}
+
+/// The deployment declared by `RCLONE_MANAGER_INSTALLATION_TYPE`, or a container when
+/// the runtime marks one (Docker and Podman). Other runtimes may leave neither marker
+/// and need the variable. An updated executable inside a container would be lost when
+/// the container is recreated.
+pub fn deployment_type() -> Option<String> {
+    std::env::var("RCLONE_MANAGER_INSTALLATION_TYPE")
+        .ok()
+        .or_else(|| {
+            ["/.dockerenv", "/run/.containerenv"]
+                .iter()
+                .any(|marker| std::path::Path::new(marker).exists())
+                .then(|| "container".to_owned())
+        })
 }
 
 fn installation_type(
@@ -20,7 +33,12 @@ fn installation_type(
         Some("flatpak")
     } else if portable {
         Some("portable")
-    } else if deployment.is_some_and(|value| value.trim().eq_ignore_ascii_case("docker")) {
+    } else if deployment.is_some_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "docker" | "container"
+        )
+    }) {
         Some("container")
     } else {
         None
@@ -44,6 +62,10 @@ mod installation_tests {
         );
         assert_eq!(
             installation_type(false, false, Some(" Docker ")),
+            Some("container")
+        );
+        assert_eq!(
+            installation_type(false, false, Some("CONTAINER")),
             Some("container")
         );
         for value in [

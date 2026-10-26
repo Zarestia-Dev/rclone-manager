@@ -40,6 +40,7 @@ describe('RcloneUpdateService state restoration', () => {
   const invoke = vi.fn();
   const saveSetting = vi.fn();
   const showError = vi.fn();
+  const translate = vi.fn((message: unknown) => String(message));
 
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -56,6 +57,7 @@ describe('RcloneUpdateService state restoration', () => {
       return null;
     });
     showError.mockReset();
+    translate.mockClear();
     saveSetting.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
@@ -72,7 +74,7 @@ describe('RcloneUpdateService state restoration', () => {
           },
         },
         { provide: TranslateService, useValue: { instant: (key: string): string => key } },
-        { provide: BackendTranslationService, useValue: { translateBackendMessage: String } },
+        { provide: BackendTranslationService, useValue: { translateBackendMessage: translate } },
         {
           provide: AppSettingsService,
           useValue: {
@@ -206,6 +208,17 @@ describe('RcloneUpdateService state restoration', () => {
     await Promise.resolve();
     expect(service.downloading()).toBe(false);
     expect(service.readyToRestart()).toBe(false);
+  });
+
+  it('translates the backend message of an update that did not run', async () => {
+    info = null;
+    await service.initialize();
+    const message = '{"key":"backendErrors.rclone.noUpdateAvailable"}';
+    invoke.mockResolvedValueOnce({ success: false, message, manual: false });
+    translate.mockReturnValueOnce('No update available');
+    expect(await service.performUpdate()).toBe(false);
+    expect(translate).toHaveBeenCalledWith(message);
+    expect(service.error()).toBe('No update available');
   });
 
   it('does not restore a separate updater for librclone', async () => {

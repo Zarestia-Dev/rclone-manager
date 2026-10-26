@@ -24,6 +24,16 @@ independent Tauri signatures from a separate disposable key. Tests check both
 verification stages and full macOS bundle replacement/rollback, including
 `Info.plist` and signature resources. The private key was discarded.
 
+`server-catalog.json`, `server-public.key`, and the Linux, macOS and Windows
+`server-*.zip` archives are the equivalent for standalone server packages. Each ZIP
+has a directory entry (like `zip -r`) and holds the harmless `payload.txt` as
+`rclone-manager-server/rclone-manager-server[.exe]` beside a sample README; the Linux
+ZIP adds a unit stub. The macOS ZIP shows that a server package is never an app
+bundle. The Windows ZIP carries DOS attributes and no Unix mode bits, like the
+`Compress-Archive` output of the release workflow.
+They were signed by `publish()` in `scripts/create-update-manifest.cjs` with a
+separate disposable key whose private half was discarded.
+
 `process-app.sh`, `process-99.0.0.json`, `process-99.0.1.json`, their manifest
 signatures, and `process-public.key` form a second fixture set. Linux x86_64
 process tests install this signed shell script and exercise startup commitment,

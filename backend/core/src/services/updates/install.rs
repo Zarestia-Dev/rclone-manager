@@ -129,14 +129,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                 let progress = {
                     let mut data = st.data.lock();
                     data.state = UpdateState::Available;
-                    data.failure_message = Some(failure);
+                    data.failure_message = Some(failure.clone());
                     data.download_status()
                 };
                 notify(
                     &app_clone,
-                    NotificationEvent::AppUpdate(UpdateStage::Failed {
-                        error: e.to_string(),
-                    }),
+                    NotificationEvent::AppUpdate(UpdateStage::Failed { error: failure }),
                 );
                 if let Some(progress) = progress {
                     emit_progress(progress);
@@ -172,10 +170,8 @@ async fn ensure_install_allowed(app: &AppHandle) -> Result<()> {
 pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     ensure_install_allowed(&app).await?;
     let state = app.state::<AppUpdaterState>();
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| Error::NoPendingUpdate)?;
+    // A running check is short; wait for it instead of reporting a missing update.
+    let _operation = state.operation.lock().await;
     let (update, payload) = {
         let mut data = state.data.lock();
         let staged = data.take_staged_update().ok_or(Error::NoPendingUpdate)?;
@@ -250,14 +246,17 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                             &working_directory,
                         );
                         if let Err(error) = result {
-                            let state = app.state::<AppUpdaterState>();
-                            let mut data = state.data.lock();
-                            data.state = UpdateState::Available;
-                            data.failure_message = Some(
-                                crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => error),
+                            // The engine is already stopped. Exiting lets a service manager
+                            // restart the installed build instead of leaving a half-stopped app.
+                            log::error!("Failed to restart after application update: {error}");
+                            let failure = crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => error);
+                            notify(
+                                &app,
+                                NotificationEvent::AppUpdate(UpdateStage::Failed {
+                                    error: failure,
+                                }),
                             );
-                            drop(data);
-                            emit_state_changed();
+                            app.exit(1);
                         }
                     }
                     InstallOutcome::Exit => {

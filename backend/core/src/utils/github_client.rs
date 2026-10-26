@@ -95,7 +95,7 @@ async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response
     }
 }
 
-/// Fetches all releases for a given repository.
+/// Fetches the 100 most recent releases of a repository (a single page).
 pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error> {
     let url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
 

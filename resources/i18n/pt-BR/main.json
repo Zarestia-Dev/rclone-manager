@@ -2946,7 +2946,8 @@
       "updateRemoteUnsupported": "Atualização remota não é suportada para essa versão do Rclone",
       "backupFailed": "Falha ao fazer o backup da binário atual do Rclone: {{error}}",
       "rcAuthFailed": "A autenticação do controle remoto Rclone falhou: {{error}}",
-      "downloadCancelled": "Download cancelado pelo usuário"
+      "downloadCancelled": "Download cancelado pelo usuário",
+      "noUpdateAvailable": "Nenhuma atualização disponível"
     },
     "security": {
       "passwordEmpty": "A senha não pode estar vazia",
@@ -3016,11 +3017,18 @@
       "relaunchFailed": "Reinício falhou: {{error}}",
       "restartFailed": "Reiniciar falhou: {{error}}",
       "notWritable": "O caminho de atualização não é gravável",
+      "rollback": {
+        "exited": "O aplicativo atualizado foi encerrado antes de confirmar a inicialização (código {{code}}).",
+        "couldNotStart": "Não foi possível iniciar o aplicativo atualizado: {{error}}",
+        "interrupted": "A inicialização do aplicativo atualizado foi interrompida por um desligamento.",
+        "notConfirmed": "O aplicativo atualizado não confirmou a inicialização a tempo.",
+        "installFailed": "Não foi possível instalar a atualização: {{error}}"
+      },
+      "rolledBack": "A atualização {{version}} foi revertida: {{reason}}",
       "ioError": "Erro de E/S: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },

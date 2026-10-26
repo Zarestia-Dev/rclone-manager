@@ -111,9 +111,7 @@ fn detect_policy(method: UpdateMethod, portable: bool) -> UpdatePolicy {
     let executable = std::env::current_exe().ok();
     let kind = select_kind(
         method,
-        std::env::var("RCLONE_MANAGER_INSTALLATION_TYPE")
-            .ok()
-            .as_deref(),
+        crate::utils::app::platform::deployment_type().as_deref(),
         executable.as_deref().and_then(package_owner),
         std::env::var_os("APPIMAGE").is_some(),
         cfg!(feature = "flatpak") || std::path::Path::new("/.flatpak-info").exists(),

@@ -10,7 +10,7 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "multipart", "stream", "query"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "multipart", "stream", "query", "gzip"] }
 log = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 which = "8"

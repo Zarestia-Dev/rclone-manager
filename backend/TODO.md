@@ -30,6 +30,24 @@ upstream release targets; a Rust target alone is not evidence of application sup
 Android stays in the mobile release workflow. WebAssembly is not a standalone
 server target and is disabled in the inspected Rclone release matrix.
 
+# Application updater
+
+- [ ] Stream update downloads to disk. `download.rs` buffers the whole package in
+  memory (up to `MAX_ARTIFACT_SIZE`), and extraction, the staged payload and the
+  apply step each hold another copy. Hash and verify while streaming and pass file
+  paths through `AppUpdate` instead of `Vec<u8>`.
+- [ ] Clean the update cache after a committed update. `app-updates/*.payload` and the
+  Android `update.apk` are only overwritten by the next update, never removed.
+- [ ] Back up the configuration before the first launch of a new version. Rollback
+  restores only the executable, so a version that migrates settings and then fails
+  to start can leave data an older build cannot read.
+- [ ] Split `UpdaterError` and the shared state types between the application and the
+  Rclone engine updaters, and move `updater_running` out of `RcloneState`.
+- [ ] Give `update_found` and `download_progress` typed constants and payloads in
+  `utils/types/events.rs` instead of ad-hoc `APP_EVENT` JSON.
+- [ ] Consider dropping the consecutive-update handoff (`next.json`) from the
+  supervisor: it carries much of its complexity for a rare case.
+
 # Android media range workaround
 
 - [x] Removed the media range backport (`MediaRangeResponse.kt`, its unit tests and

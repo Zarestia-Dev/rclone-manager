@@ -22,23 +22,26 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: '--target x86_64-unknown-linux-gnu'
             arch: 'x86_64'
-            type: 'x86_64'
+            rust_target: 'x86_64-unknown-linux-gnu'
           - platform: 'ubuntu-22.04-arm'
             args: '--target aarch64-unknown-linux-gnu'
             arch: 'aarch64'
-            type: 'aarch64'
+            rust_target: 'aarch64-unknown-linux-gnu'
           - platform: 'windows-latest'
             args: '--target x86_64-pc-windows-msvc'
             arch: 'x86_64'
-            type: 'x86_64'
+            rust_target: 'x86_64-pc-windows-msvc'
           - platform: 'windows-latest'
             args: '--target aarch64-pc-windows-msvc'
             arch: 'aarch64'
-            type: 'aarch64'
+            rust_target: 'aarch64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install dependencies (ubuntu only)
         if: startsWith(matrix.platform, 'ubuntu')
@@ -52,17 +55,10 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      - name: Install Rust stable (windows only)
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'windows-latest'
         with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
-
-      - name: Install Rust stable (linux only)
-        uses: dtolnay/rust-toolchain@stable
-        if: startsWith(matrix.platform, 'ubuntu')
-        with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-unknown-linux-gnu' || 'x86_64-unknown-linux-gnu' }}
+          targets: ${{ matrix.rust_target }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -71,11 +67,11 @@ jobs:
           key: headless-${{ runner.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Remove Tauri capabilities metadata
         shell: bash
-        run: rm -rf backend/desktop/capabilities || true
+        run: rm -rf backend/desktop/capabilities
 
       - name: Read release version
         id: release_version
@@ -101,4 +97,4 @@ jobs:
             --config tauri.conf.headless.json
             --features web-server,tray,updater
             ${{ matrix.args }}
-            -- --no-default-features
+            -- --locked --no-default-features

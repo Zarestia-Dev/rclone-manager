@@ -70,7 +70,7 @@ pub(super) struct ArchiveInfo {
 
 impl ArchiveInfo {
     fn validate(&self, manifest: &Manifest) -> Result<(), String> {
-        if manifest.kind != "portable"
+        if !matches!(manifest.kind.as_str(), "portable" | "server")
             || !manifest.asset.ends_with(".zip")
             || !["windows-", "linux-", "macos-"]
                 .iter()
@@ -78,9 +78,11 @@ impl ArchiveInfo {
             || !valid_artifact(self.size, &self.sha256, &self.signature)
             || !safe_member_path(&self.binary_path)
             || self.binary_path.ends_with('/')
-            || (manifest.target.starts_with("macos-") && manifest.bundle_root().is_none())
+            || (manifest.kind == "portable"
+                && manifest.target.starts_with("macos-")
+                && manifest.bundle_root().is_none())
         {
-            return Err("Invalid portable ZIP metadata".into());
+            return Err("Invalid update ZIP metadata".into());
         }
         Ok(())
     }
@@ -163,11 +165,20 @@ impl Manifest {
             self.verify_payload_with_key(bytes, key)
         }
     }
+    /// Android version codes cannot decrease, so only that kind refuses a channel switch.
+    pub(super) fn version_allowed(&self, current: &str) -> bool {
+        if self.kind == "android" {
+            super::is_version_newer(current, &self.version)
+        } else {
+            super::is_update_candidate(current, &self.version)
+        }
+    }
+
     pub(super) fn validate(&self, version: &str, kind: &str, target: &str) -> Result<(), String> {
         if self.version != version
             || self.kind != kind
             || self.target != target
-            || !super::is_version_newer(env!("CARGO_PKG_VERSION"), &self.version)
+            || !self.version_allowed(env!("CARGO_PKG_VERSION"))
         {
             return Err("Update product, version or architecture does not match".into());
         }
@@ -176,8 +187,12 @@ impl Manifest {
         {
             return Err("Invalid update artifact metadata".into());
         }
-        if let Some(archive) = &self.archive {
-            archive.validate(self)?;
+        match &self.archive {
+            Some(archive) => archive.validate(self)?,
+            None if self.kind == "server" => {
+                return Err("Server updates must be ZIP archives".into());
+            }
+            None => {}
         }
         Ok(())
     }
@@ -345,6 +360,74 @@ mod tests {
         }
     }
 
+    fn server_manifest(target: &str) -> Manifest {
+        select_manifest(
+            include_bytes!("fixtures/server-catalog.json"),
+            "99.0.0",
+            "server",
+            target,
+            include_str!("fixtures/server-public.key"),
+        )
+        .unwrap()
+        .unwrap()
+        .0
+    }
+
+    #[test]
+    fn server_zips_install_only_their_authenticated_executable_on_every_platform() {
+        let key = include_str!("fixtures/server-public.key");
+        for (target, bytes) in [
+            (
+                "linux-x86_64",
+                include_bytes!("fixtures/server-linux-x86_64-99.0.0.zip").as_slice(),
+            ),
+            (
+                "macos-aarch64",
+                include_bytes!("fixtures/server-macos-aarch64-99.0.0.zip").as_slice(),
+            ),
+            (
+                "windows-x86_64",
+                include_bytes!("fixtures/server-windows-x86_64-99.0.0.zip").as_slice(),
+            ),
+        ] {
+            let manifest = server_manifest(target);
+            assert_eq!(manifest.asset, format!("server-{target}-99.0.0.zip"));
+            // A server ZIP never carries an app bundle, even on macOS.
+            assert!(manifest.bundle_root().is_none());
+            assert_eq!(manifest.download_size(), bytes.len() as u64);
+            let payload = manifest.prepare_download(bytes.to_vec(), key).unwrap();
+            assert_eq!(payload, include_bytes!("fixtures/payload.txt"));
+            assert_eq!(manifest.install_size(), payload.len() as u64);
+            manifest.verify_install_payload(&payload, key).unwrap();
+            assert!(
+                manifest
+                    .prepare_download(bytes.to_vec(), PUBLIC_KEY)
+                    .is_err()
+            );
+            let mut tampered = bytes.to_vec();
+            tampered[0] ^= 1;
+            assert!(manifest.prepare_download(tampered, key).is_err());
+        }
+    }
+
+    #[test]
+    fn server_updates_must_be_zip_archives() {
+        let manifest = server_manifest("linux-x86_64");
+        manifest
+            .validate("99.0.0", "server", "linux-x86_64")
+            .unwrap();
+        let mut raw = manifest.clone();
+        raw.archive = None;
+        assert!(raw.validate("99.0.0", "server", "linux-x86_64").is_err());
+        let mut renamed = manifest;
+        renamed.asset = "server-linux-x86_64-99.0.0".into();
+        assert!(
+            renamed
+                .validate("99.0.0", "server", "linux-x86_64")
+                .is_err()
+        );
+    }
+
     #[test]
     fn archive_metadata_rejects_paths_wrong_products_and_missing_authentication() {
         let manifest = test_portable_manifest("linux-x86_64");
@@ -363,7 +446,7 @@ mod tests {
         invalid.signature.clear();
         assert!(invalid.validate(&manifest).is_err());
         let mut invalid = manifest.clone();
-        invalid.kind = "server".into();
+        invalid.kind = "android".into();
         assert!(archive.validate(&invalid).is_err());
         let mut invalid = manifest.clone();
         invalid.asset = "portable.tar.gz".into();
@@ -519,6 +602,20 @@ mod tests {
             archive: None,
         }
     }
+    #[test]
+    fn only_android_refuses_to_leave_a_prerelease_for_an_older_stable_version() {
+        let mut m = manifest();
+        m.version = "0.3.3".into();
+        for kind in ["portable", "server"] {
+            m.kind = kind.into();
+            assert!(m.version_allowed("0.3.4-beta.1"));
+            assert!(!m.version_allowed("0.3.4"));
+        }
+        m.kind = "android".into();
+        assert!(!m.version_allowed("0.3.4-beta.1"));
+        assert!(m.version_allowed("0.3.2"));
+    }
+
     #[test]
     fn metadata_is_bound_to_product_version_architecture_and_size() {
         let m = manifest();

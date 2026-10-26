@@ -55,6 +55,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
    - **Frontend Static Asset Serving**: Angular loads translations via `MultiFileLoader` from static assets (`assets/i18n/...` mapped in `angular.json`).
    - **Backend Minimal Memory Footprint**: The Rust backend (`backend/core/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`, `backendErrors`).
    - **Language-Agnostic Backend Errors**: Rust code must **never** pre-translate error messages. Always use `localized_error!("backendErrors.<category>.<key>", ...)` or `localized_success!("backendSuccess.<category>.<key>", ...)`, producing structured `{ key, params }` JSON or raw keys for `BackendTranslationService` on the frontend.
+   - **Every user-visible string is a key**: this includes command results (`UpdateResult.message`), notification parameters and the failure text the update helper leaves behind. Do not return hard-coded English from Rust, and add each new key to **every** language directory under `resources/i18n/` (`npm run audit:i18n` must report no missing keys).
 
 7. **Platform & Tauri Target Abstraction (CRITICAL)**
    - **TauriBaseService & `this.isTauri`**:
@@ -131,11 +132,18 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
     - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
     - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
+    - Whether an installed build may be replaced by a release is decided by `is_update_candidate`, not `is_version_newer` alone: a pre-release build can move to any stable release, so leaving the beta channel never waits for the next stable version. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions.
 
 16. **Default Profile Name (CRITICAL)**
     - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
     - **DO NOT** hardcode `'Default'` or `'default'` as a default profile name, define local aliases, or duplicate the constant. For example, use `cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME`.
     - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
+
+17. **Updater & Release Contracts (CRITICAL)**
+    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
+    - Validation rules exist in both `scripts/create-update-manifest.cjs` and `backend/core/src/services/updates/manifest.rs`; keep them identical and covered by the shared fixtures under `services/updates/fixtures/`.
+    - Never write command-line arguments, passwords or tokens to disk. The update helper receives the launch arguments through its environment.
+    - Server updates are ZIP archives only; `tar.gz` is not used for releases.
 
 ---
 
@@ -173,6 +181,9 @@ npm run fix:all
 
 # Run frontend unit tests
 npm run test:ci
+
+# Release metadata and update manifest tests
+node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs
 ```
 
 > **Frontend Build Rule (CRITICAL)**:
@@ -203,6 +214,9 @@ cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 # 5. Run backend unit tests
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features --lib
+
+# 6. Updater unit tests (they spawn processes and use file locks, so CI runs them single-threaded)
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
 ```
 
 ### 3. Packaging & Linux Metadata Validation
