@@ -2964,6 +2964,7 @@
     },
     "rclone": {
       "downloadCancelled": "Завантаження скасовано користувачем",
+      "noUpdateAvailable": "Немає доступних оновлень",
       "mountPluginInstallFailed": "Не вдалося встановити плагін монтування: {{error}}",
       "mountPluginVerificationFailed": "Встановлення вдалося, але перевірку не пройдено. Може знадобитися перезапуск.",
       "configEncrypted": "Конфігурацію зашифровано, але пароль не надано",
@@ -3056,11 +3057,18 @@
       "relaunchFailed": "Не вдалося перезапустити: {{error}}",
       "restartFailed": "Не вдалося перезапустити: {{error}}",
       "notWritable": "Шлях оновлення недоступний для запису",
+      "rollback": {
+        "exited": "Оновлений застосунок завершив роботу до підтвердження запуску (код {{code}}).",
+        "couldNotStart": "Не вдалося запустити оновлений застосунок: {{error}}",
+        "interrupted": "Запуск оновленого застосунку було перервано завершенням роботи.",
+        "notConfirmed": "Оновлений застосунок не підтвердив запуск вчасно.",
+        "installFailed": "Не вдалося встановити оновлення: {{error}}"
+      },
+      "rolledBack": "Оновлення {{version}} було скасовано: {{reason}}",
       "ioError": "Помилка вводу-виводу: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
