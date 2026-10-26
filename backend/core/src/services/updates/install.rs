@@ -189,23 +189,25 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
         update.version(),
         payload.len()
     );
-    let result = crate::utils::spawn_blocking(move || {
-        let result = update.install(&payload);
-        (update, payload, result)
-    })
-    .await;
-    let (update, payload, result) = match result {
+    // Share the payload with the blocking task so a panic there cannot lose it.
+    let payload = std::sync::Arc::new(payload);
+    let installing = (update.clone(), payload.clone());
+    let result = crate::utils::spawn_blocking(move || installing.0.install(&installing.1)).await;
+    let result = match result {
         Ok(result) => result,
         Err(error) => {
             let failure = failure_message(&error.to_string());
             let mut data = state.data.lock();
-            data.state = UpdateState::Available;
+            data.state = UpdateState::ReadyToRestart;
+            data.pending_action = Some(update);
+            data.downloaded_payload = std::sync::Arc::try_unwrap(payload).ok();
             data.failure_message = Some(failure.clone());
             drop(data);
             emit_state_changed();
             return Err(Error::Backend(failure));
         }
     };
+    let payload = std::sync::Arc::try_unwrap(payload).unwrap_or_else(|shared| (*shared).clone());
     match result {
         Err(error) => {
             warn!("App update installation failed: {error}");

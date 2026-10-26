@@ -35,6 +35,8 @@ services:
 
       # --- Optional: Master Secret / rcman Encrypted Credentials ---
       # Master password for rcman encrypted credentials store (remote passwords, tokens).
+      # Optional: containers have no OS keyring, so without it secrets are kept in memory
+      # only and must be re-entered after every restart. Set it to persist them.
       # - RCLONE_MANAGER_SECRET=MySuperSecretPassword123!
       # - RCLONE_MANAGER_SECRET_PATH=/data/.secret # Path to secret file (must exist before starting container)
 

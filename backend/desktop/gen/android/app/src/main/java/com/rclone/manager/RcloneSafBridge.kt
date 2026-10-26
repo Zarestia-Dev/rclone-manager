@@ -28,6 +28,27 @@ object RcloneSafBridge {
     return RcloneAppUpdater.install(context, path)
   }
 
+  /**
+   * Set by Rust before it asks Tauri to exit. From then on the activity's destruction is
+   * final, so the Rust window is no longer preserved for keep-alive and Tauri's event loop
+   * can end the process. Back and swipe-away never set it.
+   */
+  @Volatile
+  var quitRequested = false
+    private set
+
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun requestQuit() {
+    quitRequested = true
+    appContext?.let { context ->
+      // A started service outliving the process would be restarted by START_STICKY.
+      RcloneKeepAliveService.stopService(context, true)
+      context.stopService(Intent(context, RcloneKeepAliveService::class.java))
+    }
+    MainActivity.finishForQuit()
+  }
+
   @Volatile
   var appContext: Context? = null
   private var isLibraryLoaded = false

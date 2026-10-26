@@ -180,10 +180,27 @@ pub(super) fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     file.sync_all()
 }
 
+/// Hard links are unavailable on some filesystems (network shares, FAT, FUSE);
+/// a copy keeps the same recovery guarantee there.
+#[cfg(unix)]
+fn link_or_copy(
+    source: &Path,
+    destination: &Path,
+    link: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    if let Err(error) = link(source, destination) {
+        log::warn!("Could not hard-link the current executable ({error}); copying it instead");
+        std::fs::copy(source, destination)?;
+    }
+    Ok(())
+}
+
 fn preserve_previous(directory: &Path, target: &Path) -> std::io::Result<()> {
     let previous = directory.join("previous");
     #[cfg(unix)]
-    std::fs::hard_link(target, &previous)?;
+    link_or_copy(target, &previous, |source, destination| {
+        std::fs::hard_link(source, destination)
+    })?;
     #[cfg(not(unix))]
     {
         std::fs::copy(target, &previous)?;
@@ -340,6 +357,62 @@ pub(super) fn restore_previous(directory: &Path, target: &Path) -> std::io::Resu
     Ok(())
 }
 
+/// An update that was rolled back, reported once on the next start.
+pub(crate) struct FailedUpdate {
+    pub(crate) version: String,
+    pub(crate) reason: String,
+}
+
+/// Collect rollback reasons left by the supervisor for this executable and mark
+/// them reported, so each failure is announced once.
+pub(crate) fn take_failed_updates() -> Vec<FailedUpdate> {
+    let Ok(target) = std::env::current_exe().and_then(|p| p.canonicalize()) else {
+        return Vec::new();
+    };
+    installation_directory(&target)
+        .map(|parent| take_failed_updates_in(parent, &target))
+        .unwrap_or_default()
+}
+
+fn take_failed_updates_in(parent: &Path, target: &Path) -> Vec<FailedUpdate> {
+    let Ok(entries) = std::fs::read_dir(parent) else {
+        return Vec::new();
+    };
+    let mut failures = Vec::new();
+    for entry in entries.flatten() {
+        let directory = entry.path();
+        let failure = directory.join("failure.txt");
+        if validate_stage(&directory, target).is_err()
+            || !failure.is_file()
+            || directory.join("committed").is_file()
+        {
+            continue;
+        }
+        let same_target = std::fs::read(directory.join("target.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<PathBuf>(&b).ok())
+            .is_some_and(|p| p == target);
+        // A running supervisor still owns its stage.
+        if !same_target || stage_lock(&directory).is_err() {
+            continue;
+        }
+        let version = std::fs::read(directory.join("manifest.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .and_then(|m| m.get("version")?.as_str().map(str::to_owned));
+        let reason = std::fs::read_to_string(&failure).unwrap_or_default();
+        if let Some(version) = version
+            && std::fs::rename(&failure, directory.join("failure.reported")).is_ok()
+        {
+            failures.push(FailedUpdate {
+                version,
+                reason: reason.chars().take(500).collect(),
+            });
+        }
+    }
+    failures
+}
+
 pub(super) fn validate_stage(directory: &Path, target: &Path) -> std::io::Result<()> {
     let metadata = std::fs::symlink_metadata(directory)?;
     if !metadata.is_dir()
@@ -400,7 +473,10 @@ fn prune_completed(target: &Path) {
     };
     for entry in entries.flatten() {
         let directory = entry.path();
-        if validate_stage(&directory, target).is_err() || !directory.join("committed").is_file() {
+        // Completed updates and rollbacks already shown to the user are disposable.
+        let finished =
+            directory.join("committed").is_file() || directory.join("failure.reported").is_file();
+        if validate_stage(&directory, target).is_err() || !finished {
             continue;
         }
         let matches = std::fs::read(directory.join("target.json"))
@@ -586,6 +662,98 @@ mod tests {
         );
         assert!(!bundle.join("Contents/_CodeSignature").exists());
         assert_eq!(std::fs::read(&settings).unwrap(), b"private user settings");
+    }
+
+    #[test]
+    fn reported_rollbacks_are_pruned_but_unreported_ones_are_kept() {
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("app");
+        let make = |reported: bool| {
+            let stage = tempfile::Builder::new()
+                .prefix(".rcman-update-")
+                .tempdir_in(root.path())
+                .unwrap();
+            write_private(
+                &stage.path().join("target.json"),
+                &serde_json::to_vec(&target).unwrap(),
+            )
+            .unwrap();
+            let marker = if reported {
+                "failure.reported"
+            } else {
+                "failure.txt"
+            };
+            write_private(&stage.path().join(marker), b"x").unwrap();
+            stage
+        };
+        let (reported, pending) = (make(true), make(false));
+        prune_completed(&target);
+        assert!(!reported.path().exists());
+        assert!(pending.path().exists());
+    }
+
+    #[test]
+    fn rolled_back_updates_are_reported_once_for_their_own_target() {
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("app");
+        let stage = |name: &str, failed: bool, committed: bool, owner: &Path| {
+            let directory = root.path().join(format!(".rcman-update-{name}"));
+            std::fs::create_dir(&directory).unwrap();
+            std::fs::write(
+                directory.join("target.json"),
+                serde_json::to_vec(owner).unwrap(),
+            )
+            .unwrap();
+            std::fs::write(
+                directory.join("manifest.json"),
+                format!(r#"{{"version":"{name}"}}"#),
+            )
+            .unwrap();
+            if failed {
+                std::fs::write(directory.join("failure.txt"), "did not start").unwrap();
+            }
+            if committed {
+                std::fs::write(directory.join("committed"), "x").unwrap();
+            }
+            directory
+        };
+        let failed = stage("1.2.3", true, false, &target);
+        stage("1.2.4", false, false, &target);
+        stage("1.2.5", true, true, &target);
+        stage("1.2.6", true, false, &root.path().join("other"));
+        let reports = take_failed_updates_in(root.path(), &target);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].version, "1.2.3");
+        assert_eq!(reports[0].reason, "did not start");
+        assert!(failed.join("failure.reported").is_file());
+        assert!(take_failed_updates_in(root.path(), &target).is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn previous_executable_is_copied_when_hard_links_are_unsupported() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("app");
+        std::fs::write(&source, b"current").unwrap();
+        std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let copy = root.path().join("previous");
+        link_or_copy(&source, &copy, |_, _| {
+            Err(std::io::Error::from(std::io::ErrorKind::Unsupported))
+        })
+        .unwrap();
+        assert_eq!(std::fs::read(&copy).unwrap(), b"current");
+        assert_eq!(
+            std::fs::metadata(&copy).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+        let missing = root.path().join("missing");
+        assert!(
+            link_or_copy(&missing, &root.path().join("x"), |_, _| Err(
+                std::io::Error::other("no")
+            ))
+            .is_err()
+        );
     }
 
     #[cfg(unix)]

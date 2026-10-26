@@ -180,15 +180,11 @@ mod tests {
     fn app_with_response(response: Option<Result<Value, BackendError>>) -> AppHandle {
         let app = AppHandle::default();
         app.manage(RcloneState {
-            client: reqwest::Client::new(),
-            transport: Arc::new(HealthTransport(Mutex::new(response))),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
             poller_visible: AtomicBool::new(true),
-            initial_startup: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-            updater_running: AtomicBool::new(false),
+            ..RcloneState::new(
+                reqwest::Client::new(),
+                Arc::new(HealthTransport(Mutex::new(response))),
+            )
         });
         app
     }

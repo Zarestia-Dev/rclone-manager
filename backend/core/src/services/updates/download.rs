@@ -10,7 +10,9 @@ fn client() -> Result<&'static reqwest::Client, String> {
             reqwest::Client::builder()
                 .user_agent("rclone-manager-updater")
                 .connect_timeout(std::time::Duration::from_secs(15))
-                .timeout(std::time::Duration::from_secs(15 * 60))
+                // Stall detection per read; `fetch` bounds the whole transfer. A fixed
+                // total timeout would abort large packages on slow connections.
+                .read_timeout(std::time::Duration::from_secs(60))
                 .redirect(reqwest::redirect::Policy::custom(|attempt| {
                     if attempt.url().scheme() != "https" || attempt.previous().len() >= 5 {
                         attempt.error("Unsafe update redirect")
@@ -24,15 +26,37 @@ fn client() -> Result<&'static reqwest::Client, String> {
     CLIENT.as_ref().map_err(Clone::clone)
 }
 
+/// Upper bound for a whole transfer: small metadata is quick, packages may be slow.
+fn transfer_deadline(limit: u64) -> std::time::Duration {
+    std::time::Duration::from_secs(if limit <= 1024 * 1024 {
+        60
+    } else {
+        2 * 60 * 60
+    })
+}
+
 pub(super) async fn fetch(
+    url: url::Url,
+    limit: u64,
+    progress: DownloadProgress,
+) -> Result<Vec<u8>, String> {
+    if url.scheme() != "https" {
+        return Err("Update download requires HTTPS".into());
+    }
+    tokio::time::timeout(
+        transfer_deadline(limit),
+        fetch_bounded(url, limit, progress),
+    )
+    .await
+    .map_err(|_| "Update download timed out".to_string())?
+}
+
+async fn fetch_bounded(
     url: url::Url,
     limit: u64,
     mut progress: DownloadProgress,
 ) -> Result<Vec<u8>, String> {
     use futures::StreamExt;
-    if url.scheme() != "https" {
-        return Err("Update download requires HTTPS".into());
-    }
     log::debug!("Fetching update resource: {url}, size_limit={limit}");
     let response = client()?
         .get(url)
@@ -224,6 +248,18 @@ mod tests {
             store_payload(invalid.join("payload"), vec![1])
                 .await
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn small_metadata_has_a_short_deadline_and_packages_a_long_one() {
+        assert_eq!(
+            transfer_deadline(super::super::manifest::MAX_MANIFEST_SIZE),
+            std::time::Duration::from_secs(60)
+        );
+        assert!(
+            transfer_deadline(super::super::manifest::MAX_ARTIFACT_SIZE)
+                >= std::time::Duration::from_secs(60 * 60)
         );
     }
 

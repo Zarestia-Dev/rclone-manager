@@ -6,3 +6,21 @@ resolver = "2"
 [workspace.package]
 version = "0.3.4"
 edition = "2024"
+
+[workspace.dependencies]
+# Versions shared by core, server and desktop; members add their own features.
+rcman = { version = "0.2.6", default-features = false }
+async-trait = "0.1"
+base64 = "0.23"
+clap = { version = "4", features = ["derive", "env"] }
+dirs = "7"
+futures = "0.3"
+log = "0.4"
+mime_guess = "2"
+rustls = { version = "0.23", features = ["ring"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+uuid = { version = "1", features = ["v4"] }

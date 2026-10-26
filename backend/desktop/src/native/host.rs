@@ -45,6 +45,10 @@ impl Host for NativeHost {
         )
     }
     fn exit(&self, code: i32) {
+        // Tauri 2.12 exits once the activity is destroyed, which keep-alive would otherwise
+        // turn into a preserved, config-change-like destruction.
+        #[cfg(target_os = "android")]
+        crate::rclone::backend::saf_bridge::request_quit();
         self.0.exit(code);
     }
     #[cfg(all(target_os = "windows", feature = "desktop"))]

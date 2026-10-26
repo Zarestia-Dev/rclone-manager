@@ -364,8 +364,9 @@ pub(crate) async fn build_special_transfer_payload(
     let os = backend_os(app, backend).await?;
     let mut body = params.to_rclone_body(os == "windows")?;
     if backend.is_librclone_local() {
-        body.as_object_mut().unwrap().remove("_path");
-        body.as_object_mut().unwrap().remove("dryRun");
+        let object = body.as_object_mut().ok_or_else(|| invalid_option("body"))?;
+        object.remove("_path");
+        object.remove("dryRun");
         return Ok((endpoint, body));
     }
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
@@ -375,8 +376,13 @@ pub(crate) async fn build_special_transfer_payload(
     if params.transfer_type == OperationType::Archivecreate {
         args.push("create".to_string());
     }
-    args.push(body["src"].as_str().unwrap().to_string());
-    args.push(body["dst"].as_str().unwrap().to_string());
+    for key in ["src", "dst"] {
+        let value = body
+            .get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| invalid_option(key))?;
+        args.push(value.to_string());
+    }
     args.extend(command_flags(&body, &schema)?);
     Ok((
         crate::rclone::endpoints::core::COMMAND,
@@ -643,7 +649,7 @@ mod batch_tests {
     use crate::rclone::backend::{BackendManager, runtime::RuntimeInfo};
     use crate::rclone::commands::common::{CommonConfigParams, parse_common_config};
     use crate::utils::types::state::RcloneState;
-    use std::sync::{Arc, atomic::AtomicBool};
+    use std::sync::Arc;
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::{TcpListener, TcpStream};
@@ -718,20 +724,13 @@ mod batch_tests {
                 )
                 .await;
             app.manage(manager);
-            app.manage(RcloneState {
-                client: reqwest::Client::builder()
+            app.manage(RcloneState::new(
+                reqwest::Client::builder()
                     .timeout(Duration::from_secs(3))
                     .build()
                     .unwrap(),
-                transport: Arc::new(RoutingTransport::new(app.clone())),
-                is_shutting_down: AtomicBool::new(false),
-                poller_running: AtomicBool::new(false),
-                poller_visible: AtomicBool::new(false),
-                initial_startup: AtomicBool::new(false),
-                updater_running: AtomicBool::new(false),
-                initialization_lock: tokio::sync::Mutex::new(()),
-                vault_operation_lock: tokio::sync::Mutex::new(()),
-            });
+                Arc::new(RoutingTransport::new(app.clone())),
+            ));
             let server = crate::utils::spawn(async move {
                 let mut pending = Vec::new();
                 // Wait for every probe before replying, then finish in reverse source order.

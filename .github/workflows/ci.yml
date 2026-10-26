@@ -80,6 +80,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev             librsvg2-dev libxdo-dev libssl-dev patchelf
+      - name: No local dependency overrides
+        if: runner.os == 'Linux'
+        run: |
+          if grep -nE '^\[patch' Cargo.toml; then
+            echo "::error::Remove the temporary [patch] block from backend/Cargo.toml before merging"
+            exit 1
+          fi
       - name: Prepare frontend asset directory for type checks
         run: mkdir -p ../dist/rclone-manager/browser
       - name: Rust formatting
@@ -144,3 +151,40 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libssl-dev pkg-config
       - run: cargo clippy --locked --release -p rclone-manager-server --all-targets -- -D warnings
       - run: cargo test --locked --release -p rclone-manager-server --lib
+      - run: cargo build --locked --release -p rclone-manager-server
+      - name: Start without credentials
+        working-directory: .
+        run: scripts/server-smoke.sh backend/target/release/rclone-manager-server
+
+  android:
+    name: Android target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      LIBRCLONE_SKIP_LINK_CHECK: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: x86_64-linux-android
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './backend -> target'
+          key: android
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Select NDK toolchain
+        run: |
+          echo "$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" >> "$GITHUB_PATH"
+          {
+            echo "CC_x86_64_linux_android=x86_64-linux-android26-clang"
+            echo "AR_x86_64_linux_android=llvm-ar"
+            echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=x86_64-linux-android26-clang"
+          } >> "$GITHUB_ENV"
+      - name: Android mobile code
+        run: cargo clippy --locked -p rclone-manager-core --target x86_64-linux-android --features mobile -- -D warnings

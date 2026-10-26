@@ -502,21 +502,13 @@ mod tests {
         app.manage(settings);
         app.manage(cache);
         app.manage(WatcherManager::new());
-        use std::sync::atomic::AtomicBool;
-        app.manage(crate::utils::types::state::RcloneState {
-            client: reqwest::Client::builder()
+        app.manage(crate::utils::types::state::RcloneState::new(
+            reqwest::Client::builder()
                 .timeout(std::time::Duration::from_millis(100))
                 .build()
                 .unwrap(),
-            transport: Arc::new(RoutingTransport::new(app.clone())),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
-            poller_visible: AtomicBool::new(false),
-            initial_startup: AtomicBool::new(false),
-            updater_running: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-        });
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
         (app, automation.id)
     }
 

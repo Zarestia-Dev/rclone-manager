@@ -97,6 +97,7 @@ mod tests {
                 event_bridge,
                 auth_credentials: None,
                 sessions: Arc::default(),
+                tls: false,
             },
             access,
         )

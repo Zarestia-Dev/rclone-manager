@@ -21,6 +21,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.lang.ref.WeakReference
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -31,6 +32,16 @@ class MainActivity : TauriActivity() {
     var sAppWebView: WebView? = null
     @Volatile
     var lastActivityId: Int = 0
+    @Volatile
+    private var current: WeakReference<MainActivity>? = null
+
+    /**
+     * Tauri's plugins keep the activity they were loaded with, which keep-alive may have
+     * replaced since, so its own finish would miss the activity hosting the window.
+     */
+    fun finishForQuit() {
+      current?.get()?.let { activity -> activity.runOnUiThread { activity.finishAndRemoveTask() } }
+    }
   }
 
   // Reference to the WebView so we can evaluateJavascript from non-UI callbacks
@@ -64,9 +75,6 @@ class MainActivity : TauriActivity() {
 
     RcloneSafBridge.ensureInitialized(applicationContext)
 
-    // Extract bundled assets to cache directory if first launch or app update
-    extractAssetsIfNeeded()
-
     // Request permissions and clean up temporary cache directories only on clean cold start
     if (savedInstanceState == null) {
       requestAppPermissions()
@@ -74,10 +82,12 @@ class MainActivity : TauriActivity() {
     }
 
     super.onCreate(savedInstanceState)
-    lastActivityId = id
+    current = WeakReference(this)
 
     val cached = sAppWebView
     if (cached != null) {
+      // The Rust window outlived its activity; report its id so tao and wry keep addressing it.
+      id = lastActivityId
       Logger.info("MainActivity: Re-attaching cached WebView to newly created Activity")
       (cached.parent as? ViewGroup)?.removeView(cached)
       setContentView(cached)
@@ -86,6 +96,7 @@ class MainActivity : TauriActivity() {
       cached.onResume()
       cached.resumeTimers()
     }
+    lastActivityId = id
 
     handleShareIntent(intent)
     handleOpenSystemFilesIntent(intent)
@@ -97,8 +108,13 @@ class MainActivity : TauriActivity() {
   private var pendingRoute: String? = null
   @Volatile private var isFrontendReady = false
 
+  // While keep-alive runs, the Rust window and WebView outlive this activity so the backend
+  // keeps serving; tao and wry only keep them when the destruction looks like a config change.
+  private fun preservesRustWindow(): Boolean =
+    !RcloneSafBridge.quitRequested && RcloneKeepAliveService.isRunning()
+
   override fun isChangingConfigurations(): Boolean {
-    if (RcloneKeepAliveService.isRunning()) {
+    if (preservesRustWindow()) {
       return true
     }
     return super.isChangingConfigurations()
@@ -134,8 +150,9 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onDestroy() {
+    if (current?.get() === this) current = null
     appWebView?.removeJavascriptInterface("__rclone__")
-    if (RcloneKeepAliveService.isRunning()) {
+    if (preservesRustWindow()) {
       Logger.info("MainActivity: Keep-alive active, detaching WebView but preserving in memory")
       (appWebView?.parent as? ViewGroup)?.removeView(appWebView)
       appWebView = null
@@ -579,52 +596,6 @@ class MainActivity : TauriActivity() {
           }
         }
       }
-    }
-  }
-
-  private fun extractAssetsIfNeeded() {
-    val destDir = File(cacheDir, "resources")
-    val versionFile = File(destDir, ".version")
-    val currentVersion = BuildConfig.VERSION_CODE.toString()
-
-    if (versionFile.exists() && versionFile.readText().trim() == currentVersion && File(destDir, "i18n").exists()) {
-      return
-    }
-
-    try {
-      copyAssetsDir("i18n", destDir)
-      copyAssetFile("serve-template.html", File(destDir, "serve-template.html"))
-      copyAssetFile("oauth-template.html", File(destDir, "oauth-template.html"))
-      versionFile.writeText(currentVersion)
-    } catch (e: Exception) {
-      Logger.error("extractAssetsIfNeeded error: ${e.message}")
-    }
-  }
-
-  private fun copyAssetsDir(assetDirPath: String, destDir: File) {
-    try {
-      val list = assets.list(assetDirPath) ?: return
-      if (list.isEmpty()) {
-        copyAssetFile(assetDirPath, File(destDir, assetDirPath))
-      } else {
-        File(destDir, assetDirPath).also { if (!it.exists()) it.mkdirs() }
-        for (asset in list) {
-          copyAssetsDir(if (assetDirPath.isEmpty()) asset else "$assetDirPath/$asset", destDir)
-        }
-      }
-    } catch (e: Exception) {
-      Logger.error("copyAssetsDir error: ${e.message}")
-    }
-  }
-
-  private fun copyAssetFile(assetPath: String, destFile: File) {
-    try {
-      assets.open(assetPath).use { input ->
-        destFile.parentFile?.mkdirs()
-        FileOutputStream(destFile).use { output -> input.copyTo(output) }
-      }
-    } catch (e: Exception) {
-      Logger.error("copyAssetFile error for $assetPath: ${e.message}")
     }
   }
 }

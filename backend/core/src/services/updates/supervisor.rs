@@ -561,8 +561,17 @@ mod tests {
         .unwrap();
         assert_eq!(decision, Decision::Exit(0));
         let before = std::fs::metadata(&marker).unwrap().len();
-        tokio::time::sleep(Duration::from_millis(150)).await;
-        assert!(std::fs::metadata(marker).unwrap().len() > before);
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            if std::fs::metadata(&marker).unwrap().len() > before {
+                break;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "replacement process did not update the activity marker"
+            );
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
     }
 
     // Run the exec-based recovery in a separate test process, never the runner.

@@ -87,15 +87,9 @@ pub fn setup_context(
     };
 
     app.manage(RcloneState {
-        client: reqwest::Client::new(),
-        transport,
-        is_shutting_down: AtomicBool::new(false),
-        poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
         initial_startup: AtomicBool::new(true),
-        initialization_lock: tokio::sync::Mutex::new(()),
-        vault_operation_lock: tokio::sync::Mutex::new(()),
-        updater_running: AtomicBool::new(false),
+        ..RcloneState::new(reqwest::Client::new(), transport)
     });
 
     app.manage(LogCache::new(1000));

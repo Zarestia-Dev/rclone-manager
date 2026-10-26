@@ -241,15 +241,11 @@ pub(crate) mod tests {
         app.manage(BackendManager::new());
         app.manage(crate::rclone::state::automations::AutomationsCache::new());
         app.manage(RcloneState {
-            client: reqwest::Client::new(),
-            transport: transport.unwrap_or_else(|| Arc::new(RoutingTransport::new(app.clone()))),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
             poller_visible: AtomicBool::new(true),
-            initial_startup: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-            updater_running: AtomicBool::new(false),
+            ..RcloneState::new(
+                reqwest::Client::new(),
+                transport.unwrap_or_else(|| Arc::new(RoutingTransport::new(app.clone()))),
+            )
         });
         (app, access)
     }

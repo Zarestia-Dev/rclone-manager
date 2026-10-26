@@ -366,23 +366,17 @@ mod tests {
         }
     }
     fn media_router() -> axum::Router {
-        use std::sync::{Arc, atomic::AtomicBool};
+        use std::sync::Arc;
         let app = rclone_manager_core::context::AppHandle::default();
-        app.manage(RcloneState {
-            client: Default::default(),
-            transport: Arc::new(MediaTransport),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
-            poller_visible: AtomicBool::new(false),
-            initial_startup: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-            updater_running: AtomicBool::new(false),
-        });
+        app.manage(RcloneState::new(
+            Default::default(),
+            Arc::new(MediaTransport),
+        ));
         crate::web::routes::build_api_router(WebServerState {
             app_handle: app,
             event_bridge: Arc::new(crate::services::bridge::EventBridge::new(8, None)),
             auth_credentials: Some(("user".into(), "unused".into())),
+            tls: false,
             sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::from([
                 (
                     "media-session".into(),

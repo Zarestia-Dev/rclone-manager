@@ -1,6 +1,10 @@
-name: 'Release All'
+name: 'Release Desktop'
+
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   publish-tauri:
@@ -13,25 +17,19 @@ jobs:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
             type: 'aarch64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             type: 'x86_64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
           - platform: 'ubuntu-22.04'
             args: ''
-            assetPattern: '[name]_[ver]_[arch][ext]'
           - platform: 'ubuntu-22.04-arm'
             args: ''
-            assetPattern: '[name]_[ver]_[arch][ext]'
           - platform: 'windows-latest'
             args: '--target x86_64-pc-windows-msvc'
             type: 'x86_64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
           - platform: 'windows-11-arm'
             args: '--target aarch64-pc-windows-msvc'
             type: 'aarch64'
-            assetPattern: '[name]_[ver]_[arch][ext]'
 
     runs-on: ${{ matrix.platform }}
 

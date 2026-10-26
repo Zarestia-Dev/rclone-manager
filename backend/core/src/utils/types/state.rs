@@ -30,6 +30,22 @@ pub struct RcloneState {
 }
 
 impl RcloneState {
+    /// Idle state: no startup in progress and the poller hidden. Callers that
+    /// need other flags use struct update syntax so new fields stay in one place.
+    pub fn new(client: reqwest::Client, transport: Arc<dyn RcloneTransport>) -> Self {
+        Self {
+            client,
+            transport,
+            is_shutting_down: AtomicBool::new(false),
+            poller_running: AtomicBool::new(false),
+            poller_visible: AtomicBool::new(false),
+            initial_startup: AtomicBool::new(false),
+            initialization_lock: tokio::sync::Mutex::new(()),
+            vault_operation_lock: tokio::sync::Mutex::new(()),
+            updater_running: AtomicBool::new(false),
+        }
+    }
+
     /// Check if the application is shutting down
     pub fn is_shutting_down(&self) -> bool {
         self.is_shutting_down

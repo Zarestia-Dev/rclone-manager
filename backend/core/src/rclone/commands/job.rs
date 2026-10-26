@@ -1071,7 +1071,6 @@ mod tests {
         use crate::rclone::backend::types::Backend;
         use crate::services::settings::{AppSettingsManager, schema::AppSettings};
         use crate::utils::types::state::RcloneState;
-        use std::sync::atomic::AtomicBool;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -1108,20 +1107,13 @@ mod tests {
         app.manage(manager);
         app.manage(settings);
         app.manage(AutomationsCache::new());
-        app.manage(RcloneState {
-            client: reqwest::Client::builder()
+        app.manage(RcloneState::new(
+            reqwest::Client::builder()
                 .timeout(Duration::from_secs(2))
                 .build()
                 .unwrap(),
-            transport: Arc::new(RoutingTransport::new(app.clone())),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
-            poller_visible: AtomicBool::new(false),
-            initial_startup: AtomicBool::new(false),
-            updater_running: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-        });
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
         let manager = app.state::<BackendManager>();
         let automations = app.state::<AutomationsCache>();
         let remote: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(json!({

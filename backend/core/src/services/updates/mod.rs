@@ -37,13 +37,19 @@ pub(crate) fn emit_state_changed() {
 }
 
 /// Cancellation or a panicking dependency must not leave future checks blocked.
+/// A check that ends without a verdict returns to the state it interrupted, so an
+/// already discovered update stays available.
 struct CheckingGuard<'a>(&'a AppUpdaterState);
 
 impl Drop for CheckingGuard<'_> {
     fn drop(&mut self) {
         let mut data = self.0.data.lock();
         if data.state == UpdateState::Checking {
-            data.state = UpdateState::Idle;
+            data.state = if data.last_metadata.is_some() {
+                UpdateState::Available
+            } else {
+                UpdateState::Idle
+            };
         }
         drop(data);
         emit_state_changed();
@@ -77,16 +83,13 @@ async fn fetch_update_inner(
             return Ok(data.info());
         }
 
+        // Keep any previously discovered update until this check reaches a verdict:
+        // a network failure says nothing about whether the update still exists.
         data.state = UpdateState::Checking;
         data.downloaded_bytes = 0;
         data.total_bytes = 0;
         data.failure_message = None;
-        data.last_metadata = None;
         data.downloaded_payload = None;
-        #[cfg(feature = "updater")]
-        {
-            data.pending_action = None;
-        }
     }
 
     let _checking = CheckingGuard(updater_state);
@@ -114,10 +117,26 @@ async fn fetch_update_inner(
     log::debug!("Received {} releases", releases.len());
     let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
+        forget_update(updater_state);
         return Ok(None);
     };
 
-    update_for_release(app, channel, release, installation, updater_state).await
+    let result = update_for_release(app, channel, release, installation, updater_state).await;
+    if matches!(result, Ok(None)) {
+        forget_update(updater_state);
+    }
+    result
+}
+
+/// Drop a previously discovered update after a check found that none applies.
+fn forget_update(updater_state: &AppUpdaterState) {
+    let mut data = updater_state.data.lock();
+    data.last_metadata = None;
+    data.downloaded_payload = None;
+    #[cfg(feature = "updater")]
+    {
+        data.pending_action = None;
+    }
 }
 
 async fn update_for_release(
@@ -266,6 +285,43 @@ async fn update_for_release(
     Ok(Some(update_info))
 }
 
+/// Announce updates the supervisor rolled back and stop offering those versions,
+/// so a release that cannot start here does not loop through download and rollback.
+#[cfg(feature = "updater")]
+pub fn report_failed_updates(app: &AppHandle) {
+    let failures = binary::take_failed_updates();
+    for failure in failures {
+        log::warn!(
+            "Update {} was rolled back: {}",
+            failure.version,
+            failure.reason
+        );
+        notify(
+            app,
+            NotificationEvent::AppUpdate(UpdateStage::Failed {
+                error: format!("{}: {}", failure.version, failure.reason),
+            }),
+        );
+        let Some(manager) = app.try_state::<AppSettingsManager>() else {
+            continue;
+        };
+        let mut skipped = manager
+            .get_all()
+            .map(|c| c.runtime.app_skipped_updates)
+            .unwrap_or_default();
+        if !skipped.contains(&failure.version) {
+            skipped.push(failure.version);
+            if let Err(error) = manager.save_setting(
+                "runtime",
+                "app_skipped_updates",
+                &serde_json::json!(skipped),
+            ) {
+                log::warn!("Could not remember the failed update: {error}");
+            }
+        }
+    }
+}
+
 pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
     let state = app.state::<AppUpdaterState>();
     let data = state.data.lock();
@@ -283,12 +339,11 @@ fn is_release_for_channel(
         return false;
     }
 
+    // Only a version suffix (`1.2.3-beta.1`) marks a pre-release, never text elsewhere in the tag.
     let is_pre = release.prerelease
-        || tag.contains("beta")
-        || tag.contains("alpha")
-        || tag.contains("rc")
-        || tag.contains("dev")
-        || tag.contains("preview");
+        || crate::utils::version::split_version_parts(clean_app_version(&tag))
+            .1
+            .is_some();
 
     match channel {
         "stable" => !is_pre,
@@ -363,6 +418,29 @@ mod tests {
             drop(CheckingGuard(&state));
             assert_eq!(state.data.lock().state, status);
         }
+    }
+
+    #[tokio::test]
+    async fn an_interrupted_check_keeps_a_known_update_available() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::Checking;
+            data.last_metadata = Some(UpdateMetadata {
+                version: "1.2.0".into(),
+                update_available: true,
+                ..Default::default()
+            });
+        }
+        drop(CheckingGuard(&state));
+        assert_eq!(state.data.lock().state, UpdateState::Available);
+        assert!(state.data.lock().info().is_some());
+
+        forget_update(&state);
+        state.data.lock().state = UpdateState::Checking;
+        drop(CheckingGuard(&state));
+        assert_eq!(state.data.lock().state, UpdateState::Idle);
+        assert!(state.data.lock().info().is_none());
     }
 
     fn candidate() -> github_client::Release {
@@ -529,6 +607,38 @@ mod tests {
                 assert!(data.last_metadata.is_none());
                 assert!(data.pending_action.is_none());
             }
+        }
+
+        #[tokio::test]
+        async fn a_failed_recheck_does_not_erase_the_update_found_earlier() {
+            let app = AppHandle::new(Arc::new(TestHost(Check::Failed)), Default::default());
+            let state = AppUpdaterState::default();
+            {
+                let mut data = state.data.lock();
+                data.state = UpdateState::Checking;
+                data.last_metadata = Some(UpdateMetadata {
+                    version: "98.0.0".into(),
+                    update_available: true,
+                    ..Default::default()
+                });
+                data.pending_action = Some(Arc::new(TestUpdate(
+                    "https://example.invalid/update".parse().unwrap(),
+                )));
+            }
+            let policy = policy::UpdatePolicy {
+                installation: policy::InstallationKind::Native,
+                method: policy::UpdateMethod::Tauri,
+                can_install: true,
+                reason: None,
+            };
+            let checking = CheckingGuard(&state);
+            let result = update_for_release(&app, "beta", &candidate(), policy, &state).await;
+            drop(checking);
+            assert!(result.is_err());
+            let data = state.data.lock();
+            assert_eq!(data.state, UpdateState::Available);
+            assert_eq!(data.info().unwrap().metadata.version, "98.0.0");
+            assert!(data.pending_action.is_some());
         }
 
         #[tokio::test]

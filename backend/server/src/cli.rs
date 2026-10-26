@@ -54,10 +54,15 @@ pub struct HttpArgs {
     pub tls_key: Option<PathBuf>,
 }
 
+fn non_empty(value: &Option<String>) -> Option<&str> {
+    value.as_deref().filter(|value| !value.is_empty())
+}
+
 impl HttpArgs {
     pub fn validate(&self) -> Result<(), String> {
-        // Auth validation: both user and pass must be present or both absent
-        match (&self.user, &self.pass) {
+        // Auth validation: both user and pass must be present or both absent.
+        // Empty values (e.g. Compose `${UNSET_VAR}`) count as absent.
+        match (non_empty(&self.user), non_empty(&self.pass)) {
             (Some(_), None) => {
                 return Err(
                     "Password is required when username is set (--pass or RCLONE_MANAGER_PASS)"
@@ -95,8 +100,8 @@ impl HttpArgs {
     }
 
     pub fn auth_credentials(&self) -> Option<(String, String)> {
-        match (&self.user, &self.pass) {
-            (Some(u), Some(p)) => Some((u.clone(), p.clone())),
+        match (non_empty(&self.user), non_empty(&self.pass)) {
+            (Some(u), Some(p)) => Some((u.to_owned(), p.to_owned())),
             _ => None,
         }
     }
@@ -183,5 +188,18 @@ mod tests {
             args.headless.auth_credentials(),
             Some(("name".into(), "secret".into()))
         );
+    }
+
+    #[test]
+    fn empty_credentials_count_as_unset() {
+        let mut args = CliArgs::try_parse_from(["server"]).unwrap();
+        args.headless.user = Some(String::new());
+        args.headless.pass = Some(String::new());
+        assert!(args.validate().is_ok());
+        assert_eq!(args.headless.auth_credentials(), None);
+
+        args.headless.user = Some("admin".into());
+        assert!(args.validate().is_err());
+        assert_eq!(args.headless.auth_credentials(), None);
     }
 }

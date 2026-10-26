@@ -31,6 +31,14 @@ pub(super) async fn start_web_server(
         info!("   → API server: http://localhost:{port}/api");
     }
 
+    if auth_credentials.is_none() && !is_loopback_host(&host) {
+        log::warn!(
+            "No Basic Authentication configured while listening on '{host}': anyone who can reach \
+             this port can run commands and read files. Set RCLONE_MANAGER_USER/RCLONE_MANAGER_PASS \
+             or put the server behind an authenticating reverse proxy."
+        );
+    }
+
     let encoded_auth = auth_credentials.map(|(username, password)| {
         let encoded = STANDARD.encode(format!("{username}:{password}").as_bytes());
         (username, encoded)
@@ -41,6 +49,7 @@ pub(super) async fn start_web_server(
         event_bridge,
         auth_credentials: encoded_auth,
         sessions: Arc::new(RwLock::new(HashMap::new())),
+        tls: tls_cert.is_some() && tls_key.is_some(),
     };
 
     let app = build_app(state.clone(), &host, port);
@@ -67,6 +76,13 @@ pub(super) async fn start_web_server(
             listener.await
         }
     }
+}
+
+fn is_loopback_host(host: &str) -> bool {
+    host.parse::<std::net::IpAddr>().map_or_else(
+        |_| host.eq_ignore_ascii_case("localhost"),
+        |address| address.is_loopback(),
+    )
 }
 
 async fn serve(
@@ -164,5 +180,15 @@ mod tests {
                 .to_string()
                 .contains("Failed to load TLS config")
         );
+    }
+
+    #[test]
+    fn only_loopback_hosts_are_considered_local() {
+        for host in ["127.0.0.1", "::1", "localhost", "LOCALHOST"] {
+            assert!(super::is_loopback_host(host), "{host}");
+        }
+        for host in ["0.0.0.0", "::", "192.168.1.5", "example.com"] {
+            assert!(!super::is_loopback_host(host), "{host}");
+        }
     }
 }

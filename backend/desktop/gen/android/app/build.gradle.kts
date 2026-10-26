@@ -72,7 +72,7 @@ val rustlsAndroidPackage = providers.exec {
 
 repositories {
     maven {
-        url = uri("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/")
+        url = uri("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/")
         metadataSources { mavenPom(); artifact() }
     }
 }
@@ -90,33 +90,3 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
-
-// Backport https://github.com/tauri-apps/wry/pull/1865 while Tauri uses Wry 0.55.
-// Run AFTER Rust generates the client and BEFORE Kotlin consumes it. Patching
-// the Cargo registry or editing the generated file manually would not survive rebuilds.
-afterEvaluate {
-    tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }
-        .toList().forEach { compileTask ->
-            val variant = compileTask.name.removePrefix("compile").removeSuffix("Kotlin")
-            val rustTask = tasks.findByName("rustBuild$variant")
-            if (rustTask != null) {
-                val patchTask = tasks.register("patch${variant}MediaRanges") {
-                    dependsOn(rustTask)
-                    doLast {
-                        val client = file("src/main/java/com/rclone/manager/generated/RustWebViewClient.kt")
-                        val source = client.readText()
-                        val hook = "com.rclone.manager.MediaRangeResponse.wrap(request, response)"
-                        // Avoid double wrapping once the upstream fix is included.
-                        if (!source.contains(hook) && !source.contains("wrapPartialContentBody(request, response)")) {
-                            val anchor = "interceptedState[request.url.toString()] = response != null"
-                            check(source.split(anchor).size == 2) {
-                                "Wry interception changed; review the Android media range backport"
-                            }
-                            client.writeText(source.replace(anchor, "$hook\n            $anchor"))
-                        }
-                    }
-                }
-                compileTask.dependsOn(patchTask)
-            }
-        }
-}

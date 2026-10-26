@@ -19,6 +19,8 @@ pub struct WebServerState {
     pub event_bridge: Arc<EventBridge>,
     pub auth_credentials: Option<(String, String)>,
     pub sessions: SessionStore,
+    /// The listener terminates TLS itself, so session cookies can be `Secure`.
+    pub tls: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -13,7 +13,8 @@
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
-#   RCLONE_MANAGER_SECRET — Master password for rcman encrypted credentials
+#   RCLONE_MANAGER_SECRET — Optional master password for rcman encrypted credentials. Without it (and without an OS keyring)
+#                           secrets are kept in memory only and are lost on restart.
 #   RCLONE_MANAGER_SECRET_PATH — If file exists and SECRET is unset, treat as password file (Docker secret). Otherwise, custom path for encrypted credential store.
 #   RCLONE_MANAGER_SECRET_FILE — Explicit password file path for rcman encrypted credentials
 #   RCLONE_MANAGER_TLS_CERT / RCLONE_MANAGER_TLS_KEY — TLS certificate paths

@@ -5,44 +5,44 @@ edition.workspace = true
 links = "rclone"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["full"] }
-async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "multipart", "stream", "query"] }
-log = "0.4"
+log = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 which = "8"
 walkdir = "2"
 sha2 = "0.11"
-tempfile = "3"
-uuid = { version = "1", features = ["v4"] }
+tempfile = { workspace = true }
+uuid = { workspace = true }
 thiserror = "2"
 netstat2 = "0.11"
 sysinfo = "0.39"
 tokio-cron-scheduler = "0.15"
 croner = "4"
-clap = { version = "4", features = ["derive", "env"] }
+clap = { workspace = true }
 lofty = "0.25"
-base64 = "0.23"
+base64 = { workspace = true }
 url = "2"
 handlebars = "6"
 rumqttc = "0.25"
 rustls-native-certs = "0.8"
-rustls = { version = "0.23", features = ["ring"] }
+rustls = { workspace = true }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
 sys-locale = "0.3"
-dirs = "7"
+dirs = { workspace = true }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.2.5", features = ["backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
+rcman = { workspace = true, features = ["json", "backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
 
 urlencoding = "2"
-futures = "0.3"
+futures = { workspace = true }
 http = "1"
-tokio-util = { version = "0.7", features = ["io"] }
-mime_guess = "2"
+tokio-util = { workspace = true }
+mime_guess = { workspace = true }
 # Keep per-call recursive reads for librclone cancellation; 0.13 removes this API.
 parking_lot = "0.12"
 minisign-verify = { version = "0.3", optional = true }
@@ -57,7 +57,6 @@ zbus = { version = "6", optional = true }
 objc2 = { version = "0.6", optional = true }
 objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"], optional = true }
 [target.'cfg(target_os = "android")'.dependencies]
-ndk-context = "0.1"
 jni = "0.22"
 rustls-platform-verifier = "0.7"
 [target.'cfg(windows)'.dependencies]

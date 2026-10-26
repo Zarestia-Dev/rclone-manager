@@ -587,7 +587,7 @@ mod tests {
     #[tokio::test]
     async fn rejected_remote_deletion_preserves_settings_and_presets() {
         use crate::rclone::backend::types::Backend;
-        use std::sync::{Arc, atomic::AtomicBool};
+        use std::sync::Arc;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let directory = tempfile::tempdir().unwrap();
@@ -628,17 +628,10 @@ mod tests {
         let app = AppHandle::default();
         app.manage(manager);
         app.manage(settings);
-        app.manage(RcloneState {
-            client: reqwest::Client::new(),
-            transport: Arc::new(RoutingTransport::new(app.clone())),
-            is_shutting_down: AtomicBool::new(false),
-            poller_running: AtomicBool::new(false),
-            poller_visible: AtomicBool::new(false),
-            initial_startup: AtomicBool::new(false),
-            updater_running: AtomicBool::new(false),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-        });
+        app.manage(RcloneState::new(
+            reqwest::Client::new(),
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
         let server_app = app.clone();
         let server = crate::utils::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();

@@ -14,11 +14,14 @@ NoNewPrivileges=true
 PrivateTmp=true
 
 # Main command
+# Credentials belong in a root-owned file (chmod 600), not on the command line:
+#   /etc/rclone-manager/server.env
+#     RCLONE_MANAGER_USER=admin
+#     RCLONE_MANAGER_PASS=<long random password>
+EnvironmentFile=-/etc/rclone-manager/server.env
 ExecStart=/usr/bin/rclone-manager-server \
     --host 0.0.0.0 \
-    --port 8080 \
-    --user admin \
-    --pass changeme
+    --port 8080
 
 # Restart policy
 Restart=on-failure

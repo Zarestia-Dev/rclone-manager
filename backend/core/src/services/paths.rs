@@ -89,21 +89,22 @@ impl AppPaths {
     }
 
     fn template_path(&self, filename: &str, content: &[u8]) -> Result<PathBuf, String> {
-        #[cfg(debug_assertions)]
+        // Mobile debug builds run on the device, where the source tree is absent.
+        #[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
         {
             let _ = content;
             Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("resources")
                 .join(filename))
         }
-        #[cfg(not(debug_assertions))]
+        #[cfg(any(not(debug_assertions), target_os = "android", target_os = "ios"))]
         {
             self.materialize_template(filename, content)
                 .map_err(|e| format!("Failed to prepare {filename}: {e}"))
         }
     }
 
-    #[cfg(any(not(debug_assertions), test))]
+    #[cfg(any(not(debug_assertions), target_os = "android", target_os = "ios", test))]
     fn materialize_template(&self, filename: &str, content: &[u8]) -> std::io::Result<PathBuf> {
         use std::io::Write;
         let directory = self

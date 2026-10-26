@@ -1,10 +1,6 @@
 static JAVA_VM: std::sync::OnceLock<jni::JavaVM> = std::sync::OnceLock::new();
 static BRIDGE_CLASS: std::sync::OnceLock<jni::objects::Global<jni::objects::JClass>> =
     std::sync::OnceLock::new();
-static ANDROID_APP_CONTEXT: std::sync::OnceLock<jni::objects::Global<jni::objects::JObject>> =
-    std::sync::OnceLock::new();
-static NDK_CONTEXT_INITIALIZED: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
 
 #[cfg(feature = "updater")]
 pub fn install_update_apk(path: &str) -> Result<i32, String> {
@@ -49,23 +45,6 @@ fn cache_java_vm(env: &mut jni::Env) {
     }
 }
 
-fn init_android_context(env: &mut jni::Env, context: &jni::objects::JObject) {
-    if ANDROID_APP_CONTEXT.get().is_none()
-        && let Ok(global_ctx) = env.new_global_ref(context)
-    {
-        if let Ok(vm) = env.get_java_vm()
-            && !NDK_CONTEXT_INITIALIZED.swap(true, std::sync::atomic::Ordering::SeqCst)
-        {
-            let vm_ptr = vm.get_raw() as *mut std::ffi::c_void;
-            let context_ptr = global_ctx.as_raw() as *mut std::ffi::c_void;
-            unsafe {
-                ndk_context::initialize_android_context(vm_ptr, context_ptr);
-            }
-        }
-        let _ = ANDROID_APP_CONTEXT.set(global_ctx);
-    }
-}
-
 pub fn is_network_metered() -> bool {
     let Some(vm) = JAVA_VM.get() else {
         return false;
@@ -89,6 +68,26 @@ pub fn is_network_metered() -> bool {
         Ok::<(), jni::errors::Error>(())
     });
     metered
+}
+
+/// Stops keep-alive and finishes the activity for a user quit, so Tauri's event loop
+/// sees the window destroyed and ends the process.
+pub fn request_quit() {
+    let Some(vm) = JAVA_VM.get() else { return };
+    let Some(g_cls) = BRIDGE_CLASS.get() else {
+        return;
+    };
+    let _ = vm.attach_current_thread(|env| {
+        use jni::{jni_sig, jni_str};
+        let cls: &jni::objects::JClass = g_cls.as_ref();
+        if env
+            .call_static_method(cls, jni_str!("requestQuit"), jni_sig!("()V"), &[])
+            .is_err()
+        {
+            env.exception_clear();
+        }
+        Ok::<(), jni::errors::Error>(())
+    });
 }
 
 pub fn notify_roots_changed() {
@@ -231,7 +230,6 @@ mod jni_impl {
         env_unowned
             .with_env(|env| {
                 super::cache_java_vm(env);
-                super::init_android_context(env, &context);
                 rustls_platform_verifier::android::init_with_env(env, context)?;
                 let dir_jstr = unsafe { jni::objects::JString::from_raw(env, files_dir) };
                 let dir_str: String = dir_jstr

@@ -309,21 +309,13 @@ mod tests {
     fn test_transport(port: u16) -> RcHttpBackend {
         let app = AppHandle::default();
         app.manage(BackendManager::new());
-        let flag = || AtomicBool::new(false);
-        app.manage(RcloneState {
-            client: reqwest::Client::builder()
+        app.manage(RcloneState::new(
+            reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(2))
                 .build()
                 .unwrap(),
-            transport: std::sync::Arc::new(RcHttpBackend::new(app.clone())),
-            is_shutting_down: flag(),
-            poller_running: flag(),
-            poller_visible: flag(),
-            initial_startup: flag(),
-            updater_running: flag(),
-            initialization_lock: tokio::sync::Mutex::new(()),
-            vault_operation_lock: tokio::sync::Mutex::new(()),
-        });
+            std::sync::Arc::new(RcHttpBackend::new(app.clone())),
+        ));
         let backend = Backend::new_remote("test", "127.0.0.1", port);
         let dynamic = RcHttpBackend::new(app);
         dynamic.for_backend(backend)

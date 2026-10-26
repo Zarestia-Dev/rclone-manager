@@ -80,6 +80,13 @@ pub fn compute_sha256<P: AsRef<Path>>(path: P) -> Result<String, String> {
     Ok(result.iter().map(|b| format!("{b:02x}")).collect())
 }
 
+/// `<hash>  <file>` line of SHA256SUMS; the file name must match exactly.
+fn checksum_for<'a>(line: &'a str, file: &str) -> Option<&'a str> {
+    let mut parts = line.split_whitespace();
+    let (hash, name) = (parts.next()?, parts.next()?);
+    (name.trim_start_matches('*') == file && parts.next().is_none()).then_some(hash)
+}
+
 /// Verifies the downloaded rclone zip against its official SHA256 hash.
 pub async fn verify_rclone_sha256(
     zip_path: &Path,
@@ -105,8 +112,7 @@ pub async fn verify_rclone_sha256(
 
     let wanted_hash = text
         .lines()
-        .find(|line| line.ends_with(platform_zip_name))
-        .and_then(|line| line.split_whitespace().next())
+        .find_map(|line| checksum_for(line, platform_zip_name))
         .ok_or_else(|| format!("Could not find hash for file: {platform_zip_name}"))?;
 
     let computed_hash = compute_sha256(zip_path.join(platform_zip_name))?;
@@ -124,6 +130,29 @@ pub async fn verify_rclone_sha256(
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn checksum_lines_match_the_exact_file_name() {
+        let arm = "aaa  rclone-v1.0.0-linux-arm.zip";
+        let arm_v7 = "bbb  rclone-v1.0.0-linux-arm-v7.zip";
+        assert_eq!(
+            checksum_for(arm, "rclone-v1.0.0-linux-arm.zip"),
+            Some("aaa")
+        );
+        assert_eq!(checksum_for(arm_v7, "rclone-v1.0.0-linux-arm.zip"), None);
+        assert_eq!(
+            checksum_for(
+                "xx-rclone-v1.0.0-linux-arm.zip",
+                "rclone-v1.0.0-linux-arm.zip"
+            ),
+            None
+        );
+        assert_eq!(checksum_for("ccc *file.zip", "file.zip"), Some("ccc"));
+        assert_eq!(
+            checksum_for("-----BEGIN PGP SIGNATURE-----", "file.zip"),
+            None
+        );
+    }
 
     #[test]
     fn test_get_arch_returns_known_value() {

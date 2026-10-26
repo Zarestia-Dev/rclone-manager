@@ -9,6 +9,8 @@ use crate::services::settings::AppSettingsManager;
 
 /// How often to poll for updates in the background.
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(4 * 60 * 60);
+/// How soon to retry when settings (e.g. a locked vault) prevented the last check.
+const UNAVAILABLE_RETRY_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Starts the auto-update background task (no-op if already running).
 pub fn init_auto_updater(app: AppHandle) {
@@ -28,15 +30,21 @@ pub fn init_auto_updater(app: AppHandle) {
 
     crate::utils::spawn(async move {
         // Run initial check immediately on startup
-        run_update_checks(&app).await;
+        let mut checked = run_update_checks(&app).await;
 
         while app
             .state::<crate::utils::types::state::RcloneState>()
             .updater_running
             .load(Ordering::Acquire)
         {
-            sleep(UPDATE_CHECK_INTERVAL).await;
-            run_update_checks(&app).await;
+            // A locked vault must not postpone the first check by a full interval.
+            sleep(if checked {
+                UPDATE_CHECK_INTERVAL
+            } else {
+                UNAVAILABLE_RETRY_INTERVAL
+            })
+            .await;
+            checked = run_update_checks(&app).await;
         }
 
         info!("Auto-updater stopped.");
@@ -49,16 +57,20 @@ pub fn stop_auto_updater(app: &AppHandle) {
     state.updater_running.store(false, Ordering::Release);
 }
 
-async fn run_update_checks(app: &AppHandle) {
+/// Returns `false` when settings were unavailable and nothing was checked.
+async fn run_update_checks(app: &AppHandle) -> bool {
     info!("Running scheduled update checks...");
 
     let config = match app.state::<AppSettingsManager>().get_all() {
         Ok(config) => config,
         Err(error) => {
             debug!("Skipping update checks while settings are unavailable: {error}");
-            return;
+            return false;
         }
     };
+
+    #[cfg(feature = "updater")]
+    crate::services::updates::report_failed_updates(app);
 
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
@@ -78,6 +90,7 @@ async fn run_update_checks(app: &AppHandle) {
             warn!("Rclone update check failed: {e}");
         }
     }
+    true
 }
 
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
@@ -95,6 +108,6 @@ mod tests {
         let (app, _) = crate::services::settings::access::tests::app(directory.path());
         app.state::<super::AppSettingsManager>().lock().unwrap();
         // No updater state or remote transport is needed while settings are locked.
-        super::run_update_checks(&app).await;
+        assert!(!super::run_update_checks(&app).await);
     }
 }
