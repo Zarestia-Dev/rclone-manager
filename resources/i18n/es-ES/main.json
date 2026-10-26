@@ -2964,6 +2964,7 @@
     },
     "rclone": {
       "downloadCancelled": "Descarga cancelada por el usuario",
+      "noUpdateAvailable": "No hay actualizaciones disponibles",
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
@@ -3056,11 +3057,18 @@
       "relaunchFailed": "Error al reiniciar la aplicación: {{error}}",
       "restartFailed": "Error al reiniciar: {{error}}",
       "notWritable": "La ruta de actualización no tiene permisos de escritura",
+      "rollback": {
+        "exited": "La aplicación actualizada se cerró antes de confirmar el inicio (código {{code}}).",
+        "couldNotStart": "No se pudo iniciar la aplicación actualizada: {{error}}",
+        "interrupted": "El inicio de la aplicación actualizada se interrumpió por un apagado.",
+        "notConfirmed": "La aplicación actualizada no confirmó el inicio a tiempo.",
+        "installFailed": "No se pudo instalar la actualización: {{error}}"
+      },
+      "rolledBack": "Se revirtió la actualización {{version}}: {{reason}}",
       "ioError": "Error de E/S: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
