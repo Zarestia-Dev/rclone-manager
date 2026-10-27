@@ -689,8 +689,9 @@ pub fn resolve_runtime_remote_options(
     let profile = app.runtime_remote_profile.as_deref().unwrap_or("Default");
     let mut opts = if let Some(options) = configs.and_then(|configs| configs.get(profile)) {
         scoped_runtime_options(options, settings)?
-    } else if profile == "Default" {
+    } else if profile.eq_ignore_ascii_case("Default") {
         // Forms select Default even when its empty options were never persisted.
+        // Releases up to 0.3.3 stored the reference as lowercase "default".
         // Like the other helper profiles, an absent Default means no overrides.
         HashMap::new()
     } else {
@@ -1419,6 +1420,18 @@ mod tests {
             ..Default::default()
         };
         assert!(resolve_runtime_remote_options(&missing, &json!({}), &flat).is_err());
+    }
+
+    #[test]
+    fn legacy_lowercase_default_without_saved_options_means_no_overrides() {
+        let legacy = crate::utils::types::remotes::AppConfig {
+            runtime_remote_profile: Some("default".into()),
+            ..Default::default()
+        };
+        assert_eq!(
+            resolve_runtime_remote_options(&legacy, &json!({}), &json!({"name":"drive"})).unwrap(),
+            None
+        );
     }
 
     #[test]

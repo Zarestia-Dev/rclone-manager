@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Legacy Default Profile References**: Mount, sync, copy, and other operations no longer fail with `Invalid rclone flags detected: default` for remotes saved by 0.3.3 or earlier. Those versions stored the lowercase `default` profile name, and an absent Default profile (with no saved options) is now matched case-insensitively for runtime remote, VFS, filter, and backend profiles. Fixes #330.
+
 ## [0.3.4] - 2026-10-26
 
 ### Added

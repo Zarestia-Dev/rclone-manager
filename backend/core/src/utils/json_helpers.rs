@@ -129,7 +129,7 @@ pub fn resolve_profile_options(
         Some(_) => Err(
             crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}")),
         ),
-        None if name == "Default" => Ok(None),
+        None if name.eq_ignore_ascii_case("Default") => Ok(None),
         None => Err(
             crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("Missing profile: {configs_key}.{name}")),
         ),
@@ -505,5 +505,17 @@ mod tests {
         assert_eq!(build_full_path("/home/user", "docs"), "/home/user/docs");
         assert_eq!(build_full_path("/home/user/", "/docs"), "/home/user/docs");
         assert_eq!(build_full_path("/home/user", ""), "/home/user");
+    }
+
+    #[test]
+    fn test_resolve_profile_options_treats_absent_default_case_insensitively() {
+        let settings = serde_json::json!({"vfsConfigs": {"Other": {"a": 1}}});
+        for name in ["Default", "default"] {
+            assert_eq!(
+                resolve_profile_options(&settings, Some(name), "vfsConfigs").unwrap(),
+                None
+            );
+        }
+        assert!(resolve_profile_options(&settings, Some("missing"), "vfsConfigs").is_err());
     }
 }
