@@ -132,6 +132,20 @@ application can update itself. An executable owned by root (for example in
 credentials before enabling the service. This template uses the pure server and
 needs no desktop session or virtual display.
 
+### Arch Linux (AUR)
+
+```bash
+yay -S rclone-manager-server
+```
+
+The package installs the pure server to `/usr/bin`, the systemd unit, and the
+`rclone-manager` service user (home `/var/lib/rclone-manager`). It depends only on
+`glibc`, `gcc-libs` and `dbus`. Put `RCLONE_MANAGER_USER` and `RCLONE_MANAGER_PASS`
+in `/etc/rclone-manager/server.env` (mode 600), then run
+`sudo systemctl enable --now rclone-manager-server`. Pacman owns the executable, so
+the application only announces new versions; update with `yay -Syu rclone-manager-server`.
+`rclone-manager-headless` (server with tray) is also on the AUR but needs GTK and WebKit.
+
 ## Build the server with a native tray
 
 ```bash
