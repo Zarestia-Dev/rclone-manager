@@ -68,8 +68,8 @@ setup_ssh_auth() {
 
     if [ -n "${AUR_SSH_PRIVATE_KEY:-}" ]; then
         SSH_KEY="$WORK_DIR/aur_key"
-        # Secrets are often stored with escaped or CRLF line endings.
-        printf '%s\n' "$AUR_SSH_PRIVATE_KEY" | tr -d '\r' > "$SSH_KEY"
+        # Secrets are often pasted with CRLF line endings or literal "\n" instead of line breaks.
+        printf '%s\n' "$AUR_SSH_PRIVATE_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > "$SSH_KEY"
         chmod 600 "$SSH_KEY"
         print_info "Using key from AUR_SSH_PRIVATE_KEY"
     elif [ -n "$KEY_ARG" ]; then
@@ -98,12 +98,22 @@ setup_ssh_auth() {
     fi
     chmod 600 "$SSH_KEY" 2>/dev/null || true
 
+    local public_key
+    if ! public_key=$(ssh-keygen -y -f "$SSH_KEY" </dev/null 2>&1); then
+        print_error "$SSH_KEY is not a usable private key: $public_key"
+        print_info "It must be a complete, passphrase-less private key including the BEGIN/END lines (not the .pub file)."
+        return 1
+    fi
+    print_info "Key fingerprint: $(ssh-keygen -lf /dev/stdin <<<"$public_key" | cut -d' ' -f2) (compare with the one on your AUR account)"
+
     export GIT_SSH_COMMAND="ssh -i \"$SSH_KEY\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
     print_info "Verifying SSH access to aur.archlinux.org..."
-    if ! ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-        aur@aur.archlinux.org help >/dev/null 2>&1; then
+    local ssh_output
+    if ! ssh_output=$(ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+        aur@aur.archlinux.org help 2>&1); then
         print_error "SSH authentication to aur@aur.archlinux.org failed with $SSH_KEY."
+        echo "$ssh_output" >&2
         print_info "Add the matching public key at https://aur.archlinux.org/account"
         return 1
     fi
