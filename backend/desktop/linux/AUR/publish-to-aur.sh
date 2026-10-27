@@ -1,510 +1,329 @@
 #!/bin/bash
-# Fully Automated AUR Package Publisher for rclone-manager
+# Fully automated AUR publisher for rclone-manager.
+#
+# Packages (PKGBUILD templates live next to this script):
+#   rclone-manager           PKGBUILD           desktop .deb from the v<version> release
+#   rclone-manager-git       PKGBUILD-git       built from source, follows the stable version
+#   rclone-manager-headless  PKGBUILD-headless  server + tray .deb from the headless-v<version> release
+#   rclone-manager-server    PKGBUILD-server    pure server zip (no GTK/WebKit) from headless-v<version>
+#
+# For every package it finds the newest stable GitHub release, takes the asset sha256 sums
+# from the release, rewrites a copy of the template, regenerates .SRCINFO and pushes to the AUR
+# only when something changed. The templates in the repository are never modified, and the AUR
+# repository is the source of truth for what is already published. A release whose assets are
+# not all uploaded yet is skipped and picked up by the next run.
 #
 # Usage:
-#   ./publish-to-aur.sh [ssh_key_or_dir]
+#   ./publish-to-aur.sh [--dry-run] [--only <package>]... [ssh_key_or_dir]
 #
-# Arguments:
-#   [ssh_key_or_dir] (optional)
-#       Path to custom AUR SSH key or backup directory containing the key.
-#       Example: ./publish-to-aur.sh "/home/hakan/Downloads/Arch Aur Keys"
+# SSH key, first match wins:
+#   1. AUR_SSH_PRIVATE_KEY environment variable (key contents, used by CI)
+#   2. the [ssh_key_or_dir] argument
+#   3. ~/.ssh/aur_ed25519, then backups in ~/Downloads/Arch Aur Keys and similar
+# A key is only needed to push; --dry-run reads the AUR anonymously over HTTPS.
 #
-# If no argument is provided, the script automatically uses ~/.ssh/aur_ed25519
-# or auto-detects backed-up AUR keys from ~/Downloads/Arch Aur Keys, etc.
+# Other environment variables:
+#   GITHUB_TOKEN / GH_TOKEN  optional, raises the GitHub API rate limit
+#   AUR_DIR                  local clone cache (default ~/.aur-repos)
+#   AUR_GIT_NAME, AUR_GIT_EMAIL  commit identity when git has none configured
 
-set -e
+set -euo pipefail
 
-# Output formatting colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Directories and paths
-AUR_DIR="$HOME/.aur-repos"
+REPO="Zarestia-Dev/rclone-manager"
+AUR_DIR="${AUR_DIR:-$HOME/.aur-repos}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STABLE_PKGBUILD="$SCRIPT_DIR/PKGBUILD"
-GIT_PKGBUILD="$SCRIPT_DIR/PKGBUILD-git"
-HEADLESS_PKGBUILD="$SCRIPT_DIR/PKGBUILD-headless"
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 print_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
 print_success() { echo -e "${GREEN}✓${NC} $1"; }
 print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
-print_error()   { echo -e "${RED}✗${NC} $1"; }
+print_error()   { echo -e "${RED}✗${NC} $1" >&2; }
 print_header()  { echo -e "\n${CYAN}═══${NC} $1 ${CYAN}═══${NC}"; }
 
-show_help() {
-    echo -e "${BLUE}AUR Package Auto-Publisher for rclone-manager${NC}"
-    echo ""
-    echo -e "${YELLOW}Usage:${NC}"
-    echo "    ./publish-to-aur.sh [ssh_key_or_dir]"
-    echo ""
-    echo -e "${YELLOW}Arguments:${NC}"
-    echo "    [ssh_key_or_dir]   Optional path to custom SSH key file or backup folder."
-    echo "                       Examples:"
-    echo '                         ./publish-to-aur.sh "/home/hakan/Downloads/Arch Aur Keys"'
-    echo '                         ./publish-to-aur.sh ~/.ssh/aur_ed25519'
-    echo ""
-    echo -e "${YELLOW}Automatic Behavior:${NC}"
-    echo "    1. Detects and installs SSH key to ~/.ssh/aur_ed25519 (chmod 600)."
-    echo "    2. Configures ~/.ssh/config and known_hosts for aur.archlinux.org."
-    echo "    3. Verifies SSH authentication with AUR."
-    echo "    4. Checks GitHub releases, updates PKGBUILDs and computes sha256 sums automatically."
-    echo "    5. For all 3 packages (stable, git, headless):"
-    echo "       - Syncs / clones AUR repository in ~/.aur-repos/"
-    echo "       - Copies PKGBUILD and regenerates .SRCINFO"
-    echo "       - Commits and pushes changes automatically if any update is detected"
-    echo ""
-}
+DRY_RUN=0
+ONLY=()
+KEY_ARG=""
+SSH_KEY=""
+RELEASES_JSON=""
+LATEST_STABLE_VERSION=""
 
-# Find private key file within a directory
+show_help() { sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d;s/^# \{0,1\}//'; }
+
+# Find a private key file within a directory
 find_key_in_dir() {
-    local search_dir="$1"
-    if [ ! -d "$search_dir" ]; then
-        return 1
+    local dir="$1" found
+    [ -d "$dir" ] || return 1
+    found=$(find "$dir" -type f -name "aur_ed25519" 2>/dev/null | head -n 1)
+    if [ -z "$found" ]; then
+        found=$(find "$dir" -maxdepth 4 -type f ! -name "*.pub" -exec grep -l -- "BEGIN .*PRIVATE KEY" {} + 2>/dev/null | head -n 1)
     fi
-    
-    # 1. Look specifically for 'aur_ed25519'
-    local found
-    found=$(find "$search_dir" -type f -name "aur_ed25519" 2>/dev/null | head -n 1)
-    if [ -n "$found" ] && [ -f "$found" ]; then
-        echo "$found"
-        return 0
-    fi
-    
-    # 2. Look for any private key by header (excluding .pub)
-    found=$(find "$search_dir" -maxdepth 4 -type f ! -name "*.pub" -exec grep -l -- "BEGIN .*PRIVATE KEY" {} + 2>/dev/null | head -n 1)
-    if [ -n "$found" ] && [ -f "$found" ]; then
-        echo "$found"
-        return 0
-    fi
-    
-    return 1
+    [ -n "$found" ] && echo "$found"
 }
 
-# Resolve, install and configure SSH key
+# Resolve SSH_KEY and the git ssh command. Never touches ~/.ssh.
 setup_ssh_auth() {
-    local input_arg="$1"
-    local key_file=""
-    local pub_key_file=""
-    local target_key="$HOME/.ssh/aur_ed25519"
-    local target_pub="$HOME/.ssh/aur_ed25519.pub"
-    
     print_header "Setting up SSH Authentication"
-    
-    # If custom argument provided
-    if [ -n "$input_arg" ]; then
-        local expanded_path="${input_arg/#\~/$HOME}"
-        
-        if [ ! -e "$expanded_path" ]; then
-            print_error "Provided path does not exist: $input_arg"
-            exit 1
+
+    if [ -n "${AUR_SSH_PRIVATE_KEY:-}" ]; then
+        SSH_KEY="$WORK_DIR/aur_key"
+        # Secrets are often stored with escaped or CRLF line endings.
+        printf '%s\n' "$AUR_SSH_PRIVATE_KEY" | tr -d '\r' > "$SSH_KEY"
+        chmod 600 "$SSH_KEY"
+        print_info "Using key from AUR_SSH_PRIVATE_KEY"
+    elif [ -n "$KEY_ARG" ]; then
+        local path="${KEY_ARG/#\~/$HOME}"
+        if [ -d "$path" ]; then
+            SSH_KEY=$(find_key_in_dir "$path") || { print_error "No SSH private key found in: $path"; return 1; }
+        elif [ -f "$path" ]; then
+            SSH_KEY="${path%.pub}"
+            [ -f "$SSH_KEY" ] || { print_error "Private key not found: $SSH_KEY"; return 1; }
+        else
+            print_error "Provided path does not exist: $KEY_ARG"
+            return 1
         fi
-        
-        if [ -d "$expanded_path" ]; then
-            print_info "Searching for AUR SSH key in: $expanded_path"
-            key_file=$(find_key_in_dir "$expanded_path" || true)
-            if [ -z "$key_file" ]; then
-                print_error "No SSH private key found in directory: $expanded_path"
-                exit 1
-            fi
-        elif [ -f "$expanded_path" ]; then
-            if [[ "$expanded_path" == *.pub ]]; then
-                local priv="${expanded_path%.pub}"
-                if [ -f "$priv" ]; then
-                    key_file="$priv"
-                    pub_key_file="$expanded_path"
-                else
-                    print_error "Public key provided but corresponding private key '$priv' not found."
-                    exit 1
-                fi
-            else
-                key_file="$expanded_path"
-            fi
-        fi
+    elif [ -f "$HOME/.ssh/aur_ed25519" ]; then
+        SSH_KEY="$HOME/.ssh/aur_ed25519"
     else
-        # Auto-detection mode (no arguments provided)
-        if [ -f "$target_key" ]; then
-            key_file="$target_key"
-        else
-            print_info "Searching for backed-up AUR SSH keys in common locations..."
-            local backup_candidates=(
-                "$HOME/Downloads/Arch Aur Keys"
-                "$HOME/vm-lab/Arch Aur Keys"
-                "$HOME/Downloads"
-                "$HOME/Documents"
-            )
-            for cand in "${backup_candidates[@]}"; do
-                if [ -d "$cand" ]; then
-                    key_file=$(find_key_in_dir "$cand" || true)
-                    if [ -n "$key_file" ]; then
-                        print_info "Found AUR SSH key in backup location: $key_file"
-                        break
-                    fi
-                fi
-            done
-        fi
-        
-        if [ -z "$key_file" ]; then
-            print_error "AUR SSH key not found in ~/.ssh/aur_ed25519 or common backup locations."
-            echo ""
-            print_info "Please provide the key or backup directory as an argument:"
-            print_info "    ./publish-to-aur.sh \"/path/to/Arch Aur Keys\""
-            echo ""
-            exit 1
+        local dir
+        for dir in "$HOME/Downloads/Arch Aur Keys" "$HOME/vm-lab/Arch Aur Keys" "$HOME/Downloads" "$HOME/Documents"; do
+            SSH_KEY=$(find_key_in_dir "$dir" || true)
+            [ -n "$SSH_KEY" ] && break
+        done
+        if [ -z "$SSH_KEY" ]; then
+            print_error "AUR SSH key not found. Set AUR_SSH_PRIVATE_KEY or pass the key (or its folder) as an argument."
+            return 1
         fi
     fi
-    
-    # Identify matching public key if not already set
-    if [ -z "$pub_key_file" ]; then
-        if [ -f "${key_file}.pub" ]; then
-            pub_key_file="${key_file}.pub"
-        else
-            local candidate_pub
-            candidate_pub=$(find "$(dirname "$key_file")" -maxdepth 2 -type f -name "*.pub" 2>/dev/null | head -n 1)
-            if [ -n "$candidate_pub" ]; then
-                pub_key_file="$candidate_pub"
-            fi
-        fi
-    fi
-    
-    # Ensure ~/.ssh exists with strict permissions
-    mkdir -p "$HOME/.ssh"
-    chmod 700 "$HOME/.ssh"
-    
-    # Install key to ~/.ssh/aur_ed25519 if it's located elsewhere
-    if [ "$key_file" != "$target_key" ]; then
-        print_info "Installing AUR key from '$key_file' to '$target_key'..."
-        cp -f "$key_file" "$target_key"
-    fi
-    chmod 600 "$target_key"
-    
-    if [ -n "$pub_key_file" ] && [ -f "$pub_key_file" ]; then
-        if [ "$pub_key_file" != "$target_pub" ]; then
-            cp -f "$pub_key_file" "$target_pub"
-        fi
-        chmod 644 "$target_pub"
-    fi
-    print_success "AUR private key configured at $target_key (chmod 600)"
-    
-    # Ensure ~/.ssh/config contains aur.archlinux.org host entry
-    touch "$HOME/.ssh/config"
-    chmod 600 "$HOME/.ssh/config"
-    if ! grep -q "Host aur.archlinux.org" "$HOME/.ssh/config" 2>/dev/null; then
-        print_info "Configuring ~/.ssh/config for aur.archlinux.org..."
-        cat >> "$HOME/.ssh/config" << 'EOF'
+    chmod 600 "$SSH_KEY" 2>/dev/null || true
 
-Host aur.archlinux.org
-    User aur
-    IdentityFile ~/.ssh/aur_ed25519
-EOF
-        print_success "Added aur.archlinux.org host entry to ~/.ssh/config"
-    fi
-    
-    # Ensure aur.archlinux.org host key is in known_hosts to prevent interactive prompts
-    touch "$HOME/.ssh/known_hosts"
-    chmod 644 "$HOME/.ssh/known_hosts"
-    if ! ssh-keygen -F aur.archlinux.org >/dev/null 2>&1; then
-        print_info "Adding aur.archlinux.org host key to ~/.ssh/known_hosts..."
-        ssh-keyscan -t ed25519,rsa,ecdsa aur.archlinux.org >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
-        print_success "Added host key to known_hosts"
-    fi
-    
-    # Export Git SSH command override
-    export GIT_SSH_COMMAND="ssh -i $target_key -o StrictHostKeyChecking=accept-new"
-    
-    # Verify SSH authentication with AUR
-    print_info "Verifying SSH connection to aur@aur.archlinux.org..."
-    local auth_output
-    auth_output=$(ssh -i "$target_key" -T -o BatchMode=yes -o StrictHostKeyChecking=accept-new aur@aur.archlinux.org 2>&1 || true)
-    
-    if echo "$auth_output" | grep -qi "Welcome to AUR"; then
-        local aur_user
-        aur_user=$(echo "$auth_output" | grep -o "Welcome to AUR, [^!]*" | sed 's/Welcome to AUR, //' || echo "authenticated user")
-        print_success "Successfully authenticated on AUR as ${GREEN}$aur_user${NC}"
-    else
-        print_error "SSH authentication to aur@aur.archlinux.org failed."
-        echo -e "${YELLOW}$auth_output${NC}"
-        print_info "Make sure your public key (${target_key}.pub) is added to your AUR account at https://aur.archlinux.org/account"
-        exit 1
-    fi
-}
+    export GIT_SSH_COMMAND="ssh -i \"$SSH_KEY\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
-# Ensure Git user name and email are configured
-setup_git_identity() {
-    if [ -z "$(git config --get user.name 2>/dev/null)" ]; then
-        print_warning "Git user.name not set. Configuring fallback 'Hakan İSMAİL'..."
-        git config --global user.name "Hakan İSMAİL"
-    fi
-    if [ -z "$(git config --get user.email 2>/dev/null)" ]; then
-        print_warning "Git user.email not set. Configuring fallback 'hakanismail53@gmail.com'..."
-        git config --global user.email "hakanismail53@gmail.com"
-    fi
-}
-
-# Calculate SHA-256 hash of a remote file directly into memory
-calc_url_sha256() {
-    local url=$1
-    local sum
-    sum=$(curl -sL "$url" | sha256sum | awk '{print $1}')
-    if [ ${#sum} -eq 64 ]; then
-        echo "$sum"
-        return 0
-    fi
-    return 1
-}
-
-# Fetch the latest release tag from GitHub matching a prefix (e.g., 'v' or 'headless-v')
-fetch_latest_github_tag() {
-    local prefix=$1
-    local tag
-    tag=$(curl -sL "https://api.github.com/repos/Zarestia-Dev/rclone-manager/releases" 2>/dev/null | \
-        grep -o '"tag_name": *"[^"]*"' | \
-        cut -d'"' -f4 | \
-        grep "^${prefix}[0-9]" | head -n 1)
-    
-    if [ -z "$tag" ]; then
-        # Fallback to local git tag or package.json
-        if [ "$prefix" = "v" ]; then
-            tag=$(git tag -l "v[0-9]*" --sort=-v:refname 2>/dev/null | head -n 1)
-            if [ -z "$tag" ] && [ -f "$SCRIPT_DIR/../../../../package.json" ]; then
-                local ver
-                ver=$(grep -m1 '"version"' "$SCRIPT_DIR/../../../../package.json" | cut -d'"' -f4)
-                tag="v${ver}"
-            fi
-        elif [ "$prefix" = "headless-v" ]; then
-            tag=$(git tag -l "headless-v[0-9]*" --sort=-v:refname 2>/dev/null | head -n 1)
-            if [ -z "$tag" ] && [ -f "$SCRIPT_DIR/../../../../package.json" ]; then
-                local ver
-                ver=$(grep -m1 '"version"' "$SCRIPT_DIR/../../../../package.json" | cut -d'"' -f4)
-                tag="headless-v${ver}"
-            fi
-        fi
-    fi
-    echo "$tag"
-}
-
-# Automatically sync PKGBUILD and PKGBUILD-headless with the latest release & sha256 sums
-sync_pkgbuilds() {
-    print_header "Checking Latest Releases & Checksums"
-    
-    # 1. Desktop version check
-    local stable_tag
-    stable_tag=$(fetch_latest_github_tag "v")
-    if [ -n "$stable_tag" ]; then
-        local stable_ver="${stable_tag#v}"
-        local current_stable_ver
-        current_stable_ver=$(grep -m1 '^pkgver=' "$STABLE_PKGBUILD" | cut -d'=' -f2 | tr -d "'\"[:space:]")
-        
-        print_info "Desktop Release: v${stable_ver} (PKGBUILD: v${current_stable_ver})"
-        if [ "$stable_ver" != "$current_stable_ver" ]; then
-            print_info "Fetching sha256 checksums for desktop v${stable_ver}..."
-            local x86_url="https://github.com/Zarestia-Dev/rclone-manager/releases/download/v${stable_ver}/RClone.Manager_${stable_ver}_amd64.deb"
-            local arm_url="https://github.com/Zarestia-Dev/rclone-manager/releases/download/v${stable_ver}/RClone.Manager_${stable_ver}_arm64.deb"
-            
-            local sha_x86 sha_arm
-            sha_x86=$(calc_url_sha256 "$x86_url" || true)
-            sha_arm=$(calc_url_sha256 "$arm_url" || true)
-            
-            if [ -n "$sha_x86" ] && [ -n "$sha_arm" ]; then
-                sed -i -E "s/^(releasetag=).*/\1${stable_ver}/" "$STABLE_PKGBUILD"
-                sed -i -E "s/^(pkgver=).*/\1${stable_ver}/" "$STABLE_PKGBUILD"
-                sed -i -E "s/^(pkgrel=).*/\11/" "$STABLE_PKGBUILD"
-                sed -i -E "s/^(sha256sums_x86_64=\().*(\))/\1'${sha_x86}'\2/" "$STABLE_PKGBUILD"
-                sed -i -E "s/^(sha256sums_aarch64=\().*(\))/\1'${sha_arm}'\2/" "$STABLE_PKGBUILD"
-                print_success "Auto-updated PKGBUILD to v${stable_ver} with fresh sha256 checksums"
-            else
-                print_warning "Could not fetch release assets for v${stable_ver}; keeping existing PKGBUILD"
-            fi
-        else
-            print_success "PKGBUILD is up to date (v${stable_ver})"
-        fi
-        
-        # Keep PKGBUILD-git pkgver synced
-        local current_git_ver
-        current_git_ver=$(grep -m1 '^pkgver=' "$GIT_PKGBUILD" | cut -d'=' -f2 | tr -d "'\"[:space:]")
-        if [ "$stable_ver" != "$current_git_ver" ]; then
-            sed -i -E "s/^(pkgver=).*/\1${stable_ver}/" "$GIT_PKGBUILD"
-            sed -i -E "s/^(pkgrel=).*/\11/" "$GIT_PKGBUILD"
-            print_success "Auto-updated PKGBUILD-git base version to v${stable_ver}"
-        else
-            print_success "PKGBUILD-git is up to date (v${stable_ver})"
-        fi
-    fi
-    
-    # 2. Headless version check
-    local headless_tag
-    headless_tag=$(fetch_latest_github_tag "headless-v")
-    if [ -n "$headless_tag" ]; then
-        local headless_ver="${headless_tag#headless-v}"
-        local current_headless_ver
-        current_headless_ver=$(grep -m1 '^pkgver=' "$HEADLESS_PKGBUILD" | cut -d'=' -f2 | tr -d "'\"[:space:]")
-        
-        print_info "Headless Release: headless-v${headless_ver} (PKGBUILD: v${current_headless_ver})"
-        if [ "$headless_ver" != "$current_headless_ver" ]; then
-            print_info "Fetching sha256 checksums for headless-v${headless_ver}..."
-            local x86_url="https://github.com/Zarestia-Dev/rclone-manager/releases/download/headless-v${headless_ver}/RClone.Manager.Headless_${headless_ver}_amd64.deb"
-            local arm_url="https://github.com/Zarestia-Dev/rclone-manager/releases/download/headless-v${headless_ver}/RClone.Manager.Headless_${headless_ver}_arm64.deb"
-            
-            local sha_x86 sha_arm
-            sha_x86=$(calc_url_sha256 "$x86_url" || true)
-            sha_arm=$(calc_url_sha256 "$arm_url" || true)
-            
-            if [ -n "$sha_x86" ] && [ -n "$sha_arm" ]; then
-                sed -i -E "s/^(releasetag=).*/\1${headless_ver}/" "$HEADLESS_PKGBUILD"
-                sed -i -E "s/^(pkgver=).*/\1${headless_ver}/" "$HEADLESS_PKGBUILD"
-                sed -i -E "s/^(pkgrel=).*/\11/" "$HEADLESS_PKGBUILD"
-                sed -i -E "s/^(sha256sums_x86_64=\().*(\))/\1'${sha_x86}'\2/" "$HEADLESS_PKGBUILD"
-                sed -i -E "s/^(sha256sums_aarch64=\().*(\))/\1'${sha_arm}'\2/" "$HEADLESS_PKGBUILD"
-                print_success "Auto-updated PKGBUILD-headless to v${headless_ver} with fresh sha256 checksums"
-            else
-                print_warning "Could not fetch release assets for headless-v${headless_ver}; keeping existing PKGBUILD"
-            fi
-        else
-            print_success "PKGBUILD-headless is up to date (v${headless_ver})"
-        fi
-    fi
-}
-
-# Publish a single AUR package
-publish_package() {
-    local pkg_name=$1
-    local source_pkgbuild=$2
-    local pkg_url="ssh://aur@aur.archlinux.org/${pkg_name}.git"
-    local pkg_dir="$AUR_DIR/$pkg_name"
-    
-    print_header "Processing: $pkg_name"
-    
-    if [ ! -f "$source_pkgbuild" ]; then
-        print_error "Source PKGBUILD not found: $source_pkgbuild"
+    print_info "Verifying SSH access to aur.archlinux.org..."
+    if ! ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+        aur@aur.archlinux.org help >/dev/null 2>&1; then
+        print_error "SSH authentication to aur@aur.archlinux.org failed with $SSH_KEY."
+        print_info "Add the matching public key at https://aur.archlinux.org/account"
         return 1
     fi
-    
-    # 1. Clone or initialize repository if missing
-    if [ ! -d "$pkg_dir" ]; then
-        print_info "Cloning $pkg_name from AUR..."
-        if git clone "$pkg_url" "$pkg_dir" 2>/dev/null; then
-            print_success "Cloned $pkg_name repository"
-        else
-            print_warning "Repository not yet created on AUR. Initializing empty repository..."
-            mkdir -p "$pkg_dir"
-            git -C "$pkg_dir" init --initial-branch=master
-            git -C "$pkg_dir" remote add origin "$pkg_url"
-        fi
+    print_success "Authenticated on AUR with $SSH_KEY"
+}
+
+fetch_releases() {
+    local auth=()
+    local token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+    [ -n "$token" ] && auth=(-H "Authorization: Bearer $token")
+    RELEASES_JSON=$(curl -fsSL "${auth[@]}" -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/$REPO/releases?per_page=50") || {
+        print_error "Could not fetch the release list from GitHub"
+        return 1
+    }
+}
+
+# Newest published, non-pre-release version for a tag prefix ('v' or 'headless-v'). Prints "<tag> <version>".
+latest_release() {
+    jq -r --arg p "$1" '
+        [.[] | select(.draft == false and .prerelease == false)
+             | select(.tag_name | startswith($p))
+             | {tag: .tag_name, v: (.tag_name | ltrimstr($p))}
+             | select(.v | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))]
+        | sort_by(.v | split(".") | map(tonumber)) | last // empty
+        | "\(.tag) \(.v)"' <<<"$RELEASES_JSON"
+}
+
+# sha256 of a release asset. Uses the digest GitHub records for the asset, and downloads it only
+# when there is none. Prints nothing when the asset does not exist (yet).
+asset_sha256() {
+    local tag="$1" name="$2" digest
+    digest=$(jq -r --arg t "$tag" --arg n "$name" '
+        .[] | select(.tag_name == $t) | .assets[] | select(.name == $n)
+        | (.digest // "") | sub("^sha256:"; "")' <<<"$RELEASES_JSON")
+    if [ -z "$digest" ] && jq -e --arg t "$tag" --arg n "$name" \
+        'any(.[] | select(.tag_name == $t) | .assets[]; .name == $n)' <<<"$RELEASES_JSON" >/dev/null; then
+        curl -fsSL -o "$WORK_DIR/asset" "https://github.com/$REPO/releases/download/$tag/$name" || return 0
+        digest=$(sha256sum "$WORK_DIR/asset" | cut -d' ' -f1)
+        rm -f "$WORK_DIR/asset"
     fi
-    
-    cd "$pkg_dir"
-    
-    # Ensure remote URL is current
-    git remote set-url origin "$pkg_url" 2>/dev/null || git remote add origin "$pkg_url"
-    
-    # 2. Pull remote changes
-    print_info "Pulling latest changes from AUR..."
-    git fetch origin master 2>/dev/null || true
-    git pull origin master --rebase 2>/dev/null || git pull origin master 2>/dev/null || true
-    
-    # 3. Copy source PKGBUILD
-    print_info "Syncing PKGBUILD..."
-    cp "$source_pkgbuild" "$pkg_dir/PKGBUILD"
-    
-    # Copy .install file if present
-    local source_dir="$(dirname "$source_pkgbuild")"
-    if [ -f "$source_dir/${pkg_name}.install" ]; then
-        cp "$source_dir/${pkg_name}.install" "$pkg_dir/${pkg_name}.install"
+    [[ "$digest" =~ ^[0-9a-f]{64}$ ]] && echo "$digest"
+    return 0
+}
+
+pkgbuild_var() { grep -m1 "^$2=" "$1" | cut -d= -f2- | tr -d "'\"[:space:]"; }
+
+# Stage a release-based PKGBUILD at $WORK_DIR/<name>/PKGBUILD. Returns 2 when the release is not ready.
+# stage_release_pkgbuild <name> <template> <tag prefix> <x86_64 asset> <aarch64 asset>   (assets use %s for the version)
+stage_release_pkgbuild() {
+    local name="$1" template="$2" prefix="$3" asset_x86="$4" asset_arm="$5"
+    local latest tag version sha_x86 sha_arm out="$WORK_DIR/$name/PKGBUILD"
+
+    latest=$(latest_release "$prefix")
+    if [ -z "$latest" ]; then
+        print_warning "No stable ${prefix}<version> release found; skipping $name"
+        return 2
     fi
-    
-    # 4. Generate .SRCINFO
-    print_info "Generating .SRCINFO with makepkg..."
-    makepkg --printsrcinfo > .SRCINFO
-    
-    # 5. Check for changes
-    local untracked
-    untracked=$(git ls-files --others --exclude-standard)
-    local has_commits
-    has_commits=$(git rev-parse --verify HEAD 2>/dev/null || true)
-    
-    if git diff --quiet && git diff --cached --quiet && [ -z "$untracked" ]; then
-        print_success "$pkg_name is already up to date (no changes detected)"
+    read -r tag version <<<"$latest"
+
+    # shellcheck disable=SC2059
+    sha_x86=$(asset_sha256 "$tag" "$(printf "$asset_x86" "$version")")
+    # shellcheck disable=SC2059
+    sha_arm=$(asset_sha256 "$tag" "$(printf "$asset_arm" "$version")")
+    if [ -z "$sha_x86" ] || [ -z "$sha_arm" ]; then
+        print_warning "$tag does not have all assets yet; skipping $name (a later run will pick it up)"
+        return 2
+    fi
+
+    mkdir -p "$WORK_DIR/$name"
+    cp "$template" "$out"
+    sed -i -E \
+        -e "s/^(releasetag=).*/\1${version}/" \
+        -e "s/^(pkgver=).*/\1${version}/" \
+        -e "s/^(sha256sums_x86_64=\().*(\))/\1'${sha_x86}'\2/" \
+        -e "s/^(sha256sums_aarch64=\().*(\))/\1'${sha_arm}'\2/" "$out"
+    print_info "$name: $tag"
+}
+
+# The -git package builds from source; its pkgver() is recomputed on every build, so only follow the stable version.
+stage_git_pkgbuild() {
+    local name="$1" template="$2" out="$WORK_DIR/$1/PKGBUILD"
+    mkdir -p "$WORK_DIR/$name"
+    cp "$template" "$out"
+    if [ -n "$LATEST_STABLE_VERSION" ]; then
+        sed -i -E "s/^(pkgver=).*/\1${LATEST_STABLE_VERSION}/" "$out"
+    fi
+}
+
+# pkgrel is 1 for a new pkgver, and bumped when the same pkgver is republished with other changes.
+resolve_pkgrel() {
+    local staged="$1" published="$2" new_ver old_ver old_rel
+    [ -f "$published" ] || return 0
+    new_ver=$(pkgbuild_var "$staged" pkgver)
+    old_ver=$(pkgbuild_var "$published" pkgver)
+    old_rel=$(pkgbuild_var "$published" pkgrel)
+    [ "$new_ver" = "$old_ver" ] || return 0
+
+    if diff -q <(grep -v '^pkgrel=' "$staged") <(grep -v '^pkgrel=' "$published") >/dev/null; then
+        sed -i -E "s/^(pkgrel=).*/\1${old_rel}/" "$staged"
+    else
+        sed -i -E "s/^(pkgrel=).*/\1$((old_rel + 1))/" "$staged"
+    fi
+}
+
+# Clone (or refresh) the AUR repository and reset it to the remote state.
+sync_aur_repo() {
+    local name="$1" dir="$AUR_DIR/$name"
+    local read_url="https://aur.archlinux.org/${name}.git" push_url="ssh://aur@aur.archlinux.org/${name}.git"
+
+    if [ ! -d "$dir/.git" ]; then
+        rm -rf "$dir"
+        git clone -q "$read_url" "$dir" 2>/dev/null || { mkdir -p "$dir"; git -C "$dir" init -q; }
+    fi
+    git -C "$dir" remote get-url origin >/dev/null 2>&1 || git -C "$dir" remote add origin "$read_url"
+    git -C "$dir" remote set-url origin "$read_url"
+    git -C "$dir" remote set-url --push origin "$push_url"
+
+    if git -C "$dir" fetch -q origin master 2>/dev/null; then
+        git -C "$dir" checkout -q -B master origin/master
+        git -C "$dir" reset -q --hard origin/master
+    else
+        # Package does not exist on the AUR yet; the first push creates it.
+        git -C "$dir" symbolic-ref HEAD refs/heads/master
+    fi
+    git -C "$dir" clean -qfd
+}
+
+publish_package() {
+    local name="$1" dir="$AUR_DIR/$1" staged="$WORK_DIR/$1/PKGBUILD"
+
+    print_header "Processing: $name"
+    sync_aur_repo "$name" || return 1
+    resolve_pkgrel "$staged" "$dir/PKGBUILD"
+
+    cp "$staged" "$dir/PKGBUILD"
+    [ -f "$SCRIPT_DIR/$name.install" ] && cp "$SCRIPT_DIR/$name.install" "$dir/"
+    (cd "$dir" && makepkg --printsrcinfo > .SRCINFO) || { print_error "makepkg --printsrcinfo failed for $name"; return 1; }
+
+    git -C "$dir" add -A
+    if git -C "$dir" diff --cached --quiet; then
+        print_success "$name is already up to date ($(pkgbuild_var "$dir/PKGBUILD" pkgver)-$(pkgbuild_var "$dir/PKGBUILD" pkgrel))"
         return 0
     fi
-    
-    # 6. Show changes summary
-    print_info "Detected changes in $pkg_name:"
-    git status --short
-    
-    # 7. Stage files
-    git add PKGBUILD .SRCINFO
-    if [ -f "${pkg_name}.install" ]; then
-        git add "${pkg_name}.install"
+
+    local version pkgrel message
+    version=$(pkgbuild_var "$dir/PKGBUILD" pkgver)
+    pkgrel=$(pkgbuild_var "$dir/PKGBUILD" pkgrel)
+    message="Update to $version-$pkgrel"
+    git -C "$dir" rev-parse --verify -q HEAD >/dev/null || message="Initial commit: $version-$pkgrel"
+
+    print_info "Changes in $name:"
+    git -C "$dir" --no-pager diff --cached --stat
+    if [ "$DRY_RUN" = 1 ]; then
+        print_warning "Dry run: not committing '$message'"
+        git -C "$dir" --no-pager diff --cached -- PKGBUILD | grep -E '^[+-](pkgver|pkgrel|releasetag|sha256sums)' || true
+        return 0
     fi
-    
-    # 8. Commit
-    local version pkgrel commit_msg
-    version=$(grep -m1 '^pkgver=' PKGBUILD | cut -d'=' -f2 | tr -d "'\"[:space:]")
-    pkgrel=$(grep -m1 '^pkgrel=' PKGBUILD | cut -d'=' -f2 | tr -d "'\"[:space:]")
-    
-    if [ -z "$has_commits" ]; then
-        commit_msg="Initial commit: $version-$pkgrel"
-    else
-        commit_msg="Update to $version-$pkgrel"
-    fi
-    
-    print_info "Committing: '$commit_msg'..."
-    git commit -m "$commit_msg"
-    
-    # 9. Push to AUR
-    print_info "Pushing to AUR..."
-    git push origin master
-    
-    print_success "Successfully published $pkg_name ($version-$pkgrel) to AUR!"
-    print_info "Package URL: https://aur.archlinux.org/packages/$pkg_name"
+
+    git -C "$dir" \
+        -c "user.name=${AUR_GIT_NAME:-$(git config user.name || echo 'Hakan İSMAİL')}" \
+        -c "user.email=${AUR_GIT_EMAIL:-$(git config user.email || echo 'hakanismail53@gmail.com')}" \
+        commit -q -m "$message"
+    git -C "$dir" push origin HEAD:master || { print_error "Push to AUR failed for $name"; return 1; }
+    print_success "Published $name ($version-$pkgrel): https://aur.archlinux.org/packages/$name"
 }
 
 main() {
-    # Check required tools
-    for tool in git makepkg ssh ssh-keygen ssh-keyscan curl; do
-        if ! command -v "$tool" &>/dev/null; then
-            print_error "Required tool '$tool' is not installed or not in PATH."
-            exit 1
-        fi
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -h|--help|help) show_help; exit 0 ;;
+            -n|--dry-run)   DRY_RUN=1 ;;
+            --only)         [ $# -ge 2 ] || { print_error "--only needs a package name"; exit 1; }; ONLY+=("$2"); shift ;;
+            -*)             print_error "Unknown option: $1"; exit 1 ;;
+            *)              [ -z "$KEY_ARG" ] || { print_error "Only one key argument is accepted"; exit 1; }; KEY_ARG="$1" ;;
+        esac
+        shift
     done
-    
-    # Handle help or argument count validation
-    if [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "help" ]; then
-        show_help
-        exit 0
-    fi
-    
-    if [ "$#" -gt 1 ]; then
-        print_error "Too many arguments. This script accepts only one optional argument (custom SSH key or backup directory)."
-        print_info "Usage: ./publish-to-aur.sh [ssh_key_or_dir]"
+
+    local tool
+    for tool in git makepkg ssh curl jq sha256sum; do
+        command -v "$tool" >/dev/null || { print_error "Required tool '$tool' is not installed"; exit 1; }
+    done
+
+    mkdir -p "$AUR_DIR"
+    [ "$DRY_RUN" = 1 ] || setup_ssh_auth || exit 1
+
+    print_header "Checking Latest Releases"
+    fetch_releases || exit 1
+    LATEST_STABLE_VERSION=$(latest_release "v" | cut -d' ' -f2)
+
+    local packages=(rclone-manager rclone-manager-git rclone-manager-headless rclone-manager-server)
+    local failed=() name rc
+    for name in "${packages[@]}"; do
+        if [ ${#ONLY[@]} -gt 0 ] && [[ ! " ${ONLY[*]} " == *" $name "* ]]; then continue; fi
+
+        rc=0
+        case "$name" in
+            rclone-manager)
+                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD" "v" \
+                    'RClone.Manager_%s_amd64.deb' 'RClone.Manager_%s_arm64.deb' || rc=$? ;;
+            rclone-manager-git)
+                stage_git_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-git" || rc=$? ;;
+            rclone-manager-headless)
+                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-headless" "headless-v" \
+                    'RClone.Manager.Headless_%s_amd64.deb' 'RClone.Manager.Headless_%s_arm64.deb' || rc=$? ;;
+            rclone-manager-server)
+                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-server" "headless-v" \
+                    'server-linux-x86_64-%s.zip' 'server-linux-aarch64-%s.zip' || rc=$? ;;
+        esac
+        [ "$rc" = 2 ] && continue   # release not ready, retry on the next run
+        if [ "$rc" != 0 ] || ! publish_package "$name"; then failed+=("$name"); fi
+    done
+
+    print_header "AUR Publication Complete"
+    if [ ${#failed[@]} -gt 0 ]; then
+        print_error "Failed: ${failed[*]}"
         exit 1
     fi
-    
-    local custom_key_path="$1"
-    
-    # 1. Setup and verify SSH authentication
-    setup_ssh_auth "$custom_key_path"
-    
-    # 2. Ensure git user identity is present
-    setup_git_identity
-    
-    # 3. Ensure AUR base dir exists
-    mkdir -p "$AUR_DIR"
-    
-    # 4. Automatically sync PKGBUILD files with latest GitHub releases & sha256 checksums
-    sync_pkgbuilds
-    
-    # 5. Auto-publish all packages to AUR
-    print_header "Publishing Packages to AUR"
-    publish_package "rclone-manager" "$STABLE_PKGBUILD"
-    publish_package "rclone-manager-git" "$GIT_PKGBUILD"
-    publish_package "rclone-manager-headless" "$HEADLESS_PKGBUILD"
-    
-    print_header "AUR Publication Complete"
-    print_success "All packages have been checked and synchronized with AUR!"
+    print_success "All packages are synchronized with the AUR"
 }
 
 main "$@"

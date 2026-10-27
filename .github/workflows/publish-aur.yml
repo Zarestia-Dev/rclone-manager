@@ -1,0 +1,56 @@
+name: 'Publish to AUR'
+
+on:
+  # Both the v<version> and headless-v<version> releases trigger a run. The script skips
+  # packages whose assets are not all uploaded yet, so whichever release lands last completes the set.
+  release:
+    types: [published]
+  # Safety net for anything a release run skipped.
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Show what would change without pushing to the AUR'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-aur
+  cancel-in-progress: false
+
+jobs:
+  aur:
+    if: github.repository == 'Zarestia-Dev/rclone-manager'
+    runs-on: ubuntu-latest
+    # makepkg (for .SRCINFO) only exists on Arch and refuses to run as root.
+    container: archlinux:base-devel
+    timeout-minutes: 20
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git openssh jq curl
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: backend/desktop/linux/AUR
+
+      - name: Publish packages
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" != "true" ] && [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "::error::Add the AUR SSH private key as the AUR_SSH_PRIVATE_KEY repository secret"
+            exit 1
+          fi
+          useradd --create-home builder
+          chown -R builder .
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          runuser -u builder -p -- env HOME=/home/builder bash backend/desktop/linux/AUR/publish-to-aur.sh "${args[@]}"
