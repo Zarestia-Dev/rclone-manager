@@ -7,6 +7,11 @@
     <string name="saf_keepalive_channel_name">Rclone Depolama Servisi</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Arka planda çalışıyor</string>
+    <string name="keepalive_stopped_text">Android arka plan servisini durdurdu. Devam etmek için dokunun.</string>
     <string name="keepalive_channel_name">RClone Arka Plan Servisi</string>
     <string name="keepalive_channel_desc">Aktif diskleri, transferleri ve arka plan görevlerini sürdürür</string>
+    <string name="shortcut_file_manager_short">Dosyalar</string>
+    <string name="shortcut_file_manager_long">Dosya yöneticisini aç</string>
+    <string name="shortcut_open_remote">%1$s aç</string>
+    <string name="saf_folder_load_failed">Bu klasör yüklenemedi. Bağlantıyı kontrol edip tekrar deneyin.</string>
 </resources>

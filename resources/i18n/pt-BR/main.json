@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "Executar em segundo plano",
-        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
+        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar.",
+        "notification": {
+          "jobs": "Tarefas ativas: {{count}}",
+          "mounts": "Montagens: {{count}}",
+          "serves": "Serviços: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Verificação de driver de montagem desativada",
       "description": "A verificação do driver de montagem foi ignorada. A montagem de remotos requer um driver compatível instalado no seu sistema.",
       "install": "Instalar driver",
+      "dismissTooltip": "Não mostrar novamente"
+    },
+    "battery": {
+      "title": "Permitir atividade em segundo plano",
+      "subtitle": "O Android pode pausar o acesso à rede com a tela desligada. Isente o RClone Manager da otimização de bateria para manter transferências e agendamentos em execução.",
+      "allow": "Permitir",
+      "dismissTooltip": "Não mostrar novamente"
+    },
+    "storage": {
+      "title": "Permitir acesso a todos os arquivos",
+      "subtitle": "Para navegar e transferir pastas locais fora do armazenamento do próprio app, o Android exige acesso a todos os arquivos.",
+      "allow": "Permitir",
       "dismissTooltip": "Não mostrar novamente"
     },
     "metered": {
@@ -1309,6 +1326,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Múltiplos caminhos de origem detectados. O verificação uma-por-uma foi ativada automaticamente para garantir que o RClone verifique cada fonte contra a destino.",
       "enableAutoStart": "Ativar o Auto-{{type}} na Inicialização",
+      "autoStartDelay": "Atraso na inicialização",
+      "autoStartDelayHint": "Tempo de espera após abrir o aplicativo antes de iniciar. Útil quando a rede, a VPN ou outras montagens ainda não estão prontas.",
+      "autoStartDelayNone": "Nenhum",
       "enableScheduled": "Habilitar Programação Agendada ({{type}})",
       "enableWatch": "Habilitar Monitoramento de Arquivos em Tempo Real",
       "watchDescription": "Monitore as diretórias de origem locais para modificações de arquivos e sincronize alterações automaticamente.",
@@ -2137,6 +2157,7 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
+      "noPasswordHint": "Sem senha, o rclone.conf e os segredos salvos não são incluídos no backup. As credenciais digitadas diretamente em Execuções Rápidas ou fluxos de trabalho são exportadas como estão.",
       "vaultWarningTitle": "O cofre de configurações está aberto",
       "vaultWarningDesc": "Os backups exportados não herdam a criptografia do cofre. Use a opção de criptografia abaixo para proteger credenciais e configurações confidenciais com uma senha.",
       "exportNow": "Exportar Agora",
@@ -2202,7 +2223,8 @@
         },
         "password": {
           "label": "Senha",
-          "placeholder": "Deixe em branco para sem autenticação"
+          "placeholder": "Deixe em branco para sem autenticação",
+          "keepPlaceholder": "Deixe em branco para manter a senha atual"
         },
         "configPassword": {
           "label": "Definir senha de Configuração",
@@ -2248,13 +2270,12 @@
       "status": {
         "notTested": "Conexão não testada",
         "connected": "Conectado",
-        "error": "Erro: {{message}}"
+        "error": "Erro: {{message}}",
+        "engineOffline": "Motor offline"
       },
       "notifications": {
         "switchFailed": "Falha ao alternar: {{message}}",
         "connectionSuccess": "Conexão bem-sucedida",
-        "connectionFailed": "Falha na conexão: {{message}}",
-        "testFailed": "O teste falhou de forma inesperada",
         "fileSelectFailed": "Falha ao selecionar o arquivo",
         "updated": "Atualização de backend concluída com sucesso",
         "added": "Backend adicionado com sucesso",
@@ -3038,7 +3059,6 @@
       "unsupportedArchive": "Tipo de arquivo não suportado. Deve ser um arquivo .rcman",
       "invalidArchive": "Formato de arquivo de backup inválido",
       "restoreFailed": "Falha na restauração do backup: {{error}}",
-      "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha",
       "exportFailed": "Falha na exportação do backup: {{error}}",
       "refreshFailed": "Falha ao atualizar o sistema após a restauração do backup: {{error}}",
       "restoreIncomplete": "A restauração do backup ficou incompleta: {{error}}"
@@ -3049,7 +3069,11 @@
       "cannotRemoveLocal": "Não é possível remover o backend local",
       "cannotRemoveActive": "Não é possível remover o back-end ativo",
       "alreadyExists": "Um backend com esse nome já existe",
-      "notFound": "Backend '{{name}}' não encontrado"
+      "notFound": "Backend '{{name}}' não encontrado",
+      "cannotConnect": "Não foi possível conectar a '{{name}}': {{error}}",
+      "connectionFailed": "Falha na conexão: {{error}}",
+      "listFailedReverted": "Conectado, mas a listagem dos itens do backend falhou: {{error}}. Voltou para Local.",
+      "tooSlowReverted": "O backend aceitou a conexão, mas demorou demais para listar seus itens. Voltou para Local."
     },
     "job": {
       "notFound": "Informação de tarefa não encontrada.",

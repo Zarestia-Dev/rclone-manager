@@ -31,6 +31,7 @@ import { isHeadlessMode } from './services/infrastructure/platform/api-client.se
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
 import { AndroidKeepAliveService } from './services/infrastructure/platform/android-keep-alive.service';
+import { AndroidStorageAccessService } from './services/infrastructure/platform/android-storage-access.service';
 import { VaultService } from './services/security/vault.service';
 import { VaultLockScreenComponent } from './features/components/vault-lock-screen/vault-lock-screen.component';
 import { FlowContainerComponent } from './flow/flow-container.component';
@@ -89,6 +90,7 @@ export class AppComponent implements OnInit {
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly androidShareService = inject(AndroidShareService);
   private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
+  private readonly androidStorageAccessService = inject(AndroidStorageAccessService);
   protected readonly vaultService = inject(VaultService);
 
   private readonly navigation = inject(AppNavigationService);
@@ -115,6 +117,7 @@ export class AppComponent implements OnInit {
     // Start listening for Android share intents (no-op on desktop/web).
     this.androidShareService.initialize();
     this.androidKeepAliveService.initialize();
+    this.androidStorageAccessService.initialize();
 
     // Wire overlay signals into UiStateService for mobile-sidebar computation.
     this.uiStateService.setOverlaySignals({
@@ -197,9 +200,10 @@ export class AppComponent implements OnInit {
         !this.flowOverlayService.isStandaloneWindow() &&
         !this.mainUiOverlayService.isStandaloneWindow()
       ) {
-        void this.backendService.runStartupChecks().catch(error => {
-          console.error('Backend startup checks failed:', error);
-        });
+        void this.backendService
+          .loadBackends()
+          .then(() => this.backendService.refreshStatuses())
+          .catch(error => console.error('Backend startup checks failed:', error));
         await this.applyDefaultView();
       }
       if (!isCurrent()) return;

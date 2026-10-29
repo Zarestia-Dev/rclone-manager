@@ -89,7 +89,7 @@ pub fn setup_context(
     app.manage(RcloneState {
         poller_visible: AtomicBool::new(true),
         initial_startup: AtomicBool::new(true),
-        ..RcloneState::new(reqwest::Client::new(), transport)
+        ..RcloneState::new(crate::rclone::backend::types::rc_client(), transport)
     });
 
     app.manage(LogCache::new(1000));

@@ -114,6 +114,12 @@ describe('profile-config.util', () => {
     expect(getAppConfigValues({})).toEqual(APP_CONFIG_DEFAULTS);
   });
 
+  it('defaults the auto-start delay to zero and keeps an explicit one', () => {
+    expect(getAppConfigValues({})['autoStartDelay']).toBe(0);
+    expect(getAppConfigValues({ autoStartDelay: '' })['autoStartDelay']).toBe(0);
+    expect(getAppConfigValues({ autoStartDelay: 30 })['autoStartDelay']).toBe(30);
+  });
+
   it('distinguishes legacy runtime flags from profiles scoped to other remotes', () => {
     expect(getRuntimeRemoteProfiles({}, 'drive')).toEqual({});
     expect(getRuntimeRemoteProfiles({ region: 'us', env_auth: false }, 'drive')).toEqual({

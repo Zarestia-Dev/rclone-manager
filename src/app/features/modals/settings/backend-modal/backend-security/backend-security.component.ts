@@ -122,26 +122,23 @@ export class BackendSecurityComponent implements OnInit {
     }
 
     const password = this.keychainPassword.value || '';
-    this.encryptionLoading.set(true);
-    try {
+    await this.run('store password in keychain', async () => {
       await this.passwordService.validatePassword(password);
       await this.passwordService.storePassword(password);
-      this.showKeychainInput.set(false);
-      this.keychainPassword.reset();
-      this.showKeychainPassword.set(false);
+      this.cancelKeychainInput();
       await this.loadEncryptionStatus();
-    } catch (error) {
-      console.error('Failed to store password in keychain:', error);
-    } finally {
-      this.encryptionLoading.set(false);
-    }
+    });
   }
 
   async cancelKeychainStore(): Promise<void> {
+    this.cancelKeychainInput();
+    await this.loadEncryptionStatus();
+  }
+
+  private cancelKeychainInput(): void {
     this.showKeychainInput.set(false);
     this.keychainPassword.reset();
     this.showKeychainPassword.set(false);
-    await this.loadEncryptionStatus();
   }
 
   async submitEncrypt(): Promise<void> {
@@ -151,17 +148,12 @@ export class BackendSecurityComponent implements OnInit {
     }
 
     const newPassword = this.encryptForm.value.newPassword || '';
-    this.encryptionLoading.set(true);
-    try {
+    await this.run('encrypt config', async () => {
       await this.passwordService.encryptConfig(newPassword);
       await this.passwordService.storePassword(newPassword, { showSuccess: false });
       await this.loadEncryptionStatus();
       this.encryptForm.reset();
-    } catch (error) {
-      console.error('Failed to encrypt config:', error);
-    } finally {
-      this.encryptionLoading.set(false);
-    }
+    });
   }
 
   async submitDecrypt(): Promise<void> {
@@ -171,17 +163,12 @@ export class BackendSecurityComponent implements OnInit {
     }
 
     const password = this.decryptPassword.value || '';
-    this.encryptionLoading.set(true);
-    try {
+    await this.run('unencrypt config', async () => {
       await this.passwordService.unencryptConfig(password);
       await this.passwordService.removeStoredPassword({ showSuccess: false });
       await this.loadEncryptionStatus();
       this.decryptPassword.reset();
-    } catch (error) {
-      console.error('Failed to unencrypt config:', error);
-    } finally {
-      this.encryptionLoading.set(false);
-    }
+    });
   }
 
   async submitChangePassword(): Promise<void> {
@@ -193,27 +180,31 @@ export class BackendSecurityComponent implements OnInit {
     const { currentPassword, newPassword } = this.changePasswordForm.value;
     if (!currentPassword || !newPassword) return;
 
-    this.encryptionLoading.set(true);
-    try {
+    await this.run('change password', async () => {
       await this.passwordService.changeConfigPassword(currentPassword, newPassword);
       await this.passwordService.storePassword(newPassword, { showSuccess: false });
       await this.loadEncryptionStatus();
       this.changePasswordForm.reset();
-    } catch (error) {
-      console.error('Failed to change password:', error);
-    } finally {
-      this.encryptionLoading.set(false);
-    }
+    });
   }
 
   async removeStoredPassword(): Promise<void> {
+    await this.run('remove stored password', async () => {
+      try {
+        await this.passwordService.removeStoredPassword();
+      } finally {
+        await this.loadEncryptionStatus();
+      }
+    });
+  }
+
+  /** Runs one security action behind the loading flag; the services report failures to the user. */
+  private async run(failure: string, action: () => Promise<void>): Promise<void> {
     this.encryptionLoading.set(true);
     try {
-      await this.passwordService.removeStoredPassword();
-      await this.loadEncryptionStatus();
+      await action();
     } catch (error) {
-      console.error('Failed to remove stored password:', error);
-      await this.loadEncryptionStatus();
+      console.error(`Failed to ${failure}:`, error);
     } finally {
       this.encryptionLoading.set(false);
     }

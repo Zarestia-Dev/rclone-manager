@@ -1,3 +1,4 @@
+import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
@@ -47,6 +48,7 @@ describe('RcloneStatusService status refresh', () => {
     ready = new Subject<void>();
     TestBed.configureTestingModule({
       providers: [
+        provideTranslateService(),
         { provide: VaultService, useValue: { isAccessible: accessible } },
         { provide: AppSettingsService, useValue: { options: signal(null) } },
         {

@@ -1,3 +1,4 @@
+use crate::rclone::backend::runtime::RuntimeStatus;
 use crate::rclone::backend::{BackendManager, RcloneTransport};
 use crate::utils::constants::LOCAL_BACKEND_NAME;
 use log::{debug, info, warn};
@@ -47,6 +48,26 @@ pub async fn check_connectivity_with_timeout(
     }
 }
 
+/// Time a user-visible probe waits for a backend before calling it unreachable.
+pub const PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Probes `name` and records the outcome, so a stored status never outlives the last probe.
+/// A failure keeps the last known version and OS next to the error status.
+pub async fn probe_backend(
+    manager: &BackendManager,
+    name: &str,
+    transport: &dyn RcloneTransport,
+    timeout: std::time::Duration,
+) -> Result<(String, String), String> {
+    let result = check_connectivity_with_timeout(manager, name, transport, timeout).await;
+    if let Err(error) = &result {
+        manager
+            .set_runtime_status(name, RuntimeStatus::Error(error.clone()))
+            .await;
+    }
+    result
+}
+
 pub async fn check_local_connectivity_retrying(
     manager: &BackendManager,
     transport: &dyn RcloneTransport,
@@ -81,7 +102,7 @@ pub async fn ensure_connectivity(
     manager: &BackendManager,
     transport: &dyn RcloneTransport,
     timeout: std::time::Duration,
-) -> Result<(), String> {
+) {
     let active_name = manager.get_active_name().await;
 
     if active_name == LOCAL_BACKEND_NAME {
@@ -89,76 +110,24 @@ pub async fn ensure_connectivity(
             "Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
-        return match check_local_connectivity_retrying(manager, transport, timeout).await {
-            Ok(_) => {
-                info!("Local backend is reachable and runtime info loaded");
-                Ok(())
-            }
+        match check_local_connectivity_retrying(manager, transport, timeout).await {
+            Ok(_) => info!("Local backend is reachable and runtime info loaded"),
             Err(e) => {
                 warn!(
                     "Local backend runtime-info fetch failed ({e}). \
                      Engine may still be healthy — UI will show version as unknown."
                 );
                 manager
-                    .set_runtime_status(
-                        LOCAL_BACKEND_NAME,
-                        crate::rclone::backend::runtime::RuntimeStatus::Connected,
-                    )
+                    .set_runtime_status(LOCAL_BACKEND_NAME, RuntimeStatus::Connected)
                     .await;
-                Ok(())
             }
-        };
+        }
+        return;
     }
 
-    info!(
-        "Checking active backend: {} (timeout: {}s)",
-        active_name,
-        timeout.as_secs()
-    );
-
-    match check_connectivity_with_timeout(manager, &active_name, transport, timeout).await {
-        Ok(_) => {
-            info!("Active backend '{active_name}' is reachable");
-            Ok(())
-        }
-        Err(e) => {
-            warn!("Active backend '{active_name}' unreachable: {e}. Marking offline.");
-            manager
-                .set_runtime_status(
-                    &active_name,
-                    crate::rclone::backend::runtime::RuntimeStatus::Error(e),
-                )
-                .await;
-            Ok(())
-        }
+    info!("Checking active backend: {active_name}");
+    match probe_backend(manager, &active_name, transport, timeout).await {
+        Ok(_) => info!("Active backend '{active_name}' is reachable"),
+        Err(e) => warn!("Active backend '{active_name}' unreachable: {e}. Marked offline."),
     }
-}
-
-pub async fn check_other_backends(manager: &BackendManager, transport: &dyn RcloneTransport) {
-    let backends = manager.list_all().await;
-    let active_name = manager.get_active_name().await;
-
-    let tasks = backends
-        .iter()
-        .filter(|b| b.name != active_name && b.name != LOCAL_BACKEND_NAME)
-        .map(|backend| {
-            let name = &backend.name;
-            async move {
-                info!("Background check for backend: {name}");
-                match check_connectivity(manager, name, transport, None).await {
-                    Ok(_) => info!("Backend '{name}' is reachable"),
-                    Err(e) => {
-                        warn!("Backend '{name}' unreachable: {e}");
-                        manager
-                            .set_runtime_status(
-                                name,
-                                crate::rclone::backend::runtime::RuntimeStatus::Error(e),
-                            )
-                            .await;
-                    }
-                }
-            }
-        });
-
-    futures::future::join_all(tasks).await;
 }

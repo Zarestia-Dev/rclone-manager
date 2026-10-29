@@ -23,7 +23,7 @@ use crate::utils::types::state::{EngineState, RcloneState};
 const BURST_TICK_COUNT: u32 = 5;
 /// Poller tick when the UI is visible and no jobs are running.
 const POLL_VISIBLE_IDLE: Duration = Duration::from_secs(5);
-/// Poller tick when the UI is hidden (window minimized) and no jobs are running.
+/// Poller tick when the UI is hidden (window minimized), whether or not jobs are running.
 const POLL_HIDDEN: Duration = Duration::from_secs(10);
 /// Poller tick when jobs are running or we're in burst mode.
 const POLL_ACTIVE: Duration = Duration::from_secs(1);
@@ -151,12 +151,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
             }
             drop(selection_guard);
 
-            if burst_ticks == 0 && !has_active_jobs {
-                let delay = if is_visible {
-                    POLL_VISIBLE_IDLE
-                } else {
-                    POLL_HIDDEN
-                };
+            if let Some(delay) = idle_delay(is_visible, burst_ticks, has_active_jobs) {
                 time::sleep(delay).await;
             }
         }
@@ -166,6 +161,20 @@ pub fn start_system_poller(app_handle: AppHandle) {
             .poller_running
             .store(false, Ordering::Release);
     });
+}
+
+/// Extra wait on top of [`POLL_ACTIVE`]. The stats only feed views that are on screen, so a
+/// hidden UI is polled slowly even while jobs run; on Android that is the app in the
+/// background, where a poll every second (with its stop-the-world `core/memstats`) would keep
+/// the CPU busy for the whole transfer.
+fn idle_delay(is_visible: bool, burst_ticks: u32, has_active_jobs: bool) -> Option<Duration> {
+    if !is_visible {
+        Some(POLL_HIDDEN)
+    } else if burst_ticks == 0 && !has_active_jobs {
+        Some(POLL_VISIBLE_IDLE)
+    } else {
+        None
+    }
 }
 
 fn is_auth_error(err: &BackendError) -> bool {
@@ -321,6 +330,22 @@ async fn update_serve_cache(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hidden_ui_is_polled_slowly_even_with_running_jobs() {
+        assert_eq!(idle_delay(false, 0, true), Some(POLL_HIDDEN));
+        assert_eq!(
+            idle_delay(false, BURST_TICK_COUNT, false),
+            Some(POLL_HIDDEN)
+        );
+    }
+
+    #[test]
+    fn visible_ui_is_polled_every_second_while_busy() {
+        assert_eq!(idle_delay(true, 0, true), None);
+        assert_eq!(idle_delay(true, 3, false), None);
+        assert_eq!(idle_delay(true, 0, false), Some(POLL_VISIBLE_IDLE));
+    }
 
     #[test]
     fn auth_errors_use_status_instead_of_message() {

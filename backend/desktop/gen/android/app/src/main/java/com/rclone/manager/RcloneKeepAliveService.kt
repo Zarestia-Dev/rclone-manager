@@ -25,15 +25,20 @@ class RcloneKeepAliveService : Service() {
     private const val CHANNEL_ID = "rclone_saf_keepalive"
     private const val WAKELOCK_TAG = "rclone:saf_keepalive_wakelock"
     private const val WIFILOCK_TAG = "rclone:saf_keepalive_wifilock"
+    private const val RESTART_NOTIFICATION_ID = 4483
+    private const val WAKELOCK_TIMEOUT_MS = 60 * 60 * 1000L
+    private const val WAKELOCK_RENEW_MS = 30 * 60 * 1000L
+    private const val PREFS_NAME = "rclone_keepalive_prefs"
+    private const val KEY_KEEPALIVE_ACTIVE = "keepalive_active"
 
     const val ACTION_START = "com.rclone.manager.action.START_KEEPALIVE"
-    const val ACTION_STOP = "com.rclone.manager.action.STOP_KEEPALIVE"
     const val ACTION_UPDATE_NOTIFICATION = "com.rclone.manager.action.UPDATE_NOTIFICATION"
     const val EXTRA_TITLE = "extra_title"
     const val EXTRA_TEXT = "extra_text"
-    const val EXTRA_FORCE = "extra_force"
 
     private val isKeepAliveRequested = AtomicBoolean(false)
+    // The frontend wants the service: keep-alive is on, or jobs, mounts or serves are running.
+    private val isAppRequested = AtomicBoolean(false)
     private val isServiceRunning = AtomicBoolean(false)
     private var lastTitle: String? = null
     private var lastText: String? = null
@@ -44,11 +49,35 @@ class RcloneKeepAliveService : Service() {
 
     fun isRunning(): Boolean = isServiceRunning.get()
 
-    fun isKeepAliveEnabled(): Boolean = isKeepAliveRequested.get()
+    private fun isNeeded(): Boolean =
+      isAppRequested.get() || RcloneSafBridge.getActiveHandleCount() > 0
 
-    fun startService(context: Context, forceKeepAlive: Boolean = false) {
+    // The request is also kept on disk: a process the system killed restarts this service
+    // without it, and only the stored copy tells that keep-alive was running.
+    private fun setKeepAliveRequested(context: Context, requested: Boolean) {
+      isKeepAliveRequested.set(requested)
       try {
-        isKeepAliveRequested.set(forceKeepAlive)
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          .edit().putBoolean(KEY_KEEPALIVE_ACTIVE, requested).apply()
+      } catch (e: Throwable) {
+        Logger.error("Failed to store keep-alive state: ${e.message}")
+      }
+    }
+
+    /** Called by the frontend; [forceKeepAlive] is the keep-alive setting. */
+    fun startService(context: Context, forceKeepAlive: Boolean = false) {
+      setKeepAliveRequested(context, forceKeepAlive)
+      isAppRequested.set(true)
+      launch(context)
+    }
+
+    /** Keeps the process alive while the file manager streams a document. */
+    fun startForDocuments(context: Context) {
+      if (!isServiceRunning.get()) launch(context)
+    }
+
+    private fun launch(context: Context) {
+      try {
         Logger.info("RcloneKeepAliveService: Starting foreground service (keepAlive=${isKeepAliveRequested.get()})")
         val intent = Intent(context, RcloneKeepAliveService::class.java).apply {
           action = ACTION_START
@@ -63,18 +92,23 @@ class RcloneKeepAliveService : Service() {
       }
     }
 
+    /**
+     * [force] means the frontend no longer needs the service; without it the last document was
+     * closed, which must not stop a service the frontend still uses.
+     */
     fun stopService(context: Context, force: Boolean = true) {
       try {
         if (force) {
-          isKeepAliveRequested.set(false)
+          setKeepAliveRequested(context, false)
+          isAppRequested.set(false)
+          pendingUpdateRunnable?.let { mainHandler.removeCallbacks(it) }
+          pendingUpdateRunnable = null
+          lastTitle = null
+          lastText = null
+          lastUpdateTime = 0L
         }
-        pendingUpdateRunnable?.let { mainHandler.removeCallbacks(it) }
-        pendingUpdateRunnable = null
-        lastTitle = null
-        lastText = null
-        lastUpdateTime = 0L
 
-        if (!isServiceRunning.get()) {
+        if (!isServiceRunning.get() || isAppRequested.get()) {
           return
         }
 
@@ -144,11 +178,25 @@ class RcloneKeepAliveService : Service() {
   private var wifiLock: WifiManager.WifiLock? = null
   private var isForeground = false
 
+  // The timeout only bounds a lock whose owner died; renewing it keeps a live service awake.
+  private val renewWakeLock = object : Runnable {
+    override fun run() {
+      if (wakeLock == null) return
+      try {
+        wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
+      } catch (e: Throwable) {
+        Logger.error("Failed to renew wakeLock: ${e.message}")
+      }
+      mainHandler.postDelayed(this, WAKELOCK_RENEW_MS)
+    }
+  }
+
   override fun onCreate() {
     super.onCreate()
     Logger.info("RcloneKeepAliveService: onCreate called")
     isServiceRunning.set(true)
     createNotificationChannel()
+    getSystemService(NotificationManager::class.java)?.cancel(RESTART_NOTIFICATION_ID)
     promoteToForeground()
     acquireLocks()
   }
@@ -157,17 +205,16 @@ class RcloneKeepAliveService : Service() {
     val action = intent?.action
     Logger.info("RcloneKeepAliveService: onStartCommand called (action=$action)")
 
-    if (action == ACTION_STOP) {
-      val force = intent.getBooleanExtra(EXTRA_FORCE, true)
-      if (force) {
-        isKeepAliveRequested.set(false)
-      }
-      if (!isKeepAliveRequested.get() && RcloneSafBridge.getActiveHandleCount() <= 0) {
-        Logger.info("RcloneKeepAliveService: Stopping service as requested and no active handles exist")
-        stopForegroundSafely()
-        stopSelf()
-        return START_NOT_STICKY
-      }
+    // startForegroundService() obliges every start to reach startForeground(), including the
+    // ones that stop the service right away.
+    if (!isForeground) {
+      promoteToForeground()
+    }
+
+    // A null intent is the system restarting the service after it killed the process. The
+    // backend and WebView are gone and cannot start without the activity.
+    if (intent == null && consumeKilledKeepAlive()) {
+      notifyStoppedBySystem()
     }
 
     if (action == ACTION_UPDATE_NOTIFICATION) {
@@ -179,19 +226,13 @@ class RcloneKeepAliveService : Service() {
       }
     }
 
-    val hasActiveHandles = RcloneSafBridge.getActiveHandleCount() > 0
-    val keepAliveActive = isKeepAliveRequested.get()
-
-    if (!hasActiveHandles && !keepAliveActive) {
-      Logger.info("RcloneKeepAliveService: No active handles and keep-alive disabled, stopping immediately")
+    if (!isNeeded()) {
+      Logger.info("RcloneKeepAliveService: Neither the app nor an open document needs the service, stopping")
       stopForegroundSafely()
       stopSelf()
       return START_NOT_STICKY
     }
 
-    if (!isForeground) {
-      promoteToForeground()
-    }
     acquireLocks()
     return START_STICKY
   }
@@ -199,8 +240,10 @@ class RcloneKeepAliveService : Service() {
   override fun onTaskRemoved(rootIntent: Intent?) {
     super.onTaskRemoved(rootIntent)
     Logger.info("RcloneKeepAliveService: onTaskRemoved triggered (app swiped from recent apps)")
-    if (isKeepAliveRequested.get() || RcloneSafBridge.getActiveHandleCount() > 0) {
-      Logger.info("RcloneKeepAliveService: Keep-alive active, preserving background process and locks")
+    // The activity keeps the Rust window while this service runs, so stopping here would leave
+    // the backend without its foreground service; the frontend stops it once its work is done.
+    if (isNeeded()) {
+      Logger.info("RcloneKeepAliveService: Still needed, preserving background process and locks")
       if (!isForeground) {
         promoteToForeground()
       }
@@ -209,6 +252,34 @@ class RcloneKeepAliveService : Service() {
       Logger.info("RcloneKeepAliveService: Keep-alive inactive on task removal, stopping service")
       stopForegroundSafely()
       stopSelf()
+    }
+  }
+
+  private fun consumeKilledKeepAlive(): Boolean {
+    if (isKeepAliveRequested.get()) return false
+    return try {
+      val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      val killed = prefs.getBoolean(KEY_KEEPALIVE_ACTIVE, false)
+      if (killed) prefs.edit().putBoolean(KEY_KEEPALIVE_ACTIVE, false).apply()
+      killed
+    } catch (e: Throwable) {
+      Logger.error("Failed to read keep-alive state: ${e.message}")
+      false
+    }
+  }
+
+  private fun notifyStoppedBySystem() {
+    try {
+      val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        .setContentTitle(getString(R.string.keepalive_title))
+        .setContentText(getString(R.string.keepalive_stopped_text))
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentIntent(launchPendingIntent())
+        .setAutoCancel(true)
+        .build()
+      getSystemService(NotificationManager::class.java)?.notify(RESTART_NOTIFICATION_ID, notification)
+    } catch (e: Throwable) {
+      Logger.error("Failed to post the stopped-by-system notification: ${e.message}")
     }
   }
 
@@ -224,8 +295,10 @@ class RcloneKeepAliveService : Service() {
         }
       }
       if (wakeLock?.isHeld == false) {
-        wakeLock?.acquire(60 * 60 * 1000L /* 60 minutes timeout */)
+        wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
       }
+      mainHandler.removeCallbacks(renewWakeLock)
+      mainHandler.postDelayed(renewWakeLock, WAKELOCK_RENEW_MS)
     } catch (e: Throwable) {
       Logger.error("Failed to acquire wakeLock: ${e.message}")
     }
@@ -233,12 +306,11 @@ class RcloneKeepAliveService : Service() {
     try {
       if (wifiLock == null) {
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-        } else {
-          @Suppress("DEPRECATION")
-          WifiManager.WIFI_MODE_FULL_HIGH_PERF
-        }
+        // On Android 10 to 13 a low-latency lock only holds in the foreground with the screen on,
+        // so it does nothing for background transfers; Android 14 maps this mode to low latency,
+        // which from then on also holds in the background.
+        @Suppress("DEPRECATION")
+        val mode = WifiManager.WIFI_MODE_FULL_HIGH_PERF
         wifiLock = wifiManager?.createWifiLock(mode, WIFILOCK_TAG)?.apply {
           setReferenceCounted(false)
         }
@@ -252,6 +324,7 @@ class RcloneKeepAliveService : Service() {
   }
 
   private fun releaseLocks() {
+    mainHandler.removeCallbacks(renewWakeLock)
     try {
       if (wakeLock?.isHeld == true) {
         wakeLock?.release()
@@ -271,7 +344,7 @@ class RcloneKeepAliveService : Service() {
     }
   }
 
-  private fun buildNotification(customTitle: String? = null, customText: String? = null): Notification {
+  private fun launchPendingIntent(): PendingIntent {
     val launchIntent = (packageManager.getLaunchIntentForPackage(packageName) ?: Intent(this, MainActivity::class.java)).apply {
       flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
       if (MainActivity.lastActivityId != 0) {
@@ -283,8 +356,10 @@ class RcloneKeepAliveService : Service() {
     } else {
       PendingIntent.FLAG_UPDATE_CURRENT
     }
-    val contentPendingIntent = PendingIntent.getActivity(this, 0, launchIntent, pendingFlags)
+    return PendingIntent.getActivity(this, 0, launchIntent, pendingFlags)
+  }
 
+  private fun buildNotification(customTitle: String? = null, customText: String? = null): Notification {
     val hasSaf = RcloneSafBridge.getActiveHandleCount() > 0
     val title = customTitle ?: lastTitle ?: if (hasSaf) {
       getString(R.string.saf_keepalive_title)
@@ -301,7 +376,7 @@ class RcloneKeepAliveService : Service() {
       .setContentTitle(title)
       .setContentText(text)
       .setSmallIcon(R.drawable.ic_notification)
-      .setContentIntent(contentPendingIntent)
+      .setContentIntent(launchPendingIntent())
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .setOngoing(true)
       .build()
@@ -311,10 +386,12 @@ class RcloneKeepAliveService : Service() {
     try {
       val notification = buildNotification(customTitle, customText)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        // dataSync is capped at 6h per 24h on Android 15+ and the system crashes the app once
+        // the service outlives it; specialUse has no such limit.
         startForeground(
           NOTIFICATION_ID,
           notification,
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+          ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         )
       } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         startForeground(

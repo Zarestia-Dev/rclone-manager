@@ -4901,9 +4901,9 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7760f69730f7c4900784de4f700b37ef1c2e0cd749af359999e2ce2750136f87"
+checksum = "db8d61cec5646adcca97dcbafcb40bfd466b789788c2e5f5af6ebbd2d0894aa6"
 dependencies = [
  "aes-gcm",
  "android-native-keyring-store",
@@ -4934,9 +4934,9 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c42653970f741f62dad2c4e1c5ba83b5a6ff20b28b6e0be3b2424d20c6ed217"
+checksum = "86ab9824871360795c992f6dcf37f63b7ab71e315b73e6afc304f3a16059681d"
 dependencies = [
  "proc-macro2",
  "quote",

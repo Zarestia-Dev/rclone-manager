@@ -22,7 +22,6 @@ describe('BackendService resource loading', () => {
     isActive: true,
     hasAuth: true,
     username: 'user & 旅行',
-    password: 'password',
     hasConfigPassword: false,
     configPath: '/old/rclone.conf',
   };
@@ -36,7 +35,10 @@ describe('BackendService resource loading', () => {
         { provide: NotificationService, useValue: {} },
         {
           provide: BackendTranslationService,
-          useValue: { translateBackendMessage: (error: Error): string => error.message },
+          useValue: {
+            translateBackendMessage: (error: unknown): string =>
+              typeof error === 'string' ? error : (error as Error).message,
+          },
         },
         { provide: AppSettingsService, useValue: {} },
         {
@@ -176,14 +178,13 @@ describe('BackendService resource loading', () => {
       await TestBed.inject(ApplicationRef).whenStable();
       await update;
       expect(invoke).toHaveBeenCalledWith('update_backend', {
-        params: expect.objectContaining({
+        params: {
           name: 'Local',
           host: localBackend.host,
           port: localBackend.port,
-          username: localBackend.username,
-          password: localBackend.password,
+          isLocal: true,
           configPath,
-        }),
+        },
       });
     }
   );
@@ -203,14 +204,13 @@ describe('BackendService resource loading', () => {
     await TestBed.inject(ApplicationRef).whenStable();
     await update;
     expect(invoke).toHaveBeenCalledWith('update_backend', {
-      params: expect.objectContaining({
+      params: {
         name: 'Local',
         host: localBackend.host,
         port: 51901,
-        username: localBackend.username,
-        password: localBackend.password,
+        isLocal: true,
         configPath: localBackend.configPath,
-      }),
+      },
     });
   });
 
@@ -224,47 +224,131 @@ describe('BackendService resource loading', () => {
     expect(invoke).toHaveBeenCalledExactlyOnceWith('list_backends', undefined);
   });
 
-  it.each(['NAS & 旅行', 'Local', 'Missing active'])(
-    'loads the list before checking each remote once with %s active',
-    async activeName => {
-      let finish!: (value: BackendInfo[]) => void;
-      invoke.mockImplementation((command: string, args?: { name: string }) => {
-        if (command === 'list_backends') {
-          return new Promise<BackendInfo[]>(resolve => (finish = resolve));
-        }
-        if (command === 'get_active_backend') return Promise.resolve(activeName);
-        if (args?.name === 'Offline') return Promise.reject(new Error('offline'));
-        return Promise.resolve({ success: true, version: 'v1.73.0', os: 'linux' });
+  it('probes each remote backend once and leaves Local to the engine', async () => {
+    invoke.mockImplementation((command: string, args?: { name: string }) => {
+      if (command === 'list_backends') {
+        return Promise.resolve([
+          localBackend,
+          { ...localBackend, name: 'NAS & 旅行', isLocal: false, isActive: false },
+          { ...localBackend, name: 'Offline', isLocal: false, isActive: false },
+        ]);
+      }
+      if (args?.name === 'Offline') return Promise.reject(new Error('offline'));
+      return Promise.resolve({
+        success: true,
+        version: 'v1.73.0',
+        os: 'linux',
+        config_path: '/etc/rclone.conf',
       });
-      const service = TestBed.inject(BackendService);
-      const checks = service.runStartupChecks();
-      TestBed.tick();
-      await Promise.resolve();
-      expect(invoke).toHaveBeenCalledExactlyOnceWith('list_backends', undefined);
+    });
+    const service = TestBed.inject(BackendService);
+    await service.loadBackends();
 
-      finish([
-        localBackend,
-        { ...localBackend, name: 'NAS & 旅行', isLocal: false, isActive: false },
-        { ...localBackend, name: 'Offline', isLocal: false, isActive: false },
-      ]);
-      await TestBed.inject(ApplicationRef).whenStable();
-      await checks;
+    await service.refreshStatuses();
 
-      const testedNames = invoke.mock.calls
-        .filter(([command]) => command === 'test_backend_connection')
-        .map(([, args]) => args.name);
-      expect(testedNames.sort()).toEqual(
-        (activeName === 'Missing active'
-          ? ['Missing active', 'NAS & 旅行', 'Offline']
-          : ['NAS & 旅行', 'Offline']
-        ).sort()
-      );
-      expect(service.activeBackend()).toBe(activeName);
-      expect(service.backends().find(b => b.name === 'NAS & 旅行')?.status).toEqual({
-        type: 'connected',
-      });
-    }
-  );
+    const tested = invoke.mock.calls
+      .filter(([command]) => command === 'test_backend_connection')
+      .map(([, args]) => args.name);
+    expect(tested.sort()).toEqual(['NAS & 旅行', 'Offline']);
+    expect(service.backends().find(b => b.name === 'NAS & 旅行')).toMatchObject({
+      status: { type: 'connected' },
+      version: 'v1.73.0',
+      os: 'linux',
+      runtimeConfigPath: '/etc/rclone.conf',
+    });
+    expect(service.backends().find(b => b.name === 'Offline')?.status).toEqual({
+      type: 'error',
+      message: 'offline',
+    });
+  });
+
+  it('keeps the last known version next to a failed test result', async () => {
+    const nas: BackendInfo = {
+      ...localBackend,
+      name: 'NAS',
+      isLocal: false,
+      isActive: false,
+      version: 'v1.70.0',
+      os: 'linux',
+      status: { type: 'connected' },
+    };
+    invoke.mockImplementation((command: string) =>
+      command === 'list_backends'
+        ? Promise.resolve([nas])
+        : Promise.resolve({ success: false, message: 'Connection failed: refused' })
+    );
+    const service = TestBed.inject(BackendService);
+    await service.loadBackends();
+
+    const result = await service.testConnection('NAS');
+
+    expect(result).toEqual({ success: false, message: 'Connection failed: refused' });
+    expect(service.backends()[0]).toMatchObject({
+      status: { type: 'error', message: 'Connection failed: refused' },
+      version: 'v1.70.0',
+      os: 'linux',
+    });
+  });
+
+  it('reports a rejected test command as a failed result', async () => {
+    invoke.mockRejectedValue(new Error('transport down'));
+    const service = TestBed.inject(BackendService);
+
+    await expect(
+      service.testConnectionDetails({ host: 'nas', port: 51900, name: 'NAS' })
+    ).resolves.toEqual({ success: false, message: 'transport down' });
+    expect(invoke).toHaveBeenCalledWith('test_backend_connection_details', {
+      host: 'nas',
+      port: 51900,
+      username: null,
+      password: null,
+      name: 'NAS',
+    });
+  });
+
+  it('probes a saved remote after reloading the list, but not Local', async () => {
+    invoke.mockImplementation((command: string) =>
+      command === 'list_backends'
+        ? Promise.resolve([localBackend])
+        : Promise.resolve({ success: true })
+    );
+    const service = TestBed.inject(BackendService);
+
+    await service.addBackend({ name: 'NAS', host: 'nas', port: 51900, isLocal: false });
+    await service.updateBackend({ name: 'Local', host: 'h', port: 51900, isLocal: true });
+
+    const commands = invoke.mock.calls.map(([command, args]) => [command, args?.name]);
+    expect(commands).toEqual([
+      ['add_backend', undefined],
+      ['list_backends', undefined],
+      ['test_backend_connection', 'NAS'],
+      ['update_backend', undefined],
+      ['list_backends', undefined],
+    ]);
+  });
+
+  it('maps the form so an empty password means "keep" only when editing', () => {
+    const service = TestBed.inject(BackendService);
+    const form = {
+      name: 'ignored',
+      host: 'nas',
+      port: '51900',
+      has_auth: true,
+      username: 'admin',
+      password: '',
+    };
+    expect(service.mapFormToConfig(form, false, 'NAS')).toMatchObject({
+      name: 'NAS',
+      port: 51900,
+      username: 'admin',
+      password: undefined,
+    });
+    expect(service.mapFormToConfig({ ...form, has_auth: false }, false)).toMatchObject({
+      name: 'ignored',
+      username: '',
+      password: '',
+    });
+  });
 
   it('sends the chosen copy source of each settings group and leaves the others out', async () => {
     invoke.mockResolvedValue([localBackend]);
@@ -283,10 +367,10 @@ describe('BackendService resource loading', () => {
     expect(call?.[1]).toEqual({
       params: expect.objectContaining({
         name: 'NAS',
-        copyBackendFrom: null,
         copyRemotesFrom: 'Local',
         copyFlowFrom: 'Local',
       }),
     });
+    expect(call?.[1].params.copyBackendFrom).toBeUndefined();
   });
 });

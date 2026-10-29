@@ -33,18 +33,8 @@ pub async fn backup_settings(
     let password = password
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty());
-    // Category exports can contain inline credentials in schema-less JSON
-    // (workflows, quick runs, provider options), even with secret exclusion.
-    let requires_encryption = matches!(&export_type, ExportType::All | ExportType::SpecificRemote)
-        || matches!(&export_type, ExportType::Category(category)
-            if matches!(category.as_str(), "remotes" | "backend" | "workflows" | "quick_runs" | "templates"));
-    if (requires_encryption || include_secrets.unwrap_or(false))
-        && !password.as_ref().is_some_and(|value| value.len() >= 4)
-    {
-        return Err(crate::localized_error!(
-            "backendErrors.backup.secretRequirePassword"
-        ));
-    }
+    let (secret_policy, include_rclone_config) =
+        export_secrets(password.as_deref(), include_secrets.unwrap_or(false));
     let provider_state = app_handle.state::<super::rclone_config_provider::RcloneConfigProvider>();
     provider_state.replace(super::rclone_config_provider::RcloneConfigProvider::default());
     info!("Starting backup with rcman to: {backup_dir}");
@@ -79,7 +69,7 @@ pub async fn backup_settings(
         } else {
             options = options.include_sub_settings(category);
         }
-        if category == "remotes" {
+        if category == "remotes" && include_rclone_config {
             register_rclone_config_provider(&app_handle).await?;
             options = options.include_external("rclone.conf");
         }
@@ -87,8 +77,10 @@ pub async fn backup_settings(
     }
 
     if matches!(export_type, ExportType::All) {
-        register_rclone_config_provider(&app_handle).await?;
-        options = options.include_external("rclone.conf");
+        if include_rclone_config {
+            register_rclone_config_provider(&app_handle).await?;
+            options = options.include_external("rclone.conf");
+        }
         options = options.include_sub_settings(crate::utils::constants::SUB_REMOTES);
         options = options.include_sub_settings(crate::utils::constants::SUB_BACKEND);
         options = options.include_sub_settings(crate::utils::constants::SUB_CONNECTIONS);
@@ -100,6 +92,7 @@ pub async fn backup_settings(
     }
 
     if matches!(export_type, ExportType::SpecificRemote)
+        && include_rclone_config
         && let Some(ref name) = remote_name
     {
         use super::rclone_config_provider::RcloneConfigProvider;
@@ -122,20 +115,7 @@ pub async fn backup_settings(
         }
     }
 
-    // Determine secret export policy
-    let include_secrets_flag = include_secrets.unwrap_or(false);
-    if include_secrets_flag {
-        // If user requested including secrets, require a valid password to avoid plaintext secrets
-        let pw_ok = password.as_ref().is_some_and(|s| s.trim().len() >= 4);
-        if !pw_ok {
-            return Err(crate::localized_error!(
-                "backendErrors.backup.secretRequirePassword"
-            ));
-        }
-        options = options.secret_policy(rcman::SecretBackupPolicy::EncryptedOnly);
-    } else {
-        options = options.secret_policy(rcman::SecretBackupPolicy::Exclude);
-    }
+    options = options.secret_policy(secret_policy);
 
     if let Some(note) = user_note {
         options = options.note(note);
@@ -165,6 +145,22 @@ pub async fn backup_settings(
 
     info!("Backup complete: {}", backup_path.display());
     Ok(format!("Backup created at: {}", backup_path.display()))
+}
+
+/// Secrets leave the app only inside an encrypted archive: without a password the
+/// managed secrets are redacted and `rclone.conf` (or a remote's rclone config) is
+/// left out. Returns the secret policy and whether the rclone config is exported.
+fn export_secrets(
+    password: Option<&str>,
+    include_secrets: bool,
+) -> (rcman::SecretBackupPolicy, bool) {
+    let encrypted = password.is_some();
+    let policy = if encrypted && include_secrets {
+        rcman::SecretBackupPolicy::EncryptedOnly
+    } else {
+        rcman::SecretBackupPolicy::Exclude
+    };
+    (policy, encrypted)
 }
 
 pub(super) async fn register_rclone_config_provider(app_handle: &AppHandle) -> Result<(), String> {
@@ -281,5 +277,78 @@ pub async fn analyze_backup_file(
             "backendErrors.backup.invalidArchive",
             "error" => e
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_password_includes_secrets_and_the_rclone_config() {
+        assert_eq!(
+            export_secrets(Some("pass"), true),
+            (rcman::SecretBackupPolicy::EncryptedOnly, true)
+        );
+    }
+
+    #[test]
+    fn without_a_password_secrets_and_the_rclone_config_stay_out() {
+        for include_secrets in [false, true] {
+            assert_eq!(
+                export_secrets(None, include_secrets),
+                (rcman::SecretBackupPolicy::Exclude, false)
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_full_export_without_a_password_succeeds_without_the_rclone_config() {
+        use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport};
+        use crate::utils::types::{backup_types::ExportType, state::RcloneState};
+        use std::sync::Arc;
+
+        let directory = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let conf = directory.path().join("rclone.conf");
+        std::fs::write(&conf, "[drive]\ntype = drive\ntoken = secret\n").unwrap();
+        let settings =
+            crate::services::settings::manager::create_settings_manager(directory.path()).unwrap();
+        let provider = super::super::rclone_config_provider::RcloneConfigProvider::from_path(conf);
+        settings.register_external_provider(Box::new(provider.clone()));
+        let app = AppHandle::default();
+        app.manage(settings);
+        app.manage(provider);
+        app.manage(BackendManager::new());
+        app.manage(RcloneState::new(
+            reqwest::Client::new(),
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
+
+        let message = backup_settings(
+            app.clone(),
+            output.path().display().to_string(),
+            ExportType::All,
+            None,
+            None,
+            None,
+            None,
+            Some(true),
+        )
+        .await
+        .unwrap();
+
+        let path = message.trim_start_matches("Backup created at: ");
+        let analysis = analyze_backup_file(app, path.into()).await.unwrap();
+        assert!(!analysis.is_encrypted);
+        assert!(!analysis.contents.unwrap().rclone_config);
+    }
+
+    #[test]
+    fn a_password_alone_encrypts_without_adding_managed_secrets() {
+        assert_eq!(
+            export_secrets(Some("pass"), false),
+            (rcman::SecretBackupPolicy::Exclude, true)
+        );
     }
 }

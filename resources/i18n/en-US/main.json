@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "Run in Background",
-        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."
+        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed.",
+        "notification": {
+          "jobs": "Active jobs: {{count}}",
+          "mounts": "Mounts: {{count}}",
+          "serves": "Serves: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Mount Driver Check Disabled",
       "description": "Mount driver check was skipped. Mounting remotes requires a compatible mount driver installed on your system.",
       "install": "Install Driver",
+      "dismissTooltip": "Don't show again"
+    },
+    "battery": {
+      "title": "Allow background activity",
+      "subtitle": "Android can pause network access while the screen is off. Exempt RClone Manager from battery optimization to keep transfers and schedules running.",
+      "allow": "Allow",
+      "dismissTooltip": "Don't show again"
+    },
+    "storage": {
+      "title": "Allow access to all files",
+      "subtitle": "Browsing and transferring local folders outside the app's own storage needs access to all files on Android.",
+      "allow": "Allow",
       "dismissTooltip": "Don't show again"
     },
     "metered": {
@@ -1312,6 +1329,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
+      "autoStartDelay": "Startup Delay",
+      "autoStartDelayHint": "Wait this long after the app starts before launching. Useful when the network, VPN or other mounts are not ready yet.",
+      "autoStartDelayNone": "None",
       "enableScheduled": "Enable Scheduled {{type}}",
       "enableWatch": "Enable Real-time File Monitoring",
       "watchDescription": "Watch local source directories for file modifications and sync changes automatically.",
@@ -2178,6 +2198,7 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
+      "noPasswordHint": "Without a password, rclone.conf and saved secrets are left out of the backup. Credentials typed directly into Quick Runs or workflows are exported as they are.",
       "vaultWarningTitle": "Configuration Vault is Open",
       "vaultWarningDesc": "Exported backups do not inherit vault encryption. Use the encryption option below to protect sensitive credentials and configurations with a password.",
       "exportNow": "Export Now",
@@ -2243,7 +2264,8 @@
         },
         "password": {
           "label": "Password",
-          "placeholder": "Leave empty for no auth"
+          "placeholder": "Leave empty for no auth",
+          "keepPlaceholder": "Leave empty to keep the current password"
         },
         "configPassword": {
           "label": "Config Password",
@@ -2289,13 +2311,12 @@
       "status": {
         "notTested": "Connection not tested",
         "connected": "Connected",
-        "error": "Error: {{message}}"
+        "error": "Error: {{message}}",
+        "engineOffline": "Engine offline"
       },
       "notifications": {
         "switchFailed": "Failed to switch: {{message}}",
         "connectionSuccess": "Connection successful",
-        "connectionFailed": "Connection failed: {{message}}",
-        "testFailed": "Test failed unexpectedly",
         "fileSelectFailed": "Failed to select file",
         "updated": "Backend updated successfully",
         "added": "Backend added successfully",
@@ -3079,7 +3100,6 @@
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "invalidArchive": "Invalid backup archive format",
       "restoreFailed": "Backup restore failed: {{error}}",
-      "secretRequirePassword": "This backup is protected by a secret and requires a password",
       "exportFailed": "Backup export failed: {{error}}",
       "refreshFailed": "Failed to refresh system after backup restore: {{error}}",
       "restoreIncomplete": "Backup restore was incomplete: {{error}}"
@@ -3090,7 +3110,11 @@
       "cannotRemoveLocal": "Cannot remove the Local backend",
       "cannotRemoveActive": "Cannot remove the active backend",
       "alreadyExists": "A backend with this name already exists",
-      "notFound": "Backend '{{name}}' not found"
+      "notFound": "Backend '{{name}}' not found",
+      "cannotConnect": "Cannot connect to '{{name}}': {{error}}",
+      "connectionFailed": "Connection failed: {{error}}",
+      "listFailedReverted": "Connected, but listing the backend's items failed: {{error}}. Reverted to Local.",
+      "tooSlowReverted": "The backend accepted the connection but was too slow to list its items. Reverted to Local."
     },
     "job": {
       "notFound": "JobInfo not found",

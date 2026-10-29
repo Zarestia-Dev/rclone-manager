@@ -7,6 +7,11 @@
     <string name="saf_keepalive_channel_name">Service de Stockage Rclone</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Exécution en arrière-plan</string>
+    <string name="keepalive_stopped_text">Android a arrêté le service en arrière-plan. Touchez pour reprendre.</string>
     <string name="keepalive_channel_name">Service d\'Arrière-Plan RClone</string>
     <string name="keepalive_channel_desc">Maintient les montages actifs, les transferts et les tâches en arrière-plan</string>
+    <string name="shortcut_file_manager_short">Fichiers</string>
+    <string name="shortcut_file_manager_long">Ouvrir le gestionnaire de fichiers</string>
+    <string name="shortcut_open_remote">Ouvrir %1$s</string>
+    <string name="saf_folder_load_failed">Impossible de charger ce dossier. Vérifiez la connexion et réessayez.</string>
 </resources>

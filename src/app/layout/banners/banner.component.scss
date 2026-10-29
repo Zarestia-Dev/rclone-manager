@@ -42,6 +42,8 @@ mat-toolbar {
   }
 
   &.flatpak-warning-banner,
+  &.battery-banner,
+  &.storage-banner,
   &.metered-banner {
     background-color: var(--banner-bg-color);
   }
@@ -82,6 +84,54 @@ mat-toolbar {
 
     .banner-subtitle {
       font-size: var(--font-size-xs);
+    }
+
+    &.development-banner {
+      min-height: 0;
+      padding-block: var(--space-xs);
+
+      .banner-text-group {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
+
+    // Action prompts: left-aligned text fills the row, button and dismiss sit inline on the right
+    &.slide-banner.visible:is(.battery-banner, .storage-banner, .flatpak-warning-banner) {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      grid-template-areas: "text action close";
+      align-items: center;
+      justify-content: stretch;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border-color);
+
+      .banner-text-group {
+        grid-area: text;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-xxs);
+        margin: 0;
+        text-align: start;
+      }
+
+      .banner-message {
+        font-size: var(--font-size-base);
+      }
+
+      .banner-subtitle {
+        line-height: 1.35;
+      }
+
+      button[matButton] {
+        grid-area: action;
+      }
+
+      .action-button {
+        grid-area: close;
+      }
     }
   }
 }

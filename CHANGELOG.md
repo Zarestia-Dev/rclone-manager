@@ -4,30 +4,34 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.3.5] - 2026-10-29
+
+### Added
+
+- **Auto-Start Delay**: Profiles and Quick Runs with auto-start on can now wait a set number of seconds after the app starts, which helps when the network, a VPN, or another mount is not ready yet. Off by default.
 
 ### Changed
 
-- **Per-Backend Quick Runs and Workflows**: Quick Runs and Workflows now belong to the selected backend, like its remotes and backend settings. Previously a single list was shared by every backend, so cron, watch, and auto-start tasks ran on whichever backend happened to be active and could point at remotes that backend does not have. Existing Quick Runs and Workflows become the Local backend's. A new backend starts empty unless **Copy Quick Runs & Workflows** names a source in the Add Backend dialog, and existing remote backends start empty on their first switch. The Quick Run and Workflow lists reload when the backend changes.
-
-- **Workflow Engine Structure**: The workflow engine, previously one 4,800-line file, is split into modules for scheduling, per-run state, cancellation, active runs, job-event triggers, and one handler per node kind. Nodes are dispatched on a `NodeKind` enum instead of matching type strings, so a missing handler is a compile error; stored workflows keep their `type` string, so newer node types from other versions still round-trip. Two engine tests that re-implemented the code they claimed to test now call the real functions.
-- **Event Delivery**: Backend event subscribers now share one copy of each event instead of the bridge deep-copying its payload on every emit, which mattered most for large workflow outputs.
-- **Workflow Engine Performance**: Running a workflow no longer copies the whole definition, its nodes, and its edges for every node; nodes and edges are looked up by index, progress is built from the running steps only, and node outputs are kept once and sent to the interface without extra copies. Waiting on a job reads a light status instead of copying its statistics every 250 ms, delays and schedule waits sleep instead of polling a flag (a schedule wait still rechecks the clock every 30 seconds so it survives suspend), `file_exists` conditions no longer block the runtime, and finishing jobs no longer reread every workflow from storage to find job-event triggers.
+- **Faster Startup**: Removed repeated loading of caches and settings at startup. The wait for the rclone engine now starts at 25 ms and backs off instead of always sleeping 500 ms.
+- **Per-Backend Quick Runs and Workflows**: Quick Runs and Workflows now belong to the selected backend, like its remotes and settings. Existing ones become the Local backend's; a new backend starts empty unless **Copy Quick Runs & Workflows** names a source in the Add Backend dialog.
+- **Workflow Engine**: Split the 4,800-line workflow engine into modules with one handler per node kind, and reduced copying and polling while a workflow runs. Stored workflows are unchanged.
 
 ### Fixed
 
-- **Workflow Messages Are Translated**: Workflow run messages, progress titles, step errors, and the execution log lines are now translated in all ten languages instead of always appearing in English. Step errors reach the interface as translation keys and are translated when displayed, so they follow the language setting. Check and transfer summaries and the Check report (`{{prev.summary}}`, `{{prev.report}}`) are rendered in the current language for use in notifications. Starting a workflow that is already running now shows a readable message in the execution log. Workflow validation messages, default texts of Stop, Audit Log, and Notification steps, and dry-run simulation messages follow the language setting as well.
-- **Workflow Run Reliability**: A workflow can only run once at a time on its backend (the same id on another backend is a separate workflow); a second start (for example a cron tick while a long run is still waiting) is refused instead of overwriting the first run's tracking, which made it unstoppable and invisible to the vault-lock check. A node that crashes now fails its own step instead of leaving the run waiting forever. Finishing a run no longer rewrites the whole stored workflow, so edits made while it was running are kept and a workflow deleted meanwhile stays deleted. Very large delay values no longer overflow. Fixes #312.
-- **Workflow Stop and Cancel Semantics**: A Stop node now only ends scheduling; steps already running in parallel finish instead of being aborted and failing the run. Stopping a workflow interrupts waits and delays immediately rather than within a polling interval, and a run you stopped is reported as stopped rather than failed.
-- **Workflows Across a Backend Switch**: A running workflow keeps the Quick Runs it names even if the selected backend changes before they start, with or without the configuration vault.
-- **Workflow Mount Steps**: A Mount step only reuses an existing mount that is its own or the same remote at the same mount point; a different remote already mounted there is now reported as a conflict instead of being treated as success. Mount and Serve steps record a per-run execution id instead of the workflow id.
-- **Workflow Failures No Longer Pass Silently**: An unsupported node type, an unknown condition operator, or a job that disappeared from the job list now fail the step instead of reporting success or comparing for equality.
-- **Workflow Job Event Triggers**: Only jobs of the selected backend start workflows, since each backend has its own. Jobs are now recognized by their start time as well as their id, so job ids reused after an rclone restart still trigger workflows, and the oldest entries are forgotten first instead of clearing the whole list at once, which could trigger a workflow twice.
-- **Damaged Workflow or Quick Run Records**: One unreadable stored workflow or Quick Run no longer hides all the others or breaks scheduling; it is skipped and logged.
-- **Backend Names and Profile Collisions**: Adding a backend whose name differs from an existing backend only by case, or that matches Local's `default` profile, is now rejected. On Windows and macOS those names share one settings folder, so removing one backend could delete the other's settings. Saved backends that collide are skipped at startup with a warning instead of being silently ignored.
-
-- **Legacy Default Profile References**: Mount, sync, copy, and other operations no longer fail with `Invalid rclone flags detected: default` for remotes saved by 0.3.3 or earlier. Those versions stored the lowercase `default` profile name, and an absent Default profile (with no saved options) is now matched case-insensitively for runtime remote, VFS, filter, and backend profiles. Fixes #330.
-- **Profile Resolution Consistency**: Scheduled and workflow runs now resolve a legacy `default` profile the same way as saving and manual runs, instead of silently dropping its options. Malformed `app` settings in a profile (for example a non-numeric `watchDelay`) are now reported as errors rather than silently discarding the profile's schedule and linked profiles. The Remote detail panel also finds a legacy lowercase Default profile.
+- **Startup Stopped by a Missing Watch Folder**: A file watcher that could not start, such as one on an unplugged drive, or a cron scheduler error no longer aborts the rest of app startup.
+- **Android Background Crash**: The app no longer crashes after about six hours in the background. The background service now uses the special-use foreground type, which Android 15 does not limit.
+- **Android Background Reliability**: Added a banner to exempt the app from battery optimization and a notification when Android ends the app while keep-alive was running. The wake lock is renewed every 30 minutes, and automatic cloud backup no longer uploads `rclone.conf`.
+- **Android Background Service and Updates**: With "Run in Background" off, the service now stays up while jobs, mounts, or serves are running. In-app updates work again on Android 9, 10, and some Android 13 builds.
+- **Android File Manager**: Saving shorter content over a file no longer leaves the old ending, and creating a name that already exists picks "name (1)". Folders that fail to load show an error, browsing remotes no longer blocks the system, and mounted remotes are no longer polled in the background. Shared text is saved as a file instead of being dropped.
+- **Android Release Build**: Release shrinking removed methods Rust calls through JNI, so the file manager roots, metered-connection banner, `content://` downloads, and opening folders in the system file browser did not work in the shipped APK.
+- **Lower Background Activity**: While the window is hidden, transfer statistics are requested every 11 seconds instead of every second.
+- **Workflow Messages Are Translated**: Workflow run messages, step errors, and execution log lines now follow the language setting in all ten languages.
+- **Workflow Run Reliability**: A workflow can only run once at a time on its backend, a crashing node fails its own step, and finishing a run no longer overwrites edits made meanwhile. Fixes #312.
+- **Workflow Stop and Cancel**: A Stop node only ends scheduling, stopping interrupts waits immediately, and a stopped run is reported as stopped rather than failed.
+- **Workflow Steps and Triggers**: Mount steps report a conflict when a different remote is mounted at the same point, unsupported nodes and unknown operators fail the step instead of passing, and only jobs of the selected backend start workflows. A running workflow keeps its Quick Runs across a backend switch.
+- **Damaged Workflow or Quick Run Records**: One unreadable stored record is skipped and logged instead of hiding all the others.
+- **Backend Names and Profile Collisions**: Adding a backend whose name differs from another only by case, or matches Local's `default` profile, is rejected, since removing one could delete the other's settings on Windows and macOS.
+- **Legacy Default Profile References**: Operations no longer fail with `Invalid rclone flags detected: default` for remotes saved by 0.3.3 or earlier, and scheduled and workflow runs resolve the legacy `default` profile like manual runs. Fixes #330.
 
 ## [0.3.4] - 2026-10-26
 

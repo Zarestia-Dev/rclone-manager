@@ -15,24 +15,37 @@ describe('WorkflowEventService', () => {
   let stateService: WorkflowStateService;
   let engineService: WorkflowEngineService;
 
-  beforeEach(() => {
+  let invoke: ReturnType<typeof vi.fn>;
+  let engineReady: Subject<void>;
+  let backendSwitched: Subject<string>;
+  let executionState: Subject<WorkflowExecutionStatePayload>;
+
+  function setup(activeWorkflows: Promise<string[] | null> | string[] | null = null): void {
+    TestBed.resetTestingModule();
+    invoke = vi
+      .fn()
+      .mockImplementation((command: string) =>
+        command === 'get_active_workflows'
+          ? Promise.resolve(activeWorkflows)
+          : Promise.resolve(null)
+      );
+    engineReady = new Subject<void>();
+    backendSwitched = new Subject<string>();
+    executionState = new Subject<WorkflowExecutionStatePayload>();
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
         WorkflowEventService,
         WorkflowStateService,
         WorkflowEngineService,
-        {
-          provide: ApiClientService,
-          useValue: {
-            invoke: vi.fn().mockResolvedValue(null),
-          },
-        },
+        { provide: ApiClientService, useValue: { invoke } },
         {
           provide: EventListenersService,
           useValue: {
             listenToWorkflowNodeStateChanged: vi.fn().mockReturnValue(new Subject()),
-            listenToWorkflowExecutionStateChanged: vi.fn().mockReturnValue(new Subject()),
+            listenToWorkflowExecutionStateChanged: vi.fn().mockReturnValue(executionState),
+            listenToRcloneEngineReady: vi.fn().mockReturnValue(engineReady),
+            listenToBackendSwitched: vi.fn().mockReturnValue(backendSwitched),
           },
         },
       ],
@@ -41,7 +54,9 @@ describe('WorkflowEventService', () => {
     stateService = TestBed.inject(WorkflowStateService);
     engineService = TestBed.inject(WorkflowEngineService);
     service = TestBed.inject(WorkflowEventService);
-  });
+  }
+
+  beforeEach(() => setup());
 
   function loadWorkflowWithNode(): {
     workflow: WorkflowDefinition;
@@ -191,6 +206,72 @@ describe('WorkflowEventService', () => {
       });
 
       expect(engineService.logs().at(-1)?.message).toBe("Workflow 'Backup' completed successfully");
+    });
+  });
+
+  describe('active workflow hydration', () => {
+    const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve));
+
+    it('shows a run that began before the service existed', async () => {
+      setup(['wf-autostart']);
+      await flush();
+
+      expect(invoke).toHaveBeenCalledWith('get_active_workflows', undefined);
+      expect(engineService.isExecuting()).toBe(true);
+    });
+
+    it('stays idle when nothing is running or the answer is empty', async () => {
+      for (const answer of [[], null]) {
+        setup(answer);
+        await flush();
+        expect(engineService.isExecuting()).toBe(false);
+      }
+    });
+
+    it('does not clear a run the interface started itself', async () => {
+      setup([]);
+      await flush();
+      engineService.isExecuting.set(true);
+
+      engineReady.next();
+      await flush();
+
+      expect(engineService.isExecuting()).toBe(true);
+    });
+
+    it('asks again when the engine restarts or the backend changes', async () => {
+      setup([]);
+      await flush();
+      invoke.mockClear();
+
+      engineReady.next();
+      backendSwitched.next('Remote');
+      await flush();
+
+      expect(invoke).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets a newer completion event win over a slower answer', async () => {
+      let answer!: (ids: string[]) => void;
+      setup(new Promise<string[]>(resolve => (answer = resolve)));
+
+      executionState.next({ workflowId: 'wf-1', state: 'completed' });
+      answer(['wf-1']);
+      await flush();
+
+      expect(engineService.isExecuting()).toBe(false);
+    });
+
+    it('keeps working when the lookup fails', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      setup();
+      invoke.mockRejectedValueOnce(new Error('offline'));
+
+      engineReady.next();
+      await flush();
+
+      expect(engineService.isExecuting()).toBe(false);
+      error.mockRestore();
     });
   });
 });

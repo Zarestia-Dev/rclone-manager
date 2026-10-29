@@ -31,16 +31,6 @@ pub struct RuntimeInfo {
     pub version: Option<String>,
     /// OS (e.g. "linux", "windows")
     pub os: Option<String>,
-    /// Architecture (e.g. "amd64", "arm64")
-    ///
-    /// Populated by `fetch_runtime_info` but currently not surfaced to the
-    /// UI — kept for future diagnostics.
-    pub arch: Option<String>,
-    /// Go version (e.g. "go1.22.1")
-    ///
-    /// Populated by `fetch_runtime_info` but currently not surfaced to the
-    /// UI — kept for future diagnostics.
-    pub go_version: Option<String>,
     /// Process ID of rclone
     pub pid: Option<u32>,
     /// Full version response from Rclone
@@ -87,8 +77,6 @@ mod tests {
         assert_eq!(info.status, RuntimeStatus::Unknown);
         assert!(info.version.is_none());
         assert!(info.os.is_none());
-        assert!(info.arch.is_none());
-        assert!(info.go_version.is_none());
         assert!(!info.is_connected());
         assert!(info.error_message().is_none());
     }

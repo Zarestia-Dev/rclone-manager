@@ -1,7 +1,9 @@
-import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { fromEvent } from 'rxjs';
 import { TauriBaseService } from './tauri-base.service';
 import { isAndroid } from './api-client.service';
+import { LocalStorageService } from '../../ui/state/local-storage.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { MountManagementService } from '../../operations/mount-management.service';
 import { JobManagementService } from '../../operations/job-management.service';
@@ -16,6 +18,8 @@ export interface AndroidNativeKeepAliveBridge {
   updateKeepAliveNotification?: (title: string, text: string) => void;
 }
 
+const BATTERY_PROMPT_DISMISSED_KEY = 'android.batteryPromptDismissed';
+
 const getBridge = (): AndroidNativeKeepAliveBridge | undefined =>
   (window as Window & { __rclone__?: AndroidNativeKeepAliveBridge }).__rclone__;
 
@@ -28,9 +32,22 @@ export class AndroidKeepAliveService extends TauriBaseService {
   private readonly jobManagement = inject(JobManagementService);
   private readonly serveManagement = inject(ServeManagementService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly localStorage = inject(LocalStorageService);
 
   private readonly isKeepAliveSettingEnabled = signal<boolean>(true);
   readonly isBatteryOptimizationIgnored = signal<boolean>(true);
+  private readonly batteryPromptDismissed = signal<boolean>(
+    this.localStorage.get<boolean>(BATTERY_PROMPT_DISMISSED_KEY, false)
+  );
+
+  // Doze suspends the network and timers of apps that are not exempt, which stops background
+  // work even while the foreground service is running.
+  readonly showBatteryOptimizationPrompt = computed(
+    () =>
+      this.isKeepAliveSettingEnabled() &&
+      !this.isBatteryOptimizationIgnored() &&
+      !this.batteryPromptDismissed()
+  );
 
   private initialized = false;
   private lastSyncedShouldRun: boolean | null = null;
@@ -75,6 +92,15 @@ export class AndroidKeepAliveService extends TauriBaseService {
 
     this.refreshBatteryOptimizationStatus();
 
+    // The system dialog leaves the app, so the answer is only known once it is shown again.
+    fromEvent(document, 'visibilitychange')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (!document.hidden) {
+          this.refreshBatteryOptimizationStatus();
+        }
+      });
+
     this.appSettingsService
       .selectSetting('general.keep_alive')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -111,25 +137,30 @@ export class AndroidKeepAliveService extends TauriBaseService {
     }
   }
 
+  dismissBatteryOptimizationPrompt(): void {
+    this.batteryPromptDismissed.set(true);
+    this.localStorage.set(BATTERY_PROMPT_DISMISSED_KEY, true);
+  }
+
   private buildNotificationText(
     mountsCount: number,
     jobsCount: number,
     servesCount: number
   ): string {
-    const summaryParts: string[] = [];
-    if (jobsCount > 0) {
-      summaryParts.push(`${jobsCount} active jobs`);
-    }
-    if (mountsCount > 0) {
-      summaryParts.push(`${mountsCount} mounted`);
-    }
-    if (servesCount > 0) {
-      summaryParts.push(`${servesCount} serves`);
-    }
+    const key = 'settings.general.keep_alive.notification';
+    const summaryParts = (
+      [
+        ['jobs', jobsCount],
+        ['mounts', mountsCount],
+        ['serves', servesCount],
+      ] as const
+    )
+      .filter(([, count]) => count > 0)
+      .map(([part, count]) => this.translate.instant(`${key}.${part}`, { count }));
 
-    const defaultLabel =
-      this.translate.instant('settings.general.keep_alive.label') || 'Running in background';
-    return summaryParts.length > 0 ? summaryParts.join(' • ') : defaultLabel;
+    return summaryParts.length > 0
+      ? summaryParts.join(' • ')
+      : this.translate.instant('settings.general.keep_alive.label');
   }
 
   private scheduleSyncServiceState(

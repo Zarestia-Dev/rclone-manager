@@ -6,7 +6,7 @@ pub mod bootstrap;
 use crate::context::AppHandle;
 use crate::rclone::backend::BackendManager;
 use crate::services::bridge;
-use crate::services::lifecycle::startup::handle_startup;
+use crate::services::lifecycle::startup::autostart_profiles;
 use crate::services::security::SafeEnvironmentManager;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
@@ -77,25 +77,21 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
-    if let Err(e) = initialize_caches(&app_handle).await {
-        error!("Phase 3 Data hydration failed: {e}");
-    }
+    // The engine's post-start setup already refreshed the remote caches and applied the
+    // runtime settings; only what it does not cover is loaded here.
+    info!("Phase 3: Loading alert rules...");
+    load_alert_state(&app_handle).await;
 
     info!("Phase 4: Starting services...");
 
+    // Automation is optional: when it fails, health monitoring and the profile
+    // auto-starts below must still run.
     let autostarts = automation::initialize_automations(app_handle.clone())
         .await
-        .inspect_err(|e| {
-            error!("Phase 4 Automation setup failed: {e}");
-        })?;
+        .inspect_err(|e| error!("Phase 4 Automation setup failed: {e}"))
+        .ok();
 
     crate::services::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
-
-    info!("Phase 5: Applying runtime settings");
-    let settings_manager = app_handle.state::<AppSettingsManager>();
-
-    let settings = settings_manager.get_all().map_err(|e| e.to_string())?;
-    apply_settings::apply_core_settings(&app_handle, &settings).await;
 
     #[cfg(feature = "tray")]
     {
@@ -108,14 +104,11 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
         return Ok(());
     }
     crate::services::settings::access::require_session(&app_handle, session_revision)?;
-    app_handle
-        .state::<crate::services::automation::watcher::WatcherManager>()
-        .sync_watchers(app_handle.clone())
-        .await?;
-    app_handle
-        .state::<crate::services::automation::engine::AutomationScheduler>()
-        .start()
-        .await?;
+    if autostarts.is_some() {
+        for failure in start_automation_runtime(&app_handle).await {
+            error!("{failure}");
+        }
+    }
     if state.is_shutting_down() {
         return Ok(());
     }
@@ -124,9 +117,11 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
     // available while those operations are starting.
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
-    info!("Phase 6: Running post-initialization tasks");
-    autostarts.start(&app_handle);
-    handle_startup(app_handle.clone()).await;
+    info!("Phase 5: Running post-initialization tasks");
+    if let Some(autostarts) = autostarts {
+        autostarts.start(&app_handle);
+    }
+    autostart_profiles(app_handle.clone()).await;
 
     info!("Initialization complete");
     Ok(())
@@ -182,9 +177,9 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Phase 3: Data - Hydrates caches and ensures defaults
+/// Refreshes the remote caches and reloads alerts after a settings change or restore.
 async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
-    info!("Phase 3: Refreshing caches...");
+    info!("Refreshing caches...");
 
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -198,6 +193,12 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     }
     debug!("Refreshed backend caches");
 
+    load_alert_state(app_handle).await;
+    Ok(())
+}
+
+/// Seeds the default alerts and loads the alert rules and actions.
+async fn load_alert_state(app_handle: &AppHandle) {
     let manager = app_handle.state::<AppSettingsManager>();
     #[cfg(feature = "notifications")]
     if let Err(e) = crate::services::alerts::seed::seed_defaults(manager.inner()) {
@@ -208,8 +209,28 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     alert_cache.reload_rules(manager.inner()).await;
     alert_cache.reload_actions(manager.inner()).await;
     debug!("Alert rules and actions loaded");
+}
 
-    Ok(())
+/// Starts the file watchers and the cron scheduler. Neither is required for the
+/// app to work, so their failures are returned for logging instead of aborting
+/// startup. A watched folder that is missing (an unplugged drive) is one of them.
+async fn start_automation_runtime(app_handle: &AppHandle) -> Vec<String> {
+    let mut failures = Vec::new();
+    if let Err(e) = app_handle
+        .state::<crate::services::automation::watcher::WatcherManager>()
+        .sync_watchers(app_handle.clone())
+        .await
+    {
+        failures.push(format!("File watchers are not fully active: {e}"));
+    }
+    if let Err(e) = app_handle
+        .state::<crate::services::automation::engine::AutomationScheduler>()
+        .start()
+        .await
+    {
+        failures.push(format!("Cron scheduler did not start: {e}"));
+    }
+    failures
 }
 
 const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
@@ -220,15 +241,9 @@ async fn check_active_backend_connectivity(app_handle: &crate::context::AppHandl
     let active_name = backend_manager.get_active_name().await;
 
     if crate::rclone::backend::types::Backend::is_local_name(&active_name) {
-        info!(
-            "Skipping redundant Local backend connectivity check (already verified during engine startup)"
-        );
-        backend_manager
-            .set_runtime_status(
-                crate::utils::constants::LOCAL_BACKEND_NAME,
-                crate::rclone::backend::runtime::RuntimeStatus::Connected,
-            )
-            .await;
+        // The engine's post-start setup records the Local status. Marking it
+        // connected here would also hide an engine that failed to start.
+        info!("Skipping Local backend connectivity check (verified during engine startup)");
     } else {
         info!(
             "Active backend '{active_name}' is remote — spawning connectivity probe in background so UI can load immediately"
@@ -237,28 +252,14 @@ async fn check_active_backend_connectivity(app_handle: &crate::context::AppHandl
         crate::utils::spawn(async move {
             let backend_manager = app_clone.state::<BackendManager>();
             let transport = app_clone.state::<RcloneState>().transport.clone();
-            if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
+            crate::rclone::backend::connectivity::ensure_connectivity(
                 &backend_manager,
                 &*transport,
                 BACKEND_CONNECTIVITY_TIMEOUT,
             )
-            .await
-            {
-                error!("Remote backend connectivity check failed: {e}");
-                // Status is already set to Error(_) inside ensure_connectivity.
-            } else {
-                info!("Remote backend connectivity check completed");
-            }
+            .await;
         });
     }
-
-    let app_handle_clone = app_handle.clone();
-    crate::utils::spawn(async move {
-        let backend_manager = app_handle_clone.state::<BackendManager>();
-        let transport = app_handle_clone.state::<RcloneState>().transport.clone();
-        crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &*transport)
-            .await;
-    });
 }
 
 /// Phase 0: Core Setup - Initializes logging, i18n, and security.
@@ -289,4 +290,65 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
 
     info!("Phase 0 Core Setup complete");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rclone::state::automations::AutomationsCache;
+    use crate::services::automation::{engine::AutomationScheduler, watcher::WatcherManager};
+
+    fn automation_app() -> AppHandle {
+        let app = AppHandle::default();
+        app.manage(BackendManager::new());
+        app.manage(AutomationsCache::new());
+        app.manage(WatcherManager::new());
+        app.manage(AutomationScheduler::new());
+        app
+    }
+
+    #[tokio::test]
+    async fn an_idle_automation_runtime_reports_only_the_uninitialized_scheduler() {
+        let app = automation_app();
+
+        let failures = start_automation_runtime(&app).await;
+
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].starts_with("Cron scheduler did not start"));
+    }
+
+    #[tokio::test]
+    async fn a_missing_watch_folder_is_reported_instead_of_aborting_startup() {
+        let root = tempfile::tempdir().unwrap();
+        let missing = root.path().join("unplugged-drive");
+        let app = automation_app();
+        let config: crate::utils::types::remotes::RemoteSettings =
+            serde_json::from_value(serde_json::json!({
+                "name": "drive",
+                "syncConfigs": {"Default": {
+                    "app": {"watchEnabled": true, "watchDelay": 0},
+                    "rclone": {"srcFs": missing, "dstFs": "drive:"}
+                }}
+            }))
+            .unwrap();
+        app.state::<AutomationsCache>()
+            .add_or_update_automation_for_remote("Local", "drive", &config)
+            .await
+            .unwrap();
+
+        let failures = start_automation_runtime(&app).await;
+
+        assert!(
+            failures
+                .iter()
+                .any(|failure| failure.starts_with("File watchers are not fully active")),
+            "{failures:?}"
+        );
+        assert!(
+            failures
+                .iter()
+                .any(|failure| failure.starts_with("Cron scheduler did not start")),
+            "{failures:?}"
+        );
+    }
 }

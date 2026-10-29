@@ -272,11 +272,26 @@ describe('ExportModalComponent', () => {
   it('renders alert banner when vault is open and hides it when vault is not open', () => {
     vaultServiceMock.isVaultEnabled.set(false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-alert-banner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-alert-banner.warning')).toBeNull();
 
     vaultServiceMock.isVaultEnabled.set(true);
     fixture.detectChanges();
-    const banner = fixture.nativeElement.querySelector('app-alert-banner');
+    const banner = fixture.nativeElement.querySelector('app-alert-banner.warning');
     expect(banner).not.toBeNull();
+  });
+
+  it('explains what a backup without a password leaves out', () => {
+    fixture.detectChanges();
+    const banners = fixture.nativeElement.querySelectorAll('app-alert-banner.info');
+    expect(banners.length).toBe(1);
+    expect(banners[0].textContent).toContain('modals.export.noPasswordHint');
+  });
+
+  it('shows the restore hint instead once a password is requested', () => {
+    component.onPasswordProtectionChange(true);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('app-alert-banner.info').textContent;
+    expect(text).toContain('modals.export.passwordHint');
+    expect(text).not.toContain('modals.export.noPasswordHint');
   });
 });

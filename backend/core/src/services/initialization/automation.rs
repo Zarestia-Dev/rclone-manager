@@ -52,15 +52,14 @@ impl AutostartTasks {
 
     pub(super) fn start(self, app: &AppHandle) {
         for task in self.tasks {
-            let app = app.clone();
             let backend = self.backend.clone();
-            crate::utils::spawn(async move {
-                if app
-                    .state::<crate::utils::types::state::RcloneState>()
-                    .is_shutting_down()
-                {
-                    return;
-                }
+            let delay = match &task {
+                AutostartTask::QuickRun(quick_run) => quick_run.autostart_delay_secs(),
+                AutostartTask::Workflow(_) => 0,
+            };
+            let task_app = app.clone();
+            crate::services::lifecycle::startup::spawn_auto_start(app, delay, async move {
+                let app = task_app;
                 match task {
                     AutostartTask::QuickRun(quick_run) => {
                         let id = quick_run.id.clone();

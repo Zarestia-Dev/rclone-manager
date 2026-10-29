@@ -62,6 +62,21 @@ describe('AutomationService cache', () => {
     await vi.waitFor(() => expect(service.automations()).toEqual([]));
   });
 
+  it('applies overlapping refreshes in request order', async () => {
+    let answerFirst!: (value: Automation[]) => void;
+    invoke.mockReturnValueOnce(new Promise<Automation[]>(resolve => (answerFirst = resolve)));
+    const first = service.refreshAutomations();
+    const newest: Automation = { ...automation, status: 'running' };
+    invoke.mockResolvedValueOnce([newest]);
+    const second = service.refreshAutomations();
+
+    answerFirst([{ ...automation, status: 'disabled' }]);
+    await Promise.all([first, second]);
+
+    expect(invoke).toHaveBeenCalledTimes(3);
+    expect(service.automations()).toEqual([newest]);
+  });
+
   it('keeps the previous cache when a refresh fails', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const error = new Error('backend unavailable');

@@ -42,6 +42,7 @@ describe('OperationConfigComponent', () => {
         path: new FormControl(path),
       }),
       autoStart: new FormControl(false),
+      autoStartDelay: new FormControl(0),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(null),
       watchEnabled: new FormControl(false),
@@ -198,6 +199,46 @@ describe('OperationConfigComponent', () => {
         expect(fixture.nativeElement.querySelector('[formControlName="autoStart"]')).not.toBeNull();
       }
     );
+
+    it('should expand the startup delay only while autostart is enabled', () => {
+      setupComponent('mount', 'new-remote');
+      expect(component.autoStartPanelExpanded()).toBe(false);
+
+      component.opFormGroup().get('autoStart')?.setValue(true);
+      fixture.detectChanges();
+
+      expect(component.isAutoStartEnabled()).toBe(true);
+      expect(component.autoStartPanelExpanded()).toBe(true);
+      expect(
+        fixture.nativeElement.querySelector('[formControlName="autoStartDelay"]')
+      ).not.toBeNull();
+    });
+
+    it('should expose the configured startup delay and treat blank values as zero', () => {
+      setupComponent('mount', 'new-remote');
+      const delay = component.opFormGroup().get('autoStartDelay');
+
+      delay?.setValue(15);
+      expect(component.autoStartDelayValue()).toBe(15);
+
+      delay?.setValue(null);
+      expect(component.autoStartDelayValue()).toBe(0);
+    });
+
+    it('should keep the delay summary visible as none when autostart has no delay', () => {
+      setupComponent('mount', 'new-remote');
+      const summary = (): string =>
+        fixture.nativeElement.querySelector('mat-panel-description')?.textContent ?? '';
+
+      component.opFormGroup().get('autoStart')?.setValue(true);
+      fixture.detectChanges();
+      expect(summary()).toContain('wizards.appOperation.autoStartDelayNone');
+
+      component.opFormGroup().get('autoStartDelay')?.setValue(15);
+      fixture.detectChanges();
+      expect(summary()).toContain('15s');
+      expect(summary()).not.toContain('wizards.appOperation.autoStartDelayNone');
+    });
 
     it.each(['sync', 'bisync'] as const)(
       'should show scheduling and file watching during initial %s setup',

@@ -13,8 +13,9 @@ pub struct RcloneState {
     /// Routes rclone calls to HTTP or librclone for the active backend.
     pub transport: Arc<dyn RcloneTransport>,
 
-    /// Flag indicating the app is shutting down
-    pub is_shutting_down: AtomicBool,
+    /// Cancelled once when the app starts shutting down. Delayed background
+    /// work waits on it instead of polling a flag.
+    pub shutdown: tokio_util::sync::CancellationToken,
     /// Flag indicating if the system poller is running
     pub poller_running: AtomicBool,
     /// Flag indicating if the system poller is visible
@@ -36,7 +37,7 @@ impl RcloneState {
         Self {
             client,
             transport,
-            is_shutting_down: AtomicBool::new(false),
+            shutdown: tokio_util::sync::CancellationToken::new(),
             poller_running: AtomicBool::new(false),
             poller_visible: AtomicBool::new(false),
             initial_startup: AtomicBool::new(false),
@@ -48,14 +49,28 @@ impl RcloneState {
 
     /// Check if the application is shutting down
     pub fn is_shutting_down(&self) -> bool {
-        self.is_shutting_down
-            .load(std::sync::atomic::Ordering::SeqCst)
+        self.shutdown.is_cancelled()
     }
 
-    /// Set the application shutdown flag
+    /// Mark the application as shutting down and wake everything waiting on it
     pub fn set_shutting_down(&self) {
-        self.is_shutting_down
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown.cancel();
+    }
+
+    /// Sleeps for `delay`. Returns `false` if shutdown began before or during the wait.
+    pub async fn sleep_unless_shutdown(&self, delay: std::time::Duration) -> bool {
+        sleep_unless_cancelled(&self.shutdown, delay).await
+    }
+}
+
+async fn sleep_unless_cancelled(
+    token: &tokio_util::sync::CancellationToken,
+    delay: std::time::Duration,
+) -> bool {
+    tokio::select! {
+        biased;
+        () = token.cancelled() => false,
+        () = tokio::time::sleep(delay) => true,
     }
 }
 
@@ -168,3 +183,44 @@ pub struct RcApiEngine {
 
 /// Thread-safe, async-friendly managed state for the engine
 pub type EngineState = tokio::sync::Mutex<RcApiEngine>;
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn token_after(delay: Duration) -> tokio_util::sync::CancellationToken {
+        let token = tokio_util::sync::CancellationToken::new();
+        let cancel = token.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(delay).await;
+            cancel.cancel();
+        });
+        token
+    }
+
+    #[tokio::test]
+    async fn a_zero_delay_completes_unless_shutdown_already_began() {
+        let token = tokio_util::sync::CancellationToken::new();
+        assert!(sleep_unless_cancelled(&token, Duration::ZERO).await);
+
+        token.cancel();
+        assert!(!sleep_unless_cancelled(&token, Duration::ZERO).await);
+    }
+
+    #[tokio::test]
+    async fn waits_for_the_full_delay_when_not_cancelled() {
+        let token = tokio_util::sync::CancellationToken::new();
+        let start = std::time::Instant::now();
+        assert!(sleep_unless_cancelled(&token, Duration::from_millis(60)).await);
+        assert!(start.elapsed() >= Duration::from_millis(60));
+    }
+
+    #[tokio::test]
+    async fn shutdown_during_the_wait_ends_it_immediately() {
+        let token = token_after(Duration::from_millis(20));
+        let start = std::time::Instant::now();
+        assert!(!sleep_unless_cancelled(&token, Duration::from_secs(30)).await);
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+}

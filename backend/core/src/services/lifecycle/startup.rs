@@ -1,6 +1,6 @@
 //! Startup routines for auto-starting profiles (mount, serve, sync, etc.)
 //!
-//! This module provides the `handle_startup` function that runs on app startup
+//! This module provides the `autostart_profiles` function that runs on app startup
 //! to automatically start any profiles that are configured with autoStart: true
 
 use crate::context::AppHandle;
@@ -16,11 +16,13 @@ use crate::{
 };
 use log::{info, warn};
 use std::collections::HashMap;
+use std::time::Duration;
 
 /// Auto-start all profiles that have autoStart: true
 /// This is called during app initialization.
-/// Profiles are started in parallel for faster startup.
-pub async fn handle_startup(app: AppHandle) {
+/// Profiles are started in parallel for faster startup. Profiles with an
+/// `autoStartDelay` run detached, so they never hold up initialization.
+pub async fn autostart_profiles(app: AppHandle) {
     info!("Starting auto-start profiles check...");
     let manager = app.state::<AppSettingsManager>();
 
@@ -56,7 +58,30 @@ pub async fn handle_startup(app: AppHandle) {
     info!("Auto-start profiles check complete");
 }
 
+/// Runs an auto-start on its own task once its delay has passed. The run is skipped
+/// when the app began shutting down in the meantime.
+pub(crate) fn spawn_auto_start<F>(
+    app: &AppHandle,
+    delay_secs: u64,
+    run: F,
+) -> tokio::task::JoinHandle<()>
+where
+    F: std::future::Future<Output = ()> + Send + 'static,
+{
+    let app = app.clone();
+    crate::utils::spawn(async move {
+        let still_running = app
+            .state::<crate::utils::types::state::RcloneState>()
+            .sleep_unless_shutdown(Duration::from_secs(delay_secs))
+            .await;
+        if still_running {
+            run.await;
+        }
+    })
+}
+
 /// Spawn each enabled profile with the backend from the startup snapshot.
+/// Delayed profiles are not added to `tasks`, so the caller does not wait for them.
 fn push_auto_start_tasks(
     tasks: &mut Vec<tokio::task::JoinHandle<()>>,
     app: &AppHandle,
@@ -78,14 +103,16 @@ fn push_auto_start_tasks(
             scoped_targets: None,
             execute_id: None,
         };
-        let app = app.clone();
-        tasks.push(crate::utils::spawn(async move {
-            if app
-                .state::<crate::utils::types::state::RcloneState>()
-                .is_shutting_down()
-            {
-                return;
-            }
+        let delay = config.app.auto_start_delay.unwrap_or(0);
+        if delay > 0 {
+            info!(
+                "Delaying auto-start of {operation} {} profile '{}' by {delay}s",
+                params.remote_name, params.profile_name
+            );
+        }
+        let task_app = app.clone();
+        let handle = spawn_auto_start(app, delay, async move {
+            let app = task_app;
             let remote = params.remote_name.clone();
             let profile = params.profile_name.clone();
             let result = match operation {
@@ -99,6 +126,71 @@ fn push_auto_start_tasks(
                     warn!("Failed to auto-start {operation} {remote} profile '{profile}': {error}")
                 }
             }
-        }));
+        });
+        if delay == 0 {
+            tasks.push(handle);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rclone::backend::routing_transport::RoutingTransport;
+    use crate::utils::types::state::RcloneState;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+
+    fn app_with_state() -> AppHandle {
+        let app = AppHandle::default();
+        app.manage(RcloneState::new(
+            reqwest::Client::new(),
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
+        app
+    }
+
+    fn mark(ran: &Arc<AtomicBool>) -> impl std::future::Future<Output = ()> + Send + 'static {
+        let ran = ran.clone();
+        async move { ran.store(true, Ordering::SeqCst) }
+    }
+
+    #[tokio::test]
+    async fn runs_immediately_without_a_delay() {
+        let app = app_with_state();
+        let ran = Arc::new(AtomicBool::new(false));
+
+        spawn_auto_start(&app, 0, mark(&ran)).await.unwrap();
+
+        assert!(ran.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn is_skipped_when_shutdown_already_began() {
+        let app = app_with_state();
+        app.state::<RcloneState>().set_shutting_down();
+        let ran = Arc::new(AtomicBool::new(false));
+
+        spawn_auto_start(&app, 0, mark(&ran)).await.unwrap();
+
+        assert!(!ran.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn shutdown_during_the_delay_ends_the_wait_without_running() {
+        let app = app_with_state();
+        let ran = Arc::new(AtomicBool::new(false));
+        let handle = spawn_auto_start(&app, 3600, mark(&ran));
+
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        app.state::<RcloneState>().set_shutting_down();
+
+        tokio::time::timeout(Duration::from_secs(5), handle)
+            .await
+            .expect("a delayed auto-start must stop as soon as shutdown begins")
+            .unwrap();
+        assert!(!ran.load(Ordering::SeqCst));
     }
 }

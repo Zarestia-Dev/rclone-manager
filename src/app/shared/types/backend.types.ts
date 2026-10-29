@@ -17,7 +17,6 @@ export interface BackendInfo {
   hasAuth: boolean;
   hasConfigPassword: boolean;
   username?: string;
-  password?: string;
   version?: string;
   os?: string;
   status?: RuntimeStatus;
@@ -28,7 +27,8 @@ export interface BackendInfo {
 
 export interface TestConnectionResult {
   success: boolean;
-  message: string;
+  /** Localized failure reason; absent on success. */
+  message?: string;
   version?: string;
   os?: string;
   config_path?: string;

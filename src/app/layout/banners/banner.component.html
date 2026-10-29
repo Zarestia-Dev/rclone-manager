@@ -40,6 +40,58 @@
 </mat-toolbar>
 
 <mat-toolbar
+  class="slide-banner battery-banner"
+  [class.visible]="showBatteryPrompt()"
+  [inert]="!showBatteryPrompt()"
+  [attr.aria-hidden]="!showBatteryPrompt()"
+  role="status"
+>
+  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <div class="banner-text-group">
+    <span class="banner-message">{{ 'banners.battery.title' | translate }}</span>
+    <span class="banner-subtitle">{{ 'banners.battery.subtitle' | translate }}</span>
+  </div>
+
+  <button matButton="filled" (click)="allowBackgroundActivity()">
+    {{ 'banners.battery.allow' | translate }}
+  </button>
+  <button
+    class="action-button"
+    [attr.title]="'banners.battery.dismissTooltip' | translate"
+    (click)="dismissBatteryPrompt()"
+    [attr.aria-label]="'banners.battery.dismissTooltip' | translate"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-toolbar
+  class="slide-banner storage-banner"
+  [class.visible]="showStoragePrompt()"
+  [inert]="!showStoragePrompt()"
+  [attr.aria-hidden]="!showStoragePrompt()"
+  role="status"
+>
+  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <div class="banner-text-group">
+    <span class="banner-message">{{ 'banners.storage.title' | translate }}</span>
+    <span class="banner-subtitle">{{ 'banners.storage.subtitle' | translate }}</span>
+  </div>
+
+  <button matButton="filled" (click)="allowAllFilesAccess()">
+    {{ 'banners.storage.allow' | translate }}
+  </button>
+  <button
+    class="action-button"
+    [attr.title]="'banners.storage.dismissTooltip' | translate"
+    (click)="dismissStoragePrompt()"
+    [attr.aria-label]="'banners.storage.dismissTooltip' | translate"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-toolbar
   class="slide-banner metered-banner"
   [class.visible]="isMeteredConnection()"
   role="alert"

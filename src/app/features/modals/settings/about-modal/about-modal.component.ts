@@ -152,7 +152,8 @@ export class AboutModalComponent implements OnInit {
   readonly restartingRcloneEngine = signal(false);
 
   readonly isHeadless: boolean = isHeadlessMode();
-  readonly isMobile: boolean = isMobile();
+  /** The OS owns a native mobile app's process, so it can neither restart itself nor open DevTools. */
+  readonly isNativeMobile: boolean = !this.isHeadless && isMobile();
 
   // ---------------------------------------------------------------------------
   // Rclone info

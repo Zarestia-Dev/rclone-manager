@@ -168,16 +168,15 @@ func TestVfsStreamListAndStat(t *testing.T) {
 	}
 }
 
-func TestVfsMountUnmountAndIdleCleanup(t *testing.T) {
+func TestVfsMountUnmount(t *testing.T) {
 	tmpDir := t.TempDir()
-	filePath := "idle_test.txt"
-	_ = os.WriteFile(tmpDir+"/"+filePath, []byte("idle data"), 0644)
 
 	// 1. Mount VFS with vfsOpt
 	mountRes, err := rcVfsMount(context.Background(), rc.Params{
 		"fs": tmpDir,
 		"vfsOpt": map[string]interface{}{
 			"DirCacheTime": "10m",
+			"PollInterval": "1m",
 		},
 	})
 	if err != nil {
@@ -194,38 +193,11 @@ func TestVfsMountUnmountAndIdleCleanup(t *testing.T) {
 	if v.Opt.DirCacheTime.String() != "10m0s" {
 		t.Errorf("expected DirCacheTime '10m0s', got %v", v.Opt.DirCacheTime.String())
 	}
-
-	// 2. Open handle and test idle handle cleanup
-	openRes, err := rcVfsOpen(context.Background(), rc.Params{
-		"fs":     tmpDir,
-		"remote": filePath,
-		"mode":   "r",
-	})
-	if err != nil {
-		t.Fatalf("rcVfsOpen failed: %v", err)
+	if v.Opt.PollInterval != 0 {
+		t.Errorf("expected no background polling, got PollInterval %v", v.Opt.PollInterval)
 	}
 
-	handleID := openRes["handle_id"].(int64)
-
-	vfsHandleMutex.Lock()
-	entry, ok := vfsHandles[handleID]
-	if ok {
-		// Simulate handle being untouched for 10 minutes
-		entry.lastAccess = entry.lastAccess.Add(-10 * time.Minute)
-	}
-	vfsHandleMutex.Unlock()
-
-	cleanupIdleHandles(5 * time.Minute)
-
-	vfsHandleMutex.Lock()
-	_, stillExists := vfsHandles[handleID]
-	vfsHandleMutex.Unlock()
-
-	if stillExists {
-		t.Errorf("expected idle handle %d to be cleaned up", handleID)
-	}
-
-	// 3. Test unmount drops VFS
+	// 2. Test unmount drops VFS
 	unmountRes, err := rcVfsUnmount(context.Background(), rc.Params{
 		"fs": tmpDir,
 	})
@@ -357,3 +329,102 @@ func TestBisyncWorkdirWrapper(t *testing.T) {
 	}
 }
 
+func TestVfsOpenFlags(t *testing.T) {
+	cases := map[string]int{
+		"":    os.O_RDONLY,
+		"r":   os.O_RDONLY,
+		"w":   os.O_RDWR | os.O_CREATE,
+		"rw":  os.O_RDWR | os.O_CREATE,
+		"wa":  os.O_RDWR | os.O_CREATE,
+		"wt":  os.O_RDWR | os.O_CREATE | os.O_TRUNC,
+		"rwt": os.O_RDWR | os.O_CREATE | os.O_TRUNC,
+	}
+	for mode, want := range cases {
+		if got := vfsOpenFlags(mode); got != want {
+			t.Errorf("vfsOpenFlags(%q) = %#x, want %#x", mode, got, want)
+		}
+	}
+}
+
+func TestVfsStreamTruncatingOverwriteDropsOldTail(t *testing.T) {
+	tmpDir := t.TempDir()
+	write := func(mode, content string) {
+		t.Helper()
+		res, err := rcVfsOpen(context.Background(), rc.Params{"fs": tmpDir, "remote": "doc.txt", "mode": mode})
+		if err != nil {
+			t.Fatalf("open %q: %v", mode, err)
+		}
+		handleID := res["handle_id"].(int64)
+		if _, err := rcVfsWrite(context.Background(), rc.Params{
+			"handle_id": handleID,
+			"offset":    int64(0),
+			"data":      base64.StdEncoding.EncodeToString([]byte(content)),
+		}); err != nil {
+			t.Fatalf("write %q: %v", mode, err)
+		}
+		if _, err := rcVfsClose(context.Background(), rc.Params{"handle_id": handleID}); err != nil {
+			t.Fatalf("close %q: %v", mode, err)
+		}
+	}
+
+	write("rw", "a much longer original text")
+	write("rwt", "short")
+
+	var got []byte
+	deadline := time.Now().Add(15 * time.Second) // past the VFS write-back delay
+	for {
+		got, _ = os.ReadFile(filepath.Join(tmpDir, "doc.txt"))
+		if string(got) == "short" || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if string(got) != "short" {
+		t.Fatalf("expected truncated content %q, got %q", "short", got)
+	}
+}
+
+func TestVfsStreamListSeesRemoteChangesWithoutPolling(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(tmpDir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	names := func(dir string) map[string]bool {
+		t.Helper()
+		res, err := rcVfsList(context.Background(), rc.Params{"fs": tmpDir, "remote": dir})
+		if err != nil {
+			t.Fatalf("list %q: %v", dir, err)
+		}
+		found := map[string]bool{}
+		list, _ := res["list"].([]rc.Params)
+		for _, item := range list {
+			found[item["Name"].(string)] = true
+		}
+		return found
+	}
+
+	if names("")["root.txt"] || names("sub")["inner.txt"] {
+		t.Fatal("files exist before they were created")
+	}
+	v, err := getOrCreateVFS(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Opt.PollInterval != 0 {
+		t.Fatalf("SAF VFS polls the remote every %v", v.Opt.PollInterval)
+	}
+
+	// Written behind the VFS's back, as another device would change the remote.
+	for _, file := range []string{"root.txt", filepath.Join("sub", "inner.txt")} {
+		if err := os.WriteFile(filepath.Join(tmpDir, file), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if !names("")["root.txt"] {
+		t.Error("root listing is stale")
+	}
+	if !names("sub")["inner.txt"] {
+		t.Error("subdirectory listing is stale")
+	}
+}

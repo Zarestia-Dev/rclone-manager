@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "在後台執行",
-        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。"
+        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。",
+        "notification": {
+          "jobs": "執行中的工作：{{count}}",
+          "mounts": "掛載：{{count}}",
+          "serves": "服務：{{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "掛載驅動檢查已停用",
       "description": "已略過掛載驅動檢查。掛載遠端儲存需要系統上安裝相容的掛載驅動。",
       "install": "安裝驅動",
+      "dismissTooltip": "不再顯示"
+    },
+    "battery": {
+      "title": "允許背景活動",
+      "subtitle": "螢幕關閉時，Android 可能會暫停網路存取。請將 RClone Manager 從電池最佳化中排除，以維持傳輸與排程持續執行。",
+      "allow": "允許",
+      "dismissTooltip": "不再顯示"
+    },
+    "storage": {
+      "title": "允許存取所有檔案",
+      "subtitle": "若要瀏覽及傳輸應用程式自身儲存空間以外的本機資料夾，Android 需要「所有檔案存取權」。",
+      "allow": "允許",
       "dismissTooltip": "不再顯示"
     },
     "metered": {
@@ -1312,6 +1329,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "檢測到多個源路徑。已自動啟用單向檢查，以確保 rclone 對比每個源與目標。",
       "enableAutoStart": "開機自動{{type}}",
+      "autoStartDelay": "啟動延遲",
+      "autoStartDelayHint": "應用程式啟動後等待多久再開始執行。當網路、VPN 或其他掛載尚未就緒時很有用。",
+      "autoStartDelayNone": "無",
       "enableScheduled": "啟用{{type}}計劃任務",
       "enableWatch": "啟用實時檔案監控",
       "watchDescription": "監控本機源目錄的檔案修改並自動同步更改。",
@@ -2178,6 +2198,7 @@
       "passwordLabel": "加密密碼",
       "passwordPlaceholder": "輸入密碼",
       "passwordHint": "恢復備份時需要使用此密碼。",
+      "noPasswordHint": "未設定密碼時，備份不包含 rclone.conf 和已儲存的密鑰。直接填寫在快速執行或工作流程中的憑證將依原樣匯出。",
       "vaultWarningTitle": "設定保存庫已開啟",
       "vaultWarningDesc": "匯出的備份不繼承保存庫加密。若要使用密碼保護機密認證與設定，請啟用下方的加密選項。",
       "exportNow": "立即匯出",
@@ -2243,7 +2264,8 @@
         },
         "password": {
           "label": "密碼",
-          "placeholder": "留空表示不進行身分驗證"
+          "placeholder": "留空表示不進行身分驗證",
+          "keepPlaceholder": "留空以保留目前的密碼"
         },
         "configPassword": {
           "label": "設定密碼",
@@ -2289,13 +2311,12 @@
       "status": {
         "notTested": "連線未測試",
         "connected": "已連線",
-        "error": "錯誤：{{message}}"
+        "error": "錯誤：{{message}}",
+        "engineOffline": "引擎離線"
       },
       "notifications": {
         "switchFailed": "切換失敗：{{message}}",
         "connectionSuccess": "連線成功",
-        "connectionFailed": "連線失敗：{{message}}",
-        "testFailed": "測試意外失敗",
         "fileSelectFailed": "選擇檔案失敗",
         "updated": "後端更新成功",
         "added": "後端新增成功",
@@ -3079,7 +3100,6 @@
       "unsupportedArchive": "不支援的壓縮包型別，必須是 .rcman 檔案",
       "invalidArchive": "無效的備份存檔格式",
       "restoreFailed": "備份恢復失敗: {{error}}",
-      "secretRequirePassword": "此備份受密碼保護，需要輸入密碼",
       "exportFailed": "備份匯出失敗: {{error}}",
       "refreshFailed": "備份恢復後重新整理系統失敗: {{error}}",
       "restoreIncomplete": "備份恢復未完成: {{error}}"
@@ -3090,7 +3110,11 @@
       "cannotRemoveLocal": "無法移除本機後端",
       "cannotRemoveActive": "無法移除當前活動後端",
       "alreadyExists": "已存在同名後端",
-      "notFound": "未找到後端 '{{name}}'"
+      "notFound": "未找到後端 '{{name}}'",
+      "cannotConnect": "無法連線到「{{name}}」：{{error}}",
+      "connectionFailed": "連線失敗：{{error}}",
+      "listFailedReverted": "已連線，但列出後端項目失敗：{{error}}。已切換回 Local。",
+      "tooSlowReverted": "後端已接受連線，但列出其項目時過慢。已切換回 Local。"
     },
     "job": {
       "notFound": "未找到任務資訊",

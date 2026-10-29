@@ -6,7 +6,6 @@ interface AndroidNativeBridge {
   getPendingSharedFiles?: () => string;
   getPendingRoute?: () => string;
   clearSharedFiles?: (paths: string) => void;
-  notifyFrontendReady?: () => void;
 }
 
 const getBridge = (): AndroidNativeBridge | undefined =>
@@ -143,8 +142,5 @@ export class AndroidShareService {
         console.error('[AndroidShareService] Failed to read pending route:', err);
       }
     }
-
-    // Signal to Kotlin that frontend listeners are mounted
-    bridge.notifyFrontendReady?.();
   }
 }

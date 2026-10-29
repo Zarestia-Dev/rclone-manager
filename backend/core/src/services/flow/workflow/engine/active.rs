@@ -66,7 +66,6 @@ pub fn is_workflow_active(backend: &str, workflow_id: &str) -> bool {
 }
 
 /// IDs of the workflows currently running on `backend`.
-#[cfg(feature = "tray")]
 #[must_use]
 pub fn get_active_workflow_ids(backend: &str) -> HashSet<String> {
     ACTIVE_WORKFLOW_EXECUTIONS

@@ -29,7 +29,7 @@
             class="backend-icon"
             [class.local]="backend.isLocal"
             [class]="backend.statusClass"
-            [attr.title]="backend.statusTooltip"
+            [attr.title]="backend.statusKey | translate: { message: backend.statusMessage }"
           >
             @if (switchingTo() === backend.name) {
               <div class="connecting-dots" aria-hidden="true">
@@ -268,6 +268,7 @@
                           type="text"
                           formControlName="username"
                           [placeholder]="'modals.backend.fields.username.placeholder' | translate"
+                          (input)="onConnectionFieldChange()"
                         />
                         @if (backendForm.get('username')?.hasError('required')) {
                           <mat-error>{{ 'common.required' | translate }}</mat-error>
@@ -284,7 +285,13 @@
                           matInput
                           [type]="showPassword() ? 'text' : 'password'"
                           formControlName="password"
-                          [placeholder]="'modals.backend.fields.password.placeholder' | translate"
+                          [placeholder]="
+                            (keepsStoredPassword()
+                              ? 'modals.backend.fields.password.keepPlaceholder'
+                              : 'modals.backend.fields.password.placeholder'
+                            ) | translate
+                          "
+                          (input)="onConnectionFieldChange()"
                         />
                         <button
                           matIconButton
@@ -324,12 +331,14 @@
 
             <!-- Inline test result banner -->
             @if (formTestResult(); as result) {
-              <app-alert-banner
-                [severity]="result.success ? 'success' : 'error'"
-                [description]="
-                  result.version ? result.message + ' ' + result.version : result.message
-                "
-              />
+              <app-alert-banner [severity]="result.success ? 'success' : 'error'">
+                {{
+                  result.success
+                    ? ('modals.backend.notifications.connectionSuccess' | translate)
+                    : result.message
+                }}
+                {{ result.version }}
+              </app-alert-banner>
             }
 
             <!-- Advanced Group (Config Path) -->
