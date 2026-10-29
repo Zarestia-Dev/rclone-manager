@@ -18,12 +18,23 @@ import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.ref.WeakReference
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
+/** A safe file name for shared text, from the share's subject when it has one. */
+internal fun sharedTextFileName(subject: String?): String {
+  val base = subject.orEmpty()
+    .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), " ")
+    .replace(Regex("\\s+"), " ")
+    .trim()
+    .trim('.')
+    .take(100)
+    .trim()
+  return "${base.ifEmpty { "Shared text" }}.txt"
+}
 
 class MainActivity : TauriActivity() {
 
@@ -34,6 +45,14 @@ class MainActivity : TauriActivity() {
     var lastActivityId: Int = 0
     @Volatile
     private var current: WeakReference<MainActivity>? = null
+
+    // Kept outside the activity: the page holds on to the bridge object it loaded with, which
+    // keep-alive may have replaced with a newer activity since.
+    private val pendingSharedPaths = mutableListOf<String>()
+    private var pendingRoute: String? = null
+    private val shareExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+      Thread(runnable, "ShareIntentHandler").apply { isDaemon = true }
+    }
 
     /**
      * Tauri's plugins keep the activity they were loaded with, which keep-alive may have
@@ -46,10 +65,6 @@ class MainActivity : TauriActivity() {
 
   // Reference to the WebView so we can evaluateJavascript from non-UI callbacks
   private var appWebView: WebView? = null
-
-  private val shareExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
-    Thread(runnable, "ShareIntentHandler").apply { isDaemon = true }
-  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -103,11 +118,6 @@ class MainActivity : TauriActivity() {
     handleRouteIntent(intent)
   }
 
-  // Queued data for cold start handover to Angular
-  private val pendingSharedPaths = mutableListOf<String>()
-  private var pendingRoute: String? = null
-  @Volatile private var isFrontendReady = false
-
   // While keep-alive runs, the Rust window and WebView outlive this activity so the backend
   // keeps serving; tao and wry only keep them when the destruction looks like a config change.
   private fun preservesRustWindow(): Boolean =
@@ -122,18 +132,14 @@ class MainActivity : TauriActivity() {
 
   override fun onPause() {
     super.onPause()
-    appWebView?.pauseTimers()
+    // Hides the page, which fires visibilitychange and slows the status polling, without
+    // pausing JavaScript. Wry only does this for the WebView it created, not for one that
+    // keep-alive carried over from an earlier activity.
     appWebView?.onPause()
-  }
-
-  override fun onStop() {
-    super.onStop()
-    // Notify frontend that the app is now invisible for background polling throttle
-    appWebView?.post {
-      appWebView?.evaluateJavascript(
-        "document.dispatchEvent(new Event('visibilitychange'))",
-        null
-      )
+    // The frontend tells the service when to start, stop and what to show, so its timers have
+    // to keep running while the service does.
+    if (!RcloneKeepAliveService.isRunning()) {
+      appWebView?.pauseTimers()
     }
   }
 
@@ -141,12 +147,6 @@ class MainActivity : TauriActivity() {
     super.onResume()
     appWebView?.onResume()
     appWebView?.resumeTimers()
-    appWebView?.post {
-      appWebView?.evaluateJavascript(
-        "document.dispatchEvent(new Event('visibilitychange'))",
-        null
-      )
-    }
   }
 
   override fun onDestroy() {
@@ -161,7 +161,6 @@ class MainActivity : TauriActivity() {
     }
     appWebView = null
     sAppWebView = null
-    shareExecutor.shutdown()
     super.onDestroy()
   }
 
@@ -249,7 +248,9 @@ class MainActivity : TauriActivity() {
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
         if (text != null) {
           intent.action = null
-          notifyShareText(text)
+          // Shared text arrives as a text file, which can be uploaded like any shared file.
+          val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)
+          shareExecutor.execute { queueSharedFiles(listOfNotNull(saveSharedText(text, subject))) }
           return
         }
       }
@@ -278,14 +279,26 @@ class MainActivity : TauriActivity() {
     intent.action = null
 
     // Run file copying in background executor to prevent UI thread lock / ANR on large files
-    shareExecutor.execute {
-      val paths = uris.mapNotNull { resolveContentUri(it) }
-      if (paths.isNotEmpty()) {
-        synchronized(pendingSharedPaths) {
-          pendingSharedPaths.addAll(paths)
-        }
-        notifyShareFiles(paths)
-      }
+    shareExecutor.execute { queueSharedFiles(uris.mapNotNull { resolveContentUri(it) }) }
+  }
+
+  private fun queueSharedFiles(paths: List<String>) {
+    if (paths.isEmpty()) return
+    synchronized(pendingSharedPaths) {
+      pendingSharedPaths.addAll(paths)
+    }
+    notifyShareFiles(paths)
+  }
+
+  private fun saveSharedText(text: String, subject: String?): String? {
+    return try {
+      val name = sharedTextFileName(subject)
+      val target = getUniqueDestinationFile(File(cacheDir, "shared_files").also { it.mkdirs() }, name)
+      target.writeText(text)
+      target.absolutePath
+    } catch (e: Exception) {
+      Logger.error("saveSharedText failed: ${e.message}")
+      null
     }
   }
 
@@ -340,12 +353,6 @@ class MainActivity : TauriActivity() {
     appWebView?.post { appWebView?.evaluateJavascript(js, null) }
   }
 
-  /** Dispatches `android-share-text` CustomEvent to Angular with shared text. */
-  private fun notifyShareText(text: String) {
-    val js = "window.dispatchEvent(new CustomEvent('android-share-text',{detail:{text:${JSONObject.quote(text)}}}))"
-    appWebView?.post { appWebView?.evaluateJavascript(js, null) }
-  }
-
   // ---------------------------------------------------------------------------
   // JS Bridge — called from Angular as window.__rclone__.<method>()
   // ---------------------------------------------------------------------------
@@ -356,7 +363,6 @@ class MainActivity : TauriActivity() {
    */
   @JavascriptInterface
   fun getPendingSharedFiles(): String {
-    isFrontendReady = true
     synchronized(pendingSharedPaths) {
       if (pendingSharedPaths.isEmpty()) return "[]"
       val json = JSONArray(pendingSharedPaths).toString()
@@ -371,7 +377,6 @@ class MainActivity : TauriActivity() {
    */
   @JavascriptInterface
   fun getPendingRoute(): String {
-    isFrontendReady = true
     synchronized(pendingSharedPaths) {
       val route = pendingRoute ?: return ""
       pendingRoute = null
@@ -406,21 +411,14 @@ class MainActivity : TauriActivity() {
   }
 
   /**
-   * Signals that Angular has mounted and registered listeners.
-   */
-  @JavascriptInterface
-  fun notifyFrontendReady() {
-    isFrontendReady = true
-  }
-
-  /**
    * Sets the status bar and navigation bar icon appearance (light vs dark icons).
    * @param isDark true if the app is currently displaying a dark theme, false for light theme.
    */
   @JavascriptInterface
   fun setSystemTheme(isDark: Boolean) {
-    runOnUiThread {
-      val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+    val activity = current?.get() ?: this
+    activity.runOnUiThread {
+      val windowInsetsController = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
       windowInsetsController.isAppearanceLightStatusBars = !isDark
       windowInsetsController.isAppearanceLightNavigationBars = !isDark
     }
@@ -449,6 +447,28 @@ class MainActivity : TauriActivity() {
         }
       } catch (e: Exception) {
         Logger.error("requestIgnoreBatteryOptimizations failed: ${e.message}")
+      }
+    }
+  }
+
+  @JavascriptInterface
+  fun isAllFilesAccessGranted(): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
+  @JavascriptInterface
+  fun requestAllFilesAccess() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+    try {
+      startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+        data = Uri.parse("package:$packageName")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      })
+    } catch (e: Exception) {
+      try {
+        // Some devices only offer the list of all apps.
+        startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+      } catch (ex: Exception) {
+        Logger.error("Failed to open all files access settings: ${ex.message}")
       }
     }
   }
@@ -580,22 +600,7 @@ class MainActivity : TauriActivity() {
     if (runtimePermissions.isNotEmpty()) {
       requestPermissions(runtimePermissions.toTypedArray(), 100)
     }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      if (!Environment.isExternalStorageManager()) {
-        try {
-          val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-            data = Uri.parse("package:$packageName")
-          }
-          startActivity(intent)
-        } catch (e: Exception) {
-          try {
-            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-          } catch (ex: Exception) {
-            Logger.error("Failed to open storage settings: ${ex.message}")
-          }
-        }
-      }
-    }
+    // All files access on Android 11+ is asked for from a banner (requestAllFilesAccess) instead
+    // of opening the system settings on every start until it is granted.
   }
 }

@@ -13,7 +13,9 @@ class SafBootReceiver : BroadcastReceiver() {
     if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
       try {
         Logger.info("SafBootReceiver: System boot/update event received ($action)")
-        RcloneSafBridge.ensureInitialized(context.applicationContext)
+        // Loading the native libraries here would start the Go runtime with nothing to run;
+        // the documents provider loads them when it is first used.
+        RcloneSafBridge.updateAppShortcuts(context.applicationContext)
       } catch (e: Exception) {
         Logger.error("SafBootReceiver error: ${e.message}")
       }

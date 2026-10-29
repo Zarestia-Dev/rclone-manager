@@ -7,6 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -15,11 +16,13 @@ import { EventListenersService } from 'src/app/services/infrastructure/system/ev
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { AndroidKeepAliveService } from 'src/app/services/infrastructure/platform/android-keep-alive.service';
+import { AndroidStorageAccessService } from 'src/app/services/infrastructure/platform/android-storage-access.service';
 
 @Component({
   selector: 'app-banner',
   templateUrl: './banner.component.html',
-  imports: [MatToolbarModule, MatIconModule, TranslatePipe],
+  imports: [MatToolbarModule, MatIconModule, MatButtonModule, TranslatePipe],
   styleUrls: ['./banner.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -28,7 +31,11 @@ export class BannerComponent {
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
+  private readonly androidStorageAccessService = inject(AndroidStorageAccessService);
 
+  readonly showBatteryPrompt = this.androidKeepAliveService.showBatteryOptimizationPrompt;
+  readonly showStoragePrompt = this.androidStorageAccessService.showAllFilesAccessPrompt;
   readonly showDevelopmentBanner = signal(isDevMode());
   readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
   private readonly flatpakDismissed = signal(false);
@@ -60,6 +67,22 @@ export class BannerComponent {
       .subscribe(p => {
         this.isMeteredConnection.set(!!p?.isMetered);
       });
+  }
+
+  allowBackgroundActivity(): void {
+    this.androidKeepAliveService.requestIgnoreBatteryOptimizations();
+  }
+
+  dismissBatteryPrompt(): void {
+    this.androidKeepAliveService.dismissBatteryOptimizationPrompt();
+  }
+
+  allowAllFilesAccess(): void {
+    this.androidStorageAccessService.requestAllFilesAccess();
+  }
+
+  dismissStoragePrompt(): void {
+    this.androidStorageAccessService.dismissAllFilesAccessPrompt();
   }
 
   async dismissFlatpakWarning(): Promise<void> {

@@ -70,6 +70,28 @@ pub fn is_network_metered() -> bool {
     metered
 }
 
+/// Registers the Android network callback that reports metered changes to
+/// `utils::io::network::on_metered_changed`.
+pub fn start_network_monitor() -> bool {
+    let Some(vm) = JAVA_VM.get() else {
+        return false;
+    };
+    let Some(g_cls) = BRIDGE_CLASS.get() else {
+        return false;
+    };
+    let mut started = false;
+    let _ = vm.attach_current_thread(|env| {
+        use jni::{jni_sig, jni_str};
+        let cls: &jni::objects::JClass = g_cls.as_ref();
+        match env.call_static_method(cls, jni_str!("startNetworkMonitor"), jni_sig!("()Z"), &[]) {
+            Ok(res) => started = res.z().unwrap_or(false),
+            Err(_) => env.exception_clear(),
+        }
+        Ok::<(), jni::errors::Error>(())
+    });
+    started
+}
+
 /// Stops keep-alive and finishes the activity for a user quit, so Tauri's event loop
 /// sees the window destroyed and ends the process.
 pub fn request_quit() {
@@ -292,6 +314,17 @@ mod jni_impl {
     }
 
     #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn Java_com_rclone_manager_RcloneSafBridge_nativeOnMeteredChanged<
+        'local,
+    >(
+        _env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        is_metered: jni::sys::jboolean,
+    ) {
+        crate::utils::io::network::on_metered_changed(is_metered);
+    }
+
+    #[unsafe(no_mangle)]
     pub unsafe extern "C" fn Java_com_rclone_manager_RcloneSafBridge_nativeVfsRead<'local>(
         mut env_unowned: EnvUnowned<'local>,
         _class: JClass<'local>,
@@ -313,25 +346,20 @@ mod jni_impl {
                 return Ok::<(), jni::errors::Error>(());
             }
 
-            let get_crit = unsafe { (**raw_env).v1_2.GetPrimitiveArrayCritical };
-            let rel_crit = unsafe { (**raw_env).v1_2.ReleasePrimitiveArrayCritical };
-
-            let mut is_copy: jni::sys::jboolean = false;
-            let ptr = unsafe { get_crit(raw_env, byte_array, &mut is_copy) };
-
-            if !ptr.is_null() {
-                bytes_read =
-                    unsafe { super::RcloneVfsRead(handle_id, offset, count, ptr as *mut u8) };
+            // The read can block on the network, so it must not run inside a critical array
+            // section, which keeps the runtime from moving objects until it is released.
+            let mut buffer = vec![0u8; count as usize];
+            bytes_read =
+                unsafe { super::RcloneVfsRead(handle_id, offset, count, buffer.as_mut_ptr()) };
+            if bytes_read > 0 {
+                let set_region = unsafe { (**raw_env).v1_1.SetByteArrayRegion };
                 unsafe {
-                    rel_crit(
+                    set_region(
                         raw_env,
                         byte_array,
-                        ptr,
-                        if bytes_read > 0 {
-                            0
-                        } else {
-                            jni::sys::JNI_ABORT
-                        },
+                        0,
+                        bytes_read.min(count),
+                        buffer.as_ptr().cast(),
                     );
                 }
             }
@@ -363,20 +391,15 @@ mod jni_impl {
                 return Ok::<(), jni::errors::Error>(());
             }
 
-            let get_crit = unsafe { (**raw_env).v1_2.GetPrimitiveArrayCritical };
-            let rel_crit = unsafe { (**raw_env).v1_2.ReleasePrimitiveArrayCritical };
-
-            let mut is_copy: jni::sys::jboolean = false;
-            let ptr = unsafe { get_crit(raw_env, byte_array, &mut is_copy) };
-
-            if !ptr.is_null() {
-                bytes_written =
-                    unsafe { super::RcloneVfsWrite(handle_id, offset, count, ptr as *const u8) };
-
-                unsafe {
-                    rel_crit(raw_env, byte_array, ptr, jni::sys::JNI_ABORT);
-                }
+            // Copy out first: the write can block on the network, so it must not run inside a
+            // critical array section.
+            let mut buffer = vec![0u8; count as usize];
+            let get_region = unsafe { (**raw_env).v1_1.GetByteArrayRegion };
+            unsafe {
+                get_region(raw_env, byte_array, 0, count, buffer.as_mut_ptr().cast());
             }
+            bytes_written =
+                unsafe { super::RcloneVfsWrite(handle_id, offset, count, buffer.as_ptr()) };
 
             Ok::<(), jni::errors::Error>(())
         });

@@ -489,7 +489,12 @@
       },
       "keep_alive": {
         "label": "Ejecutar en segundo plano",
-        "description": "Mantener RClone Manager, las transferencias activas y los discos montados ejecutándose en segundo plano al minimizar o cerrar."
+        "description": "Mantener RClone Manager, las transferencias activas y los discos montados ejecutándose en segundo plano al minimizar o cerrar.",
+        "notification": {
+          "jobs": "Tareas activas: {{count}}",
+          "mounts": "Montajes: {{count}}",
+          "serves": "Servicios: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Comprobación de controlador de montaje desactivada",
       "description": "Se omitió la comprobación del controlador de montaje. Montar unidades remotas requiere un controlador compatible instalado en el sistema.",
       "install": "Instalar controlador",
+      "dismissTooltip": "No volver a mostrar"
+    },
+    "battery": {
+      "title": "Permitir actividad en segundo plano",
+      "subtitle": "Android puede suspender el acceso a la red con la pantalla apagada. Excluye RClone Manager de la optimización de batería para mantener activas las transferencias y programaciones.",
+      "allow": "Permitir",
+      "dismissTooltip": "No volver a mostrar"
+    },
+    "storage": {
+      "title": "Permitir el acceso a todos los archivos",
+      "subtitle": "Para explorar y transferir carpetas locales fuera del almacenamiento propio de la aplicación, Android necesita acceso a todos los archivos.",
+      "allow": "Permitir",
       "dismissTooltip": "No volver a mostrar"
     },
     "metered": {

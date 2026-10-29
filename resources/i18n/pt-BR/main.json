@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "Executar em segundo plano",
-        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
+        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar.",
+        "notification": {
+          "jobs": "Tarefas ativas: {{count}}",
+          "mounts": "Montagens: {{count}}",
+          "serves": "Serviços: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Verificação de driver de montagem desativada",
       "description": "A verificação do driver de montagem foi ignorada. A montagem de remotos requer um driver compatível instalado no seu sistema.",
       "install": "Instalar driver",
+      "dismissTooltip": "Não mostrar novamente"
+    },
+    "battery": {
+      "title": "Permitir atividade em segundo plano",
+      "subtitle": "O Android pode pausar o acesso à rede com a tela desligada. Isente o RClone Manager da otimização de bateria para manter transferências e agendamentos em execução.",
+      "allow": "Permitir",
+      "dismissTooltip": "Não mostrar novamente"
+    },
+    "storage": {
+      "title": "Permitir acesso a todos os arquivos",
+      "subtitle": "Para navegar e transferir pastas locais fora do armazenamento do próprio app, o Android exige acesso a todos os arquivos.",
+      "allow": "Permitir",
       "dismissTooltip": "Não mostrar novamente"
     },
     "metered": {

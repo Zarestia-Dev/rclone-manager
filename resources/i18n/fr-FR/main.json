@@ -489,7 +489,12 @@
       },
       "keep_alive": {
         "label": "Exécuter en arrière-plan",
-        "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture."
+        "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture.",
+        "notification": {
+          "jobs": "Tâches actives : {{count}}",
+          "mounts": "Montages : {{count}}",
+          "serves": "Services : {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Vérification du pilote de montage désactivée",
       "description": "La vérification du pilote de montage a été ignorée. Le montage de disques distants nécessite un pilote compatible installé sur votre système.",
       "install": "Installer le pilote",
+      "dismissTooltip": "Ne plus afficher"
+    },
+    "battery": {
+      "title": "Autoriser l'activité en arrière-plan",
+      "subtitle": "Android peut suspendre l'accès au réseau lorsque l'écran est éteint. Exemptez RClone Manager de l'optimisation de la batterie pour que les transferts et les planifications continuent.",
+      "allow": "Autoriser",
+      "dismissTooltip": "Ne plus afficher"
+    },
+    "storage": {
+      "title": "Autoriser l'accès à tous les fichiers",
+      "subtitle": "Pour parcourir et transférer des dossiers locaux en dehors du stockage de l'application, Android exige l'accès à tous les fichiers.",
+      "allow": "Autoriser",
       "dismissTooltip": "Ne plus afficher"
     },
     "metered": {

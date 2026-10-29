@@ -367,8 +367,8 @@ fn dispatch_bridge_event(app: &AppHandle, event: &BridgeEvent) {
                 .remote_cache_for(crate::utils::constants::LOCAL_BACKEND_NAME)
                 .get_mounted_remotes()
                 .await;
+            // Also notifies the documents provider that its roots changed.
             crate::rclone::backend::saf_bridge::update_mounted_remotes(&mounts);
-            crate::rclone::backend::saf_bridge::notify_roots_changed();
         });
     }
 

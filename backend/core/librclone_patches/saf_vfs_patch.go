@@ -4,12 +4,12 @@ import "C"
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -28,10 +28,12 @@ import (
 	"github.com/rclone/rclone/vfs/vfscommon"
 )
 
+// Handles live until the documents provider closes them, which Android guarantees once the
+// client's file descriptor is closed; closing an idle one early broke paused media and could
+// upload a half-written file.
 type vfsHandleEntry struct {
-	handle     vfs.Handle
-	vfs        *vfs.VFS
-	lastAccess time.Time
+	handle vfs.Handle
+	vfs    *vfs.VFS
 }
 
 var (
@@ -41,8 +43,6 @@ var (
 	vfsHandles     = make(map[int64]*vfsHandleEntry)
 	vfsNextHandle  int64
 )
-
-const defaultHandleIdleTimeout = 5 * time.Minute
 
 func ensureWritableCacheDir() {
 	currentCache := config.GetCacheDir()
@@ -212,11 +212,8 @@ func wrapBisyncEndpoint() {
 }
 
 func init() {
-	initAndroidTrustStore()
 	ensureWritableCacheDir()
 	wrapBisyncEndpoint()
-
-	go startHandleSweeper()
 
 	rc.Add(rc.Call{
 		Path:  "config/setcachedir",
@@ -280,30 +277,6 @@ func init() {
 	})
 }
 
-func startHandleSweeper() {
-	ticker := time.NewTicker(1 * time.Minute)
-	for range ticker.C {
-		cleanupIdleHandles(defaultHandleIdleTimeout)
-	}
-}
-
-func cleanupIdleHandles(timeout time.Duration) {
-	vfsHandleMutex.Lock()
-	now := time.Now()
-	var toClose []vfs.Handle
-	for id, entry := range vfsHandles {
-		if now.Sub(entry.lastAccess) > timeout {
-			toClose = append(toClose, entry.handle)
-			delete(vfsHandles, id)
-		}
-	}
-	vfsHandleMutex.Unlock()
-
-	for _, h := range toClose {
-		_ = h.Close()
-	}
-}
-
 func rcVfsMount(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	fsName, err := in.GetString("fs")
 	if err != nil || fsName == "" {
@@ -317,6 +290,7 @@ func rcVfsMount(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 
 	// 1. Parse vfsOpt from parameters
 	_ = rc.ParseOptions(in, "vfsOpt", &vfsOpt)
+	vfsOpt.PollInterval = 0 // see markDirStale
 
 	// 2. Parse backend config options (_config) and filters (_filter)
 	ctx, err = rc.AddConfig(ctx, in)
@@ -393,12 +367,26 @@ func createDefaultVFS(fsName string) (*vfs.VFS, error) {
 	opts.CacheMode = vfscommon.CacheModeWrites
 	opts.ChunkSize = 2 * fs.Mebi
 	opts.ChunkSizeLimit = 8 * fs.Mebi
+	opts.PollInterval = 0 // see markDirStale
 
 	ensureWritableCacheDir()
 
 	instance := vfs.New(context.Background(), f, &opts)
 	vfsInstances[fsName] = instance
 	return instance, nil
+}
+
+// markDirStale makes the next read of dirPath list the remote again, as a change notification
+// would, while keeping the cached subtree. The documents provider only lists while someone
+// browses, so the VFS does not poll the remote for changes in the background, which kept the
+// network busy every minute for as long as a remote was mounted. ForgetPath marks the parent
+// of an object path stale, so it gets a path inside the directory.
+func markDirStale(v *vfs.VFS, dirPath string) {
+	root, err := v.Root()
+	if err != nil {
+		return
+	}
+	root.ForgetPath(path.Join(dirPath, "entry"), fs.EntryObject)
 }
 
 func readDir(v *vfs.VFS, path string) ([]os.FileInfo, error) {
@@ -427,6 +415,7 @@ func rcVfsList(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 		return nil, err
 	}
 
+	markDirStale(v, remotePath)
 	entries, err := readDir(v, remotePath)
 	if err != nil {
 		return nil, err
@@ -486,12 +475,7 @@ func rcVfsOpen(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 		return nil, err
 	}
 
-	flags := os.O_RDONLY
-	if modeStr == "w" || modeStr == "rw" {
-		flags = os.O_RDWR | os.O_CREATE
-	}
-
-	handle, err := v.OpenFile(remotePath, flags, 0644)
+	handle, err := v.OpenFile(remotePath, vfsOpenFlags(modeStr), 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -500,9 +484,8 @@ func rcVfsOpen(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 
 	vfsHandleMutex.Lock()
 	vfsHandles[handleID] = &vfsHandleEntry{
-		handle:     handle,
-		vfs:        v,
-		lastAccess: time.Now(),
+		handle: handle,
+		vfs:    v,
 	}
 	vfsHandleMutex.Unlock()
 
@@ -518,6 +501,19 @@ func rcVfsOpen(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	}, nil
 }
 
+// vfsOpenFlags maps the Storage Access Framework open mode. A "t" truncates: without it,
+// overwriting a file with shorter content would keep the old trailing bytes.
+func vfsOpenFlags(mode string) int {
+	if !strings.ContainsAny(mode, "wa") {
+		return os.O_RDONLY
+	}
+	flags := os.O_RDWR | os.O_CREATE
+	if strings.Contains(mode, "t") {
+		flags |= os.O_TRUNC
+	}
+	return flags
+}
+
 func rcVfsRead(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	handleID, err := in.GetInt64("handle_id")
 	if err != nil {
@@ -531,9 +527,6 @@ func rcVfsRead(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 
 	vfsHandleMutex.Lock()
 	entry, ok := vfsHandles[handleID]
-	if ok {
-		entry.lastAccess = time.Now()
-	}
 	vfsHandleMutex.Unlock()
 	if !ok {
 		return nil, errors.New("invalid handle id")
@@ -570,9 +563,6 @@ func rcVfsWrite(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 
 	vfsHandleMutex.Lock()
 	entry, ok := vfsHandles[handleID]
-	if ok {
-		entry.lastAccess = time.Now()
-	}
 	vfsHandleMutex.Unlock()
 	if !ok {
 		return nil, errors.New("invalid handle id")
@@ -638,49 +628,6 @@ func rcVfsForget(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	return rc.Params{"success": true}, nil
 }
 
-func initAndroidTrustStore() {
-	if _, err := os.Stat("/system/etc/security/cacerts"); err != nil {
-		return
-	}
-
-	addDirs := []string{
-		"/apex/com.android.conscrypt/cacerts",
-		"/system/etc/security/cacerts",
-	}
-
-	uid := os.Getuid() / 100000
-	userCaDir := fmt.Sprintf("/data/misc/user/%d/cacerts-added", uid)
-	if _, err := os.Stat(userCaDir); err == nil {
-		addDirs = append(addDirs, userCaDir)
-	}
-
-	pool := x509.NewCertPool()
-	loadedCount := 0
-
-	for _, dir := range addDirs {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name())
-			data, err := os.ReadFile(path)
-			if err != nil {
-				continue
-			}
-			if pool.AppendCertsFromPEM(data) {
-				loadedCount++
-			}
-		}
-	}
-	if loadedCount > 0 {
-		fs.Infof(nil, "Loaded %d Android CA certificates into trust pool", loadedCount)
-	}
-}
-
 //export RcloneVfsRead
 func RcloneVfsRead(handleID int64, offset int64, count int32, outPtr *byte) int32 {
 	if count <= 0 || outPtr == nil {
@@ -689,9 +636,6 @@ func RcloneVfsRead(handleID int64, offset int64, count int32, outPtr *byte) int3
 
 	vfsHandleMutex.Lock()
 	entry, ok := vfsHandles[handleID]
-	if ok {
-		entry.lastAccess = time.Now()
-	}
 	vfsHandleMutex.Unlock()
 	if !ok {
 		return -1
@@ -713,9 +657,6 @@ func RcloneVfsWrite(handleID int64, offset int64, count int32, inPtr *byte) int3
 
 	vfsHandleMutex.Lock()
 	entry, ok := vfsHandles[handleID]
-	if ok {
-		entry.lastAccess = time.Now()
-	}
 	vfsHandleMutex.Unlock()
 	if !ok {
 		return -1
@@ -728,4 +669,3 @@ func RcloneVfsWrite(handleID int64, offset int64, count int32, inPtr *byte) int3
 	}
 	return int32(n)
 }
-

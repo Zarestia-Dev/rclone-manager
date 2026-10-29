@@ -8,6 +8,11 @@
     <string name="saf_keepalive_channel_desc">Keeps Rclone process active during external SAF file streaming</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Running in background</string>
+    <string name="keepalive_stopped_text">Background service was stopped by Android. Tap to resume.</string>
     <string name="keepalive_channel_name">RClone Background Service</string>
     <string name="keepalive_channel_desc">Maintains active mounts, transfers, and background tasks</string>
+    <string name="shortcut_file_manager_short">File Manager</string>
+    <string name="shortcut_file_manager_long">Open File Manager</string>
+    <string name="shortcut_open_remote">Open %1$s</string>
+    <string name="saf_folder_load_failed">Could not load this folder. Check the connection and try again.</string>
 </resources>

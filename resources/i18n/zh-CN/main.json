@@ -489,7 +489,12 @@
       },
       "keep_alive": {
         "label": "在后台运行",
-        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。"
+        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。",
+        "notification": {
+          "jobs": "活动任务：{{count}}",
+          "mounts": "挂载：{{count}}",
+          "serves": "服务：{{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "挂载驱动检查已禁用",
       "description": "已跳过挂载驱动检查。挂载远程存储需要系统上安装兼容的挂载驱动。",
       "install": "安装驱动",
+      "dismissTooltip": "不再显示"
+    },
+    "battery": {
+      "title": "允许后台活动",
+      "subtitle": "屏幕关闭时，Android 可能会暂停网络访问。请将 RClone Manager 从电池优化中排除，以保持传输和计划任务持续运行。",
+      "allow": "允许",
+      "dismissTooltip": "不再显示"
+    },
+    "storage": {
+      "title": "允许访问所有文件",
+      "subtitle": "要浏览和传输应用自身存储以外的本地文件夹，Android 需要“所有文件访问权限”。",
+      "allow": "允许",
       "dismissTooltip": "不再显示"
     },
     "metered": {

@@ -4,22 +4,51 @@ import android.content.res.AssetFileDescriptor
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.graphics.Point
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.OperationCanceledException
 import android.os.ParcelFileDescriptor
 import android.os.ProxyFileDescriptorCallback
+import android.os.SystemClock
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.DocumentsProvider
+import android.util.LruCache
 import android.webkit.MimeTypeMap
+import org.json.JSONArray
 import org.json.JSONObject
 import android.system.ErrnoException
 import android.system.OsConstants
 import java.io.FileNotFoundException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+
+/**
+ * The VFS open mode for a parsed [ParcelFileDescriptor] mode. "w" truncates like "wt";
+ * writing shorter content into an untruncated file would keep its old tail.
+ */
+internal fun vfsOpenMode(pfdMode: Int): String = when {
+  (pfdMode and ParcelFileDescriptor.MODE_WRITE_ONLY) == 0 -> "r"
+  (pfdMode and ParcelFileDescriptor.MODE_TRUNCATE) != 0 -> "rwt"
+  else -> "rw"
+}
+
+/** "name (n).ext", keeping a file's extension; folder names are numbered as a whole. */
+internal fun numberedName(displayName: String, isDir: Boolean, n: Int): String {
+  val dot = if (isDir) -1 else displayName.lastIndexOf('.')
+  if (dot <= 0) return "$displayName ($n)"
+  return "${displayName.substring(0, dot)} ($n)${displayName.substring(dot)}"
+}
 
 class RcloneDocumentsProvider : DocumentsProvider() {
 
@@ -59,11 +88,31 @@ class RcloneDocumentsProvider : DocumentsProvider() {
         DocumentsContract.Document.FLAG_SUPPORTS_COPY or
         DocumentsContract.Document.FLAG_SUPPORTS_MOVE
 
-    private val proxyIoThread: HandlerThread by lazy {
-      HandlerThread("RcloneProxyIoThread").apply { start() }
+    // A read blocks its thread on the network, so one thread for every open file would let a
+    // single slow stream stall all the others.
+    private const val PROXY_IO_THREADS = 8
+    private val proxyHandlers: List<Handler> by lazy {
+      List(PROXY_IO_THREADS) { index ->
+        Handler(HandlerThread("RcloneProxyIoThread-$index").apply { start() }.looper)
+      }
     }
-    private val proxyHandler: Handler by lazy {
-      Handler(proxyIoThread.looper)
+    private val nextProxyHandler = AtomicInteger(0)
+
+    private fun pickProxyHandler(): Handler =
+      proxyHandlers[Math.floorMod(nextProxyHandler.getAndIncrement(), PROXY_IO_THREADS)]
+    private const val LISTING_FRESH_MS = 10_000L
+    private const val LISTING_WAIT_MS = 2_000L
+    private const val MAX_NAME_ATTEMPTS = 32
+
+    /** [items] is null when the listing failed; the failure is kept as long as a success. */
+    private class Listing(val items: JSONArray?, val loadedAt: Long)
+
+    private val listings = LruCache<String, Listing>(32)
+    private val loading = ConcurrentHashMap<String, Future<JSONArray?>>()
+    private val listExecutor: java.util.concurrent.ExecutorService by lazy {
+      Executors.newFixedThreadPool(4) { r ->
+        Thread(r, "RcloneListWorker").apply { isDaemon = true }
+      }
     }
     private val asyncCloseExecutor: java.util.concurrent.ExecutorService by lazy {
       java.util.concurrent.Executors.newFixedThreadPool(2) { r ->
@@ -130,10 +179,9 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     return "$pkg.documents"
   }
 
-  override fun onCreate(): Boolean {
-    context?.let { RcloneSafBridge.ensureInitialized(it.applicationContext) }
-    return true
-  }
+  // Providers are created on the main thread whenever the process starts, including for the
+  // boot receiver and the keep-alive service, so the native libraries load on first use instead.
+  override fun onCreate(): Boolean = true
 
   private fun ensureInit() {
     context?.let { RcloneSafBridge.ensureInitialized(it.applicationContext) }
@@ -221,13 +269,12 @@ class RcloneDocumentsProvider : DocumentsProvider() {
   ): Cursor = withParcelableException {
     ensureInit()
     val (remote, path) = parseDocId(parentDocumentId)
-    val list = RcloneSafBridge.listDirectory(remote, path)
-
-    val authority = getAuthority()
-    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION, list.length().coerceAtLeast(1))
-    try {
-      result.setNotificationUri(context?.contentResolver, DocumentsContract.buildChildDocumentsUri(authority, parentDocumentId))
-    } catch (_: Exception) {}
+    val notifyUri = DocumentsContract.buildChildDocumentsUri(getAuthority(), parentDocumentId)
+    val loaded = loadCached(listingKey(parentDocumentId), notifyUri) {
+      RcloneSafBridge.listDirectory(remote, path)
+    }
+    val list = loaded.items ?: JSONArray()
+    val result = loaded.toCursor(projection, notifyUri)
 
     for (i in 0 until list.length()) {
       val item = list.optJSONObject(i) ?: continue
@@ -257,6 +304,71 @@ class RcloneDocumentsProvider : DocumentsProvider() {
       row.add(DocumentsContract.Document.COLUMN_SIZE, size)
     }
 
+    return result
+  }
+
+  private fun listingKey(documentId: String): String {
+    val (remote, path) = parseDocId(documentId)
+    return "$remote:/${path.trim('/')}"
+  }
+
+  /** [items] is null when loading failed; [isLoading] while it still runs in the background. */
+  private class Loaded(val items: JSONArray?, val isLoading: Boolean)
+
+  /**
+   * A listing or search waits on the network, and this runs on one of the few binder threads, so
+   * it waits briefly and otherwise answers "loading" and notifies [notifyUri] once it is done.
+   */
+  private fun loadCached(key: String, notifyUri: Uri, load: () -> JSONArray?): Loaded {
+    val cached = listings.get(key)
+    if (cached != null && SystemClock.elapsedRealtime() - cached.loadedAt < LISTING_FRESH_MS) {
+      return Loaded(cached.items, isLoading = false)
+    }
+    return try {
+      Loaded(startLoad(key, notifyUri, load).get(LISTING_WAIT_MS, TimeUnit.MILLISECONDS), isLoading = false)
+    } catch (_: TimeoutException) {
+      Loaded(cached?.items ?: JSONArray(), isLoading = true)
+    } catch (_: ExecutionException) {
+      Loaded(null, isLoading = false)
+    }
+  }
+
+  /**
+   * One load per key at a time; callers share it, and it notifies when it is done. Failures are
+   * cached too: the notification makes the file manager query again, and an uncached failure
+   * would start the next load, so an unreachable remote would be retried for as long as the
+   * folder stays open.
+   */
+  private fun startLoad(key: String, notifyUri: Uri, load: () -> JSONArray?): Future<JSONArray?> =
+    loading.computeIfAbsent(key) {
+      listExecutor.submit<JSONArray?> {
+        try {
+          val items = load()
+          listings.put(key, Listing(items, SystemClock.elapsedRealtime()))
+          items
+        } finally {
+          loading.remove(key)
+          try {
+            context?.contentResolver?.notifyChange(notifyUri, null)
+          } catch (_: Exception) {
+            // Ignore notification errors
+          }
+        }
+      }
+    }
+
+  private fun Loaded.toCursor(projection: Array<out String>?, notifyUri: Uri): MatrixCursor {
+    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION, (items?.length() ?: 0).coerceAtLeast(1))
+    if (isLoading) {
+      result.setExtras(Bundle().apply { putBoolean(DocumentsContract.EXTRA_LOADING, true) })
+    } else if (items == null) {
+      result.setExtras(Bundle().apply {
+        putString(DocumentsContract.EXTRA_ERROR, context?.getString(R.string.saf_folder_load_failed))
+      })
+    }
+    try {
+      result.setNotificationUri(context?.contentResolver, notifyUri)
+    } catch (_: Exception) {}
     return result
   }
 
@@ -317,6 +429,7 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     parentDocumentId: String?,
     childDocumentId: String
   ): DocumentsContract.Path? = withParcelableException {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
     val (remote, path) = parseDocId(childDocumentId)
     val pathSegments = mutableListOf<String>()
     pathSegments.add("$remote:/")
@@ -329,11 +442,11 @@ class RcloneDocumentsProvider : DocumentsProvider() {
       pathSegments.add("$remote:/$current")
     }
 
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      DocumentsContract.Path(remote, pathSegments)
-    } else {
-      null
-    }
+    if (parentDocumentId == null) return DocumentsContract.Path(remote, pathSegments)
+    // Relative to a parent, the path starts there and names no root.
+    val start = pathSegments.indexOf(listingKey(parentDocumentId))
+    if (start < 0) throw FileNotFoundException("$childDocumentId is not inside $parentDocumentId")
+    return DocumentsContract.Path(null, pathSegments.subList(start, pathSegments.size))
   }
 
   override fun querySearchDocuments(
@@ -342,12 +455,14 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     projection: Array<out String>?
   ): Cursor = withParcelableException {
     ensureInit()
-    val items = RcloneSafBridge.searchFiles(rootId, query)
-    val authority = getAuthority()
-    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION, items.length().coerceAtLeast(1))
-    try {
-      result.setNotificationUri(context?.contentResolver, DocumentsContract.buildSearchDocumentsUri(authority, rootId, query))
-    } catch (_: Exception) {}
+    val notifyUri = DocumentsContract.buildSearchDocumentsUri(getAuthority(), rootId, query)
+    // A recursive search takes longer than a listing, so it is loaded like one. The key cannot
+    // collide with a listing's "remote:/path".
+    val loaded = loadCached("\u0000search\u0000$rootId\u0000$query", notifyUri) {
+      RcloneSafBridge.searchFiles(rootId, query)
+    }
+    val items = loaded.items ?: JSONArray()
+    val result = loaded.toCursor(projection, notifyUri)
 
     for (i in 0 until items.length()) {
       val item = items.optJSONObject(i) ?: continue
@@ -387,13 +502,10 @@ class RcloneDocumentsProvider : DocumentsProvider() {
   ): String = withParcelableException {
     ensureInit()
     val (remote, parentPath) = parseDocId(parentDocumentId)
-    val childPath = if (parentPath.isEmpty() || parentPath == "/") {
-      displayName
-    } else {
-      "${parentPath.trimEnd('/')}/$displayName"
-    }
+    val isDir = mimeType == DocumentsContract.Document.MIME_TYPE_DIR
+    val childPath = uniqueChildPath(remote, parentPath, displayName, isDir)
 
-    if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+    if (isDir) {
       val success = RcloneSafBridge.createDirectory(remote, childPath)
       if (!success) throw FileNotFoundException("Failed to create dir $childPath")
     } else {
@@ -408,6 +520,22 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     val newDocId = "$remote:/$childPath"
     notifyParentChanged(parentDocumentId)
     return newDocId
+  }
+
+  /**
+   * Picks "name (1).ext" and so on when the name is taken, as the provider contract asks;
+   * creating over an existing file would hand its contents to the caller to overwrite.
+   */
+  private fun uniqueChildPath(remote: String, parentPath: String, displayName: String, isDir: Boolean): String {
+    val parent = parentPath.trim('/')
+    fun pathOf(name: String) = if (parent.isEmpty()) name else "$parent/$name"
+    if (RcloneSafBridge.getFileInfo(remote, pathOf(displayName)) == null) return pathOf(displayName)
+
+    for (n in 1..MAX_NAME_ATTEMPTS) {
+      val candidate = pathOf(numberedName(displayName, isDir, n))
+      if (RcloneSafBridge.getFileInfo(remote, candidate) == null) return candidate
+    }
+    throw FileNotFoundException("No free name for $displayName")
   }
 
   override fun deleteDocument(documentId: String): Unit = withParcelableException {
@@ -477,8 +605,8 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     signal?.throwIfCanceled()
     ensureInit()
     val (remote, path) = parseDocId(documentId)
-    val isWrite = mode.contains("w") || mode.contains("W") || mode.contains("a") || mode.contains("A")
-    val modeStr = if (isWrite) "rw" else "r"
+    val pfdMode = ParcelFileDescriptor.parseMode(mode)
+    val modeStr = vfsOpenMode(pfdMode)
 
     val handleInfo = RcloneSafBridge.openVfsFile(remote, path, modeStr)
       ?: throw FileNotFoundException("Could not open document $documentId")
@@ -489,7 +617,6 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val storageManager = context?.getSystemService(StorageManager::class.java)
       if (storageManager != null) {
-        val pfdMode = ParcelFileDescriptor.parseMode(mode)
         val isClosed = AtomicBoolean(false)
         val closeHandleOnce = {
           if (isClosed.compareAndSet(false, true)) {
@@ -532,7 +659,7 @@ class RcloneDocumentsProvider : DocumentsProvider() {
         }
 
         try {
-          return storageManager.openProxyFileDescriptor(pfdMode, callback, proxyHandler)
+          return storageManager.openProxyFileDescriptor(pfdMode, callback, pickProxyHandler())
         } catch (e: Exception) {
           closeHandleOnce()
           throw FileNotFoundException("Failed to open proxy file descriptor for $documentId: ${e.message}")
@@ -550,6 +677,7 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     signal: CancellationSignal?
   ): AssetFileDescriptor? = withParcelableException {
     signal?.throwIfCanceled()
+    ensureInit()
     val (remote, path) = parseDocId(documentId)
     val info = RcloneSafBridge.getFileInfo(remote, path)
     val name = info?.optString("Name")?.ifEmpty { path.substringAfterLast('/') } ?: path.substringAfterLast('/')
@@ -567,14 +695,12 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     }
   }
 
-  private fun isThumbnailSupported(mimeType: String): Boolean {
-    return mimeType.startsWith("image/") ||
-      mimeType.startsWith("video/") ||
-      mimeType.startsWith("audio/") ||
-      mimeType == "application/pdf"
-  }
+  // The thumbnail is the file itself, which the file manager can only decode for images; for
+  // video, audio and PDF it would open a remote stream per item for nothing.
+  private fun isThumbnailSupported(mimeType: String): Boolean = mimeType.startsWith("image/")
 
   private fun notifyParentChanged(parentDocumentId: String) {
+    listings.remove(listingKey(parentDocumentId))
     try {
       val ctx = context ?: return
       val parentUri = DocumentsContract.buildChildDocumentsUri(getAuthority(), parentDocumentId)

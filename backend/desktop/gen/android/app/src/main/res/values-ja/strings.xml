@@ -7,6 +7,11 @@
     <string name="saf_keepalive_channel_name">Rclone ストレージサービス</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">バックグラウンドで実行中</string>
+    <string name="keepalive_stopped_text">Androidがバックグラウンドサービスを停止しました。タップして再開します。</string>
     <string name="keepalive_channel_name">RClone バックグラウンドサービス</string>
     <string name="keepalive_channel_desc">アクティブなマウント、転送、バックグラウンドタスクを維持します</string>
+    <string name="shortcut_file_manager_short">ファイル</string>
+    <string name="shortcut_file_manager_long">ファイルマネージャーを開く</string>
+    <string name="shortcut_open_remote">%1$s を開く</string>
+    <string name="saf_folder_load_failed">このフォルダーを読み込めませんでした。接続を確認して、もう一度お試しください。</string>
 </resources>

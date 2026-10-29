@@ -263,27 +263,19 @@ pub fn is_metered() -> bool {
     crate::rclone::backend::saf_bridge::is_network_metered()
 }
 
+/// Android reports changes through a network callback, which calls [`on_metered_changed`].
 #[cfg(target_os = "android")]
 pub async fn monitor_network_changes() {
-    use tokio::time::{Duration, sleep};
-
-    let mut last_metered = is_metered();
-    log::info!("Starting Android network status monitor (initial metered: {last_metered})");
-
-    loop {
-        sleep(Duration::from_secs(5)).await;
-        let current_metered = is_metered();
-        if current_metered != last_metered {
-            log::info!(
-                "Android metered network status changed: {last_metered} -> {current_metered}"
-            );
-            last_metered = current_metered;
-            let payload = NetworkStatusPayload {
-                is_metered: current_metered,
-            };
-            crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
-        }
+    if !crate::rclone::backend::saf_bridge::start_network_monitor() {
+        log::warn!("Android network status monitor could not be started");
     }
+}
+
+/// Called from the Android network callback when the metered state changes.
+#[cfg(target_os = "android")]
+pub fn on_metered_changed(is_metered: bool) {
+    log::info!("Android metered network status changed: {is_metered}");
+    crate::services::bridge::emit(NETWORK_STATUS_CHANGED, NetworkStatusPayload { is_metered });
 }
 
 #[cfg(not(any(

@@ -12,7 +12,6 @@ describe('AndroidShareService', () => {
     getPendingSharedFiles: ReturnType<typeof vi.fn>;
     getPendingRoute: ReturnType<typeof vi.fn>;
     clearSharedFiles: ReturnType<typeof vi.fn>;
-    notifyFrontendReady: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -24,7 +23,6 @@ describe('AndroidShareService', () => {
       getPendingSharedFiles: vi.fn().mockReturnValue('[]'),
       getPendingRoute: vi.fn().mockReturnValue(''),
       clearSharedFiles: vi.fn(),
-      notifyFrontendReady: vi.fn(),
     };
 
     (window as Window & { __rclone__?: unknown }).__rclone__ = mockBridge;
@@ -53,7 +51,6 @@ describe('AndroidShareService', () => {
     service.initialize();
 
     expect(mockBridge.getPendingSharedFiles).toHaveBeenCalled();
-    expect(mockBridge.notifyFrontendReady).toHaveBeenCalled();
     expect(service.pendingSharedPaths()).toEqual([
       '/cache/shared_files/photo1.jpg',
       '/cache/shared_files/photo2.jpg',
@@ -206,6 +203,5 @@ describe('AndroidShareService', () => {
     service.initialize();
 
     expect(mockBridge.getPendingSharedFiles).not.toHaveBeenCalled();
-    expect(mockBridge.notifyFrontendReady).not.toHaveBeenCalled();
   });
 });

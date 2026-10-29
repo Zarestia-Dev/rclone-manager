@@ -489,7 +489,12 @@
       },
       "keep_alive": {
         "label": "Arka Planda Çalıştır",
-        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et."
+        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et.",
+        "notification": {
+          "jobs": "Etkin işler: {{count}}",
+          "mounts": "Bağlamalar: {{count}}",
+          "serves": "Sunumlar: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Bağlama Sürücüsü Kontrolü Devre Dışı",
       "description": "Bağlama sürücüsü kontrolü atlandı. Uzak konumları bağlamak için sisteminizde uyumlu bir bağlama sürücüsünün kurulu olması gerekir.",
       "install": "Sürücüyü Yükle",
+      "dismissTooltip": "Bir daha gösterme"
+    },
+    "battery": {
+      "title": "Arka planda çalışmaya izin ver",
+      "subtitle": "Android, ekran kapalıyken ağ erişimini durdurabilir. Aktarımların ve zamanlamaların sürmesi için RClone Manager'ı pil optimizasyonundan muaf tutun.",
+      "allow": "İzin ver",
+      "dismissTooltip": "Bir daha gösterme"
+    },
+    "storage": {
+      "title": "Tüm dosyalara erişime izin ver",
+      "subtitle": "Uygulamanın kendi depolama alanı dışındaki yerel klasörlere göz atmak ve aktarmak için Android'de tüm dosyalara erişim gerekir.",
+      "allow": "İzin ver",
       "dismissTooltip": "Bir daha gösterme"
     },
     "metered": {

@@ -43,7 +43,9 @@ describe('AndroidKeepAliveService', () => {
     };
 
     mockTranslate = {
-      instant: vi.fn((key: string) => key),
+      instant: vi.fn((key: string, params?: { count?: number }) =>
+        params ? `${key}:${params.count}` : key
+      ),
     };
 
     mockBridge = {
@@ -85,6 +87,7 @@ describe('AndroidKeepAliveService', () => {
   });
 
   afterEach(() => {
+    localStorage.clear();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.useRealTimers();
@@ -96,6 +99,39 @@ describe('AndroidKeepAliveService', () => {
     expect(mockBridge.isBatteryOptimizationIgnored).toHaveBeenCalled();
     expect(service.isBatteryOptimizationIgnored()).toBe(true);
     expect(mockAppSettings.selectSetting).toHaveBeenCalledWith('general.keep_alive');
+  });
+
+  it('prompts for the exemption only while keep-alive is on and the app is not exempt', () => {
+    mockBridge.isBatteryOptimizationIgnored.mockReturnValue(false);
+    service.initialize();
+    expect(service.showBatteryOptimizationPrompt()).toBe(true);
+
+    keepAliveSetting.next({ value: false });
+    expect(service.showBatteryOptimizationPrompt()).toBe(false);
+
+    keepAliveSetting.next({ value: true });
+    mockBridge.isBatteryOptimizationIgnored.mockReturnValue(true);
+    service.refreshBatteryOptimizationStatus();
+    expect(service.showBatteryOptimizationPrompt()).toBe(false);
+  });
+
+  it('remembers a dismissed battery prompt', () => {
+    mockBridge.isBatteryOptimizationIgnored.mockReturnValue(false);
+    service.initialize();
+    service.dismissBatteryOptimizationPrompt();
+    expect(service.showBatteryOptimizationPrompt()).toBe(false);
+    expect(localStorage.getItem('rcman.android.batteryPromptDismissed')).toBe('true');
+  });
+
+  it('rechecks the exemption when the app becomes visible again', () => {
+    service.initialize();
+    mockBridge.isBatteryOptimizationIgnored.mockClear();
+    mockBridge.isBatteryOptimizationIgnored.mockReturnValue(false);
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(mockBridge.isBatteryOptimizationIgnored).toHaveBeenCalled();
+    expect(service.isBatteryOptimizationIgnored()).toBe(false);
   });
 
   it('should forward request to ignore battery optimizations', () => {
@@ -141,7 +177,7 @@ describe('AndroidKeepAliveService', () => {
     // Before debounce time elapses, notification should not have updated with new text
     expect(mockBridge.updateKeepAliveNotification).not.toHaveBeenCalledWith(
       'RClone Manager',
-      '1 active jobs • 1 mounted'
+      'settings.general.keep_alive.notification.jobs:1 • settings.general.keep_alive.notification.mounts:1'
     );
 
     // Fast-forward past the 500ms debounce
@@ -149,7 +185,7 @@ describe('AndroidKeepAliveService', () => {
 
     expect(mockBridge.updateKeepAliveNotification).toHaveBeenCalledWith(
       'RClone Manager',
-      '1 active jobs • 1 mounted'
+      'settings.general.keep_alive.notification.jobs:1 • settings.general.keep_alive.notification.mounts:1'
     );
   });
 
@@ -181,7 +217,7 @@ describe('AndroidKeepAliveService', () => {
     expect(mockBridge.updateKeepAliveNotification).toHaveBeenCalledTimes(1);
     expect(mockBridge.updateKeepAliveNotification).toHaveBeenCalledWith(
       'RClone Manager',
-      '1 active jobs • 1 mounted • 1 serves'
+      'settings.general.keep_alive.notification.jobs:1 • settings.general.keep_alive.notification.mounts:1 • settings.general.keep_alive.notification.serves:1'
     );
   });
 
@@ -216,7 +252,7 @@ describe('AndroidKeepAliveService', () => {
     // Notification update is dispatched so status bar reflects active job
     expect(mockBridge.updateKeepAliveNotification).toHaveBeenCalledWith(
       'RClone Manager',
-      '1 active jobs'
+      'settings.general.keep_alive.notification.jobs:1'
     );
   });
 

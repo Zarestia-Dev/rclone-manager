@@ -32,7 +32,13 @@ object RcloneAppUpdater {
       val file = File(path).canonicalFile
       val cache = context.cacheDir.canonicalFile
       if (!file.toPath().startsWith(cache.toPath()) || file.extension != "apk" || !file.isFile) return -1
-      val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+      // Some Android 9, 10 and 13 builds only read an archive's certificates for the legacy
+      // flag, which left the candidate without signers and refused every update.
+      val flags = if (Build.VERSION.SDK_INT >= 28) {
+        PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_SIGNATURES
+      } else {
+        PackageManager.GET_SIGNATURES
+      }
       val candidate = context.packageManager.getPackageArchiveInfo(file.path, flags) ?: return -1
       val installed = context.packageManager.getPackageInfo(context.packageName, flags)
       if (!validUpdatePackage(identity(installed), identity(candidate))) return -1
@@ -56,7 +62,8 @@ object RcloneAppUpdater {
 
   @Suppress("DEPRECATION")
   private fun identity(info: PackageInfo): UpdatePackageIdentity {
-    val certificates = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures
+    val certificates = (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else null)
+      ?: info.signatures
     val signers = certificates.orEmpty().map { signature ->
       MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()).joinToString("") { "%02x".format(it) }
     }.toSet()

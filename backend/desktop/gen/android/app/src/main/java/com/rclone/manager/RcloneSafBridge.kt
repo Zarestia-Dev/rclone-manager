@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.net.Uri
@@ -12,6 +15,17 @@ import android.util.Base64
 import androidx.core.content.FileProvider
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** An rclone include rule for names containing [query], with glob characters taken literally. */
+internal fun containsGlob(query: String): String {
+  val escaped = buildString {
+    for (c in query) {
+      if (c in "\\*?[]{}") append('\\')
+      append(c)
+    }
+  }
+  return "*$escaped*"
+}
 
 data class SafRootItem(
   val remoteName: String,
@@ -51,8 +65,12 @@ object RcloneSafBridge {
 
   @Volatile
   var appContext: Context? = null
+  // Read without the lock by the document I/O threads.
+  @Volatile
   private var isLibraryLoaded = false
   private var isEnvironmentConfigured = false
+  @Volatile
+  private var areShortcutsInitialized = false
 
   @Synchronized
   private fun loadNativeLibraries(context: Context) {
@@ -67,6 +85,11 @@ object RcloneSafBridge {
       android.system.Os.setenv("XDG_CACHE_HOME", cachePath, true)
       android.system.Os.setenv("TMPDIR", cachePath, true)
       android.system.Os.setenv("TMP", cachePath, true)
+      // The Go runtime reads this when it loads. Without a limit its heap keeps growing until
+      // Android's low memory killer ends the process.
+      if (System.getenv("GOMEMLIMIT") == null) {
+        android.system.Os.setenv("GOMEMLIMIT", "384MiB", true)
+      }
       isEnvironmentConfigured = true
     }
     try {
@@ -86,14 +109,19 @@ object RcloneSafBridge {
   private external fun nativeRpc(endpoint: String, jsonPayload: String): String
   private external fun nativeVfsRead(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
   private external fun nativeVfsWrite(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
+  private external fun nativeOnMeteredChanged(isMetered: Boolean)
 
   private val activeHandleCount = java.util.concurrent.atomic.AtomicInteger(0)
 
   @JvmStatic
   fun getActiveHandleCount(): Int = activeHandleCount.get()
 
+  /**
+   * The documents provider calls this before every operation. The native part is cheap once
+   * librclone is ready and starts it again after the engine finalized it, so it runs every time
+   * and needs no lock; only the shortcut update, an IPC to the system, is done once.
+   */
   @JvmStatic
-  @Synchronized
   fun ensureInitialized(context: Context) {
     try {
       val appCtx = context.applicationContext
@@ -104,13 +132,17 @@ object RcloneSafBridge {
       val configDirPath = appCtx.applicationInfo.dataDir
       val cacheDirPath = appCtx.cacheDir.absolutePath
       nativeInitSaf(appCtx, configDirPath, cacheDirPath)
-      updateAppShortcuts(appCtx)
+      if (!areShortcutsInitialized) {
+        areShortcutsInitialized = true
+        updateAppShortcuts(appCtx)
+      }
     } catch (e: Throwable) {
       Logger.error("ensureInitialized error: ${e.message}")
     }
   }
 
   @JvmStatic
+  @androidx.annotation.Keep
   fun isNetworkMetered(): Boolean {
     val ctx = appContext ?: return false
     return try {
@@ -122,7 +154,59 @@ object RcloneSafBridge {
     }
   }
 
+  @Volatile
+  private var networkCallback: ConnectivityManager.NetworkCallback? = null
+  @Volatile
+  private var lastMetered: Boolean? = null
+
+  /**
+   * Reports metered changes to Rust as they happen, instead of Rust asking every few seconds.
+   * Capability callbacks also fire for signal strength, so only real changes are passed on.
+   */
   @JvmStatic
+  @androidx.annotation.Keep
+  @Synchronized
+  fun startNetworkMonitor(): Boolean {
+    if (networkCallback != null) return true
+    val ctx = appContext ?: return false
+    return try {
+      val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return false
+      val callback = object : ConnectivityManager.NetworkCallback() {
+        // The capabilities come with the callback; asking ConnectivityManager here would race.
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+          reportMetered(isMetered(caps))
+        }
+
+        override fun onLost(network: Network) {
+          reportMetered(false)
+        }
+      }
+      cm.registerDefaultNetworkCallback(callback)
+      networkCallback = callback
+      true
+    } catch (e: Throwable) {
+      Logger.error("startNetworkMonitor failed: ${e.message}")
+      false
+    }
+  }
+
+  private fun isMetered(caps: NetworkCapabilities): Boolean =
+    !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) &&
+      !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED))
+
+  private fun reportMetered(metered: Boolean) {
+    if (metered == lastMetered || !isLibraryLoaded) return
+    lastMetered = metered
+    try {
+      nativeOnMeteredChanged(metered)
+    } catch (e: Throwable) {
+      Logger.error("nativeOnMeteredChanged failed: ${e.message}")
+    }
+  }
+
+  @JvmStatic
+  @androidx.annotation.Keep
   fun notifyRootsChanged() {
     try {
       val ctx = appContext ?: return
@@ -135,6 +219,7 @@ object RcloneSafBridge {
   }
 
   @JvmStatic
+  @androidx.annotation.Keep
   fun openContentUriFd(uriString: String, mode: String): Int {
     val ctx = appContext ?: return -1
     return try {
@@ -151,7 +236,7 @@ object RcloneSafBridge {
     return try {
       val context = appContext ?: return JSONObject().put("error", "SAF bridge not initialized")
       loadNativeLibraries(context)
-      if (!isLibraryLoaded) return JSONObject()
+      if (!isLibraryLoaded) return JSONObject().put("error", "Native library not loaded")
       val resStr = nativeRpc(endpoint, params.toString())
       JSONObject(resStr)
     } catch (e: Throwable) {
@@ -163,7 +248,7 @@ object RcloneSafBridge {
   private const val PREFS_NAME = "rclone_saf_prefs"
   private const val KEY_MOUNTED_REMOTES = "mounted_remotes"
 
-  private val safRootsList = mutableListOf<SafRootItem>()
+  private val rootsLock = Any()
   @Volatile
   private var isMountedRemotesLoaded = false
   @Volatile
@@ -171,19 +256,18 @@ object RcloneSafBridge {
 
   fun getSafSource(remoteName: String): String {
     val cleanName = remoteName.trim().trimEnd(':')
-    synchronized(safRootsList) {
-      val item = safRootsList.find { it.remoteName == cleanName }
-      if (item != null && item.source.isNotEmpty()) {
-        return item.source
-      }
-    }
-    return if (cleanName.endsWith(':')) cleanName else "$cleanName:"
+    // The file manager may open a document directly after the process restarted, before it
+    // asks for the roots; without the stored mounts a "remote:subdir" mount would resolve to
+    // the remote's top level.
+    loadMountedRemotesIfNeeded()
+    val item = cachedSafRoots.find { it.remoteName == cleanName }
+    return if (item != null && item.source.isNotEmpty()) item.source else "$cleanName:"
   }
 
   private fun loadMountedRemotesIfNeeded() {
     if (isMountedRemotesLoaded) return
     val ctx = appContext ?: return
-    synchronized(safRootsList) {
+    synchronized(rootsLock) {
       if (isMountedRemotesLoaded) return
       try {
         val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -196,6 +280,7 @@ object RcloneSafBridge {
   }
 
   @JvmStatic
+  @androidx.annotation.Keep
   fun updateMountedRemotes(jsonPayload: String) {
     updateMountedRemotesInternal(jsonPayload, saveToPrefs = true)
   }
@@ -225,12 +310,10 @@ object RcloneSafBridge {
           }
         }
       }
-      synchronized(safRootsList) {
-        safRootsList.clear()
-        safRootsList.addAll(newRoots)
-        cachedSafRoots = newRoots.toList()
+      synchronized(rootsLock) {
+        cachedSafRoots = newRoots
+        isMountedRemotesLoaded = true
       }
-      isMountedRemotesLoaded = true
 
       if (saveToPrefs) {
         appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.edit()?.apply {
@@ -239,7 +322,7 @@ object RcloneSafBridge {
         }
       }
 
-      Logger.info("updateMountedRemotes: active mounted remotes = $safRootsList")
+      Logger.info("updateMountedRemotes: active mounted remotes = $newRoots")
       notifyRootsChanged()
     } catch (e: Exception) {
       Logger.error("updateMountedRemotes error: ${e.message}")
@@ -256,10 +339,12 @@ object RcloneSafBridge {
     }
   }
 
-  fun listDirectory(remote: String, path: String): JSONArray {
+  /** Null when the listing failed, so callers can tell an error from an empty directory. */
+  fun listDirectory(remote: String, path: String): JSONArray? {
     val fs = getSafSource(remote)
     val params = JSONObject().put("fs", fs).put("remote", path)
     val res = rpc("vfs/stream/list", params)
+    if (res.has("error")) return null
     return res.optJSONArray("list") ?: JSONArray()
   }
 
@@ -275,9 +360,9 @@ object RcloneSafBridge {
     val params = JSONObject().put("fs", fs).put("remote", path).put("mode", mode)
     val res = rpc("vfs/stream/open", params)
     if (res.has("handle_id")) {
-      if (activeHandleCount.incrementAndGet() > 0) {
-        appContext?.let { RcloneKeepAliveService.startService(it) }
-      }
+      activeHandleCount.incrementAndGet()
+      mainHandler.removeCallbacks(stopIdleService)
+      appContext?.let { RcloneKeepAliveService.startForDocuments(it) }
       return res
     }
     return null
@@ -302,7 +387,8 @@ object RcloneSafBridge {
     val res = rpc("vfs/stream/close", params)
     if (activeHandleCount.decrementAndGet() <= 0) {
       activeHandleCount.set(0)
-      appContext?.let { RcloneKeepAliveService.stopService(it) }
+      mainHandler.removeCallbacks(stopIdleService)
+      mainHandler.postDelayed(stopIdleService, DOCUMENT_IDLE_STOP_MS)
     }
     return res.optBoolean("success", true)
   }
@@ -393,9 +479,10 @@ object RcloneSafBridge {
     return !res.has("error")
   }
 
-  fun searchFiles(remote: String, query: String): JSONArray {
+  /** Null when the search failed, so callers can tell an error from no matches. */
+  fun searchFiles(remote: String, query: String): JSONArray? {
     val qClean = query.trim()
-    if (qClean.length < 2) {
+    if (qClean.length < 2 || '/' in qClean) {
       return JSONArray()
     }
 
@@ -407,8 +494,17 @@ object RcloneSafBridge {
       .put("recurse", true)
       .put("maxDepth", 3)
     params.put("opt", opt)
+    // Without it every file three levels deep came back to be filtered here. Folders are still
+    // all listed, since a match may lie below them, so the name check below stays.
+    params.put(
+      "_filter",
+      JSONObject()
+        .put("IncludeRule", JSONArray().put(containsGlob(qClean)))
+        .put("IgnoreCase", true)
+    )
 
     val res = rpc("operations/list", params)
+    if (res.has("error")) return null
     val allList = res.optJSONArray("list") ?: JSONArray()
     val filtered = JSONArray()
 
@@ -423,15 +519,24 @@ object RcloneSafBridge {
     return filtered
   }
 
-  private val shortcutDebounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
+  private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+  // Thumbnails and players open and close one document after another; waiting before the
+  // service stops keeps it from being restarted, with its notification, for each of them.
+  private const val DOCUMENT_IDLE_STOP_MS = 30_000L
+  private val stopIdleService = Runnable {
+    if (activeHandleCount.get() <= 0) {
+      appContext?.let { RcloneKeepAliveService.stopService(it, false) }
+    }
+  }
   private val shortcutDebounceRunnable = Runnable {
     appContext?.let { updateAppShortcutsInternal(it) }
   }
 
   fun updateAppShortcuts(context: Context? = null) {
     if (context != null) appContext = context.applicationContext
-    shortcutDebounceHandler.removeCallbacks(shortcutDebounceRunnable)
-    shortcutDebounceHandler.postDelayed(shortcutDebounceRunnable, 400L)
+    mainHandler.removeCallbacks(shortcutDebounceRunnable)
+    mainHandler.postDelayed(shortcutDebounceRunnable, 400L)
   }
 
   private fun updateAppShortcutsInternal(context: Context) {
@@ -449,8 +554,8 @@ object RcloneSafBridge {
         }
 
         val nautilusShortcut = ShortcutInfo.Builder(context, "shortcut_nautilus")
-          .setShortLabel("File Manager")
-          .setLongLabel("Open File Manager")
+          .setShortLabel(context.getString(R.string.shortcut_file_manager_short))
+          .setLongLabel(context.getString(R.string.shortcut_file_manager_long))
           .setIcon(Icon.createWithResource(context, R.drawable.ic_folder_manager))
           .setIntent(nautilusIntent)
           .setRank(0)
@@ -467,7 +572,7 @@ object RcloneSafBridge {
 
           val shortcut = ShortcutInfo.Builder(context, "saf_remote_${root.remoteName}")
             .setShortLabel(root.remoteName)
-            .setLongLabel("Open ${root.remoteName}")
+            .setLongLabel(context.getString(R.string.shortcut_open_remote, root.remoteName))
             .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
             .setIntent(intent)
             .setRank(index + 1)
@@ -484,6 +589,7 @@ object RcloneSafBridge {
   }
 
   @JvmStatic
+  @androidx.annotation.Keep
   fun openSafRemote(remoteName: String): Boolean {
     val cleanRemote = remoteName.trim()
     if (cleanRemote.isEmpty()) {
@@ -507,6 +613,7 @@ object RcloneSafBridge {
   }
 
   @JvmStatic
+  @androidx.annotation.Keep
   fun openLocalPath(path: String): Boolean {
     val ctx = appContext ?: return false
     val cleanPath = path.trim()

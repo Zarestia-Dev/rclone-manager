@@ -8,13 +8,33 @@ import { EventListenersService } from 'src/app/services/infrastructure/system/ev
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { AndroidKeepAliveService } from 'src/app/services/infrastructure/platform/android-keep-alive.service';
+import { AndroidStorageAccessService } from 'src/app/services/infrastructure/platform/android-storage-access.service';
 
 describe('BannerComponent collapsed content', () => {
   let fixture: ComponentFixture<BannerComponent>;
   const buildType = signal('flatpak');
+  const showBatteryOptimizationPrompt = signal(false);
+  const androidKeepAlive = {
+    showBatteryOptimizationPrompt,
+    requestIgnoreBatteryOptimizations: vi.fn(),
+    dismissBatteryOptimizationPrompt: vi.fn(),
+  };
+  const showAllFilesAccessPrompt = signal(false);
+  const androidStorageAccess = {
+    showAllFilesAccessPrompt,
+    requestAllFilesAccess: vi.fn(),
+    dismissAllFilesAccessPrompt: vi.fn(),
+  };
 
   beforeEach(() => {
     buildType.set('flatpak');
+    showBatteryOptimizationPrompt.set(false);
+    androidKeepAlive.requestIgnoreBatteryOptimizations.mockClear();
+    androidKeepAlive.dismissBatteryOptimizationPrompt.mockClear();
+    showAllFilesAccessPrompt.set(false);
+    androidStorageAccess.requestAllFilesAccess.mockClear();
+    androidStorageAccess.dismissAllFilesAccessPrompt.mockClear();
     TestBed.configureTestingModule({
       imports: [BannerComponent],
       providers: [
@@ -41,6 +61,8 @@ describe('BannerComponent collapsed content', () => {
           },
         },
         { provide: AppUpdaterService, useValue: { buildType } },
+        { provide: AndroidKeepAliveService, useValue: androidKeepAlive },
+        { provide: AndroidStorageAccessService, useValue: androidStorageAccess },
       ],
     }).overrideComponent(BannerComponent, {
       set: { imports: [TranslatePipe], schemas: [CUSTOM_ELEMENTS_SCHEMA] },
@@ -63,5 +85,50 @@ describe('BannerComponent collapsed content', () => {
     const banner: HTMLElement = fixture.nativeElement.querySelector('.flatpak-warning-banner');
     expect(banner.inert).toBe(true);
     expect(banner.getAttribute('aria-hidden')).toBe('true');
+  });
+  it('hides the battery prompt and its actions until the app is not exempt', () => {
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.battery-banner');
+    expect(banner.inert).toBe(true);
+    expect(banner.getAttribute('aria-hidden')).toBe('true');
+
+    showBatteryOptimizationPrompt.set(true);
+    fixture.detectChanges();
+    expect(banner.inert).toBe(false);
+    expect(banner.classList.contains('visible')).toBe(true);
+  });
+
+  it('requests the exemption and dismisses the battery prompt', () => {
+    showBatteryOptimizationPrompt.set(true);
+    fixture.detectChanges();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.battery-banner');
+
+    banner.querySelector<HTMLButtonElement>('button[matButton]')?.click();
+    expect(androidKeepAlive.requestIgnoreBatteryOptimizations).toHaveBeenCalledTimes(1);
+
+    banner.querySelector<HTMLButtonElement>('button.action-button')?.click();
+    expect(androidKeepAlive.dismissBatteryOptimizationPrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the all files access prompt and its actions until access is missing', () => {
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.storage-banner');
+    expect(banner.inert).toBe(true);
+    expect(banner.getAttribute('aria-hidden')).toBe('true');
+
+    showAllFilesAccessPrompt.set(true);
+    fixture.detectChanges();
+    expect(banner.inert).toBe(false);
+    expect(banner.classList.contains('visible')).toBe(true);
+  });
+
+  it('requests all files access and dismisses its prompt', () => {
+    showAllFilesAccessPrompt.set(true);
+    fixture.detectChanges();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.storage-banner');
+
+    banner.querySelector<HTMLButtonElement>('button[matButton]')?.click();
+    expect(androidStorageAccess.requestAllFilesAccess).toHaveBeenCalledTimes(1);
+
+    banner.querySelector<HTMLButtonElement>('button.action-button')?.click();
+    expect(androidStorageAccess.dismissAllFilesAccessPrompt).toHaveBeenCalledTimes(1);
   });
 });

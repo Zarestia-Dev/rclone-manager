@@ -7,6 +7,11 @@
     <string name="saf_keepalive_channel_name">Служба хранения Rclone</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Работает в фоновом режиме</string>
+    <string name="keepalive_stopped_text">Android остановил фоновую службу. Нажмите, чтобы возобновить.</string>
     <string name="keepalive_channel_name">Фоновая служба RClone</string>
     <string name="keepalive_channel_desc">Поддерживает активные подключенные диски, передачи и фоновые задачи</string>
+    <string name="shortcut_file_manager_short">Файлы</string>
+    <string name="shortcut_file_manager_long">Открыть файловый менеджер</string>
+    <string name="shortcut_open_remote">Открыть %1$s</string>
+    <string name="saf_folder_load_failed">Не удалось загрузить эту папку. Проверьте подключение и повторите попытку.</string>
 </resources>

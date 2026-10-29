@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "バックグラウンドで実行",
-        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。"
+        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。",
+        "notification": {
+          "jobs": "実行中のジョブ: {{count}}",
+          "mounts": "マウント: {{count}}",
+          "serves": "サーブ: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "マウントドライバーの確認が無効",
       "description": "マウントドライバーの確認がスキップされました。リモートのマウントには互換性のあるドライバーのインストールが必要です。",
       "install": "ドライバーをインストール",
+      "dismissTooltip": "今後表示しない"
+    },
+    "battery": {
+      "title": "バックグラウンド動作を許可",
+      "subtitle": "画面がオフのとき、Androidはネットワークアクセスを停止することがあります。転送やスケジュールを継続するには、RClone Managerをバッテリー最適化の対象外にしてください。",
+      "allow": "許可",
+      "dismissTooltip": "今後表示しない"
+    },
+    "storage": {
+      "title": "すべてのファイルへのアクセスを許可",
+      "subtitle": "アプリ専用の領域以外にあるローカルフォルダーを参照・転送するには、Android ですべてのファイルへのアクセスが必要です。",
+      "allow": "許可",
       "dismissTooltip": "今後表示しない"
     },
     "metered": {

@@ -7,6 +7,11 @@
     <string name="saf_keepalive_channel_name">Rclone 存储服务</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">正在后台运行</string>
+    <string name="keepalive_stopped_text">Android 已停止后台服务。点按即可恢复。</string>
     <string name="keepalive_channel_name">RClone 后台服务</string>
     <string name="keepalive_channel_desc">保持活动挂载、传输和后台任务运行</string>
+    <string name="shortcut_file_manager_short">文件</string>
+    <string name="shortcut_file_manager_long">打开文件管理器</string>
+    <string name="shortcut_open_remote">打开 %1$s</string>
+    <string name="saf_folder_load_failed">无法加载此文件夹。请检查网络连接后重试。</string>
 </resources>

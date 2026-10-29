@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "在後台執行",
-        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。"
+        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。",
+        "notification": {
+          "jobs": "執行中的工作：{{count}}",
+          "mounts": "掛載：{{count}}",
+          "serves": "服務：{{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "掛載驅動檢查已停用",
       "description": "已略過掛載驅動檢查。掛載遠端儲存需要系統上安裝相容的掛載驅動。",
       "install": "安裝驅動",
+      "dismissTooltip": "不再顯示"
+    },
+    "battery": {
+      "title": "允許背景活動",
+      "subtitle": "螢幕關閉時，Android 可能會暫停網路存取。請將 RClone Manager 從電池最佳化中排除，以維持傳輸與排程持續執行。",
+      "allow": "允許",
+      "dismissTooltip": "不再顯示"
+    },
+    "storage": {
+      "title": "允許存取所有檔案",
+      "subtitle": "若要瀏覽及傳輸應用程式自身儲存空間以外的本機資料夾，Android 需要「所有檔案存取權」。",
+      "allow": "允許",
       "dismissTooltip": "不再顯示"
     },
     "metered": {
