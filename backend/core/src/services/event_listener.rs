@@ -482,21 +482,21 @@ mod tests {
             let app = AppHandle::new(host.clone(), ProductInfo::default());
             dispatch_bridge_event(
                 &app,
-                BridgeEvent {
+                &BridgeEvent {
                     event: UPDATE_TRAY_MENU.into(),
                     payload: Value::Null,
                 },
             );
             dispatch_bridge_event(
                 &app,
-                BridgeEvent {
+                &BridgeEvent {
                     event: BACKEND_SWITCHED.into(),
                     payload: json!("NAS & 旅行"),
                 },
             );
             dispatch_bridge_event(
                 &app,
-                BridgeEvent {
+                &BridgeEvent {
                     event: "unknown event & 旅行".into(),
                     payload: Value::Null,
                 },
@@ -512,7 +512,7 @@ mod tests {
             for enabled in [true, false] {
                 dispatch_bridge_event(
                     &app,
-                    BridgeEvent {
+                    &BridgeEvent {
                         event: SYSTEM_SETTINGS_CHANGED.into(),
                         payload: json!({"category": "general", "key": "tray_enabled", "value": enabled}),
                     },
@@ -525,7 +525,7 @@ mod tests {
             ] {
                 dispatch_bridge_event(
                     &app,
-                    BridgeEvent {
+                    &BridgeEvent {
                         event: SYSTEM_SETTINGS_CHANGED.into(),
                         payload: json!({"category": category, "key": key, "value": value}),
                     },
@@ -552,7 +552,7 @@ mod tests {
             ] {
                 dispatch_bridge_event(
                     &app,
-                    BridgeEvent {
+                    &BridgeEvent {
                         event: SYSTEM_SETTINGS_CHANGED.into(),
                         payload,
                     },
