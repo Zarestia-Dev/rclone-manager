@@ -9,8 +9,7 @@ edition = "2024"
 
 [workspace.dependencies]
 # Versions shared by core, server and desktop; members add their own features.
-# Local rcman for testing profile-name collisions; restore `version = "0.2.7"` before release.
-rcman = { path = "../../rcman", default-features = false }
+rcman = { version = "0.2.6", default-features = false }
 async-trait = "0.1"
 base64 = "0.23"
 clap = { version = "4", features = ["derive", "env"] }
