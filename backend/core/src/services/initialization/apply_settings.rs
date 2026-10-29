@@ -48,11 +48,10 @@ pub async fn apply_backend_settings(app_handle: &crate::context::AppHandle) -> R
     // Only send request if there are options configured
     if let Some(obj) = backend_options.as_object()
         && !obj.is_empty()
-        && let Err(e) = set_rclone_options_bulk(app_handle.clone(), backend_options).await
     {
-        error!("Failed to apply bulk backend settings: {e}");
+        set_rclone_options_bulk(app_handle.clone(), backend_options).await?;
+        info!("✅ RClone backend settings applied successfully");
     }
 
-    info!("✅ RClone backend settings applied successfully");
     Ok(())
 }

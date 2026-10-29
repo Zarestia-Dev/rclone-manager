@@ -126,7 +126,7 @@ describe('ApplyTemplateModalComponent', () => {
     expect(unchangedComp.diffResult().totalUnchanged).toBe(3);
 
     const compiled = unchangedFixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.no-diff-banner')).toBeTruthy();
+    expect(compiled.querySelector('app-alert-banner.success')).toBeTruthy();
     expect(compiled.querySelectorAll('.category-diff-card').length).toBe(2);
     expect(compiled.querySelectorAll('.diff-row').length).toBe(3);
   });

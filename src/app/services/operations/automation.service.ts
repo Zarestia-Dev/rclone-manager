@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Automation, CronValidationResponse } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { CoalescedTask } from '../../shared/utils/coalesced-task.util';
 
 @Injectable({ providedIn: 'root' })
 export class AutomationService extends TauriBaseService {
@@ -11,6 +12,7 @@ export class AutomationService extends TauriBaseService {
 
   private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly refreshTask = new CoalescedTask(() => this.loadAutomations());
 
   constructor() {
     super();
@@ -29,7 +31,12 @@ export class AutomationService extends TauriBaseService {
     return this.invokeCommand<CronValidationResponse>('validate_cron', { cronExpression });
   }
 
-  public async refreshAutomations(): Promise<void> {
+  /** Overlapping requests run one after another, so an older answer never replaces a newer one. */
+  public refreshAutomations(): Promise<void> {
+    return this.refreshTask.run();
+  }
+
+  private async loadAutomations(): Promise<void> {
     try {
       const automations = await this.invokeCommand<Automation[]>('get_automations');
       this._automations.set(automations);

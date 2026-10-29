@@ -203,7 +203,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (update_backend, $crate::rclone::commands::backend::update_backend, [params: $crate::rclone::commands::backend::UpdateBackendParams]);
             (remove_backend, $crate::rclone::commands::backend::remove_backend, [name: String]);
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
-            (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>]);
+            (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>, name: Option<String>]);
             (clear_engine_auth_error, $crate::rclone::engine::lifecycle::clear_engine_auth_error, []);
             #[cfg(not(feature = "librclone"))]
             (find_available_port, $crate::rclone::commands::backend::find_available_port, [start_port: Option<u16>], [sync, no_app]);
@@ -225,6 +225,7 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // WORKFLOWS (FLOW WORKSPACE)
             (list_workflows, $crate::services::flow::workflow::commands::list_workflows, []);
+            (get_active_workflows, $crate::services::flow::workflow::commands::get_active_workflows, []);
             (create_workflow, $crate::services::flow::workflow::commands::create_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (update_workflow, $crate::services::flow::workflow::commands::update_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (delete_workflow, $crate::services::flow::workflow::commands::delete_workflow, [workflow_id: String]);

@@ -9,6 +9,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 import { UserPresetTemplate, TemplateCategory } from '@app/types';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import {
   computeTemplateDiff,
   filterTemplateValues,
@@ -39,6 +40,7 @@ export interface ApplyTemplateModalResult {
     MatDividerModule,
     MatExpansionModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './apply-template-modal.component.html',
   styleUrls: ['./apply-template-modal.component.scss', '../../../styles/_shared-modal.scss'],

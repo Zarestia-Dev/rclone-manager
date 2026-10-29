@@ -409,18 +409,20 @@
               </button>
             </div>
 
-            <div class="debug-actions-section">
-              @if (!isHeadless && !isMobile) {
-                <button matButton="elevated" class="primary" (click)="openDevTools()">
-                  <mat-icon svgIcon="terminal"> </mat-icon>
-                  <span>{{ 'modals.about.openDevTools' | translate }}</span>
+            @if (!isNativeMobile) {
+              <div class="debug-actions-section">
+                @if (!isHeadless) {
+                  <button matButton="elevated" class="primary" (click)="openDevTools()">
+                    <mat-icon svgIcon="terminal"> </mat-icon>
+                    <span>{{ 'modals.about.openDevTools' | translate }}</span>
+                  </button>
+                }
+                <button matButton="elevated" class="warn" (click)="restartApp()">
+                  <mat-icon svgIcon="reset-wrench"></mat-icon>
+                  <span>{{ 'modals.about.restartApp' | translate }}</span>
                 </button>
-              }
-              <button matButton="elevated" class="warn" (click)="restartApp()">
-                <mat-icon svgIcon="reset-wrench"></mat-icon>
-                <span>{{ 'modals.about.restartApp' | translate }}</span>
-              </button>
-            </div>
+              </div>
+            }
           } @else {
             <div class="loading">
               <mat-icon svgIcon="spinner"></mat-icon>

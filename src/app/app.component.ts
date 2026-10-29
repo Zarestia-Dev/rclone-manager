@@ -200,9 +200,10 @@ export class AppComponent implements OnInit {
         !this.flowOverlayService.isStandaloneWindow() &&
         !this.mainUiOverlayService.isStandaloneWindow()
       ) {
-        void this.backendService.runStartupChecks().catch(error => {
-          console.error('Backend startup checks failed:', error);
-        });
+        void this.backendService
+          .loadBackends()
+          .then(() => this.backendService.refreshStatuses())
+          .catch(error => console.error('Backend startup checks failed:', error));
         await this.applyDefaultView();
       }
       if (!isCurrent()) return;

@@ -28,9 +28,7 @@ use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
 use crate::services::flow::workflow::engine::cancel::CancelToken;
 
-#[cfg(feature = "tray")]
-pub use active::get_active_workflow_ids;
-pub use active::{has_active_workflows, stop_workflow};
+pub use active::{get_active_workflow_ids, has_active_workflows, stop_workflow};
 pub(crate) use nodes::rc::parse_rc_params;
 pub use run::execute_workflow;
 pub(crate) use run::execute_workflow_snapshot;

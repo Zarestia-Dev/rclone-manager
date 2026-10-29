@@ -111,6 +111,49 @@ mod tests {
         }
     }
 
+    /// An install from before quick runs and workflows had profiles, with the vault enabled.
+    fn encrypted_legacy_install(directory: &Path) {
+        use crate::utils::constants::{SUB_QUICK_RUNS, SUB_WORKFLOWS};
+        let legacy = rcman::SettingsManager::builder("rclone-manager", "1")
+            .with_config_dir(directory)
+            .with_vault_password("password")
+            .with_vault_preset(rcman::Argon2Preset::Fast)
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile(SUB_QUICK_RUNS))
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile(SUB_WORKFLOWS))
+            .build()
+            .unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            legacy
+                .sub_settings(section)
+                .unwrap()
+                .set("kept", &serde_json::json!({"name": section}))
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn a_locked_vault_starts_and_unlocking_moves_quick_runs_and_workflows_into_the_profile() {
+        use crate::utils::constants::{LOCAL_BACKEND_PROFILE, SUB_QUICK_RUNS, SUB_WORKFLOWS};
+        let directory = tempfile::tempdir().unwrap();
+        encrypted_legacy_install(directory.path());
+
+        let manager = create_settings_manager(directory.path()).unwrap();
+        assert!(directory.path().join("quick_runs.json").is_file());
+        assert!(directory.path().join("workflows.json").is_file());
+
+        manager.unlock("password").unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            let sub = manager.sub_settings(section).unwrap();
+            assert_eq!(sub.list().unwrap(), ["kept"]);
+            assert_eq!(sub.get_value("kept").unwrap()["name"], section);
+            assert_eq!(
+                sub.profiles().unwrap().active().unwrap(),
+                LOCAL_BACKEND_PROFILE
+            );
+            assert!(!directory.path().join(format!("{section}.json")).exists());
+        }
+    }
+
     #[test]
     fn password_variable_wins_over_file() {
         let source = vault_password_source(Ok("pw".into()), Some("/run/secrets/v".into()));

@@ -33,6 +33,7 @@ describe('configuration forms', () => {
     expect(group.get('source')).toBeTruthy();
     expect(group.get('options')).toBeInstanceOf(FormGroup);
     expect(group.get('watchDelay')?.value).toBe(5);
+    expect(group.get('autoStartDelay')?.value).toBe(0);
     expect(group.getRawValue()).toMatchObject(APP_CONFIG_DEFAULTS);
     expect(group.get('showOnTray')).toBeNull();
   });

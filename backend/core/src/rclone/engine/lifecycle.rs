@@ -218,13 +218,6 @@ fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
         EnginePhase::FailedPath => {
             notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
         }
-        #[cfg(not(feature = "librclone"))]
-        EnginePhase::FailedVersion { .. } => {}
-        #[cfg(not(feature = "librclone"))]
-        EnginePhase::FailedPort { .. } => {}
-        #[cfg(not(feature = "librclone"))]
-        EnginePhase::Updating => {}
-        EnginePhase::FailedOther { .. } => {}
         _ => {}
     }
 

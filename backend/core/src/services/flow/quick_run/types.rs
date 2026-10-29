@@ -28,6 +28,16 @@ impl QuickRun {
             .unwrap_or(false)
     }
 
+    /// Seconds to wait after startup before auto-starting.
+    #[must_use]
+    pub fn autostart_delay_secs(&self) -> u64 {
+        self.config
+            .get("app")
+            .and_then(|a| a.get("autoStartDelay"))
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+    }
+
     #[must_use]
     pub fn is_cron_enabled(&self) -> bool {
         self.config
@@ -164,6 +174,32 @@ mod tests {
         assert_eq!(input.operation_type, OperationType::Copy);
         assert_eq!(input.remote_name, "gdrive:");
         assert!(input.id.is_none());
+    }
+
+    #[test]
+    fn test_quick_run_autostart_delay_is_optional() {
+        let with_config = |config: Value| QuickRun {
+            id: "qr".to_string(),
+            name: "Delayed".to_string(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: "drive:".to_string(),
+            config,
+        };
+
+        assert_eq!(with_config(json!({})).autostart_delay_secs(), 0);
+        assert_eq!(
+            with_config(json!({"app": {"autoStart": true}})).autostart_delay_secs(),
+            0
+        );
+        assert_eq!(
+            with_config(json!({"app": {"autoStartDelay": 15}})).autostart_delay_secs(),
+            15
+        );
+        assert_eq!(
+            with_config(json!({"app": {"autoStartDelay": "15"}})).autostart_delay_secs(),
+            0
+        );
     }
 
     #[test]

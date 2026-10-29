@@ -1326,6 +1326,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Se detectaron múltiples rutas de origen. La verificación unidireccional se ha habilitado automáticamente para garantizar que rclone verifique cada origen contra el destino.",
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
+      "autoStartDelay": "Retraso de inicio",
+      "autoStartDelayHint": "Tiempo de espera tras abrir la aplicación antes de iniciar. Útil si la red, la VPN u otros montajes aún no están listos.",
+      "autoStartDelayNone": "Ninguno",
       "enableScheduled": "Habilitar {{type}} programado",
       "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
       "watchDescription": "Monitoree directorios de origen locales para detectar modificaciones de archivos y sincronizar cambios automáticamente.",
@@ -2154,6 +2157,7 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
+      "noPasswordHint": "Sin contraseña, rclone.conf y los secretos guardados no se incluyen en la copia de seguridad. Las credenciales escritas directamente en Ejecuciones rápidas o en flujos de trabajo se exportan tal cual.",
       "vaultWarningTitle": "La bóveda de configuración está abierta",
       "vaultWarningDesc": "Las copias de seguridad exportadas no heredan el cifrado de la bóveda. Utilice la opción de cifrado a continuación para proteger las credenciales y configuraciones sensibles con una contraseña.",
       "exportNow": "Exportar ahora",
@@ -2219,7 +2223,8 @@
         },
         "password": {
           "label": "Contraseña",
-          "placeholder": "Dejar vacío para no usar autenticación"
+          "placeholder": "Dejar vacío para no usar autenticación",
+          "keepPlaceholder": "Déjalo vacío para conservar la contraseña actual"
         },
         "configPassword": {
           "label": "Contraseña de configuración",
@@ -2265,13 +2270,12 @@
       "status": {
         "notTested": "Conexión no probada",
         "connected": "Conectado",
-        "error": "Error: {{message}}"
+        "error": "Error: {{message}}",
+        "engineOffline": "Motor sin conexión"
       },
       "notifications": {
         "switchFailed": "Error al cambiar: {{message}}",
         "connectionSuccess": "Conexión exitosa",
-        "connectionFailed": "Error de conexión: {{message}}",
-        "testFailed": "La prueba falló inesperadamente",
         "fileSelectFailed": "Error al seleccionar el archivo",
         "updated": "Backend actualizado correctamente",
         "added": "Backend agregado correctamente",
@@ -3055,7 +3059,6 @@
       "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman",
       "invalidArchive": "Formato de archivo de copia de seguridad no válido",
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
-      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña",
       "exportFailed": "Fallo en la exportación de la copia de seguridad: {{error}}",
       "refreshFailed": "Error al actualizar el sistema tras restaurar la copia de seguridad: {{error}}",
       "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}"
@@ -3066,7 +3069,11 @@
       "cannotRemoveLocal": "No se puede eliminar el backend Local",
       "cannotRemoveActive": "No se puede eliminar el backend activo",
       "alreadyExists": "Ya existe un backend con este nombre",
-      "notFound": "Backend '{{name}}' no encontrado"
+      "notFound": "Backend '{{name}}' no encontrado",
+      "cannotConnect": "No se puede conectar con '{{name}}': {{error}}",
+      "connectionFailed": "Error de conexión: {{error}}",
+      "listFailedReverted": "Conectado, pero falló al listar los elementos del backend: {{error}}. Se volvió a Local.",
+      "tooSlowReverted": "El backend aceptó la conexión pero tardó demasiado en listar sus elementos. Se volvió a Local."
     },
     "job": {
       "notFound": "JobInfo no encontrado",

@@ -16,6 +16,21 @@ pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, S
     get_all_workflows_sync(&manager)
 }
 
+/// Ids of the workflows running on the active backend. Run state is only announced
+/// by events, so a view opened after a run began (an auto-start, a schedule or a
+/// file watcher) asks for it here.
+pub async fn get_active_workflows(app: AppHandle) -> Result<Vec<String>, String> {
+    let backend = app
+        .state::<crate::rclone::backend::BackendManager>()
+        .get_active_name()
+        .await;
+    let mut ids: Vec<_> = super::engine::get_active_workflow_ids(&backend)
+        .into_iter()
+        .collect();
+    ids.sort();
+    Ok(ids)
+}
+
 /// Creates a new workflow record.
 pub async fn create_workflow(
     app: AppHandle,
@@ -310,6 +325,39 @@ mod tests {
             .expect("Failed to register workflows sub-settings");
 
         (temp_dir, manager)
+    }
+
+    #[tokio::test]
+    async fn active_workflows_lists_runs_on_the_active_backend_only() {
+        use crate::rclone::backend::{BackendManager, types::Backend};
+        use crate::services::flow::workflow::engine::{
+            active::{ActiveWorkflowState, register_active_run},
+            cancel::CancelToken,
+        };
+
+        let app = AppHandle::default();
+        app.manage(BackendManager::new());
+        let active = app.state::<BackendManager>().get_active_name().await;
+        let state = |backend: &str| ActiveWorkflowState {
+            backend: Backend::new_local(backend),
+            cancel: CancelToken::new(),
+            active_job_ids: Default::default(),
+        };
+        let own = register_active_run("Own", "wf-active-b", state(&active)).unwrap();
+        let first = register_active_run("First", "wf-active-a", state(&active)).unwrap();
+        let _elsewhere =
+            register_active_run("Else", "wf-active-other", state("another-backend")).unwrap();
+
+        let ids = get_active_workflows(app.clone()).await.unwrap();
+        let ours: Vec<_> = ids
+            .iter()
+            .filter(|id| id.starts_with("wf-active-"))
+            .collect();
+        assert_eq!(ours, ["wf-active-a", "wf-active-b"]);
+
+        drop((own, first));
+        let ids = get_active_workflows(app).await.unwrap();
+        assert!(!ids.iter().any(|id| id.starts_with("wf-active-")));
     }
 
     #[test]

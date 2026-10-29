@@ -741,10 +741,6 @@ $dark-theme: (
       &.is-selected {
         background: var(--selected-bg-color);
         color: var(--window-fg-color);
-
-        .count-badge {
-          color: inherit;
-        }
       }
     }
 
@@ -1249,9 +1245,9 @@ mat-accordion:not(.dull) {
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 500;
   padding: 1px 6px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-xxs);
   background: var(--card-shade-color);
   color: var(--dim-color);
   margin-left: auto;

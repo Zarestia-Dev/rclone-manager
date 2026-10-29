@@ -160,20 +160,6 @@
   }
 }
 
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 var(--space-xs);
-  background: var(--primary-color);
-  color: white;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-}
-
 // User Note
 .user-note {
   display: flex;

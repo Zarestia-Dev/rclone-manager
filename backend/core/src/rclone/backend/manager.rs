@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use log::info;
@@ -249,7 +248,7 @@ impl BackendManager {
 
     /// Helper to get the config path of the Local backend
     #[cfg(not(feature = "librclone"))]
-    pub async fn get_local_config_path(&self) -> Result<Option<PathBuf>, String> {
+    pub async fn get_local_config_path(&self) -> Result<Option<std::path::PathBuf>, String> {
         self.state
             .read()
             .await
@@ -304,6 +303,17 @@ impl BackendManager {
             {
                 match source {
                     Some(src) => {
+                        // The backend is new, so data under its name was left by a restore
+                        // or an interrupted removal. An explicit copy replaces it.
+                        if pm.exists(&backend.name).unwrap_or(false) {
+                            log::warn!(
+                                "Replacing existing {sub_name} profile '{}' with a copy of '{src}'",
+                                backend.name
+                            );
+                            if let Err(e) = pm.delete(&backend.name) {
+                                log::warn!("Failed to remove stale {sub_name} profile: {e}");
+                            }
+                        }
                         let src_profile = Backend::profile_name_for(src);
                         pm.duplicate(src_profile, &backend.name)
                             .map(|()| {
@@ -314,6 +324,8 @@ impl BackendManager {
                                 pm.create(&backend.name)
                             })
                     }
+                    // Saved backends are added again on every start and after a restore,
+                    // so an existing profile is the backend's own data.
                     None => pm.create(&backend.name),
                 }
                 .ok();
@@ -470,16 +482,16 @@ impl BackendManager {
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
-        log::debug!(
-            "Backend '{name}' runtime: os={:?}, arch={:?}, go={:?}",
-            info.os,
-            info.arch,
-            info.go_version
-        );
+        log::debug!("Backend '{name}' runtime: os={:?}", info.os);
         self.runtime_info
             .write()
             .await
             .insert(name.to_string(), info);
+    }
+
+    /// Forget what was detected for a backend, e.g. after its address changed.
+    pub(crate) async fn clear_runtime_info(&self, name: &str) {
+        self.runtime_info.write().await.remove(name);
     }
 
     /// Get runtime info for a specific backend
@@ -512,15 +524,6 @@ impl BackendManager {
             .await
             .get(name)
             .and_then(|info| info.os.clone())
-    }
-
-    /// Get the runtime config path for a specific backend
-    pub(crate) async fn get_runtime_config_path(&self, name: &str) -> Option<PathBuf> {
-        self.runtime_info
-            .read()
-            .await
-            .get(name)
-            .and_then(|info| info.config_path.clone())
     }
 
     /// Update runtime status for a backend (used for error states)
@@ -653,8 +656,6 @@ mod tests {
                 RuntimeInfo {
                     version: Some("v1.75.0".into()),
                     os: Some("linux".into()),
-                    arch: Some("arm64".into()),
-                    go_version: Some("go1.26.0".into()),
                     status: RuntimeStatus::Connected,
                     ..Default::default()
                 },
@@ -670,8 +671,6 @@ mod tests {
         );
         assert_eq!(updated.version.as_deref(), Some("v1.75.0"));
         assert_eq!(updated.os.as_deref(), Some("linux"));
-        assert_eq!(updated.arch.as_deref(), Some("arm64"));
-        assert_eq!(updated.go_version.as_deref(), Some("go1.26.0"));
     }
 
     #[tokio::test]
@@ -945,6 +944,73 @@ mod tests {
             assert_eq!(flow_ids(&settings, section), ["local-item"]);
         }
         assert!(flow_ids(&settings, SUB_REMOTES).is_empty());
+    }
+
+    /// Data a restore left under a backend name that is not connected yet.
+    fn leave_restored_profile(settings: &AppSettingsManager, name: &str) {
+        for section in [SUB_REMOTES, SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            let sub = settings.sub_settings(section).unwrap();
+            let profiles = sub.profiles().unwrap();
+            profiles.create(name).unwrap();
+            sub.switch_profile(name).unwrap();
+            sub.set("restored", &serde_json::json!({"name": "restored"}))
+                .unwrap();
+            sub.switch_profile(crate::utils::constants::LOCAL_BACKEND_PROFILE)
+                .unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn an_explicit_copy_replaces_data_a_restore_left_under_the_same_name() {
+        let (_directory, settings) = settings_with_profiles(true);
+        for section in [SUB_REMOTES, SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            settings
+                .sub_settings(section)
+                .unwrap()
+                .set("local-item", &serde_json::json!({"name": "local"}))
+                .unwrap();
+        }
+        leave_restored_profile(&settings, "NAS");
+        let manager = BackendManager::new();
+
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("NAS", "127.0.0.1", 0),
+                CopySources {
+                    remotes: Some(LOCAL_BACKEND_NAME),
+                    flow: Some(LOCAL_BACKEND_NAME),
+                    ..CopySources::default()
+                },
+            )
+            .await
+            .unwrap();
+        manager.switch_to(&settings, "NAS").await.unwrap();
+
+        for section in [SUB_REMOTES, SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert_eq!(flow_ids(&settings, section), ["local-item"], "{section}");
+        }
+    }
+
+    #[tokio::test]
+    async fn without_a_copy_source_restored_data_is_kept_for_the_new_backend() {
+        let (_directory, settings) = settings_with_profiles(true);
+        leave_restored_profile(&settings, "NAS");
+        let manager = BackendManager::new();
+
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("NAS", "127.0.0.1", 0),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        manager.switch_to(&settings, "NAS").await.unwrap();
+
+        for section in [SUB_REMOTES, SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert_eq!(flow_ids(&settings, section), ["restored"], "{section}");
+        }
     }
 
     #[tokio::test]

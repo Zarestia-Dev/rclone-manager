@@ -2,10 +2,14 @@
   @if (showAutomations()) {
     <mat-accordion class="automation-accordion" multi="true">
       @if (showAutoStart()) {
-        <mat-expansion-panel [expanded]="false" disabled class="cron-panel">
+        <mat-expansion-panel
+          [expanded]="autoStartPanelExpanded()"
+          (opened)="autoStartPanelExpanded.set(true)"
+          (closed)="autoStartPanelExpanded.set(false)"
+        >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-slide-toggle formControlName="autoStart">
+              <mat-slide-toggle formControlName="autoStart" (click)="$event.stopPropagation()">
                 {{
                   'wizards.appOperation.enableAutoStart'
                     | translate
@@ -18,12 +22,44 @@
                 }}
               </mat-slide-toggle>
             </mat-panel-title>
-            @if (description()) {
+            @if (isAutoStartEnabled()) {
+              <mat-panel-description>
+                <span>
+                  {{ 'wizards.appOperation.autoStartDelay' | translate }}:
+                  <strong>{{
+                    autoStartDelayValue() > 0
+                      ? autoStartDelayValue() + 's'
+                      : ('wizards.appOperation.autoStartDelayNone' | translate)
+                  }}</strong>
+                </span>
+              </mat-panel-description>
+            } @else if (description()) {
               <mat-panel-description>
                 <span class="description">{{ description() }}</span>
               </mat-panel-description>
             }
           </mat-expansion-panel-header>
+
+          <div class="watch-options-container">
+            <div class="watch-option-row">
+              <div class="watch-option-info">
+                <span class="watch-option-title">{{
+                  'wizards.appOperation.autoStartDelay' | translate
+                }}</span>
+                <span class="watch-option-hint">{{
+                  'wizards.appOperation.autoStartDelayHint' | translate
+                }}</span>
+              </div>
+              <div class="watch-option-control">
+                <app-number-input
+                  formControlName="autoStartDelay"
+                  [min]="0"
+                  [allowNegative]="false"
+                  [ariaLabel]="'wizards.appOperation.autoStartDelay' | translate"
+                />
+              </div>
+            </div>
+          </div>
         </mat-expansion-panel>
       }
       @if (!isMount() && !isServe() && showCronSection()) {
@@ -402,6 +438,7 @@
       @if (item.inspectionStatus(); as status) {
         <div
           class="app-pill"
+          style="border-radius: 0"
           [class.p-primary]="status.state === 'clean'"
           [class.p-orange]="status.state === 'nonEmpty' || status.state === 'unavailable'"
           [class.p-warn]="status.state === 'colliding'"

@@ -202,6 +202,11 @@
           severity="info"
           [description]="'modals.export.passwordHint' | translate"
         ></app-alert-banner>
+      } @else {
+        <app-alert-banner
+          severity="info"
+          [description]="'modals.export.noPasswordHint' | translate"
+        ></app-alert-banner>
       }
     </div>
   </main>

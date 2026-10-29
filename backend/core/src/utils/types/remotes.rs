@@ -140,6 +140,9 @@ pub struct ProfileParams {
 pub struct AppConfig {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub auto_start: bool,
+    /// Seconds to wait after startup before an auto-start profile launches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_start_delay: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cron_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -416,6 +419,7 @@ pub mod helper_config_keys {
 /// Keys that belong in the `app` partition (vs `rclone`).
 pub const APP_PARTITION_KEYS: &[&str] = &[
     "autoStart",
+    "autoStartDelay",
     "cronEnabled",
     "cronExpression",
     "watchEnabled",
@@ -582,6 +586,23 @@ mod tests {
             serde_json::to_value(app).unwrap(),
             json!({"autoStart": true})
         );
+    }
+
+    #[test]
+    fn auto_start_delay_is_optional_and_round_trips() {
+        let app: AppConfig = serde_json::from_value(json!({"autoStart": true})).unwrap();
+        assert_eq!(app.auto_start_delay, None);
+
+        let app: AppConfig =
+            serde_json::from_value(json!({"autoStart": true, "autoStartDelay": 30})).unwrap();
+        assert_eq!(app.auto_start_delay, Some(30));
+        assert_eq!(
+            serde_json::to_value(&app).unwrap(),
+            json!({"autoStart": true, "autoStartDelay": 30})
+        );
+
+        assert!(serde_json::from_value::<AppConfig>(json!({"autoStartDelay": -1})).is_err());
+        assert!(serde_json::from_value::<AppConfig>(json!({"autoStartDelay": "soon"})).is_err());
     }
 
     #[test]

@@ -136,6 +136,18 @@ export class OperationConfigComponent {
     this.formVersion();
     return !!this.opFormGroup().get('cronEnabled')?.value;
   });
+  readonly autoStartPanelExpanded = linkedSignal<boolean>(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('autoStart')?.value;
+  });
+  readonly isAutoStartEnabled = computed(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('autoStart')?.value;
+  });
+  readonly autoStartDelayValue = computed(() => {
+    this.formVersion();
+    return Number(this.opFormGroup().get('autoStartDelay')?.value) || 0;
+  });
   readonly watchPanelExpanded = linkedSignal<boolean>(() => {
     this.formVersion();
     return !!this.opFormGroup().get('watchEnabled')?.value;
@@ -222,7 +234,10 @@ export class OperationConfigComponent {
   readonly showAutoStart = computed(
     () =>
       this.showAutomations() &&
-      this.matchesSearch(['auto', 'start', 'enable'], ['wizards.appOperation.enableAutoStart'])
+      this.matchesSearch(
+        ['auto', 'start', 'enable', 'delay'],
+        ['wizards.appOperation.enableAutoStart', 'wizards.appOperation.autoStartDelay']
+      )
   );
   readonly showCronSection = computed(
     () =>

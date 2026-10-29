@@ -664,12 +664,16 @@ impl AutomationsCache {
     }
 
     pub async fn bind_job_execution(&self, backend: &str, execution: &str, job_id: u64) {
-        let mut automations = self.automations.write().await;
-        if let Some(automation) = automations
-            .values_mut()
-            .find(|a| a.backend_name == backend && a.execution_id.as_deref() == Some(execution))
-        {
-            automation.current_job_id = Some(job_id.to_string());
+        let bound = {
+            let mut automations = self.automations.write().await;
+            automations
+                .values_mut()
+                .find(|a| a.backend_name == backend && a.execution_id.as_deref() == Some(execution))
+                .map(|automation| automation.current_job_id = Some(job_id.to_string()))
+                .is_some()
+        };
+        if bound {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         }
     }
 
@@ -1503,6 +1507,50 @@ mod tests {
                 .try_start_automation("missing", "b", None)
                 .await
                 .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_started_job_is_bound_to_its_own_execution_only() {
+        let cache = make_cache();
+        let automation = base_automation();
+        let id = automation.id.clone();
+        cache.add_automation(automation).await.unwrap();
+        let started = cache
+            .try_start_automation(&id, "b", None)
+            .await
+            .unwrap()
+            .unwrap();
+        let execution = started.execution_id.unwrap();
+        assert!(
+            cache
+                .get_automation(&id)
+                .await
+                .unwrap()
+                .current_job_id
+                .is_none()
+        );
+
+        cache.bind_job_execution("b", "another-execution", 3).await;
+        cache.bind_job_execution("other", &execution, 4).await;
+        assert!(
+            cache
+                .get_automation(&id)
+                .await
+                .unwrap()
+                .current_job_id
+                .is_none()
+        );
+
+        cache.bind_job_execution("b", &execution, 9).await;
+        assert_eq!(
+            cache
+                .get_automation(&id)
+                .await
+                .unwrap()
+                .current_job_id
+                .as_deref(),
+            Some("9")
         );
     }
 

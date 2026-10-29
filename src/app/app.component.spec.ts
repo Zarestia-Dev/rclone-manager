@@ -24,7 +24,10 @@ class StartupContext {
   modalService = { isDialogStandalone: (): boolean => false };
   flowOverlayService = { isStandaloneWindow: (): boolean => false };
   mainUiOverlayService = { isStandaloneWindow: (): boolean => false };
-  backendService = { runStartupChecks: vi.fn().mockResolvedValue(undefined) };
+  backendService = {
+    loadBackends: vi.fn().mockResolvedValue(undefined),
+    refreshStatuses: vi.fn().mockResolvedValue(undefined),
+  };
   applyDefaultView = vi.fn().mockResolvedValue(undefined);
   navigation = { initialize: vi.fn() };
   confirmStartupAfterRender = vi.fn();

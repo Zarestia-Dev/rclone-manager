@@ -9,6 +9,20 @@ use crate::rclone::endpoints::config;
 use crate::rclone::endpoints::core;
 use crate::rclone::engine::core::DEFAULT_API_PORT;
 
+/// HTTP client for RC API traffic. It ignores `HTTP_PROXY`/`ALL_PROXY`, which would
+/// otherwise capture requests to `127.0.0.1` and LAN hosts, and fails a dead host
+/// quickly instead of waiting for the OS connect timeout.
+pub fn rc_client() -> reqwest::Client {
+    static CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
+        reqwest::Client::builder()
+            .no_proxy()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .build()
+            .expect("the RC HTTP client configuration is static")
+    });
+    CLIENT.clone()
+}
+
 /// Single flat backend configuration
 ///
 /// Represents a connection to an rclone RC API server.
@@ -223,94 +237,75 @@ impl Backend {
         })
     }
 
+    /// Probes the backend's `core/version`, `core/pid` and `config/paths` in parallel.
+    ///
+    /// Only the version decides reachability; the other two are best-effort.
     pub async fn fetch_runtime_info(
         &self,
         transport: &dyn crate::rclone::backend::RcloneTransport,
         timeout: std::time::Duration,
     ) -> crate::rclone::backend::runtime::RuntimeInfo {
-        let use_http = !self.is_local || !cfg!(feature = "librclone");
-        let client = reqwest::Client::new();
+        let client = rc_client();
+        let call =
+            |endpoint, payload| self.probe_call(&client, transport, endpoint, payload, timeout);
+        let (version, pid, paths) = tokio::join!(
+            call(core::VERSION, None),
+            call(core::PID, None),
+            call(config::PATHS, Some(serde_json::json!({}))),
+        );
 
-        let version_fut = async {
-            let res = if use_http {
-                self.post_json_with_timeout(&client, core::VERSION, None, timeout)
-                    .await
-            } else {
-                transport
-                    .rpc_with_timeout(core::VERSION, None, timeout)
-                    .await
-                    .map_err(|e| e.to_string())
-            };
-
-            match res {
-                Ok(json) => {
-                    serde_json::from_value::<crate::utils::types::rclone::RcloneCoreVersion>(json)
-                        .map_err(|e| format!("Failed to parse version: {e}"))
-                }
-                Err(e) => Err(format!("Failed to fetch version: {e}")),
+        let version = match version {
+            Ok(json) => {
+                serde_json::from_value::<crate::utils::types::rclone::RcloneCoreVersion>(json)
+                    .map_err(|e| format!("Failed to parse version: {e}"))
             }
+            Err(e) => Err(format!("Failed to fetch version: {e}")),
         };
-
-        let pid_fut = async {
-            let res = if use_http {
-                self.post_json_with_timeout(&client, core::PID, None, timeout)
-                    .await
-            } else {
-                transport
-                    .rpc_with_timeout(core::PID, None, timeout)
-                    .await
-                    .map_err(|e| e.to_string())
-            };
-
-            match res {
-                Ok(json) => json
-                    .get("pid")
-                    .and_then(serde_json::Value::as_u64)
-                    .map(|v| v as u32),
-                _ => None,
-            }
-        };
-
-        let config_path_fut = async {
-            let res = if use_http {
-                tokio::time::timeout(timeout, self.fetch_config_path_http(&client))
-                    .await
-                    .map_err(|_| "Connection timed out".to_string())
-                    .and_then(|r| r)
-            } else {
-                transport
-                    .rpc_with_timeout(config::PATHS, Some(&serde_json::json!({})), timeout)
-                    .await
-                    .map_err(|e| e.to_string())
-                    .and_then(|paths| {
-                        paths
-                            .get("config")
-                            .and_then(|v| v.as_str())
-                            .map(PathBuf::from)
-                            .ok_or_else(|| "No config path in response".to_string())
-                    })
-            };
-
-            res.ok()
-        };
-
-        let (version_res, pid, config_path) = tokio::join!(version_fut, pid_fut, config_path_fut);
-
-        match version_res {
-            Ok(version_data) => RuntimeInfo {
-                version: Some(version_data.version.clone()),
-                os: Some(version_data.os.clone()),
-                arch: Some(version_data.arch.clone()),
-                go_version: Some(version_data.go_version.clone()),
-                core_version: Some(version_data),
-                pid,
-                config_path,
-                status: crate::rclone::backend::runtime::RuntimeStatus::Connected,
-            },
+        let version = match version {
+            Ok(version) => version,
             Err(e) => {
                 log::warn!("Failed to fetch version for backend {}: {e}", self.name);
-                RuntimeInfo::with_error(e)
+                return RuntimeInfo::with_error(e);
             }
+        };
+
+        let pid = pid
+            .inspect_err(|e| log::debug!("core/pid unavailable for {}: {e}", self.name))
+            .ok()
+            .and_then(|json| json.get("pid")?.as_u64())
+            .and_then(|pid| u32::try_from(pid).ok());
+        let config_path = paths
+            .inspect_err(|e| log::debug!("config/paths unavailable for {}: {e}", self.name))
+            .ok()
+            .and_then(|json| Some(PathBuf::from(json.get("config")?.as_str()?)));
+
+        RuntimeInfo {
+            version: Some(version.version.clone()),
+            os: Some(version.os.clone()),
+            core_version: Some(version),
+            pid,
+            config_path,
+            status: crate::rclone::backend::runtime::RuntimeStatus::Connected,
+        }
+    }
+
+    /// One probe request: over HTTP, or in-process for the librclone Local backend.
+    async fn probe_call(
+        &self,
+        client: &reqwest::Client,
+        transport: &dyn crate::rclone::backend::RcloneTransport,
+        endpoint: &str,
+        payload: Option<serde_json::Value>,
+        timeout: std::time::Duration,
+    ) -> Result<serde_json::Value, String> {
+        if !self.is_local || !cfg!(feature = "librclone") {
+            self.post_json_with_timeout(client, endpoint, payload.as_ref(), timeout)
+                .await
+        } else {
+            transport
+                .rpc_with_timeout(endpoint, payload.as_ref(), timeout)
+                .await
+                .map_err(|e| e.to_string())
         }
     }
 
@@ -412,20 +407,6 @@ impl Backend {
             .map_err(|e| format!("Failed to parse response: {e}"))
     }
 
-    /// Internal helper to fetch the config path directly over HTTP.
-    async fn fetch_config_path_http(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
-        let paths = self
-            .post_json(client, config::PATHS, Some(&serde_json::json!({})))
-            .await?;
-
-        let config_path = paths
-            .get("config")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| "No config path in response".to_string())?;
-
-        Ok(PathBuf::from(config_path))
-    }
-
     /// Build a payload for the `core/command` RC endpoint.
     ///
     /// This automatically:
@@ -498,8 +479,6 @@ pub struct BackendInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os: Option<String>,
@@ -524,7 +503,6 @@ impl BackendInfo {
             has_config_password: backend.config_password.is_some(),
             config_path: backend.config_path.clone(),
             username: backend.username.clone(),
-            password: backend.password.clone(),
             version: None,
             os: None,
             status: None,

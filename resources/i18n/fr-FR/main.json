@@ -1326,6 +1326,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Plusieurs chemins source détectés. La vérification unidirectionnelle a été automatiquement activée pour s'assurer que rclone vérifie chaque source par rapport à la destination.",
       "enableAutoStart": "Activer Auto-{{type}} au démarrage",
+      "autoStartDelay": "Délai de démarrage",
+      "autoStartDelayHint": "Temps d'attente après l'ouverture de l'application avant le lancement. Utile si le réseau, le VPN ou d'autres montages ne sont pas encore prêts.",
+      "autoStartDelayNone": "Aucun",
       "enableScheduled": "Activer {{type}} planifié",
       "enableWatch": "Activer la surveillance des fichiers en temps réel",
       "watchDescription": "Surveiller les répertoires sources locaux pour les modifications de fichiers et synchroniser automatiquement les modifications.",
@@ -2154,6 +2157,7 @@
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
       "passwordHint": "Ce mot de passe sera requis pour restaurer la sauvegarde.",
+      "noPasswordHint": "Sans mot de passe, rclone.conf et les secrets enregistrés ne sont pas inclus dans la sauvegarde. Les identifiants saisis directement dans les Exécutions rapides ou les workflows sont exportés tels quels.",
       "vaultWarningTitle": "Le coffre de configuration est ouvert",
       "vaultWarningDesc": "Les sauvegardes exportées n'héritent pas du chiffrement du coffre. Utilisez l'option de chiffrement ci-dessous pour protéger les identifiants et les paramètres sensibles avec un mot de passe.",
       "exportNow": "Exporter maintenant",
@@ -2219,7 +2223,8 @@
         },
         "password": {
           "label": "Mot de passe",
-          "placeholder": "Laisser vide pour aucune authentification"
+          "placeholder": "Laisser vide pour aucune authentification",
+          "keepPlaceholder": "Laisser vide pour conserver le mot de passe actuel"
         },
         "configPassword": {
           "label": "Mot de passe de configuration",
@@ -2265,13 +2270,12 @@
       "status": {
         "notTested": "Connexion non testée",
         "connected": "Connecté",
-        "error": "Erreur : {{message}}"
+        "error": "Erreur : {{message}}",
+        "engineOffline": "Moteur hors ligne"
       },
       "notifications": {
         "switchFailed": "Échec du changement : {{message}}",
         "connectionSuccess": "Connexion réussie",
-        "connectionFailed": "Échec de la connexion : {{message}}",
-        "testFailed": "Le test a échoué de façon inattendue",
         "fileSelectFailed": "Échec de la sélection du fichier",
         "updated": "Backend mis à jour avec succès",
         "added": "Backend ajouté avec succès",
@@ -3055,7 +3059,6 @@
       "unsupportedArchive": "Type d'archive non pris en charge. Doit être un fichier .rcman",
       "invalidArchive": "Format d'archive de sauvegarde invalide",
       "restoreFailed": "La restauration de la sauvegarde a échoué : {{error}}",
-      "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe",
       "exportFailed": "L'exportation de la sauvegarde a échoué : {{error}}",
       "refreshFailed": "Échec de l'actualisation du système après la restauration de la sauvegarde : {{error}}",
       "restoreIncomplete": "La restauration de la sauvegarde est incomplète : {{error}}"
@@ -3066,7 +3069,11 @@
       "cannotRemoveLocal": "Impossible de supprimer le backend Local",
       "cannotRemoveActive": "Impossible de supprimer le backend actif",
       "alreadyExists": "Un dépôt distant portant ce nom existe déjà",
-      "notFound": "Backend '{{name}}' non trouvé"
+      "notFound": "Backend '{{name}}' non trouvé",
+      "cannotConnect": "Impossible de se connecter à « {{name}} » : {{error}}",
+      "connectionFailed": "Échec de la connexion : {{error}}",
+      "listFailedReverted": "Connecté, mais la liste des éléments du backend a échoué : {{error}}. Retour à Local.",
+      "tooSlowReverted": "Le backend a accepté la connexion mais était trop lent pour lister ses éléments. Retour à Local."
     },
     "job": {
       "notFound": "JobInfo non trouvé",

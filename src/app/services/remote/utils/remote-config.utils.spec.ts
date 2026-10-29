@@ -363,6 +363,23 @@ describe('remote-config.utils', () => {
       }
     });
 
+    it('saves the auto-start delay only when it differs from zero', () => {
+      const withDelay = mapConfigToFormProfile(
+        'mount',
+        { app: { autoStart: true, autoStartDelay: 20 }, rclone: { fs: 'myremote:' } },
+        ctx
+      );
+      expect(withDelay).toMatchObject({ autoStart: true, autoStartDelay: 20 });
+      expect(mapFormToConfigProfile('mount', withDelay, formCtx)['app']).toEqual({
+        autoStart: true,
+        autoStartDelay: 20,
+      });
+
+      expect(
+        mapFormToConfigProfile('mount', { autoStart: true, autoStartDelay: 0 }, formCtx)['app']
+      ).toEqual({ autoStart: true });
+    });
+
     it('omits missing, null and empty application values without mutating the form', () => {
       const form = {
         autoStart: null,

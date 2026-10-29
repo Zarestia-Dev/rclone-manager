@@ -1326,6 +1326,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "複数の転送元パスが検出されました。rcloneが各転送元を転送先に対して確実に検証できるように、片方向の検証（ワンウェイチェック）が自動的に有効になりました。",
       "enableAutoStart": "起動時に自動{{type}}を有効化",
+      "autoStartDelay": "起動遅延",
+      "autoStartDelayHint": "アプリの起動後、実行を開始するまでの待機時間。ネットワークやVPN、他のマウントが未準備の場合に便利です。",
+      "autoStartDelayNone": "なし",
       "enableScheduled": "スケジュールされた {{type}} を有効化",
       "enableWatch": "リアルタイムファイル監視を有効化",
       "watchDescription": "ローカルの転送元ディレクトリでファイルの変更を監視し、変更を自動的に同期します。",
@@ -2154,6 +2157,7 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
+      "noPasswordHint": "パスワードを設定しない場合、rclone.conf と保存済みのシークレットはバックアップに含まれません。クイック実行やワークフローに直接入力した認証情報は、そのままエクスポートされます。",
       "vaultWarningTitle": "構成ボルトが開いています",
       "vaultWarningDesc": "エクスポートされたバックアップはボルトの暗号化を継承しません。機密の認証情報や設定をパスワードで保護するには、以下の暗号化オプションを使用してください。",
       "exportNow": "今すぐエクスポート",
@@ -2219,7 +2223,8 @@
         },
         "password": {
           "label": "パスワード",
-          "placeholder": "認証なしの場合は空欄"
+          "placeholder": "認証なしの場合は空欄",
+          "keepPlaceholder": "現在のパスワードを維持するには空のままにしてください"
         },
         "configPassword": {
           "label": "設定パスワード",
@@ -2265,13 +2270,12 @@
       "status": {
         "notTested": "接続未テスト",
         "connected": "接続済み",
-        "error": "エラー: {{message}}"
+        "error": "エラー: {{message}}",
+        "engineOffline": "エンジンがオフラインです"
       },
       "notifications": {
         "switchFailed": "切り替えに失敗しました: {{message}}",
         "connectionSuccess": "接続に成功しました",
-        "connectionFailed": "接続に失敗しました: {{message}}",
-        "testFailed": "予期しない理由でテストに失敗しました",
         "fileSelectFailed": "ファイルの選択に失敗しました",
         "updated": "バックエンドを正常に更新しました",
         "added": "バックエンドを正常に追加しました",
@@ -3055,7 +3059,6 @@
       "unsupportedArchive": "サポートされていないファイル形式です。.rcman ファイルである必要があります",
       "invalidArchive": "無効なバックアップファイル形式です",
       "restoreFailed": "バックアップの復元に失敗しました: {{error}}",
-      "secretRequirePassword": "このバックアップはシークレットで保護されているためパスワードが必要です",
       "exportFailed": "バックアップのエクスポートに失敗しました: {{error}}",
       "refreshFailed": "バックアップ復元後のシステム更新に失敗しました: {{error}}",
       "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}"
@@ -3066,7 +3069,11 @@
       "cannotRemoveLocal": "Local バックエンドを削除することはできません",
       "cannotRemoveActive": "アクティブなバックエンドを削除することはできません",
       "alreadyExists": "この名前のバックエンドは既に存在します",
-      "notFound": "バックエンド 「{{name}}」 が見つかりません"
+      "notFound": "バックエンド 「{{name}}」 が見つかりません",
+      "cannotConnect": "'{{name}}' に接続できません: {{error}}",
+      "connectionFailed": "接続に失敗しました: {{error}}",
+      "listFailedReverted": "接続しましたが、バックエンドの項目の一覧取得に失敗しました: {{error}}。Local に戻しました。",
+      "tooSlowReverted": "バックエンドは接続を受け付けましたが、項目の一覧取得が遅すぎました。Local に戻しました。"
     },
     "job": {
       "notFound": "JobInfoが見つかりません",

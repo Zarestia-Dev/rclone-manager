@@ -7,7 +7,14 @@ use crate::rclone::endpoints::core;
 use crate::utils::types::state::{RcApiEngine, RcloneState};
 
 const API_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
-const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
+/// rcd usually answers within a couple of hundred milliseconds, so the first
+/// probes are close together and back off to the slow interval for a stuck start.
+const API_READY_POLL_START: Duration = Duration::from_millis(25);
+const API_READY_POLL_MAX: Duration = Duration::from_millis(500);
+
+fn next_ready_poll(current: Duration) -> Duration {
+    (current * 2).min(API_READY_POLL_MAX)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HealthStatus {
@@ -72,6 +79,7 @@ impl RcApiEngine {
         debug!("Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         let check_future = async {
+            let mut poll = API_READY_POLL_START;
             loop {
                 // Check if the spawned child process has exited (try_wait reaps status & handles zombies immediately)
                 if let Some(child) = &mut self.process {
@@ -98,7 +106,8 @@ impl RcApiEngine {
                     HealthStatus::Unreachable => {
                         // Normal during startup — the rcd hasn't bound the
                         // port yet. Keep polling.
-                        tokio::time::sleep(API_READY_POLL_INTERVAL).await;
+                        tokio::time::sleep(poll).await;
+                        poll = next_ready_poll(poll);
                     }
                 }
             }
@@ -250,6 +259,20 @@ mod tests {
         .expect("health check must enforce its timeout");
         assert_eq!(status, HealthStatus::Unreachable);
         assert!(started.elapsed() >= API_HEALTH_TIMEOUT);
+    }
+
+    #[test]
+    fn ready_polling_backs_off_to_its_ceiling() {
+        let mut poll = API_READY_POLL_START;
+        let mut seen = vec![poll];
+        for _ in 0..6 {
+            poll = next_ready_poll(poll);
+            seen.push(poll);
+        }
+        assert_eq!(
+            seen,
+            [25, 50, 100, 200, 400, 500, 500].map(Duration::from_millis)
+        );
     }
 
     #[test]

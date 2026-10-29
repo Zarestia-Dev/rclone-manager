@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal, DestroyRef, effect } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DOCUMENT } from '@angular/common';
+import { TranslateService } from '@ngx-translate/core';
 import { fromEvent, from } from 'rxjs';
 import { filter, switchMap, tap } from 'rxjs/operators';
 import { VaultService } from '../../security/vault.service';
@@ -27,6 +28,7 @@ export class RcloneStatusService {
   private appSettingsService = inject(AppSettingsService);
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
+  private translate = inject(TranslateService);
 
   private readonly vault = inject(VaultService);
   private readonly canLoad = this.vault.isAccessible;
@@ -164,7 +166,10 @@ export class RcloneStatusService {
         ? { type: 'connected' }
         : newStatus === 'inactive'
           ? { type: 'inactive' }
-          : { type: 'error', message: 'Engine offline' },
+          : {
+              type: 'error',
+              message: this.translate.instant('modals.backend.status.engineOffline'),
+            },
       {
         version: payload.rcloneInfo?.version,
         os: payload.rcloneInfo?.os,

@@ -108,10 +108,7 @@
       </div>
     } @else {
       @if (!diffResult().hasChanges) {
-        <div class="no-diff-banner">
-          <mat-icon svgIcon="circle-check"></mat-icon>
-          <span>{{ 'templates.noChangesDetected' | translate }}</span>
-        </div>
+        <app-alert-banner severity="success" [title]="'templates.noChangesDetected' | translate" />
       }
 
       <div class="category-accordion-list">

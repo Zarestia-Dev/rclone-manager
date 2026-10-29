@@ -190,6 +190,8 @@ export interface RemoteConfigStepVisibility {
 
 export interface AppConfig {
   autoStart?: boolean;
+  /** Seconds to wait after startup before the profile auto-starts. */
+  autoStartDelay?: number;
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;
@@ -205,6 +207,7 @@ export const DEFAULT_PROFILE_NAME = 'Default';
 
 export const APP_CONFIG_DEFAULTS: Readonly<Required<AppConfig>> = Object.freeze({
   autoStart: false,
+  autoStartDelay: 0,
   cronEnabled: false,
   cronExpression: null,
   watchEnabled: false,

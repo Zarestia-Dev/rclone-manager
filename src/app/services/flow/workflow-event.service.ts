@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { WorkflowStateService } from './workflow-state.service';
@@ -12,10 +13,30 @@ export class WorkflowEventService extends TauriBaseService {
   private readonly engineService = inject(WorkflowEngineService);
   private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
+  private executionEvents = 0;
 
   constructor() {
     super();
     this.setupEventListeners();
+    void this.syncActiveWorkflows();
+  }
+
+  /**
+   * Run state is only announced by events, so a run that began before this service
+   * existed (an auto-start, a schedule, a file watcher) or while the engine was
+   * restarting is invisible until asked for. This only ever turns the state on:
+   * clearing it stays with the completion events and the local run that set it.
+   */
+  private async syncActiveWorkflows(): Promise<void> {
+    const eventsBefore = this.executionEvents;
+    try {
+      const active = (await this.invokeCommand<string[] | null>('get_active_workflows')) ?? [];
+      // An event that arrived meanwhile is newer than this answer.
+      if (this.executionEvents !== eventsBefore) return;
+      if (active.length > 0) this.engineService.isExecuting.set(true);
+    } catch (error) {
+      console.error('[WorkflowEventService] Failed to load active workflows:', error);
+    }
   }
 
   private setupEventListeners(): void {
@@ -26,6 +47,13 @@ export class WorkflowEventService extends TauriBaseService {
         if (!payload) return;
         this.handleNodeStateChanged(payload);
       });
+
+    merge(
+      this.eventListeners.listenToRcloneEngineReady(),
+      this.eventListeners.listenToBackendSwitched()
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.syncActiveWorkflows());
 
     this.eventListeners
       .listenToWorkflowExecutionStateChanged()
@@ -121,6 +149,7 @@ export class WorkflowEventService extends TauriBaseService {
   }
 
   private handleExecutionStateChanged(payload: WorkflowExecutionStatePayload): void {
+    this.executionEvents++;
     if (payload.state === 'started') {
       this.engineService.isExecuting.set(true);
     } else if (
