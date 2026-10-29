@@ -3,7 +3,7 @@
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::{
-    json_helpers::interpolate_shell_commands,
+    json_helpers::{DEFAULT_PROFILE_NAME, find_profile, interpolate_shell_commands},
     types::remotes::{OperationType, ProfileConfig, helper_config_keys},
 };
 use crate::{
@@ -15,14 +15,14 @@ use crate::{
     services::{
         flow::{
             quick_run::{commands::get_quick_run, types::QuickRun},
-            workflow::{commands::get_workflow_by_id, types::WorkflowDefinition},
+            workflow::{
+                commands::get_workflow_by_id,
+                types::{NodeKind, WorkflowDefinition},
+            },
         },
         settings::AppSettingsManager,
     },
-    utils::{
-        constants::SUB_WORKFLOWS,
-        types::{automation::AutomationStatus, origin::Origin},
-    },
+    utils::types::{automation::AutomationStatus, origin::Origin},
 };
 use parking_lot::RwLock;
 use serde_json::{Value, json};
@@ -97,8 +97,8 @@ async fn capture_profile_settings(
         if let Some(name) = reference {
             *name = interpolate_shell_commands(name).into_owned();
         }
-        let name = reference.as_deref().unwrap_or("Default");
-        if let Some(value) = values.and_then(|values| values.get(name)) {
+        let name = reference.as_deref().unwrap_or(DEFAULT_PROFILE_NAME);
+        if let Some(value) = values.and_then(|values| find_profile(values, name)) {
             options[section] = json!({name: value});
         }
     }
@@ -123,16 +123,11 @@ impl WorkflowSnapshot {
         manager: &AppSettingsManager,
         definition: WorkflowDefinition,
     ) -> Result<Self, String> {
-        if !manager.is_vault_enabled() {
-            return Ok(Self {
-                definition,
-                quick_runs: HashMap::new(),
-                quick_run_names: HashMap::new(),
-            });
-        }
+        // Quick Runs belong to the selected backend, which can change while the
+        // workflow runs, so the ones it names are read now rather than per node.
         let mut presets = HashMap::new();
         for node in &definition.nodes {
-            if node.node_type == "quick_run"
+            if node.kind() == NodeKind::QuickRun
                 && let Some(id) = node.config.get("quickRunId").and_then(Value::as_str)
                 && !id.contains("{{")
                 && !presets.contains_key(id.trim())
@@ -151,7 +146,7 @@ impl WorkflowSnapshot {
     fn from_presets(definition: WorkflowDefinition, presets: &HashMap<String, QuickRun>) -> Self {
         let mut quick_runs = HashMap::new();
         for node in &definition.nodes {
-            if node.node_type == "quick_run"
+            if node.kind() == NodeKind::QuickRun
                 && let Some(id) = node.config.get("quickRunId").and_then(Value::as_str)
                 && let Some(preset) = presets.get(id.trim())
             {
@@ -161,7 +156,7 @@ impl WorkflowSnapshot {
         let targets: HashSet<_> = definition
             .nodes
             .iter()
-            .filter(|node| node.node_type == "job_event")
+            .filter(|node| node.kind() == NodeKind::JobEvent)
             .filter_map(|node| node.config.get("targetProfileId").and_then(Value::as_str))
             .map(|target| target.trim().to_lowercase())
             .collect();
@@ -194,6 +189,9 @@ pub struct RuntimeTasks {
     tasks: RwLock<TaskSnapshots>,
     refresh_lock: tokio::sync::Mutex<()>,
     completed_workflows: RwLock<HashMap<String, String>>,
+    /// Stored workflows with a `job_event` trigger, so a finishing job need not
+    /// read every workflow from storage. Dropped whenever definitions change.
+    event_triggers: RwLock<Option<Arc<Vec<WorkflowDefinition>>>>,
 }
 
 impl RuntimeTasks {
@@ -215,14 +213,36 @@ impl RuntimeTasks {
             .read()
             .workflows
             .values()
-            .filter(|wf| {
-                wf.definition
-                    .nodes
-                    .iter()
-                    .any(|node| node.node_type == "job_event")
-            })
+            .filter(|wf| wf.definition.has_job_event_trigger())
             .cloned()
             .collect()
+    }
+
+    /// Workflows with a `job_event` trigger, loaded through `load` on first use
+    /// and kept until definitions change. A failed load is not remembered.
+    pub fn event_triggers(
+        &self,
+        load: impl FnOnce() -> Result<Vec<WorkflowDefinition>, String>,
+    ) -> Result<Arc<Vec<WorkflowDefinition>>, String> {
+        if let Some(cached) = self.event_triggers.read().as_ref() {
+            return Ok(cached.clone());
+        }
+        let revision = self.revision();
+        let triggers: Arc<Vec<WorkflowDefinition>> = Arc::new(
+            load()?
+                .into_iter()
+                .filter(WorkflowDefinition::has_job_event_trigger)
+                .collect(),
+        );
+        // Definitions edited while loading make this list stale; use it once, don't keep it.
+        // The check and the store share one lock, so an invalidation either comes
+        // first (revision differs) or clears what is stored here.
+        let mut cached = self.event_triggers.write();
+        if self.revision() == revision {
+            *cached = Some(triggers.clone());
+        }
+        drop(cached);
+        Ok(triggers)
     }
 
     pub fn record_completion(&self, id: &str, timestamp: String) {
@@ -236,6 +256,10 @@ impl RuntimeTasks {
         let revision = tasks.revision.wrapping_add(1);
         update(&mut tasks);
         tasks.revision = revision;
+        drop(tasks);
+        // After the revision moved: a loader that read the old one no longer stores its list.
+        // Never taken while `tasks` is held, as loaders take `tasks` while holding this lock.
+        *self.event_triggers.write() = None;
     }
 
     pub fn invalidate_workflow(&self, id: &str) {
@@ -271,20 +295,11 @@ impl RuntimeTasks {
         if pending.is_empty() {
             return Ok(());
         }
-        let sub = manager
-            .sub_settings(SUB_WORKFLOWS)
-            .map_err(|error| error.to_string())?;
-        let ids: HashSet<_> = sub
-            .list()
-            .map_err(|error| error.to_string())?
-            .into_iter()
-            .collect();
-        pending.retain(|id, _| ids.contains(id));
+        // A workflow deleted since it ran is simply not recorded.
         for (id, timestamp) in pending.iter() {
-            let mut workflow: WorkflowDefinition =
-                sub.get(id).map_err(|error| error.to_string())?;
-            workflow.last_executed_at = Some(timestamp.clone());
-            sub.set(id, &workflow).map_err(|error| error.to_string())?;
+            crate::services::flow::workflow::commands::record_last_executed(
+                manager, id, timestamp,
+            )?;
         }
         pending.clear();
         Ok(())
@@ -389,9 +404,7 @@ pub(crate) async fn refresh_with_definitions(
     }
     // Job-event workflows have no cron entry, but are also background tasks.
     for wf in workflows.into_values() {
-        if wf.nodes.iter().any(|node| node.node_type == "job_event")
-            && !tasks.workflows.contains_key(&wf.id)
-        {
+        if wf.has_job_event_trigger() && !tasks.workflows.contains_key(&wf.id) {
             tasks.workflows.insert(
                 wf.id.clone(),
                 Arc::new(WorkflowSnapshot::from_presets(wf, &presets)),
@@ -412,6 +425,8 @@ pub(crate) async fn refresh_with_definitions(
     }
     tasks.revision = revision.wrapping_add(1);
     *current = tasks;
+    drop(current);
+    *runtime.event_triggers.write() = None;
     Ok(())
 }
 
@@ -425,14 +440,19 @@ pub async fn flush_completions(app: &AppHandle) -> Result<(), String> {
     .map_err(|error| error.to_string())?
 }
 
+fn capture_workflow(
+    manager: &AppSettingsManager,
+    id: &str,
+) -> Result<Arc<WorkflowSnapshot>, String> {
+    let definition =
+        get_workflow_by_id(manager, id)?.ok_or_else(|| format!("Workflow '{id}' not found"))?;
+    Ok(Arc::new(WorkflowSnapshot::capture(manager, definition)?))
+}
+
 pub fn workflow(app: &AppHandle, id: &str) -> Result<Arc<WorkflowSnapshot>, String> {
     let manager = app.state::<AppSettingsManager>();
     if !manager.is_locked() {
-        let captured = (|| {
-            let definition = get_workflow_by_id(&manager, id)?
-                .ok_or_else(|| format!("Workflow '{id}' not found"))?;
-            Ok(Arc::new(WorkflowSnapshot::capture(&manager, definition)?))
-        })();
+        let captured = capture_workflow(&manager, id);
         if !manager.is_locked() {
             return captured;
         }
@@ -477,7 +497,10 @@ mod tests {
     use crate::{
         rclone::state::automations::AutomationsCache,
         services::{flow::workflow::types::WorkflowNode, settings::access::tests::app},
-        utils::{constants::SUB_QUICK_RUNS, types::remotes::RemoteSettings},
+        utils::{
+            constants::{SUB_QUICK_RUNS, SUB_WORKFLOWS},
+            types::remotes::RemoteSettings,
+        },
     };
     use serde_json::json;
 
@@ -780,5 +803,97 @@ mod tests {
         runtime.flush_completions(&manager).unwrap();
         assert!(sub.get::<WorkflowDefinition>(&workflow.id).is_err());
         assert!(runtime.completed_workflows.read().is_empty());
+    }
+
+    #[test]
+    fn event_triggers_are_loaded_once_and_dropped_when_definitions_change() {
+        let runtime = RuntimeTasks::default();
+        let workflow = |id: &str, node_type: &str| WorkflowDefinition {
+            id: id.into(),
+            nodes: vec![WorkflowNode {
+                node_type: node_type.into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let loads = std::cell::Cell::new(0);
+        let load = || {
+            loads.set(loads.get() + 1);
+            Ok(vec![
+                workflow("on-job", "job_event"),
+                workflow("manual", "manual"),
+            ])
+        };
+
+        let first = runtime.event_triggers(load).unwrap();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].id, "on-job");
+        runtime.event_triggers(load).unwrap();
+        assert_eq!(loads.get(), 1);
+
+        runtime.invalidate_workflow("on-job");
+        runtime.event_triggers(load).unwrap();
+        assert_eq!(loads.get(), 2);
+
+        // A failed load is reported and retried, not cached.
+        runtime.invalidate_all();
+        assert!(runtime.event_triggers(|| Err("storage".into())).is_err());
+        runtime.event_triggers(load).unwrap();
+        assert_eq!(loads.get(), 3);
+
+        // Edited while loading: the list is returned but not kept.
+        runtime.invalidate_all();
+        let stale = runtime
+            .event_triggers(|| {
+                runtime.invalidate_workflow("on-job");
+                Ok(vec![workflow("old", "job_event")])
+            })
+            .unwrap();
+        assert_eq!(stale[0].id, "old");
+        let fresh = runtime.event_triggers(load).unwrap();
+        assert_eq!(fresh[0].id, "on-job");
+    }
+
+    #[test]
+    fn a_workflow_keeps_the_quick_runs_it_names_even_without_a_vault() {
+        let directory = tempfile::tempdir().unwrap();
+        let manager: AppSettingsManager = rcman::SettingsManager::builder("snapshot-test", "1")
+            .with_config_dir(directory.path())
+            .with_schema::<crate::services::settings::schema::AppSettings>()
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile(SUB_QUICK_RUNS).with_profiles())
+            .build()
+            .unwrap();
+        assert!(!manager.is_vault_enabled());
+        let preset = |id: &str| -> QuickRun {
+            serde_json::from_value(json!({"id": id, "name": id, "remoteName": "drive", "operationType": "copy", "config": {"source": "/a", "dest": "/b"}})).unwrap()
+        };
+        let quick_runs = manager.sub_settings(SUB_QUICK_RUNS).unwrap();
+        for id in ["used", "unrelated"] {
+            quick_runs.set(id, &preset(id)).unwrap();
+        }
+        let workflow = WorkflowDefinition {
+            nodes: vec![
+                WorkflowNode {
+                    node_type: "quick_run".into(),
+                    config: json!({"quickRunId": " used "}),
+                    ..Default::default()
+                },
+                WorkflowNode {
+                    node_type: "quick_run".into(),
+                    config: json!({"quickRunId": "{{nodes.x.id}}"}),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        let snapshot = WorkflowSnapshot::capture(&manager, workflow).unwrap();
+        assert_eq!(snapshot.quick_runs.keys().collect::<Vec<_>>(), ["used"]);
+
+        // A later backend switch changes what the store shows, not what the run holds.
+        quick_runs.profiles().unwrap().create("Other").unwrap();
+        quick_runs.profiles().unwrap().switch("Other").unwrap();
+        assert!(quick_runs.get_value("used").is_err());
+        assert_eq!(snapshot.quick_runs["used"].id, "used");
     }
 }

@@ -7,7 +7,10 @@ use parking_lot::RwLock as SyncRwLock;
 use tokio::sync::RwLock;
 
 use crate::services::settings::AppSettingsManager;
-use crate::utils::constants::LOCAL_BACKEND_NAME;
+use crate::utils::constants::{
+    ENGINE_SUB_SETTINGS, LOCAL_BACKEND_NAME, SUB_BACKEND, SUB_QUICK_RUNS, SUB_REMOTES,
+    SUB_WORKFLOWS,
+};
 use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
 use super::{
@@ -52,6 +55,16 @@ impl BackendsState {
     fn find_index(&self, name: &str) -> Option<usize> {
         self.backends.iter().position(|b| b.name == name)
     }
+}
+
+/// Existing backends whose settings a new backend's profiles are copied from.
+/// A missing source starts that group empty.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct CopySources<'a> {
+    pub backend: Option<&'a str>,
+    pub remotes: Option<&'a str>,
+    /// Quick Runs and Workflows.
+    pub flow: Option<&'a str>,
 }
 
 /// Central manager for rclone backends
@@ -254,18 +267,29 @@ impl BackendManager {
     /// # Arguments
     /// * `manager` - App settings manager to create profiles
     /// * `backend` - Backend connection details
-    /// * `copy_backend_from` - Optional source backend to copy 'backend' settings from
-    /// * `copy_remotes_from` - Optional source backend to copy 'remotes' settings from
+    /// * `copy` - Backends whose settings the new profiles start from
     pub async fn add(
         &self,
         manager: &AppSettingsManager,
         backend: Backend,
-        copy_backend_from: Option<&str>,
-        copy_remotes_from: Option<&str>,
+        copy: CopySources<'_>,
     ) -> Result<(), String> {
         let mut state = self.state.write().await;
 
-        if state.backends.iter().any(|b| b.name == backend.name) {
+        // Names are also profile directory names, which differ only by case on
+        // Windows and macOS. Local's profile is `default`, so that name is taken too.
+        let profile = Backend::profile_name_for(&backend.name);
+        let fold = |name: &str| {
+            name.chars()
+                .flat_map(char::to_lowercase)
+                .collect::<Vec<_>>()
+        };
+        let folded = fold(profile);
+        if state
+            .backends
+            .iter()
+            .any(|b| fold(Backend::profile_name_for(&b.name)) == folded)
+        {
             return Err(crate::localized_error!(
                 "backendErrors.backend.alreadyExists",
                 "name" => &backend.name
@@ -296,8 +320,11 @@ impl BackendManager {
             }
         };
 
-        setup_profile("backend", copy_backend_from);
-        setup_profile("remotes", copy_remotes_from);
+        setup_profile(SUB_BACKEND, copy.backend);
+        setup_profile(SUB_REMOTES, copy.remotes);
+        // Workflows reference Quick Runs by id, so both start from the same source.
+        setup_profile(SUB_QUICK_RUNS, copy.flow);
+        setup_profile(SUB_WORKFLOWS, copy.flow);
 
         state.backends.push(backend);
         Ok(())
@@ -359,17 +386,13 @@ impl BackendManager {
 
         self.per_backend_state.write().remove(name);
 
-        if let Ok(remotes_sub) = manager.sub_settings("remotes")
-            && let Ok(pm) = remotes_sub.profiles()
-            && let Err(e) = pm.delete(name)
-        {
-            log::warn!("Failed to delete 'remotes' profile for {name}: {e}");
-        }
-        if let Ok(backend_sub) = manager.sub_settings("backend")
-            && let Ok(pm) = backend_sub.profiles()
-            && let Err(e) = pm.delete(name)
-        {
-            log::warn!("Failed to delete 'backend' profile for {name}: {e}");
+        for sub_name in ENGINE_SUB_SETTINGS {
+            if let Ok(sub) = manager.sub_settings(sub_name)
+                && let Ok(pm) = sub.profiles()
+                && let Err(e) = pm.delete(name)
+            {
+                log::warn!("Failed to delete '{sub_name}' profile for {name}: {e}");
+            }
         }
 
         Ok(())
@@ -391,18 +414,21 @@ impl BackendManager {
         let profile_name = Backend::profile_name_for(name);
         info!("Switching profiles to: {profile_name}");
 
-        self.switch_sub_settings_profile(manager, "remotes", profile_name)?;
-        if let Err(error) = self.switch_sub_settings_profile(manager, "backend", profile_name) {
-            if let Err(rollback_error) = self.switch_sub_settings_profile(
-                manager,
-                "remotes",
-                Backend::profile_name_for(&current_name),
-            ) {
-                log::error!(
-                    "Failed to restore remote settings after backend switch: {rollback_error}"
-                );
+        for (switched, sub_name) in ENGINE_SUB_SETTINGS.iter().enumerate() {
+            if let Err(error) = self.switch_sub_settings_profile(manager, sub_name, profile_name) {
+                for restored in &ENGINE_SUB_SETTINGS[..switched] {
+                    if let Err(rollback_error) = self.switch_sub_settings_profile(
+                        manager,
+                        restored,
+                        Backend::profile_name_for(&current_name),
+                    ) {
+                        log::error!(
+                            "Failed to restore {restored} settings after backend switch: {rollback_error}"
+                        );
+                    }
+                }
+                return Err(error);
             }
-            return Err(error);
         }
 
         if current_name != name {
@@ -423,8 +449,8 @@ impl BackendManager {
         profile_name: &str,
     ) -> Result<(), String> {
         if let Ok(sub) = manager.sub_settings(sub_name) {
-            if profile_name != "default"
-                && let Ok(pm) = sub.profiles()
+            if let Ok(pm) = sub.profiles()
+                && !pm.exists(profile_name).unwrap_or(false)
                 && let Err(e) = pm.create(profile_name)
             {
                 log::warn!("Failed to ensure profile '{profile_name}' for {sub_name}: {e}");
@@ -537,7 +563,9 @@ impl BackendManager {
                 if Backend::is_local_name(&backend.name) {
                     let _ = self.update(manager, LOCAL_BACKEND_NAME, backend).await;
                 } else {
-                    let _ = self.add(manager, backend, None, None).await;
+                    if let Err(error) = self.add(manager, backend, CopySources::default()).await {
+                        log::warn!("Skipping saved backend '{key}': {error}");
+                    }
                 }
             }
         }
@@ -751,7 +779,9 @@ mod tests {
         let mut builder = rcman::SettingsManager::builder("backend-test", "1.0.0")
             .with_config_dir(directory.path())
             .with_schema::<crate::services::settings::schema::AppSettings>()
-            .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles());
+            .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("quick_runs").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("workflows").with_profiles());
         if include_backend {
             builder = builder
                 .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles());
@@ -768,8 +798,7 @@ mod tests {
                 .add(
                     &settings,
                     Backend::new_remote(name, "127.0.0.1", 0),
-                    None,
-                    None,
+                    CopySources::default(),
                 )
                 .await
                 .unwrap();
@@ -809,6 +838,180 @@ mod tests {
         );
     }
 
+    fn flow_ids(settings: &AppSettingsManager, section: &str) -> Vec<String> {
+        let mut ids = settings.sub_settings(section).unwrap().list().unwrap();
+        ids.sort();
+        ids
+    }
+
+    #[tokio::test]
+    async fn quick_runs_and_workflows_follow_the_selected_backend() {
+        let (_directory, settings) = settings_with_profiles(true);
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("Other", "127.0.0.1", 0),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            settings
+                .sub_settings(section)
+                .unwrap()
+                .set("local-item", &serde_json::json!({"name": "local"}))
+                .unwrap();
+        }
+
+        manager.switch_to(&settings, "Other").await.unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert!(flow_ids(&settings, section).is_empty());
+            settings
+                .sub_settings(section)
+                .unwrap()
+                .set("other-item", &serde_json::json!({"name": "other"}))
+                .unwrap();
+        }
+
+        manager
+            .switch_to(&settings, LOCAL_BACKEND_NAME)
+            .await
+            .unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert_eq!(flow_ids(&settings, section), ["local-item"]);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_backend_added_before_flow_profiles_existed_gets_an_empty_profile_on_switch() {
+        let (_directory, settings) = settings_with_profiles(true);
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("Old", "127.0.0.1", 0),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            settings
+                .sub_settings(section)
+                .unwrap()
+                .profiles()
+                .unwrap()
+                .delete("Old")
+                .unwrap();
+        }
+
+        manager.switch_to(&settings, "Old").await.unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert!(flow_ids(&settings, section).is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn copy_sources_start_each_group_from_the_chosen_backend() {
+        let (_directory, settings) = settings_with_profiles(true);
+        let manager = BackendManager::new();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            settings
+                .sub_settings(section)
+                .unwrap()
+                .set("local-item", &serde_json::json!({"name": "local"}))
+                .unwrap();
+        }
+        settings
+            .sub_settings(SUB_REMOTES)
+            .unwrap()
+            .set("drive", &serde_json::json!({"primaryActions": ["mount"]}))
+            .unwrap();
+
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("Copy", "127.0.0.1", 0),
+                CopySources {
+                    flow: Some(LOCAL_BACKEND_NAME),
+                    ..CopySources::default()
+                },
+            )
+            .await
+            .unwrap();
+        manager.switch_to(&settings, "Copy").await.unwrap();
+
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            assert_eq!(flow_ids(&settings, section), ["local-item"]);
+        }
+        assert!(flow_ids(&settings, SUB_REMOTES).is_empty());
+    }
+
+    #[tokio::test]
+    async fn backend_names_cannot_share_a_profile_directory() {
+        let (_directory, settings) = settings_with_profiles(true);
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("NAS", "127.0.0.1", 0),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+
+        // Local's profile is `default`; `nas` would share `NAS`'s directory.
+        for name in ["nas", "default", "Default", "NAS"] {
+            let result = manager
+                .add(
+                    &settings,
+                    Backend::new_remote(name, "127.0.0.1", 0),
+                    CopySources::default(),
+                )
+                .await;
+            assert!(result.is_err(), "{name} was accepted");
+        }
+        assert_eq!(manager.list_all().await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn removing_a_backend_deletes_all_of_its_profiles() {
+        let (_directory, settings) = settings_with_profiles(true);
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("Gone", "127.0.0.1", 0),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        for section in ENGINE_SUB_SETTINGS {
+            assert!(
+                settings
+                    .sub_settings(section)
+                    .unwrap()
+                    .profiles()
+                    .unwrap()
+                    .exists("Gone")
+                    .unwrap()
+            );
+        }
+
+        manager.remove(&settings, "Gone").await.unwrap();
+        for section in ENGINE_SUB_SETTINGS {
+            assert!(
+                !settings
+                    .sub_settings(section)
+                    .unwrap()
+                    .profiles()
+                    .unwrap()
+                    .exists("Gone")
+                    .unwrap()
+            );
+        }
+    }
+
     #[tokio::test]
     async fn failed_backend_profile_switch_restores_remote_profile() {
         let (_directory, settings) = settings_with_profiles(false);
@@ -817,8 +1020,7 @@ mod tests {
             .add(
                 &settings,
                 Backend::new_remote("Other", "127.0.0.1", 0),
-                None,
-                None,
+                CopySources::default(),
             )
             .await
             .unwrap();
@@ -846,8 +1048,7 @@ mod tests {
             .add(
                 &settings,
                 Backend::new_remote("Other", "127.0.0.1", 0),
-                None,
-                None,
+                CopySources::default(),
             )
             .await
             .unwrap();

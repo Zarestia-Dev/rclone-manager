@@ -116,11 +116,7 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  async addBackend(
-    config: AddBackendArgs,
-    copyBackendFrom?: string,
-    copyRemotesFrom?: string
-  ): Promise<void> {
+  async addBackend(config: AddBackendArgs): Promise<void> {
     await this.invokeCommand('add_backend', {
       params: {
         name: config.name,
@@ -131,8 +127,9 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.configPassword,
         configPath: config.configPath,
-        copyBackendFrom: copyBackendFrom ?? null,
-        copyRemotesFrom: copyRemotesFrom ?? null,
+        copyBackendFrom: config.copyBackendFrom ?? null,
+        copyRemotesFrom: config.copyRemotesFrom ?? null,
+        copyFlowFrom: config.copyFlowFrom ?? null,
       },
     });
     this.backendData.reload();

@@ -104,6 +104,33 @@ pub fn is_flat_option_key(key: &str) -> bool {
         .is_some_and(|c| c.is_lowercase() || c == '_')
 }
 
+/// Name of the built-in profile every helper and operation form selects first.
+pub const DEFAULT_PROFILE_NAME: &str = "Default";
+
+/// Releases up to 0.3.3 stored the built-in profile as lowercase `default`.
+#[must_use]
+pub fn is_default_profile(name: &str) -> bool {
+    name.eq_ignore_ascii_case(DEFAULT_PROFILE_NAME)
+}
+
+/// Find a profile by name. An exact match wins; the built-in Default also
+/// matches its legacy spelling so stored references keep resolving.
+pub fn find_profile<'a>(
+    profiles: impl IntoIterator<Item = (&'a String, &'a Value)>,
+    name: &str,
+) -> Option<&'a Value> {
+    let mut legacy = None;
+    for (key, value) in profiles {
+        if key == name {
+            return Some(value);
+        }
+        if legacy.is_none() && is_default_profile(name) && is_default_profile(key) {
+            legacy = Some(value);
+        }
+    }
+    legacy
+}
+
 /// Resolve profile options from a settings object.
 /// Looks up `settings[configs_key][profile_name]` and returns its options.
 /// An absent built-in Default means no overrides; a missing custom profile is an error.
@@ -115,10 +142,11 @@ pub fn resolve_profile_options(
     configs_key: &str,
 ) -> Result<Option<HashMap<String, Value>>, String> {
     // Omitted references use the same Default selection as the configuration form.
-    let name = profile_name.unwrap_or("Default");
+    let name = profile_name.unwrap_or(DEFAULT_PROFILE_NAME);
     match settings
         .get(configs_key)
-        .and_then(|configs| configs.get(name))
+        .and_then(Value::as_object)
+        .and_then(|configs| find_profile(configs, name))
     {
         Some(Value::Object(options)) => Ok(Some(
             options
@@ -129,11 +157,31 @@ pub fn resolve_profile_options(
         Some(_) => Err(
             crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}")),
         ),
-        None if name.eq_ignore_ascii_case("Default") => Ok(None),
+        None if is_default_profile(name) => Ok(None),
         None => Err(
             crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("Missing profile: {configs_key}.{name}")),
         ),
     }
+}
+
+/// Decodes stored records, skipping any that no longer match `T`.
+///
+/// One damaged or newer-format record must not hide every other record, so it
+/// is logged by id and left out.
+pub fn decode_valid<T: serde::de::DeserializeOwned>(
+    records: HashMap<String, Value>,
+    kind: &str,
+) -> Vec<T> {
+    records
+        .into_iter()
+        .filter_map(|(id, value)| match serde_json::from_value::<T>(value) {
+            Ok(record) => Some(record),
+            Err(error) => {
+                log::warn!("Skipping unreadable {kind} '{id}': {error}");
+                None
+            }
+        })
+        .collect()
 }
 
 /// Safely extracts a string value from a nested JSON path.
@@ -517,5 +565,39 @@ mod tests {
             );
         }
         assert!(resolve_profile_options(&settings, Some("missing"), "vfsConfigs").is_err());
+    }
+
+    #[test]
+    fn test_find_profile_matches_legacy_default_spelling_only_for_default() {
+        let profiles = serde_json::json!({"default": {"a": 1}, "Custom": {"a": 2}});
+        let profiles = profiles.as_object().unwrap();
+        assert_eq!(
+            find_profile(profiles, "Default"),
+            Some(&serde_json::json!({"a": 1}))
+        );
+        assert_eq!(
+            find_profile(profiles, "default"),
+            Some(&serde_json::json!({"a": 1}))
+        );
+        assert_eq!(
+            find_profile(profiles, "Custom"),
+            Some(&serde_json::json!({"a": 2}))
+        );
+        assert_eq!(find_profile(profiles, "custom"), None);
+
+        let both = serde_json::json!({"default": {"a": 1}, "Default": {"a": 2}});
+        assert_eq!(
+            find_profile(both.as_object().unwrap(), "Default"),
+            Some(&serde_json::json!({"a": 2}))
+        );
+    }
+
+    #[test]
+    fn test_resolve_profile_options_uses_legacy_default_options() {
+        let settings = serde_json::json!({"vfsConfigs": {"default": {"CacheMode": "full"}}});
+        let options = resolve_profile_options(&settings, Some("Default"), "vfsConfigs")
+            .unwrap()
+            .unwrap();
+        assert_eq!(options["CacheMode"], "full");
     }
 }

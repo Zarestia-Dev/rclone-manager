@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { combineLatest } from 'rxjs';
+import { combineLatest, merge } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import {
   QuickRun,
@@ -63,8 +63,11 @@ export class QuickRunService extends TauriBaseService {
     void this.refresh();
     this.listenToStatusUpdates();
 
-    this.eventListeners
-      .listenToSettingsCategory('quick_runs')
+    // Quick Runs belong to the selected backend.
+    merge(
+      this.eventListeners.listenToSettingsCategory('quick_runs'),
+      this.eventListeners.listenToBackendSwitched()
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         void this.refresh();

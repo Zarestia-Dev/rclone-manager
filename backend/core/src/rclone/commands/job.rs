@@ -1080,6 +1080,8 @@ mod tests {
             .with_schema::<AppSettings>()
             .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
             .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("quick_runs").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("workflows").with_profiles())
             .build()
             .unwrap();
         let manager = BackendManager::new();
@@ -1087,8 +1089,7 @@ mod tests {
             .add(
                 &settings,
                 Backend::new_remote("A", "127.0.0.1", listener.local_addr().unwrap().port()),
-                None,
-                None,
+                crate::rclone::backend::CopySources::default(),
             )
             .await
             .unwrap();
@@ -1097,8 +1098,7 @@ mod tests {
             .add(
                 &settings,
                 Backend::new_remote("B", "127.0.0.1", 0),
-                None,
-                None,
+                crate::rclone::backend::CopySources::default(),
             )
             .await
             .unwrap();

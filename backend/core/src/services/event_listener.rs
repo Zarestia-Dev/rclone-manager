@@ -331,7 +331,7 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
     });
 }
 
-fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
+fn dispatch_bridge_event(app: &AppHandle, event: &BridgeEvent) {
     match event.event.as_str() {
         RCLONE_PASSWORD_STORED => {
             handle_rclone_password_stored(app);
@@ -408,7 +408,7 @@ pub fn setup_event_listener(app: &AppHandle) {
         loop {
             match rx.recv().await {
                 Ok(event) => {
-                    dispatch_bridge_event(&app, event);
+                    dispatch_bridge_event(&app, &event);
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
                     debug!("Event listener lagged behind, skipped {skipped} events");

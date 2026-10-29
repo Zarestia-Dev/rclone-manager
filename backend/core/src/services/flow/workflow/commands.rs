@@ -6,7 +6,7 @@ use crate::context::AppHandle;
 use chrono::Utc;
 use log::info;
 
-use super::types::{WorkflowDefinition, WorkflowExecutionResult, WorkflowInput};
+use super::types::{NodeKind, WorkflowDefinition, WorkflowExecutionResult, WorkflowInput};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::SUB_WORKFLOWS;
 
@@ -195,12 +195,8 @@ pub fn get_all_workflows_sync(
         .map_err(|e| e.to_string())?;
 
     let values = sub.get_all_values().map_err(|error| error.to_string())?;
-    let mut list: Vec<WorkflowDefinition> = values
-        .into_values()
-        .map(serde_json::from_value::<WorkflowDefinition>)
-        .collect::<Result<_, _>>()
-        .map_err(|error| error.to_string())?;
-
+    let mut list: Vec<WorkflowDefinition> =
+        crate::utils::json_helpers::decode_valid(values, "workflow");
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
 }
@@ -220,12 +216,30 @@ pub fn get_workflow_by_id(
     }
 }
 
+/// Records when a workflow last ran without rewriting the rest of its definition,
+/// which may have been edited or deleted while it executed. A missing workflow
+/// is left missing.
+pub(crate) fn record_last_executed(
+    manager: &AppSettingsManager,
+    id: &str,
+    timestamp: &str,
+) -> Result<(), String> {
+    let sub = manager
+        .sub_settings(SUB_WORKFLOWS)
+        .map_err(|e| e.to_string())?;
+    // One field is rewritten under the store's own lock, so a concurrent edit is not
+    // overwritten and a concurrent delete is not undone.
+    sub.set_field_if_exists(id, "lastExecutedAt", &timestamp)
+        .map(|_| ())
+        .map_err(|e| format!("Failed to save workflow: {e}"))
+}
+
 pub fn save_workflow_record(
     manager: &AppSettingsManager,
     wf: &WorkflowDefinition,
 ) -> Result<(), String> {
     for node in &wf.nodes {
-        if node.node_type == "cron" || node.node_type == "schedule_wait" {
+        if matches!(node.kind(), NodeKind::Cron | NodeKind::ScheduleWait) {
             crate::services::automation::engine::validate_enabled_cron(
                 true,
                 node.config
@@ -374,5 +388,47 @@ mod tests {
             find_unique_name(&names, "Workflow (Copy)"),
             "Workflow (Copy) 3"
         );
+    }
+
+    #[test]
+    fn an_unreadable_record_does_not_hide_the_others() {
+        let (_temp_dir, manager) = test_manager();
+        let valid = WorkflowDefinition {
+            id: "valid".into(),
+            name: "Valid".into(),
+            ..Default::default()
+        };
+        save_workflow_record(&manager, &valid).unwrap();
+        manager
+            .sub_settings(SUB_WORKFLOWS)
+            .unwrap()
+            .set("damaged", &serde_json::json!({"nodes": "not a list"}))
+            .unwrap();
+
+        let all = get_all_workflows_sync(&manager).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "valid");
+    }
+
+    #[test]
+    fn recording_a_run_changes_only_the_timestamp_and_never_recreates_a_workflow() {
+        let (_temp_dir, manager) = test_manager();
+        let mut workflow = WorkflowDefinition {
+            id: "wf".into(),
+            name: "Edited".into(),
+            ..Default::default()
+        };
+        save_workflow_record(&manager, &workflow).unwrap();
+
+        record_last_executed(&manager, "wf", "2026-10-27T12:00:00Z").unwrap();
+        workflow = get_workflow_by_id(&manager, "wf").unwrap().unwrap();
+        assert_eq!(workflow.name, "Edited");
+        assert_eq!(
+            workflow.last_executed_at.as_deref(),
+            Some("2026-10-27T12:00:00Z")
+        );
+
+        record_last_executed(&manager, "gone", "2026-10-27T12:00:00Z").unwrap();
+        assert!(get_workflow_by_id(&manager, "gone").unwrap().is_none());
     }
 }

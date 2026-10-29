@@ -586,7 +586,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejected_remote_deletion_preserves_settings_and_presets() {
-        use crate::rclone::backend::types::Backend;
+        use crate::rclone::backend::{CopySources, types::Backend};
         use std::sync::Arc;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -597,9 +597,14 @@ mod tests {
                 .with_schema::<crate::services::settings::schema::AppSettings>()
                 .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
                 .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
-                .with_sub_settings(rcman::SubSettingsConfig::singlefile(
-                    crate::utils::constants::SUB_QUICK_RUNS,
-                ))
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_QUICK_RUNS)
+                        .with_profiles(),
+                )
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_WORKFLOWS)
+                        .with_profiles(),
+                )
                 .build()
                 .unwrap();
         let manager = BackendManager::new();
@@ -607,8 +612,7 @@ mod tests {
             .add(
                 &settings,
                 Backend::new_remote("A", "127.0.0.1", listener.local_addr().unwrap().port()),
-                None,
-                None,
+                CopySources::default(),
             )
             .await
             .unwrap();

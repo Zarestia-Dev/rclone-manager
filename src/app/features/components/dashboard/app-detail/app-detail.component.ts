@@ -66,6 +66,7 @@ import {
   Automation,
   RepairSheetType,
 } from '@app/types';
+import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
 import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
@@ -937,12 +938,13 @@ export class AppDetailComponent {
       const backendProfileName = cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
-      const existingBackend = backendConfigs[backendProfileName] ?? {};
+      const key = findProfileKey(backendConfigs, backendProfileName) ?? backendProfileName;
+      const existingBackend = backendConfigs[key] ?? {};
 
       await this.remoteFacade.updateRemoteSettings(remoteName, {
         backendConfigs: {
           ...backendConfigs,
-          [backendProfileName]: { ...existingBackend, dry_run: newValue },
+          [key]: { ...existingBackend, dry_run: newValue },
         },
       });
     }
@@ -1039,7 +1041,8 @@ export class AppDetailComponent {
       const backendProfileName = this.currentAppConfig()?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
-      const bOpts = backendConfigs[backendProfileName];
+      const key = findProfileKey(backendConfigs, backendProfileName);
+      const bOpts = key === undefined ? undefined : backendConfigs[key];
       return !!(bOpts?.['dry_run'] ?? bOpts?.['dryRun'] ?? bOpts?.['DryRun']);
     }
     return false;
@@ -1081,8 +1084,10 @@ export class AppDetailComponent {
     if (profileName) {
       specificSettings = (profiles?.[profileName] as Record<string, unknown>) ?? {};
     } else if (profiles && (SYNC_TYPES as string[]).includes(key)) {
-      specificSettings =
-        (profiles['default'] as Record<string, unknown>) ?? Object.values(profiles)[0] ?? {};
+      const defaultKey = findProfileKey(profiles, DEFAULT_PROFILE_NAME);
+      specificSettings = ((defaultKey !== undefined ? profiles[defaultKey] : undefined) ??
+        Object.values(profiles)[0] ??
+        {}) as Record<string, unknown>;
     } else {
       specificSettings = (profiles as Record<string, unknown>) ?? {};
     }

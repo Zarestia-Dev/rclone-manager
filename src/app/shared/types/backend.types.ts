@@ -45,4 +45,5 @@ export interface AddBackendArgs {
   configPath?: string;
   copyBackendFrom?: string | null;
   copyRemotesFrom?: string | null;
+  copyFlowFrom?: string | null;
 }

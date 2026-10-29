@@ -21,6 +21,7 @@ import {
   LocalDiskUsage,
   OPERATION_ICONS,
   SYNC_TYPES,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
@@ -55,6 +56,7 @@ export class OperationControlComponent {
 
   private readonly systemInfo = inject(SystemInfoService);
 
+  protected readonly defaultProfileName = DEFAULT_PROFILE_NAME;
   readonly isExpanded = signal(false);
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
   readonly isDiskUsageLoading = signal(false);

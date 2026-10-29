@@ -8,6 +8,10 @@
     gap: var(--space-md);
     margin-top: var(--space-sm);
 
+    > :last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
     }

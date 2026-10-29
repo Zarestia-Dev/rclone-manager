@@ -37,12 +37,16 @@ export class WorkflowEventService extends TauriBaseService {
   }
 
   private handleNodeStateChanged(payload: WorkflowNodeStatePayload): void {
+    // Backend errors arrive as translation keys; the interface shows them translated.
+    const errorMessage = payload.errorMessage
+      ? this.backendTranslation.translateBackendMessage(payload.errorMessage)
+      : undefined;
     const currentWf = this.stateService.currentWorkflow();
     if (currentWf && currentWf.id === payload.workflowId) {
       this.stateService.updateNodeExecutionState(
         payload.nodeId,
         payload.state,
-        payload.errorMessage,
+        errorMessage,
         payload.durationMs,
         payload.output
       );
@@ -81,29 +85,35 @@ export class WorkflowEventService extends TauriBaseService {
     if (payload.state === 'running') {
       this.engineService.log(
         payload.workflowId,
-        `Step "${nodeTitle}" is executing...`,
+        this.translate.instant('flow.workflow.logs.stepRunning', { title: nodeTitle }),
         'info',
         targetNode
       );
     } else if (payload.state === 'success') {
       this.engineService.log(
         payload.workflowId,
-        `Step "${nodeTitle}" completed in ${payload.durationMs ?? 0}ms`,
+        this.translate.instant('flow.workflow.logs.stepCompleted', {
+          title: nodeTitle,
+          duration: payload.durationMs ?? 0,
+        }),
         'success',
         targetNode
       );
     } else if (payload.state === 'failed') {
       this.engineService.log(
         payload.workflowId,
-        `Step "${nodeTitle}" failed: ${payload.errorMessage ?? 'Unknown error'}`,
+        this.translate.instant('flow.workflow.logs.stepFailed', {
+          title: nodeTitle,
+          error: errorMessage ?? this.translate.instant('flow.workflow.logs.unknownError'),
+        }),
         'error',
         targetNode,
-        payload.errorMessage
+        errorMessage
       );
     } else if (payload.state === 'skipped') {
       this.engineService.log(
         payload.workflowId,
-        `Step "${nodeTitle}" skipped (branch not taken)`,
+        this.translate.instant('flow.workflow.logs.stepSkipped', { title: nodeTitle }),
         'info',
         targetNode
       );
@@ -124,7 +134,12 @@ export class WorkflowEventService extends TauriBaseService {
     }
 
     if (payload.progress) {
-      this.engineService.executionProgress.set(payload.progress);
+      this.engineService.executionProgress.set({
+        ...payload.progress,
+        currentStepTitle: this.backendTranslation.translateBackendMessage(
+          payload.progress.currentStepTitle
+        ),
+      });
     }
 
     if (payload.message) {
@@ -136,7 +151,11 @@ export class WorkflowEventService extends TauriBaseService {
             : payload.state === 'cancelled'
               ? 'warn'
               : 'info';
-      this.engineService.log(payload.workflowId, payload.message, severity);
+      this.engineService.log(
+        payload.workflowId,
+        this.backendTranslation.translateBackendMessage(payload.message),
+        severity
+      );
     }
   }
 }

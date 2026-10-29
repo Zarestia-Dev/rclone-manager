@@ -170,19 +170,15 @@ pub struct ProfileConfig {
 
 impl ProfileConfig {
     /// Parse a profile config value, handling both partitioned `{app, rclone}` and flat formats.
-    pub fn parse_from_value(val: &serde_json::Value) -> Self {
-        let is_partitioned = val.get("app").is_some() || val.get("rclone").is_some();
-        if is_partitioned {
-            serde_json::from_value(val.clone()).unwrap_or_else(|_| Self {
-                app: AppConfig::default(),
-                rclone: serde_json::Value::Null,
-            })
+    /// Malformed `app` settings are an error rather than silently dropping schedules and profile links.
+    pub fn parse_from_value(val: &serde_json::Value) -> Result<Self, serde_json::Error> {
+        if val.get("app").is_some() || val.get("rclone").is_some() {
+            Self::deserialize(val)
         } else {
-            let app: AppConfig = serde_json::from_value(val.clone()).unwrap_or_default();
-            Self {
-                app,
+            Ok(Self {
+                app: AppConfig::deserialize(val)?,
                 rclone: val.clone(),
-            }
+            })
         }
     }
 
@@ -537,6 +533,30 @@ impl RemoteSettings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_from_value_reads_both_shapes_and_rejects_malformed_app_settings() {
+        let flat = ProfileConfig::parse_from_value(
+            &serde_json::json!({"cronEnabled": true, "srcFs": "/src"}),
+        )
+        .unwrap();
+        assert_eq!(flat.app.cron_enabled, Some(true));
+        assert_eq!(flat.source_str(), Some("/src"));
+
+        let partitioned = ProfileConfig::parse_from_value(
+            &serde_json::json!({"app": {"vfsProfile": "Fast"}, "rclone": {"srcFs": "/src"}}),
+        )
+        .unwrap();
+        assert_eq!(partitioned.app.vfs_profile.as_deref(), Some("Fast"));
+
+        assert!(
+            ProfileConfig::parse_from_value(&serde_json::json!({"cronEnabled": "yes"})).is_err()
+        );
+        assert!(
+            ProfileConfig::parse_from_value(&serde_json::json!({"app": {"watchDelay": "soon"}}))
+                .is_err()
+        );
+    }
     use serde_json::json;
 
     #[test]

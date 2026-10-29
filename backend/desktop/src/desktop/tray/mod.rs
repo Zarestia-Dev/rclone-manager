@@ -306,7 +306,8 @@ impl TraySnapshot {
         )
         .unwrap_or_default();
 
-        let active_wf_ids = crate::services::flow::workflow::engine::get_active_workflow_ids();
+        let active_wf_ids =
+            crate::services::flow::workflow::engine::get_active_workflow_ids(&backend.name);
 
         let workflows = raw_workflows
             .into_iter()

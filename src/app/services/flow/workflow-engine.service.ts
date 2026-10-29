@@ -72,7 +72,7 @@ export class WorkflowEngineService extends TauriBaseService {
     const id = workflowId ?? this.stateService.currentWorkflow()?.id;
     if (!id) return;
 
-    this.log(id, 'Workflow execution cancellation requested', 'warn');
+    this.log(id, this.translate.instant('flow.workflow.logs.cancelRequested'), 'warn');
     await this.invokeCommand('stop_workflow', { workflowId: id });
   }
 
@@ -106,7 +106,10 @@ export class WorkflowEngineService extends TauriBaseService {
     this.stateService.currentWorkflow.update(w => (w ? { ...w, nodes: resetNodes } : null));
     this.log(
       workflow.id,
-      `Starting ${dryRun ? 'simulation (dry run)' : 'execution'} of workflow "${workflow.name}"`,
+      this.translate.instant(
+        dryRun ? 'flow.workflow.logs.startSimulation' : 'flow.workflow.logs.startExecution',
+        { name: workflow.name }
+      ),
       'info'
     );
 
@@ -122,8 +125,12 @@ export class WorkflowEngineService extends TauriBaseService {
 
       return result.success;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.log(workflow.id, `Workflow execution error: ${msg}`, 'error');
+      const error = this.backendTranslation.translateBackendMessage(err);
+      this.log(
+        workflow.id,
+        this.translate.instant('flow.workflow.logs.executionError', { error }),
+        'error'
+      );
       return false;
     } finally {
       this.isExecuting.set(false);

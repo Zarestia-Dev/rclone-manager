@@ -1,5 +1,6 @@
 import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/workflow.types';
 import { findUniqueName } from '../remote/utils/unique-name.util';
@@ -25,8 +26,11 @@ export class WorkflowStorageService extends TauriBaseService {
     super();
     void this.loadAllWorkflows();
 
-    this.eventListeners
-      .listenToSettingsCategory('workflows')
+    // Workflows belong to the selected backend.
+    merge(
+      this.eventListeners.listenToSettingsCategory('workflows'),
+      this.eventListeners.listenToBackendSwitched()
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         void this.loadAllWorkflows();

@@ -152,7 +152,6 @@
           font-family: var(--font-mono);
           font-size: inherit;
           font-weight: 500;
-          min-width: 0;
           padding-inline: var(--space-xs);
         }
 
@@ -240,16 +239,27 @@
         margin-left: 0;
       }
 
-      .card-footer {
+      // Stack source/destination so the action buttons do not crush the path text.
+      .card-paths {
         flex-direction: column;
-        align-items: flex-start;
-        gap: var(--space-xxs);
+        align-items: stretch;
 
-        .card-footer-left,
-        .card-footer-right {
-          width: 100%;
-          text-align: center;
+        .arrow-icon {
+          align-self: center;
+          transform: rotate(90deg);
         }
+
+        .path-endpoint {
+          flex: 1;
+
+          code {
+            flex: 1;
+          }
+        }
+      }
+
+      .card-footer {
+        flex-wrap: wrap;
       }
     }
   }

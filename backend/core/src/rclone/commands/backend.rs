@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use crate::context::AppHandle;
 use log::{debug, info, warn};
 
-use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::types::Backend;
 use crate::rclone::backend::types::BackendInfo;
+use crate::rclone::backend::{BackendManager, CopySources};
 use crate::rclone::endpoints::config;
 use crate::rclone::endpoints::core;
 use crate::rclone::engine::lifecycle::start_engine_if_not_running;
@@ -101,6 +101,7 @@ pub struct AddBackendParams {
     pub config_path: Option<PathBuf>,
     pub copy_backend_from: Option<String>,
     pub copy_remotes_from: Option<String>,
+    pub copy_flow_from: Option<String>,
 }
 
 pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
@@ -148,8 +149,11 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
         .add(
             settings_manager.inner(),
             backend.clone(),
-            params.copy_backend_from.as_deref(),
-            params.copy_remotes_from.as_deref(),
+            CopySources {
+                backend: params.copy_backend_from.as_deref(),
+                remotes: params.copy_remotes_from.as_deref(),
+                flow: params.copy_flow_from.as_deref(),
+            },
         )
         .await?;
 

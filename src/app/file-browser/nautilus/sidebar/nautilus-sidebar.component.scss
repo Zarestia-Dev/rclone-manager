@@ -19,8 +19,8 @@
 
 mat-toolbar {
   background: transparent;
-  padding-inline: 6px;
-  height: var(--titlebar-height);
+  padding: var(--space-xxs) var(--title-bar-padding);
+  height: calc(var(--titlebar-height) + 8px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,39 +50,6 @@ mat-toolbar {
       overflow: hidden;
       text-overflow: ellipsis;
     }
-  }
-}
-
-.nav-button {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-xs);
-  color: var(--window-fg-color);
-  transition: var(--transition-fast);
-
-  mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
-  }
-
-  &:hover {
-    background: var(--hover-bg-color);
-  }
-  &:active {
-    background: var(--active-bg-color);
-  }
-  &.active {
-    background: var(--selected-bg-color);
-    color: var(--accent-color);
-  }
-  &:disabled {
-    opacity: 0.4;
   }
 }
 

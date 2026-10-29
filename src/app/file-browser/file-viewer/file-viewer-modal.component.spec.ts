@@ -17,6 +17,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 
 interface ComponentPrivateAccess {
   updateData: () => Promise<void>;
@@ -38,6 +39,7 @@ describe('FileViewerModalComponent', () => {
   let nautilusServiceMock: Partial<NautilusService>;
   let notificationServiceMock: Partial<NotificationService>;
   let pathServiceMock: Partial<PathService>;
+  let fileSystemServiceMock: Pick<FileSystemService, 'openInFiles'>;
   let jobManagementServiceMock: Pick<JobManagementService, 'stopJobsByGroup'>;
 
   const mockItems: Entry[] = [
@@ -123,6 +125,10 @@ describe('FileViewerModalComponent', () => {
       stopJobsByGroup: vi.fn().mockResolvedValue(undefined),
     };
 
+    fileSystemServiceMock = {
+      openInFiles: vi.fn().mockResolvedValue(undefined),
+    };
+
     await TestBed.configureTestingModule({
       imports: [FileViewerModalComponent],
       providers: [
@@ -139,6 +145,7 @@ describe('FileViewerModalComponent', () => {
         { provide: NotificationService, useValue: notificationServiceMock },
         { provide: PathService, useValue: pathServiceMock },
         { provide: JobManagementService, useValue: jobManagementServiceMock },
+        { provide: FileSystemService, useValue: fileSystemServiceMock },
       ],
     }).compileComponents();
 
@@ -226,6 +233,12 @@ describe('FileViewerModalComponent', () => {
       component.currentIndex.set(2); // notes.md
       expect(component.isMarkdownFile()).toBe(true);
     });
+
+    it('hides native open for remote directories', () => {
+      component.currentFileType.set('directory');
+      component.data.isLocal = false;
+      expect(component.isNativeOpenVisible()).toBe(false);
+    });
   });
 
   describe('Navigation', () => {
@@ -290,6 +303,123 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Zoom and Pan Controls', () => {
+    it('navigates between media items with a horizontal touch swipe', async () => {
+      const next = vi.spyOn(component, 'next').mockResolvedValue(undefined);
+      component.currentFileType.set('image');
+      component.onMediaPointerDown(
+        new PointerEvent('pointerdown', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 200,
+          clientY: 100,
+        })
+      );
+      component.onMediaPointerMove(
+        new PointerEvent('pointermove', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 120,
+          clientY: 105,
+        })
+      );
+      await component.onMediaPointerUp(
+        new PointerEvent('pointerup', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 120,
+          clientY: 105,
+        })
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('supports touch navigation while a directory preview is shown', async () => {
+      const next = vi.spyOn(component, 'next').mockResolvedValue(undefined);
+      component.currentFileType.set('directory');
+      component.onMediaPointerDown(
+        new PointerEvent('pointerdown', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 200,
+          clientY: 100,
+        })
+      );
+      component.onMediaPointerMove(
+        new PointerEvent('pointermove', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 120,
+          clientY: 105,
+        })
+      );
+      await component.onMediaPointerUp(
+        new PointerEvent('pointerup', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 120,
+          clientY: 105,
+        })
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('zooms media with a two-finger pinch without navigating', () => {
+      component.onMediaPointerDown(
+        new PointerEvent('pointerdown', {
+          pointerId: 1,
+          pointerType: 'touch',
+          clientX: 100,
+          clientY: 100,
+        })
+      );
+      component.onMediaPointerDown(
+        new PointerEvent('pointerdown', {
+          pointerId: 2,
+          pointerType: 'touch',
+          clientX: 200,
+          clientY: 100,
+        })
+      );
+      component.onMediaPointerMove(
+        new PointerEvent('pointermove', {
+          pointerId: 2,
+          pointerType: 'touch',
+          clientX: 250,
+          clientY: 100,
+        })
+      );
+      expect(component.zoomLevel()).toBe(1.5);
+    });
+
+    it('toggles media zoom with a mobile double tap', async () => {
+      const tap = (clientX: number): Promise<void> => {
+        component.onMediaPointerDown(
+          new PointerEvent('pointerdown', {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX,
+            clientY: 100,
+          })
+        );
+        return component.onMediaPointerUp(
+          new PointerEvent('pointerup', {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX,
+            clientY: 100,
+          })
+        );
+      };
+
+      await tap(150);
+      await tap(150);
+      expect(component.zoomLevel()).toBe(1.25);
+
+      await tap(150);
+      await tap(150);
+      expect(component.zoomLevel()).toBe(1);
+    });
+
     it('should zoom in up to a maximum of 5x', () => {
       expect(component.zoomLevel()).toBe(1);
       component.zoomIn();
@@ -532,6 +662,23 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Native Opening and Video Handling', () => {
+    it('opens a local directory in the file manager', async () => {
+      component.data.items = [
+        {
+          ...mockItems[0],
+          Name: 'Music',
+          Path: 'Music',
+          IsDir: true,
+        },
+      ];
+      component.currentFileType.set('directory');
+
+      await component.openNativeFile();
+
+      expect(fileSystemServiceMock.openInFiles).toHaveBeenCalledWith('local/Music');
+      expect(downloadServiceMock.openFileNatively).not.toHaveBeenCalled();
+    });
+
     it('should invoke downloadService.openFileNatively when openNativeFile is called', async () => {
       await component.openNativeFile();
 

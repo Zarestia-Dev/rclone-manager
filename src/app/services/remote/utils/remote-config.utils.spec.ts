@@ -14,6 +14,7 @@ import {
   matchesConfigSearch,
   matchesConfigSearchText,
   resolveOptionExamples,
+  findProfileKey,
 } from './remote-config.utils';
 
 describe('configuration search', () => {
@@ -735,6 +736,28 @@ describe('remote-config.utils', () => {
         other: { region: 'eu' },
       });
       expect(settings).toEqual(original);
+    });
+  });
+
+  describe('findProfileKey', () => {
+    it('prefers an exact match', () => {
+      expect(findProfileKey({ Default: {}, default: {}, Fast: {} }, 'Default')).toBe('Default');
+      expect(findProfileKey({ Fast: {} }, 'Fast')).toBe('Fast');
+    });
+
+    it('finds the lowercase default profile stored by releases up to 0.3.3', () => {
+      expect(findProfileKey({ default: {}, Fast: {} }, 'Default')).toBe('default');
+      expect(findProfileKey({ default: {} }, 'default')).toBe('default');
+    });
+
+    it('does not treat other profile names case-insensitively', () => {
+      expect(findProfileKey({ Fast: {} }, 'fast')).toBeUndefined();
+      expect(findProfileKey({ Fast: {} }, 'Default')).toBeUndefined();
+    });
+
+    it('handles missing maps', () => {
+      expect(findProfileKey(undefined, 'Default')).toBeUndefined();
+      expect(findProfileKey(null, 'Default')).toBeUndefined();
     });
   });
 });

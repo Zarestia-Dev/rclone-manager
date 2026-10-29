@@ -6,7 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { JobInfo, PathDisplayConfig, TransferActivityPanelConfig, NON_JOB_OPS } from '@app/types';
+import {
+  JobInfo,
+  PathDisplayConfig,
+  TransferActivityPanelConfig,
+  NON_JOB_OPS,
+  DEFAULT_PROFILE_NAME,
+} from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
 import { TransferActivityPanelComponent } from '../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
 import { PathDisplayComponent } from '../../../shared/detail-shared/path-display/path-display.component';
@@ -194,7 +200,7 @@ export class JobDetailModalComponent {
       group: job.group ?? null,
       backend: job.backend_name ?? 'Local',
       origin: job.origin ?? null,
-      profile: job.profile ?? 'default',
+      profile: job.profile ?? DEFAULT_PROFILE_NAME,
     };
   });
 

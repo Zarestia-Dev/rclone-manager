@@ -143,7 +143,7 @@ describe('WorkflowEngineService', () => {
       workflowId: 'wf-dry-run',
       dryRun: true,
     });
-    expect(service.logs().some(l => l.message.includes('simulation'))).toBe(true);
+    expect(service.logs().some(l => l.message.includes('startSimulation'))).toBe(true);
   });
 
   it('handles backend execution errors gracefully', async () => {

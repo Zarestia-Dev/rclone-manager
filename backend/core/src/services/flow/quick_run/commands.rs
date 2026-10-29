@@ -365,11 +365,7 @@ pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<Quick
         .map_err(|e| e.to_string())?;
 
     let values = sub.get_all_values().map_err(|error| error.to_string())?;
-    let mut list: Vec<QuickRun> = values
-        .into_values()
-        .map(serde_json::from_value::<QuickRun>)
-        .collect::<Result<_, _>>()
-        .map_err(|error| error.to_string())?;
+    let mut list: Vec<QuickRun> = crate::utils::json_helpers::decode_valid(values, "quick run");
 
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
@@ -586,5 +582,29 @@ mod tests {
         assert_eq!(obj.get("value_of_rclone").unwrap(), "mapped_val");
         assert_eq!(obj.get("bwlimit").unwrap(), "10M");
         assert_eq!(obj.get("dry_run").unwrap(), true);
+    }
+
+    #[test]
+    fn an_unreadable_quick_run_does_not_hide_the_others() {
+        let (_temp_dir, manager) = test_manager();
+        let valid: QuickRun = serde_json::from_value(serde_json::json!({
+            "id": "valid", "name": "Valid", "operationType": "copy",
+            "remoteName": "drive", "config": {"source": "/a", "dest": "/b"}
+        }))
+        .unwrap();
+        manager
+            .sub_settings(SUB_QUICK_RUNS)
+            .unwrap()
+            .set(&valid.id, &valid)
+            .unwrap();
+        manager
+            .sub_settings(SUB_QUICK_RUNS)
+            .unwrap()
+            .set("damaged", &serde_json::json!({"operationType": 7}))
+            .unwrap();
+
+        let all = get_all_quick_runs_sync(&manager).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "valid");
     }
 }

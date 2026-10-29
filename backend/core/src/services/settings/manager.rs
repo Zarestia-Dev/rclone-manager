@@ -29,12 +29,14 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
             rcman::SubSettingsConfig::singlefile("alerts/actions")
                 .with_schema::<crate::services::alerts::types::AlertAction>(),
         )
-        .with_sub_settings(rcman::SubSettingsConfig::singlefile(
-            crate::utils::constants::SUB_QUICK_RUNS,
-        ))
-        .with_sub_settings(rcman::SubSettingsConfig::singlefile(
-            crate::utils::constants::SUB_WORKFLOWS,
-        ))
+        .with_sub_settings(
+            rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_QUICK_RUNS)
+                .with_profiles(),
+        )
+        .with_sub_settings(
+            rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_WORKFLOWS)
+                .with_profiles(),
+        )
         .with_sub_settings(
             rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_TEMPLATES)
                 .with_schema::<crate::services::settings::schema::UserPresetTemplate>(),
@@ -78,6 +80,36 @@ fn vault_password_source(
 mod tests {
     use super::*;
     use std::env::VarError;
+
+    #[test]
+    fn existing_quick_runs_and_workflows_become_the_local_backends_profile() {
+        use crate::utils::constants::{LOCAL_BACKEND_PROFILE, SUB_QUICK_RUNS, SUB_WORKFLOWS};
+        let directory = tempfile::tempdir().unwrap();
+        let legacy = rcman::SettingsManager::builder("migration-test", "1")
+            .with_config_dir(directory.path())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile(SUB_QUICK_RUNS))
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile(SUB_WORKFLOWS))
+            .build()
+            .unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            legacy
+                .sub_settings(section)
+                .unwrap()
+                .set("kept", &serde_json::json!({"name": section}))
+                .unwrap();
+        }
+        drop(legacy);
+
+        let manager = create_settings_manager(directory.path()).unwrap();
+        for section in [SUB_QUICK_RUNS, SUB_WORKFLOWS] {
+            let sub = manager.sub_settings(section).unwrap();
+            assert_eq!(sub.list().unwrap(), ["kept"]);
+            assert_eq!(
+                sub.profiles().unwrap().active().unwrap(),
+                LOCAL_BACKEND_PROFILE
+            );
+        }
+    }
 
     #[test]
     fn password_variable_wins_over_file() {

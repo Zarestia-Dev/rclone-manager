@@ -8,7 +8,9 @@ use crate::rclone::backend::{BackendManager, RcloneTransport, types::Backend};
 use crate::rclone::endpoints::operations;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::json_helpers::get_string;
-use crate::utils::json_helpers::resolve_profile_options;
+use crate::utils::json_helpers::{
+    DEFAULT_PROFILE_NAME, find_profile, is_default_profile, resolve_profile_options,
+};
 use crate::utils::json_helpers::{interpolate_shell_commands, interpolate_value};
 use crate::utils::types::remotes::helper_config_keys;
 use crate::utils::types::remotes::{OperationType, ProfileConfig};
@@ -592,13 +594,9 @@ pub fn flatten_rclone_config(val: &Value) -> Value {
 
 pub fn parse_common_config(config: &Value, settings: &Value) -> Result<CommonConfigParams, String> {
     // Raw Quick Run/Workflow input is normalized once at this boundary.
-    let profile = if config.get("app").is_some() || config.get("rclone").is_some() {
-        serde_json::from_value::<ProfileConfig>(config.clone()).map_err(
-            |error| crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => error),
-        )?
-    } else {
-        ProfileConfig::parse_from_value(config)
-    };
+    let profile = ProfileConfig::parse_from_value(config).map_err(
+        |error| crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => error),
+    )?;
 
     let name = Some(interpolate_shell_commands(&get_string(config, &["name"])).into_owned())
         .filter(|s| !s.is_empty());
@@ -685,13 +683,18 @@ pub fn resolve_runtime_remote_options(
     rclone_config: &Value,
     settings: &Value,
 ) -> Result<Option<HashMap<String, Value>>, String> {
-    let configs = settings.get(helper_config_keys::RUNTIME_REMOTE);
-    let profile = app.runtime_remote_profile.as_deref().unwrap_or("Default");
-    let mut opts = if let Some(options) = configs.and_then(|configs| configs.get(profile)) {
+    let configs = settings
+        .get(helper_config_keys::RUNTIME_REMOTE)
+        .and_then(Value::as_object);
+    let profile = app
+        .runtime_remote_profile
+        .as_deref()
+        .unwrap_or(DEFAULT_PROFILE_NAME);
+    let mut opts = if let Some(options) = configs.and_then(|configs| find_profile(configs, profile))
+    {
         scoped_runtime_options(options, settings)?
-    } else if profile.eq_ignore_ascii_case("Default") {
+    } else if is_default_profile(profile) {
         // Forms select Default even when its empty options were never persisted.
-        // Releases up to 0.3.3 stored the reference as lowercase "default".
         // Like the other helper profiles, an absent Default means no overrides.
         HashMap::new()
     } else {

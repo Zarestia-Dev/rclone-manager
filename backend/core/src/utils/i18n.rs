@@ -244,6 +244,23 @@ pub fn t(key: &str) -> String {
     TRANSLATIONS.resolve(key)
 }
 
+/// Renders a backend message in the current language for places that need plain text.
+///
+/// A structured `{"key", "params"}` error or a bare translation key is translated;
+/// anything else is returned untouched.
+pub fn render_message(message: &str) -> String {
+    let trimmed = message.trim();
+    let structured = trimmed.starts_with('{')
+        && serde_json::from_str::<Value>(trimmed)
+            .is_ok_and(|value| value.get("key").is_some_and(Value::is_string));
+    let bare_key = trimmed.starts_with("backendErrors.") && !trimmed.contains(' ');
+    if structured || bare_key {
+        TRANSLATIONS.resolve_param_value(trimmed)
+    } else {
+        message.to_string()
+    }
+}
+
 /// Translate a key with parameter interpolation (automatically resolves structured error params)
 pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
@@ -468,5 +485,20 @@ mod tests {
             rendered,
             "Failed to unmount Google Drive from Local: Device or resource busy"
         );
+    }
+
+    #[test]
+    fn render_message_translates_structured_errors_and_keeps_plain_text() {
+        let structured = crate::localized_error!("backendErrors.workflow.jobStopped", "id" => 7);
+        assert_eq!(render_message(&structured), "Job 7 was stopped");
+        assert_eq!(
+            render_message("backendErrors.workflow.cancelled"),
+            "Execution cancelled"
+        );
+        assert_eq!(
+            render_message("  plain.text with spaces  "),
+            "  plain.text with spaces  "
+        );
+        assert_eq!(render_message("{not json}"), "{not json}");
     }
 }

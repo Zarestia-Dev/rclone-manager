@@ -7,9 +7,11 @@
     <mat-panel-title>
       <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
       <div class="profile-info">
-        <span class="profile-name truncate" [attr.title]="config().profileName || 'default'">{{
-          config().profileName || 'default'
-        }}</span>
+        <span
+          class="profile-name truncate"
+          [attr.title]="config().profileName || defaultProfileName"
+          >{{ config().profileName || defaultProfileName }}</span
+        >
         @if (dryRun() && isOperationsType()) {
           <span
             class="app-pill p-accent"
@@ -21,10 +23,10 @@
         }
         @if (resync() && config().operationType === 'bisync') {
           <span
-            class="app-pill p-warn"
+            class="app-pill p-orange"
             [attr.title]="'dashboard.appDetail.resyncActive' | translate"
           >
-            <mat-icon svgIcon="right-left" class="warn"></mat-icon>
+            <mat-icon svgIcon="right-left" class="orange"></mat-icon>
             <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
           </span>
         }

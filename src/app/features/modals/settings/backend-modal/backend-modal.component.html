@@ -146,54 +146,30 @@
 
                     <div class="copy-panel-content">
                       <div class="copy-selects">
-                        <mat-form-field subscriptSizing="dynamic">
-                          <mat-label>{{
-                            'modals.backend.copyOptions.backendConfig' | translate
-                          }}</mat-label>
-                          <mat-icon matPrefix svgIcon="file-lines"></mat-icon>
-                          <mat-select
-                            [value]="copyBackendFrom()"
-                            (selectionChange)="copyBackendFrom.set($event.value)"
-                          >
-                            <mat-option value="none">{{
-                              'modals.backend.copyOptions.fromZero' | translate
-                            }}</mat-option>
-                            @for (backend of backends(); track backend.name) {
-                              <mat-option [value]="backend.name">
-                                {{ backend.name }}
-                                @if (backend.isLocal) {
-                                  <span class="badge">{{
-                                    'modals.backend.local' | translate
-                                  }}</span>
-                                }
-                              </mat-option>
-                            }
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field subscriptSizing="dynamic">
-                          <mat-label>{{
-                            'modals.backend.copyOptions.remotesConfig' | translate
-                          }}</mat-label>
-                          <mat-icon matPrefix svgIcon="cloud"></mat-icon>
-                          <mat-select
-                            [value]="copyRemotesFrom()"
-                            (selectionChange)="copyRemotesFrom.set($event.value)"
-                          >
-                            <mat-option value="none">{{
-                              'modals.backend.copyOptions.fromZero' | translate
-                            }}</mat-option>
-                            @for (backend of backends(); track backend.name) {
-                              <mat-option [value]="backend.name">
-                                {{ backend.name }}
-                                @if (backend.isLocal) {
-                                  <span class="badge">{{
-                                    'modals.backend.local' | translate
-                                  }}</span>
-                                }
-                              </mat-option>
-                            }
-                          </mat-select>
-                        </mat-form-field>
+                        @for (field of copyFields; track field.key) {
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>{{ field.labelKey | translate }}</mat-label>
+                            <mat-icon matPrefix [svgIcon]="field.icon"></mat-icon>
+                            <mat-select
+                              [value]="copySources()[field.key]"
+                              (selectionChange)="setCopySource(field.key, $event.value)"
+                            >
+                              <mat-option value="none">{{
+                                'modals.backend.copyOptions.fromZero' | translate
+                              }}</mat-option>
+                              @for (backend of backends(); track backend.name) {
+                                <mat-option [value]="backend.name">
+                                  {{ backend.name }}
+                                  @if (backend.isLocal) {
+                                    <span class="badge">{{
+                                      'modals.backend.local' | translate
+                                    }}</span>
+                                  }
+                                </mat-option>
+                              }
+                            </mat-select>
+                          </mat-form-field>
+                        }
                       </div>
                     </div>
                   </mat-expansion-panel>

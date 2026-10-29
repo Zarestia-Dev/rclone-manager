@@ -41,6 +41,11 @@ pub const SUB_WORKFLOWS: &str = "workflows";
 /// Sub-settings section holding custom user preset templates.
 pub const SUB_TEMPLATES: &str = "templates";
 
+/// Sub-settings sections that belong to the selected engine. Each has one rcman
+/// profile per backend, switched, created and deleted together.
+pub const ENGINE_SUB_SETTINGS: [&str; 4] =
+    [SUB_REMOTES, SUB_BACKEND, SUB_QUICK_RUNS, SUB_WORKFLOWS];
+
 // ── SettingsChangeEvent wildcard ─────────────────────────────────────────
 
 /// Wildcard used in `SettingsChangeEvent.category` / `.key` to indicate

@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::utils::types::remotes::OperationType;
+
 /// Node category in the visual DAG.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -14,15 +16,90 @@ pub enum WorkflowNodeCategory {
     Action,
 }
 
-/// Resolves the canonical category for a given node type name.
+/// What a workflow node does, decoded from its stored `type` string.
+///
+/// Nodes keep the string so a workflow written by a newer version survives a
+/// round trip; execution works on this enum so every kind is handled explicitly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeKind {
+    Manual,
+    ParallelFork,
+    Cron,
+    Watcher,
+    JobEvent,
+    AppStart,
+    Join,
+    Delay,
+    ScheduleWait,
+    Condition,
+    Stop,
+    Notification,
+    ExecScript,
+    LogAudit,
+    SystemPower,
+    RcCommand,
+    Cleanup,
+    QuickRun,
+    Unmount,
+    StopServe,
+    /// Mount, serve and every transfer operation share their name with an [`OperationType`].
+    Operation(OperationType),
+    /// A type this version does not know.
+    Unknown,
+}
+
+impl NodeKind {
+    #[must_use]
+    pub fn parse(node_type: &str) -> Self {
+        match node_type {
+            "manual" => Self::Manual,
+            "parallel_fork" => Self::ParallelFork,
+            "cron" => Self::Cron,
+            "watcher" => Self::Watcher,
+            "job_event" => Self::JobEvent,
+            "app_start" => Self::AppStart,
+            "join" => Self::Join,
+            "delay" => Self::Delay,
+            "schedule_wait" => Self::ScheduleWait,
+            "condition" => Self::Condition,
+            "stop" => Self::Stop,
+            "notification" => Self::Notification,
+            "exec_script" => Self::ExecScript,
+            "log_audit" => Self::LogAudit,
+            "system_power" => Self::SystemPower,
+            "rc_command" => Self::RcCommand,
+            "cleanup" => Self::Cleanup,
+            "quick_run" => Self::QuickRun,
+            "unmount" => Self::Unmount,
+            "stop_serve" => Self::StopServe,
+            other => OperationType::ALL
+                .iter()
+                .find(|operation| operation.as_str() == other)
+                .map_or(Self::Unknown, |operation| Self::Operation(*operation)),
+        }
+    }
+
+    #[must_use]
+    pub fn category(self) -> WorkflowNodeCategory {
+        match self {
+            Self::Manual | Self::AppStart | Self::Cron | Self::Watcher | Self::JobEvent => {
+                WorkflowNodeCategory::Trigger
+            }
+            Self::Delay | Self::ScheduleWait | Self::Join => WorkflowNodeCategory::Logic,
+            Self::Notification => WorkflowNodeCategory::Action,
+            _ => WorkflowNodeCategory::Task,
+        }
+    }
+}
+
+/// Resolves the canonical category for a given node type name, including
+/// names from older or planned versions that are not executable here.
 #[must_use]
 pub fn category_for_node_type(node_type: &str) -> WorkflowNodeCategory {
     match node_type {
-        "manual" | "app_start" | "cron" | "watcher" | "job_event" => WorkflowNodeCategory::Trigger,
-        "branch" | "filter" | "delay" | "schedule_wait" | "merge" | "retry" | "join" | "fork"
-        | "loop" => WorkflowNodeCategory::Logic,
-        "notification" | "command" | "webhook" => WorkflowNodeCategory::Action,
-        _ => WorkflowNodeCategory::Task,
+        "branch" | "filter" | "merge" | "retry" | "fork" | "loop" => WorkflowNodeCategory::Logic,
+        "command" | "webhook" => WorkflowNodeCategory::Action,
+        other => NodeKind::parse(other).category(),
     }
 }
 
@@ -127,6 +204,11 @@ pub struct WorkflowNode {
 
 impl WorkflowNode {
     #[must_use]
+    pub fn kind(&self) -> NodeKind {
+        NodeKind::parse(&self.node_type)
+    }
+
+    #[must_use]
     pub fn resolved_category(&self) -> WorkflowNodeCategory {
         category_for_node_type(&self.node_type)
     }
@@ -205,9 +287,17 @@ pub fn parse_delay_seconds(config: &Value) -> u64 {
 }
 
 impl WorkflowDefinition {
+    /// Whether a finishing job can start this workflow.
+    #[must_use]
+    pub fn has_job_event_trigger(&self) -> bool {
+        self.nodes
+            .iter()
+            .any(|node| node.kind() == NodeKind::JobEvent)
+    }
+
     #[must_use]
     pub fn is_autostart(&self) -> bool {
-        self.nodes.iter().any(|n| n.node_type == "app_start")
+        self.nodes.iter().any(|n| n.kind() == NodeKind::AppStart)
     }
 
     #[must_use]
@@ -218,7 +308,7 @@ impl WorkflowDefinition {
     #[must_use]
     pub fn effective_cron_expression(&self) -> Option<String> {
         self.nodes.iter().find_map(|n| {
-            if n.node_type == "cron" {
+            if n.kind() == NodeKind::Cron {
                 n.config
                     .get("cronExpression")
                     .and_then(Value::as_str)
@@ -234,7 +324,7 @@ impl WorkflowDefinition {
     #[must_use]
     pub fn is_watch_enabled(&self) -> bool {
         self.nodes.iter().any(|n| {
-            if n.node_type != "watcher" {
+            if n.kind() != NodeKind::Watcher {
                 return false;
             }
             if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
@@ -253,7 +343,7 @@ impl WorkflowDefinition {
     pub fn watcher_paths(&self) -> Vec<String> {
         let mut result = Vec::new();
         for n in &self.nodes {
-            if n.node_type == "watcher" {
+            if n.kind() == NodeKind::Watcher {
                 if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
                     for p in paths {
                         if let Some(s) = p.as_str() {
@@ -278,7 +368,7 @@ impl WorkflowDefinition {
     pub fn watcher_debounce_seconds(&self) -> u64 {
         self.nodes
             .iter()
-            .find(|n| n.node_type == "watcher")
+            .find(|n| n.kind() == NodeKind::Watcher)
             .and_then(|n| {
                 n.config
                     .get("debounceSeconds")
@@ -296,7 +386,7 @@ impl WorkflowDefinition {
     #[must_use]
     pub fn watcher_glob_pattern(&self) -> Option<String> {
         self.nodes.iter().find_map(|n| {
-            if n.node_type == "watcher" {
+            if n.kind() == NodeKind::Watcher {
                 n.config
                     .get("globPattern")
                     .and_then(Value::as_str)
@@ -355,18 +445,20 @@ pub struct WorkflowValidationResult {
 }
 
 /// Tauri event payload for node execution state transitions.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+///
+/// Borrows its fields: node outputs can be large and are already held by the run.
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct WorkflowNodeStateEvent {
-    pub workflow_id: String,
-    pub node_id: String,
+pub struct WorkflowNodeStateEvent<'a> {
+    pub workflow_id: &'a str,
+    pub node_id: &'a str,
     pub state: WorkflowNodeExecutionState,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error_message: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<&'a Value>,
 }
 
 /// Progress details for live workflow execution.
@@ -574,5 +666,51 @@ mod tests {
             category_for_node_type("notification"),
             WorkflowNodeCategory::Action
         );
+    }
+
+    #[test]
+    fn node_kinds_cover_every_executable_type_and_leave_the_rest_unknown() {
+        for (name, kind) in [
+            ("manual", NodeKind::Manual),
+            ("parallel_fork", NodeKind::ParallelFork),
+            ("job_event", NodeKind::JobEvent),
+            ("schedule_wait", NodeKind::ScheduleWait),
+            ("exec_script", NodeKind::ExecScript),
+            ("stop_serve", NodeKind::StopServe),
+            ("mount", NodeKind::Operation(OperationType::Mount)),
+            ("serve", NodeKind::Operation(OperationType::Serve)),
+            ("cryptcheck", NodeKind::Operation(OperationType::Cryptcheck)),
+            ("webhook", NodeKind::Unknown),
+            ("", NodeKind::Unknown),
+            ("Sync", NodeKind::Unknown),
+        ] {
+            assert_eq!(NodeKind::parse(name), kind, "{name}");
+        }
+        for operation in OperationType::ALL {
+            assert_eq!(
+                NodeKind::parse(operation.as_str()),
+                NodeKind::Operation(*operation)
+            );
+        }
+    }
+
+    #[test]
+    fn categories_keep_their_established_mapping() {
+        use WorkflowNodeCategory::{Action, Logic, Task, Trigger};
+        for (name, category) in [
+            ("manual", Trigger),
+            ("job_event", Trigger),
+            ("delay", Logic),
+            ("join", Logic),
+            ("loop", Logic),
+            ("notification", Action),
+            ("webhook", Action),
+            ("condition", Task),
+            ("stop", Task),
+            ("sync", Task),
+            ("unheard_of", Task),
+        ] {
+            assert_eq!(category_for_node_type(name), category, "{name}");
+        }
     }
 }

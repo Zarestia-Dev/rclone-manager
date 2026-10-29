@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use crate::context::AppHandle;
 use log::info;
-use serde::Deserialize;
 use serde_json::Value;
 use tokio::sync::RwLock;
 
@@ -48,20 +47,6 @@ impl ProfileConfig {
             source: profile.source_value().cloned(),
             dest: profile.dest_value().cloned(),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for ProfileConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let val = Value::deserialize(deserializer)?;
-
-        // Deserialize using ProfileConfig or fall back if unpartitioned
-        let profile = crate::utils::types::remotes::ProfileConfig::parse_from_value(&val);
-
-        Ok(Self::from_profile(&profile))
     }
 }
 
@@ -928,6 +913,12 @@ mod tests {
         assert_eq!(cache.get_all_automations().await.len(), 3);
     }
 
+    fn parse_profile_config(value: &Value) -> ProfileConfig {
+        ProfileConfig::from_profile(
+            &crate::utils::types::remotes::ProfileConfig::parse_from_value(value).unwrap(),
+        )
+    }
+
     #[test]
     fn test_profile_config_deserialization() {
         let json_data = json!({
@@ -937,7 +928,7 @@ mod tests {
             "dest": "/dst"
         });
 
-        let p: ProfileConfig = serde_json::from_value(json_data).unwrap();
+        let p = parse_profile_config(&json_data);
         assert_eq!(p.cron_enabled, Some(true));
         assert_eq!(p.cron_expression.as_deref(), Some("0 0 * * *"));
         assert_eq!(p.source.as_ref().and_then(|v| v.as_str()), Some("/src"));
@@ -951,7 +942,7 @@ mod tests {
             "srcFs": "/src-sync",
             "dstFs": "/dst-sync"
         });
-        let p_sync: ProfileConfig = serde_json::from_value(json_sync).unwrap();
+        let p_sync = parse_profile_config(&json_sync);
         assert_eq!(
             p_sync.source.as_ref().and_then(|v| v.as_str()),
             Some("/src-sync")
@@ -966,7 +957,7 @@ mod tests {
             "path1": "/src-bisync",
             "path2": "/dst-bisync"
         });
-        let p_bisync: ProfileConfig = serde_json::from_value(json_bisync).unwrap();
+        let p_bisync = parse_profile_config(&json_bisync);
         assert_eq!(
             p_bisync.source.as_ref().and_then(|v| v.as_str()),
             Some("/src-bisync")
@@ -981,7 +972,7 @@ mod tests {
             "fs": "/src-mount",
             "mountPoint": "/dst-mount"
         });
-        let p_mount: ProfileConfig = serde_json::from_value(json_mount).unwrap();
+        let p_mount = parse_profile_config(&json_mount);
         assert_eq!(
             p_mount.source.as_ref().and_then(|v| v.as_str()),
             Some("/src-mount")

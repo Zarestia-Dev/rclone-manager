@@ -87,7 +87,7 @@
       </button>
     }
 
-    @if (!data.isDirectUrl && !isHeadless()) {
+    @if (isNativeOpenVisible()) {
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.openNativeTooltip' | translate"
@@ -129,7 +129,18 @@
   </div>
 </div>
 
-<main role="main" aria-live="polite" class="content-container" [class.loading]="isLoading()">
+<main
+  role="main"
+  aria-live="polite"
+  class="content-container"
+  [class.loading]="isLoading()"
+  [class.slide-next]="slideDirection() === 'next'"
+  [class.slide-previous]="slideDirection() === 'previous'"
+  (pointerdown)="onMediaPointerDown($event)"
+  (pointermove)="onMediaPointerMove($event)"
+  (pointerup)="onMediaPointerUp($event)"
+  (pointercancel)="onMediaPointerCancel($event)"
+>
   @if (isLoading()) {
     <div
       class="loading-spinner"
@@ -207,18 +218,23 @@
     }
     @case ('video') {
       @if (currentUrl()) {
-        <video
-          [src]="currentUrl()"
-          controls
-          playsinline
-          preload="metadata"
-          class="preview-content"
-          (loadeddata)="onLoadComplete()"
-          (canplay)="onLoadComplete()"
-          (loadedmetadata)="onLoadComplete()"
-          (error)="onLoadError($event)"
-          [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
-        ></video>
+        <div class="media-viewer-container">
+          <video
+            [src]="currentUrl()"
+            controls
+            playsinline
+            preload="metadata"
+            class="preview-content"
+            [style.transform]="imageTransform()"
+            (loadeddata)="onLoadComplete()"
+            (canplay)="onLoadComplete()"
+            (loadedmetadata)="onLoadComplete()"
+            (error)="onLoadError($event)"
+            [attr.aria-label]="
+              'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }
+            "
+          ></video>
+        </div>
       }
     }
     @case ('audio') {
@@ -405,7 +421,7 @@
         <p class="unsupported-text error">{{ 'common.error' | translate }}</p>
         <p class="error-detail">{{ errorMessage() }}</p>
         <p class="unsupported-subtext">{{ fileName() }}</p>
-        @if (!data.isDirectUrl && !isHeadless()) {
+        @if (isNativeOpenVisible()) {
           <button
             matButton="filled"
             class="accent"

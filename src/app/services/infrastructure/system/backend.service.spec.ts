@@ -265,4 +265,28 @@ describe('BackendService resource loading', () => {
       });
     }
   );
+
+  it('sends the chosen copy source of each settings group and leaves the others out', async () => {
+    invoke.mockResolvedValue([localBackend]);
+    const service = TestBed.inject(BackendService);
+
+    await service.addBackend({
+      name: 'NAS',
+      host: '10.0.0.5',
+      port: 5572,
+      isLocal: false,
+      copyRemotesFrom: 'Local',
+      copyFlowFrom: 'Local',
+    });
+
+    const call = invoke.mock.calls.find(([command]) => command === 'add_backend');
+    expect(call?.[1]).toEqual({
+      params: expect.objectContaining({
+        name: 'NAS',
+        copyBackendFrom: null,
+        copyRemotesFrom: 'Local',
+        copyFlowFrom: 'Local',
+      }),
+    });
+  });
 });

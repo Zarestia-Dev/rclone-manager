@@ -1,4 +1,4 @@
-import { RcConfigOption, RcConfigExample } from '@app/types';
+import { DEFAULT_PROFILE_NAME, RcConfigOption, RcConfigExample } from '@app/types';
 
 import { TYPE_DEFAULT_EXAMPLES } from './remote-config-examples.constant';
 
@@ -22,6 +22,21 @@ export function resolveOptionExamples(opt: RcConfigOption | null | undefined): R
     return bwExamples ? [...bwExamples] : [];
   }
   return [];
+}
+
+/**
+ * Finds a profile's key in a profile map. An exact match wins; the default profile also
+ * matches the lowercase spelling that releases up to 0.3.3 stored.
+ */
+export function findProfileKey(
+  profiles: Record<string, unknown> | null | undefined,
+  name: string
+): string | undefined {
+  if (!profiles) return undefined;
+  if (Object.hasOwn(profiles, name)) return name;
+  const legacy = DEFAULT_PROFILE_NAME.toLowerCase();
+  if (name.toLowerCase() !== legacy) return undefined;
+  return Object.keys(profiles).find(key => key.toLowerCase() === legacy);
 }
 
 export function stripCliPrefix(query: string): string {

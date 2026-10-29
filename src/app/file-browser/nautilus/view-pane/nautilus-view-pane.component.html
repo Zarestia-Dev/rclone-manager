@@ -270,22 +270,22 @@
   }
 
   @if (error()) {
-    <div class="empty-folder-container">
+    <div class="empty-state">
       <mat-icon svgIcon="circle-exclamation"></mat-icon>
-      <h2>{{ 'nautilus.errors.connectionFailed' | translate }}</h2>
+      <span>{{ 'nautilus.errors.connectionFailed' | translate }}</span>
       <p>{{ error() }}</p>
       <button matButton="outlined" (click)="refresh.emit()">
         {{ 'common.retry' | translate }}
       </button>
     </div>
   } @else if (files().length === 0 && !loading()) {
-    <div class="empty-folder-container">
+    <div class="empty-state">
       @if (starredMode()) {
         <mat-icon svgIcon="star"></mat-icon>
-        <h2>{{ 'nautilus.empty.noStarred' | translate }}</h2>
+        <span>{{ 'nautilus.empty.noStarred' | translate }}</span>
       } @else {
         <mat-icon svgIcon="folder"></mat-icon>
-        <h2>{{ 'nautilus.empty.folderEmpty' | translate }}</h2>
+        <span>{{ 'nautilus.empty.folderEmpty' | translate }}</span>
       }
     </div>
   }

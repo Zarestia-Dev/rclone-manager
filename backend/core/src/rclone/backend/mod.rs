@@ -13,5 +13,5 @@ pub mod rclone_ffi;
 #[cfg(target_os = "android")]
 pub mod saf_bridge;
 
-pub use manager::BackendManager;
+pub use manager::{BackendManager, CopySources};
 pub use transport::{BackendError, RcloneTransport, TransportKind};

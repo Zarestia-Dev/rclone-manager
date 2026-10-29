@@ -28,6 +28,7 @@ import {
   ItemOrderVisibilityResult,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 import { SlideMenuController } from 'src/app/shared/utils';
+import { MatButtonModule } from '@angular/material/button';
 
 interface BookmarkViewModel {
   bm: FileBrowserItem;
@@ -52,6 +53,7 @@ function sortAndFilterRoots(
     NgTemplateOutlet,
     TranslatePipe,
     MatIconModule,
+    MatButtonModule,
     MatToolbarModule,
     MatDividerModule,
     CdkMenuModule,

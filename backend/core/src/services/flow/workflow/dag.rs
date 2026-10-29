@@ -75,7 +75,9 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
     let mut warnings = Vec::new();
 
     if workflow.nodes.is_empty() {
-        errors.push("Workflow must have at least one node".to_string());
+        errors.push(crate::localized_error!(
+            "backendErrors.workflow.validationNoNodes"
+        ));
         return WorkflowValidationResult {
             valid: false,
             errors,
@@ -87,7 +89,9 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
 
     // Check unique node IDs
     if node_ids.len() < workflow.nodes.len() {
-        errors.push("Workflow contains duplicate node IDs".to_string());
+        errors.push(crate::localized_error!(
+            "backendErrors.workflow.validationDuplicateIds"
+        ));
     }
 
     // Check trigger node existence
@@ -96,34 +100,38 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
             || n.resolved_category() == WorkflowNodeCategory::Trigger
     });
     if !has_trigger {
-        warnings.push("Workflow has no trigger node (can only be run manually)".to_string());
+        warnings.push(crate::localized_error!(
+            "backendErrors.workflow.validationNoTrigger"
+        ));
     }
 
     // Validate edge references
     for edge in &workflow.edges {
         if !node_ids.contains(edge.source_node_id.as_str()) {
-            errors.push(format!(
-                "Edge references non-existent source node: {}",
-                edge.source_node_id
+            errors.push(crate::localized_error!(
+                "backendErrors.workflow.validationMissingSource",
+                "id" => edge.source_node_id
             ));
         }
         if !node_ids.contains(edge.target_node_id.as_str()) {
-            errors.push(format!(
-                "Edge references non-existent target node: {}",
-                edge.target_node_id
+            errors.push(crate::localized_error!(
+                "backendErrors.workflow.validationMissingTarget",
+                "id" => edge.target_node_id
             ));
         }
         if edge.source_node_id == edge.target_node_id {
-            errors.push(format!(
-                "Node cannot connect to itself (self-loop): {}",
-                edge.source_node_id
+            errors.push(crate::localized_error!(
+                "backendErrors.workflow.validationSelfLoop",
+                "id" => edge.source_node_id
             ));
         }
     }
 
     // Check for cycles
     if has_cycles(&workflow.nodes, &workflow.edges) {
-        errors.push("Graph contains cyclic dependencies (workflows must be DAGs)".to_string());
+        errors.push(crate::localized_error!(
+            "backendErrors.workflow.validationCycle"
+        ));
     }
 
     // Check for disconnected task nodes
@@ -136,9 +144,9 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
 
         for node in &workflow.nodes {
             if !connected_nodes.contains(node.id.as_str()) {
-                warnings.push(format!(
-                    "Node '{}' is disconnected from the workflow",
-                    node.title
+                warnings.push(crate::localized_error!(
+                    "backendErrors.workflow.validationDisconnected",
+                    "title" => node.title
                 ));
             }
         }
@@ -321,7 +329,62 @@ mod tests {
             result
                 .errors
                 .iter()
-                .any(|e| e.contains("cyclic dependencies"))
+                .any(|e| e.contains("backendErrors.workflow.validationCycle"))
         );
+    }
+
+    #[test]
+    fn validation_messages_name_the_offending_nodes() {
+        let node = |id: &str, title: &str| WorkflowNode {
+            id: id.into(),
+            title: title.into(),
+            ..Default::default()
+        };
+        let edge = |id: &str, from: &str, to: &str| WorkflowEdge {
+            id: id.into(),
+            source_node_id: from.into(),
+            source_port_id: "out".into(),
+            target_node_id: to.into(),
+            target_port_id: "in".into(),
+            is_active: None,
+        };
+        let workflow = WorkflowDefinition {
+            id: "wf-messages".into(),
+            nodes: vec![
+                node("a", "Alpha"),
+                node("b", "Beta"),
+                node("loner", "Loner"),
+            ],
+            edges: vec![
+                edge("e1", "a", "ghost"),
+                edge("e2", "phantom", "b"),
+                edge("e3", "b", "b"),
+            ],
+            ..Default::default()
+        };
+
+        let result = validate_workflow(&workflow);
+        assert!(!result.valid);
+        assert!(
+            result
+                .errors
+                .contains(&crate::localized_error!("backendErrors.workflow.validationMissingTarget", "id" => "ghost"))
+        );
+        assert!(
+            result
+                .errors
+                .contains(&crate::localized_error!("backendErrors.workflow.validationMissingSource", "id" => "phantom"))
+        );
+        assert!(result.errors.contains(
+            &crate::localized_error!("backendErrors.workflow.validationSelfLoop", "id" => "b")
+        ));
+        assert!(
+            result
+                .warnings
+                .contains(&crate::localized_error!("backendErrors.workflow.validationDisconnected", "title" => "Loner"))
+        );
+        assert!(result.warnings.contains(&crate::localized_error!(
+            "backendErrors.workflow.validationNoTrigger"
+        )));
     }
 }

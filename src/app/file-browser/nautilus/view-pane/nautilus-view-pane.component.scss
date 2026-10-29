@@ -275,11 +275,6 @@ tr.folder-drag-over {
       align-items: center;
       gap: var(--space-sm);
       width: 100%;
-
-      > .truncate {
-        flex: 1;
-        min-width: 0;
-      }
     }
   }
 
@@ -395,36 +390,13 @@ tr.folder-drag-over {
   }
 }
 
-.empty-folder-container {
+// Centered overlay so the grid/list underneath keeps its context menu and drop target.
+.pane-wrapper > .empty-state {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  mat-icon {
-    width: 128px;
-    height: 128px;
-    font-size: 128px;
-    color: var(--border-color);
-  }
-
-  h2 {
-    font-weight: 700;
-    color: var(--window-fg-color);
-    text-align: center;
-    opacity: 0.7;
-    margin: 0;
-  }
-
-  p {
-    color: var(--dim-color);
-    max-width: 300px;
-    text-align: center;
-    margin: 0;
-  }
+  flex: none;
 }
 
 .lasso-selection {

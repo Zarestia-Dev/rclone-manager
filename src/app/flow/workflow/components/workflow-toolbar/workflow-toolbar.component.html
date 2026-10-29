@@ -130,7 +130,10 @@
             @if (engineService.isDryRun()) {
               <span class="simulation-tag">[{{ 'flow.workflow.toolbar.dryRun' | translate }}]</span>
             }
-            {{ engineService.executionProgress()?.currentStepTitle || 'Running...' }}
+            {{
+              engineService.executionProgress()?.currentStepTitle ||
+                ('flow.workflow.logs.running' | translate)
+            }}
           </span>
           @if (engineService.executionProgress(); as prog) {
             <span class="status-counter">({{ prog.completed }}/{{ prog.total }})</span>

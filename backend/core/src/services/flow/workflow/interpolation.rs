@@ -1,7 +1,23 @@
 //! Workflow output references and recursive configuration interpolation.
 use super::types::WorkflowDefinition;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::collections::HashMap;
+
+/// ASCII-case-insensitive comparison that ignores spaces, without allocating.
+fn eq_ignoring_spaces(a: &str, b: &str) -> bool {
+    let (mut a, mut b) = (
+        a.chars().filter(|c| *c != ' '),
+        b.chars().filter(|c| *c != ' '),
+    );
+    loop {
+        match (a.next(), b.next()) {
+            (None, None) => return true,
+            (Some(x), Some(y)) if x.eq_ignore_ascii_case(&y) => {}
+            _ => return false,
+        }
+    }
+}
 
 /// Resolves a nested JSON path on a Value, supporting array indexing and length.
 fn resolve_nested_json_path(root: &Value, field_path: &str) -> Option<String> {
@@ -116,13 +132,10 @@ fn resolve_token_value(
 
     // Fall back to title lookup if workflow definition is present
     if let Some(wf) = workflow {
-        let matched_node = wf.nodes.iter().find(|n| {
-            n.id == node_identifier
-                || n.title.eq_ignore_ascii_case(node_identifier)
-                || n.title
-                    .replace(' ', "")
-                    .eq_ignore_ascii_case(&node_identifier.replace(' ', ""))
-        });
+        let matched_node = wf
+            .nodes
+            .iter()
+            .find(|n| n.id == node_identifier || eq_ignoring_spaces(&n.title, node_identifier));
 
         if let Some(node) = matched_node
             && let Some(node_val) = results.get(&node.id)
@@ -173,11 +186,22 @@ pub(crate) fn interpolate_node_config_with_context(
 ) -> Value {
     match config {
         Value::String(s) => {
-            let mut resolved = s.clone();
-            if resolved.contains("{{") && resolved.contains("}}") {
-                resolved = replace_workflow_tokens(&resolved, results, workflow, current_node_id);
-            }
-            crate::utils::json_helpers::interpolate_value(&Value::String(resolved))
+            let resolved = if s.contains("{{") && s.contains("}}") {
+                Cow::Owned(replace_workflow_tokens(
+                    s,
+                    results,
+                    workflow,
+                    current_node_id,
+                ))
+            } else {
+                Cow::Borrowed(s.as_str())
+            };
+            Value::String(
+                match crate::utils::json_helpers::interpolate_shell_commands(&resolved) {
+                    Cow::Owned(interpolated) => interpolated,
+                    Cow::Borrowed(_) => resolved.into_owned(),
+                },
+            )
         }
         Value::Object(map) => {
             let mut new_map = serde_json::Map::with_capacity(map.len());
@@ -346,5 +370,36 @@ mod tests {
             replaced,
             "Alert: Check found 2 differences | First: fileA.txt"
         );
+    }
+
+    #[test]
+    fn title_references_ignore_case_and_spaces_without_matching_other_titles() {
+        assert!(eq_ignoring_spaces("My Backup Step", "mybackupstep"));
+        assert!(eq_ignoring_spaces("Sync", "SYNC"));
+        assert!(!eq_ignoring_spaces("Sync", "Syncs"));
+        assert!(!eq_ignoring_spaces("Sync a", "Sync b"));
+        assert!(eq_ignoring_spaces("", "  "));
+    }
+
+    #[test]
+    fn plain_and_templated_strings_both_get_macros_resolved_once() {
+        let results = HashMap::from([("n1".to_string(), json!({"name": "$(os)"}))]);
+        let config = json!({
+            "plain": "no braces here",
+            "templated": "value: {{nodes.n1.name}}",
+            "macro": "host-$(os)",
+            "list": ["{{nodes.n1.name}}", 7, true],
+        });
+
+        let resolved = interpolate_node_config_with_context(&config, &results, None, None);
+        assert_eq!(resolved["plain"], "no braces here");
+        assert_eq!(resolved["macro"], format!("host-{}", std::env::consts::OS));
+        // A referenced value that itself looks like a macro is resolved by the macro pass.
+        assert_eq!(
+            resolved["templated"],
+            format!("value: {}", std::env::consts::OS)
+        );
+        assert_eq!(resolved["list"][1], 7);
+        assert_eq!(resolved["list"][2], true);
     }
 }

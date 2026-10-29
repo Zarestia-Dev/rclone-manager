@@ -35,6 +35,7 @@ import { codeEditorExtensions } from 'src/app/shared/components/code-editor-tool
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { DownloadService } from 'src/app/services/operations/download.service';
 import { OpenerService } from 'src/app/services/infrastructure/platform/opener.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -88,6 +89,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
+  private readonly fileSystemService = inject(FileSystemService);
 
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   private activeProbeImg: HTMLImageElement | null = null;
@@ -108,6 +110,17 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private startDragY = 0;
   private initialPanX = 0;
   private initialPanY = 0;
+  private readonly mediaPointers = new Map<number, { x: number; y: number }>();
+  private mediaGestureStartX = 0;
+  private mediaGestureStartY = 0;
+  private mediaGestureMoved = false;
+  private mediaPinchStartDistance = 0;
+  private mediaPinchStartZoom = 1;
+  private lastMediaTapAt = 0;
+  private lastMediaTapX = 0;
+  private lastMediaTapY = 0;
+  readonly slideDirection = signal<'next' | 'previous' | null>(null);
+  private slideAnimationFrame: number | null = null;
 
   zoomPercentage = computed(() => `${Math.round(this.zoomLevel() * 100)}%`);
   imageTransform = computed(
@@ -152,6 +165,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     return (
       this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
     );
+  });
+  isNativeOpenVisible = computed(() => {
+    if (this.data.isDirectUrl || this.isHeadless()) {
+      return false;
+    }
+    return this.currentFileType() !== 'directory' || this.data.isLocal;
   });
 
   isLoading = signal(true);
@@ -206,6 +225,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    if (this.slideAnimationFrame !== null) {
+      cancelAnimationFrame(this.slideAnimationFrame);
+      this.slideAnimationFrame = null;
+    }
     this.loadGeneration++;
     this.htmlPreviewGeneration++;
     this.cancelProbeImg();
@@ -619,6 +642,99 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isDragging.set(false);
   }
 
+  onMediaPointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse') return;
+    event.preventDefault();
+    this.mediaPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (this.mediaPointers.size === 1) {
+      this.mediaGestureStartX = event.clientX;
+      this.mediaGestureStartY = event.clientY;
+      this.mediaGestureMoved = false;
+      this.initialPanX = this.panX();
+      this.initialPanY = this.panY();
+    } else if (this.mediaPointers.size === 2) {
+      this.mediaPinchStartDistance = this.getMediaPointerDistance();
+      this.mediaPinchStartZoom = this.zoomLevel();
+    }
+  }
+
+  onMediaPointerMove(event: PointerEvent): void {
+    const pointer = this.mediaPointers.get(event.pointerId);
+    if (!pointer) return;
+    event.preventDefault();
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+
+    if (this.mediaPointers.size >= 2 && this.mediaPinchStartDistance > 0) {
+      const scale = this.getMediaPointerDistance() / this.mediaPinchStartDistance;
+      const nextZoom = Math.max(0.25, Math.min(5, this.mediaPinchStartZoom * scale));
+      this.zoomLevel.set(Math.round(nextZoom * 100) / 100);
+      this.mediaGestureMoved = true;
+      return;
+    }
+
+    const dx = event.clientX - this.mediaGestureStartX;
+    const dy = event.clientY - this.mediaGestureStartY;
+    if (Math.hypot(dx, dy) < 8) return;
+    this.mediaGestureMoved = true;
+
+    if (this.zoomLevel() > 1) {
+      this.panX.set(this.initialPanX + dx);
+      this.panY.set(this.initialPanY + dy);
+    }
+  }
+
+  async onMediaPointerUp(event: PointerEvent): Promise<void> {
+    if (!this.mediaPointers.has(event.pointerId)) return;
+    const pointer = this.mediaPointers.get(event.pointerId);
+    this.mediaPointers.delete(event.pointerId);
+    if (this.mediaPointers.size > 0 || !pointer) return;
+
+    const dx = pointer.x - this.mediaGestureStartX;
+    const dy = pointer.y - this.mediaGestureStartY;
+    if (!this.mediaGestureMoved) {
+      const now = Date.now();
+      const timeSinceLastTap = now - this.lastMediaTapAt;
+      const distanceFromLastTap = Math.hypot(
+        event.clientX - this.lastMediaTapX,
+        event.clientY - this.lastMediaTapY
+      );
+      if (timeSinceLastTap <= 300 && distanceFromLastTap <= 24) {
+        this.toggleMediaZoom();
+        this.lastMediaTapAt = 0;
+      } else {
+        this.lastMediaTapAt = now;
+        this.lastMediaTapX = event.clientX;
+        this.lastMediaTapY = event.clientY;
+      }
+      return;
+    }
+
+    if (this.zoomLevel() <= 1 && Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+      if (dx < 0) await this.next();
+      else await this.back();
+    }
+  }
+
+  onMediaPointerCancel(event: PointerEvent): void {
+    this.mediaPointers.delete(event.pointerId);
+    this.mediaGestureMoved = false;
+  }
+
+  private getMediaPointerDistance(): number {
+    const pointers = [...this.mediaPointers.values()];
+    if (pointers.length < 2) return 0;
+    return Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+  }
+
+  private toggleMediaZoom(): void {
+    if (this.zoomLevel() > 1) {
+      this.resetZoom();
+    } else {
+      this.zoomIn();
+    }
+  }
+
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (event.defaultPrevented) return;
@@ -1006,6 +1122,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   async back(): Promise<void> {
     if (this.currentIndex() > 0) {
+      this.startSlideAnimation('previous');
       this.currentIndex.update(i => i - 1);
       await this.updateData();
     }
@@ -1013,9 +1130,23 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   async next(): Promise<void> {
     if (this.currentIndex() < this.data.items.length - 1) {
+      this.startSlideAnimation('next');
       this.currentIndex.update(i => i + 1);
       await this.updateData();
     }
+  }
+
+  private startSlideAnimation(direction: 'next' | 'previous'): void {
+    if (this.slideAnimationFrame !== null) {
+      cancelAnimationFrame(this.slideAnimationFrame);
+    }
+    this.slideDirection.set(null);
+    this.slideAnimationFrame = requestAnimationFrame(() => {
+      this.slideAnimationFrame = null;
+      if (!this.destroyed) {
+        this.slideDirection.set(direction);
+      }
+    });
   }
 
   /**
@@ -1085,9 +1216,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     if (this.isOpeningNative()) return;
     this.isOpeningNative.set(true);
     try {
+      const item = this.currentItem();
+      if (item?.IsDir && this.data.isLocal) {
+        await this.fileSystemService.openInFiles(
+          pathUtils.joinPath(this.data.remoteName, item.Path)
+        );
+        return;
+      }
       await this.downloadService.openFileNatively(
         this.fsName,
-        this.currentItem().Path,
+        item?.Path ?? '',
         this.fileName(),
         this.data.isLocal
       );

@@ -2,7 +2,7 @@
   <mat-toolbar data-tauri-drag-region>
     <div class="header-start">
       <button
-        class="nav-button"
+        mat-icon-button
         (click)="onToggleSearch()"
         [class.active]="isSearchMode()"
         [attr.title]="'nautilus.sidebar.toggleSearch' | translate"
@@ -17,7 +17,7 @@
     <div class="header-end">
       @if (!isPickerMode()) {
         <button
-          class="nav-button"
+          mat-icon-button
           [cdkMenuTriggerFor]="sidebarMainMenu"
           [cdkMenuPosition]="[
             { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },

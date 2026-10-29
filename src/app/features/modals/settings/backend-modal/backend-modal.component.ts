@@ -29,6 +29,16 @@ import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
+type CopyKey = 'copyBackendFrom' | 'copyRemotesFrom' | 'copyFlowFrom';
+
+const NO_COPY_SOURCE = 'none';
+
+const noCopySources = (): Record<CopyKey, string> => ({
+  copyBackendFrom: NO_COPY_SOURCE,
+  copyRemotesFrom: NO_COPY_SOURCE,
+  copyFlowFrom: NO_COPY_SOURCE,
+});
+
 @Component({
   selector: 'app-backend-modal',
   hostDirectives: [EscapeCloseDirective],
@@ -85,8 +95,17 @@ export class BackendModalComponent implements OnInit {
   readonly switchingTo = signal<string | null>(null);
   readonly showPassword = signal(false);
   readonly showConfigPassword = signal(false);
-  readonly copyBackendFrom = signal<string>('none');
-  readonly copyRemotesFrom = signal<string>('none');
+  /** Settings a new backend can start from; the source is chosen per group. */
+  readonly copyFields = [
+    {
+      key: 'copyBackendFrom',
+      labelKey: 'modals.backend.copyOptions.backendConfig',
+      icon: 'file-lines',
+    },
+    { key: 'copyRemotesFrom', labelKey: 'modals.backend.copyOptions.remotesConfig', icon: 'cloud' },
+    { key: 'copyFlowFrom', labelKey: 'modals.backend.copyOptions.flowConfig', icon: 'workflow' },
+  ] as const;
+  readonly copySources = signal<Record<CopyKey, string>>(noCopySources());
 
   readonly testingForm = signal(false);
   readonly formTestResult = signal<{ success: boolean; message: string; version?: string } | null>(
@@ -188,12 +207,22 @@ export class BackendModalComponent implements OnInit {
     await this.backendService.loadBackends();
   }
 
+  setCopySource(key: CopyKey, source: string): void {
+    this.copySources.update(current => ({ ...current, [key]: source }));
+  }
+
+  /** Only the groups with a chosen source, in the shape the add command takes. */
+  private chosenCopySources(): Partial<Record<CopyKey, string>> {
+    return Object.fromEntries(
+      Object.entries(this.copySources()).filter(([, source]) => source !== NO_COPY_SOURCE)
+    );
+  }
+
   toggleAddForm(): void {
     if (this.formMode() === null) {
       this.formMode.set('add');
       this.selectedTabIndex.set(0);
-      this.copyBackendFrom.set('none');
-      this.copyRemotesFrom.set('none');
+      this.copySources.set(noCopySources());
     } else {
       this.formMode.set(null);
       this.editingName.set(null);
@@ -343,12 +372,11 @@ export class BackendModalComponent implements OnInit {
           this.translate.instant('modals.backend.notifications.updated')
         );
       } else {
-        const backendData: AddBackendArgs = this.backendService.mapFormToConfig(formValue, false);
-        await this.backendService.addBackend(
-          backendData,
-          this.copyBackendFrom() !== 'none' ? this.copyBackendFrom() : undefined,
-          this.copyRemotesFrom() !== 'none' ? this.copyRemotesFrom() : undefined
-        );
+        const backendData: AddBackendArgs = {
+          ...this.backendService.mapFormToConfig(formValue, false),
+          ...this.chosenCopySources(),
+        };
+        await this.backendService.addBackend(backendData);
         this.notificationService.showSuccess(
           this.translate.instant('modals.backend.notifications.added')
         );

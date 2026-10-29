@@ -33,7 +33,7 @@ pub trait EventSink: Send + Sync {
 
 /// Manages event subscriptions and distribution across desktop IPC and web-server SSE.
 pub struct EventBridge {
-    tx: broadcast::Sender<BridgeEvent>,
+    tx: broadcast::Sender<Arc<BridgeEvent>>,
     frontend_tx: broadcast::Sender<FrontendEvent>,
     access: parking_lot::RwLock<Option<Arc<crate::services::settings::access::VaultAccess>>>,
     sink: Option<Arc<dyn EventSink>>,
@@ -60,8 +60,8 @@ impl EventBridge {
         self.frontend_tx.subscribe()
     }
 
-    /// Subscribes to all events emitted through this bridge.
-    pub fn subscribe(&self) -> broadcast::Receiver<BridgeEvent> {
+    /// Subscribes to all events emitted through this bridge. Events are shared, not copied, per receiver.
+    pub fn subscribe(&self) -> broadcast::Receiver<Arc<BridgeEvent>> {
         self.tx.subscribe()
     }
 
@@ -84,7 +84,7 @@ impl EventBridge {
         });
 
         // Backend consumers always receive events, including while the UI is locked.
-        let _ = self.tx.send((*bridge_event).clone());
+        let _ = self.tx.send(bridge_event.clone());
         let deliver = |revision| {
             let frontend = FrontendEvent {
                 event: bridge_event.clone(),
@@ -123,7 +123,7 @@ pub fn emit<S: Serialize>(event: &str, payload: S) {
 }
 
 /// Subscribes to events globally through the `EventBridge`.
-pub fn subscribe() -> Option<broadcast::Receiver<BridgeEvent>> {
+pub fn subscribe() -> Option<broadcast::Receiver<Arc<BridgeEvent>>> {
     GLOBAL_EVENT_BRIDGE.get().map(|b| b.subscribe())
 }
 
@@ -151,7 +151,7 @@ mod tests {
             bridge.emit("payload", payload.clone());
             let broadcast = receiver.recv().await.unwrap();
             assert_eq!(broadcast.payload, payload);
-            assert_eq!(sink.0.lock().last(), Some(&broadcast));
+            assert_eq!(sink.0.lock().last(), Some(&*broadcast));
         }
     }
 
@@ -187,7 +187,7 @@ mod tests {
         let event = receiver.try_recv().unwrap();
         assert_eq!(event.event, "valid");
         assert_eq!(event.payload, json!({"message": "özel"}));
-        assert_eq!(sink.0.lock()[0], event);
+        assert_eq!(sink.0.lock()[0], *event);
     }
 
     #[tokio::test]
@@ -245,5 +245,18 @@ mod tests {
             assert_eq!(received.event, "global_test_event");
             assert_eq!(received.payload, "global_payload");
         }
+    }
+
+    #[tokio::test]
+    async fn backend_subscribers_share_one_copy_of_each_event() {
+        let bridge = EventBridge::new(8, None);
+        let mut first = bridge.subscribe();
+        let mut second = bridge.subscribe();
+
+        bridge.emit("shared", json!({"items": [1, 2, 3]}));
+
+        let (first, second) = (first.recv().await.unwrap(), second.recv().await.unwrap());
+        assert!(Arc::ptr_eq(&first, &second));
+        assert_eq!(first.payload, json!({"items": [1, 2, 3]}));
     }
 }

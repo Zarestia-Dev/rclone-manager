@@ -5,9 +5,10 @@ import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload } from '@app/types';
+import type { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 
 describe('WorkflowEventService', () => {
   let service: WorkflowEventService;
@@ -42,16 +43,38 @@ describe('WorkflowEventService', () => {
     service = TestBed.inject(WorkflowEventService);
   });
 
-  it('initializes and handles node state changes', () => {
-    stateService.createNewWorkflow('Event Test');
-    const currentWf = stateService.currentWorkflow();
-    expect(currentWf).not.toBeNull();
-    if (!currentWf || currentWf.nodes.length === 0) return;
+  function loadWorkflowWithNode(): {
+    workflow: WorkflowDefinition;
+    node: WorkflowDefinition['nodes'][number];
+  } {
+    const node: WorkflowDefinition['nodes'][number] = {
+      id: 'n1',
+      type: 'manual',
+      category: 'trigger',
+      title: 'Manual Trigger',
+      x: 0,
+      y: 0,
+      inputs: [],
+      outputs: [],
+      config: {},
+    };
+    const workflow: WorkflowDefinition = {
+      id: 'wf-events',
+      name: 'Events',
+      showOnTray: false,
+      viewport: { x: 0, y: 0, zoom: 1 },
+      nodes: [node],
+      edges: [],
+    };
+    stateService.loadWorkflow(workflow);
+    return { workflow, node };
+  }
 
-    const nodeId = currentWf.nodes[0].id;
+  it('initializes and handles node state changes', () => {
+    const { workflow, node } = loadWorkflowWithNode();
     const payload: WorkflowNodeStatePayload = {
-      workflowId: currentWf.id,
-      nodeId,
+      workflowId: workflow.id,
+      nodeId: node.id,
       state: 'success',
       durationMs: 120,
     };
@@ -60,7 +83,7 @@ describe('WorkflowEventService', () => {
       service as unknown as { handleNodeStateChanged: (p: WorkflowNodeStatePayload) => void }
     ).handleNodeStateChanged(payload);
 
-    const updatedNode = stateService.currentWorkflow()?.nodes.find(n => n.id === nodeId);
+    const updatedNode = stateService.currentWorkflow()?.nodes.find(n => n.id === node.id);
     expect(updatedNode?.state).toBe('success');
     expect(updatedNode?.lastDurationMs).toBe(120);
     expect(engineService.logs().length).toBeGreaterThan(0);
@@ -90,5 +113,84 @@ describe('WorkflowEventService', () => {
       currentStepTitle: 'Step 3',
     });
     expect(engineService.logs().some(l => l.message?.includes('Running step 3'))).toBe(true);
+  });
+
+  describe('with translations', () => {
+    beforeEach(() => {
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation('en', {
+        backendErrors: {
+          workflow: {
+            jobStopped: 'Job {{id}} was stopped',
+            startingWorkflow: 'Starting workflow',
+            completedSuccessfully: "Workflow '{{name}}' completed successfully",
+          },
+        },
+        flow: {
+          workflow: {
+            logs: {
+              stepFailed: 'Step "{{title}}" failed: {{error}}',
+              stepCompleted: 'Step "{{title}}" completed in {{duration}}ms',
+            },
+          },
+        },
+      });
+      translate.use('en');
+    });
+
+    it('shows a backend error key translated on the node and in the log', () => {
+      const { workflow, node } = loadWorkflowWithNode();
+
+      (
+        service as unknown as { handleNodeStateChanged: (p: WorkflowNodeStatePayload) => void }
+      ).handleNodeStateChanged({
+        workflowId: workflow.id,
+        nodeId: node.id,
+        state: 'failed',
+        errorMessage: '{"key":"backendErrors.workflow.jobStopped","params":{"id":"7"}}',
+      });
+
+      expect(stateService.currentWorkflow()?.nodes[0].errorMessage).toBe('Job 7 was stopped');
+      expect(engineService.logs().at(-1)?.message).toBe(
+        `Step "${node.title}" failed: Job 7 was stopped`
+      );
+    });
+
+    it('keeps plain error text from rclone untouched', () => {
+      const { workflow, node } = loadWorkflowWithNode();
+
+      (
+        service as unknown as { handleNodeStateChanged: (p: WorkflowNodeStatePayload) => void }
+      ).handleNodeStateChanged({
+        workflowId: workflow.id,
+        nodeId: node.id,
+        state: 'failed',
+        errorMessage: 'Failed to copy: disk full',
+      });
+
+      expect(stateService.currentWorkflow()?.nodes[0].errorMessage).toBe(
+        'Failed to copy: disk full'
+      );
+    });
+
+    it('translates the progress title and the run message', () => {
+      (
+        service as unknown as {
+          handleExecutionStateChanged: (p: WorkflowExecutionStatePayload) => void;
+        }
+      ).handleExecutionStateChanged({
+        workflowId: 'wf-1',
+        state: 'completed',
+        progress: {
+          total: 1,
+          completed: 1,
+          currentStepTitle: 'backendErrors.workflow.startingWorkflow',
+        },
+        message:
+          '{"key":"backendErrors.workflow.completedSuccessfully","params":{"name":"Backup"}}',
+      });
+
+      expect(engineService.logs().at(-1)?.message).toBe("Workflow 'Backup' completed successfully");
+    });
   });
 });

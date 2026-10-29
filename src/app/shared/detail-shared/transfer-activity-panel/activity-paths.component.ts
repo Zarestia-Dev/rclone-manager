@@ -14,10 +14,10 @@ const ACTIVITY_TARGETS: readonly ActivityTarget[] = ['src', 'dst'];
   template: `
     <div class="card-paths">
       @for (path of paths(); track path.target; let first = $first) {
+        @if (!first) {
+          <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+        }
         <div class="path-segment">
-          @if (!first) {
-            <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-          }
           <div
             class="app-pill p-dim path-endpoint"
             [class]="path.target"

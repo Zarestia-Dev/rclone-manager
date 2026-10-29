@@ -41,6 +41,15 @@ fn preserve_completed_history(stats: &mut Value, previous: Option<&Value>) {
     }
 }
 
+/// Result of [`JobCache::poll_job`].
+pub enum JobPoll {
+    Missing,
+    Running,
+    Completed(Box<JobInfo>),
+    Failed(Box<JobInfo>),
+    Stopped,
+}
+
 impl JobCache {
     #[must_use]
     pub fn new() -> Self {
@@ -350,6 +359,21 @@ impl JobCache {
 
     pub async fn get_job(&self, jobid: u64) -> Option<JobInfo> {
         self.jobs.read().await.get(&jobid).cloned()
+    }
+
+    /// Looks at a job without copying it while it is still running; a finished
+    /// job is returned whole.
+    pub async fn poll_job(&self, jobid: u64) -> JobPoll {
+        let jobs = self.jobs.read().await;
+        let Some(job) = jobs.get(&jobid) else {
+            return JobPoll::Missing;
+        };
+        match job.status {
+            JobStatus::Running => JobPoll::Running,
+            JobStatus::Completed => JobPoll::Completed(Box::new(job.clone())),
+            JobStatus::Failed => JobPoll::Failed(Box::new(job.clone())),
+            JobStatus::Stopped => JobPoll::Stopped,
+        }
     }
 
     pub async fn get_jobs(&self) -> Vec<JobInfo> {
@@ -917,5 +941,26 @@ mod tests {
         assert_eq!(completed[1]["name"].as_str().unwrap(), "file1.txt");
         assert_eq!(completed[1]["status"].as_str().unwrap(), "completed");
         assert_eq!(completed[1]["error"].as_str().unwrap(), "");
+    }
+
+    #[tokio::test]
+    async fn polling_copies_a_job_only_once_it_has_finished() {
+        let cache = JobCache::new();
+        let metadata = crate::rclone::commands::job::JobMetadata::new(
+            "drive",
+            JobType::Sync,
+            vec!["a".into()],
+            "b",
+        );
+        assert!(matches!(cache.poll_job(1).await, JobPoll::Missing));
+
+        cache.create_job(1, metadata, "Local".into()).await;
+        assert!(matches!(cache.poll_job(1).await, JobPoll::Running));
+
+        cache.complete_job(1, true, None).await.unwrap();
+        match cache.poll_job(1).await {
+            JobPoll::Completed(job) => assert_eq!(job.jobid, 1),
+            _ => panic!("a completed job must be returned whole"),
+        }
     }
 }

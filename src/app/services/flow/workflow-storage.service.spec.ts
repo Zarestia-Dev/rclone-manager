@@ -13,6 +13,7 @@ import { NotificationService } from '../ui/notification.service';
 describe('WorkflowStorageService', () => {
   let service: WorkflowStorageService;
   let systemSettingsChanged$: Subject<SettingsChangeEvent>;
+  let backendSwitched$: Subject<string>;
   let mockApiClient: {
     invoke: ReturnType<typeof vi.fn>;
   };
@@ -60,6 +61,7 @@ describe('WorkflowStorageService', () => {
     };
 
     systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
+    backendSwitched$ = new Subject<string>();
 
     TestBed.configureTestingModule({
       providers: [
@@ -73,6 +75,7 @@ describe('WorkflowStorageService', () => {
               systemSettingsChanged$.asObservable(),
             listenToSettingsCategory: (cat: string): Observable<SettingsChangeEvent> =>
               systemSettingsChanged$.pipe(filter(e => e.category === '*' || e.category === cat)),
+            listenToBackendSwitched: (): Observable<string> => backendSwitched$.asObservable(),
           },
         },
       ],
@@ -121,6 +124,12 @@ describe('WorkflowStorageService', () => {
     const loadSpy = vi.spyOn(service, 'loadAllWorkflows');
     systemSettingsChanged$.next({ category: 'workflows', key: 'wf-1', value: null });
     expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('reloads workflows when the active backend changes', () => {
+    const loadSpy = vi.spyOn(service, 'loadAllWorkflows');
+    backendSwitched$.next('NAS');
+    expect(loadSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should coalesce concurrent loadAllWorkflows calls and execute a trailing load', async () => {

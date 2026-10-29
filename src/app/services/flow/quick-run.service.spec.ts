@@ -19,6 +19,7 @@ describe('QuickRunService', () => {
   let service: QuickRunService;
   let invokeSpy: ReturnType<typeof vi.fn>;
   let systemSettingsChanged$: Subject<SettingsChangeEvent>;
+  let backendSwitched$: Subject<string>;
   let notificationSpy: {
     showSuccess: ReturnType<typeof vi.fn>;
     showError: ReturnType<typeof vi.fn>;
@@ -41,6 +42,7 @@ describe('QuickRunService', () => {
 
   beforeEach(() => {
     systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
+    backendSwitched$ = new Subject<string>();
     notificationSpy = {
       showSuccess: vi.fn(),
       showError: vi.fn(),
@@ -62,6 +64,7 @@ describe('QuickRunService', () => {
               systemSettingsChanged$.asObservable(),
             listenToSettingsCategory: (cat: string): Observable<SettingsChangeEvent> =>
               systemSettingsChanged$.pipe(filter(e => e.category === '*' || e.category === cat)),
+            listenToBackendSwitched: (): Observable<string> => backendSwitched$.asObservable(),
           },
         },
         {
@@ -121,6 +124,12 @@ describe('QuickRunService', () => {
     const refreshSpy = vi.spyOn(service, 'refresh');
     systemSettingsChanged$.next({ category: 'quick_runs', key: 'qr-1', value: null });
     expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  it('should refresh quick runs when the active backend changes', () => {
+    const refreshSpy = vi.spyOn(service, 'refresh');
+    backendSwitched$.next('NAS');
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should coalesce concurrent refresh calls and execute a trailing refresh', async () => {
