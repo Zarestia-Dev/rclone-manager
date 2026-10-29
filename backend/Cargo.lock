@@ -4780,7 +4780,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rclone-manager"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "async-trait",
  "clap",
@@ -4818,7 +4818,7 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-core"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -4871,7 +4871,7 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-server"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "anyhow",
  "async-stream",
