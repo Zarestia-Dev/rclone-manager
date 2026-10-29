@@ -104,6 +104,28 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.5" date="2026-10-29">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Auto-Start Delay: Profiles and Quick Runs with auto-start can now wait a set number of seconds after the app starts. Off by default.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Faster Startup: Removed repeated loading of caches and settings at startup, and the wait for the rclone engine now backs off instead of sleeping 500 ms each time.</li>
+          <li>Per-Backend Quick Runs and Workflows: Quick Runs and Workflows now belong to the selected backend. Existing ones become the Local backend's.</li>
+          <li>Workflow Engine: Split into modules with less copying and polling while a workflow runs. Stored workflows are unchanged.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>A file watcher or cron scheduler that fails to start no longer aborts the rest of app startup.</li>
+          <li>Workflow messages are translated, runs are more reliable, and Stop and Cancel behave consistently.</li>
+          <li>Operations no longer fail with "Invalid rclone flags detected: default" for remotes saved by 0.3.3 or earlier.</li>
+          <li>Backends with names that differ only by case, or that match Local's default profile, are rejected to avoid deleting each other's settings.</li>
+          <li>Android background crash after about six hours, file manager data safety, release build native methods, and in-app updates on older Android versions.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.4" date="2026-10-26">
       <description>
         <p>Added</p>
