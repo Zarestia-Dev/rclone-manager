@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "Arka Planda Çalıştır",
-        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et."
+        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et.",
+        "notification": {
+          "jobs": "Etkin işler: {{count}}",
+          "mounts": "Bağlamalar: {{count}}",
+          "serves": "Sunumlar: {{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "Bağlama Sürücüsü Kontrolü Devre Dışı",
       "description": "Bağlama sürücüsü kontrolü atlandı. Uzak konumları bağlamak için sisteminizde uyumlu bir bağlama sürücüsünün kurulu olması gerekir.",
       "install": "Sürücüyü Yükle",
+      "dismissTooltip": "Bir daha gösterme"
+    },
+    "battery": {
+      "title": "Arka planda çalışmaya izin ver",
+      "subtitle": "Android, ekran kapalıyken ağ erişimini durdurabilir. Aktarımların ve zamanlamaların sürmesi için RClone Manager'ı pil optimizasyonundan muaf tutun.",
+      "allow": "İzin ver",
+      "dismissTooltip": "Bir daha gösterme"
+    },
+    "storage": {
+      "title": "Tüm dosyalara erişime izin ver",
+      "subtitle": "Uygulamanın kendi depolama alanı dışındaki yerel klasörlere göz atmak ve aktarmak için Android'de tüm dosyalara erişim gerekir.",
+      "allow": "İzin ver",
       "dismissTooltip": "Bir daha gösterme"
     },
     "metered": {
@@ -1311,6 +1328,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
+      "autoStartDelay": "Başlangıç Gecikmesi",
+      "autoStartDelayHint": "Uygulama açıldıktan sonra başlatmadan önce beklenecek süre. Ağ, VPN veya diğer bağlantılar henüz hazır değilse işe yarar.",
+      "autoStartDelayNone": "Yok",
       "enableScheduled": "Zamanlanmış {{type}} Etkinleştir",
       "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
       "watchDescription": "Dosya değişikliklerini izlemek ve bunları otomatik olarak senkronize etmek için yerel kaynak dizinlerini izleyin.",
@@ -2177,6 +2197,7 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
+      "noPasswordHint": "Parola olmadan rclone.conf ve kayıtlı gizli bilgiler yedeğe eklenmez. Hızlı Çalıştırmalara veya iş akışlarına doğrudan yazılan kimlik bilgileri olduğu gibi dışa aktarılır.",
       "vaultWarningTitle": "Yapılandırma Kasası Açık",
       "vaultWarningDesc": "Dışa aktarılan yedekler kasa şifrelemesini devralmaz. Hassas kimlik bilgilerini ve yapılandırmaları bir parola ile korumak için aşağıdaki şifreleme seçeneğini kullanın.",
       "exportNow": "Şimdi Dışa Aktar",
@@ -2242,7 +2263,8 @@
         },
         "password": {
           "label": "Parola",
-          "placeholder": "Kimlik doğrulaması olmaması için boş bırakın"
+          "placeholder": "Kimlik doğrulaması olmaması için boş bırakın",
+          "keepPlaceholder": "Mevcut parolayı korumak için boş bırakın"
         },
         "configPassword": {
           "label": "Yapılandırma Parolası",
@@ -2288,13 +2310,12 @@
       "status": {
         "notTested": "Bağlantı test edilmedi",
         "connected": "Bağlandı",
-        "error": "Hata: {{message}}"
+        "error": "Hata: {{message}}",
+        "engineOffline": "Motor çevrimdışı"
       },
       "notifications": {
         "switchFailed": "Değiştirme başarısız: {{message}}",
         "connectionSuccess": "Bağlantı başarılı",
-        "connectionFailed": "Bağlantı hatası: {{message}}",
-        "testFailed": "Test beklenmedik şekilde başarısız oldu",
         "fileSelectFailed": "Dosya seçimi başarısız oldu",
         "updated": "Arka uç başarıyla güncellendi",
         "added": "Arka uç başarıyla eklendi",
@@ -3078,7 +3099,6 @@
       "unsupportedArchive": "Desteklenmeyen arşiv türü. .rcman dosyası olmalıdır",
       "invalidArchive": "Geçersiz yedekleme arşivi biçimi",
       "restoreFailed": "Yedekleme geri yükleme başarısız oldu: {{error}}",
-      "secretRequirePassword": "Bu yedekleme gizli bir anahtarla korunuyor ve şifre gerektiriyor",
       "exportFailed": "Yedekleme dışa aktarma başarısız oldu: {{error}}",
       "refreshFailed": "Yedek geri yükleme sonrasında sistem yenilenemedi: {{error}}",
       "restoreIncomplete": "Yedekleme geri yükleme tamamlanamadı: {{error}}"
@@ -3089,7 +3109,11 @@
       "cannotRemoveLocal": "Local arka ucu kaldırılamaz",
       "cannotRemoveActive": "Aktif arka uç kaldırılamaz",
       "alreadyExists": "Bu ada sahip bir arka uç zaten mevcut",
-      "notFound": "'{{name}}' arka ucu bulunamadı"
+      "notFound": "'{{name}}' arka ucu bulunamadı",
+      "cannotConnect": "'{{name}}' ile bağlantı kurulamadı: {{error}}",
+      "connectionFailed": "Bağlantı başarısız: {{error}}",
+      "listFailedReverted": "Bağlanıldı ancak arka uç öğeleri listelenemedi: {{error}}. Local'e geri dönüldü.",
+      "tooSlowReverted": "Arka uç bağlantıyı kabul etti ancak öğelerini listelemek için çok yavaştı. Local'e geri dönüldü."
     },
     "job": {
       "notFound": "İş bilgisi bulunamadı",
