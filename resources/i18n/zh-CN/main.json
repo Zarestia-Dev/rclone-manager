@@ -491,7 +491,12 @@
       },
       "keep_alive": {
         "label": "在后台运行",
-        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。"
+        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。",
+        "notification": {
+          "jobs": "活动任务：{{count}}",
+          "mounts": "挂载：{{count}}",
+          "serves": "服务：{{count}}"
+        }
       }
     },
     "core": {
@@ -635,6 +640,18 @@
       "title": "挂载驱动检查已禁用",
       "description": "已跳过挂载驱动检查。挂载远程存储需要系统上安装兼容的挂载驱动。",
       "install": "安装驱动",
+      "dismissTooltip": "不再显示"
+    },
+    "battery": {
+      "title": "允许后台活动",
+      "subtitle": "屏幕关闭时，Android 可能会暂停网络访问。请将 RClone Manager 从电池优化中排除，以保持传输和计划任务持续运行。",
+      "allow": "允许",
+      "dismissTooltip": "不再显示"
+    },
+    "storage": {
+      "title": "允许访问所有文件",
+      "subtitle": "要浏览和传输应用自身存储以外的本地文件夹，Android 需要“所有文件访问权限”。",
+      "allow": "允许",
       "dismissTooltip": "不再显示"
     },
     "metered": {
@@ -1311,6 +1328,9 @@
     "appOperation": {
       "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
       "enableAutoStart": "开机自动{{type}}",
+      "autoStartDelay": "启动延迟",
+      "autoStartDelayHint": "应用启动后等待多久再开始运行。当网络、VPN 或其他挂载尚未就绪时很有用。",
+      "autoStartDelayNone": "无",
       "enableScheduled": "启用{{type}}计划任务",
       "enableWatch": "启用实时文件监控",
       "watchDescription": "监控本地源目录的文件修改并自动同步更改。",
@@ -2177,6 +2197,7 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
+      "noPasswordHint": "未设置密码时，备份不包含 rclone.conf 和已保存的密钥。直接填写在快捷运行或工作流中的凭据将按原样导出。",
       "vaultWarningTitle": "配置保管库已打开",
       "vaultWarningDesc": "导出的备份不继承保管库加密。若要使用密码保护敏感凭据和配置，请启用下方的加密选项。",
       "exportNow": "立即导出",
@@ -2242,7 +2263,8 @@
         },
         "password": {
           "label": "密码",
-          "placeholder": "留空表示不进行身份验证"
+          "placeholder": "留空表示不进行身份验证",
+          "keepPlaceholder": "留空以保留当前密码"
         },
         "configPassword": {
           "label": "配置密码",
@@ -2288,13 +2310,12 @@
       "status": {
         "notTested": "连接未测试",
         "connected": "已连接",
-        "error": "错误：{{message}}"
+        "error": "错误：{{message}}",
+        "engineOffline": "引擎离线"
       },
       "notifications": {
         "switchFailed": "切换失败：{{message}}",
         "connectionSuccess": "连接成功",
-        "connectionFailed": "连接失败：{{message}}",
-        "testFailed": "测试意外失败",
         "fileSelectFailed": "选择文件失败",
         "updated": "后端更新成功",
         "added": "后端添加成功",
@@ -3078,7 +3099,6 @@
       "unsupportedArchive": "不支持的压缩包类型，必须是 .rcman 文件",
       "invalidArchive": "无效的备份存档格式",
       "restoreFailed": "备份恢复失败: {{error}}",
-      "secretRequirePassword": "此备份受密码保护，需要输入密码",
       "exportFailed": "备份导出失败: {{error}}",
       "refreshFailed": "备份恢复后刷新系统失败: {{error}}",
       "restoreIncomplete": "备份恢复未完成: {{error}}"
@@ -3089,7 +3109,11 @@
       "cannotRemoveLocal": "无法移除本地后端",
       "cannotRemoveActive": "无法移除当前活动后端",
       "alreadyExists": "已存在同名后端",
-      "notFound": "未找到后端 '{{name}}'"
+      "notFound": "未找到后端 '{{name}}'",
+      "cannotConnect": "无法连接到“{{name}}”：{{error}}",
+      "connectionFailed": "连接失败：{{error}}",
+      "listFailedReverted": "已连接，但列出后端项目失败：{{error}}。已切换回 Local。",
+      "tooSlowReverted": "后端已接受连接，但列出其项目时过慢。已切换回 Local。"
     },
     "job": {
       "notFound": "未找到任务信息",
