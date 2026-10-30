@@ -161,6 +161,7 @@ describe('AboutModalComponent', () => {
 
   it.each([
     ['flatpak', 'flatpak update io.github.zarestia_dev.rclone-manager'],
+    ['snap', 'sudo snap refresh rclone-manager'],
     ['container', 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest'],
   ])('provides installation-specific manual instructions for %s', (type, command) => {
     buildType.set(type);
@@ -196,6 +197,11 @@ describe('AboutModalComponent', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.platform-badge')?.textContent
     ).toContain('Docker');
+    buildType.set('snap');
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.platform-badge')?.textContent
+    ).toContain('Snap');
     buildType.set(null);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelector('.platform-badge')).toBeNull();

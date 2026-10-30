@@ -2030,6 +2030,7 @@
       "downloadPage": "Télécharger la page",
       "managedBuildNotice": "Mise à jour automatique impossible pour cette version. Mise à jour manuelle requise.",
       "openFlathub": "Ouvrir Flathub",
+      "openSnapcraft": "Ouvrir Snapcraft",
       "loadInfoFailed": "Échec du chargement des informations du dépôt distant.",
       "license": "Licence",
       "licenseText1": "Cette application est un logiciel libre et open source distribué sous le",

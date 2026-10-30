@@ -1,0 +1,83 @@
+name: rclone-manager
+base: core22
+adopt-info: app
+summary: User-friendly GUI and process manager for Rclone
+description: |
+  RClone Manager is a cross-platform GUI for Rclone, designed to simplify
+  managing and transferring files across various cloud storage services.
+  With its intuitive interface, users can easily configure and execute Rclone
+  commands without needing extensive technical knowledge.
+grade: stable
+confinement: classic
+
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
+
+apps:
+  rclone-manager:
+    command: bin/rclone-manager
+    desktop: snap/gui/rclone-manager.desktop
+    extensions: [gnome]
+    environment:
+      RCLONE_MANAGER_INSTALLATION_TYPE: snap
+      PATH: $SNAP/bin:$PATH
+
+parts:
+  rclone:
+    plugin: nil
+    stage-packages:
+      - rclone
+    organize:
+      usr/bin/rclone: bin/rclone
+
+  app:
+    plugin: nil
+    source: .
+    build-snaps:
+      - node/20/stable
+      - rustup/latest/stable
+    build-packages:
+      - libwebkit2gtk-4.1-dev
+      - build-essential
+      - curl
+      - wget
+      - file
+      - libxdo-dev
+      - libssl-dev
+      - libayatana-appindicator3-dev
+      - librsvg2-dev
+      - dpkg
+    stage-packages:
+      - libwebkit2gtk-4.1-0
+      - libayatana-appindicator3-1
+      - libglu1-mesa
+      - freeglut3
+    override-build: |
+      set -eu
+      export PATH="$HOME/.cargo/bin:$PATH"
+      rustup default stable
+
+      # Extract version from package.json
+      APP_VERSION=$(node -p "require('./package.json').version")
+      if command -v craftctl >/dev/null 2>&1; then
+        craftctl set-version "$APP_VERSION"
+      else
+        snapcraftctl set-version "$APP_VERSION"
+      fi
+
+      # Build Angular frontend
+      npm ci
+      npm run build
+
+      # Build Tauri Desktop binary
+      cargo build --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --release
+
+      # Install binary and assets to snap install path
+      mkdir -p $CRAFT_PART_INSTALL/bin
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/applications
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/icons/hicolor/128x128/apps
+
+      cp backend/target/release/rclone-manager $CRAFT_PART_INSTALL/bin/rclone-manager
+      cp snap/gui/rclone-manager.desktop $CRAFT_PART_INSTALL/usr/share/applications/rclone-manager.desktop
+      cp backend/desktop/icons/128x128.png $CRAFT_PART_INSTALL/usr/share/icons/hicolor/128x128/apps/rclone-manager.png

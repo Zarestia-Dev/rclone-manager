@@ -102,6 +102,7 @@ export interface UpdatePolicy {
     | 'deb'
     | 'rpm'
     | 'flatpak'
+    | 'snap'
     | 'container'
     | 'unknown';
   method: 'unavailable' | 'tauri' | 'binary' | 'android';
