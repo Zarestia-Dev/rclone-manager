@@ -950,7 +950,6 @@
       "titleActivity": "Atividade",
       "loadMore": "Mostrar mais"
     },
-
     "inputModal": {
       "name": "Nome",
       "required": "O(A) {{field}} é necessário(a)",
@@ -1517,8 +1516,9 @@
         "description": "Arquivo de configuração rclone.conf completo"
       },
       "remoteConfigs": {
-        "title": "Configurações do Remoto"
+        "title": "Configurações dos remotos"
       },
+      "noRemoteDefinitions": "Este backup não contém rclone.conf, então os remotos em si não serão restaurados; apenas suas configurações no aplicativo (montagens, início automático, opções). Adicione os remotos novamente ou restaure a partir de um backup protegido por senha.",
       "profiles": {
         "title": "Perfis"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "Restaurar Backup",
       "errors": {
         "passwordRequired": "É necessário senha",
-        "passwordEmpty": "A senha não pode ser vazia ou espaço em branco",
-        "wrongPassword": "Senha incorreta. Por favor tente novamente.",
-        "integrityFailed": "O arquivo de backup está corrompido ou foi alterado.",
-        "verificationFailed": "A verificação do arquivo falhou. O backup pode estar corrompido.",
-        "requiresPassword": "Esta cópia de segurança requer uma senha para ser descriptografada.",
-        "decryptFailed": "Falha ao descriptografar o backup. Verifique sua senha.",
-        "generic": "Ocorreu um erro durante a restauração: {{error}}"
+        "passwordEmpty": "A senha não pode ser vazia ou espaço em branco"
       }
     },
     "launchRestoreFailed": "Falha ao iniciar o fluxo de restauração",
@@ -2157,7 +2151,8 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
-      "noPasswordHint": "Sem senha, o rclone.conf e os segredos salvos não são incluídos no backup. As credenciais digitadas diretamente em Execuções Rápidas ou fluxos de trabalho são exportadas como estão.",
+      "noPasswordHint": "Sem senha, o rclone.conf e os segredos salvos ficam de fora, então seus remotos não poderão ser recriados em outra máquina. As credenciais digitadas diretamente em Execuções Rápidas ou fluxos de trabalho são exportadas como estão.",
+      "remoteNeedsPassword": "Um único remoto só pode ser exportado com senha, pois sua configuração do rclone é incluída apenas em backups criptografados.",
       "vaultWarningTitle": "O cofre de configurações está aberto",
       "vaultWarningDesc": "Os backups exportados não herdam a criptografia do cofre. Use a opção de criptografia abaixo para proteger credenciais e configurações confidenciais com uma senha.",
       "exportNow": "Exportar Agora",
@@ -3042,6 +3037,16 @@
       "updateRemoteUnsupported": "Atualização remota não é suportada para essa versão do Rclone",
       "backupFailed": "Falha ao fazer o backup da binário atual do Rclone: {{error}}",
       "rcAuthFailed": "A autenticação do controle remoto Rclone falhou: {{error}}",
+      "remoteAuthRejected": "O backend remoto {{name}} em {{address}} rejeitou as credenciais da API RC (HTTP 401)",
+      "remoteUnreachable": "O backend remoto {{name}} em {{address}} está inacessível",
+      "portHeldByStaleProcess": "A porta {{port}} ainda está ocupada por um processo do rclone que não pôde ser encerrado (pode pertencer a outro usuário ou estar encerrado mas ainda retendo o socket). Encerre-o manualmente ou altere a porta do backend nas configurações.",
+      "portInUse": "A porta {{port}} já está em uso por outro processo ou aplicativo",
+      "portBindFailed": "Não foi possível vincular a porta {{port}} (endereço já em uso)",
+      "exitedDuringStartup": "O processo do rclone foi encerrado durante a inicialização. Verifique o log do rclone.",
+      "startupTimeout": "Tempo esgotado aguardando a API do rclone ficar pronta ({{seconds}} s)",
+      "librcloneInitFailed": "Falha ao inicializar o librclone: {{error}}",
+      "encryptionCheckFailed": "Falha ao verificar se a configuração está criptografada: {{error}}",
+      "configLoadFailed": "Falha ao carregar o arquivo de configuração do rclone: {{error}}",
       "downloadCancelled": "Download cancelado pelo usuário",
       "noUpdateAvailable": "Nenhuma atualização disponível"
     },
@@ -3061,7 +3066,9 @@
       "restoreFailed": "Falha na restauração do backup: {{error}}",
       "exportFailed": "Falha na exportação do backup: {{error}}",
       "refreshFailed": "Falha ao atualizar o sistema após a restauração do backup: {{error}}",
-      "restoreIncomplete": "A restauração do backup ficou incompleta: {{error}}"
+      "restoreIncomplete": "A restauração do backup ficou incompleta: {{error}}",
+      "wrongPassword": "Senha incorreta. Por favor tente novamente.",
+      "passwordRequired": "Esta cópia de segurança requer uma senha para ser descriptografada."
     },
     "backend": {
       "nameEmpty": "Nome do backend não pode estar vazio",
@@ -3148,6 +3155,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Backup criado em: {{path}}",
+      "restored": "Configurações restauradas com sucesso ({{count}} itens restaurados)"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} desmontado com sucesso",
       "allUnmounted": "Todos os dispositivos remotos foram desmontados com sucesso"
@@ -3302,6 +3313,7 @@
       "automationFailed": "Erro de Automação {{type}}",
       "automationStopped": "Automação de {{type}} Parada",
       "allJobsStopped": "Todos os Tarefas Pararam",
+      "automationUnavailable": "Automação indisponível",
       "allServesStopped": "Todos os Servidores Pararam",
       "allUnmounted": "Todos os Remotos Desconectados",
       "updateFound": "Nova Versão Disponível",
@@ -3341,6 +3353,7 @@
       "serveFailed": "Falha ao iniciar o servidor para {{remote}} no {{backend}}: {{error}}",
       "serveStopped": "Serviço parado para {{remote}} no {{backend}}.",
       "allJobsStopped": "Todas as tarefas ativas foram finalizadas com sucesso.",
+      "automationUnavailable": "Não foi possível iniciar os agendamentos e os observadores de arquivos: {{error}}",
       "allServesStopped": "Fechado com sucesso todos os servidores ativos.",
       "allUnmounted": "Desconectado com sucesso de todas as montagens remotos.",
       "automationStarted": "A automação {{type}} '{{automation}}' está em execução no {{backend}}.",

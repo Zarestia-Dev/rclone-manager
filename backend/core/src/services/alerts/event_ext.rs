@@ -1,7 +1,7 @@
 use crate::services::alerts::types::{AlertEventKind, AlertSeverity};
 use crate::utils::app::notification::{
-    AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, UpdateStage,
-    WorkflowStage,
+    AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, SystemStage,
+    UpdateStage, WorkflowStage,
 };
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
@@ -333,6 +333,7 @@ impl NotificationEvent {
                 UpdateStage::Failed { .. } => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
+            Self::System(SystemStage::AutomationUnavailable { .. }) => AlertSeverity::High,
             Self::System(_) => AlertSeverity::Info,
         }
     }

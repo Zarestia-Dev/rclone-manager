@@ -950,7 +950,6 @@
       "titleActivity": "活动",
       "loadMore": "显示更多"
     },
-
     "inputModal": {
       "name": "名称",
       "required": "{{field}} 为必填项",
@@ -1517,8 +1516,9 @@
         "description": "完整 rclone.conf 文件"
       },
       "remoteConfigs": {
-        "title": "远程存储配置"
+        "title": "远程设置"
       },
+      "noRemoteDefinitions": "此备份不含 rclone.conf，因此不会恢复远程本身，只恢复其应用设置（挂载、自动启动、选项）。请重新添加远程，或从受密码保护的备份中恢复。",
       "profiles": {
         "title": "配置文件"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "恢复备份",
       "errors": {
         "passwordRequired": "必须输入密码",
-        "passwordEmpty": "密码不能为空或空白字符",
-        "wrongPassword": "密码错误，请重试",
-        "integrityFailed": "备份文件已损坏或被篡改",
-        "verificationFailed": "文件验证失败，备份可能已损坏",
-        "requiresPassword": "此备份需要密码才能解密",
-        "decryptFailed": "备份解密失败，请检查密码",
-        "generic": "恢复过程中发生错误：{{error}}"
+        "passwordEmpty": "密码不能为空或空白字符"
       }
     },
     "launchRestoreFailed": "启动恢复流程失败",
@@ -2157,7 +2151,8 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
-      "noPasswordHint": "未设置密码时，备份不包含 rclone.conf 和已保存的密钥。直接填写在快捷运行或工作流中的凭据将按原样导出。",
+      "noPasswordHint": "未设置密码时，备份不包含 rclone.conf 和已保存的密钥，因此无法在其他设备上重建远程。直接填写在快捷运行或工作流中的凭据将按原样导出。",
+      "remoteNeedsPassword": "单个远程只能在设置密码后导出，因为其 rclone 配置仅包含在加密备份中。",
       "vaultWarningTitle": "配置保管库已打开",
       "vaultWarningDesc": "导出的备份不继承保管库加密。若要使用密码保护敏感凭据和配置，请启用下方的加密选项。",
       "exportNow": "立即导出",
@@ -3042,6 +3037,16 @@
       "updateRemoteUnsupported": "此 rclone 版本不支持远程更新",
       "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
       "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}",
+      "remoteAuthRejected": "远程后端 {{name}}（{{address}}）拒绝了 RC API 凭据（HTTP 401）",
+      "remoteUnreachable": "无法连接远程后端 {{name}}（{{address}}）",
+      "portHeldByStaleProcess": "端口 {{port}} 仍被无法停止的 rclone 进程占用（它可能属于其他用户，或已结束但仍占用套接字）。请手动停止它，或在设置中更改后端端口。",
+      "portInUse": "端口 {{port}} 已被其他进程或应用占用",
+      "portBindFailed": "无法绑定端口 {{port}}（地址已被占用）",
+      "exitedDuringStartup": "rclone 进程在启动期间退出。请查看 rclone 日志。",
+      "startupTimeout": "等待 rclone API 就绪超时（{{seconds}} 秒）",
+      "librcloneInitFailed": "librclone 初始化失败：{{error}}",
+      "encryptionCheckFailed": "无法检查配置是否已加密：{{error}}",
+      "configLoadFailed": "无法加载 rclone 配置文件：{{error}}",
       "downloadCancelled": "用户已取消下载",
       "noUpdateAvailable": "没有可用的更新"
     },
@@ -3061,7 +3066,9 @@
       "restoreFailed": "备份恢复失败: {{error}}",
       "exportFailed": "备份导出失败: {{error}}",
       "refreshFailed": "备份恢复后刷新系统失败: {{error}}",
-      "restoreIncomplete": "备份恢复未完成: {{error}}"
+      "restoreIncomplete": "备份恢复未完成: {{error}}",
+      "wrongPassword": "密码错误，请重试",
+      "passwordRequired": "此备份需要密码才能解密"
     },
     "backend": {
       "nameEmpty": "后端名称不能为空",
@@ -3148,6 +3155,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "备份已创建：{{path}}",
+      "restored": "设置已成功恢复（已恢复 {{count}} 项）"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} 卸载成功",
       "allUnmounted": "所有远程存储已成功卸载"
@@ -3302,6 +3313,7 @@
       "automationFailed": "{{type}} 自动化错误",
       "automationStopped": "{{type}} 自动化已停止",
       "allJobsStopped": "所有任务已停止",
+      "automationUnavailable": "自动化不可用",
       "allServesStopped": "所有服务器已停止",
       "allUnmounted": "所有远程连接已断开",
       "updateFound": "发现新版本",
@@ -3341,6 +3353,7 @@
       "serveFailed": "无法在 {{backend}} 上为远程存储 {{remote}} 启动服务：{{error}}",
       "serveStopped": "已停止 {{backend}} 上 {{remote}} 的服务。",
       "allJobsStopped": "已成功终止所有活动任务。",
+      "automationUnavailable": "无法启动计划任务和文件监视：{{error}}",
       "allServesStopped": "已成功关闭所有活动服务器。",
       "allUnmounted": "已成功断开所有远程挂载。",
       "automationStarted": "{{type}} 自动化 '{{automation}}' 正在 {{backend}} 上运行。",

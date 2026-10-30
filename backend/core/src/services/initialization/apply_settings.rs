@@ -7,8 +7,14 @@ use crate::{
     },
 };
 
-/// Apply core settings on startup (bandwidth limits, backend options, language, and log level)
+/// Apply every core setting: the ones the engine needs, then the application's own.
 pub async fn apply_core_settings(app_handle: &crate::context::AppHandle, settings: &AppSettings) {
+    apply_engine_settings(app_handle, settings).await;
+    apply_app_settings(settings);
+}
+
+/// Apply the settings a freshly started engine needs (bandwidth limit and rclone backend options)
+pub async fn apply_engine_settings(app_handle: &crate::context::AppHandle, settings: &AppSettings) {
     // Bandwidth Limits
     if !settings.core.bandwidth_limit.is_empty() {
         debug!(
@@ -30,11 +36,11 @@ pub async fn apply_core_settings(app_handle: &crate::context::AppHandle, setting
     if let Err(e) = apply_backend_settings(app_handle).await {
         error!("Failed to apply backend settings: {e}");
     }
+}
 
-    // Log Level
+/// Apply the settings that belong to the application, not to the engine (log level and language)
+pub fn apply_app_settings(settings: &AppSettings) {
     crate::utils::logging::log::update_log_level(&settings.developer.log_level);
-
-    // Language
     crate::utils::i18n::apply_language_change(&settings.general.language);
 }
 

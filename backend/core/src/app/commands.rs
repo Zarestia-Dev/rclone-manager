@@ -149,9 +149,9 @@ macro_rules! MASTER_COMMAND_LIST {
             (delete_remote_settings, $crate::services::settings::remote::manager::delete_remote_settings, [remote_name: String]);
 
             // BACKUP & RESTORE
-            (backup_settings, $crate::services::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>, include_secrets: Option<bool>]);
+            (backup_settings, $crate::services::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>]);
             (analyze_backup_file, $crate::services::settings::backup::backup_manager::analyze_backup_file, [path: std::path::PathBuf]);
-            (restore_settings, $crate::services::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>, restore_profile_as: Option<String>]);
+            (restore_settings, $crate::services::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>]);
             (get_export_categories, $crate::services::settings::backup::export_categories::get_export_categories, []);
 
             // NETWORK

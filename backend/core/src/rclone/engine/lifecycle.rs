@@ -178,11 +178,21 @@ pub async fn mark_engine_dead(app: &AppHandle) {
 /// and need the frontend / notifications to pick up the new state without
 /// going through `start()`.
 pub async fn emit_block_status_for_phase(app: &AppHandle) {
+    let phase = current_phase(app).await;
+    emit_block_status(app, &phase);
+}
+
+/// Re-emit the current engine phase to the frontend without raising a notification,
+/// for a phase whose notification was already sent when it began.
+pub async fn emit_current_phase_status(app: &AppHandle) {
+    let phase = current_phase(app).await;
+    emit_phase_status(&phase);
+}
+
+async fn current_phase(app: &AppHandle) -> EnginePhase {
     let state = app.state::<EngineState>();
     let engine = state.lock().await;
-    let phase = engine.phase.clone();
-    drop(engine);
-    emit_block_status(app, &phase);
+    engine.phase.clone()
 }
 
 pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
@@ -221,6 +231,10 @@ fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
         _ => {}
     }
 
+    emit_phase_status(phase);
+}
+
+fn emit_phase_status(phase: &EnginePhase) {
     let status: EngineStatus = phase.into();
     crate::services::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, status);
 }
@@ -276,12 +290,15 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
             if !is_local {
                 // Remote backend rejected our credentials. We cannot respawn
                 // it — the user has to fix the username/password.
-                let msg = format!(
+                error!(
                     "Remote backend '{}' at {}:{} rejected RC API credentials (HTTP 401)",
                     backend.name, backend.host, backend.port
                 );
-                error!("{msg}");
-                engine.mark_auth_failed(msg.clone());
+                engine.mark_auth_failed(crate::localized_error!(
+                    "backendErrors.rclone.remoteAuthRejected",
+                    "name" => &backend.name,
+                    "address" => format!("{}:{}", backend.host, backend.port)
+                ));
                 emit_block_status(app, &engine.phase);
                 return;
             }
@@ -296,12 +313,15 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
         HealthStatus::Unreachable => {
             if !is_local {
                 // Remote backend is down / wrong host / wrong port.
-                let msg = format!(
+                error!(
                     "Remote backend '{}' at {}:{} is unreachable",
                     backend.name, backend.host, backend.port
                 );
-                error!("{msg}");
-                engine.mark_other_failed(msg);
+                engine.mark_other_failed(crate::localized_error!(
+                    "backendErrors.rclone.remoteUnreachable",
+                    "name" => &backend.name,
+                    "address" => format!("{}:{}", backend.host, backend.port)
+                ));
                 emit_block_status(app, &engine.phase);
                 return;
             }
@@ -311,23 +331,30 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
         }
     }
 
-    // Step 2 (local only): tear down anything still tracked / bound to the port.
-    if let Err(e) = engine.kill_process(app).await {
+    // Step 2 (local only): reap our tracked child and clear a stale daemon that rejected
+    // our credentials. With nothing tracked and nothing answering, whatever holds the port
+    // is someone else's: it is reported below, never killed.
+    if (engine.process.is_some() || matches!(health, HealthStatus::AuthRequired))
+        && let Err(e) = engine.kill_process(app).await
+    {
         error!("Failed to stop Rclone process: {e}");
     }
 
     if matches!(health, HealthStatus::AuthRequired) {
         match RcApiEngine::check_api_health_with_status(app).await {
             HealthStatus::AuthRequired => {
-                let msg = format!(
+                error!(
                     "Port {} is still occupied by an rclone process we couldn't stop \
-                     (likely owned by another user or already dead but holding the socket). \
-                     Please stop it manually (e.g. `kill -9` the PID from `lsof -i :{}`) \
-                     or change the backend port in settings.",
-                    backend.port, backend.port
+                     (likely owned by another user or already dead but holding the socket)",
+                    backend.port
                 );
-                error!("{msg}");
-                engine.mark_port_failed(backend.port, msg);
+                engine.mark_port_failed(
+                    backend.port,
+                    crate::localized_error!(
+                        "backendErrors.rclone.portHeldByStaleProcess",
+                        "port" => backend.port
+                    ),
+                );
                 emit_block_status(app, &engine.phase);
                 return;
             }
@@ -347,12 +374,14 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     if crate::utils::process::process_manager::is_port_in_use(backend.port) {
-        let msg = format!(
+        error!(
             "Port {} is already occupied by another process or application",
             backend.port
         );
-        error!("{msg}");
-        engine.mark_port_failed(backend.port, msg);
+        engine.mark_port_failed(
+            backend.port,
+            crate::localized_error!("backendErrors.rclone.portInUse", "port" => backend.port),
+        );
         emit_block_status(app, &engine.phase);
         return;
     }
@@ -372,26 +401,29 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 Err(WaitReadyError::RcAuthFailed) => {
                     error!("Newly spawned rcd rejected our credentials");
                     let _ = engine.kill_process(app).await;
-                    engine.mark_auth_failed(
-                        "Spawned rcd rejected credentials (HTTP 401)".to_string(),
-                    );
+                    engine.mark_auth_failed(crate::localized_error!(
+                        "backendErrors.rclone.rcAuthFailed",
+                        "error" => "HTTP 401"
+                    ));
                     emit_block_status(app, &engine.phase);
                 }
                 Err(WaitReadyError::ProcessDied) => {
                     error!("Rclone process exited during startup");
                     let _ = engine.kill_process(app).await;
                     if crate::utils::process::process_manager::is_port_in_use(backend.port) {
-                        let msg = format!(
-                            "Port {} could not be bound (address already in use)",
-                            backend.port
+                        engine.mark_port_failed(
+                            backend.port,
+                            crate::localized_error!(
+                                "backendErrors.rclone.portBindFailed",
+                                "port" => backend.port
+                            ),
                         );
-                        engine.mark_port_failed(backend.port, msg);
                         emit_block_status(app, &engine.phase);
                     } else {
                         handle_start_failure(
                             engine,
                             app,
-                            "Rclone process exited during startup (check rclone log)".to_string(),
+                            crate::localized_error!("backendErrors.rclone.exitedDuringStartup"),
                         );
                     }
                 }
@@ -401,7 +433,10 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                     handle_start_failure(
                         engine,
                         app,
-                        format!("Timeout waiting for API readiness ({API_READY_TIMEOUT_SECS}s)"),
+                        crate::localized_error!(
+                            "backendErrors.rclone.startupTimeout",
+                            "seconds" => API_READY_TIMEOUT_SECS
+                        ),
                     );
                 }
             }
@@ -423,7 +458,11 @@ async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
         }
         Err(e) => {
             error!("librclone transport not responsive: {e}");
-            handle_start_failure(engine, app, format!("librclone init failed: {e}"));
+            handle_start_failure(
+                engine,
+                app,
+                crate::localized_error!("backendErrors.rclone.librcloneInitFailed", "error" => e),
+            );
         }
     }
 }
@@ -444,35 +483,44 @@ pub fn restart_for_config_change(app: &AppHandle, change_type: &str) {
     let app = app.clone();
     let change_type = change_type.to_string();
 
-    crate::utils::spawn(async move {
-        match restart_engine(&app, &change_type).await {
-            Ok(()) => {
-                info!("Engine restarted for {change_type} change");
-                crate::services::bridge::emit(
-                    RCLONE_ENGINE_STATUS_CHANGED,
-                    EngineStatus::Restarted {
-                        reason: change_type,
-                    },
-                );
-                notify(&app, NotificationEvent::Engine(EngineStage::Restarted));
-            }
-            Err(e) => {
-                error!("Failed to restart engine for {change_type} change: {e}");
-                crate::services::bridge::emit(
-                    RCLONE_ENGINE_STATUS_CHANGED,
-                    EngineStatus::Error {
-                        message: e.to_string(),
-                    },
-                );
-                notify(
-                    &app,
-                    NotificationEvent::Engine(EngineStage::RestartFailed {
-                        error: e.to_string(),
-                    }),
-                );
-            }
+    crate::utils::spawn(async move { restart_and_report(&app, &change_type).await });
+}
+
+/// Restarts the engine and returns once it has started again.
+#[cfg(not(feature = "librclone"))]
+pub async fn restart_for_config_change_and_wait(app: &AppHandle, change_type: &str) {
+    info!("Restarting engine due to {change_type} change");
+    restart_and_report(app, change_type).await;
+}
+
+async fn restart_and_report(app: &AppHandle, change_type: &str) {
+    match restart_engine(app, change_type).await {
+        Ok(()) => {
+            info!("Engine restarted for {change_type} change");
+            crate::services::bridge::emit(
+                RCLONE_ENGINE_STATUS_CHANGED,
+                EngineStatus::Restarted {
+                    reason: change_type.to_string(),
+                },
+            );
+            notify(app, NotificationEvent::Engine(EngineStage::Restarted));
         }
-    });
+        Err(e) => {
+            error!("Failed to restart engine for {change_type} change: {e}");
+            crate::services::bridge::emit(
+                RCLONE_ENGINE_STATUS_CHANGED,
+                EngineStatus::Error {
+                    message: e.to_string(),
+                },
+            );
+            notify(
+                app,
+                NotificationEvent::Engine(EngineStage::RestartFailed {
+                    error: e.to_string(),
+                }),
+            );
+        }
+    }
 }
 
 async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::EngineResult<()> {

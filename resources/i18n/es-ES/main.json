@@ -950,7 +950,6 @@
       "titleActivity": "Actividad",
       "loadMore": "Mostrar más"
     },
-
     "inputModal": {
       "name": "Nombre",
       "required": "{{field}} es obligatorio",
@@ -1517,8 +1516,9 @@
         "description": "Archivo rclone.conf completo"
       },
       "remoteConfigs": {
-        "title": "Configuraciones remotas"
+        "title": "Ajustes de remotos"
       },
+      "noRemoteDefinitions": "Esta copia no incluye rclone.conf, por lo que los remotos en sí no se restaurarán; solo sus ajustes de la aplicación (montajes, inicio automático, opciones). Vuelva a añadir los remotos o restaure desde una copia protegida con contraseña.",
       "profiles": {
         "title": "Perfiles"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "Restaurar copia de seguridad",
       "errors": {
         "passwordRequired": "Se requiere contraseña",
-        "passwordEmpty": "La contraseña no puede estar vacía ni contener espacios en blanco",
-        "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
-        "integrityFailed": "El archivo de copia de seguridad está dañado o ha sido manipulado.",
-        "verificationFailed": "Error en la verificación del archivo. Es posible que la copia de seguridad esté dañada.",
-        "requiresPassword": "Esta copia de seguridad requiere una contraseña para descifrarla.",
-        "decryptFailed": "Error al descifrar la copia de seguridad. Comprueba tu contraseña.",
-        "generic": "Se ha producido un error durante la restauración: {{error}}"
+        "passwordEmpty": "La contraseña no puede estar vacía ni contener espacios en blanco"
       }
     },
     "launchRestoreFailed": "Error al iniciar el flujo de restauración",
@@ -2157,7 +2151,8 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
-      "noPasswordHint": "Sin contraseña, rclone.conf y los secretos guardados no se incluyen en la copia de seguridad. Las credenciales escritas directamente en Ejecuciones rápidas o en flujos de trabajo se exportan tal cual.",
+      "noPasswordHint": "Sin contraseña, rclone.conf y los secretos guardados no se incluyen, por lo que sus remotos no podrán recrearse en otra máquina. Las credenciales escritas directamente en Ejecuciones rápidas o flujos de trabajo se exportan tal cual.",
+      "remoteNeedsPassword": "Un remoto individual solo se puede exportar con contraseña, porque su configuración de rclone solo se incluye en copias cifradas.",
       "vaultWarningTitle": "La bóveda de configuración está abierta",
       "vaultWarningDesc": "Las copias de seguridad exportadas no heredan el cifrado de la bóveda. Utilice la opción de cifrado a continuación para proteger las credenciales y configuraciones sensibles con una contraseña.",
       "exportNow": "Exportar ahora",
@@ -3042,6 +3037,16 @@
       "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
       "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
       "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}",
+      "remoteAuthRejected": "El backend remoto {{name}} en {{address}} rechazó las credenciales de la API RC (HTTP 401)",
+      "remoteUnreachable": "No se puede acceder al backend remoto {{name}} en {{address}}",
+      "portHeldByStaleProcess": "El puerto {{port}} sigue ocupado por un proceso de rclone que no se pudo detener (puede pertenecer a otro usuario o estar terminado pero reteniendo el socket). Deténgalo manualmente o cambie el puerto del backend en los ajustes.",
+      "portInUse": "El puerto {{port}} ya está en uso por otro proceso o aplicación",
+      "portBindFailed": "No se pudo enlazar el puerto {{port}} (dirección ya en uso)",
+      "exitedDuringStartup": "El proceso de rclone terminó durante el inicio. Revise el registro de rclone.",
+      "startupTimeout": "Se agotó el tiempo de espera para que la API de rclone estuviera lista ({{seconds}} s)",
+      "librcloneInitFailed": "No se pudo inicializar librclone: {{error}}",
+      "encryptionCheckFailed": "No se pudo comprobar si la configuración está cifrada: {{error}}",
+      "configLoadFailed": "No se pudo cargar el archivo de configuración de rclone: {{error}}",
       "downloadCancelled": "Descarga cancelada por el usuario",
       "noUpdateAvailable": "No hay actualizaciones disponibles"
     },
@@ -3061,7 +3066,9 @@
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
       "exportFailed": "Fallo en la exportación de la copia de seguridad: {{error}}",
       "refreshFailed": "Error al actualizar el sistema tras restaurar la copia de seguridad: {{error}}",
-      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}"
+      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}",
+      "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
+      "passwordRequired": "Esta copia de seguridad requiere una contraseña para descifrarla."
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
@@ -3148,6 +3155,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Copia de seguridad creada en: {{path}}",
+      "restored": "Ajustes restaurados correctamente ({{count}} elementos restaurados)"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} desmontado exitosamente",
       "allUnmounted": "Todos los remotos desmontados exitosamente"
@@ -3302,6 +3313,7 @@
       "automationFailed": "Error en automatización de {{type}}",
       "automationStopped": "Automatización de {{type}} detenida",
       "allJobsStopped": "Todos los trabajos detenidos",
+      "automationUnavailable": "Automatización no disponible",
       "allServesStopped": "Todos los servidores detenidos",
       "allUnmounted": "Todos los remotos desconectados",
       "updateFound": "Nueva versión disponible",
@@ -3341,6 +3353,7 @@
       "serveFailed": "Error al iniciar el servicio para {{remote}} en {{backend}}: {{error}}",
       "serveStopped": "Servidor detenido para {{remote}} en {{backend}}.",
       "allJobsStopped": "Todos los trabajos activos se detuvieron con éxito.",
+      "automationUnavailable": "No se pudieron iniciar las programaciones ni los observadores de archivos: {{error}}",
       "allServesStopped": "Todos los servidores activos se cerraron con éxito.",
       "allUnmounted": "Todos los remotos se desconectaron con éxito.",
       "automationStarted": "La automatización {{type}} '{{automation}}' se está ejecutando en {{backend}}.",

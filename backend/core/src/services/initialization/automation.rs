@@ -1,5 +1,6 @@
 use crate::context::AppHandle;
 use log::info;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
@@ -15,6 +16,7 @@ use crate::{
         flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
         settings::AppSettingsManager,
     },
+    utils::types::remotes::RemoteSettings,
 };
 
 enum AutostartTask {
@@ -22,16 +24,22 @@ enum AutostartTask {
     Workflow(Arc<WorkflowSnapshot>),
 }
 
+/// The backend and the remote profiles read for one startup, so the profile auto-starts
+/// need no second read of the settings.
+pub(super) type RemoteSnapshot = (Backend, HashMap<String, RemoteSettings>);
+
 /// Pending executions own their inputs so a vault lock after dispatch does not
 /// force them to read settings again. Dropping a failed startup drops this plan.
 pub(super) struct AutostartTasks {
     backend: Backend,
+    remotes: HashMap<String, RemoteSettings>,
     tasks: Vec<AutostartTask>,
 }
 
 impl AutostartTasks {
     fn prepare(
         backend: Backend,
+        remotes: HashMap<String, RemoteSettings>,
         manager: &AppSettingsManager,
         quick_runs: &[QuickRun],
         workflows: &[WorkflowDefinition],
@@ -47,10 +55,15 @@ impl AutostartTasks {
                 WorkflowSnapshot::capture(manager, workflow.clone())?,
             )));
         }
-        Ok(Self { backend, tasks })
+        Ok(Self {
+            backend,
+            remotes,
+            tasks,
+        })
     }
 
-    pub(super) fn start(self, app: &AppHandle) {
+    /// Launches the Quick Runs and Workflows and hands back what was read for the profiles.
+    pub(super) fn start(self, app: &AppHandle) -> RemoteSnapshot {
         for task in self.tasks {
             let backend = self.backend.clone();
             let delay = match &task {
@@ -88,6 +101,7 @@ impl AutostartTasks {
                 }
             });
         }
+        (self.backend, self.remotes)
     }
 }
 
@@ -130,7 +144,13 @@ pub(super) async fn initialize_automations(
         .load_from_workflows(&workflows, &backend_name)
         .await?;
 
-    let autostarts = AutostartTasks::prepare(backend, manager.inner(), &quick_runs, &workflows)?;
+    let autostarts = AutostartTasks::prepare(
+        backend,
+        all_settings,
+        manager.inner(),
+        &quick_runs,
+        &workflows,
+    )?;
     crate::services::automation::runtime::refresh_with_definitions(
         &app_handle,
         Some(revision),
@@ -196,6 +216,7 @@ mod tests {
         };
         let plan = AutostartTasks::prepare(
             Backend::new_local("Local"),
+            HashMap::new(),
             manager.inner(),
             &[preset, quick_run("manual", false)],
             &[workflow, WorkflowDefinition::default()],
@@ -210,6 +231,20 @@ mod tests {
         assert_eq!(snapshot.definition.id, "workflow");
         assert_eq!(snapshot.quick_runs["startup"].name, "startup");
         assert!(!snapshot.quick_runs.contains_key("manual"));
+    }
+
+    #[test]
+    fn starting_the_tasks_hands_back_the_remote_profiles_that_were_read() {
+        let plan = AutostartTasks {
+            backend: Backend::new_local("Local"),
+            remotes: HashMap::from([("drive".to_string(), RemoteSettings::default())]),
+            tasks: Vec::new(),
+        };
+
+        let (backend, remotes) = plan.start(&AppHandle::default());
+
+        assert_eq!(backend.name, "Local");
+        assert!(remotes.contains_key("drive"));
     }
 
     #[tokio::test]

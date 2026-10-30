@@ -33,6 +33,13 @@ pub fn setup_context(
 
     app.host().prepare(app, &app_paths)?;
 
+    // Log from here on; the level follows the settings once they load. A failure is retried
+    // and reported by initialization.
+    app.manage(LogCache::new(1000));
+    if let Err(error) = crate::utils::logging::log::init_logging("info", app.clone()) {
+        eprintln!("Failed to initialize logging: {error}");
+    }
+
     let rcman_manager =
         crate::services::settings::manager::create_settings_manager(&app_paths.config_dir)?;
 
@@ -71,20 +78,13 @@ pub fn setup_context(
 
     app.manage(backend_manager);
     app.manage(env_manager);
-    let backup_provider =
-        services::settings::backup::rclone_config_provider::RcloneConfigProvider::default();
-    rcman_manager.register_external_provider(Box::new(backup_provider.clone()));
-    app.manage(backup_provider);
     app.manage(rcman_manager);
 
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
 
-    let transport: Arc<dyn crate::rclone::backend::RcloneTransport> = {
-        log::info!("rclone transport: RoutingTransport (dynamic)");
-        Arc::new(rclone::backend::routing_transport::RoutingTransport::new(
-            app_handle.clone(),
-        ))
-    };
+    let transport: Arc<dyn crate::rclone::backend::RcloneTransport> = Arc::new(
+        rclone::backend::routing_transport::RoutingTransport::new(app_handle.clone()),
+    );
 
     app.manage(RcloneState {
         poller_visible: AtomicBool::new(true),
@@ -92,7 +92,7 @@ pub fn setup_context(
         ..RcloneState::new(crate::rclone::backend::types::rc_client(), transport)
     });
 
-    app.manage(LogCache::new(1000));
+    app.manage(crate::services::initialization::bootstrap::BootstrapState::default());
     app.manage(AutomationsCache::new());
     app.manage(services::automation::runtime::RuntimeTasks::default());
     app.manage(AutomationScheduler::new());

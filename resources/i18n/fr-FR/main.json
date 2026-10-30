@@ -950,7 +950,6 @@
       "titleActivity": "Activité",
       "loadMore": "Afficher plus"
     },
-
     "inputModal": {
       "name": "Nom",
       "required": "{{field}} est obligatoire",
@@ -1517,8 +1516,9 @@
         "description": "Fichier complet rclone.conf"
       },
       "remoteConfigs": {
-        "title": "Configurations du dépôt distant"
+        "title": "Paramètres des remotes"
       },
+      "noRemoteDefinitions": "Cette sauvegarde ne contient pas rclone.conf : les remotes eux-mêmes ne seront pas restaurés, seulement leurs paramètres dans l'application (montages, démarrage automatique, options). Ajoutez à nouveau les remotes ou restaurez depuis une sauvegarde protégée par mot de passe.",
       "profiles": {
         "title": "Profils"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "Restaurer la sauvegarde",
       "errors": {
         "passwordRequired": "Mot de passe requis",
-        "passwordEmpty": "Le mot de passe ne peut pas être vide ou un espace blanc",
-        "wrongPassword": "Mot de passe incorrect, veuillez réessayer.",
-        "integrityFailed": "Le fichier de sauvegarde est corrompu ou a été altéré.",
-        "verificationFailed": "La vérification du fichier a échoué. La sauvegarde est peut-être corrompue.",
-        "requiresPassword": "Cette sauvegarde nécessite un mot de passe pour déchiffrer.",
-        "decryptFailed": "Échec du déchiffrement de la sauvegarde. Vérifiez votre mot de passe.",
-        "generic": "Une erreur s'est produite lors de l'export : {{error}}"
+        "passwordEmpty": "Le mot de passe ne peut pas être vide ou un espace blanc"
       }
     },
     "launchRestoreFailed": "Échec du lancement du flux de restauration",
@@ -2157,7 +2151,8 @@
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
       "passwordHint": "Ce mot de passe sera requis pour restaurer la sauvegarde.",
-      "noPasswordHint": "Sans mot de passe, rclone.conf et les secrets enregistrés ne sont pas inclus dans la sauvegarde. Les identifiants saisis directement dans les Exécutions rapides ou les workflows sont exportés tels quels.",
+      "noPasswordHint": "Sans mot de passe, rclone.conf et les secrets enregistrés sont exclus : vos remotes ne pourront pas être recréés sur une autre machine. Les identifiants saisis directement dans les exécutions rapides ou les workflows sont exportés tels quels.",
+      "remoteNeedsPassword": "Un remote seul ne peut être exporté qu'avec un mot de passe, car sa configuration rclone n'est incluse que dans les sauvegardes chiffrées.",
       "vaultWarningTitle": "Le coffre de configuration est ouvert",
       "vaultWarningDesc": "Les sauvegardes exportées n'héritent pas du chiffrement du coffre. Utilisez l'option de chiffrement ci-dessous pour protéger les identifiants et les paramètres sensibles avec un mot de passe.",
       "exportNow": "Exporter maintenant",
@@ -3042,6 +3037,16 @@
       "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}",
       "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}",
+      "remoteAuthRejected": "Le backend distant {{name}} à l'adresse {{address}} a rejeté les identifiants de l'API RC (HTTP 401)",
+      "remoteUnreachable": "Le backend distant {{name}} à l'adresse {{address}} est injoignable",
+      "portHeldByStaleProcess": "Le port {{port}} est toujours occupé par un processus rclone impossible à arrêter (il peut appartenir à un autre utilisateur, ou être terminé tout en conservant le socket). Arrêtez-le manuellement ou changez le port du backend dans les paramètres.",
+      "portInUse": "Le port {{port}} est déjà utilisé par un autre processus ou une autre application",
+      "portBindFailed": "Impossible de lier le port {{port}} (adresse déjà utilisée)",
+      "exitedDuringStartup": "Le processus rclone s'est arrêté au démarrage. Consultez le journal de rclone.",
+      "startupTimeout": "Délai dépassé en attendant que l'API rclone soit prête ({{seconds}} s)",
+      "librcloneInitFailed": "Échec de l'initialisation de librclone : {{error}}",
+      "encryptionCheckFailed": "Impossible de vérifier si la configuration est chiffrée : {{error}}",
+      "configLoadFailed": "Impossible de charger le fichier de configuration rclone : {{error}}",
       "downloadCancelled": "Téléchargement annulé par l'utilisateur",
       "noUpdateAvailable": "Aucune mise à jour disponible"
     },
@@ -3061,7 +3066,9 @@
       "restoreFailed": "La restauration de la sauvegarde a échoué : {{error}}",
       "exportFailed": "L'exportation de la sauvegarde a échoué : {{error}}",
       "refreshFailed": "Échec de l'actualisation du système après la restauration de la sauvegarde : {{error}}",
-      "restoreIncomplete": "La restauration de la sauvegarde est incomplète : {{error}}"
+      "restoreIncomplete": "La restauration de la sauvegarde est incomplète : {{error}}",
+      "wrongPassword": "Mot de passe incorrect, veuillez réessayer.",
+      "passwordRequired": "Cette sauvegarde nécessite un mot de passe pour déchiffrer."
     },
     "backend": {
       "nameEmpty": "Nom du dépôt distant ne peut pas être vide",
@@ -3148,6 +3155,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Sauvegarde créée dans : {{path}}",
+      "restored": "Paramètres restaurés avec succès ({{count}} éléments restaurés)"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} démonté avec succès",
       "allUnmounted": "Tous les dépôts distants ont été démontés avec succès"
@@ -3302,6 +3313,7 @@
       "automationFailed": "Erreur d'automatisation {{type}}",
       "automationStopped": "{{type}} Automatisation arrêtée",
       "allJobsStopped": "Touts les jobs sont arrêtées",
+      "automationUnavailable": "Automatisation indisponible",
       "allServesStopped": "Tous les serveurs sont arrêtés",
       "allUnmounted": "Tous les dépôts distants déconnectés",
       "updateFound": "Nouvelle version disponible",
@@ -3341,6 +3353,7 @@
       "serveFailed": "Impossible de démarrer le service de partage pour {{remote}} sur {{backend}} : {{error}}",
       "serveStopped": "Arrêt du serveur pour {{remote}} sur {{backend}}.",
       "allJobsStopped": "Tous les jobs actifs ont été supprimés avec succès.",
+      "automationUnavailable": "Les planifications et les observateurs de fichiers n'ont pas pu démarrer : {{error}}",
       "allServesStopped": "Tous les serveurs actifs ont été fermés avec succès.",
       "allUnmounted": "Touts les montages des dépôts distants ont bien été déconnectés.",
       "automationStarted": "L'automatisation {{type}} '{{automation}}' fonctionne sur {{backend}}.",

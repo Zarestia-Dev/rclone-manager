@@ -274,7 +274,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         || existing.config_password != backend.config_password;
 
     backend_manager
-        .update(settings_manager.inner(), &params.name, backend.clone())
+        .update(&params.name, backend.clone())
         .await?;
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
@@ -957,8 +957,7 @@ mod tests {
         let mut saved = manager.get("NAS").await.unwrap();
         saved.username = Some("admin".into());
         saved.password = Some("secret".into());
-        let settings = app.state::<AppSettingsManager>();
-        manager.update(&settings, "NAS", saved).await.unwrap();
+        manager.update("NAS", saved).await.unwrap();
         let test = |username: Option<&str>| {
             test_backend_connection_details(
                 app.clone(),

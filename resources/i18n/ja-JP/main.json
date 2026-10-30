@@ -950,7 +950,6 @@
       "titleActivity": "アクティビティ",
       "loadMore": "さらに表示"
     },
-
     "inputModal": {
       "name": "名前",
       "required": "{{field}} は必須です",
@@ -1519,6 +1518,7 @@
       "remoteConfigs": {
         "title": "リモート設定"
       },
+      "noRemoteDefinitions": "このバックアップには rclone.conf が含まれていないため、リモート自体は復元されず、アプリ側の設定（マウント、自動起動、オプション）のみ復元されます。リモートを再度追加するか、パスワード保護されたバックアップから復元してください。",
       "profiles": {
         "title": "プロファイル"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "バックアップを復元",
       "errors": {
         "passwordRequired": "パスワードは必須です",
-        "passwordEmpty": "パスワードを空欄や空白のみにすることはできません",
-        "wrongPassword": "パスワードが正しくありません。再試行してください。",
-        "integrityFailed": "バックアップファイルが破損しているか改ざんされています。",
-        "verificationFailed": "ファイルの検証に失敗しました。バックアップが破損している可能性があります。",
-        "requiresPassword": "このバックアップの復号化にはパスワードが必要です。",
-        "decryptFailed": "バックアップの復号化に失敗しました。パスワードを確認してください。",
-        "generic": "復元中にエラーが発生しました: {{error}}"
+        "passwordEmpty": "パスワードを空欄や空白のみにすることはできません"
       }
     },
     "launchRestoreFailed": "復元フローの起動に失敗しました",
@@ -2157,7 +2151,8 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
-      "noPasswordHint": "パスワードを設定しない場合、rclone.conf と保存済みのシークレットはバックアップに含まれません。クイック実行やワークフローに直接入力した認証情報は、そのままエクスポートされます。",
+      "noPasswordHint": "パスワードを設定しない場合、rclone.conf と保存済みのシークレットは含まれないため、別のマシンでリモートを再作成できません。クイック実行やワークフローに直接入力した認証情報は、そのままエクスポートされます。",
+      "remoteNeedsPassword": "単一のリモートはパスワード付きでのみエクスポートできます。rclone の設定は暗号化されたバックアップにのみ含まれるためです。",
       "vaultWarningTitle": "構成ボルトが開いています",
       "vaultWarningDesc": "エクスポートされたバックアップはボルトの暗号化を継承しません。機密の認証情報や設定をパスワードで保護するには、以下の暗号化オプションを使用してください。",
       "exportNow": "今すぐエクスポート",
@@ -3042,6 +3037,16 @@
       "updateRemoteUnsupported": "このrcloneバージョンではリモート更新はサポートされていません",
       "backupFailed": "現在のrclone実行ファイルのバックアップに失敗しました: {{error}}",
       "rcAuthFailed": "Rcloneリモートコントロール(RC)認証に失敗しました: {{error}}",
+      "remoteAuthRejected": "リモートバックエンド {{name}}（{{address}}）が RC API の認証情報を拒否しました（HTTP 401）",
+      "remoteUnreachable": "リモートバックエンド {{name}}（{{address}}）に接続できません",
+      "portHeldByStaleProcess": "ポート {{port}} は停止できなかった rclone プロセスに占有されたままです（別のユーザーのプロセスか、終了済みでソケットだけが残っている可能性があります）。手動で停止するか、設定でバックエンドのポートを変更してください。",
+      "portInUse": "ポート {{port}} は別のプロセスまたはアプリケーションで既に使用されています",
+      "portBindFailed": "ポート {{port}} をバインドできませんでした（アドレスは既に使用中です）",
+      "exitedDuringStartup": "rclone プロセスが起動中に終了しました。rclone のログを確認してください。",
+      "startupTimeout": "rclone API の準備完了を待機中にタイムアウトしました（{{seconds}} 秒）",
+      "librcloneInitFailed": "librclone を初期化できませんでした: {{error}}",
+      "encryptionCheckFailed": "設定が暗号化されているか確認できませんでした: {{error}}",
+      "configLoadFailed": "rclone 設定ファイルを読み込めませんでした: {{error}}",
       "downloadCancelled": "ユーザーによってダウンロードがキャンセルされました",
       "noUpdateAvailable": "利用可能なアップデートはありません"
     },
@@ -3061,7 +3066,9 @@
       "restoreFailed": "バックアップの復元に失敗しました: {{error}}",
       "exportFailed": "バックアップのエクスポートに失敗しました: {{error}}",
       "refreshFailed": "バックアップ復元後のシステム更新に失敗しました: {{error}}",
-      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}"
+      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}",
+      "wrongPassword": "パスワードが正しくありません。再試行してください。",
+      "passwordRequired": "このバックアップの復号化にはパスワードが必要です。"
     },
     "backend": {
       "nameEmpty": "バックエンド名を空欄にすることはできません",
@@ -3148,6 +3155,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "バックアップを作成しました: {{path}}",
+      "restored": "設定を復元しました（{{count}} 件を復元）"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} のマウント解除に成功しました",
       "allUnmounted": "全てのリモートを正常にマウント解除しました"
@@ -3302,6 +3313,7 @@
       "automationFailed": "{{type}} 自動化エラー",
       "automationStopped": "{{type}} 自動化停止",
       "allJobsStopped": "全ジョブ停止",
+      "automationUnavailable": "自動化を利用できません",
       "allServesStopped": "全サーバー停止",
       "allUnmounted": "全リモート切断",
       "updateFound": "新しいバージョンがあります",
@@ -3341,6 +3353,7 @@
       "serveFailed": "{{backend}} 上の {{remote}} での公開サーバーの開始に失敗しました: {{error}}",
       "serveStopped": "{{backend}} 上の {{remote}} のサーバーを停止しました。",
       "allJobsStopped": "全ての実行中のジョブを正常に終了しました。",
+      "automationUnavailable": "スケジュールとファイル監視を開始できませんでした: {{error}}",
       "allServesStopped": "全ての実行中のサーバーを正常に停止しました。",
       "allUnmounted": "全てのリモートマウントを正常に切断しました。",
       "automationStarted": "{{backend}} 上で {{type}} の自動化 「{{automation}}」 を実行中です。",

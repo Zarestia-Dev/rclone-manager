@@ -343,12 +343,7 @@ impl BackendManager {
     }
 
     /// Update an existing backend's connection details
-    pub async fn update(
-        &self,
-        _manager: &AppSettingsManager,
-        name: &str,
-        backend: Backend,
-    ) -> Result<(), String> {
+    pub async fn update(&self, name: &str, backend: Backend) -> Result<(), String> {
         let mut state = self.state.write().await;
 
         let index = state
@@ -364,8 +359,8 @@ impl BackendManager {
         Ok(())
     }
 
-    /// Remove a backend by name and delete its associated profiles
-    pub async fn remove(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
+    /// Drops a backend from memory and keeps its settings profiles.
+    async fn detach(&self, name: &str) -> Result<(), String> {
         if Backend::is_local_name(name) {
             return Err(crate::localized_error!(
                 "backendErrors.backend.cannotRemoveLocal"
@@ -397,6 +392,13 @@ impl BackendManager {
         drop(state);
 
         self.per_backend_state.write().remove(name);
+        self.runtime_info.write().await.remove(name);
+        Ok(())
+    }
+
+    /// Remove a backend by name and delete its associated profiles
+    pub async fn remove(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
+        self.detach(name).await?;
 
         for sub_name in ENGINE_SUB_SETTINGS {
             if let Ok(sub) = manager.sub_settings(sub_name)
@@ -549,6 +551,7 @@ impl BackendManager {
         let keys = connections.list().map_err(|e| e.to_string())?;
 
         let mut active_name: Option<String> = None;
+        let mut saved_names = std::collections::HashSet::new();
 
         for key in keys {
             if key == "_active" {
@@ -558,17 +561,38 @@ impl BackendManager {
                 continue;
             }
 
+            saved_names.insert(key.clone());
+
             if let Ok(value) = connections.get_value(&key)
                 && let Ok(mut backend) = serde_json::from_value::<Backend>(value)
             {
                 backend.name = key.clone();
 
                 if Backend::is_local_name(&backend.name) {
-                    let _ = self.update(manager, LOCAL_BACKEND_NAME, backend).await;
-                } else {
-                    if let Err(error) = self.add(manager, backend, CopySources::default()).await {
-                        log::warn!("Skipping saved backend '{key}': {error}");
+                    // Generated RC credentials are never saved, but the running
+                    // engine still requires them after a reload or restore.
+                    if !backend.has_valid_auth()
+                        && let Some(running) = self.get(LOCAL_BACKEND_NAME).await
+                        && running.is_auth_generated
+                    {
+                        backend.username = running.username;
+                        backend.password = running.password;
+                        backend.is_auth_generated = true;
                     }
+                    let _ = self.update(LOCAL_BACKEND_NAME, backend).await;
+                } else if let Some(loaded) = self.get(&key).await {
+                    // A reload or restore can carry a new address or credentials.
+                    if loaded.host != backend.host
+                        || loaded.port != backend.port
+                        || loaded.username != backend.username
+                        || loaded.password != backend.password
+                    {
+                        self.clear_runtime_info(&key).await;
+                    }
+                    let _ = self.update(&key, backend).await;
+                } else if let Err(error) = self.add(manager, backend, CopySources::default()).await
+                {
+                    log::warn!("Skipping saved backend '{key}': {error}");
                 }
             }
         }
@@ -589,6 +613,26 @@ impl BackendManager {
             }
         } else {
             log::info!("Restored active backend: {target_backend}");
+        }
+
+        // A restore can leave out backends that were loaded before it. Their profiles stay
+        // on disk; only the live entry goes, so nothing is lost if the file was incomplete.
+        let active_name = self.get_active_name().await;
+        let stale: Vec<String> = self
+            .state
+            .read()
+            .await
+            .backends
+            .iter()
+            .map(|b| b.name.clone())
+            .filter(|name| {
+                !Backend::is_local_name(name) && *name != active_name && !saved_names.contains(name)
+            })
+            .collect();
+        for name in stale {
+            if let Err(error) = self.detach(&name).await {
+                log::warn!("Failed to drop backend '{name}' missing from saved settings: {error}");
+            }
         }
 
         Ok(())
@@ -1250,6 +1294,82 @@ mod tests {
             backends[0].status,
             Some(RuntimeStatus::Error("connection failed".to_string()))
         );
+    }
+
+    #[tokio::test]
+    async fn reloading_settings_keeps_the_running_engine_credentials() {
+        let directory = tempfile::tempdir().unwrap();
+        let settings = rcman::SettingsManager::builder("backend-test", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<crate::services::settings::schema::AppSettings>()
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("connections"))
+            .build()
+            .unwrap();
+        // Saved Local entries never contain generated credentials.
+        settings
+            .sub_settings("connections")
+            .unwrap()
+            .set(
+                LOCAL_BACKEND_NAME,
+                &serde_json::json!({ "is_local": true, "host": "127.0.0.1", "port": 51900 }),
+            )
+            .unwrap();
+
+        let manager = BackendManager::new();
+        let mut running = Backend::new_local(LOCAL_BACKEND_NAME);
+        running.username = Some("user_1234abcd".into());
+        running.password = Some("secret".into());
+        running.is_auth_generated = true;
+        manager.update(LOCAL_BACKEND_NAME, running).await.unwrap();
+
+        manager.load_from_settings(&settings).await.unwrap();
+
+        let local = manager.get(LOCAL_BACKEND_NAME).await.unwrap();
+        assert!(local.has_valid_auth());
+        assert!(local.is_auth_generated);
+        assert_eq!(local.password.as_deref(), Some("secret"));
+    }
+
+    #[tokio::test]
+    async fn reloading_settings_applies_saved_remote_connections_and_drops_unsaved_ones() {
+        let directory = tempfile::tempdir().unwrap();
+        let settings = rcman::SettingsManager::builder("backend-test", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<crate::services::settings::schema::AppSettings>()
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("connections"))
+            .build()
+            .unwrap();
+        settings
+            .sub_settings("connections")
+            .unwrap()
+            .set(
+                "NAS",
+                &serde_json::json!({ "is_local": false, "host": "10.0.0.9", "port": 5599 }),
+            )
+            .unwrap();
+
+        let manager = BackendManager::new();
+        for name in ["NAS", "Gone"] {
+            manager
+                .add(
+                    &settings,
+                    Backend::new_remote(name, "10.0.0.2", 5572),
+                    CopySources::default(),
+                )
+                .await
+                .unwrap();
+        }
+        manager
+            .set_runtime_status("NAS", super::super::runtime::RuntimeStatus::Connected)
+            .await;
+
+        manager.load_from_settings(&settings).await.unwrap();
+
+        let nas = manager.get("NAS").await.unwrap();
+        assert_eq!((nas.host.as_str(), nas.port), ("10.0.0.9", 5599));
+        assert!(manager.get_runtime_info("NAS").await.is_none());
+        assert!(manager.get("Gone").await.is_none());
+        assert!(manager.get(LOCAL_BACKEND_NAME).await.is_some());
     }
 
     #[tokio::test]

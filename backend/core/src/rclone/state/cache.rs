@@ -191,23 +191,14 @@ impl RemoteCache {
     /// Remote config loading is required for a usable backend; mount/serve
     /// discovery may fail when those capabilities are unavailable.
     pub async fn refresh_all(&self, app: AppHandle, backend: &Backend) -> Result<(), String> {
-        let (r1, r2, r3) = tokio::join!(
+        let (remotes, _mounts, _serves) = tokio::join!(
             self.refresh_remotes_and_configs(app.clone(), backend),
             self.refresh_mounted_remotes(app.clone(), backend),
             self.refresh_serves(app, backend),
         );
 
-        for (label, res) in [
-            ("remotes and configs", &r1),
-            ("mounted remotes", &r2),
-            ("serves", &r3),
-        ] {
-            if let Err(e) = res {
-                error!("Failed to refresh {label}: {e}");
-            }
-        }
-
-        r1
+        // Each refresh logs its own failure, and only the remote configs are required.
+        remotes
     }
 
     /// Register a mount in this backend's cache before reconciling with its API.

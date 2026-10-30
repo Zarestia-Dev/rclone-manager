@@ -32,13 +32,19 @@ fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path
     read_rclone_binary(app)
 }
 
+/// `rclone version` answers instantly; a binary that does not is hung or blocked.
+const VERSION_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
 pub async fn get_rclone_version(rclone_binary: &std::path::Path) -> Option<String> {
-    match crate::utils::process::command::Command::new(rclone_binary)
-        .arg("version")
-        .output()
-        .await
-    {
-        Ok(output) if output.status.success() => {
+    let output = tokio::time::timeout(
+        VERSION_CHECK_TIMEOUT,
+        crate::utils::process::command::Command::new(rclone_binary)
+            .arg("version")
+            .output(),
+    )
+    .await;
+    match output {
+        Ok(Ok(output)) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             stdout.lines().next().and_then(|line| {
                 line.split_whitespace()
@@ -51,28 +57,11 @@ pub async fn get_rclone_version(rclone_binary: &std::path::Path) -> Option<Strin
 }
 
 pub fn is_version_at_least(current: &str, required: &str) -> bool {
-    let parse_parts = |v: &str| -> Vec<u32> {
-        let main_part = v.split(['-', '+', '_']).next().unwrap_or(v);
-        main_part
-            .split('.')
-            .map(|s| s.parse::<u32>().unwrap_or(0))
-            .collect()
-    };
-
-    let curr_parts = parse_parts(current);
-    let req_parts = parse_parts(required);
-
-    for i in 0..std::cmp::max(curr_parts.len(), req_parts.len()) {
-        let curr = curr_parts.get(i).copied().unwrap_or(0);
-        let req = req_parts.get(i).copied().unwrap_or(0);
-        if curr > req {
-            return true;
-        }
-        if curr < req {
-            return false;
-        }
-    }
-    true
+    use crate::utils::version::{clean_app_version, split_version_parts};
+    // A development or beta build counts as the release it leads up to, so only the
+    // numeric core is compared.
+    split_version_parts(clean_app_version(current)).0
+        >= split_version_parts(clean_app_version(required)).0
 }
 
 pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool, String> {
@@ -184,6 +173,9 @@ mod tests {
         assert!(is_version_at_least("1.70.1", "1.70.0"));
         assert!(is_version_at_least("1.71.0", "1.70.0"));
         assert!(is_version_at_least("1.70.0-DEV", "1.70.0"));
+        assert!(is_version_at_least("v1.75.0-beta.9123.abc", "1.75.0"));
+        assert!(is_version_at_least("1.100.0", "1.75.0"));
+        assert!(!is_version_at_least("1.9.0", "1.75.0"));
         assert!(!is_version_at_least("1.69.9", "1.70.0"));
         assert!(!is_version_at_least("1.66.0", "1.70.0"));
     }

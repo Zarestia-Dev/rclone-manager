@@ -1,18 +1,20 @@
 //! Restore managed settings first, then reconcile opaque rclone imports and runtime state.
 
+use super::rclone_externals::{
+    deferred_remote, is_rclone_conf_id, rclone_conf_targets, remote_name,
+};
 use crate::context::AppHandle;
 use crate::rclone::commands::remote::{create_remote, update_remote};
 use crate::services::settings::AppSettingsManager;
 use log::{debug, info};
 use serde_json::{Value, json};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 
 pub async fn restore_settings(
     app: AppHandle,
     backup_path: std::path::PathBuf,
     password: Option<String>,
     restore_profile: Option<String>,
-    restore_profile_as: Option<String>,
 ) -> Result<String, String> {
     let state = app.state::<crate::utils::types::state::RcloneState>();
     let _operation = state.vault_operation_lock.lock().await;
@@ -30,27 +32,23 @@ pub async fn restore_settings(
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty());
     options.restore_profile = restore_profile;
-    options.restore_profile_as = restore_profile_as;
 
     // Resolve the target before restoring settings that can change backend selection.
     let analysis = manager.backup().analyze(&backup_path).map_err(
         |e| crate::localized_error!("backendErrors.backup.restoreFailed", "error" => e.to_string()),
     )?;
-    let provider = app.state::<super::rclone_config_provider::RcloneConfigProvider>();
-    provider.replace(super::rclone_config_provider::RcloneConfigProvider::default());
+    let external_ids = &analysis.manifest.contents.external_configs;
     let mut config_path = None;
-    if analysis
-        .manifest
-        .contents
-        .external_configs
-        .iter()
-        .any(|id| matches!(id.as_str(), "rclone.conf" | "rclone_config"))
-    {
+    if external_ids.iter().any(|id| is_rclone_conf_id(id)) {
         let path = crate::rclone::queries::get_rclone_config_file(app.clone()).await?;
-        provider.replace(
-            super::rclone_config_provider::RcloneConfigProvider::for_restore(path.clone()),
-        );
+        for config in rclone_conf_targets(path.clone()) {
+            options = options.external(config);
+        }
         config_path = Some(path);
+    }
+    // Remote definitions go through rclone's async API after the restore.
+    for id in external_ids.iter().filter(|id| remote_name(id).is_some()) {
+        options = options.external(deferred_remote(id));
     }
 
     let worker_app = app.clone();
@@ -61,11 +59,9 @@ pub async fn restore_settings(
             .backup()
             .restore(&worker_options)
     })
-    .await;
-    provider.replace(super::rclone_config_provider::RcloneConfigProvider::default());
-    let restored = restored
-        .map_err(|e| e.to_string())
-        .and_then(|result| result.map_err(|e| e.to_string()));
+    .await
+    .map_err(|e| restore_failed(&e))
+    .and_then(|result| result.map_err(|e| restore_error(&e)));
 
     let outcome = match restored {
         Ok(result) => {
@@ -77,13 +73,11 @@ pub async fn restore_settings(
                 Ok(())
             };
             match reload {
-                Ok(()) => restore_external_remotes(&app, &options, result).await,
+                Ok(()) => import_deferred_remotes(&app, result).await,
                 Err(error) => Err(error),
             }
         }
-        Err(error) => {
-            Err(crate::localized_error!("backendErrors.backup.restoreFailed", "error" => error))
-        }
+        Err(error) => Err(error),
     };
     // Even an error can follow a managed commit or an incomplete rollback.
     let refresh = crate::services::initialization::refresh_system(app.clone()).await;
@@ -98,61 +92,50 @@ pub async fn restore_settings(
     }
 }
 
-// Read-only providers and unresolved IDs both require the application's async RC API.
-fn remote_import_ids(result: &rcman::RestoreResult) -> BTreeSet<&str> {
-    result
-        .external_pending
-        .iter()
-        .map(String::as_str)
-        .chain(
-            result
-                .skipped_details
-                .iter()
-                .filter(|item| item.reason == rcman::RestoreSkipReason::ReadOnlyImportTarget)
-                .map(|item| item.id.as_str()),
-        )
-        .filter(|id| id.starts_with("remote:"))
-        .collect()
+fn restore_failed(error: &dyn std::fmt::Display) -> String {
+    crate::localized_error!("backendErrors.backup.restoreFailed", "error" => error.to_string())
 }
 
-async fn restore_external_remotes(
+/// The password cases get their own message so the restore dialog can show them
+/// next to the password field.
+fn restore_error(error: &rcman::Error) -> String {
+    match error {
+        rcman::Error::InvalidPassword => {
+            crate::localized_error!("backendErrors.backup.wrongPassword")
+        }
+        rcman::Error::PasswordRequired => {
+            crate::localized_error!("backendErrors.backup.passwordRequired")
+        }
+        other => restore_failed(other),
+    }
+}
+
+/// The remote a deferred definition belongs to, and its config.
+fn parse_deferred_remote(
+    item: &rcman::backup::DeferredImport,
+) -> Result<(&str, serde_json::Value), String> {
+    let name = remote_name(&item.id).ok_or_else(|| item.id.clone())?;
+    let config = serde_json::from_slice(&item.data).map_err(|e| e.to_string())?;
+    Ok((name, config))
+}
+
+async fn import_deferred_remotes(
     app: &AppHandle,
-    options: &rcman::RestoreOptions,
     result: rcman::RestoreResult,
 ) -> Result<String, String> {
     let mut imported = 0;
     let mut errors = Vec::new();
-    for id in remote_import_ids(&result) {
-        let name = id.strip_prefix("remote:").unwrap_or_default();
-        let worker_app = app.clone();
-        let path = options.backup_path.clone();
-        let password = options.password.clone();
-        let config_id = id.to_owned();
-        let data = crate::utils::spawn_blocking(move || {
-            worker_app
-                .state::<AppSettingsManager>()
-                .backup()
-                .get_external_config_from_backup(&path, &config_id, password.as_deref())
-        })
-        .await;
-        let parsed = data
-            .map_err(|e| e.to_string())
-            .and_then(|data| data.map_err(|e| e.to_string()))
-            .and_then(|data| serde_json::from_slice(&data).map_err(|e| e.to_string()));
-        let imported_remote = match parsed {
-            Ok(value) => upsert_remote_from_config(name, value, app).await,
+    for item in &result.deferred {
+        let imported_remote = match parse_deferred_remote(item) {
+            Ok((name, config)) => upsert_remote_from_config(name, config, app).await,
             Err(error) => Err(error),
         };
         match imported_remote {
             Ok(()) => imported += 1,
-            Err(error) => errors.push(format!("{id}: {error}")),
+            Err(error) => errors.push(format!("{}: {error}", item.id)),
         }
     }
-    for id in &result.external_pending {
-        if !id.starts_with("remote:") {
-            errors.push(id.clone());
-        }
-    }
+    errors.extend(result.external_pending.iter().cloned());
     if !errors.is_empty() {
         return Err(
             crate::localized_error!("backendErrors.backup.restoreIncomplete", "error" => errors.join("; ")),
@@ -160,8 +143,9 @@ async fn restore_external_remotes(
     }
     let restored = result.restored.len() + imported;
     info!("Restore complete: {restored} items restored");
-    Ok(format!(
-        "Settings restored successfully ({restored} items restored)"
+    Ok(crate::localized_success!(
+        "backendSuccess.backup.restored",
+        "count" => restored
     ))
 }
 
@@ -179,7 +163,7 @@ pub(super) async fn upsert_remote_from_config(
     }
 
     let config_map: HashMap<String, Value> =
-        serde_json::from_value(config).map_err(|e| format!("Invalid config map format: {e}"))?;
+        serde_json::from_value(config).map_err(|e| e.to_string())?;
 
     info!("Upserting remote '{remote_name}'...");
 
@@ -201,7 +185,7 @@ pub(super) async fn upsert_remote_from_config(
             None,
         )
         .await
-        .map_err(|e| format!("Failed to create remote '{remote_name}': {e}"))?;
+        .map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -210,31 +194,45 @@ pub(super) async fn upsert_remote_from_config(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rcman::backup::DeferredImport;
+
+    fn deferred(id: &str, data: &[u8]) -> DeferredImport {
+        DeferredImport {
+            id: id.into(),
+            data: data.to_vec(),
+        }
+    }
 
     #[test]
-    fn remote_imports_include_read_only_and_pending_but_not_conflicts() {
-        let result = rcman::RestoreResult {
-            external_pending: vec!["remote:one".into(), "unknown".into()],
-            skipped_details: vec![
-                rcman::RestoreSkippedItem {
-                    id: "remote:two".into(),
-                    reason: rcman::RestoreSkipReason::ReadOnlyImportTarget,
-                },
-                rcman::RestoreSkippedItem {
-                    id: "remote:one".into(),
-                    reason: rcman::RestoreSkipReason::ReadOnlyImportTarget,
-                },
-                rcman::RestoreSkippedItem {
-                    id: "remote:conflict".into(),
-                    reason: rcman::RestoreSkipReason::ExistsConflict,
-                },
-            ],
-            ..Default::default()
-        };
+    fn password_failures_have_their_own_messages() {
         assert_eq!(
-            remote_import_ids(&result).into_iter().collect::<Vec<_>>(),
-            ["remote:one", "remote:two"]
+            restore_error(&rcman::Error::InvalidPassword),
+            "backendErrors.backup.wrongPassword"
         );
-        assert!(remote_import_ids(&rcman::RestoreResult::default()).is_empty());
+        assert_eq!(
+            restore_error(&rcman::Error::PasswordRequired),
+            "backendErrors.backup.passwordRequired"
+        );
+        let other = restore_error(&rcman::Error::InvalidBackup("bad".into()));
+        let other: serde_json::Value = serde_json::from_str(&other).unwrap();
+        assert_eq!(other["key"], "backendErrors.backup.restoreFailed");
+        assert!(other["params"]["error"].as_str().unwrap().contains("bad"));
+    }
+
+    #[test]
+    fn a_deferred_remote_yields_its_name_and_config() {
+        let item = deferred("remote:drive", br#"{"drive":{"type":"drive"}}"#);
+        let (name, config) = parse_deferred_remote(&item).unwrap();
+        assert_eq!(name, "drive");
+        assert_eq!(config["drive"]["type"], "drive");
+    }
+
+    #[test]
+    fn malformed_or_foreign_deferred_items_are_errors() {
+        assert!(parse_deferred_remote(&deferred("remote:drive", b"not json")).is_err());
+        assert_eq!(
+            parse_deferred_remote(&deferred("rclone.conf", b"{}")).unwrap_err(),
+            "rclone.conf"
+        );
     }
 }

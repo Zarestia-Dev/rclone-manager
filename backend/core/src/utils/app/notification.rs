@@ -223,6 +223,10 @@ pub enum NotificationEvent {
 #[serde(tag = "stage", content = "data", rename_all = "snake_case")]
 pub enum SystemStage {
     AllJobsStopped,
+    /// Cron schedules and file watchers could not be prepared at startup.
+    AutomationUnavailable {
+        error: String,
+    },
 }
 
 // Rendering Logic
@@ -652,6 +656,14 @@ impl NotificationEvent {
                     title: t("notification.title.allJobsStopped"),
                     body: t("notification.body.allJobsStopped"),
                     level: LogLevel::Warn,
+                },
+                SystemStage::AutomationUnavailable { error } => RenderedContent {
+                    title: t("notification.title.automationUnavailable"),
+                    body: t_with_params(
+                        "notification.body.automationUnavailable",
+                        &[("error", error)],
+                    ),
+                    level: LogLevel::Error,
                 },
             },
 

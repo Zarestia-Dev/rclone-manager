@@ -5,10 +5,15 @@ pub mod bootstrap;
 
 use crate::context::AppHandle;
 use crate::rclone::backend::BackendManager;
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::backend::types::Backend;
 use crate::services::bridge;
 use crate::services::lifecycle::startup::autostart_profiles;
 use crate::services::security::SafeEnvironmentManager;
 use crate::services::settings::AppSettingsManager;
+use crate::utils::app::notification::{NotificationEvent, SystemStage, notify};
+#[cfg(not(feature = "librclone"))]
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
@@ -40,7 +45,6 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
                 .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
                 .language(),
         );
-        crate::utils::logging::log::init_logging("info", app_handle.clone())?;
         #[cfg(feature = "updater")]
         crate::services::updates::health::core_ready(&app_handle);
         return Ok(());
@@ -86,10 +90,18 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
 
     // Automation is optional: when it fails, health monitoring and the profile
     // auto-starts below must still run.
-    let autostarts = automation::initialize_automations(app_handle.clone())
-        .await
-        .inspect_err(|e| error!("Phase 4 Automation setup failed: {e}"))
-        .ok();
+    let autostarts = match automation::initialize_automations(app_handle.clone()).await {
+        Ok(autostarts) => Some(autostarts),
+        Err(error) => {
+            error!("Phase 4 Automation setup failed: {error}");
+            // Without it no schedule or watcher runs, so the user has to be told.
+            notify(
+                &app_handle,
+                NotificationEvent::System(SystemStage::AutomationUnavailable { error }),
+            );
+            None
+        }
+    };
 
     crate::services::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
@@ -118,10 +130,8 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
     info!("Phase 5: Running post-initialization tasks");
-    if let Some(autostarts) = autostarts {
-        autostarts.start(&app_handle);
-    }
-    autostart_profiles(app_handle.clone()).await;
+    let remotes = autostarts.map(|autostarts| autostarts.start(&app_handle));
+    autostart_profiles(app_handle.clone(), remotes).await;
 
     info!("Initialization complete");
     Ok(())
@@ -142,16 +152,37 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     let settings = manager.get_all().map_err(|e| e.to_string())?;
 
     let backend_manager = app_handle.state::<BackendManager>();
+    #[cfg(not(feature = "librclone"))]
+    let running_local = backend_manager.get(LOCAL_BACKEND_NAME).await;
     backend_manager
         .load_from_settings(manager.inner())
         .await
         .map_err(|e| format!("Failed to reload backends: {e}"))?;
 
+    // A restore can change where the local engine must listen. Its running
+    // process still uses the old address, so move it before refreshing caches.
+    #[cfg(not(feature = "librclone"))]
+    let restarted = match (running_local, backend_manager.get(LOCAL_BACKEND_NAME).await) {
+        (Some(running), Some(saved)) if local_connection_changed(&running, &saved) => {
+            crate::rclone::engine::lifecycle::restart_for_config_change_and_wait(
+                &app_handle,
+                "settings_reload",
+            )
+            .await;
+            true
+        }
+        _ => false,
+    };
+    #[cfg(feature = "librclone")]
+    let restarted = false;
+
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
         let _ = env_manager.init_with_stored_credentials(manager.inner());
     }
 
-    initialize_caches(&app_handle).await?;
+    // A restarted engine's post-start setup has already refreshed the remote caches. A failed
+    // refresh must not leave the rest of the restore unapplied, so it is reported last.
+    let cache_result = initialize_caches(&app_handle, !restarted).await;
 
     crate::services::automation::commands::reload_automations_from_configs(&app_handle).await?;
 
@@ -173,28 +204,42 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         },
     );
 
+    cache_result?;
     info!("System successfully refreshed");
     Ok(())
 }
 
-/// Refreshes the remote caches and reloads alerts after a settings change or restore.
-async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
-    info!("Refreshing caches...");
+/// Whether the engine started with `running` must be restarted to match `saved`.
+#[cfg(not(feature = "librclone"))]
+fn local_connection_changed(running: &Backend, saved: &Backend) -> bool {
+    running.host != saved.host
+        || running.port != saved.port
+        || running.username != saved.username
+        || running.password != saved.password
+        || running.config_path != saved.config_path
+        || running.config_password != saved.config_password
+}
 
-    let backend_manager = app_handle.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    if let Err(e) = backend_manager
-        .remote_cache_for(&backend.name)
-        .refresh_all(app_handle.clone(), &backend)
-        .await
-    {
-        error!("Failed to refresh backend caches: {e}");
-        return Err(e);
+/// Reloads alerts and, unless `refresh_remotes` is false, the remote caches after a
+/// settings change or restore. Alerts load even when the remote refresh fails.
+async fn initialize_caches(app_handle: &AppHandle, refresh_remotes: bool) -> Result<(), String> {
+    let mut result = Ok(());
+    if refresh_remotes {
+        info!("Refreshing caches...");
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        result = backend_manager
+            .remote_cache_for(&backend.name)
+            .refresh_all(app_handle.clone(), &backend)
+            .await;
+        match &result {
+            Ok(()) => debug!("Refreshed backend caches"),
+            Err(e) => error!("Failed to refresh backend caches: {e}"),
+        }
     }
-    debug!("Refreshed backend caches");
 
     load_alert_state(app_handle).await;
-    Ok(())
+    result
 }
 
 /// Seeds the default alerts and loads the alert rules and actions.
@@ -295,6 +340,25 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(feature = "librclone"))]
+    #[test]
+    fn a_restored_local_address_or_credential_restarts_the_engine() {
+        let running = Backend::new_local(LOCAL_BACKEND_NAME);
+        assert!(!local_connection_changed(&running, &running.clone()));
+
+        let mut moved = running.clone();
+        moved.port += 1;
+        assert!(local_connection_changed(&running, &moved));
+
+        let mut credentials = running.clone();
+        credentials.password = Some("restored".into());
+        assert!(local_connection_changed(&running, &credentials));
+
+        let mut config = running.clone();
+        config.config_path = Some("/restored/rclone.conf".into());
+        assert!(local_connection_changed(&running, &config));
+    }
     use crate::rclone::state::automations::AutomationsCache;
     use crate::services::automation::{engine::AutomationScheduler, watcher::WatcherManager};
 

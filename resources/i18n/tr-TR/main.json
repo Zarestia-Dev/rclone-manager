@@ -950,7 +950,6 @@
       "titleActivity": "Etkinlik",
       "loadMore": "Daha fazla göster"
     },
-
     "inputModal": {
       "name": "Ad",
       "required": "{{field}} gereklidir",
@@ -1517,8 +1516,9 @@
         "description": "Tam rclone.conf dosyası"
       },
       "remoteConfigs": {
-        "title": "Uzak Sunucu Yapılandırmaları"
+        "title": "Uzak Sunucu Ayarları"
       },
+      "noRemoteDefinitions": "Bu yedekte rclone.conf yok, bu yüzden uzak sunucuların kendisi geri yüklenmeyecek; yalnızca uygulama ayarları (bağlamalar, otomatik başlatma, seçenekler) geri yüklenir. Uzak sunucuları yeniden ekleyin veya parola korumalı bir yedekten geri yükleyin.",
       "profiles": {
         "title": "Profiller"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "Yedeği Geri Yükle",
       "errors": {
         "passwordRequired": "Şifre gerekli",
-        "passwordEmpty": "Şifre boş veya sadece boşluk olamaz",
-        "wrongPassword": "Yanlış şifre. Lütfen tekrar deneyin.",
-        "integrityFailed": "Yedekleme dosyası bozuk veya değiştirilmiş.",
-        "verificationFailed": "Dosya doğrulaması başarısız. Yedek bozuk olabilir.",
-        "requiresPassword": "Bu yedeğin şifresini çözmek için parola gerekiyor.",
-        "decryptFailed": "Yedek şifresi çözülemedi. Şifrenizi kontrol edin.",
-        "generic": "Geri yükleme sırasında bir hata oluştu: {{error}}"
+        "passwordEmpty": "Şifre boş veya sadece boşluk olamaz"
       }
     },
     "launchRestoreFailed": "Geri yükleme akışı başlatılamadı",
@@ -2198,7 +2192,8 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
-      "noPasswordHint": "Parola olmadan rclone.conf ve kayıtlı gizli bilgiler yedeğe eklenmez. Hızlı Çalıştırmalara veya iş akışlarına doğrudan yazılan kimlik bilgileri olduğu gibi dışa aktarılır.",
+      "noPasswordHint": "Parola olmadan rclone.conf ve kayıtlı gizli bilgiler yedeğe eklenmez; bu yüzden uzak sunucularınız başka bir makinede yeniden oluşturulamaz. Hızlı Çalıştırmalara veya iş akışlarına doğrudan yazılan kimlik bilgileri olduğu gibi dışa aktarılır.",
+      "remoteNeedsPassword": "Tek bir uzak sunucu yalnızca parola ile dışa aktarılabilir, çünkü rclone yapılandırması yalnızca şifreli yedeklere eklenir.",
       "vaultWarningTitle": "Yapılandırma Kasası Açık",
       "vaultWarningDesc": "Dışa aktarılan yedekler kasa şifrelemesini devralmaz. Hassas kimlik bilgilerini ve yapılandırmaları bir parola ile korumak için aşağıdaki şifreleme seçeneğini kullanın.",
       "exportNow": "Şimdi Dışa Aktar",
@@ -3084,7 +3079,17 @@
       "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
       "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor",
       "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}",
-      "rcAuthFailed": "Rclone uzaktan kontrol kimlik doğrulaması başarısız oldu: {{error}}"
+      "rcAuthFailed": "Rclone uzaktan kontrol kimlik doğrulaması başarısız oldu: {{error}}",
+      "remoteAuthRejected": "{{address}} adresindeki {{name}} uzak arka ucu RC API kimlik bilgilerini reddetti (HTTP 401)",
+      "remoteUnreachable": "{{address}} adresindeki {{name}} uzak arka ucuna ulaşılamıyor",
+      "portHeldByStaleProcess": "{{port}} bağlantı noktası hâlâ durdurulamayan bir rclone işlemi tarafından kullanılıyor (başka bir kullanıcıya ait olabilir veya sonlanmış olsa da yuvayı tutuyor olabilir). Elle durdurun veya ayarlardan arka uç bağlantı noktasını değiştirin.",
+      "portInUse": "{{port}} bağlantı noktası başka bir işlem veya uygulama tarafından zaten kullanılıyor",
+      "portBindFailed": "{{port}} bağlantı noktası bağlanamadı (adres zaten kullanımda)",
+      "exitedDuringStartup": "rclone işlemi başlatma sırasında sonlandı. rclone günlüğünü kontrol edin.",
+      "startupTimeout": "rclone API'sinin hazır olması beklenirken zaman aşımı oluştu ({{seconds}} sn)",
+      "librcloneInitFailed": "librclone başlatılamadı: {{error}}",
+      "encryptionCheckFailed": "Yapılandırmanın şifreli olup olmadığı denetlenemedi: {{error}}",
+      "configLoadFailed": "rclone yapılandırma dosyası yüklenemedi: {{error}}"
     },
     "security": {
       "passwordEmpty": "Şifre boş olamaz",
@@ -3102,7 +3107,9 @@
       "restoreFailed": "Yedekleme geri yükleme başarısız oldu: {{error}}",
       "exportFailed": "Yedekleme dışa aktarma başarısız oldu: {{error}}",
       "refreshFailed": "Yedek geri yükleme sonrasında sistem yenilenemedi: {{error}}",
-      "restoreIncomplete": "Yedekleme geri yükleme tamamlanamadı: {{error}}"
+      "restoreIncomplete": "Yedekleme geri yükleme tamamlanamadı: {{error}}",
+      "wrongPassword": "Yanlış şifre. Lütfen tekrar deneyin.",
+      "passwordRequired": "Bu yedeğin şifresini çözmek için parola gerekiyor."
     },
     "backend": {
       "nameEmpty": "Arka uç adı boş olamaz",
@@ -3189,6 +3196,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Yedek oluşturuldu: {{path}}",
+      "restored": "Ayarlar başarıyla geri yüklendi ({{count}} öğe geri yüklendi)"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} bağlantısı başarıyla kaldırıldı",
       "allUnmounted": "Tüm bağlantılar başarıyla kaldırıldı"
@@ -3343,6 +3354,7 @@
       "automationFailed": "{{type}} Otomasyon Hatası",
       "automationStopped": "{{type}} Otomasyonu Durduruldu",
       "allJobsStopped": "Tüm İşler Durduruldu",
+      "automationUnavailable": "Otomasyon kullanılamıyor",
       "allServesStopped": "Tüm Sunucular Durduruldu",
       "allUnmounted": "Tüm Bağlantılar Kesildi",
       "updateFound": "Yeni Sürüm Mevcut",
@@ -3386,6 +3398,7 @@
       "serveFailed": "{{backend}} üzerindeki {{remote}} için sunucu başlatılamadı: {{error}}",
       "serveStopped": "{{backend}} üzerindeki {{remote}} için sunucu durduruldu.",
       "allJobsStopped": "Tüm aktif işler başarıyla sonlandırıldı.",
+      "automationUnavailable": "Zamanlamalar ve dosya izleyicileri başlatılamadı: {{error}}",
       "allServesStopped": "Tüm aktif sunucular başarıyla kapatıldı.",
       "allUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı.",
       "automationStarted": "{{type}} otomasyonu '{{automation}}' {{backend}} üzerinde yürütülüyor.",

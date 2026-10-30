@@ -204,8 +204,13 @@
         ></app-alert-banner>
       } @else {
         <app-alert-banner
-          severity="info"
-          [description]="'modals.export.noPasswordHint' | translate"
+          severity="warning"
+          [description]="
+            (showSpecificRemoteSection()
+              ? 'modals.export.remoteNeedsPassword'
+              : 'modals.export.noPasswordHint'
+            ) | translate
+          "
         ></app-alert-banner>
       }
     </div>

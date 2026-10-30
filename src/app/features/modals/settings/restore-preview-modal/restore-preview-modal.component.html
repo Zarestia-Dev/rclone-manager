@@ -85,6 +85,13 @@
     </div>
   </div>
 
+  @if (missingRemoteDefinitions) {
+    <app-alert-banner
+      severity="warning"
+      [description]="'backup.restore.noRemoteDefinitions' | translate"
+    ></app-alert-banner>
+  }
+
   <!-- Contents Card -->
   @if (hasContents) {
     <div class="info-card">

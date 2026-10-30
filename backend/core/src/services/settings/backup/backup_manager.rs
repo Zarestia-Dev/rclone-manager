@@ -2,6 +2,7 @@
 //!
 //! This module provides backup and analysis commands using the rcman library.
 
+use super::rclone_externals::{is_rclone_conf_id, rclone_conf, remote_definition, remote_name};
 use crate::context::AppHandle;
 use crate::rclone::queries::get_rclone_config_file;
 use crate::services::settings::AppSettingsManager;
@@ -11,7 +12,6 @@ use std::path::PathBuf;
 
 // BACKUP COMMAND
 
-#[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
     app_handle: AppHandle,
     backup_dir: String,
@@ -20,7 +20,6 @@ pub async fn backup_settings(
     remote_name: Option<String>,
     user_note: Option<String>,
     include_profiles: Option<Vec<String>>,
-    include_secrets: Option<bool>,
 ) -> Result<String, String> {
     let state = app_handle.state::<crate::utils::types::state::RcloneState>();
     let _operation = state.vault_operation_lock.lock().await;
@@ -33,10 +32,10 @@ pub async fn backup_settings(
     let password = password
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty());
-    let (secret_policy, include_rclone_config) =
-        export_secrets(password.as_deref(), include_secrets.unwrap_or(false));
-    let provider_state = app_handle.state::<super::rclone_config_provider::RcloneConfigProvider>();
-    provider_state.replace(super::rclone_config_provider::RcloneConfigProvider::default());
+    // Secrets leave the app only inside an encrypted archive. Without a password
+    // rcman redacts managed secrets and drops sensitive externals, so the rclone
+    // config and remote definitions are not even read.
+    let encrypted = password.is_some();
     info!("Starting backup with rcman to: {backup_dir}");
 
     // Map app's ExportType to rcman's ExportType
@@ -53,7 +52,12 @@ pub async fn backup_settings(
     // Build rcman backup options
     let mut options = rcman::BackupOptions::new()
         .output_dir(&backup_dir)
-        .export_type(rcman_export_type);
+        .export_type(rcman_export_type)
+        .secret_policy(if encrypted {
+            rcman::SecretBackupPolicy::EncryptedOnly
+        } else {
+            rcman::SecretBackupPolicy::Exclude
+        });
 
     if matches!(
         export_type,
@@ -69,53 +73,36 @@ pub async fn backup_settings(
         } else {
             options = options.include_sub_settings(category);
         }
-        if category == "remotes" && include_rclone_config {
-            register_rclone_config_provider(&app_handle).await?;
-            options = options.include_external("rclone.conf");
+        if category == "remotes" && encrypted {
+            options = options.external(rclone_conf(rclone_config_path(&app_handle).await?));
         }
         options = options.filename_suffix(category);
     }
 
-    if matches!(export_type, ExportType::All) {
-        if include_rclone_config {
-            register_rclone_config_provider(&app_handle).await?;
-            options = options.include_external("rclone.conf");
-        }
-        options = options.include_sub_settings(crate::utils::constants::SUB_REMOTES);
-        options = options.include_sub_settings(crate::utils::constants::SUB_BACKEND);
-        options = options.include_sub_settings(crate::utils::constants::SUB_CONNECTIONS);
-        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_RULES);
-        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS);
-        options = options.include_sub_settings(crate::utils::constants::SUB_QUICK_RUNS);
-        options = options.include_sub_settings(crate::utils::constants::SUB_WORKFLOWS);
-        options = options.include_sub_settings(crate::utils::constants::SUB_TEMPLATES);
+    // A full export names no sub-settings, so rcman includes every registered one
+    // and a new store cannot be forgotten here.
+    if matches!(export_type, ExportType::All) && encrypted {
+        options = options.external(rclone_conf(rclone_config_path(&app_handle).await?));
     }
 
     if matches!(export_type, ExportType::SpecificRemote)
-        && include_rclone_config
+        && encrypted
         && let Some(ref name) = remote_name
     {
-        use super::rclone_config_provider::RcloneConfigProvider;
         use crate::rclone::backend::BackendManager;
         let backend_manager = app_handle.state::<BackendManager>();
 
         let all_configs = backend_manager.remote_cache().await.get_configs().await;
-        let remote_config = all_configs.get(name).cloned();
-
-        let provider = RcloneConfigProvider::for_remote(name, remote_config)
-            .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
-        provider_state.replace(provider);
-        options = options.include_external(format!("remote:{name}"));
-    }
-
-    if let Some(ref pw) = password {
-        let trimmed = pw.trim();
-        if !trimmed.is_empty() {
-            options = options.password(trimmed);
+        if let Some(remote_config) = all_configs.get(name) {
+            options = options.external(remote_definition(name, remote_config).map_err(
+                |e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string()),
+            )?);
         }
     }
 
-    options = options.secret_policy(secret_policy);
+    if let Some(ref pw) = password {
+        options = options.password(pw);
+    }
 
     if let Some(note) = user_note {
         options = options.note(note);
@@ -135,7 +122,6 @@ pub async fn backup_settings(
             .create(&options)
     })
     .await;
-    provider_state.replace(super::rclone_config_provider::RcloneConfigProvider::default());
     let backup_path = result
         .map_err(|e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string()))?
         .map_err(|e| {
@@ -144,40 +130,46 @@ pub async fn backup_settings(
         })?;
 
     info!("Backup complete: {}", backup_path.display());
-    Ok(format!("Backup created at: {}", backup_path.display()))
+    Ok(crate::localized_success!(
+        "backendSuccess.backup.created",
+        "path" => backup_path.display()
+    ))
 }
 
-/// Secrets leave the app only inside an encrypted archive: without a password the
-/// managed secrets are redacted and `rclone.conf` (or a remote's rclone config) is
-/// left out. Returns the secret policy and whether the rclone config is exported.
-fn export_secrets(
-    password: Option<&str>,
-    include_secrets: bool,
-) -> (rcman::SecretBackupPolicy, bool) {
-    let encrypted = password.is_some();
-    let policy = if encrypted && include_secrets {
-        rcman::SecretBackupPolicy::EncryptedOnly
-    } else {
-        rcman::SecretBackupPolicy::Exclude
-    };
-    (policy, encrypted)
-}
-
-pub(super) async fn register_rclone_config_provider(app_handle: &AppHandle) -> Result<(), String> {
-    use crate::services::settings::backup::rclone_config_provider::RcloneConfigProvider;
-
-    let config_path = get_rclone_config_file(app_handle.clone())
+pub(super) async fn rclone_config_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    get_rclone_config_file(app_handle.clone())
         .await
-        .map_err(|e| format!("Failed to fetch rclone config path: {e}"))?;
-
-    app_handle
-        .state::<RcloneConfigProvider>()
-        .replace(RcloneConfigProvider::from_path(config_path));
-
-    Ok(())
+        .map_err(|e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e))
 }
 
 // BACKUP ANALYSIS
+
+/// What the restore dialog shows for an archive's manifest.
+fn describe_contents(contents: &rcman::backup::BackupContents) -> BackupContentsInfo {
+    let has_external =
+        |matches: fn(&str) -> bool| contents.external_configs.iter().any(|id| matches(id));
+    let remotes = contents.sub_settings.get("remotes");
+    BackupContentsInfo {
+        settings: contents.settings,
+        backend_config: contents.sub_settings.contains_key("backend"),
+        rclone_config: has_external(is_rclone_conf_id),
+        remote_definitions: has_external(|id| is_rclone_conf_id(id) || remote_name(id).is_some()),
+        remote_count: remotes.map(|entry| entry.items().len()),
+        remote_names: remotes.map(|entry| {
+            entry
+                .items()
+                .into_iter()
+                .map(|(profile, item)| match profile {
+                    Some(profile) => format!("{profile}: {item}"),
+                    None => item.to_owned(),
+                })
+                .collect()
+        }),
+        profiles: remotes
+            .and_then(rcman::SubSettingsManifestEntry::profile_names)
+            .map(|names| names.into_iter().map(str::to_owned).collect()),
+    }
+}
 
 pub async fn analyze_backup_file(
     app_handle: AppHandle,
@@ -198,66 +190,7 @@ pub async fn analyze_backup_file(
 
     match manager.backup().analyze(&path) {
         Ok(analysis) => {
-            let contents = BackupContentsInfo {
-                settings: analysis.manifest.contents.settings,
-                backend_config: analysis
-                    .manifest
-                    .contents
-                    .sub_settings
-                    .contains_key("backend"),
-                rclone_config: analysis
-                    .manifest
-                    .contents
-                    .external_configs
-                    .iter()
-                    .any(|id| id == "rclone.conf" || id == "rclone_config"),
-                remote_count: analysis.manifest.contents.sub_settings.get("remotes").map(
-                    |r| match r {
-                        rcman::SubSettingsManifestEntry::MultiFile(items) => items.len(),
-                        rcman::SubSettingsManifestEntry::SingleFile(_) => 1,
-                        rcman::SubSettingsManifestEntry::Profiled { profiles } => profiles
-                            .values()
-                            .map(|entry| match entry {
-                                rcman::ProfileEntry::Single(_) => 1,
-                                rcman::ProfileEntry::Multiple(items) => items.len(),
-                            })
-                            .sum(),
-                    },
-                ),
-                remote_names: analysis.manifest.contents.sub_settings.get("remotes").map(
-                    |r| match r {
-                        rcman::SubSettingsManifestEntry::MultiFile(items) => items.clone(),
-                        rcman::SubSettingsManifestEntry::SingleFile(name) => vec![name.clone()],
-                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
-                            let mut names = Vec::new();
-                            for (profile, entry) in profiles {
-                                match entry {
-                                    rcman::ProfileEntry::Single(item) => {
-                                        names.push(format!("{profile}: {item}"));
-                                    }
-                                    rcman::ProfileEntry::Multiple(items) => {
-                                        for item in items {
-                                            names.push(format!("{profile}: {item}"));
-                                        }
-                                    }
-                                }
-                            }
-                            names
-                        }
-                    },
-                ),
-                profiles: analysis
-                    .manifest
-                    .contents
-                    .sub_settings
-                    .get("remotes")
-                    .and_then(|r| match r {
-                        rcman::SubSettingsManifestEntry::Profiled { profiles } => {
-                            Some(profiles.keys().cloned().collect())
-                        }
-                        _ => None,
-                    }),
-            };
+            let contents = describe_contents(&analysis.manifest.contents);
 
             Ok(BackupAnalysis {
                 is_encrypted: analysis.is_encrypted,
@@ -283,47 +216,58 @@ pub async fn analyze_backup_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::constants::{
+        SUB_ALERTS_ACTIONS, SUB_ALERTS_RULES, SUB_BACKEND, SUB_CONNECTIONS, SUB_QUICK_RUNS,
+        SUB_REMOTES, SUB_TEMPLATES, SUB_WORKFLOWS,
+    };
+    use rcman::SubSettingsManifestEntry::{MultiFile, Profiled, SingleFile};
 
-    #[test]
-    fn a_password_includes_secrets_and_the_rclone_config() {
-        assert_eq!(
-            export_secrets(Some("pass"), true),
-            (rcman::SecretBackupPolicy::EncryptedOnly, true)
-        );
+    fn created_backup_path(message: &str) -> String {
+        let message: serde_json::Value = serde_json::from_str(message).unwrap();
+        assert_eq!(message["key"], "backendSuccess.backup.created");
+        message["params"]["path"].as_str().unwrap().to_owned()
     }
 
-    #[test]
-    fn without_a_password_secrets_and_the_rclone_config_stay_out() {
-        for include_secrets in [false, true] {
-            assert_eq!(
-                export_secrets(None, include_secrets),
-                (rcman::SecretBackupPolicy::Exclude, false)
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn a_full_export_without_a_password_succeeds_without_the_rclone_config() {
+    fn app_with_settings(directory: &std::path::Path) -> AppHandle {
         use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport};
-        use crate::utils::types::{backup_types::ExportType, state::RcloneState};
+        use crate::utils::types::state::RcloneState;
         use std::sync::Arc;
 
-        let directory = tempfile::tempdir().unwrap();
-        let output = tempfile::tempdir().unwrap();
-        let conf = directory.path().join("rclone.conf");
-        std::fs::write(&conf, "[drive]\ntype = drive\ntoken = secret\n").unwrap();
-        let settings =
-            crate::services::settings::manager::create_settings_manager(directory.path()).unwrap();
-        let provider = super::super::rclone_config_provider::RcloneConfigProvider::from_path(conf);
-        settings.register_external_provider(Box::new(provider.clone()));
         let app = AppHandle::default();
-        app.manage(settings);
-        app.manage(provider);
+        app.manage(crate::services::settings::manager::create_settings_manager(directory).unwrap());
         app.manage(BackendManager::new());
         app.manage(RcloneState::new(
             reqwest::Client::new(),
             Arc::new(RoutingTransport::new(app.clone())),
         ));
+        app
+    }
+
+    // Exports in one process share the credential namespace, so concurrent tests
+    // would conflict; this single export checks everything a password-less full export holds.
+    #[tokio::test]
+    async fn a_full_export_without_a_password_holds_every_store_but_no_rclone_config() {
+        let directory = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let app = app_with_settings(directory.path());
+        let manager = app.state::<AppSettingsManager>();
+        let stores = [
+            SUB_REMOTES,
+            SUB_BACKEND,
+            SUB_CONNECTIONS,
+            SUB_ALERTS_RULES,
+            SUB_ALERTS_ACTIONS,
+            SUB_QUICK_RUNS,
+            SUB_WORKFLOWS,
+            SUB_TEMPLATES,
+        ];
+        for store in stores {
+            manager
+                .sub_settings(store)
+                .unwrap()
+                .set("entry", &serde_json::json!({}))
+                .unwrap();
+        }
 
         let message = backup_settings(
             app.clone(),
@@ -333,22 +277,97 @@ mod tests {
             None,
             None,
             None,
-            Some(true),
         )
         .await
         .unwrap();
+        let path = created_backup_path(&message);
 
-        let path = message.trim_start_matches("Backup created at: ");
-        let analysis = analyze_backup_file(app, path.into()).await.unwrap();
+        let analysis = analyze_backup_file(app.clone(), path.clone().into())
+            .await
+            .unwrap();
         assert!(!analysis.is_encrypted);
-        assert!(!analysis.contents.unwrap().rclone_config);
+        let contents = analysis.contents.unwrap();
+        assert!(!contents.rclone_config);
+        assert!(!contents.remote_definitions);
+
+        // A full export names no sub-settings, so a newly registered store is never forgotten.
+        let manifest = manager
+            .backup()
+            .analyze(std::path::Path::new(&path))
+            .unwrap();
+        let mut exported: Vec<_> = manifest
+            .manifest
+            .contents
+            .sub_settings
+            .keys()
+            .cloned()
+            .collect();
+        exported.sort();
+        let mut expected: Vec<_> = stores.iter().map(|store| (*store).to_owned()).collect();
+        expected.sort();
+        assert_eq!(exported, expected);
     }
 
     #[test]
-    fn a_password_alone_encrypts_without_adding_managed_secrets() {
-        assert_eq!(
-            export_secrets(Some("pass"), false),
-            (rcman::SecretBackupPolicy::Exclude, true)
+    fn contents_list_remotes_with_their_profiles() {
+        let mut contents = rcman::backup::BackupContents {
+            settings: true,
+            external_configs: vec!["rclone.conf".into()],
+            ..Default::default()
+        };
+        contents.sub_settings.insert(
+            "remotes".into(),
+            Profiled {
+                profiles: [
+                    (
+                        "default".to_string(),
+                        rcman::ProfileEntry::Multiple(vec!["dropbox".into(), "drive".into()]),
+                    ),
+                    ("work".to_string(), rcman::ProfileEntry::Single("s3".into())),
+                ]
+                .into(),
+            },
         );
+        contents
+            .sub_settings
+            .insert("backend".into(), SingleFile("backend".into()));
+
+        let info = describe_contents(&contents);
+        assert!(info.settings && info.backend_config);
+        assert!(info.rclone_config && info.remote_definitions);
+        assert_eq!(info.remote_count, Some(3));
+        assert_eq!(
+            info.remote_names.unwrap(),
+            ["default: drive", "default: dropbox", "work: s3"]
+        );
+        assert_eq!(info.profiles.unwrap(), ["default", "work"]);
+    }
+
+    #[test]
+    fn flat_remotes_have_no_profiles_and_a_single_remote_export_has_definitions() {
+        let mut contents = rcman::backup::BackupContents {
+            external_configs: vec!["remote:drive".into()],
+            ..Default::default()
+        };
+        contents.sub_settings.insert(
+            "remotes".into(),
+            MultiFile(vec!["drive".into(), "s3".into()]),
+        );
+
+        let info = describe_contents(&contents);
+        assert!(!info.rclone_config);
+        assert!(info.remote_definitions);
+        assert_eq!(info.remote_count, Some(2));
+        assert_eq!(info.remote_names.unwrap(), ["drive", "s3"]);
+        assert!(info.profiles.is_none());
+    }
+
+    #[test]
+    fn a_backup_without_remote_settings_reports_none() {
+        let info = describe_contents(&rcman::backup::BackupContents::default());
+        assert!(!info.settings && !info.backend_config);
+        assert!(!info.rclone_config && !info.remote_definitions);
+        assert!(info.remote_count.is_none() && info.remote_names.is_none());
+        assert!(info.profiles.is_none());
     }
 }

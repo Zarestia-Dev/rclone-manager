@@ -950,7 +950,6 @@
       "titleActivity": "活動",
       "loadMore": "顯示更多"
     },
-
     "inputModal": {
       "name": "名稱",
       "required": "{{field}} 為必填項",
@@ -1517,8 +1516,9 @@
         "description": "完整 rclone.conf 檔案"
       },
       "remoteConfigs": {
-        "title": "遠端連線設定"
+        "title": "遠端設定"
       },
+      "noRemoteDefinitions": "此備份不含 rclone.conf，因此不會還原遠端本身，只還原其應用程式設定（掛載、自動啟動、選項）。請重新新增遠端，或從受密碼保護的備份還原。",
       "profiles": {
         "title": "設定檔案"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "恢復備份",
       "errors": {
         "passwordRequired": "必須輸入密碼",
-        "passwordEmpty": "密碼不能為空或空白字元",
-        "wrongPassword": "密碼錯誤，請重試",
-        "integrityFailed": "備份檔案已損壞或被篡改",
-        "verificationFailed": "檔案驗證失敗，備份可能已損壞",
-        "requiresPassword": "此備份需要密碼才能解密",
-        "decryptFailed": "備份解密失敗，請檢查密碼",
-        "generic": "恢復過程中發生錯誤：{{error}}"
+        "passwordEmpty": "密碼不能為空或空白字元"
       }
     },
     "launchRestoreFailed": "啟動恢復流程失敗",
@@ -2198,7 +2192,8 @@
       "passwordLabel": "加密密碼",
       "passwordPlaceholder": "輸入密碼",
       "passwordHint": "恢復備份時需要使用此密碼。",
-      "noPasswordHint": "未設定密碼時，備份不包含 rclone.conf 和已儲存的密鑰。直接填寫在快速執行或工作流程中的憑證將依原樣匯出。",
+      "noPasswordHint": "未設定密碼時，備份不包含 rclone.conf 和已儲存的密鑰，因此無法在其他裝置上重建遠端。直接填寫在快速執行或工作流程中的憑證將依原樣匯出。",
+      "remoteNeedsPassword": "單一遠端只能在設定密碼後匯出，因為其 rclone 設定僅包含在加密備份中。",
       "vaultWarningTitle": "設定保存庫已開啟",
       "vaultWarningDesc": "匯出的備份不繼承保存庫加密。若要使用密碼保護機密認證與設定，請啟用下方的加密選項。",
       "exportNow": "立即匯出",
@@ -3084,7 +3079,17 @@
       "invalidFlags": "檢測到無效的 rclone 旗標: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支援遠端更新",
       "backupFailed": "備份當前 rclone 二進位制檔案失敗：{{error}}",
-      "rcAuthFailed": "Rclone 遠端控制身分驗證失敗：{{error}}"
+      "rcAuthFailed": "Rclone 遠端控制身分驗證失敗：{{error}}",
+      "remoteAuthRejected": "遠端後端 {{name}}（{{address}}）拒絕了 RC API 憑證（HTTP 401）",
+      "remoteUnreachable": "無法連線至遠端後端 {{name}}（{{address}}）",
+      "portHeldByStaleProcess": "連接埠 {{port}} 仍被無法停止的 rclone 程序佔用（它可能屬於其他使用者，或已結束但仍佔用通訊端）。請手動停止它，或在設定中變更後端連接埠。",
+      "portInUse": "連接埠 {{port}} 已被其他程序或應用程式佔用",
+      "portBindFailed": "無法繫結連接埠 {{port}}（位址已被使用）",
+      "exitedDuringStartup": "rclone 程序在啟動期間結束。請檢視 rclone 記錄。",
+      "startupTimeout": "等待 rclone API 就緒逾時（{{seconds}} 秒）",
+      "librcloneInitFailed": "librclone 初始化失敗：{{error}}",
+      "encryptionCheckFailed": "無法檢查設定是否已加密：{{error}}",
+      "configLoadFailed": "無法載入 rclone 設定檔：{{error}}"
     },
     "security": {
       "passwordEmpty": "密碼不能為空",
@@ -3102,7 +3107,9 @@
       "restoreFailed": "備份恢復失敗: {{error}}",
       "exportFailed": "備份匯出失敗: {{error}}",
       "refreshFailed": "備份恢復後重新整理系統失敗: {{error}}",
-      "restoreIncomplete": "備份恢復未完成: {{error}}"
+      "restoreIncomplete": "備份恢復未完成: {{error}}",
+      "wrongPassword": "密碼錯誤，請重試",
+      "passwordRequired": "此備份需要密碼才能解密"
     },
     "backend": {
       "nameEmpty": "後端名稱不能為空",
@@ -3189,6 +3196,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "備份已建立：{{path}}",
+      "restored": "設定已成功還原（已還原 {{count}} 項）"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} 解除安裝成功",
       "allUnmounted": "所有遠端連線已成功解除安裝"
@@ -3343,6 +3354,7 @@
       "automationFailed": "{{type}} 自動化錯誤",
       "automationStopped": "{{type}} 自動化已停止",
       "allJobsStopped": "所有任務已停止",
+      "automationUnavailable": "自動化無法使用",
       "allServesStopped": "所有伺服器已停止",
       "allUnmounted": "所有遠端連線已斷開",
       "updateFound": "發現新版本",
@@ -3386,6 +3398,7 @@
       "serveFailed": "無法在 {{backend}} 上為遠端連線 {{remote}} 啟動服務：{{error}}",
       "serveStopped": "已停止 {{backend}} 上 {{remote}} 的服務。",
       "allJobsStopped": "已成功終止所有活動任務。",
+      "automationUnavailable": "無法啟動排程和檔案監看：{{error}}",
       "allServesStopped": "已成功關閉所有活動伺服器。",
       "allUnmounted": "已成功斷開所有遠端掛載。",
       "automationStarted": "{{type}} 自動化 '{{automation}}' 正在 {{backend}} 上執行。",

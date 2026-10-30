@@ -43,9 +43,7 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = Some(password.clone());
-        let _ = backend_manager
-            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-            .await;
+        let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         debug!("Updated in-memory Local backend config password");
     }
 
@@ -102,9 +100,7 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = None;
-        let _ = backend_manager
-            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-            .await;
+        let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
     }
 
     env_manager.clear_config_password();
@@ -366,9 +362,7 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             let backend_manager = app.state::<BackendManager>();
             if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
-                let _ = backend_manager
-                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                    .await;
+                let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
             }
         }
 
@@ -394,9 +388,7 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             let backend_manager = app.state::<BackendManager>();
             if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
-                let _ = backend_manager
-                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                    .await;
+                let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
             }
         }
 
@@ -433,9 +425,7 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         let backend_manager = app.state::<BackendManager>();
         if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
-            let _ = backend_manager
-                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                .await;
+            let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         }
 
         env_manager.clear_config_password();
@@ -459,9 +449,7 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         let backend_manager = app.state::<BackendManager>();
         if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
-            let _ = backend_manager
-                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                .await;
+            let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         }
 
         env_manager.clear_config_password();

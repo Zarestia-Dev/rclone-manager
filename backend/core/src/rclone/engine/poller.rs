@@ -27,6 +27,40 @@ const POLL_VISIBLE_IDLE: Duration = Duration::from_secs(5);
 const POLL_HIDDEN: Duration = Duration::from_secs(10);
 /// Poller tick when jobs are running or we're in burst mode.
 const POLL_ACTIVE: Duration = Duration::from_secs(1);
+/// Wait before the second restart attempt of an engine that stays down. It doubles up to
+/// the maximum, so a missing binary or an unreachable remote is not retried every tick.
+const RESTART_BACKOFF_START: Duration = Duration::from_secs(2);
+const RESTART_BACKOFF_MAX: Duration = Duration::from_secs(30);
+
+fn next_restart_delay(current: Duration) -> Duration {
+    if current.is_zero() {
+        RESTART_BACKOFF_START
+    } else {
+        (current * 2).min(RESTART_BACKOFF_MAX)
+    }
+}
+
+/// Spaces out the poller's restart attempts. The first attempt of an outage is immediate.
+#[derive(Default)]
+struct RestartBackoff {
+    delay: Duration,
+    next_attempt: Option<time::Instant>,
+}
+
+impl RestartBackoff {
+    fn is_due(&self, now: time::Instant) -> bool {
+        self.next_attempt.is_none_or(|next| now >= next)
+    }
+
+    fn record_attempt(&mut self, now: time::Instant) {
+        self.delay = next_restart_delay(self.delay);
+        self.next_attempt = Some(now + self.delay);
+    }
+
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
 
 pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
@@ -73,6 +107,8 @@ pub fn start_system_poller(app_handle: AppHandle) {
         let mut burst_ticks = BURST_TICK_COUNT;
         let mut prev_visible = true;
         let mut has_active_jobs = false;
+        let mut restart_backoff = RestartBackoff::default();
+        let mut inactive_reported = false;
 
         loop {
             time::sleep(POLL_ACTIVE).await;
@@ -90,16 +126,33 @@ pub fn start_system_poller(app_handle: AppHandle) {
             if status.should_skip_poll() {
                 burst_ticks = BURST_TICK_COUNT;
                 if !status.running {
-                    crate::services::bridge::emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
-                    if status.auth_failed {
-                        crate::rclone::engine::lifecycle::emit_block_status_for_phase(&app_handle)
+                    // Report the outage once; the start attempts announce their own results.
+                    if !inactive_reported {
+                        inactive_reported = true;
+                        crate::services::bridge::emit(
+                            SYSTEM_STATUS,
+                            SystemStatusPayload::inactive(),
+                        );
+                        if status.auth_failed {
+                            crate::rclone::engine::lifecycle::emit_current_phase_status(
+                                &app_handle,
+                            )
                             .await;
-                    } else if !status.updating && !status.should_exit {
+                        }
+                    }
+                    if !status.auth_failed
+                        && !status.updating
+                        && !status.should_exit
+                        && restart_backoff.is_due(time::Instant::now())
+                    {
+                        restart_backoff.record_attempt(time::Instant::now());
                         start_engine_if_not_running(&app_handle).await;
                     }
                 }
                 continue;
             }
+            inactive_reported = false;
+            restart_backoff.reset();
 
             if app_handle
                 .state::<RcloneState>()
@@ -143,6 +196,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                     } else {
                         error!("Poller batch failed, restarting engine: {batch_err}");
                         crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
+                        restart_backoff.record_attempt(time::Instant::now());
                         start_engine_if_not_running(&app_handle).await;
                     }
                     burst_ticks = BURST_TICK_COUNT;
@@ -330,6 +384,34 @@ async fn update_serve_cache(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restart_delays_double_up_to_their_ceiling() {
+        let mut delay = Duration::ZERO;
+        let mut seen = Vec::new();
+        for _ in 0..7 {
+            delay = next_restart_delay(delay);
+            seen.push(delay);
+        }
+        assert_eq!(seen, [2, 4, 8, 16, 30, 30, 30].map(Duration::from_secs));
+    }
+
+    #[test]
+    fn the_first_restart_is_immediate_and_later_ones_wait() {
+        let start = time::Instant::now();
+        let mut backoff = RestartBackoff::default();
+        assert!(backoff.is_due(start));
+
+        backoff.record_attempt(start);
+        assert!(!backoff.is_due(start + Duration::from_secs(1)));
+        assert!(backoff.is_due(start + RESTART_BACKOFF_START));
+
+        backoff.record_attempt(start + RESTART_BACKOFF_START);
+        assert!(!backoff.is_due(start + RESTART_BACKOFF_START + Duration::from_secs(3)));
+
+        backoff.reset();
+        assert!(backoff.is_due(start));
+    }
 
     #[test]
     fn hidden_ui_is_polled_slowly_even_with_running_jobs() {

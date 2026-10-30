@@ -474,7 +474,7 @@ mod tests {
         let manager = BackendManager::new();
         let mut backend = Backend::new_local("Local");
         backend.port = 0;
-        manager.update(&settings, "Local", backend).await.unwrap();
+        manager.update("Local", backend).await.unwrap();
         let config: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(serde_json::json!({
             "name":"drive", "syncConfigs":{"Default": {"app":{"watchEnabled":true,"watchDelay":0}, "rclone":{"srcFs":source,"dstFs":"drive:"}}}
         })).unwrap();

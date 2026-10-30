@@ -148,9 +148,8 @@ pub async fn build_rclone_process_command(
         backend.password = Some(pass);
         backend.is_auth_generated = true;
 
-        let settings_manager = app.state::<AppSettingsManager>();
         let _ = backend_manager_state
-            .update(&settings_manager, &backend.name, backend.clone())
+            .update(&backend.name, backend.clone())
             .await;
     }
 

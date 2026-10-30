@@ -950,7 +950,6 @@
       "titleActivity": "Activity",
       "loadMore": "Show more"
     },
-
     "inputModal": {
       "name": "Name",
       "required": "{{field}} is required",
@@ -1517,8 +1516,9 @@
         "description": "Complete rclone.conf file"
       },
       "remoteConfigs": {
-        "title": "Remote Configurations"
+        "title": "Remote Settings"
       },
+      "noRemoteDefinitions": "This backup has no rclone.conf, so the remotes themselves will not be restored. Only their app settings (mounts, autostart, options) are. Add the remotes again, or restore from a password-protected backup.",
       "profiles": {
         "title": "Profiles"
       },
@@ -1540,13 +1540,7 @@
       "restoreAction": "Restore Backup",
       "errors": {
         "passwordRequired": "Password is required",
-        "passwordEmpty": "Password cannot be empty or whitespace",
-        "wrongPassword": "Incorrect password. Please try again.",
-        "integrityFailed": "Backup file is corrupted or has been tampered with.",
-        "verificationFailed": "File verification failed. The backup may be corrupted.",
-        "requiresPassword": "This backup requires a password to decrypt.",
-        "decryptFailed": "Failed to decrypt backup. Check your password.",
-        "generic": "An error occurred during restore: {{error}}"
+        "passwordEmpty": "Password cannot be empty or whitespace"
       }
     },
     "launchRestoreFailed": "Failed to launch restore flow",
@@ -2198,7 +2192,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
-      "noPasswordHint": "Without a password, rclone.conf and saved secrets are left out of the backup. Credentials typed directly into Quick Runs or workflows are exported as they are.",
+      "noPasswordHint": "Without a password, rclone.conf and saved secrets are left out, so your remotes cannot be recreated on another machine. Credentials typed directly into Quick Runs or workflows are exported as they are.",
+      "remoteNeedsPassword": "A single remote can only be exported with a password, because its rclone configuration is included in encrypted backups only.",
       "vaultWarningTitle": "Configuration Vault is Open",
       "vaultWarningDesc": "Exported backups do not inherit vault encryption. Use the encryption option below to protect sensitive credentials and configurations with a password.",
       "exportNow": "Export Now",
@@ -3084,7 +3079,17 @@
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
       "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
       "backupFailed": "Failed to backup current rclone binary: {{error}}",
-      "rcAuthFailed": "Rclone remote control authentication failed: {{error}}"
+      "rcAuthFailed": "Rclone remote control authentication failed: {{error}}",
+      "remoteAuthRejected": "Remote backend {{name}} at {{address}} rejected the RC API credentials (HTTP 401)",
+      "remoteUnreachable": "Remote backend {{name}} at {{address}} is unreachable",
+      "portHeldByStaleProcess": "Port {{port}} is still held by an rclone process that could not be stopped (it may belong to another user, or be dead but still holding the socket). Stop it manually or change the backend port in settings.",
+      "portInUse": "Port {{port}} is already in use by another process or application",
+      "portBindFailed": "Port {{port}} could not be bound (address already in use)",
+      "exitedDuringStartup": "The rclone process exited during startup. Check the rclone log.",
+      "startupTimeout": "Timed out waiting for the rclone API to become ready ({{seconds}}s)",
+      "librcloneInitFailed": "librclone failed to initialize: {{error}}",
+      "encryptionCheckFailed": "Failed to check whether the configuration is encrypted: {{error}}",
+      "configLoadFailed": "Failed to load the rclone config file: {{error}}"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",
@@ -3102,7 +3107,9 @@
       "restoreFailed": "Backup restore failed: {{error}}",
       "exportFailed": "Backup export failed: {{error}}",
       "refreshFailed": "Failed to refresh system after backup restore: {{error}}",
-      "restoreIncomplete": "Backup restore was incomplete: {{error}}"
+      "restoreIncomplete": "Backup restore was incomplete: {{error}}",
+      "wrongPassword": "Incorrect password. Please try again.",
+      "passwordRequired": "This backup requires a password to decrypt."
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
@@ -3189,6 +3196,10 @@
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Backup created at: {{path}}",
+      "restored": "Settings restored successfully ({{count}} items restored)"
+    },
     "mount": {
       "unmounted": "Successfully unmounted {{mountPoint}}",
       "allUnmounted": "All remotes unmounted successfully"
@@ -3343,6 +3354,7 @@
       "automationFailed": "{{type}} Automation Error",
       "automationStopped": "{{type}} Automation Stopped",
       "allJobsStopped": "All Jobs Stopped",
+      "automationUnavailable": "Automation Unavailable",
       "allServesStopped": "All Servers Stopped",
       "allUnmounted": "All Remotes Disconnected",
       "updateFound": "New Version Available",
@@ -3386,6 +3398,7 @@
       "serveFailed": "Failed to start serve for {{remote}} on {{backend}}: {{error}}",
       "serveStopped": "Stopped serve for {{remote}} on {{backend}}.",
       "allJobsStopped": "Successfully terminated all active jobs.",
+      "automationUnavailable": "Schedules and file watchers could not be started: {{error}}",
       "allServesStopped": "Successfully closed all active servers.",
       "allUnmounted": "Successfully disconnected all remote mounts.",
       "automationStarted": "Automation {{type}} '{{automation}}' is running on {{backend}}.",

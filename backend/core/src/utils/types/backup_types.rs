@@ -42,6 +42,9 @@ pub struct BackupContentsInfo {
     pub settings: bool,
     pub backend_config: bool,
     pub rclone_config: bool,
+    /// True when the archive can recreate rclone remotes: the full rclone.conf
+    /// or a single remote's exported definition.
+    pub remote_definitions: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]

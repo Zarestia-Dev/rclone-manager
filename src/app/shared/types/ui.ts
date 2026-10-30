@@ -240,6 +240,7 @@ export interface BackupContentsInfo {
   settings: boolean;
   backendConfig: boolean;
   rcloneConfig: boolean;
+  remoteDefinitions: boolean;
   remoteCount?: number;
   remoteNames?: string[];
   profiles?: string[];
