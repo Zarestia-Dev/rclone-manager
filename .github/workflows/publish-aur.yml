@@ -1,17 +1,12 @@
-name: 'Publish to AUR'
+name: "Publish to AUR"
 
 on:
-  # Both the v<version> and headless-v<version> releases trigger a run. The script skips
-  # packages whose assets are not all uploaded yet, so whichever release lands last completes the set.
-  release:
-    types: [published]
-  # Safety net for anything a release run skipped.
-  schedule:
-    - cron: '0 6 * * *'
+  # Run by hand after the v<version> and headless-v<version> releases are published and tested.
+  # The script skips a release whose assets are not all uploaded yet, so a later run picks it up.
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Show what would change without pushing to the AUR'
+        description: "Show what would change without pushing to the AUR"
         required: false
         default: false
         type: boolean
