@@ -394,6 +394,7 @@ fn detect_platform_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 /// Starts background monitoring for OS theme changes.
+#[cfg(not(target_os = "android"))]
 pub fn monitor_theme_changes() {
     #[cfg(all(
         feature = "desktop",

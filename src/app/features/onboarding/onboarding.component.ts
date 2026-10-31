@@ -28,6 +28,12 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
+import {
+  isAndroid,
+  isHeadlessMode,
+} from '../../services/infrastructure/platform/api-client.service';
+import { AndroidKeepAliveService } from '../../services/infrastructure/platform/android-keep-alive.service';
+import { AndroidStorageAccessService } from '../../services/infrastructure/platform/android-storage-access.service';
 import { isInputFocused, isKeyboardEventInScope } from '../../shared/utils/keyboard-utils';
 import {
   type BinaryStatus,
@@ -95,6 +101,8 @@ export class OnboardingComponent {
   private readonly backendService = inject(BackendService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
   private readonly uiStateService = inject(UiStateService);
+  readonly storageAccess = inject(AndroidStorageAccessService);
+  readonly keepAlive = inject(AndroidKeepAliveService);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly systemHealth = inject(SystemHealthService);
 
@@ -127,6 +135,9 @@ export class OnboardingComponent {
 
   readonly selectedMainUi = signal<MainView>('main_menu');
 
+  // The Android permission step only exists in the native app on Android.
+  private readonly showAndroidAccess = !isHeadlessMode() && isAndroid();
+
   // ─── Static configuration ───────────────────────────────────────────────────
   readonly defaultImage = DEFAULT_ONBOARDING_IMAGE;
   readonly installTabOptions = RCLONE_INSTALL_TAB_OPTIONS;
@@ -145,6 +156,7 @@ export class OnboardingComponent {
     'features',
     'installRclone',
     'installPlugin',
+    'androidAccess',
     'selectConfig',
     'passwordRequired',
     'selectMainUi',
@@ -184,6 +196,8 @@ export class OnboardingComponent {
           return !sys.rcloneInstalled();
         case 'installPlugin':
           return !sys.skipMountPluginCheck() && !sys.mountPluginInstalled();
+        case 'androidAccess':
+          return this.showAndroidAccess;
         case 'passwordRequired':
           return sys.passwordRequired();
         default:
@@ -206,6 +220,12 @@ export class OnboardingComponent {
     const key = this.currentCard()?.key;
     return (key && OnboardingComponent.CARD_ACTIONS[key]) ?? 'next';
   });
+
+  // Both permissions are optional, so the step is left with "Skip" until one is allowed.
+  private readonly androidAccessChosen = computed(
+    () =>
+      this.storageAccess.allFilesAccessGranted() || this.keepAlive.isBatteryOptimizationIgnored()
+  );
 
   readonly isCancellable = computed(
     () =>
@@ -308,7 +328,10 @@ export class OnboardingComponent {
         };
       default:
         return {
-          labelKey: 'common.next',
+          labelKey:
+            this.currentCard()?.key === 'androidAccess' && !this.androidAccessChosen()
+              ? 'onboarding.actions.skip'
+              : 'common.next',
           icon: 'right-arrow',
           disabled: false,
           titleKey: null,

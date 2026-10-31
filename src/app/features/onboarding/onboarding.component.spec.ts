@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 
 import { OnboardingComponent } from './onboarding.component';
@@ -13,6 +13,8 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
+import { AndroidKeepAliveService } from '../../services/infrastructure/platform/android-keep-alive.service';
+import { AndroidStorageAccessService } from '../../services/infrastructure/platform/android-storage-access.service';
 
 describe('OnboardingComponent', () => {
   let fixture: ComponentFixture<OnboardingComponent>;
@@ -58,6 +60,16 @@ describe('OnboardingComponent', () => {
 
   let uiStateServiceMock: {
     setDefaultView: ReturnType<typeof vi.fn>;
+  };
+
+  let storageAccessMock: {
+    allFilesAccessGranted: ReturnType<typeof signal<boolean>>;
+    requestAllFilesAccess: ReturnType<typeof vi.fn>;
+  };
+
+  let keepAliveMock: {
+    isBatteryOptimizationIgnored: ReturnType<typeof signal<boolean>>;
+    requestIgnoreBatteryOptimizations: ReturnType<typeof vi.fn>;
   };
 
   let systemHealthMock: {
@@ -119,6 +131,16 @@ describe('OnboardingComponent', () => {
       setDefaultView: vi.fn(),
     };
 
+    storageAccessMock = {
+      allFilesAccessGranted: signal(false),
+      requestAllFilesAccess: vi.fn(),
+    };
+
+    keepAliveMock = {
+      isBatteryOptimizationIgnored: signal(false),
+      requestIgnoreBatteryOptimizations: vi.fn(),
+    };
+
     const skipSignal = signal(false);
     systemHealthMock = {
       isInitialized: signal(true),
@@ -146,6 +168,8 @@ describe('OnboardingComponent', () => {
         { provide: BackupRestoreUiService, useValue: backupRestoreUiServiceMock },
         { provide: UiStateService, useValue: uiStateServiceMock },
         { provide: SystemHealthService, useValue: systemHealthMock },
+        { provide: AndroidStorageAccessService, useValue: storageAccessMock },
+        { provide: AndroidKeepAliveService, useValue: keepAliveMock },
       ],
     }).compileComponents();
 
@@ -166,6 +190,7 @@ describe('OnboardingComponent', () => {
     expect(initialKeys).not.toContain('installRclone');
     expect(initialKeys).not.toContain('installPlugin');
     expect(initialKeys).not.toContain('passwordRequired');
+    expect(initialKeys).not.toContain('androidAccess');
 
     // When rclone is missing
     systemHealthMock.rcloneInstalled.set(false);
@@ -291,5 +316,73 @@ describe('OnboardingComponent', () => {
   it('opens import settings backup flow', () => {
     component.importSettings();
     expect(backupRestoreUiServiceMock.launchRestoreFlow).toHaveBeenCalled();
+  });
+
+  describe('on Android', () => {
+    beforeEach(() => {
+      vi.stubGlobal('__TAURI_INTERNALS__', {});
+      vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+        'Mozilla/5.0 (Linux; Android 14; Pixel 7)'
+      );
+      fixture = TestBed.createComponent(OnboardingComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    const goToAccessCard = (): void => {
+      component.goToCard(component.cards().findIndex(c => c.key === 'androidAccess'));
+      fixture.detectChanges();
+    };
+
+    it('asks for the optional permissions before choosing a config', () => {
+      const keys = component.cards().map(c => c.key);
+      expect(keys.indexOf('androidAccess')).toBe(keys.indexOf('selectConfig') - 1);
+    });
+
+    it('can be skipped until a permission is allowed', () => {
+      goToAccessCard();
+      expect(component.currentAction()).toBe('next');
+      expect(component.primaryButton().disabled).toBe(false);
+      expect(component.primaryButton().labelKey).toBe('onboarding.actions.skip');
+
+      storageAccessMock.allFilesAccessGranted.set(true);
+      expect(component.primaryButton().labelKey).toBe('common.next');
+
+      storageAccessMock.allFilesAccessGranted.set(false);
+      keepAliveMock.isBatteryOptimizationIgnored.set(true);
+      expect(component.primaryButton().labelKey).toBe('common.next');
+    });
+
+    it('does not block the steps after it', () => {
+      goToAccessCard();
+      const selectConfig = component.cards().findIndex(c => c.key === 'selectConfig');
+      expect(component.canNavigateToCard(selectConfig)).toBe(true);
+    });
+
+    it('requests each permission from its own button', () => {
+      goToAccessCard();
+      const buttons = fixture.nativeElement.querySelectorAll('.mount-toggle-card button');
+      expect(buttons.length).toBe(2);
+
+      buttons[0].click();
+      expect(storageAccessMock.requestAllFilesAccess).toHaveBeenCalledTimes(1);
+      expect(keepAliveMock.requestIgnoreBatteryOptimizations).not.toHaveBeenCalled();
+
+      buttons[1].click();
+      expect(keepAliveMock.requestIgnoreBatteryOptimizations).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows allowed permissions instead of a button', () => {
+      storageAccessMock.allFilesAccessGranted.set(true);
+      keepAliveMock.isBatteryOptimizationIgnored.set(true);
+      goToAccessCard();
+      expect(fixture.nativeElement.querySelectorAll('.mount-toggle-card button').length).toBe(0);
+      expect(fixture.nativeElement.querySelectorAll('.mount-toggle-card .app-pill').length).toBe(2);
+    });
   });
 });

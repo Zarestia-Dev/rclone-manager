@@ -17,7 +17,7 @@ use crate::{
         },
     },
     utils::{
-        app::notification::{JobStage, NotificationEvent, SystemStage, notify},
+        app::notification::{JobStage, NotificationEvent, notify},
         types::{
             jobs::{JobStatus, JobType},
             remotes::{OperationType, ProfileParams},
@@ -275,15 +275,11 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
 // Global actions
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
-    let app = app.backend().clone();
-    spawn(async move {
-        match crate::services::lifecycle::shutdown::stop_all_active_jobs(app.clone()).await {
-            Ok(()) => {
-                notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
-            }
-            Err(e) => error!("Failed to stop all active jobs: {e}"),
-        }
-    });
+    spawn(
+        crate::services::lifecycle::shutdown::stop_all_active_jobs_with_notice(
+            app.backend().clone(),
+        ),
+    );
 }
 
 #[cfg(not(feature = "web-server"))]

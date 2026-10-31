@@ -471,7 +471,7 @@
       },
       "start_on_startup": {
         "label": "システム起動時に実行",
-        "description": "システム起動時にアプリを自動的に開始します。"
+        "description": "システム起動時にアプリを自動的に開始します。ロックされたボルトは、アプリを開くまでロックされたままです。"
       },
       "notifications": {
         "label": "通知を有効化",
@@ -491,12 +491,11 @@
       },
       "keep_alive": {
         "label": "バックグラウンドで実行",
-        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。",
-        "notification": {
-          "jobs": "実行中のジョブ: {{count}}",
-          "mounts": "マウント: {{count}}",
-          "serves": "サーブ: {{count}}"
-        }
+        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。"
+      },
+      "start_on_boot": {
+        "label": "端末の起動時に実行",
+        "description": "端末の起動時に RClone Manager をバックグラウンドで開始し、自動開始プロファイルとスケジュールを実行します。一部のメーカー（Xiaomi、Huawei、Oppo など）では、システム設定でこのアプリの自動起動を許可する必要もあります。ロックされたボルトは、アプリを開くまでロックされたままです。"
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "マウントを使用しない",
         "skipMountDesc": "ドライブをマウントしない場合は、ドライバーのインストールをスキップします。"
       },
+      "androidAccess": {
+        "title": "Android の権限",
+        "content": "どちらも任意で、後から許可することもできます。RClone Manager がローカルフォルダを参照し、画面オフ中も転送やスケジュールを継続できるようになります。",
+        "allowed": "許可済み"
+      },
       "selectConfig": {
         "title": "Rclone設定ファイルの選択",
         "content": "使用するRclone設定ファイル（デフォルトの場所、またはカスタム設定ファイル）を選択してください。"
@@ -800,7 +804,8 @@
       "installPlugin": "プラグインをインストール",
       "installingPlugin": "インストール中...",
       "unlock": "ロック解除",
-      "getStarted": "はじめる"
+      "getStarted": "はじめる",
+      "skip": "スキップ"
     },
     "validation": {
       "completeInstallation": "上記のインストールオプションを完了してください",

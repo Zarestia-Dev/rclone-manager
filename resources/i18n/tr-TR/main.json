@@ -469,7 +469,7 @@
       },
       "start_on_startup": {
         "label": "Başlangıçta Çalıştır",
-        "description": "Sistem başlatıldığında uygulamayı otomatik olarak başlatır."
+        "description": "Sistem başlatıldığında uygulamayı otomatik olarak başlatır. Kilitli kasa, uygulamayı açana kadar kilitli kalır."
       },
       "notifications": {
         "label": "Bildirimleri Etkinleştir",
@@ -489,12 +489,11 @@
       },
       "keep_alive": {
         "label": "Arka Planda Çalıştır",
-        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et.",
-        "notification": {
-          "jobs": "Etkin işler: {{count}}",
-          "mounts": "Bağlamalar: {{count}}",
-          "serves": "Sunumlar: {{count}}"
-        }
+        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et."
+      },
+      "start_on_boot": {
+        "label": "Telefon açılınca çalıştır",
+        "description": "Telefon açıldığında RClone Manager'ı arka planda başlatarak otomatik başlatma profillerini ve zamanlamaları çalıştırır. Bazı üreticiler (Xiaomi, Huawei, Oppo vb.) ayrıca sistem ayarlarında bu uygulama için otomatik başlatmaya izin verilmesini gerektirir. Kilitli kasa, uygulamayı açana kadar kilitli kalır."
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "Mount özelliğini kullanmayacağım",
         "skipMountDesc": "Sürücü bağlamayacaksanız bağlama sürücüsü kurulumunu atlayabilirsiniz."
       },
+      "androidAccess": {
+        "title": "Android İzinleri",
+        "content": "İkisi de isteğe bağlıdır ve sonradan verilebilir. RClone Manager'ın yerel klasörlere göz atmasını ve ekran kapalıyken transferleri ve zamanlamaları sürdürmesini sağlar.",
+        "allowed": "İzin verildi"
+      },
       "selectConfig": {
         "title": "Rclone Yapılandırmasını Seç",
         "content": "Kullanılacak Rclone yapılandırma dosyasını seçin: varsayılan konum veya özel bir yapılandırma dosyası."
@@ -800,7 +804,8 @@
       "installPlugin": "Eklentiyi Kur",
       "installingPlugin": "Kuruluyor...",
       "unlock": "Kilidi Aç",
-      "getStarted": "Başlayın"
+      "getStarted": "Başlayın",
+      "skip": "Atla"
     },
     "validation": {
       "completeInstallation": "Lütfen yukarıdaki kurulum seçeneklerini tamamlayın",

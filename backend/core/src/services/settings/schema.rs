@@ -114,6 +114,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(target_os = "android")]
     pub keep_alive: bool,
+
+    #[setting(
+        label = "settings.general.start_on_boot.label",
+        description = "settings.general.start_on_boot.description"
+    )]
+    #[cfg(target_os = "android")]
+    pub start_on_boot: bool,
 }
 
 impl Default for GeneralSettings {
@@ -147,6 +154,8 @@ impl Default for GeneralSettings {
             prevent_sleep: true,
             #[cfg(target_os = "android")]
             keep_alive: true,
+            #[cfg(target_os = "android")]
+            start_on_boot: false,
             language,
             default_view: "main_menu".to_string(),
             restrict: true,

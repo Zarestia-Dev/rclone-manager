@@ -23,6 +23,7 @@ export class AndroidStorageAccessService extends TauriBaseService {
   private readonly localStorage = inject(LocalStorageService);
 
   private readonly isAllFilesAccessGranted = signal<boolean>(true);
+  readonly allFilesAccessGranted = this.isAllFilesAccessGranted.asReadonly();
   private readonly promptDismissed = signal<boolean>(
     this.localStorage.get<boolean>(STORAGE_PROMPT_DISMISSED_KEY, false)
   );

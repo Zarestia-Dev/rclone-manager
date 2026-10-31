@@ -471,7 +471,7 @@
       },
       "start_on_startup": {
         "label": "Start on Startup",
-        "description": "Automatically start the app when the system starts."
+        "description": "Automatically start the app when the system starts. A locked vault stays locked until you open the app."
       },
       "notifications": {
         "label": "Enable Notifications",
@@ -491,12 +491,11 @@
       },
       "keep_alive": {
         "label": "Run in Background",
-        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed.",
-        "notification": {
-          "jobs": "Active jobs: {{count}}",
-          "mounts": "Mounts: {{count}}",
-          "serves": "Serves: {{count}}"
-        }
+        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."
+      },
+      "start_on_boot": {
+        "label": "Start on Boot",
+        "description": "Start RClone Manager in the background when the phone boots, to run auto-start profiles and schedules. Some manufacturers (Xiaomi, Huawei, Oppo, …) also require allowing autostart for this app in the system settings. A locked vault stays locked until you open the app."
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "I won't use mount",
         "skipMountDesc": "Skip installing mount drivers if you do not plan to mount drives."
       },
+      "androidAccess": {
+        "title": "Android Permissions",
+        "content": "Both are optional and can be allowed later. They let RClone Manager browse local folders and keep transfers and schedules running while the screen is off.",
+        "allowed": "Allowed"
+      },
       "selectConfig": {
         "title": "Select Rclone Config",
         "content": "Choose the Rclone configuration file to use: the default location or a custom configuration file."
@@ -800,7 +804,8 @@
       "installPlugin": "Install Plugin",
       "installingPlugin": "Installing...",
       "unlock": "Unlock",
-      "getStarted": "Get Started"
+      "getStarted": "Get Started",
+      "skip": "Skip"
     },
     "validation": {
       "completeInstallation": "Please complete the installation options above",

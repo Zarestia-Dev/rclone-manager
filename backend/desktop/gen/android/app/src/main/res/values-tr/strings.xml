@@ -14,4 +14,10 @@
     <string name="shortcut_file_manager_long">Dosya yöneticisini aç</string>
     <string name="shortcut_open_remote">%1$s aç</string>
     <string name="saf_folder_load_failed">Bu klasör yüklenemedi. Bağlantıyı kontrol edip tekrar deneyin.</string>
+    <string name="action_quit">Çık</string>
+    <string name="action_stop_jobs">İşleri durdur</string>
+    <string name="action_cancel">İptal</string>
+    <string name="quit_confirm_title">RClone Manager uygulamasından çıkılsın mı?</string>
+    <string name="quit_confirm_message">Çalışan transferler, diskler ve sunucular durdurulacak.</string>
+    <string name="alerts_channel_name">Bildirimler</string>
 </resources>

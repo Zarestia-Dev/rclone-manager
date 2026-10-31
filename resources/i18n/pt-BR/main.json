@@ -471,7 +471,7 @@
       },
       "start_on_startup": {
         "label": "Começar no Começo",
-        "description": "Começar o aplicativo automaticamente quando o sistema iniciar."
+        "description": "Começar o aplicativo automaticamente quando o sistema iniciar. Um cofre bloqueado continua bloqueado até você abrir o app."
       },
       "notifications": {
         "label": "Ativar Notificações",
@@ -491,12 +491,11 @@
       },
       "keep_alive": {
         "label": "Executar em segundo plano",
-        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar.",
-        "notification": {
-          "jobs": "Tarefas ativas: {{count}}",
-          "mounts": "Montagens: {{count}}",
-          "serves": "Serviços: {{count}}"
-        }
+        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
+      },
+      "start_on_boot": {
+        "label": "Iniciar com o telefone",
+        "description": "Inicia o RClone Manager em segundo plano quando o telefone liga, para executar perfis de inicialização automática e agendamentos. Alguns fabricantes (Xiaomi, Huawei, Oppo, …) também exigem permitir a inicialização automática deste app nas configurações do sistema. Um cofre bloqueado continua bloqueado até você abrir o app."
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "Não usarei a montagem",
         "skipMountDesc": "Ignore a instalação se não planeja montar unidades."
       },
+      "androidAccess": {
+        "title": "Permissões do Android",
+        "content": "Ambas são opcionais e podem ser permitidas depois. Elas permitem que o RClone Manager navegue por pastas locais e mantenha transferências e agendamentos em execução com a tela desligada.",
+        "allowed": "Permitido"
+      },
       "selectConfig": {
         "title": "Selecione a Configuração do Rclone",
         "content": "Escolha o arquivo de configuração do Rclone para usar: a localização padrão ou um arquivo de configuração personalizado."
@@ -800,7 +804,8 @@
       "installPlugin": "Instale o plugin",
       "installingPlugin": "Instalando...",
       "unlock": "Desbloquear",
-      "getStarted": "Comece Agora"
+      "getStarted": "Comece Agora",
+      "skip": "Pular"
     },
     "validation": {
       "completeInstallation": "Por favor, complete as opções de instalação acima",

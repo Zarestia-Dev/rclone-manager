@@ -45,159 +45,115 @@ fn cache_java_vm(env: &mut jni::Env) {
     }
 }
 
-pub fn is_network_metered() -> bool {
-    let Some(vm) = JAVA_VM.get() else {
-        return false;
-    };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return false;
-    };
-    let mut metered = false;
-    let _ = vm.attach_current_thread(|env| {
-        use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(res) =
-            env.call_static_method(cls, jni_str!("isNetworkMetered"), jni_sig!("()Z"), &[])
-        {
-            if let Ok(val) = res.z() {
-                metered = val;
-            }
-        } else {
+/// Runs `call` against the cached `RcloneSafBridge` class. `None` when the bridge is not
+/// initialized yet or the call failed; a Java exception the call raised is cleared.
+fn with_bridge<R>(
+    call: impl FnOnce(&mut jni::Env, &jni::objects::JClass) -> Result<R, jni::errors::Error>,
+) -> Option<R> {
+    let (vm, cls) = (JAVA_VM.get()?, BRIDGE_CLASS.get()?);
+    vm.attach_current_thread(|env| {
+        let result = call(env, cls.as_ref());
+        if result.is_err() {
             env.exception_clear();
         }
-        Ok::<(), jni::errors::Error>(())
-    });
-    metered
+        result
+    })
+    .ok()
+}
+
+pub fn is_network_metered() -> bool {
+    with_bridge(|env, cls| {
+        use jni::{jni_sig, jni_str};
+        env.call_static_method(cls, jni_str!("isNetworkMetered"), jni_sig!("()Z"), &[])?
+            .z()
+    })
+    .unwrap_or(false)
 }
 
 /// Registers the Android network callback that reports metered changes to
 /// `utils::io::network::on_metered_changed`.
 pub fn start_network_monitor() -> bool {
-    let Some(vm) = JAVA_VM.get() else {
-        return false;
-    };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return false;
-    };
-    let mut started = false;
-    let _ = vm.attach_current_thread(|env| {
+    with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        match env.call_static_method(cls, jni_str!("startNetworkMonitor"), jni_sig!("()Z"), &[]) {
-            Ok(res) => started = res.z().unwrap_or(false),
-            Err(_) => env.exception_clear(),
-        }
-        Ok::<(), jni::errors::Error>(())
-    });
-    started
+        env.call_static_method(cls, jni_str!("startNetworkMonitor"), jni_sig!("()Z"), &[])?
+            .z()
+    })
+    .unwrap_or(false)
 }
 
 /// Stops keep-alive and finishes the activity for a user quit, so Tauri's event loop
 /// sees the window destroyed and ends the process.
 pub fn request_quit() {
-    let Some(vm) = JAVA_VM.get() else { return };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return;
-    };
-    let _ = vm.attach_current_thread(|env| {
+    with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        if env
-            .call_static_method(cls, jni_str!("requestQuit"), jni_sig!("()V"), &[])
-            .is_err()
-        {
-            env.exception_clear();
-        }
-        Ok::<(), jni::errors::Error>(())
+        env.call_static_method(cls, jni_str!("requestQuit"), jni_sig!("()V"), &[])
+            .map(|_| ())
     });
 }
 
 pub fn notify_roots_changed() {
-    let Some(vm) = JAVA_VM.get() else { return };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return;
-    };
-    let _ = vm.attach_current_thread(|env| {
+    with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        let _ = env.call_static_method(cls, jni_str!("notifyRootsChanged"), jni_sig!("()V"), &[]);
-        Ok::<(), jni::errors::Error>(())
+        env.call_static_method(cls, jni_str!("notifyRootsChanged"), jni_sig!("()V"), &[])
+            .map(|_| ())
     });
 }
 
 pub fn update_mounted_remotes(remotes: &[crate::utils::types::remotes::MountedRemote]) {
-    let Some(vm) = JAVA_VM.get() else { return };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return;
-    };
     let json_str = serde_json::to_string(remotes).unwrap_or_else(|_| "[]".to_string());
-    let _ = vm.attach_current_thread(|env| {
+    with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(jstr) = env.new_string(&json_str) {
-            let _ = env.call_static_method(
-                cls,
-                jni_str!("updateMountedRemotes"),
-                jni_sig!("(Ljava/lang/String;)V"),
-                &[(&jstr).into()],
-            );
-        }
-        Ok::<(), jni::errors::Error>(())
+        let jstr = env.new_string(&json_str)?;
+        env.call_static_method(
+            cls,
+            jni_str!("updateMountedRemotes"),
+            jni_sig!("(Ljava/lang/String;)V"),
+            &[(&jstr).into()],
+        )
+        .map(|_| ())
     });
 }
 
 pub fn open_saf_remote(remote_name: &str) -> bool {
-    let Some(vm) = JAVA_VM.get() else {
-        return false;
-    };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return false;
-    };
-    let mut success = false;
-    let _ = vm.attach_current_thread(|env| {
+    open_with_string_arg(remote_name, |env, cls, arg| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(jstr) = env.new_string(remote_name)
-            && let Ok(res) = env.call_static_method(
-                cls,
-                jni_str!("openSafRemote"),
-                jni_sig!("(Ljava/lang/String;)Z"),
-                &[(&jstr).into()],
-            )
-            && let Ok(value) = res.z()
-        {
-            success = value;
-        }
-        Ok::<(), jni::errors::Error>(())
-    });
-    success
+        env.call_static_method(
+            cls,
+            jni_str!("openSafRemote"),
+            jni_sig!("(Ljava/lang/String;)Z"),
+            &[arg.into()],
+        )?
+        .z()
+    })
 }
 
 pub fn open_local_path(path: &str) -> bool {
-    let Some(vm) = JAVA_VM.get() else {
-        return false;
-    };
-    let Some(g_cls) = BRIDGE_CLASS.get() else {
-        return false;
-    };
-    let mut success = false;
-    let _ = vm.attach_current_thread(|env| {
+    open_with_string_arg(path, |env, cls, arg| {
         use jni::{jni_sig, jni_str};
-        let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(jstr) = env.new_string(path)
-            && let Ok(res) = env.call_static_method(
-                cls,
-                jni_str!("openLocalPath"),
-                jni_sig!("(Ljava/lang/String;)Z"),
-                &[(&jstr).into()],
-            )
-            && let Ok(value) = res.z()
-        {
-            success = value;
-        }
-        Ok::<(), jni::errors::Error>(())
-    });
-    success
+        env.call_static_method(
+            cls,
+            jni_str!("openLocalPath"),
+            jni_sig!("(Ljava/lang/String;)Z"),
+            &[arg.into()],
+        )?
+        .z()
+    })
+}
+
+/// Calls a bridge method that takes one string and reports whether it opened something.
+fn open_with_string_arg(
+    value: &str,
+    call: impl FnOnce(
+        &mut jni::Env,
+        &jni::objects::JClass,
+        &jni::objects::JString,
+    ) -> Result<bool, jni::errors::Error>,
+) -> bool {
+    with_bridge(|env, cls| {
+        let arg = env.new_string(value)?;
+        call(env, cls, &arg)
+    })
+    .unwrap_or(false)
 }
 
 pub fn open_content_uri_fd(uri_str: &str, mode: &str) -> Result<std::os::fd::RawFd, String> {
@@ -232,6 +188,54 @@ pub fn open_content_uri_fd(uri_str: &str, mode: &str) -> Result<std::os::fd::Raw
     }
 
     Ok(raw_fd)
+}
+
+/// Posts a regular notification from Kotlin, which works with or without an activity.
+pub fn show_notification(title: &str, body: &str) -> bool {
+    with_bridge(|env, cls| {
+        use jni::{jni_sig, jni_str};
+        let title = env.new_string(title)?;
+        let body = env.new_string(body)?;
+        env.call_static_method(
+            cls,
+            jni_str!("showNotification"),
+            jni_sig!("(Ljava/lang/String;Ljava/lang/String;)V"),
+            &[(&title).into(), (&body).into()],
+        )
+        .map(|_| ())
+    })
+    .is_some()
+}
+
+/// Tells the foreground service what is running so it can start, stop and refresh its
+/// notification, and stores the start-on-boot choice for the boot receiver, which runs before
+/// any native code can read the settings. `text` is the already translated summary.
+pub fn sync_keep_alive(
+    keep_alive: bool,
+    start_on_boot: bool,
+    jobs: usize,
+    mounts: usize,
+    serves: usize,
+    text: &str,
+) {
+    with_bridge(|env, cls| {
+        use jni::{jni_sig, jni_str, objects::JValue};
+        let text = env.new_string(text)?;
+        env.call_static_method(
+            cls,
+            jni_str!("syncKeepAlive"),
+            jni_sig!("(ZZIIILjava/lang/String;)V"),
+            &[
+                JValue::Bool(keep_alive),
+                JValue::Bool(start_on_boot),
+                JValue::Int(jobs as i32),
+                JValue::Int(mounts as i32),
+                JValue::Int(serves as i32),
+                (&text).into(),
+            ],
+        )
+        .map(|_| ())
+    });
 }
 
 mod jni_impl {

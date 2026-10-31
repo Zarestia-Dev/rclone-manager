@@ -14,4 +14,10 @@
     <string name="shortcut_file_manager_long">Открыть файловый менеджер</string>
     <string name="shortcut_open_remote">Открыть %1$s</string>
     <string name="saf_folder_load_failed">Не удалось загрузить эту папку. Проверьте подключение и повторите попытку.</string>
+    <string name="action_quit">Выйти</string>
+    <string name="action_stop_jobs">Остановить задачи</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="quit_confirm_title">Выйти из RClone Manager?</string>
+    <string name="quit_confirm_message">Выполняющиеся передачи, подключения и серверы будут остановлены.</string>
+    <string name="alerts_channel_name">Уведомления</string>
 </resources>

@@ -4786,6 +4786,7 @@ dependencies = [
  "clap",
  "futures",
  "http",
+ "jni 0.22.4",
  "log",
  "mime_guess",
  "notify-rust",

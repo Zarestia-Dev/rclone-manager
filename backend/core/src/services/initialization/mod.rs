@@ -128,6 +128,8 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
     // Optional remote auto-starts can be slow; monitoring must already be
     // available while those operations are starting.
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
+    #[cfg(target_os = "android")]
+    crate::services::lifecycle::keep_alive::request_sync(&app_handle);
 
     info!("Phase 5: Running post-initialization tasks");
     let remotes = autostarts.map(|autostarts| autostarts.start(&app_handle));

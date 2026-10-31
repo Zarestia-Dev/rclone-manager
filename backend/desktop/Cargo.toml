@@ -48,6 +48,8 @@ tempfile = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "6", optional = true }
 notify-rust = { version = "4", optional = true }
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry", "Win32_System_Threading"] }

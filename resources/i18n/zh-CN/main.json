@@ -469,7 +469,7 @@
       },
       "start_on_startup": {
         "label": "开机自启",
-        "description": "系统启动时自动运行本应用"
+        "description": "系统启动时自动运行本应用。已锁定的保管库在您打开应用之前会保持锁定。"
       },
       "notifications": {
         "label": "启用通知",
@@ -489,12 +489,11 @@
       },
       "keep_alive": {
         "label": "在后台运行",
-        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。",
-        "notification": {
-          "jobs": "活动任务：{{count}}",
-          "mounts": "挂载：{{count}}",
-          "serves": "服务：{{count}}"
-        }
+        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。"
+      },
+      "start_on_boot": {
+        "label": "手机开机时启动",
+        "description": "手机开机后在后台启动 RClone Manager，以运行自动启动配置和计划任务。部分厂商（小米、华为、OPPO 等）还需要在系统设置中允许此应用自启动。已锁定的保管库在您打开应用之前会保持锁定。"
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "我不会使用挂载",
         "skipMountDesc": "如果您不打算挂载驱动器，可以跳过安装挂载驱动程序。"
       },
+      "androidAccess": {
+        "title": "Android 权限",
+        "content": "两项均为可选，也可以稍后再允许。它们让 RClone Manager 能够浏览本地文件夹，并在屏幕关闭时继续运行传输和计划任务。",
+        "allowed": "已允许"
+      },
       "selectConfig": {
         "title": "选择 Rclone 配置",
         "content": "选择使用的 Rclone 配置文件：默认位置或自定义配置文件。"
@@ -800,7 +804,8 @@
       "installPlugin": "安装插件",
       "installingPlugin": "正在安装...",
       "unlock": "解锁",
-      "getStarted": "开始使用"
+      "getStarted": "开始使用",
+      "skip": "跳过"
     },
     "validation": {
       "completeInstallation": "请先完成上方安装选项",

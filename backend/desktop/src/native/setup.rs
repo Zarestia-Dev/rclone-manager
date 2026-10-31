@@ -9,7 +9,7 @@ pub(crate) fn prepare(
     #[cfg(not(feature = "web-server"))]
     crate::native::files::cleanup_temp_views(_app);
 
-    #[cfg(any(target_os = "android", target_os = "ios"))]
+    #[cfg(target_os = "ios")]
     {
         log::debug!("Creating main window on mobile");
         tauri::WebviewWindowBuilder::new(_app, "main", tauri::WebviewUrl::default()).build()?;

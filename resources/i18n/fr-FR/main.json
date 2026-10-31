@@ -469,7 +469,7 @@
       },
       "start_on_startup": {
         "label": "Lancer au démarrage",
-        "description": "Démarrer automatiquement l'application au démarrage du système."
+        "description": "Démarrer automatiquement l'application au démarrage du système. Un coffre verrouillé reste verrouillé tant que vous n'ouvrez pas l'application."
       },
       "notifications": {
         "label": "Activer les notifications",
@@ -489,12 +489,11 @@
       },
       "keep_alive": {
         "label": "Exécuter en arrière-plan",
-        "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture.",
-        "notification": {
-          "jobs": "Tâches actives : {{count}}",
-          "mounts": "Montages : {{count}}",
-          "serves": "Services : {{count}}"
-        }
+        "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture."
+      },
+      "start_on_boot": {
+        "label": "Lancer au démarrage du téléphone",
+        "description": "Lance RClone Manager en arrière-plan au démarrage du téléphone pour exécuter les profils à démarrage automatique et les planifications. Certains fabricants (Xiaomi, Huawei, Oppo, …) exigent aussi d'autoriser le démarrage automatique de cette application dans les paramètres système. Un coffre verrouillé reste verrouillé tant que vous n'ouvrez pas l'application."
       }
     },
     "core": {
@@ -748,6 +747,11 @@
         "skipMountTitle": "Je n'utiliserai pas le montage",
         "skipMountDesc": "Ignorez l'installation si vous ne prévoyez pas de monter de lecteurs."
       },
+      "androidAccess": {
+        "title": "Autorisations Android",
+        "content": "Les deux sont facultatives et peuvent être accordées plus tard. Elles permettent à RClone Manager de parcourir les dossiers locaux et de maintenir les transferts et planifications actifs écran éteint.",
+        "allowed": "Autorisé"
+      },
       "selectConfig": {
         "title": "Sélectionnez la configuration de rclone",
         "content": "Choisissez le fichier de configuration de rclone à utiliser : l'emplacement par défaut ou un fichier de configuration personnalisé."
@@ -800,7 +804,8 @@
       "installPlugin": "Installer un plugin",
       "installingPlugin": "Installation...",
       "unlock": "Déverrouiller",
-      "getStarted": "Démarrer"
+      "getStarted": "Démarrer",
+      "skip": "Passer"
     },
     "validation": {
       "completeInstallation": "Veuillez compléter les options d'installation ci-dessus",

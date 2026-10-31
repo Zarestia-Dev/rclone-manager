@@ -109,6 +109,55 @@
                     ></app-provision-progress>
                   }
                 }
+                @case ('androidAccess') {
+                  <div class="ui-selection-grid form-section">
+                    <div class="mount-toggle-card">
+                      <div class="toggle-icon-wrapper">
+                        <mat-icon svgIcon="folder-open"></mat-icon>
+                      </div>
+                      <div class="toggle-body">
+                        <h3 class="toggle-title">{{ 'banners.storage.title' | translate }}</h3>
+                        <p class="toggle-desc">{{ 'banners.storage.subtitle' | translate }}</p>
+                      </div>
+                      @if (storageAccess.allFilesAccessGranted()) {
+                        <span class="app-pill p-primary">
+                          {{ 'onboarding.cards.androidAccess.allowed' | translate }}
+                        </span>
+                      } @else {
+                        <button
+                          type="button"
+                          matButton="outlined"
+                          (click)="storageAccess.requestAllFilesAccess()"
+                        >
+                          {{ 'banners.storage.allow' | translate }}
+                        </button>
+                      }
+                    </div>
+
+                    <div class="mount-toggle-card">
+                      <div class="toggle-icon-wrapper">
+                        <mat-icon svgIcon="bolt"></mat-icon>
+                      </div>
+                      <div class="toggle-body">
+                        <h3 class="toggle-title">{{ 'banners.battery.title' | translate }}</h3>
+                        <p class="toggle-desc">{{ 'banners.battery.subtitle' | translate }}</p>
+                      </div>
+                      @if (keepAlive.isBatteryOptimizationIgnored()) {
+                        <span class="app-pill p-primary">
+                          {{ 'onboarding.cards.androidAccess.allowed' | translate }}
+                        </span>
+                      } @else {
+                        <button
+                          type="button"
+                          matButton="outlined"
+                          (click)="keepAlive.requestIgnoreBatteryOptimizations()"
+                        >
+                          {{ 'banners.battery.allow' | translate }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
                 @case ('selectMainUi') {
                   <div
                     class="ui-selection-grid form-section"

@@ -25,6 +25,7 @@ use crate::{
 
 #[cfg(any(
     feature = "tray",
+    target_os = "android",
     all(
         feature = "desktop",
         not(any(target_os = "android", target_os = "ios"))
@@ -132,6 +133,10 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
                 if let Some(startup) = change.value.as_bool() {
                     app.host().set_autostart(startup);
                 }
+            }
+            #[cfg(target_os = "android")]
+            ("general", "keep_alive" | "start_on_boot") => {
+                crate::services::lifecycle::keep_alive::request_sync(app);
             }
             #[cfg(feature = "tray")]
             ("general", "tray_enabled") => {
@@ -359,7 +364,15 @@ fn dispatch_bridge_event(app: &AppHandle, event: &BridgeEvent) {
     }
 
     #[cfg(target_os = "android")]
-    if event.event == crate::utils::types::events::MOUNT_STATE_CHANGED {
+    if matches!(
+        event.event.as_str(),
+        JOB_CACHE_CHANGED | MOUNT_STATE_CHANGED | SERVE_STATE_CHANGED
+    ) {
+        crate::services::lifecycle::keep_alive::request_sync(app);
+    }
+
+    #[cfg(target_os = "android")]
+    if event.event == MOUNT_STATE_CHANGED {
         let app = app.clone();
         spawn(async move {
             let mounts = app

@@ -266,6 +266,23 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
+/// Translated "N mount(s)", "N job(s)" and "N server(s)" for the counts above zero.
+pub fn localized_operation_counts(
+    mounts_count: usize,
+    jobs_count: usize,
+    serves_count: usize,
+) -> Vec<String> {
+    [
+        ("powerInhibitor.mounts", mounts_count),
+        ("powerInhibitor.jobs", jobs_count),
+        ("powerInhibitor.serves", serves_count),
+    ]
+    .into_iter()
+    .filter(|(_, count)| *count > 0)
+    .map(|(key, count)| t_with_params(key, &[("count", &count.to_string())]))
+    .collect()
+}
+
 /// Macro for ergonomic translations
 ///
 /// # Usage
@@ -334,6 +351,13 @@ macro_rules! localized_success {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_running_kinds_are_summarized() {
+        assert!(localized_operation_counts(0, 0, 0).is_empty());
+        assert_eq!(localized_operation_counts(0, 2, 0).len(), 1);
+        assert_eq!(localized_operation_counts(1, 2, 3).len(), 3);
+    }
 
     #[test]
     fn embedded_sources_resolve_notification_text_without_host_files() {

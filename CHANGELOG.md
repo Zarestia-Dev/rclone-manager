@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Start on Boot (Android)**: New setting that starts RClone Manager in the background when the phone boots, so auto-start profiles and schedules run without opening the app. Off by default. Some manufacturers also require allowing autostart for the app in their system settings.
+- **Live Update Status Chip (Android)**: The keep-alive notification shows the number of running jobs, mounts, and serves in the status bar and summarizes them in its text.
+- **Notification Actions (Android)**: The keep-alive notification has a **Quit** action, which asks for confirmation before shutting the app down, and a **Stop jobs** action that appears while jobs are running.
+- **Onboarding Permissions (Android)**: The first-run wizard has an optional step to allow access to all files and to exempt the app from battery optimization. Both can be skipped and granted later.
+
+### Changed
+
+- **Background Service Runs Without the Window (Android)**: The backend now starts and runs the keep-alive service on its own, so jobs, mounts, and schedules keep working while the app window is closed.
+- **Start on Startup Description**: The desktop setting now notes that a locked configuration vault stays locked until the app is opened.
+
 ## [0.3.5] - 2026-10-29
 
 ### Added

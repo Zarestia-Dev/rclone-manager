@@ -16,6 +16,9 @@ class SafBootReceiver : BroadcastReceiver() {
         // Loading the native libraries here would start the Go runtime with nothing to run;
         // the documents provider loads them when it is first used.
         RcloneSafBridge.updateAppShortcuts(context.applicationContext)
+        if (RcloneSafBridge.isStartOnBootEnabled(context)) {
+          RcloneKeepAliveService.startAtBoot(context.applicationContext)
+        }
       } catch (e: Exception) {
         Logger.error("SafBootReceiver error: ${e.message}")
       }

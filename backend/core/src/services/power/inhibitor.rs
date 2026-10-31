@@ -251,26 +251,8 @@ fn get_localized_inhibitor_reason(
 ) -> String {
     use crate::utils::i18n::{t, t_with_params};
 
-    let mut parts = Vec::new();
-    if mounts_count > 0 {
-        parts.push(t_with_params(
-            "powerInhibitor.mounts",
-            &[("count", &mounts_count.to_string())],
-        ));
-    }
-    if jobs_count > 0 {
-        parts.push(t_with_params(
-            "powerInhibitor.jobs",
-            &[("count", &jobs_count.to_string())],
-        ));
-    }
-    if serves_count > 0 {
-        parts.push(t_with_params(
-            "powerInhibitor.serves",
-            &[("count", &serves_count.to_string())],
-        ));
-    }
-
+    let parts =
+        crate::utils::i18n::localized_operation_counts(mounts_count, jobs_count, serves_count);
     if parts.is_empty() {
         t("notification.body.powerInhibited")
     } else {
@@ -287,10 +269,9 @@ pub async fn update_power_inhibition(app: &AppHandle) {
         return;
     }
 
-    let settings_manager = app.try_state::<crate::services::settings::AppSettingsManager>();
-    let prevent_sleep_enabled = settings_manager
-        .and_then(|m| m.get_all().ok())
-        .map(|s| s.general.prevent_sleep)
+    let prevent_sleep_enabled = app
+        .try_state::<crate::services::settings::AppSettingsManager>()
+        .and_then(|manager| manager.get::<bool>("general.prevent_sleep").ok())
         .unwrap_or(true);
 
     let backend_manager = app.try_state::<crate::rclone::backend::BackendManager>();

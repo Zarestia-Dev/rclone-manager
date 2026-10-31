@@ -375,16 +375,21 @@ mod tests {
 
 /// Removes all temporary preview/viewer files cached in `app_cache_dir()/temp_views`.
 /// Called during app startup and shutdown.
+#[cfg(not(target_os = "android"))]
 pub fn cleanup_temp_views(app: &AppHandle) {
     use tauri::Manager;
     if let Ok(cache_dir) = app.path().app_cache_dir() {
-        let temp_views_dir = cache_dir.join("temp_views");
-        if temp_views_dir.exists() {
-            if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
-                log::warn!("Failed to clean up temp_views directory: {e}");
-            } else {
-                debug!("Successfully cleaned up temp_views directory");
-            }
+        remove_temp_views(&cache_dir);
+    }
+}
+
+pub fn remove_temp_views(cache_dir: &std::path::Path) {
+    let temp_views_dir = cache_dir.join("temp_views");
+    if temp_views_dir.exists() {
+        if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
+            log::warn!("Failed to clean up temp_views directory: {e}");
+        } else {
+            debug!("Successfully cleaned up temp_views directory");
         }
     }
 }

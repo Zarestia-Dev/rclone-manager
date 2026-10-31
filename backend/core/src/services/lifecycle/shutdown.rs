@@ -222,6 +222,15 @@ pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     }
 }
 
+/// Stops every active job for a user request (tray or notification action) and says so.
+pub async fn stop_all_active_jobs_with_notice(app: AppHandle) {
+    use crate::utils::app::notification::{NotificationEvent, SystemStage, notify};
+    match stop_all_active_jobs(app.clone()).await {
+        Ok(()) => notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped)),
+        Err(e) => error!("Failed to stop all active jobs: {e}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ShutdownState;

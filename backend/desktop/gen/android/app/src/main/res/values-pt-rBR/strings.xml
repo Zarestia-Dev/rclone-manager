@@ -14,4 +14,10 @@
     <string name="shortcut_file_manager_long">Abrir o gerenciador de arquivos</string>
     <string name="shortcut_open_remote">Abrir %1$s</string>
     <string name="saf_folder_load_failed">Não foi possível carregar esta pasta. Verifique a conexão e tente novamente.</string>
+    <string name="action_quit">Sair</string>
+    <string name="action_stop_jobs">Parar tarefas</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="quit_confirm_title">Sair do RClone Manager?</string>
+    <string name="quit_confirm_message">As transferências, montagens e servidores em execução serão interrompidos.</string>
+    <string name="alerts_channel_name">Notificações</string>
 </resources>

@@ -356,6 +356,7 @@ export type OnboardingCardKey =
   | 'features'
   | 'installRclone'
   | 'installPlugin'
+  | 'androidAccess'
   | 'selectConfig'
   | 'passwordRequired'
   | 'selectMainUi'
