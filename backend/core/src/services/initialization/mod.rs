@@ -335,6 +335,14 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
     crate::utils::logging::log::init_logging(&settings.developer.log_level, app_handle.clone())
         .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
+    #[cfg(all(
+        any(feature = "autostart", feature = "flatpak"),
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    if settings.general.start_on_startup {
+        app_handle.host().sync_autostart();
+    }
+
     info!("Phase 0 Core Setup complete");
     Ok(())
 }

@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Background Service Runs Without the Window (Android)**: The backend now starts and runs the keep-alive service on its own, so jobs, mounts, and schedules keep working while the app window is closed.
 - **Start on Startup Description**: The desktop setting now notes that a locked configuration vault stays locked until the app is opened.
 
+### Fixed
+
+- **Start on Startup Lost After Reinstall (Desktop)**: When "Start on startup" is on but the system autostart entry is missing, for example after an uninstall removed it during an upgrade, the app now re-creates the entry at startup instead of leaving the setting enabled with nothing to launch it. Development builds and Flatpak are not affected. See [#340](https://github.com/orgs/Zarestia-Dev/discussions/340).
+
 ## [0.3.5] - 2026-10-29
 
 ### Added

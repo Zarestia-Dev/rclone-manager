@@ -64,6 +64,10 @@ pub trait Host: Send + Sync {
     fn set_tray_visible(&self, _enabled: bool) {}
     #[cfg(any(feature = "autostart", feature = "flatpak"))]
     fn set_autostart(&self, _enabled: bool) {}
+    /// Re-register the OS autostart entry when the setting is on but the entry is gone,
+    /// e.g. after an uninstall removed it.
+    #[cfg(any(feature = "autostart", feature = "flatpak"))]
+    fn sync_autostart(&self) {}
     #[cfg(feature = "notifications")]
     fn notify(
         &self,

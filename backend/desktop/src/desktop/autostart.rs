@@ -103,3 +103,26 @@ pub(crate) fn handle_autostart_change(app: &AppHandle, enabled: bool) {
         autostart.disable()
     };
 }
+
+/// Re-create the OS autostart entry if it was removed while the setting is still on.
+#[cfg(all(
+    feature = "tauri-plugin-autostart",
+    not(all(target_os = "linux", feature = "flatpak"))
+))]
+pub(crate) fn restore_missing_autostart(app: &AppHandle) {
+    // A development binary must not register itself to launch at login.
+    if cfg!(debug_assertions) {
+        return;
+    }
+    let autostart = app.autolaunch();
+    match autostart.is_enabled() {
+        Ok(true) => {}
+        Ok(false) => {
+            debug!("Autostart entry is missing, restoring it");
+            if let Err(e) = autostart.enable() {
+                log::error!("Failed to restore autostart entry: {e}");
+            }
+        }
+        Err(e) => log::error!("Failed to check autostart entry: {e}"),
+    }
+}

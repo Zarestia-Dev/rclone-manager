@@ -146,6 +146,13 @@ impl Host for NativeHost {
     fn set_autostart(&self, enabled: bool) {
         crate::desktop::autostart::handle_autostart_change(&self.0, enabled);
     }
+    #[cfg(all(
+        feature = "tauri-plugin-autostart",
+        not(all(target_os = "linux", feature = "flatpak"))
+    ))]
+    fn sync_autostart(&self) {
+        crate::desktop::autostart::restore_missing_autostart(&self.0);
+    }
     #[cfg(feature = "tauri-plugin-notification")]
     fn notify(
         &self,
