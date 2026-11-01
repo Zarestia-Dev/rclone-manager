@@ -45,6 +45,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { syncResponsiveSidebar } from 'src/app/shared/utils';
+import { quoteToken } from '../shared/utils/rc/rc-console.util';
 
 @Component({
   selector: 'app-home',
@@ -239,6 +240,10 @@ export class HomeComponent {
 
   openRemoteAbout(remote: Remote): void {
     this.modalService.openRemoteAbout(remote);
+  }
+
+  openRcConsole(remoteName: string): void {
+    this.modalService.openRcConsole(`operations/fsinfo fs=${quoteToken(`${remoteName}:`)}`);
   }
 
   hasCleanUpFeature(remote: Remote): boolean {

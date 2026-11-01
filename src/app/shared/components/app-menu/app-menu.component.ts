@@ -139,6 +139,10 @@ export class AppMenuComponent {
     this.modalService.openRcloneFlags();
   }
 
+  openRcConsoleModal(): void {
+    this.modalService.openRcConsole();
+  }
+
   openVaultModal(): void {
     this.modalService.openVault();
   }

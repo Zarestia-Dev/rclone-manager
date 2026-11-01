@@ -186,6 +186,9 @@
       <button class="menu-item" cdkMenuItem (click)="openLogsModal(activeRemote.name)">
         <span>{{ 'home.options.viewLogs' | translate }}</span>
       </button>
+      <button class="menu-item" cdkMenuItem (click)="openRcConsole(activeRemote.name)">
+        <span>{{ 'home.options.inRcConsole' | translate }}</span>
+      </button>
       <button class="menu-item" cdkMenuItem (click)="cloneRemote(activeRemote.name)">
         <span>{{ 'home.options.cloneRemote' | translate }}</span>
       </button>

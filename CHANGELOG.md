@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **RC Console**: A new console for running any rclone remote-control call, opened from the app menu or with `Ctrl + Alt + R`. It lists every call in a sidebar, suggests calls and parameters as you type, shows the help for a call, and follows jobs it starts. It starts in read-only mode, asks before dangerous calls, and masks secrets in the output. On a local desktop backend it shows the rclone version and process ID and has a **Restart engine** button that stops the process so the app starts it again from the same path, which picks up a rebuilt rclone; the call list is read again when the new process is up.
 - **Start on Boot (Android)**: New setting that starts RClone Manager in the background when the phone boots, so auto-start profiles and schedules run without opening the app. Off by default. Some manufacturers also require allowing autostart for the app in their system settings.
 - **Live Update Status Chip (Android)**: The keep-alive notification shows the number of running jobs, mounts, and serves in the status bar and summarizes them in its text.
 - **Notification Actions (Android)**: The keep-alive notification has a **Quit** action, which asks for confirmation before shutting the app down, and a **Stop jobs** action that appears while jobs are running.
@@ -15,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Workflow RC Editor**: The RC call editor now has the same call list, suggestions, and parameter hints as the RC Console, and test runs only read until you allow writes.
+- **Count Badges**: Counters in sidebars and panels have a minimum width and aligned digits, so one- and two-digit counts look the same.
 - **Background Service Runs Without the Window (Android)**: The backend now starts and runs the keep-alive service on its own, so jobs, mounts, and schedules keep working while the app window is closed.
 - **Start on Startup Description**: The desktop setting now notes that a locked configuration vault stays locked until the app is opened.
 

@@ -147,13 +147,6 @@ export class WorkflowEngineService extends TauriBaseService {
   }
 
   /**
-   * Tests an arbitrary rclone RC command directly via the backend.
-   */
-  async testRcCommand(command: string, params?: unknown): Promise<unknown> {
-    return await this.invokeCommand<unknown>('test_rc_command', { command, params });
-  }
-
-  /**
    * Runs the given workflow DAG through the Rust backend execution engine.
    */
   async executeWorkflow(workflow: WorkflowDefinition, dryRun = false): Promise<boolean> {

@@ -5,6 +5,7 @@ pub mod filesystem;
 pub mod job;
 pub mod job_parser;
 pub mod mount;
+pub mod rc_console;
 pub mod remote;
 pub mod serve;
 pub mod sync;

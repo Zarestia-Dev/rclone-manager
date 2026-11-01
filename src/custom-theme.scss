@@ -1244,7 +1244,7 @@ mat-accordion:not(.dull) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-xs) !important;
   font-weight: 500;
   padding: 1px 6px;
   border-radius: var(--radius-xxs);
@@ -1535,6 +1535,34 @@ mat-accordion:not(.dull) {
     opacity: 0.8;
     margin-block: var(--space-xxs);
   }
+}
+
+// Inline notice bar: `.notice` for information, `.notice.warn` for something that needs attention.
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated-1);
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &.warn {
+    background: color-mix(in srgb, var(--warn-color) 12%, transparent);
+    color: var(--warn-color);
+  }
+}
+
+// Turns a spinner icon.
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 // ============================================================================

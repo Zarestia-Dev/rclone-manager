@@ -30,7 +30,6 @@ use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::types::{NodeKind, WorkflowNode};
 
 pub use active::{get_active_workflow_ids, has_active_workflows, stop_workflow};
-pub(crate) use nodes::rc::parse_rc_params;
 pub use run::execute_workflow;
 pub(crate) use run::execute_workflow_snapshot;
 pub use triggers::{job_event_matches_job, trigger_workflows_for_job_finish};

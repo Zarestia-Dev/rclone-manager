@@ -1,0 +1,52 @@
+@use "../../../styles/mixins" as *;
+
+:host {
+  display: contents;
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  .sidebar-header {
+    padding: var(--space-sm) var(--space-md) 0;
+
+    .header-label {
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--dim-color);
+      opacity: 0.8;
+    }
+  }
+
+  @include wizard-step-indicator;
+
+  .step-indicator ::ng-deep .mat-mdc-list-item {
+    &.command {
+      // Line the endpoint up with its module's name, past the chevron.
+      padding-left: calc(var(--space-md) + var(--icon-size-sm) + var(--space-md));
+
+      .mat-mdc-list-item-title {
+        font-family: var(--font-mono);
+        font-size: var(--font-size-sm);
+      }
+
+      &.blocked .mat-mdc-list-item-title {
+        color: var(--dim-color);
+      }
+    }
+
+    .flag {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      color: var(--dim-color);
+
+      &.warn {
+        color: var(--warn-color);
+      }
+    }
+  }
+}

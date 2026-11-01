@@ -62,6 +62,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (obscure_value, $crate::rclone::queries::system::obscure_value, [clear: String]);
             (get_remote_types, $crate::rclone::queries::get_remote_types, []);
             (bandwidth_limit, $crate::rclone::commands::system::bandwidth_limit, [rate: Option<String>]);
+            (rc_console_call, $crate::rclone::commands::rc_console::rc_console_call, [command: String, params: Option<serde_json::Value>]);
 
             // SYNC OPERATIONS
             (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::utils::types::remotes::OperationType, params: $crate::utils::types::remotes::ProfileParams]);
@@ -232,7 +233,6 @@ macro_rules! MASTER_COMMAND_LIST {
             (duplicate_workflow, $crate::services::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
             (execute_workflow, $crate::services::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
             (stop_workflow, $crate::services::flow::workflow::commands::stop_workflow, [workflow_id: String]);
-            (test_rc_command, $crate::services::flow::workflow::commands::test_rc_command, [command: String, params: Option<serde_json::Value>]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);

@@ -100,7 +100,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
       - **Action / Icon Buttons**: Always use `.action-button` (standard 32x32px icon button). **DO NOT** create custom `.action-btn`, `.icon-btn`, `.tool-btn`, `.chip-delete-btn`, `.action-mini-btn`, or `.custom-icon-button` classes.
       - **Text Truncation (Ellipsis)**: Always use the single canonical `.truncate` class. **DO NOT** re-declare `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` in component SCSS files.
       - **Counter Badges**: Always use the single canonical `.count-badge` class. **DO NOT** create custom `.cat-count-badge`, `.log-count-badge`, or `.config-count-badge` classes.
-      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, or component-specific empty-state clones.
+      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, `.empty`, `.popup-empty`, `.no-results`, `.empty-list`, or component-specific empty-state clones. This covers every "nothing to show" message, however small: a sidebar filter with no match, an empty history popup or a list with no rows all use `.empty-state` (an icon is optional; a lone `span` is fine). Before writing any class whose name contains `empty`, `no-` or `none`, check `src/custom-theme.scss`.
       - **Loaders / Overlays**: Always use `.loading-container` (inline spinner) or `.loading-overlay` (modal absolute overlay from `_shared-modal.scss`).
       - **Context Menus**: Always use `.material-context-menu` and `.menu-item` (see Rule 5).
       - **Scrollbar Concealing**: Always use `.hide-scrollbar`. **DO NOT** write custom `::-webkit-scrollbar { display: none; }` or `scrollbar-width: none` in components.
@@ -144,6 +144,12 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - Validation rules exist in both `scripts/create-update-manifest.cjs` and `backend/core/src/services/updates/manifest.rs`; keep them identical and covered by the shared fixtures under `services/updates/fixtures/`.
     - Never write command-line arguments, passwords or tokens to disk. The update helper receives the launch arguments through its environment.
     - Server updates are ZIP archives only; `tar.gz` is not used for releases.
+
+18. **RC Console Knowledge Lists (CRITICAL)**
+    - rclone publishes no schema, so the RC console keeps three hand-written lists: `READ_ONLY_COMMANDS` and `DANGEROUS_COMMANDS` in `src/app/shared/utils/rc/rc-console.util.ts`, and `REQUIRED_PARAMS` in `src/app/shared/utils/rc/rc-schema.util.ts`.
+    - After `npm run sync:endpoints`, read its "RC console lists to review" output and update these lists for every call it names: a new call is read-only, dangerous or neither, and its required parameters are read from rclone's Go source (the handler returns an error when a key is missing), never guessed from the help text.
+    - Whenever you edit one of these lists, or add a call that takes other calls (like `job/batch`), check it against rclone and keep a call out of `READ_ONLY_COMMANDS` if it can write. A call may not be in both lists. Update `rc-console.util.spec.ts` and `rc-schema.util.spec.ts` to match.
+    - `scripts/update-endpoints.cjs` reads these two files with patterns (`new Set([...])` and `'path': ['a', 'b'],` lines); keep that shape, or update the script and `scripts/update-endpoints.test.cjs` together.
 
 ---
 
@@ -245,7 +251,7 @@ npm run dev:headless
 
 ## Utility Scripts
 
-- `npm run sync:endpoints`: Update endpoint definitions from rclone schemas.
+- `npm run sync:endpoints`: Update endpoint definitions from rclone schemas, then list the RC console lists that need review (see rule 18).
 - `npm run sync:providers`: Sync rclone provider configurations.
 - `npm run sync:flags`: Sync rclone CLI flag definitions.
 - `npm run audit:i18n`: Verify missing translation keys.

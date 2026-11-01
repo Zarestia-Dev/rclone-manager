@@ -1,0 +1,64 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--dim-color);
+
+  .detail {
+    min-width: 0;
+  }
+
+  .stop {
+    margin-left: auto;
+  }
+}
+
+.bar {
+  height: 6px;
+  border-radius: var(--radius-xxs);
+  background: var(--bg-elevated-3);
+  overflow: hidden;
+
+  .fill {
+    height: 100%;
+    background: var(--accent-color);
+    transition: width var(--transition-standard);
+  }
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  color: var(--dim-color);
+  font-size: var(--font-size-xs);
+
+  .errors {
+    color: var(--warn-color);
+  }
+}
+
+.error {
+  margin: 0;
+  color: var(--warn-color);
+  white-space: pre-wrap;
+  font-family: inherit;
+  user-select: text;
+}

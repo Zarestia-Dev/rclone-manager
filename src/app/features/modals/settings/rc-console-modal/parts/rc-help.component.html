@@ -1,0 +1,86 @@
+<div class="head">
+  <mat-icon svgIcon="circle-info"></mat-icon>
+  <div class="titles">
+    <code class="path">{{ command().Path }}</code>
+    <span class="title">{{ command().Title }}</span>
+  </div>
+  @if (dangerous()) {
+    <span class="app-pill p-warn sm">{{ 'modals.rcConsole.dangerous' | translate }}</span>
+  }
+  <button
+    type="button"
+    class="action-button"
+    (click)="closed.emit()"
+    [title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</div>
+
+@if (params().length > 0) {
+  <section class="detail-section">
+    <h4 class="section-title">{{ 'modals.rcConsole.help.parameters' | translate }}</h4>
+    <div class="params">
+      @for (param of params(); track param.name) {
+        <label class="param">
+          <span class="param-name">
+            <code>{{ param.name }}</code>
+            @if (param.required) {
+              <span class="app-pill p-accent sm">{{
+                'modals.rcConsole.help.required' | translate
+              }}</span>
+            } @else if (param.optional) {
+              <span class="app-pill p-dim sm">{{
+                'modals.rcConsole.help.optional' | translate
+              }}</span>
+            }
+          </span>
+          <input
+            #field
+            type="text"
+            class="param-input"
+            autocomplete="off"
+            spellcheck="false"
+            [value]="values()[param.name] ?? ''"
+            (input)="setValue(param.name, field.value)"
+            [attr.aria-label]="param.name"
+          />
+          <span class="param-desc">{{ param.description }}</span>
+        </label>
+      }
+    </div>
+    <div class="build">
+      <code class="built truncate">{{ built() }}</code>
+      @if (missingRequired() > 0) {
+        <span class="build-note">{{
+          'modals.rcConsole.help.requiredMissing' | translate: { count: missingRequired() }
+        }}</span>
+      }
+      <button type="button" class="app-pill interactive p-accent sm" (click)="insert.emit(built())">
+        {{ 'modals.rcConsole.help.use' | translate }}
+      </button>
+    </div>
+  </section>
+} @else {
+  <p class="note">{{ 'modals.rcConsole.help.noParameters' | translate }}</p>
+}
+
+@if (examples().length > 0) {
+  <section class="detail-section">
+    <h4 class="section-title">{{ 'modals.rcConsole.help.examples' | translate }}</h4>
+    @for (example of examples(); track example) {
+      <div class="example">
+        <code class="example-line">{{ example }}</code>
+        <button type="button" class="app-pill interactive sm" (click)="insert.emit(example)">
+          {{ 'modals.rcConsole.help.insert' | translate }}
+        </button>
+        <button type="button" class="app-pill interactive p-accent sm" (click)="run.emit(example)">
+          {{ 'modals.rcConsole.help.run' | translate }}
+        </button>
+      </div>
+    }
+  </section>
+}
+
+<app-rc-docs [help]="command().Help" />

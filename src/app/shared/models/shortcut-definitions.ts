@@ -33,6 +33,12 @@ export const MAIN_SHORTCUTS: ShortcutDefinition[] = [
     categoryKey: 'shortcuts.categories.application',
   },
   {
+    actionId: 'app.openRcConsole',
+    keys: 'Ctrl + Alt + R',
+    descriptionKey: 'shortcuts.actions.openRcConsole',
+    categoryKey: 'shortcuts.categories.application',
+  },
+  {
     actionId: 'app.openVault',
     keys: 'Ctrl + Alt + V',
     descriptionKey: 'shortcuts.actions.openVault',

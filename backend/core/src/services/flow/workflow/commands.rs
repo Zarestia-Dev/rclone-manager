@@ -164,30 +164,6 @@ pub async fn stop_workflow(app: AppHandle, workflow_id: String) -> Result<(), St
     super::engine::stop_workflow(&app, &workflow_id).await
 }
 
-/// Executes an arbitrary Rclone Remote Control (RC) command for testing and schema discovery.
-pub async fn test_rc_command(
-    app: AppHandle,
-    command: String,
-    params: Option<serde_json::Value>,
-) -> Result<serde_json::Value, String> {
-    use crate::services::flow::workflow::engine::parse_rc_params;
-    use crate::utils::types::state::RcloneState;
-
-    let state = app.state::<RcloneState>();
-    let parsed_params = parse_rc_params(params.as_ref())?;
-    state
-        .transport
-        .rpc(&command, Some(&parsed_params))
-        .await
-        .map_err(|e| {
-            crate::localized_error!(
-                "backendErrors.workflow.rcCommandFailed",
-                "command" => command,
-                "error" => e
-            )
-        })
-}
-
 // ── Persistence Helpers ──────────────────────────────────────────────────
 
 /// Drops what is cached for a changed workflow and re-applies the schedules and watchers.

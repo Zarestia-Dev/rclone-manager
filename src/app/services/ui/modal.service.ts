@@ -235,6 +235,10 @@ export class ModalService extends TauriBaseService {
       import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
         m => m.RcloneFlagsModalComponent
       ),
+    'rc-console': () =>
+      import('../../features/modals/settings/rc-console-modal/rc-console-modal.component').then(
+        m => m.RcConsoleModalComponent
+      ),
     vault: () =>
       import('../../features/modals/settings/vault-modal/vault-modal.component').then(
         m => m.VaultModalComponent
@@ -485,16 +489,17 @@ export class ModalService extends TauriBaseService {
     return this.openModal(
       'workflow-rc-editor',
       {
-        width: '780px',
+        width: '1000px',
         maxWidth: '95vw',
-        maxHeight: '90vh',
+        height: '85vh',
+        maxHeight: '780px',
         disableClose: true,
         data: { node },
       },
       {
         title: this.translate.instant('flow.workflow.nodes.rcCommand'),
-        width: 780,
-        height: 700,
+        width: 1000,
+        height: 760,
         suffix: node.id,
       }
     );
@@ -647,6 +652,24 @@ export class ModalService extends TauriBaseService {
         title: this.translate.instant('titlebar.menu.flags'),
         width: 680,
         height: 600,
+      }
+    );
+  }
+
+  /** `line` fills the input, for example `operations/fsinfo fs=remote:` when opened from a remote. */
+  openRcConsole<TResult = unknown>(line?: string): DialogRefLike<TResult> {
+    return this.openModal(
+      'rc-console',
+      {
+        ...STANDARD_MODAL_SIZE,
+        maxWidth: '900px',
+        disableClose: true,
+        data: line ? { line } : undefined,
+      },
+      {
+        title: this.translate.instant('modals.rcConsole.title'),
+        width: 900,
+        height: 640,
       }
     );
   }

@@ -219,6 +219,16 @@
           <span>{{ 'titlebar.menu.flags' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + .</span>
         </button>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openRcConsoleModal()"
+          [attr.aria-label]="'titlebar.menu.rcConsole' | translate"
+        >
+          <span>{{ 'titlebar.menu.rcConsole' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + Alt + R</span>
+        </button>
       </div>
     </div>
   </div>

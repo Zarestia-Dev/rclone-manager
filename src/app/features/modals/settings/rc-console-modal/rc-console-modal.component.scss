@@ -1,0 +1,351 @@
+@use "../../../../styles/mixins" as *;
+
+.modal-sidenav-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: var(--window-bg-color);
+}
+
+.modal-sidebar {
+  @include wizard-modal-sidebar;
+}
+
+.modal-content {
+  // Material sizes the content box, so the padding would grow it past the modal.
+  box-sizing: border-box;
+  container-type: inline-size;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  overflow: hidden;
+  background: var(--window-bg-color);
+}
+
+.prompt {
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 var(--space-xs);
+  margin-right: var(--space-xxs);
+  border: 1px solid var(--border-color);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-xxs);
+  background: var(--bg-elevated-2);
+  color: var(--window-fg-color);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.engine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.terminal {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.console-output {
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  overflow-y: auto;
+  background: var(--view-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  user-select: text;
+}
+
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-md);
+
+  .empty-state {
+    flex: none;
+
+    mat-icon {
+      opacity: 0.6;
+      color: var(--accent-color);
+    }
+
+    span {
+      color: var(--window-fg-color);
+      font-size: var(--font-size-base);
+      font-weight: 600;
+    }
+
+    p {
+      max-width: 46ch;
+    }
+  }
+}
+
+.quick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+
+  &-label {
+    color: var(--dim-color);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  &-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-xs);
+
+    code {
+      font-family: var(--font-mono);
+    }
+  }
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-xs) var(--space-md);
+  color: var(--dim-color);
+  font-size: var(--font-size-xs);
+}
+
+.entry {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg-color);
+
+  &-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-width: 0;
+    color: var(--window-fg-color);
+    font-weight: 600;
+
+    .app-pill {
+      flex-shrink: 0;
+    }
+  }
+
+  &-text {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-xs) 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &-actions {
+    display: flex;
+    flex-shrink: 0;
+    margin-right: calc(-1 * var(--space-xxs));
+  }
+}
+
+.guide {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-xs);
+  white-space: pre-wrap;
+  font-family: inherit;
+  color: var(--dim-color);
+}
+
+.help {
+  flex-shrink: 0;
+  max-height: 45%;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  &-title {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xxs);
+  flex-shrink: 0;
+}
+
+.input-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--box-shadow);
+  background: var(--view-bg-color);
+
+  &:focus-within {
+    box-shadow: 0 0 0 2px var(--accent-color);
+  }
+
+  .run-button {
+    flex-shrink: 0;
+  }
+}
+
+.line-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  max-height: 160px;
+  padding: var(--space-xxs) 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--window-fg-color);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  user-select: text;
+}
+
+.popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin: 0 0 var(--space-xs);
+  padding: var(--space-xxs);
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg-color);
+  box-shadow: var(--shadow-gnome);
+
+  &-row {
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-xs);
+
+    &:hover {
+      background: var(--hover-bg-color);
+    }
+
+    &.selected {
+      background: var(--selected-bg-color);
+    }
+  }
+
+  &-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  &-icon {
+    flex-shrink: 0;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    color: var(--dim-color);
+  }
+
+  &-main {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+  }
+
+  &-detail {
+    min-width: 0;
+    max-width: 55%;
+    color: var(--dim-color);
+    font-size: var(--font-size-xs);
+  }
+}
+
+// A phone-width modal has no room for the command, the status and the buttons on one line.
+@container (max-width: 480px) {
+  .entry-head {
+    flex-wrap: wrap;
+  }
+
+  .entry-text {
+    // Leave room for the prompt so it stays on the same line as the command.
+    flex-basis: calc(100% - var(--space-lg));
+    padding-bottom: 0;
+  }
+
+  .entry-actions {
+    margin-left: auto;
+  }
+}
