@@ -2977,7 +2977,12 @@
       "reportAndMore": "... e mais {{count}}",
       "reportStatusErrors": "Concluído com {{count}} erro(s)",
       "reportStatusMatched": "Todos os {{count}} arquivo(s) coincidem exatamente (0 diferenças).",
-      "reportStatus": "Status"
+      "reportStatus": "Status",
+      "missingWorkflowId": "ID do fluxo de trabalho ausente para atualização",
+      "workflowNotFound": "Fluxo de trabalho '{{id}}' não encontrado",
+      "saveFailed": "Falha ao salvar o fluxo de trabalho: {{error}}",
+      "deleteFailed": "Falha ao excluir o fluxo de trabalho: {{error}}",
+      "copyName": "{{name}} (cópia)"
     },
     "mount": {
       "pointEmpty": "Ponto de montagem não pode estar vazio",
@@ -3866,7 +3871,9 @@
         "branch2": "Ramificação 2",
         "in1": "Entrada 1",
         "in2": "Entrada 2",
-        "done": "Concluído"
+        "done": "Concluído",
+        "inN": "Entrada {{n}}",
+        "branchN": "Ramificação {{n}}"
       },
       "nodes": {
         "manualTrigger": "Gatilho Manual",
@@ -3910,7 +3917,11 @@
         "logAudit": "Registro de auditoria",
         "logAuditDesc": "Grava uma entrada no registro de execução do fluxo",
         "stopServe": "Parar compartilhamento",
-        "stopServeDesc": "Interrompe instâncias ativas de compartilhamento de rede"
+        "stopServeDesc": "Interrompe instâncias ativas de compartilhamento de rede",
+        "sync": "Sincronizar",
+        "copy": "Cópia",
+        "check": "Verificar",
+        "mount": "Montar"
       },
       "logs": {
         "stepRunning": "A etapa \"{{title}}\" está em execução...",
@@ -4038,7 +4049,8 @@
         "title": "Bem-vindo ao Construtor de Fluxos",
         "subtitle": "Crie um novo fluxo de trabalho ou escolha um modelo para automatizar suas operações do rclone."
       },
-      "showInTray": "Mostrar na bandeja do sistema"
+      "showInTray": "Mostrar na bandeja do sistema",
+      "copyName": "{{name}} (cópia)"
     },
     "shortcuts": {
       "title": "Atalhos de teclado do Flow"

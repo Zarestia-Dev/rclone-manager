@@ -439,6 +439,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: Some("wf-alpha".to_string()),
             node_id: Some("node-beta".to_string()),
+            workflow_lineage: Vec::new(),
         };
 
         let ev: JobChangeEvent = (&job).into();

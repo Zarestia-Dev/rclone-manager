@@ -9,7 +9,9 @@ use serde_json::Value;
 
 use crate::context::AppHandle;
 use crate::rclone::backend::BackendManager;
-use crate::services::flow::workflow::engine::{active::is_workflow_active, run::execute_workflow};
+use crate::services::flow::workflow::engine::{
+    RunTrigger, active::is_workflow_active, run::execute_workflow,
+};
 use crate::services::flow::workflow::types::{NodeKind, WorkflowDefinition};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::types::jobs::JobStatus;
@@ -49,6 +51,14 @@ impl RecentJobs {
 
 static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<parking_lot::Mutex<RecentJobs>> =
     std::sync::LazyLock::new(|| parking_lot::Mutex::new(RecentJobs::default()));
+
+/// The workflows a job leads back to: the ones before it and the one that started it.
+fn job_lineage(job: &crate::utils::types::jobs::JobInfo) -> Vec<String> {
+    match (&job.workflow_lineage[..], &job.workflow_id) {
+        ([], Some(origin)) => vec![origin.clone()],
+        (lineage, _) => lineage.to_vec(),
+    }
+}
 
 /// Helper function that checks whether a `job_event` node configuration matches a finished job.
 #[must_use]
@@ -137,6 +147,11 @@ pub async fn trigger_workflows_for_job_finish(
         return;
     }
 
+    // A simulated job changed nothing, so it has nothing to react to.
+    if job.dry_run {
+        return;
+    }
+
     // Workflows are stored per backend and only the selected backend's can be read,
     // so jobs of the others start none (their schedules are suspended the same way).
     if job.backend_name != app.state::<BackendManager>().get_active_name().await {
@@ -182,32 +197,34 @@ pub async fn trigger_workflows_for_job_finish(
         return;
     }
 
+    let lineage = job_lineage(job);
     for wf in workflows
         .as_deref()
         .into_iter()
         .flatten()
         .chain(snapshots.iter().map(|snapshot| &snapshot.definition))
     {
-        // Prevent infinite self-trigger loops: if the finished job was started by this workflow, skip it
-        if let Some(ref wf_origin_id) = job.workflow_id
-            && *wf_origin_id == wf.id
-        {
+        // A workflow does not react to jobs it led to, directly or through others.
+        if lineage.contains(&wf.id) {
             continue;
         }
 
         // Skip if workflow is already actively executing
-        {
-            if is_workflow_active(&job.backend_name, &wf.id) {
-                continue;
-            }
+        if is_workflow_active(&job.backend_name, &wf.id) {
+            continue;
         }
 
-        let is_match = wf.nodes.iter().any(|node| {
-            node.kind() == NodeKind::JobEvent
-                && job_event_matches_job(&node.config, job, quick_run_name.as_deref())
-        });
+        let node_ids: HashSet<String> = wf
+            .nodes
+            .iter()
+            .filter(|node| {
+                node.kind() == NodeKind::JobEvent
+                    && job_event_matches_job(&node.config, job, quick_run_name.as_deref())
+            })
+            .map(|node| node.id.clone())
+            .collect();
 
-        if is_match {
+        if !node_ids.is_empty() {
             info!(
                 "🎯 Job {} finished (status: {:?}), auto-triggering workflow '{}' ({}) via job_event",
                 job.jobid, job.status, wf.name, wf.id
@@ -217,8 +234,14 @@ pub async fn trigger_workflows_for_job_finish(
             let Some(backend) = app.state::<BackendManager>().get(&job.backend_name).await else {
                 continue;
             };
+            let trigger = RunTrigger::JobEvent {
+                node_ids,
+                ancestors: lineage.clone(),
+            };
             crate::utils::spawn(async move {
-                if let Err(e) = execute_workflow(app_clone, backend, wf_id.clone(), false).await {
+                if let Err(e) =
+                    execute_workflow(app_clone, backend, wf_id.clone(), false, trigger).await
+                {
                     log::error!("Failed to execute workflow '{wf_id}' triggered by job event: {e}");
                 }
             });
@@ -236,6 +259,47 @@ mod tests {
     use super::*;
 
     use crate::utils::types::jobs::{JobStatus, JobType};
+
+    fn finished_job(
+        workflow_id: Option<&str>,
+        dry_run: bool,
+    ) -> crate::utils::types::jobs::JobInfo {
+        crate::utils::types::jobs::JobInfo {
+            stats_revision: 0,
+            jobid: 7,
+            execute_id: None,
+            quick_run_id: None,
+            job_type: JobType::Sync,
+            remote_name: "drive:".into(),
+            source: vec![],
+            destination: String::new(),
+            start_time: Utc::now(),
+            end_time: Some(Utc::now()),
+            status: JobStatus::Completed,
+            error: None,
+            stats: None,
+            group: "g".into(),
+            profile: None,
+            origin: None,
+            backend_name: "lineage-test".into(),
+            dry_run,
+            parent_job_id: None,
+            workflow_id: workflow_id.map(String::from),
+            node_id: None,
+            workflow_lineage: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_job_leads_back_to_the_workflows_before_it() {
+        let mut job = finished_job(Some("b"), false);
+        job.workflow_lineage = vec!["a".into(), "b".into()];
+        assert_eq!(job_lineage(&job), ["a", "b"]);
+
+        // A job that carries no lineage leads back to the workflow that started it.
+        assert_eq!(job_lineage(&finished_job(Some("b"), false)), ["b"]);
+        assert!(job_lineage(&finished_job(None, false)).is_empty());
+    }
 
     #[test]
     fn test_job_event_matches_job_cases() {
@@ -264,6 +328,7 @@ mod tests {
                 parent_job_id: None,
                 workflow_id: None,
                 node_id: None,
+                workflow_lineage: Vec::new(),
             };
 
         // 1. Matches profile with eventState 'any'
@@ -377,6 +442,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         };
         let seen = |job: &JobInfo| {
             TRIGGERED_JOB_FINISH_EVENTS.lock().contains(&(

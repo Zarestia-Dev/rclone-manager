@@ -222,6 +222,10 @@ pub struct JobInfo {
     pub workflow_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node_id: Option<String>,
+    /// The workflows that led to this job, the one that started it last. A workflow
+    /// does not react to jobs it led to, so workflows cannot start each other forever.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub workflow_lineage: Vec<String>,
 }
 
 impl JobInfo {

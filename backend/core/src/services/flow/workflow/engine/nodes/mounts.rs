@@ -11,7 +11,7 @@ use crate::rclone::commands::{
     serve::{ServeParams, start_serve},
 };
 use crate::services::flow::workflow::engine::RunContext;
-use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
+use crate::services::flow::workflow::engine::nodes::{extract_node_op_config, simulated_output};
 use crate::services::flow::workflow::types::{NodeExecutionOutput, WorkflowNode};
 use crate::utils::types::origin::Origin;
 
@@ -79,6 +79,20 @@ pub(crate) async fn mount_node(
     mount_params.workflow_id = Some(workflow.id.clone());
     mount_params.node_id = Some(node.id.clone());
     mount_params.execute_id = Some(ctx.run_id.clone());
+
+    if ctx.dry_run {
+        info!(
+            "Workflow dry_run enabled; simulating mount of '{}'",
+            op.remote
+        );
+        return Ok(simulated_output(json!({
+            "mounted": false,
+            "mountPoint": mount_params.mount_point,
+            "remote": op.remote,
+            "nodeId": node.id,
+            "workflowId": workflow.id
+        })));
+    }
 
     let backend_manager = app.state::<BackendManager>();
     let is_already_mounted = {
@@ -148,6 +162,15 @@ pub(crate) async fn unmount_node(
         ));
     }
 
+    if ctx.dry_run {
+        info!("Workflow dry_run enabled; simulating unmount of '{mount_point}'");
+        return Ok(simulated_output(json!({
+            "unmounted": false,
+            "mountPoint": mount_point,
+            "targetNodeId": target_node_id
+        })));
+    }
+
     crate::rclone::commands::mount::unmount_remote_on_backend(
         ctx.app.clone(),
         ctx.backend.clone(),
@@ -180,6 +203,19 @@ pub(crate) async fn serve_node(
     serve_params.workflow_id = Some(workflow.id.clone());
     serve_params.node_id = Some(node.id.clone());
     serve_params.execute_id = Some(ctx.run_id.clone());
+
+    if ctx.dry_run {
+        info!(
+            "Workflow dry_run enabled; simulating serve of '{}'",
+            op.remote
+        );
+        return Ok(simulated_output(json!({
+            "served": false,
+            "remote": op.remote,
+            "nodeId": node.id,
+            "workflowId": workflow.id
+        })));
+    }
 
     let backend_manager = app.state::<BackendManager>();
     let existing_serve = {
@@ -259,6 +295,16 @@ pub(crate) async fn stop_serve_node(
             ),
         )
     };
+
+    if ctx.dry_run && (!server_id.is_empty() || !remote_name.is_empty()) {
+        info!("Workflow dry_run enabled; simulating stop of serve '{server_id}' ('{remote_name}')");
+        return Ok(simulated_output(json!({
+            "stopped": false,
+            "serverId": server_id,
+            "remoteName": remote_name,
+            "targetNodeId": target_node_id
+        })));
+    }
 
     if !server_id.is_empty() {
         crate::rclone::commands::serve::stop_serve_on_backend(

@@ -2977,7 +2977,12 @@
       "reportAndMore": "... y {{count}} más",
       "reportStatusErrors": "Terminó con {{count}} error(es)",
       "reportStatusMatched": "Los {{count}} archivo(s) coinciden exactamente (0 diferencias).",
-      "reportStatus": "Estado"
+      "reportStatus": "Estado",
+      "missingWorkflowId": "Falta el ID del flujo de trabajo para actualizarlo",
+      "workflowNotFound": "No se encontró el flujo de trabajo '{{id}}'",
+      "saveFailed": "No se pudo guardar el flujo de trabajo: {{error}}",
+      "deleteFailed": "No se pudo eliminar el flujo de trabajo: {{error}}",
+      "copyName": "{{name}} (copia)"
     },
     "mount": {
       "pointEmpty": "El punto de montaje no puede estar vacío",
@@ -3866,7 +3871,9 @@
         "branch2": "Rama 2",
         "in1": "Entrada 1",
         "in2": "Entrada 2",
-        "done": "Listo"
+        "done": "Listo",
+        "inN": "Entrada {{n}}",
+        "branchN": "Rama {{n}}"
       },
       "nodes": {
         "manualTrigger": "Disparador manual",
@@ -3910,7 +3917,11 @@
         "logAudit": "Registro de auditoría",
         "logAuditDesc": "Escribe una entrada en el registro de ejecución del flujo",
         "stopServe": "Detener servicio de red",
-        "stopServeDesc": "Detiene los servicios de red activos para un remoto"
+        "stopServeDesc": "Detiene los servicios de red activos para un remoto",
+        "sync": "Sincronizar",
+        "copy": "Copiar",
+        "check": "Verificar",
+        "mount": "Montar"
       },
       "logs": {
         "stepRunning": "El paso \"{{title}}\" se está ejecutando...",
@@ -4038,7 +4049,8 @@
         "title": "Bienvenido al Constructor de Flujos",
         "subtitle": "Crea un nuevo flujo de trabajo o elige una plantilla para automatizar tus operaciones de rclone."
       },
-      "showInTray": "Mostrar en la bandeja del sistema"
+      "showInTray": "Mostrar en la bandeja del sistema",
+      "copyName": "{{name}} (copia)"
     },
     "shortcuts": {
       "title": "Atajos de teclado de Flow"

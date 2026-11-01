@@ -179,6 +179,84 @@ describe('WorkflowEngineService', () => {
     expect(service.activeEdgeIds().size).toBe(0);
   });
 
+  it('only stores the workflow before a run when it has unsaved edits', async () => {
+    const wf: WorkflowDefinition = {
+      id: 'wf-save',
+      name: 'Save Test',
+      showOnTray: false,
+      viewport: { x: 0, y: 0, zoom: 1 },
+      nodes: [
+        {
+          id: 'n1',
+          type: 'manual',
+          category: 'trigger',
+          title: 'Manual',
+          x: 0,
+          y: 0,
+          inputs: [],
+          outputs: [],
+          config: {},
+          lastOutput: { big: 'result of an earlier run' },
+        },
+      ],
+      edges: [],
+    };
+    stateService.loadWorkflow(wf);
+
+    await service.executeWorkflow(wf);
+    expect(mockApiClient.invoke).not.toHaveBeenCalledWith('update_workflow', expect.anything());
+
+    stateService.updateWorkflowMetadata({ name: 'Renamed' });
+    expect(stateService.hasUnsavedChanges()).toBe(true);
+    await service.executeWorkflow(stateService.currentWorkflow() as WorkflowDefinition);
+
+    const saved = mockApiClient.invoke.mock.calls.find(call => call[0] === 'update_workflow');
+    const sent = (saved?.[1] as { workflow: WorkflowDefinition }).workflow;
+    expect(sent.name).toBe('Renamed');
+    expect('lastOutput' in sent.nodes[0]).toBe(false);
+    expect(stateService.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('runs two workflows side by side and reports each on its own', async () => {
+    let finishFirst!: () => void;
+    mockApiClient.invoke.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command === 'execute_workflow' && args?.['workflowId'] === 'wf-a') {
+        return new Promise<{ success: boolean }>(resolve => {
+          finishFirst = (): void => resolve({ success: true });
+        });
+      }
+      return Promise.resolve({ success: true });
+    });
+    const make = (id: string): WorkflowDefinition => ({
+      id,
+      name: id,
+      showOnTray: false,
+      viewport: { x: 0, y: 0, zoom: 1 },
+      nodes: [],
+      edges: [],
+    });
+    stateService.loadWorkflow(make('wf-a'));
+
+    const first = service.executeWorkflow(make('wf-a'));
+    await service.executeWorkflow(make('wf-b'));
+
+    expect(service.isRunning('wf-a')).toBe(true);
+    expect(service.isRunning('wf-b')).toBe(false);
+    expect(service.isExecuting()).toBe(true);
+
+    finishFirst();
+    await first;
+    expect(service.isExecuting()).toBe(false);
+  });
+
+  it('keeps only the latest log entries', () => {
+    for (let i = 0; i < 1100; i++) service.log('wf', `entry ${i}`);
+
+    expect(service.logs().length).toBe(1000);
+    expect(service.logs()[0].message).toBe('entry 100');
+    expect(service.logs().at(-1)?.message).toBe('entry 1099');
+  });
+
   it('calls backend stop_workflow when stopping', async () => {
     const wf: WorkflowDefinition = {
       id: 'wf-stop',

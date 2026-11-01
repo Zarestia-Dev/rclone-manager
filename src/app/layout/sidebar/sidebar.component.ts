@@ -203,7 +203,7 @@ export class SidebarComponent {
   }
 
   isWorkflowRunning(id: string): boolean {
-    return this.workflowEngine.isExecuting() && this.workflowState.currentWorkflow()?.id === id;
+    return this.workflowEngine.isRunning(id);
   }
 
   hasAutoStartNode(wf: WorkflowDefinition): boolean {

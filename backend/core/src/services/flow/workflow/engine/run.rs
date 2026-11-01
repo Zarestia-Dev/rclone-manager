@@ -1,5 +1,6 @@
 //! Runs one workflow: schedules nodes as their inputs resolve and reports progress.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -14,7 +15,7 @@ use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
 use crate::services::flow::workflow::dag::validate_workflow;
 use crate::services::flow::workflow::engine::{
-    RunContext,
+    RunContext, RunTrigger,
     active::{ActiveWorkflowState, cleanup_workflow_resources, register_active_run},
     cancel::CancelToken,
     graph::{NodeFinishedEvent, RunGraph, RunState, emit_node_state},
@@ -27,6 +28,34 @@ use crate::services::flow::workflow::types::{
 use crate::services::settings::AppSettingsManager;
 use crate::utils::app::notification::{NotificationEvent, WorkflowStage, notify};
 use crate::utils::types::{events::WORKFLOW_EXECUTION_STATE_CHANGED, origin::Origin};
+
+/// Most items of a list in an output that go out with a node-state event. The run
+/// keeps the whole output for the nodes after it; the interface only needs a glimpse.
+const EVENT_LIST_LIMIT: usize = 200;
+
+fn output_for_event(value: &Value) -> Cow<'_, Value> {
+    let too_long = |item: &Value| {
+        item.as_array()
+            .is_some_and(|list| list.len() > EVENT_LIST_LIMIT)
+    };
+    let Some(fields) = value
+        .as_object()
+        .filter(|fields| fields.values().any(too_long))
+    else {
+        return Cow::Borrowed(value);
+    };
+    // Only what goes out is copied: the lists over the limit are cut before they are cloned.
+    let trimmed = fields
+        .iter()
+        .map(|(key, item)| match item {
+            Value::Array(list) if list.len() > EVENT_LIST_LIMIT => {
+                (key.clone(), Value::Array(list[..EVENT_LIST_LIMIT].to_vec()))
+            }
+            other => (key.clone(), other.clone()),
+        })
+        .collect();
+    Cow::Owned(Value::Object(trimmed))
+}
 
 /// A node that panics fails its own step; otherwise the run would wait forever
 /// for a result that never arrives and keep its slot.
@@ -58,8 +87,9 @@ pub async fn execute_workflow(
     backend: Backend,
     workflow_id: String,
     dry_run: bool,
+    trigger: RunTrigger,
 ) -> Result<WorkflowExecutionResult, String> {
-    execute_workflow_inner(app, backend, workflow_id, dry_run, None).await
+    execute_workflow_inner(app, backend, workflow_id, dry_run, trigger, None).await
 }
 
 pub(crate) async fn execute_workflow_snapshot(
@@ -67,9 +97,10 @@ pub(crate) async fn execute_workflow_snapshot(
     backend: Backend,
     snapshot: Arc<crate::services::automation::runtime::WorkflowSnapshot>,
     dry_run: bool,
+    trigger: RunTrigger,
 ) -> Result<WorkflowExecutionResult, String> {
     let id = snapshot.definition.id.clone();
-    execute_workflow_inner(app, backend, id, dry_run, Some(snapshot)).await
+    execute_workflow_inner(app, backend, id, dry_run, trigger, Some(snapshot)).await
 }
 
 async fn execute_workflow_inner(
@@ -77,6 +108,7 @@ async fn execute_workflow_inner(
     backend: Backend,
     workflow_id: String,
     dry_run: bool,
+    trigger: RunTrigger,
     prepared: Option<Arc<crate::services::automation::runtime::WorkflowSnapshot>>,
 ) -> Result<WorkflowExecutionResult, String> {
     // Coordinate starts made before Vault is enabled with its enable transition.
@@ -127,6 +159,7 @@ async fn execute_workflow_inner(
 
     let cancel = CancelToken::new();
     let active_job_ids = Arc::new(RwLock::new(HashSet::new()));
+    let run_id = uuid::Uuid::new_v4().to_string();
     let active_run = register_active_run(
         &workflow.name,
         &workflow_id,
@@ -134,6 +167,7 @@ async fn execute_workflow_inner(
             backend: backend.clone(),
             cancel: cancel.clone(),
             active_job_ids: active_job_ids.clone(),
+            run_id: run_id.clone(),
         },
     )?;
 
@@ -171,7 +205,8 @@ async fn execute_workflow_inner(
     );
 
     let graph = RunGraph::new(workflow);
-    let mut state = RunState::new(&graph, workflow);
+    let mut state = RunState::new(&graph, workflow, &trigger);
+    state.skip_unstarted(&graph, workflow, &workflow_id);
 
     let ctx = Arc::new(RunContext {
         app: app.clone(),
@@ -180,8 +215,14 @@ async fn execute_workflow_inner(
         cancel: cancel.clone(),
         active_jobs: active_job_ids,
         node_results: Arc::new(RwLock::new(HashMap::new())),
-        run_id: uuid::Uuid::new_v4().to_string(),
+        run_id: run_id.clone(),
         dry_run,
+        lineage: trigger
+            .ancestors()
+            .iter()
+            .cloned()
+            .chain([workflow_id.clone()])
+            .collect(),
     });
     let (tx, mut rx) = tokio::sync::mpsc::channel::<NodeFinishedEvent>(total_nodes.max(1));
 
@@ -278,7 +319,16 @@ async fn execute_workflow_inner(
         cancelled: cancel.is_cancelled(),
         elapsed: start_instant.elapsed(),
     };
-    Ok(finish_run(&app, &backend, workflow, workflow_id, &state, outcome).await)
+    Ok(finish_run(
+        &app,
+        &backend,
+        workflow,
+        workflow_id,
+        &run_id,
+        &state,
+        outcome,
+    )
+    .await)
 }
 
 /// Whether the node asks to stop the run. Other nodes report `stopped` for what
@@ -335,7 +385,7 @@ fn record_node_outcome(
                 },
                 error_message,
                 Some(finished.duration_ms),
-                Some(&output.value),
+                Some(&output_for_event(&output.value)),
             );
             ctx.node_results
                 .write()
@@ -385,6 +435,7 @@ async fn finish_run(
     backend: &Backend,
     workflow: &WorkflowDefinition,
     workflow_id: String,
+    run_id: &str,
     state: &RunState,
     outcome: RunOutcome,
 ) -> WorkflowExecutionResult {
@@ -470,7 +521,7 @@ async fn finish_run(
 
     if failed_nodes > 0 {
         // Clean up any orphan mounts or serves left behind by the failed workflow execution
-        cleanup_workflow_resources(app, backend, &workflow_id).await;
+        cleanup_workflow_resources(app, backend, &workflow_id, run_id).await;
 
         notify(
             app,
@@ -539,6 +590,24 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn long_lists_are_trimmed_only_in_what_goes_out_with_an_event() {
+        let long: Vec<usize> = (0..EVENT_LIST_LIMIT + 50).collect();
+        let output = json!({ "differ": long, "count": 250, "short": [1, 2] });
+        let sent = output_for_event(&output);
+        assert_eq!(sent["differ"].as_array().unwrap().len(), EVENT_LIST_LIMIT);
+        assert_eq!(sent["short"].as_array().unwrap().len(), 2);
+        assert_eq!(sent["count"], 250);
+        assert_eq!(
+            output["differ"].as_array().unwrap().len(),
+            EVENT_LIST_LIMIT + 50,
+            "the run keeps the whole output"
+        );
+
+        let small = json!({ "differ": [1] });
+        assert!(matches!(output_for_event(&small), Cow::Borrowed(_)));
+    }
+
     use crate::rclone::backend::types::Backend;
 
     use crate::services::flow::workflow::engine::active::{is_workflow_active, stop_workflow};
@@ -592,7 +661,14 @@ mod tests {
         let execution_app = app.clone();
         let id = workflow.id.clone();
         let execution = crate::utils::spawn(async move {
-            execute_workflow(execution_app, Backend::new_local("Local"), id, false).await
+            execute_workflow(
+                execution_app,
+                Backend::new_local("Local"),
+                id,
+                false,
+                RunTrigger::Manual,
+            )
+            .await
         });
         tokio::time::timeout(std::time::Duration::from_secs(2), async {
             while !is_workflow_active("Local", &workflow.id) {
@@ -629,9 +705,15 @@ mod tests {
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
         manager.lock().unwrap();
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
         assert!(result.success);
         assert_eq!(result.completed_nodes, 1);
         assert!(manager.is_locked());
@@ -651,6 +733,7 @@ mod tests {
             Backend::new_local("Local"),
             snapshot.clone(),
             false,
+            RunTrigger::Manual,
         );
         let second = async {
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
@@ -659,6 +742,7 @@ mod tests {
                 Backend::new_local("Local"),
                 snapshot.clone(),
                 false,
+                RunTrigger::Manual,
             )
             .await;
             // The refused start must leave the first run registered and stoppable.
@@ -686,6 +770,7 @@ mod tests {
             backend: Backend::new_remote(backend, "127.0.0.1", 0),
             cancel: crate::services::flow::workflow::engine::cancel::CancelToken::new(),
             active_job_ids: Arc::new(RwLock::new(HashSet::new())),
+            run_id: "test-run".into(),
         };
         let on_nas = register_active_run("Backup", "copied-id", state("NAS-run")).unwrap();
         // Copying workflows to another backend keeps their ids; that copy is a different workflow.
@@ -716,6 +801,7 @@ mod tests {
                 Backend::new_local("Local"),
                 snapshot.clone(),
                 false,
+                RunTrigger::Manual,
             )
             .await
             .unwrap();
@@ -778,9 +864,15 @@ mod tests {
         };
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
         assert!(!result.success);
         assert_eq!(result.failed_nodes, 1);
     }
@@ -809,13 +901,15 @@ mod tests {
                     app.clone(),
                     Backend::new_local("Local"),
                     "edited-while-running".into(),
-                    false
+                    false,
+                    RunTrigger::Manual
                 ),
                 execute_workflow(
                     app.clone(),
                     Backend::new_local("Local"),
                     "deleted-while-running".into(),
-                    false
+                    false,
+                    RunTrigger::Manual
                 ),
             )
         };
@@ -883,9 +977,15 @@ mod tests {
         };
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
 
         // The slow node was not cancelled by the stop node, and nothing started afterwards.
         assert!(result.success, "{result:?}");
@@ -905,8 +1005,13 @@ mod tests {
                 .unwrap(),
         );
         let started = Instant::now();
-        let run =
-            execute_workflow_snapshot(app.clone(), Backend::new_local("Local"), snapshot, false);
+        let run = execute_workflow_snapshot(
+            app.clone(),
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        );
         let stopper = async {
             tokio::time::sleep(Duration::from_millis(200)).await;
             stop_workflow(&app, "stop-wait-test").await.unwrap();

@@ -144,7 +144,8 @@ export class WorkflowInspectorComponent {
   // Form local state signals for selected node
   readonly nodeTitle = signal<string>('');
   readonly nodeSubtitle = signal<string>('');
-  readonly nodeConfig = signal<Record<string, unknown>>({});
+  /** The settings of the selected node, as the workflow holds them. */
+  readonly nodeConfig = computed<Record<string, unknown>>(() => this.selectedNode()?.config ?? {});
 
   // Form local state signals for active workflow
   readonly workflowName = signal<string>('');
@@ -212,7 +213,6 @@ export class WorkflowInspectorComponent {
         const title = node.titleKey ? this.translate.instant(node.titleKey) : node.title;
         this.nodeTitle.set(title);
         this.nodeSubtitle.set(node.subtitle ?? '');
-        this.nodeConfig.set(structuredClone(node.config || {}));
       }
     });
 
@@ -338,29 +338,19 @@ export class WorkflowInspectorComponent {
     extractActiveConfigEntries(this.nodeConfig())
   );
 
-  updateNodeRclonePath(key: string, value: unknown): void {
+  /** Sets settings of the selected node by path; only those paths change in its config. */
+  private setNodeConfigPaths(entries: Record<string, unknown>): void {
     const node = this.selectedNode();
     if (!node) return;
-    const cfg = structuredClone(this.nodeConfig());
-    if (!cfg['config'] || typeof cfg['config'] !== 'object') {
-      cfg['config'] = { rclone: {} };
-    }
-    const innerConfig = cfg['config'] as { rclone?: Record<string, unknown> };
-    if (!innerConfig.rclone || typeof innerConfig.rclone !== 'object') {
-      innerConfig.rclone = {};
-    }
-    innerConfig.rclone[key] = value;
-    this.nodeConfig.set(cfg);
-    this.stateService.updateNodeConfig(node.id, cfg);
+    this.stateService.updateNodeConfigPaths(node.id, entries);
+  }
+
+  updateNodeRclonePath(key: string, value: unknown): void {
+    this.setNodeConfigPaths({ [`config.rclone.${key}`]: value });
   }
 
   onInspectorRemoteChange(val: string): void {
-    const node = this.selectedNode();
-    if (!node) return;
-    const cfg = structuredClone(this.nodeConfig());
-    cfg['remoteName'] = val;
-    this.nodeConfig.set(cfg);
-    this.stateService.updateNodeConfig(node.id, cfg);
+    this.setNodeConfigPaths({ remoteName: val });
   }
 
   onInspectorSourceChange(val: string): void {
@@ -387,8 +377,7 @@ export class WorkflowInspectorComponent {
   }
 
   onServeTypeChange(val: string): void {
-    this.updateNodeRclonePath('serveType', val);
-    this.updateNodeRclonePath('type', val);
+    this.setNodeConfigPaths({ 'config.rclone.serveType': val, 'config.rclone.type': val });
   }
 
   onServeAddrChange(val: string): void {
@@ -417,21 +406,19 @@ export class WorkflowInspectorComponent {
     const node = this.selectedNode();
     if (!node) return;
     this.nodeTitle.set(newTitle);
-    this.stateService.updateNodeMetadata(node.id, { title: newTitle, titleKey: undefined });
+    this.stateService.updateNode(node.id, { title: newTitle, titleKey: undefined });
   }
 
   onSubtitleChange(newSubtitle: string): void {
     const node = this.selectedNode();
     if (!node) return;
     this.nodeSubtitle.set(newSubtitle);
-    this.stateService.updateNodeMetadata(node.id, { subtitle: newSubtitle });
+    this.stateService.updateNode(node.id, { subtitle: newSubtitle });
   }
 
   onConfigFieldChange(key: string, value: unknown): void {
     const node = this.selectedNode();
     if (!node) return;
-    const current = { ...this.nodeConfig(), [key]: value };
-    this.nodeConfig.set(current);
     this.stateService.updateNodeConfig(node.id, { [key]: value });
   }
 
@@ -460,14 +447,12 @@ export class WorkflowInspectorComponent {
   onWorkflowShowOnTrayChange(checked: boolean): void {
     this.workflowShowOnTray.set(checked);
     this.stateService.updateWorkflowMetadata({ showOnTray: checked });
-    this.saveActiveWorkflow();
+    const wf = this.stateService.currentWorkflow();
+    if (wf) void this.storageService.saveShowOnTray(wf.id, checked);
   }
 
   saveActiveWorkflow(): void {
-    const wf = this.stateService.currentWorkflow();
-    if (wf) {
-      void this.storageService.saveWorkflow(wf);
-    }
+    void this.storageService.saveCurrentWorkflow();
   }
 
   async duplicateActiveWorkflow(): Promise<void> {

@@ -55,6 +55,9 @@ pub struct JobMetadata {
     pub workflow_id: Option<String>,
     #[serde(default)]
     pub node_id: Option<String>,
+    /// The workflows that led to this job, the one that started it last.
+    #[serde(default)]
+    pub workflow_lineage: Vec<String>,
 }
 
 impl JobMetadata {
@@ -80,6 +83,7 @@ impl JobMetadata {
             execute_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 
@@ -116,6 +120,12 @@ impl JobMetadata {
     #[must_use]
     pub fn with_workflow_id(mut self, workflow_id: Option<String>) -> Self {
         self.workflow_id = workflow_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_workflow_lineage(mut self, workflow_lineage: Vec<String>) -> Self {
+        self.workflow_lineage = workflow_lineage;
         self
     }
 
@@ -166,6 +176,7 @@ impl JobMetadata {
             execute_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 
@@ -198,6 +209,7 @@ impl JobMetadata {
             execute_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 

@@ -4,9 +4,10 @@ use std::collections::{HashMap, VecDeque};
 
 use serde_json::Value;
 
+use crate::services::flow::workflow::engine::RunTrigger;
 use crate::services::flow::workflow::types::{
     NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowEdge, WorkflowNode,
-    WorkflowNodeCategory, WorkflowNodeExecutionState, WorkflowNodeStateEvent, WorkflowPortType,
+    WorkflowNodeExecutionState, WorkflowNodeStateEvent, WorkflowPortType,
 };
 use crate::utils::types::events::WORKFLOW_NODE_STATE_CHANGED;
 
@@ -71,28 +72,47 @@ pub(crate) struct RunState {
     nodes: Vec<NodeStatus>,
     edges: Vec<EdgeState>,
     ready: VecDeque<usize>,
+    /// Entry points the run was not started by.
+    unstarted: Vec<usize>,
     pub(crate) completed: usize,
     pub(crate) failed: usize,
     pub(crate) skipped: usize,
 }
 
 impl RunState {
-    /// Triggers and nodes without inputs are ready from the start.
-    pub(crate) fn new(graph: &RunGraph, workflow: &WorkflowDefinition) -> Self {
+    /// The triggers that `trigger` started are ready from the start. A workflow with
+    /// triggers but none of that kind begins at all of them, so a schedule-only
+    /// workflow can still be run by hand. Without any trigger, the nodes that have
+    /// no inputs begin it.
+    pub(crate) fn new(
+        graph: &RunGraph,
+        workflow: &WorkflowDefinition,
+        trigger: &RunTrigger,
+    ) -> Self {
         let mut state = Self {
             nodes: vec![NodeStatus::Pending; workflow.nodes.len()],
             edges: vec![EdgeState::Pending; workflow.edges.len()],
             ready: VecDeque::new(),
+            unstarted: Vec::new(),
             completed: 0,
             failed: 0,
             skipped: 0,
         };
+        let has_triggers = workflow.nodes.iter().any(WorkflowNode::is_trigger);
+        let kind_present = workflow.nodes.iter().any(|node| trigger.starts(node));
         for (idx, node) in workflow.nodes.iter().enumerate() {
-            if node.category == WorkflowNodeCategory::Trigger
-                || node.resolved_category() == WorkflowNodeCategory::Trigger
-                || graph.incoming[idx].is_empty()
-            {
+            let is_entry = if has_triggers {
+                node.is_trigger()
+            } else {
+                graph.incoming[idx].is_empty()
+            };
+            if !is_entry {
+                continue;
+            }
+            if !has_triggers || !kind_present || trigger.starts(node) {
                 state.queue(idx);
+            } else {
+                state.unstarted.push(idx);
             }
         }
         state
@@ -151,11 +171,39 @@ impl RunState {
         workflow_id: &str,
         finished: usize,
     ) {
-        let mut pending: VecDeque<usize> = graph.outgoing[finished]
+        let pending = graph.outgoing[finished]
             .iter()
             .map(|&(_, target)| target)
             .collect();
+        self.settle(graph, workflow, workflow_id, pending);
+    }
 
+    /// Skips the entry points the run was not started by, so what only they lead to
+    /// is skipped too and joins do not wait for branches that will never run.
+    pub(crate) fn skip_unstarted(
+        &mut self,
+        graph: &RunGraph,
+        workflow: &WorkflowDefinition,
+        workflow_id: &str,
+    ) {
+        let mut pending = VecDeque::new();
+        for idx in std::mem::take(&mut self.unstarted) {
+            self.skip(workflow_id, idx, &workflow.nodes[idx]);
+            for &(edge_idx, target) in &graph.outgoing[idx] {
+                self.edges[edge_idx] = EdgeState::Disabled;
+                pending.push_back(target);
+            }
+        }
+        self.settle(graph, workflow, workflow_id, pending);
+    }
+
+    fn settle(
+        &mut self,
+        graph: &RunGraph,
+        workflow: &WorkflowDefinition,
+        workflow_id: &str,
+        mut pending: VecDeque<usize>,
+    ) {
         while let Some(candidate) = pending.pop_front() {
             if self.nodes[candidate] != NodeStatus::Pending {
                 continue;
@@ -318,6 +366,8 @@ mod tests {
                     port_type: WorkflowPortType::True,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
                 WorkflowPort {
                     id: "false".to_string(),
@@ -325,6 +375,8 @@ mod tests {
                     port_type: WorkflowPortType::False,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
             ],
             ..Default::default()
@@ -378,6 +430,8 @@ mod tests {
                     port_type: WorkflowPortType::Success,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
                 WorkflowPort {
                     id: "failure".to_string(),
@@ -385,6 +439,8 @@ mod tests {
                     port_type: WorkflowPortType::Failure,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
             ],
             ..Default::default()
@@ -448,6 +504,8 @@ mod tests {
                 port_type: WorkflowPortType::In,
                 label: None,
                 description: None,
+                label_key: None,
+                label_params: None,
             }],
             outputs: vec![
                 WorkflowPort {
@@ -456,6 +514,8 @@ mod tests {
                     port_type: WorkflowPortType::Out,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
                 WorkflowPort {
                     id: "branch2".to_string(),
@@ -463,6 +523,8 @@ mod tests {
                     port_type: WorkflowPortType::Out,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
                 WorkflowPort {
                     id: "branch3".to_string(),
@@ -470,6 +532,8 @@ mod tests {
                     port_type: WorkflowPortType::Out,
                     label: None,
                     description: None,
+                    label_key: None,
+                    label_params: None,
                 },
             ],
             ..Default::default()
@@ -526,6 +590,8 @@ mod tests {
             port_type,
             label: None,
             description: None,
+            label_key: None,
+            label_params: None,
         }
     }
 
@@ -574,7 +640,7 @@ mod tests {
             ..Default::default()
         };
         let graph = RunGraph::new(&workflow);
-        let mut state = RunState::new(&graph, &workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
 
         assert_eq!(state.start_next(), Some(0));
         assert_eq!(state.start_next(), None);
@@ -625,7 +691,7 @@ mod tests {
             ..Default::default()
         };
         let graph = RunGraph::new(&workflow);
-        let mut state = RunState::new(&graph, &workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
         assert_eq!(state.start_next(), Some(0));
 
         state.activate_edges(&graph, &workflow, 0, &ok(Some("true")));
@@ -651,10 +717,115 @@ mod tests {
             ..Default::default()
         };
         let graph = RunGraph::new(&workflow);
-        let mut state = RunState::new(&graph, &workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
         state.start_next();
         state.failed(0, false);
         state.skip_unreached(&workflow, "wf");
         assert_eq!((state.completed, state.failed, state.skipped), (0, 0, 1));
+    }
+
+    fn two_trigger_workflow() -> WorkflowDefinition {
+        let mut join = node("join", "join", vec![]);
+        join.config = json!({"joinMode": "any_success"});
+        WorkflowDefinition {
+            nodes: vec![
+                node("cron", "cron", vec![]),
+                node("watch", "watcher", vec![]),
+                node("a", "log_audit", vec![]),
+                node("b", "log_audit", vec![]),
+                join,
+            ],
+            edges: vec![
+                edge("e1", "cron", "out", "a"),
+                edge("e2", "watch", "out", "b"),
+                edge("e3", "a", "out", "join"),
+                edge("e4", "b", "out", "join"),
+            ],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_run_begins_only_at_the_trigger_that_started_it() {
+        let workflow = two_trigger_workflow();
+        let graph = RunGraph::new(&workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Cron);
+        state.skip_unstarted(&graph, &workflow, "wf");
+
+        assert_eq!(state.start_next(), Some(0));
+        assert_eq!(
+            state.start_next(),
+            None,
+            "the watcher branch does not start"
+        );
+        // The watcher and what only it leads to are skipped at once.
+        assert_eq!(state.skipped, 2);
+
+        state.activate_edges(&graph, &workflow, 0, &ok(None));
+        state.succeeded(0);
+        state.queue_downstream(&graph, &workflow, "wf", 0);
+        assert_eq!(state.start_next(), Some(2));
+
+        state.activate_edges(&graph, &workflow, 2, &ok(None));
+        state.succeeded(2);
+        state.queue_downstream(&graph, &workflow, "wf", 2);
+        assert_eq!(
+            state.start_next(),
+            Some(4),
+            "the join does not wait for a branch that will never run"
+        );
+    }
+
+    #[test]
+    fn a_workflow_without_a_trigger_of_that_kind_starts_at_all_its_triggers() {
+        let workflow = two_trigger_workflow();
+        let graph = RunGraph::new(&workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
+        state.skip_unstarted(&graph, &workflow, "wf");
+
+        assert_eq!(state.start_next(), Some(0));
+        assert_eq!(state.start_next(), Some(1));
+        assert_eq!(state.skipped, 0);
+    }
+
+    #[test]
+    fn only_the_job_event_nodes_that_matched_begin_the_run() {
+        let workflow = WorkflowDefinition {
+            nodes: vec![
+                node("first", "job_event", vec![]),
+                node("second", "job_event", vec![]),
+                node("orphan", "log_audit", vec![]),
+            ],
+            ..Default::default()
+        };
+        let graph = RunGraph::new(&workflow);
+        let trigger = RunTrigger::JobEvent {
+            node_ids: ["second".to_string()].into_iter().collect(),
+            ancestors: vec![],
+        };
+        let mut state = RunState::new(&graph, &workflow, &trigger);
+        state.skip_unstarted(&graph, &workflow, "wf");
+
+        assert_eq!(state.start_next(), Some(1));
+        assert_eq!(state.start_next(), None);
+        // A node nothing leads to does not run beside the triggers.
+        state.skip_unreached(&workflow, "wf");
+        assert_eq!(state.skipped, 2);
+    }
+
+    #[test]
+    fn without_any_trigger_the_nodes_without_inputs_begin_the_run() {
+        let workflow = WorkflowDefinition {
+            nodes: vec![
+                node("a", "log_audit", vec![]),
+                node("b", "log_audit", vec![]),
+            ],
+            edges: vec![edge("ab", "a", "out", "b")],
+            ..Default::default()
+        };
+        let graph = RunGraph::new(&workflow);
+        let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
+        assert_eq!(state.start_next(), Some(0));
+        assert_eq!(state.start_next(), None);
     }
 }

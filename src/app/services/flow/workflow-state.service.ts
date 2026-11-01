@@ -1,4 +1,5 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import {
   CanvasViewport,
   WorkflowDefinition,
@@ -16,6 +17,11 @@ import {
 } from '../../flow/workflow/constants/palette.registry';
 import { generatePrefixedId } from '../../shared/utils';
 import {
+  toPersistableNode,
+  toPersistableWorkflow,
+  withRuntimeFields,
+} from '../../flow/workflow/utils/workflow-persist.util';
+import {
   GRID_SIZE,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -24,6 +30,10 @@ import {
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
 } from '../../flow/workflow/constants/workflow.constants';
+
+/** Edits of the same field closer together than this are one undo step. */
+const COALESCE_WINDOW_MS = 1000;
+const MAX_UNDO_STEPS = 50;
 
 /** Cache of computed content hashes keyed by workflow reference to avoid redundant full-tree serializations */
 const contentHashCache = new WeakMap<WorkflowDefinition, string>();
@@ -74,6 +84,8 @@ function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowStateService {
+  private readonly translate = inject(TranslateService);
+
   readonly currentWorkflow = signal<WorkflowDefinition | null>(null);
   readonly viewport = signal<CanvasViewport>({ x: 0, y: 0, zoom: 1 });
   readonly selectedNodeIds = signal<Set<string>>(new Set());
@@ -98,7 +110,7 @@ export class WorkflowStateService {
     height: DEFAULT_CANVAS_HEIGHT,
   });
 
-  /** Set to true while any node is actively dragging to suppress expensive full serialization */
+  /** True while a node is being dragged: the workflow is changing, so it is not compared with the saved one on every frame */
   readonly isDraggingNode = signal<boolean>(false);
 
   /** Monotonic revision counters for O(1) dirty state tracking */
@@ -116,6 +128,8 @@ export class WorkflowStateService {
     if (!baseline) return false;
     // O(1) fast-path: matching revisions guarantee clean state (e.g. undo back to baseline or transient state updates)
     if (this.currentRevision() === this.savedRevision()) return false;
+    // Dragging changes the workflow on every frame; hashing it each time would cost more than it tells.
+    if (this.isDraggingNode()) return true;
     return getWorkflowContentHash(current) !== baseline;
   });
 
@@ -176,7 +190,7 @@ export class WorkflowStateService {
   /**
    * Creates a blank new workflow on the canvas.
    */
-  createNewWorkflow(name = 'New Workflow'): WorkflowDefinition {
+  createNewWorkflow(name = this.translate.instant('flow.workflow.untitled')): WorkflowDefinition {
     const newWf: WorkflowDefinition = {
       id: generatePrefixedId('wf'),
       name,
@@ -196,15 +210,7 @@ export class WorkflowStateService {
    * Updates top-level metadata of the active workflow (name, description, auto_start, cron_expression).
    */
   updateWorkflowMetadata(patch: Partial<WorkflowDefinition>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        ...patch,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(() => patch, `workflow:${Object.keys(patch).join(',')}`);
   }
 
   setWorkflowName(name: string): void {
@@ -216,22 +222,53 @@ export class WorkflowStateService {
   }
 
   /**
+   * Changes the workflow on the canvas as one undoable step. Repeated edits sharing a
+   * `coalesceKey` in quick succession (typing in a field) are a single step.
+   */
+  private edit(
+    change: (workflow: WorkflowDefinition) => Partial<WorkflowDefinition>,
+    coalesceKey?: string
+  ): void {
+    this.snapshot(coalesceKey);
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, ...change(wf), updatedAt: new Date().toISOString() } : null
+    );
+  }
+
+  private lastSnapshot = { key: '', at: 0 };
+
+  /** A copy for the undo history: what was edited, without the results of a run. */
+  private cloneForHistory(workflow: WorkflowDefinition): WorkflowDefinition {
+    return structuredClone(toPersistableWorkflow(workflow));
+  }
+
+  /**
    * Records a snapshot into the undo stack before making mutations.
    */
-  snapshot(): void {
+  snapshot(coalesceKey?: string): void {
     const current = this.currentWorkflow();
-    if (current) {
-      this.undoStack.push(structuredClone(current));
+    if (!current) return;
+
+    const now = Date.now();
+    const joinsLastStep =
+      coalesceKey !== undefined &&
+      this.lastSnapshot.key === coalesceKey &&
+      now - this.lastSnapshot.at < COALESCE_WINDOW_MS &&
+      this.undoStack.length > 0;
+    this.lastSnapshot = { key: coalesceKey ?? '', at: now };
+
+    if (!joinsLastStep) {
+      this.undoStack.push(this.cloneForHistory(current));
       this.undoRevisions.push(this.currentRevision());
-      if (this.undoStack.length > 50) {
+      if (this.undoStack.length > MAX_UNDO_STEPS) {
         this.undoStack.shift();
         this.undoRevisions.shift();
       }
       this.redoStack.length = 0;
       this.redoRevisions.length = 0;
       this.updateUndoRedoSignals();
-      this.currentRevision.update(r => r + 1);
     }
+    this.currentRevision.update(r => r + 1);
   }
 
   undo(): void {
@@ -240,12 +277,10 @@ export class WorkflowStateService {
     if (!prev || prevRev === undefined) return;
     const current = this.currentWorkflow();
     if (current) {
-      this.redoStack.push(structuredClone(current));
+      this.redoStack.push(this.cloneForHistory(current));
       this.redoRevisions.push(this.currentRevision());
     }
-    this.currentRevision.set(prevRev);
-    this.currentWorkflow.set(prev);
-    this.updateUndoRedoSignals();
+    this.restore(prev, prevRev, current);
   }
 
   redo(): void {
@@ -254,11 +289,23 @@ export class WorkflowStateService {
     if (!next || nextRev === undefined) return;
     const current = this.currentWorkflow();
     if (current) {
-      this.undoStack.push(structuredClone(current));
+      this.undoStack.push(this.cloneForHistory(current));
       this.undoRevisions.push(this.currentRevision());
     }
-    this.currentRevision.set(nextRev);
-    this.currentWorkflow.set(next);
+    this.restore(next, nextRev, current);
+  }
+
+  /** Puts a history step on the canvas. What the last run left on the nodes stays with them. */
+  private restore(
+    step: WorkflowDefinition,
+    revision: number,
+    current: WorkflowDefinition | null
+  ): void {
+    this.lastSnapshot = { key: '', at: 0 };
+    this.currentRevision.set(revision);
+    this.currentWorkflow.set(
+      current ? { ...step, nodes: withRuntimeFields(step.nodes, current.nodes) } : step
+    );
     this.updateUndoRedoSignals();
   }
 
@@ -326,14 +373,9 @@ export class WorkflowStateService {
       state: 'idle',
     };
 
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: [...wf.nodes, newNode],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, nodes: [...wf.nodes, newNode], updatedAt: new Date().toISOString() } : null
+    );
 
     this.selectNode(newNode.id, false);
     return newNode;
@@ -371,36 +413,59 @@ export class WorkflowStateService {
     });
   }
 
+  /** Merges `config` into the node's settings (top-level keys). */
   updateNodeConfig(id: string, config: Record<string, unknown>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
+    this.edit(
+      wf => ({
         nodes: wf.nodes.map(n => (n.id === id ? { ...n, config: { ...n.config, ...config } } : n)),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+      }),
+      `config:${id}:${Object.keys(config).join(',')}`
+    );
+  }
+
+  /**
+   * Sets settings of a node by dot-notated path (`config.rclone.srcFs`), creating the
+   * levels in between. All the paths change as one undoable step.
+   */
+  updateNodeConfigPaths(id: string, entries: Record<string, unknown>): void {
+    this.edit(
+      wf => ({
+        nodes: wf.nodes.map(n => {
+          if (n.id !== id) return n;
+          const config = structuredClone(n.config || {});
+          for (const [path, value] of Object.entries(entries)) {
+            this.setNestedKey(config, path, value);
+          }
+          return { ...n, config };
+        }),
+      }),
+      `config:${id}:${Object.keys(entries).join(',')}`
+    );
   }
 
   /**
    * Removes a specific field (or dot-notated nested path) from a node's config.
    */
   removeConfigField(nodeId: string, path: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          const config = structuredClone(n.config || {});
-          this.deleteNestedKey(config, path);
-          return { ...n, config };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.map(n => {
+        if (n.id !== nodeId) return n;
+        const config = structuredClone(n.config || {});
+        this.deleteNestedKey(config, path);
+        return { ...n, config };
+      }),
+    }));
+  }
+
+  private setNestedKey(obj: Record<string, unknown>, path: string, value: unknown): void {
+    const keys = path.split('.');
+    let current = obj;
+    for (const key of keys.slice(0, -1)) {
+      const next = current[key];
+      if (!next || typeof next !== 'object' || Array.isArray(next)) current[key] = {};
+      current = current[key] as Record<string, unknown>;
+    }
+    current[keys[keys.length - 1]] = value;
   }
 
   private deleteNestedKey(obj: Record<string, unknown>, path: string): void {
@@ -419,35 +484,22 @@ export class WorkflowStateService {
     }
   }
 
-  updateNodeMetadata(id: string, patch: Partial<WorkflowNode>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => (n.id === id ? { ...n, ...patch } : n)),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-  }
-
+  /** Changes a node's own fields (title, subtitle, …); `patch.config` is merged into its settings. */
   updateNode(id: string, patch: Partial<WorkflowNode>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== id) return n;
-          return {
-            ...n,
-            ...patch,
-            config: patch.config ? { ...n.config, ...patch.config } : n.config,
-          };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(
+      wf => ({
+        nodes: wf.nodes.map(n =>
+          n.id === id
+            ? {
+                ...n,
+                ...patch,
+                config: patch.config ? { ...n.config, ...patch.config } : n.config,
+              }
+            : n
+        ),
+      }),
+      `node:${id}:${Object.keys(patch).join(',')}`
+    );
   }
 
   updateNodeExecutionState(
@@ -482,37 +534,27 @@ export class WorkflowStateService {
     const source = wf.nodes.find(n => n.id === id);
     if (!source) return null;
 
-    this.snapshot();
+    const sourceTitle = source.titleKey ? this.translate.instant(source.titleKey) : source.title;
     const duplicated: WorkflowNode = {
-      ...structuredClone(source),
+      ...structuredClone(toPersistableNode(source)),
       id: generatePrefixedId('node'),
-      title: `${source.title} (Copy)`,
+      title: this.translate.instant('flow.workflow.copyName', { name: sourceTitle }),
       titleKey: undefined,
       x: source.x + 32,
       y: source.y + 32,
       state: 'idle',
     };
 
-    this.currentWorkflow.update(w => {
-      if (!w) return null;
-      return { ...w, nodes: [...w.nodes, duplicated], updatedAt: new Date().toISOString() };
-    });
-
+    this.edit(w => ({ nodes: [...w.nodes, duplicated] }));
     this.selectNode(duplicated.id, false);
     return duplicated;
   }
 
   removeNode(id: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.filter(n => n.id !== id),
-        edges: wf.edges.filter(e => e.sourceNodeId !== id && e.targetNodeId !== id),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.filter(n => n.id !== id),
+      edges: wf.edges.filter(e => e.sourceNodeId !== id && e.targetNodeId !== id),
+    }));
     this.selectedNodeIds.update(set => {
       const next = new Set(set);
       next.delete(id);
@@ -521,68 +563,62 @@ export class WorkflowStateService {
   }
 
   addJoinInputPort(nodeId: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        const currentInputs = node.inputs || [];
-        const nextIndex = currentInputs.length + 1;
-        const newPort: WorkflowPort = {
-          id: `in${nextIndex}`,
-          name: `In ${nextIndex}`,
-          type: 'in',
-          label: `In ${nextIndex}`,
-        };
-        return { inputs: [...currentInputs, newPort] };
-      })
-    );
+    this.addPort(nodeId, 'inputs', 'in', 'flow.workflow.ports.inN', 'In');
   }
 
   removeJoinInputPort(nodeId: string, portId?: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        if (!node.inputs || node.inputs.length <= 2) return null;
-        const portToRemove = portId || node.inputs[node.inputs.length - 1].id;
-        return {
-          inputs: node.inputs.filter(p => p.id !== portToRemove),
-          removedPortId: portToRemove,
-          isInput: true,
-        };
-      })
-    );
+    this.removePort(nodeId, 'inputs', portId);
   }
 
   addForkOutputPort(nodeId: string): void {
+    this.addPort(nodeId, 'outputs', 'branch', 'flow.workflow.ports.branchN', 'Branch');
+  }
+
+  removeForkOutputPort(nodeId: string, portId?: string): void {
+    this.removePort(nodeId, 'outputs', portId);
+  }
+
+  /** Appends the next free `<prefix><n>` port to a node's inputs or outputs. */
+  private addPort(
+    nodeId: string,
+    side: 'inputs' | 'outputs',
+    idPrefix: 'in' | 'branch',
+    labelKey: string,
+    fallbackLabel: string
+  ): void {
     this.snapshot();
     this.currentWorkflow.update(wf =>
       updateNodePorts(wf, nodeId, node => {
-        const currentOutputs = node.outputs || [];
-        let nextIndex = currentOutputs.length + 1;
-        while (currentOutputs.some(p => p.id === `branch${nextIndex}`)) {
-          nextIndex++;
-        }
-        const newPort: WorkflowPort = {
-          id: `branch${nextIndex}`,
-          name: `Branch ${nextIndex}`,
-          type: 'out',
-          label: `Branch ${nextIndex}`,
+        const current = node[side] || [];
+        let n = current.length + 1;
+        while (current.some(p => p.id === `${idPrefix}${n}`)) n++;
+        const label = `${fallbackLabel} ${n}`;
+        const port: WorkflowPort = {
+          id: `${idPrefix}${n}`,
+          name: label,
+          type: side === 'inputs' ? 'in' : 'out',
+          label,
+          labelKey,
+          labelParams: { n },
         };
-        return { outputs: [...currentOutputs, newPort] };
+        const ports = [...current, port];
+        return side === 'inputs' ? { inputs: ports } : { outputs: ports };
       })
     );
   }
 
-  removeForkOutputPort(nodeId: string, portId?: string): void {
+  /** Removes a port (the last one by default), and the wires on it. A node keeps at least two. */
+  private removePort(nodeId: string, side: 'inputs' | 'outputs', portId?: string): void {
     this.snapshot();
     this.currentWorkflow.update(wf =>
       updateNodePorts(wf, nodeId, node => {
-        if (!node.outputs || node.outputs.length <= 2) return null;
-        const portToRemove = portId || node.outputs[node.outputs.length - 1].id;
-        return {
-          outputs: node.outputs.filter(p => p.id !== portToRemove),
-          removedPortId: portToRemove,
-          isInput: false,
-        };
+        const current = node[side];
+        if (!current || current.length <= 2) return null;
+        const removedPortId = portId || current[current.length - 1].id;
+        const ports = current.filter(p => p.id !== removedPortId);
+        return side === 'inputs'
+          ? { inputs: ports, removedPortId, isInput: true }
+          : { outputs: ports, removedPortId, isInput: false };
       })
     );
   }
@@ -610,7 +646,9 @@ export class WorkflowStateService {
     );
     if (exists) return false;
 
-    this.snapshot();
+    // A run could never start with the wire that closes a loop, so it is not drawn.
+    if (this.reaches(wf.edges, targetNodeId, sourceNodeId)) return false;
+
     const newEdge: WorkflowEdge = {
       id: generatePrefixedId('edge'),
       sourceNodeId,
@@ -619,28 +657,31 @@ export class WorkflowStateService {
       targetPortId,
     };
 
-    this.currentWorkflow.update(w => {
-      if (!w) return null;
-      return {
-        ...w,
-        edges: [...w.edges, newEdge],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(w => ({ edges: [...w.edges, newEdge] }));
 
     return true;
   }
 
+  /** Whether a path of wires leads from `from` to `to`. */
+  private reaches(edges: readonly WorkflowEdge[], from: string, to: string): boolean {
+    const next = new Map<string, string[]>();
+    for (const edge of edges) {
+      next.set(edge.sourceNodeId, [...(next.get(edge.sourceNodeId) ?? []), edge.targetNodeId]);
+    }
+    const seen = new Set<string>();
+    const pending = [from];
+    while (pending.length > 0) {
+      const node = pending.pop() as string;
+      if (node === to) return true;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      pending.push(...(next.get(node) ?? []));
+    }
+    return false;
+  }
+
   removeEdge(id: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        edges: wf.edges.filter(e => e.id !== id),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({ edges: wf.edges.filter(e => e.id !== id) }));
     this.selectedEdgeIds.update(set => {
       const next = new Set(set);
       next.delete(id);
@@ -722,18 +763,12 @@ export class WorkflowStateService {
     const edgeIds = this.selectedEdgeIds();
     if (nodeIds.size === 0 && edgeIds.size === 0) return;
 
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.filter(n => !nodeIds.has(n.id)),
-        edges: wf.edges.filter(
-          e => !edgeIds.has(e.id) && !nodeIds.has(e.sourceNodeId) && !nodeIds.has(e.targetNodeId)
-        ),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.filter(n => !nodeIds.has(n.id)),
+      edges: wf.edges.filter(
+        e => !edgeIds.has(e.id) && !nodeIds.has(e.sourceNodeId) && !nodeIds.has(e.targetNodeId)
+      ),
+    }));
     this.clearSelection();
   }
 

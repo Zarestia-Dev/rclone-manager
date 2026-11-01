@@ -2977,7 +2977,12 @@
       "reportAndMore": "... ほか {{count}} 件",
       "reportStatusErrors": "{{count}} 件のエラーで完了しました",
       "reportStatusMatched": "{{count}} 件のファイルすべてが完全に一致しました (差異 0)。",
-      "reportStatus": "ステータス"
+      "reportStatus": "ステータス",
+      "missingWorkflowId": "更新するワークフロー ID がありません",
+      "workflowNotFound": "ワークフロー '{{id}}' が見つかりません",
+      "saveFailed": "ワークフローを保存できませんでした: {{error}}",
+      "deleteFailed": "ワークフローを削除できませんでした: {{error}}",
+      "copyName": "{{name}} (コピー)"
     },
     "mount": {
       "pointEmpty": "マウントポイントを空欄にすることはできません",
@@ -3866,7 +3871,9 @@
         "branch2": "分岐 2",
         "in1": "入力 1",
         "in2": "入力 2",
-        "done": "完了"
+        "done": "完了",
+        "inN": "入力 {{n}}",
+        "branchN": "分岐 {{n}}"
       },
       "nodes": {
         "manualTrigger": "手動トリガー",
@@ -3910,7 +3917,11 @@
         "logAudit": "監査ログ",
         "logAuditDesc": "ワークフロー実行ログにエントリを記録",
         "stopServe": "配信停止",
-        "stopServeDesc": "リモートのアクティブなネットワーク配信インスタンスを停止"
+        "stopServeDesc": "リモートのアクティブなネットワーク配信インスタンスを停止",
+        "sync": "同期",
+        "copy": "コピー",
+        "check": "チェック",
+        "mount": "マウント"
       },
       "logs": {
         "stepRunning": "ステップ「{{title}}」を実行中...",
@@ -4038,7 +4049,8 @@
         "title": "ワークフロービルダーへようこそ",
         "subtitle": "rclone 操作を自動化する新しいワークフローを作成するか、テンプレートを選択して開始してください。"
       },
-      "showInTray": "システムトレイに表示"
+      "showInTray": "システムトレイに表示",
+      "copyName": "{{name}} (コピー)"
     },
     "shortcuts": {
       "title": "Flow キーボードショートカット"

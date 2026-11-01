@@ -182,6 +182,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 

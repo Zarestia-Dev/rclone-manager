@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::rclone::backend::routing_transport::RoutingTransport;
 use crate::services::flow::workflow::engine::RunContext;
-use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
+use crate::services::flow::workflow::engine::nodes::{extract_node_op_config, simulated_output};
 use crate::services::flow::workflow::types::NodeExecutionOutput;
 
 /// Wraps an RC response with its status. The response is moved into `result`
@@ -35,7 +35,6 @@ fn rc_command_envelope(command: &str, out: Value) -> Value {
 /// Accepts either a JSON Object, a JSON String (which is parsed), or empty/None defaulting to `{}`.
 pub(crate) fn parse_rc_params(params_val: Option<&Value>) -> Result<Value, String> {
     match params_val {
-        Some(Value::Object(map)) => Ok(Value::Object(map.clone())),
         Some(Value::String(s)) => {
             let trimmed = s.trim();
             if trimmed.is_empty() {
@@ -45,9 +44,8 @@ pub(crate) fn parse_rc_params(params_val: Option<&Value>) -> Result<Value, Strin
                     .map_err(|e| crate::localized_error!("backendErrors.workflow.invalidRcParams", "error" => e))
             }
         }
-        Some(val) if val.is_null() => Ok(json!({})),
+        Some(Value::Null) | None => Ok(json!({})),
         Some(other) => Ok(other.clone()),
-        None => Ok(json!({})),
     }
 }
 
@@ -73,8 +71,6 @@ pub(crate) async fn cleanup_node(
 
     let fs = if op.remote.is_empty() {
         path.to_string()
-    } else if path.is_empty() {
-        format!("{}:", op.remote)
     } else {
         format!("{}:{path}", op.remote)
     };
@@ -121,6 +117,16 @@ pub(crate) async fn rc_command_node(
         .and_then(Value::as_str)
         .unwrap_or("core/version");
     let params = parse_rc_params(config.get("params"))?;
+
+    if ctx.dry_run {
+        info!("Workflow dry_run enabled; simulating RC command '{command}'");
+        return Ok(simulated_output(json!({
+            "command": command,
+            "params": params,
+            "success": true,
+            "status": "success"
+        })));
+    }
 
     let transport = RoutingTransport::for_backend(ctx.app.clone(), ctx.backend.clone());
     let out = tokio::select! {

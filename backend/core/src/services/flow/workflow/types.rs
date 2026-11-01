@@ -125,6 +125,12 @@ pub struct WorkflowPort {
     pub port_type: WorkflowPortType,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// Translation key of the label; `label` is the fallback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_key: Option<String>,
+    /// Values for the placeholders of `label_key`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_params: Option<serde_json::Map<String, Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
@@ -212,6 +218,13 @@ impl WorkflowNode {
     pub fn resolved_category(&self) -> WorkflowNodeCategory {
         category_for_node_type(&self.node_type)
     }
+
+    /// Whether the node starts a run, by its stored category or by what its type says.
+    #[must_use]
+    pub fn is_trigger(&self) -> bool {
+        self.category == WorkflowNodeCategory::Trigger
+            || self.resolved_category() == WorkflowNodeCategory::Trigger
+    }
 }
 
 /// A directed edge connecting two ports.
@@ -270,20 +283,22 @@ pub struct WorkflowDefinition {
     pub last_executed_at: Option<String>,
 }
 
+/// Reads a non-negative whole number from a node setting stored as an integer,
+/// a float or a numeric string.
+#[must_use]
+pub fn config_u64(config: &Value, key: &str) -> Option<u64> {
+    let value = config.get(key)?;
+    value
+        .as_u64()
+        .or_else(|| value.as_f64().map(|float| float.max(0.0) as u64))
+        .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
+}
+
 /// Helper to extract `delaySeconds` from a node's configuration object,
-/// supporting both numeric and string representations.
+/// supporting numeric and string representations.
 #[must_use]
 pub fn parse_delay_seconds(config: &Value) -> u64 {
-    config
-        .get("delaySeconds")
-        .and_then(Value::as_u64)
-        .or_else(|| {
-            config
-                .get("delaySeconds")
-                .and_then(Value::as_str)
-                .and_then(|s| s.parse::<u64>().ok())
-        })
-        .unwrap_or(0)
+    config_u64(config, "delaySeconds").unwrap_or(0)
 }
 
 impl WorkflowDefinition {
@@ -323,41 +338,27 @@ impl WorkflowDefinition {
 
     #[must_use]
     pub fn is_watch_enabled(&self) -> bool {
-        self.nodes.iter().any(|n| {
-            if n.kind() != NodeKind::Watcher {
-                return false;
-            }
-            if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
-                paths
-                    .iter()
-                    .any(|p| p.as_str().map(|s| !s.trim().is_empty()).unwrap_or(false))
-            } else if let Some(path) = n.config.get("watchPath").and_then(Value::as_str) {
-                !path.trim().is_empty()
-            } else {
-                false
-            }
-        })
+        !self.watcher_paths().is_empty()
     }
 
+    /// The distinct, non-empty paths of every watcher node, from `watchPaths` or the older `watchPath`.
     #[must_use]
     pub fn watcher_paths(&self) -> Vec<String> {
-        let mut result = Vec::new();
-        for n in &self.nodes {
-            if n.kind() == NodeKind::Watcher {
-                if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
-                    for p in paths {
-                        if let Some(s) = p.as_str() {
-                            let trimmed = s.trim();
-                            if !trimmed.is_empty() && !result.contains(&trimmed.to_string()) {
-                                result.push(trimmed.to_string());
-                            }
-                        }
-                    }
-                } else if let Some(path) = n.config.get("watchPath").and_then(Value::as_str) {
-                    let trimmed = path.trim();
-                    if !trimmed.is_empty() && !result.contains(&trimmed.to_string()) {
-                        result.push(trimmed.to_string());
-                    }
+        let mut result: Vec<String> = Vec::new();
+        for node in self.nodes.iter().filter(|n| n.kind() == NodeKind::Watcher) {
+            let configured: Vec<&str> =
+                if let Some(paths) = node.config.get("watchPaths").and_then(Value::as_array) {
+                    paths.iter().filter_map(Value::as_str).collect()
+                } else {
+                    node.config
+                        .get("watchPath")
+                        .and_then(Value::as_str)
+                        .into_iter()
+                        .collect()
+                };
+            for path in configured.into_iter().map(str::trim) {
+                if !path.is_empty() && !result.iter().any(|known| known == path) {
+                    result.push(path.to_string());
                 }
             }
         }
@@ -369,17 +370,7 @@ impl WorkflowDefinition {
         self.nodes
             .iter()
             .find(|n| n.kind() == NodeKind::Watcher)
-            .and_then(|n| {
-                n.config
-                    .get("debounceSeconds")
-                    .and_then(Value::as_u64)
-                    .or_else(|| {
-                        n.config
-                            .get("debounceSeconds")
-                            .and_then(Value::as_str)
-                            .and_then(|s| s.parse::<u64>().ok())
-                    })
-            })
+            .and_then(|n| config_u64(&n.config, "debounceSeconds"))
             .unwrap_or(5)
     }
 
@@ -486,6 +477,27 @@ pub struct WorkflowExecutionStateEvent {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_port_keeps_its_label_key_and_params_when_stored() {
+        let stored = json!({
+            "id": "in3",
+            "name": "In 3",
+            "type": "in",
+            "label": "In 3",
+            "labelKey": "flow.workflow.ports.inN",
+            "labelParams": { "n": 3 }
+        });
+        let port: WorkflowPort = serde_json::from_value(stored.clone()).unwrap();
+        assert_eq!(port.label_key.as_deref(), Some("flow.workflow.ports.inN"));
+        assert_eq!(serde_json::to_value(&port).unwrap(), stored);
+
+        // Ports stored before these fields existed still load and stay as they were.
+        let old = json!({ "id": "out", "name": "Out", "type": "out" });
+        let port: WorkflowPort = serde_json::from_value(old.clone()).unwrap();
+        assert!(port.label_key.is_none() && port.label_params.is_none());
+        assert_eq!(serde_json::to_value(&port).unwrap(), old);
+    }
 
     #[test]
     fn test_workflow_definition_serde() {

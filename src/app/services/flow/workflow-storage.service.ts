@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/workflow.types';
+import { toPersistableWorkflow } from '../../flow/workflow/utils/workflow-persist.util';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
@@ -16,6 +17,7 @@ export class WorkflowStorageService extends TauriBaseService {
 
   readonly workflows = signal<WorkflowDefinition[]>([]);
   readonly isLoading = signal<boolean>(false);
+  readonly isSaving = signal<boolean>(false);
   private readonly _presetTemplates = signal<WorkflowTemplate[]>([]);
   readonly presetTemplates = this._presetTemplates.asReadonly();
 
@@ -117,17 +119,78 @@ export class WorkflowStorageService extends TauriBaseService {
   /**
    * Persists a new or updated workflow to the Rust backend.
    */
-  async saveWorkflow(workflow: WorkflowDefinition): Promise<WorkflowDefinition> {
+  async saveWorkflow(
+    workflow: WorkflowDefinition,
+    markCanvasSaved = true
+  ): Promise<WorkflowDefinition> {
     const exists = this.workflows().some(w => w.id === workflow.id);
+    const persistable = toPersistableWorkflow(workflow);
     const saved = exists
-      ? await this.invokeCommand<WorkflowDefinition>('update_workflow', { workflow })
-      : await this.invokeCommand<WorkflowDefinition>('create_workflow', { workflow });
+      ? await this.invokeCommand<WorkflowDefinition>('update_workflow', { workflow: persistable })
+      : await this.invokeCommand<WorkflowDefinition>('create_workflow', { workflow: persistable });
 
     await this.loadAllWorkflows();
-    if (this.stateService.currentWorkflow()?.id === workflow.id) {
+    if (markCanvasSaved && this.stateService.currentWorkflow()?.id === workflow.id) {
       this.stateService.markSaved(saved ?? workflow);
     }
     return saved;
+  }
+
+  /**
+   * Saves the workflow on the canvas and tells the user if that fails.
+   */
+  async saveCurrentWorkflow(): Promise<boolean> {
+    const current = this.stateService.currentWorkflow();
+    if (!current || this.isSaving()) return false;
+    this.isSaving.set(true);
+    try {
+      return await this.saveWithFeedback(current);
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  /**
+   * Starts a blank workflow on the canvas and stores it.
+   */
+  async createAndOpenWorkflow(): Promise<void> {
+    await this.saveWithFeedback(this.stateService.createNewWorkflow());
+  }
+
+  /**
+   * Puts a copy of a template on the canvas and stores it.
+   */
+  async openTemplate(templateOrId: WorkflowTemplate | string): Promise<void> {
+    const instantiated = this.instantiateTemplate(templateOrId);
+    this.stateService.loadWorkflow(instantiated);
+    await this.saveWithFeedback(instantiated);
+  }
+
+  /**
+   * Stores the tray setting, which only lives in the stored workflow. If the workflow
+   * is already stored, nothing else changes: edits on the canvas stay unsaved.
+   */
+  async saveShowOnTray(workflowId: string, showOnTray: boolean): Promise<boolean> {
+    const stored = this.workflows().find(w => w.id === workflowId);
+    if (!stored) return this.saveCurrentWorkflow();
+    return this.saveWithFeedback({ ...stored, showOnTray }, false);
+  }
+
+  private async saveWithFeedback(
+    workflow: WorkflowDefinition,
+    markCanvasSaved = true
+  ): Promise<boolean> {
+    try {
+      await this.saveWorkflow(workflow, markCanvasSaved);
+      return true;
+    } catch (error) {
+      console.error('[WorkflowStorage] Failed to save workflow:', error);
+      this.notificationService.showError(
+        this.backendTranslation.translateBackendMessage(error) ||
+          this.translate.instant('common.error')
+      );
+      return false;
+    }
   }
 
   /**
@@ -202,10 +265,9 @@ export class WorkflowStorageService extends TauriBaseService {
    * Creates a new WorkflowDefinition instance from a template.
    */
   instantiateTemplate(templateOrId: WorkflowTemplate | string): WorkflowDefinition {
-    const list = this.presetTemplates();
     const tpl =
       typeof templateOrId === 'string'
-        ? (list.find(t => t.id === templateOrId) ?? list[0])
+        ? this.presetTemplates().find(t => t.id === templateOrId)
         : templateOrId;
 
     if (!tpl) {

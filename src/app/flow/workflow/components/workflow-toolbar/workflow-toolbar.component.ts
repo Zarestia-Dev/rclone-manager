@@ -59,9 +59,8 @@ export class WorkflowToolbarComponent {
   }
 
   onNameBlur(): void {
-    const current = this.stateService.currentWorkflow();
-    if (current) {
-      void this.storageService.saveWorkflow(current);
+    if (this.stateService.hasUnsavedChanges()) {
+      void this.storageService.saveCurrentWorkflow();
     }
   }
 
@@ -83,17 +82,14 @@ export class WorkflowToolbarComponent {
     this.engineService.stopWorkflow();
   }
 
-  saveWorkflow(): void {
-    const current = this.stateService.currentWorkflow();
-    if (current) {
-      void this.storageService.saveWorkflow(current);
+  async saveWorkflow(): Promise<void> {
+    if (await this.storageService.saveCurrentWorkflow()) {
       this.notificationService.showSuccess(this.translate.instant('common.savedSuccessfully'));
     }
   }
 
   createNew(): void {
-    const newWf = this.stateService.createNewWorkflow();
-    void this.storageService.saveWorkflow(newWf);
+    void this.storageService.createAndOpenWorkflow();
   }
 
   loadWorkflowById(id: string): void {
@@ -128,9 +124,7 @@ export class WorkflowToolbarComponent {
   }
 
   loadTemplate(tpl: WorkflowTemplate): void {
-    const instantiated = this.storageService.instantiateTemplate(tpl.id);
-    this.stateService.loadWorkflow(instantiated);
-    void this.storageService.saveWorkflow(instantiated);
+    void this.storageService.openTemplate(tpl);
   }
 
   undo(): void {

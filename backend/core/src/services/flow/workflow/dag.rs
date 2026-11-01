@@ -2,9 +2,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use super::types::{
-    WorkflowDefinition, WorkflowEdge, WorkflowNode, WorkflowNodeCategory, WorkflowValidationResult,
-};
+use super::types::{WorkflowDefinition, WorkflowEdge, WorkflowNode, WorkflowValidationResult};
 
 /// Detects whether the graph formed by `nodes` and `edges` contains cycles.
 /// Uses Kahn's algorithm (indegree reduction).
@@ -95,10 +93,7 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
     }
 
     // Check trigger node existence
-    let has_trigger = workflow.nodes.iter().any(|n| {
-        n.category == WorkflowNodeCategory::Trigger
-            || n.resolved_category() == WorkflowNodeCategory::Trigger
-    });
+    let has_trigger = workflow.nodes.iter().any(WorkflowNode::is_trigger);
     if !has_trigger {
         warnings.push(crate::localized_error!(
             "backendErrors.workflow.validationNoTrigger"

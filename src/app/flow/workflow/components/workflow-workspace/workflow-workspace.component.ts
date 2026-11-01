@@ -13,7 +13,7 @@ import {
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowToolbarComponent } from '../workflow-toolbar/workflow-toolbar.component';
 import { WorkflowPaletteComponent } from '../workflow-palette/workflow-palette.component';
 import { WorkflowCanvasComponent } from '../workflow-canvas/workflow-canvas.component';
@@ -23,7 +23,6 @@ import { WorkflowStateService } from '../../../../services/flow/workflow-state.s
 import { WorkflowEngineService } from '../../../../services/flow/workflow-engine.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { WorkflowEventService } from '../../../../services/flow/workflow-event.service';
-import { NotificationService } from '../../../../services/ui/notification.service';
 import { WorkflowTemplate } from '../../types/workflow.types';
 import {
   isInputFocused,
@@ -54,8 +53,6 @@ export class WorkflowWorkspaceComponent {
   readonly engineService = inject(WorkflowEngineService);
   readonly storageService = inject(WorkflowStorageService);
   readonly eventService = inject(WorkflowEventService);
-  private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -65,7 +62,7 @@ export class WorkflowWorkspaceComponent {
   readonly isPaletteOpen = signal<boolean>(true);
   readonly isLogOpen = signal<boolean>(false);
   readonly isInspectorOpen = signal<boolean>(true);
-  readonly isSaving = signal<boolean>(false);
+  readonly isSaving = this.storageService.isSaving;
 
   readonly hasWorkflow = computed(() => !!this.stateService.currentWorkflow());
   readonly hasSelectedNode = computed(() => !!this.stateService.selectedNode());
@@ -145,28 +142,15 @@ export class WorkflowWorkspaceComponent {
   }
 
   async saveWorkflow(): Promise<void> {
-    const current = this.stateService.currentWorkflow();
-    if (!current || this.isSaving()) return;
-    this.isSaving.set(true);
-    try {
-      await this.storageService.saveWorkflow(current);
-      this.stateService.markSaved(current);
-    } catch {
-      this.notificationService.showError(this.translate.instant('common.error'));
-    } finally {
-      this.isSaving.set(false);
-    }
+    await this.storageService.saveCurrentWorkflow();
   }
 
   createNewWorkflow(): void {
-    const newWf = this.stateService.createNewWorkflow();
-    void this.storageService.saveWorkflow(newWf);
+    void this.storageService.createAndOpenWorkflow();
   }
 
   loadTemplate(tpl: WorkflowTemplate): void {
-    const instantiated = this.storageService.instantiateTemplate(tpl.id);
-    this.stateService.loadWorkflow(instantiated);
-    void this.storageService.saveWorkflow(instantiated);
+    void this.storageService.openTemplate(tpl);
   }
 
   loadWorkflowById(id: string): void {

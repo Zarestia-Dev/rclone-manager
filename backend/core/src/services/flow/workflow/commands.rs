@@ -59,10 +59,7 @@ pub async fn create_workflow(
     };
 
     save_workflow_record(&manager, &record)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&record.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &record.id).await?;
     Ok(record)
 }
 
@@ -75,12 +72,13 @@ pub async fn update_workflow(
     let id = workflow
         .id
         .as_deref()
-        .ok_or_else(|| "Missing workflow ID for update".to_string())?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.workflow.missingWorkflowId"))?;
 
     info!("Updating workflow: {id}");
 
-    let mut existing =
-        get_workflow_by_id(&manager, id)?.ok_or_else(|| format!("Workflow '{id}' not found"))?;
+    let mut existing = get_workflow_by_id(&manager, id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.workflow.workflowNotFound", "id" => id),
+    )?;
 
     existing.name = workflow.name;
     existing.description = workflow.description;
@@ -91,10 +89,7 @@ pub async fn update_workflow(
     existing.updated_at = Some(Utc::now().to_rfc3339());
 
     save_workflow_record(&manager, &existing)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&existing.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &existing.id).await?;
     Ok(existing)
 }
 
@@ -103,10 +98,7 @@ pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), 
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_workflow_by_id_sync(&manager, &workflow_id)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&workflow_id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &workflow_id).await?;
     Ok(())
 }
 
@@ -116,13 +108,14 @@ pub async fn duplicate_workflow(
     workflow_id: String,
 ) -> Result<WorkflowDefinition, String> {
     let manager = app.state::<AppSettingsManager>();
-    let existing = get_workflow_by_id(&manager, &workflow_id)?
-        .ok_or_else(|| format!("Workflow '{workflow_id}' not found"))?;
+    let existing = get_workflow_by_id(&manager, &workflow_id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.workflow.workflowNotFound", "id" => workflow_id),
+    )?;
 
     let all = get_all_workflows_sync(&manager)?;
     let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
-    let base_name = format!("{} (Copy)", existing.name);
+    let base_name = crate::t!("backendErrors.workflow.copyName", "name" => existing.name);
     let new_name = find_unique_name(&existing_names, &base_name);
 
     let now = Utc::now().to_rfc3339();
@@ -142,10 +135,7 @@ pub async fn duplicate_workflow(
     };
 
     save_workflow_record(&manager, &duplicated)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&duplicated.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &duplicated.id).await?;
     Ok(duplicated)
 }
 
@@ -159,7 +149,14 @@ pub async fn execute_workflow(
         .state::<crate::rclone::backend::BackendManager>()
         .get_active()
         .await;
-    super::engine::execute_workflow(app, backend, workflow_id, dry_run.unwrap_or(false)).await
+    super::engine::execute_workflow(
+        app,
+        backend,
+        workflow_id,
+        dry_run.unwrap_or(false),
+        super::engine::RunTrigger::Manual,
+    )
+    .await
 }
 
 /// Stops an actively running workflow.
@@ -182,10 +179,24 @@ pub async fn test_rc_command(
         .transport
         .rpc(&command, Some(&parsed_params))
         .await
-        .map_err(|e| format!("RC command '{command}' failed: {e}"))
+        .map_err(|e| {
+            crate::localized_error!(
+                "backendErrors.workflow.rcCommandFailed",
+                "command" => command,
+                "error" => e
+            )
+        })
 }
 
 // ── Persistence Helpers ──────────────────────────────────────────────────
+
+/// Drops what is cached for a changed workflow and re-applies the schedules and watchers.
+async fn refresh_after_change(app: &AppHandle, workflow_id: &str) -> Result<(), String> {
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(workflow_id);
+    }
+    sync_workflow_automations(app).await
+}
 
 /// Finds a unique workflow name by appending sequential numbers if a collision occurs with existing names.
 pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> String {
@@ -246,7 +257,7 @@ pub(crate) fn record_last_executed(
     // overwritten and a concurrent delete is not undone.
     sub.set_field_if_exists(id, "lastExecutedAt", &timestamp)
         .map(|_| ())
-        .map_err(|e| format!("Failed to save workflow: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.saveFailed", "error" => e))
 }
 
 pub fn save_workflow_record(
@@ -268,7 +279,7 @@ pub fn save_workflow_record(
         .map_err(|e| e.to_string())?;
 
     sub.set(&wf.id, wf)
-        .map_err(|e| format!("Failed to save workflow: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.saveFailed", "error" => e))
 }
 
 pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
@@ -277,7 +288,7 @@ pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Res
         .map_err(|e| e.to_string())?;
 
     sub.delete(id)
-        .map_err(|e| format!("Failed to delete workflow: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.deleteFailed", "error" => e))
 }
 
 pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
@@ -342,6 +353,7 @@ mod tests {
             backend: Backend::new_local(backend),
             cancel: CancelToken::new(),
             active_job_ids: Default::default(),
+            run_id: "test-run".into(),
         };
         let own = register_active_run("Own", "wf-active-b", state(&active)).unwrap();
         let first = register_active_run("First", "wf-active-a", state(&active)).unwrap();

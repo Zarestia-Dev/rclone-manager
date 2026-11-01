@@ -79,7 +79,13 @@ impl AutostartTasks {
                         info!("Auto-starting Quick Run: {id}");
                         if let Err(error) =
                             crate::services::flow::quick_run::commands::start_quick_run_snapshot(
-                                app, backend, quick_run, None, None, None,
+                                app,
+                                backend,
+                                quick_run,
+                                None,
+                                None,
+                                None,
+                                Vec::new(),
                             )
                             .await
                         {
@@ -91,7 +97,11 @@ impl AutostartTasks {
                         info!("Auto-starting Workflow: {id}");
                         if let Err(error) =
                             crate::services::flow::workflow::engine::execute_workflow_snapshot(
-                                app, backend, workflow, false,
+                                app,
+                                backend,
+                                workflow,
+                                false,
+                                crate::services::flow::workflow::engine::RunTrigger::AppStart,
                             )
                             .await
                         {

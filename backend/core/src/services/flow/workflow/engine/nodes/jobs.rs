@@ -78,30 +78,13 @@ fn build_job_execution_output(
     error_msg: Option<&str>,
 ) -> Value {
     let stats = job.stats.as_ref();
-    let bytes = stats
-        .and_then(|s| s.get("bytes"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let total_bytes = stats
-        .and_then(|s| s.get("totalBytes"))
-        .and_then(Value::as_u64)
-        .unwrap_or(bytes);
-    let transfers = stats
-        .and_then(|s| s.get("transfers"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let total_transfers = stats
-        .and_then(|s| s.get("totalTransfers"))
-        .and_then(Value::as_u64)
-        .unwrap_or(transfers);
-    let errors = stats
-        .and_then(|s| s.get("errors"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let checks = stats
-        .and_then(|s| s.get("checks"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
+    let stat_u64 = |key: &str| stats.and_then(|s| s.get(key)).and_then(Value::as_u64);
+    let bytes = stat_u64("bytes").unwrap_or(0);
+    let total_bytes = stat_u64("totalBytes").unwrap_or(bytes);
+    let transfers = stat_u64("transfers").unwrap_or(0);
+    let total_transfers = stat_u64("totalTransfers").unwrap_or(transfers);
+    let errors = stat_u64("errors").unwrap_or(0);
+    let checks = stat_u64("checks").unwrap_or(0);
     let speed = stats
         .and_then(|s| s.get("speed"))
         .and_then(Value::as_f64)
@@ -111,27 +94,12 @@ fn build_job_execution_output(
     let is_check = matches!(job.job_type, JobType::Check | JobType::CryptCheck);
 
     let check_obj = stats.and_then(|s| s.get("checkOutput")).or(stats);
-
-    let differ = check_obj
-        .and_then(|c| c.get("differ"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let missing_on_dst = check_obj
-        .and_then(|c| c.get("missingOnDst"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let missing_on_src = check_obj
-        .and_then(|c| c.get("missingOnSrc"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let matched = check_obj
-        .and_then(|c| c.get("match"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let check_errors = check_obj
-        .and_then(|c| c.get("error"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
+    let check_list = |key: &str| extract_string_list(check_obj.and_then(|c| c.get(key)));
+    let differ = check_list("differ");
+    let missing_on_dst = check_list("missingOnDst");
+    let missing_on_src = check_list("missingOnSrc");
+    let matched = check_list("match");
+    let check_errors = check_list("error");
 
     let differ_count = differ.len();
     let missing_dst_count = missing_on_dst.len();
@@ -142,11 +110,11 @@ fn build_job_execution_output(
         checks as usize
     };
     let error_count = check_errors.len().max(errors as usize);
-    let has_differences = differ_count > 0 || missing_dst_count > 0 || missing_src_count > 0;
+    let total_diff = differ_count + missing_dst_count + missing_src_count;
+    let has_differences = total_diff > 0;
 
     let summary = if is_check {
         if has_differences {
-            let total_diff = differ_count + missing_dst_count + missing_src_count;
             crate::t!(
                 "backendErrors.workflow.summaryCheckDifferences",
                 "total" => total_diff,
@@ -203,7 +171,6 @@ fn build_job_execution_output(
             crate::t!("backendErrors.workflow.reportTitle")
         )];
         if has_differences {
-            let total_diff = differ_count + missing_dst_count + missing_src_count;
             report_lines.push(format!(
                 "- **{status_label}**: {}",
                 crate::t!("backendErrors.workflow.reportStatusDifferences", "count" => total_diff)
@@ -399,6 +366,7 @@ pub(crate) async fn quick_run_node(
         Some(workflow.id.clone()),
         Some(node.id.clone()),
         None,
+        ctx.lineage.clone(),
     )
     .await?;
 
@@ -408,6 +376,26 @@ pub(crate) async fn quick_run_node(
         Ok(NodeExecutionOutput::new(
             serde_json::to_value(res).unwrap_or(json!({"started": true})),
         ))
+    }
+}
+
+/// Resolves a node destination. Operations whose destination is relative to the node's remote
+/// (copyurl, cryptcheck, ...) get the remote prefixed; for sync-style operations a path without
+/// a remote is a local path and is passed through, otherwise a local destination would be read as
+/// a folder inside the source remote and rclone reports overlapping remotes.
+fn resolve_node_dest(op_type: OperationType, remote: &str, dest: &str) -> String {
+    let is_full_fs_dest = matches!(
+        op_type,
+        OperationType::Sync
+            | OperationType::Copy
+            | OperationType::Move
+            | OperationType::Bisync
+            | OperationType::Check
+    );
+    if remote.is_empty() || dest.contains(':') || is_full_fs_dest {
+        dest.to_string()
+    } else {
+        format!("{remote}:{dest}")
     }
 }
 
@@ -430,15 +418,7 @@ pub(crate) async fn transfer_node(
     let op = extract_node_op_config(config);
     let common = parse_common_config(op.config, &op.empty_settings)?;
 
-    let dest_resolved = if !op.remote.is_empty() && !common.dest.contains(':') {
-        if common.dest.is_empty() {
-            format!("{}:", op.remote)
-        } else {
-            format!("{}:{}", op.remote, common.dest)
-        }
-    } else {
-        common.dest.clone()
-    };
+    let dest_resolved = resolve_node_dest(op_type, op.remote, &common.dest);
 
     let target_pairs: Vec<(String, String)> = common
         .source
@@ -454,6 +434,7 @@ pub(crate) async fn transfer_node(
     )
     .with_origin(Some(Origin::Flow))
     .with_workflow_id(Some(workflow.id.clone()))
+    .with_workflow_lineage(ctx.lineage.clone())
     .with_node_id(Some(node.id.clone()))
     .with_dry_run(*dry_run);
 
@@ -491,6 +472,46 @@ mod tests {
 
     use crate::utils::types::jobs::{JobStatus, JobType};
 
+    #[test]
+    fn local_dest_of_sync_ops_is_not_prefixed_with_node_remote() {
+        for op in [
+            OperationType::Sync,
+            OperationType::Copy,
+            OperationType::Move,
+            OperationType::Bisync,
+            OperationType::Check,
+        ] {
+            assert_eq!(
+                resolve_node_dest(op, "db-myremote", "/mnt/data/dropbox"),
+                "/mnt/data/dropbox"
+            );
+            assert_eq!(
+                resolve_node_dest(op, "db-myremote", "other:dir"),
+                "other:dir"
+            );
+        }
+    }
+
+    #[test]
+    fn remote_relative_dest_is_prefixed_with_node_remote() {
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "backup-drive", "incoming"),
+            "backup-drive:incoming"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Cryptcheck, "secret-crypt", ""),
+            "secret-crypt:"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "", "incoming"),
+            "incoming"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "backup-drive", "x:incoming"),
+            "x:incoming"
+        );
+    }
+
     fn check_job(job_type: JobType, stats: Value) -> crate::utils::types::jobs::JobInfo {
         crate::utils::types::jobs::JobInfo {
             stats_revision: 0,
@@ -514,6 +535,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 
@@ -735,6 +757,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         };
 
         let output = build_job_execution_output(job.clone(), true, None);

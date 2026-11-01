@@ -105,8 +105,9 @@ describe('WorkflowEventService', () => {
   });
 
   it('handles execution state changes', () => {
+    const { workflow } = loadWorkflowWithNode();
     const payload: WorkflowExecutionStatePayload = {
-      workflowId: 'wf-123',
+      workflowId: workflow.id,
       state: 'running',
       progress: {
         total: 5,
@@ -128,6 +129,60 @@ describe('WorkflowEventService', () => {
       currentStepTitle: 'Step 3',
     });
     expect(engineService.logs().some(l => l.message?.includes('Running step 3'))).toBe(true);
+    expect(engineService.isExecuting()).toBe(true);
+  });
+
+  describe('runs of other workflows', () => {
+    const sendExecution = (payload: WorkflowExecutionStatePayload): void =>
+      (
+        service as unknown as {
+          handleExecutionStateChanged: (p: WorkflowExecutionStatePayload) => void;
+        }
+      ).handleExecutionStateChanged(payload);
+
+    it('do not change what the canvas shows for its own workflow', () => {
+      const { workflow } = loadWorkflowWithNode();
+
+      sendExecution({ workflowId: 'wf-background', state: 'started' });
+      expect(engineService.isExecuting()).toBe(false);
+      expect(engineService.isRunning('wf-background')).toBe(true);
+
+      sendExecution({ workflowId: workflow.id, state: 'started' });
+      expect(engineService.isExecuting()).toBe(true);
+
+      // The background run ending does not end the one on the canvas.
+      sendExecution({ workflowId: 'wf-background', state: 'completed' });
+      expect(engineService.isExecuting()).toBe(true);
+      expect(engineService.isRunning('wf-background')).toBe(false);
+    });
+
+    it('keep their progress to themselves', () => {
+      const { workflow } = loadWorkflowWithNode();
+      sendExecution({ workflowId: workflow.id, state: 'started' });
+      sendExecution({
+        workflowId: 'wf-background',
+        state: 'running',
+        progress: { total: 9, completed: 4, currentStepTitle: 'Elsewhere' },
+      });
+
+      expect(engineService.executionProgress()).toBeNull();
+    });
+
+    it('do not touch the nodes or wires of a workflow with the same node ids', () => {
+      const { workflow, node } = loadWorkflowWithNode();
+      sendExecution({ workflowId: workflow.id, state: 'started' });
+
+      (
+        service as unknown as { handleNodeStateChanged: (p: WorkflowNodeStatePayload) => void }
+      ).handleNodeStateChanged({
+        workflowId: 'wf-copy',
+        nodeId: node.id,
+        state: 'running',
+      });
+
+      expect(stateService.currentWorkflow()?.nodes[0].state).not.toBe('running');
+      expect(engineService.activeEdgeIds().size).toBe(0);
+    });
   });
 
   describe('with translations', () => {
@@ -217,26 +272,26 @@ describe('WorkflowEventService', () => {
       await flush();
 
       expect(invoke).toHaveBeenCalledWith('get_active_workflows', undefined);
-      expect(engineService.isExecuting()).toBe(true);
+      expect(engineService.isRunning('wf-autostart')).toBe(true);
     });
 
     it('stays idle when nothing is running or the answer is empty', async () => {
       for (const answer of [[], null]) {
         setup(answer);
         await flush();
-        expect(engineService.isExecuting()).toBe(false);
+        expect(engineService.isRunning('wf-autostart')).toBe(false);
       }
     });
 
     it('does not clear a run the interface started itself', async () => {
       setup([]);
       await flush();
-      engineService.isExecuting.set(true);
+      engineService.beginRun('wf-local');
 
       engineReady.next();
       await flush();
 
-      expect(engineService.isExecuting()).toBe(true);
+      expect(engineService.isRunning('wf-local')).toBe(true);
     });
 
     it('asks again when the engine restarts or the backend changes', async () => {
@@ -259,7 +314,7 @@ describe('WorkflowEventService', () => {
       answer(['wf-1']);
       await flush();
 
-      expect(engineService.isExecuting()).toBe(false);
+      expect(engineService.isRunning('wf-1')).toBe(false);
     });
 
     it('keeps working when the lookup fails', async () => {
@@ -270,7 +325,7 @@ describe('WorkflowEventService', () => {
       engineReady.next();
       await flush();
 
-      expect(engineService.isExecuting()).toBe(false);
+      expect(engineService.isRunning('wf-autostart')).toBe(false);
       error.mockRestore();
     });
   });

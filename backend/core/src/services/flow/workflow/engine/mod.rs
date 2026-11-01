@@ -27,6 +27,7 @@ use serde_json::Value;
 use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
 use crate::services::flow::workflow::engine::cancel::CancelToken;
+use crate::services::flow::workflow::types::{NodeKind, WorkflowNode};
 
 pub use active::{get_active_workflow_ids, has_active_workflows, stop_workflow};
 pub(crate) use nodes::rc::parse_rc_params;
@@ -45,4 +46,70 @@ pub(crate) struct RunContext {
     /// Identifies this execution, unlike the workflow id shared by every run.
     pub(crate) run_id: String,
     pub(crate) dry_run: bool,
+    /// The workflows whose jobs led to this run, followed by this one: what the jobs
+    /// it starts are marked with.
+    pub(crate) lineage: Vec<String>,
+}
+
+/// What started a run. Only the triggers of that kind begin it; a workflow with
+/// several triggers does not run every branch whenever one of them fires.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunTrigger {
+    /// Started by hand.
+    Manual,
+    /// A cron schedule fired.
+    Cron,
+    /// A watched path changed.
+    Watcher,
+    /// The application started.
+    AppStart,
+    /// A job finished. `node_ids` are the `job_event` nodes that matched it and
+    /// `ancestors` the workflows whose jobs led to this run.
+    JobEvent {
+        node_ids: HashSet<String>,
+        ancestors: Vec<String>,
+    },
+}
+
+impl RunTrigger {
+    /// The workflows whose jobs led to a run started this way.
+    pub(crate) fn ancestors(&self) -> &[String] {
+        match self {
+            Self::JobEvent { ancestors, .. } => ancestors,
+            _ => &[],
+        }
+    }
+
+    fn node_kind(&self) -> NodeKind {
+        match self {
+            Self::Manual => NodeKind::Manual,
+            Self::Cron => NodeKind::Cron,
+            Self::Watcher => NodeKind::Watcher,
+            Self::AppStart => NodeKind::AppStart,
+            Self::JobEvent { .. } => NodeKind::JobEvent,
+        }
+    }
+
+    /// Whether `node` is a trigger this run was started by.
+    pub(crate) fn starts(&self, node: &WorkflowNode) -> bool {
+        match self {
+            Self::JobEvent { node_ids, .. } => node_ids.contains(&node.id),
+            other => node.kind() == other.node_kind(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_job_event_run_has_workflows_before_it() {
+        let job_event = RunTrigger::JobEvent {
+            node_ids: HashSet::new(),
+            ancestors: vec!["a".into()],
+        };
+        assert_eq!(job_event.ancestors(), ["a"]);
+        assert!(RunTrigger::Cron.ancestors().is_empty());
+    }
 }

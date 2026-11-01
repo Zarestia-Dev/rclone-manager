@@ -3018,7 +3018,12 @@
       "reportAndMore": "……另外還有 {{count}} 個",
       "reportStatusErrors": "完成，有 {{count}} 個錯誤",
       "reportStatusMatched": "全部 {{count}} 個檔案完全一致（0 處差異）。",
-      "reportStatus": "狀態"
+      "reportStatus": "狀態",
+      "missingWorkflowId": "缺少用於更新的工作流程 ID",
+      "workflowNotFound": "找不到工作流程「{{id}}」",
+      "saveFailed": "儲存工作流程失敗：{{error}}",
+      "deleteFailed": "刪除工作流程失敗：{{error}}",
+      "copyName": "{{name}}（副本）"
     },
     "mount": {
       "pointEmpty": "掛載點不能為空",
@@ -3911,7 +3916,9 @@
         "branch2": "分支 2",
         "in1": "輸入 1",
         "in2": "輸入 2",
-        "done": "完成"
+        "done": "完成",
+        "inN": "輸入 {{n}}",
+        "branchN": "分支 {{n}}"
       },
       "nodes": {
         "manualTrigger": "手動觸發",
@@ -3955,7 +3962,11 @@
         "systemPower": "系統電源管理",
         "systemPowerDesc": "讓主機系統睡眠、鎖定或關機",
         "logAudit": "稽核日誌",
-        "logAuditDesc": "在工作流程執行日誌中寫入記錄"
+        "logAuditDesc": "在工作流程執行日誌中寫入記錄",
+        "sync": "同步",
+        "copy": "複製",
+        "check": "檢查",
+        "mount": "掛載"
       },
       "logs": {
         "stepRunning": "步驟「{{title}}」正在執行...",
@@ -4079,7 +4090,8 @@
         "title": "歡迎使用工作流構建器",
         "subtitle": "建立新的工作流或選擇預設範本，以自動化您的 rclone 操作。"
       },
-      "showInTray": "在系統匣顯示"
+      "showInTray": "在系統匣顯示",
+      "copyName": "{{name}}（副本）"
     },
     "shortcuts": {
       "title": "Flow 鍵盤快捷鍵"

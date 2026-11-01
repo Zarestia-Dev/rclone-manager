@@ -3018,7 +3018,12 @@
       "reportAndMore": "... and {{count}} more",
       "reportStatusErrors": "Completed with {{count}} error(s)",
       "reportStatusMatched": "All {{count}} file(s) matched identically (0 differences).",
-      "reportStatus": "Status"
+      "reportStatus": "Status",
+      "missingWorkflowId": "Missing workflow ID for update",
+      "workflowNotFound": "Workflow '{{id}}' not found",
+      "saveFailed": "Failed to save workflow: {{error}}",
+      "deleteFailed": "Failed to delete workflow: {{error}}",
+      "copyName": "{{name}} (Copy)"
     },
     "mount": {
       "pointEmpty": "Mount point cannot be empty",
@@ -3911,7 +3916,9 @@
         "branch2": "Branch 2",
         "in1": "In 1",
         "in2": "In 2",
-        "done": "Done"
+        "done": "Done",
+        "inN": "In {{n}}",
+        "branchN": "Branch {{n}}"
       },
       "nodes": {
         "manualTrigger": "Manual Trigger",
@@ -3955,7 +3962,11 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "sync": "Sync",
+        "copy": "Copy",
+        "check": "Check",
+        "mount": "Mount"
       },
       "logs": {
         "stepRunning": "Step \"{{title}}\" is executing...",
@@ -4079,7 +4090,8 @@
       "emptyState": {
         "title": "Welcome to Workflow Builder",
         "subtitle": "Create a new workflow or choose a template to automate your rclone operations."
-      }
+      },
+      "copyName": "{{name}} (Copy)"
     },
     "shortcuts": {
       "title": "Flow Keyboard Shortcuts"

@@ -358,4 +358,95 @@ describe('WorkflowStorageService', () => {
     await service.loadAllWorkflows();
     expect(stateService.currentWorkflow()).toBeNull();
   });
+  describe('saving from the canvas', () => {
+    const workflow = (id = 'wf-canvas'): WorkflowDefinition => ({
+      id,
+      name: 'Canvas Flow',
+      nodes: [
+        {
+          id: 'n1',
+          type: 'delay',
+          category: 'logic',
+          title: 'Wait',
+          x: 0,
+          y: 0,
+          inputs: [],
+          outputs: [],
+          config: { delaySeconds: 1 },
+          state: 'success',
+          lastOutput: { waited: 1 },
+        },
+      ],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
+    });
+
+    it('stores the workflow without what its last run left on the nodes', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      state.loadWorkflow(workflow());
+
+      expect(await service.saveCurrentWorkflow()).toBe(true);
+
+      const stored = backendWorkflows.find(w => w.id === 'wf-canvas');
+      expect(stored?.nodes[0].config).toEqual({ delaySeconds: 1 });
+      expect('lastOutput' in (stored?.nodes[0] ?? {})).toBe(false);
+      expect('state' in (stored?.nodes[0] ?? {})).toBe(false);
+      // The canvas keeps what it shows.
+      expect(state.currentWorkflow()?.nodes[0].lastOutput).toEqual({ waited: 1 });
+    });
+
+    it('marks the canvas saved, and tells the user when saving fails', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      const notifications = TestBed.inject(NotificationService);
+      const showError = vi.spyOn(notifications, 'showError').mockImplementation(() => undefined);
+      state.loadWorkflow(workflow());
+      state.updateWorkflowMetadata({ name: 'Edited' });
+      expect(state.hasUnsavedChanges()).toBe(true);
+
+      await service.saveCurrentWorkflow();
+      expect(state.hasUnsavedChanges()).toBe(false);
+
+      state.updateWorkflowMetadata({ name: 'Edited again' });
+      mockApiClient.invoke.mockRejectedValueOnce(new Error('disk full'));
+      expect(await service.saveCurrentWorkflow()).toBe(false);
+      expect(showError).toHaveBeenCalledWith(expect.stringContaining('disk full'));
+      expect(state.hasUnsavedChanges()).toBe(true);
+      expect(service.isSaving()).toBe(false);
+    });
+
+    it('starts a blank workflow and stores it', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+
+      await service.createAndOpenWorkflow();
+
+      expect(state.currentWorkflow()).not.toBeNull();
+      expect(backendWorkflows.map(w => w.id)).toContain(state.currentWorkflow()?.id);
+    });
+
+    it('opens a template as a stored copy', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      const [template] = await service.loadPresetTemplates();
+
+      await service.openTemplate(template.id);
+
+      expect(state.currentWorkflow()?.name).toBe(template.definition.name);
+      expect(backendWorkflows.some(w => w.id === state.currentWorkflow()?.id)).toBe(true);
+    });
+
+    it('stores only the tray setting, leaving edits on the canvas unsaved', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      backendWorkflows = [workflow()];
+      await service.loadAllWorkflows();
+      state.loadWorkflow(workflow());
+      state.updateWorkflowMetadata({ name: 'Unsaved name' });
+
+      await service.saveShowOnTray('wf-canvas', true);
+
+      const stored = backendWorkflows.find(w => w.id === 'wf-canvas');
+      expect(stored?.showOnTray).toBe(true);
+      expect(stored?.name).toBe('Canvas Flow');
+      expect(state.hasUnsavedChanges()).toBe(true);
+    });
+  });
 });

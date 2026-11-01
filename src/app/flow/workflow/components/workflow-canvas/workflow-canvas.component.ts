@@ -350,19 +350,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
     if (this.isPanning()) {
       this.isPanning.set(false);
     }
-    if (this.draggingNodeId()) {
-      this.flushPendingDrag();
-      this.stateService.isDraggingNode.set(false);
-      this.draggingNodeId.set(null);
-      if (this.hasDraggedNode) {
-        this.ignoreNextClick = true;
-        setTimeout(() => {
-          this.ignoreNextClick = false;
-        }, 100);
-      }
-      this.hasDraggedNode = false;
-      this.initialNodePositions.clear();
-    }
+    this.endNodeDrag(true);
     if (this.isConnecting()) {
       this.clearPortCandidateHighlight();
       this.stateService.cancelConnecting();
@@ -374,13 +362,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
     if (this.isPanning()) {
       this.isPanning.set(false);
     }
-    if (this.draggingNodeId()) {
-      this.flushPendingDrag();
-      this.stateService.isDraggingNode.set(false);
-      this.draggingNodeId.set(null);
-      this.hasDraggedNode = false;
-      this.initialNodePositions.clear();
-    }
+    this.endNodeDrag(false);
     if (this.isConnecting()) {
       this.clearPortCandidateHighlight();
       this.stateService.cancelConnecting();
@@ -482,12 +464,37 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
     event.stopPropagation();
 
-    const isMultiModifier = event.shiftKey || event.ctrlKey;
-    const isAlreadySelected = this.stateService.selectedNodeIds().has(node.id);
+    this.beginNodeDrag(node, event.clientX, event.clientY, event.shiftKey || event.ctrlKey);
+  }
 
-    if (isMultiModifier) {
+  onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
+    if (event.touches.length !== 1) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
+      return;
+    }
+    event.stopPropagation();
+
+    // A touch selects just the node it lands on.
+    this.stateService.selectNode(node.id, false);
+    const touch = event.touches[0];
+    this.beginNodeDrag(node, touch.clientX, touch.clientY, false);
+  }
+
+  /**
+   * Selects the node, unless it is part of the selection already, and prepares to move it
+   * together with the rest of the selection. Nothing moves before the pointer travels
+   * past the drag threshold.
+   */
+  private beginNodeDrag(
+    node: WorkflowNode,
+    clientX: number,
+    clientY: number,
+    additive: boolean
+  ): void {
+    if (additive) {
       this.stateService.selectNode(node.id, true);
-    } else if (!isAlreadySelected) {
+    } else if (!this.stateService.selectedNodeIds().has(node.id)) {
       this.stateService.selectNode(node.id, false);
     }
 
@@ -498,10 +505,10 @@ export class WorkflowCanvasComponent implements OnDestroy {
     if (!container) return;
     const rect = container.getBoundingClientRect();
     const vp = this.viewport();
-
-    const canvasX = (event.clientX - rect.left - vp.x) / vp.zoom;
-    const canvasY = (event.clientY - rect.top - vp.y) / vp.zoom;
-    this.dragStartCanvasPos = { x: canvasX, y: canvasY };
+    this.dragStartCanvasPos = {
+      x: (clientX - rect.left - vp.x) / vp.zoom,
+      y: (clientY - rect.top - vp.y) / vp.zoom,
+    };
 
     this.initialNodePositions.clear();
     const currentSelected = this.stateService.selectedNodeIds();
@@ -518,41 +525,20 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
   }
 
-  onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
-    if (event.touches.length !== 1) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
-      return;
+  /** Ends a node drag. A click that follows a real drag is ignored, unless the drag was cancelled. */
+  private endNodeDrag(ignoreFollowingClick: boolean): void {
+    if (!this.draggingNodeId()) return;
+    this.flushPendingDrag();
+    this.stateService.isDraggingNode.set(false);
+    this.draggingNodeId.set(null);
+    if (ignoreFollowingClick && this.hasDraggedNode) {
+      this.ignoreNextClick = true;
+      setTimeout(() => {
+        this.ignoreNextClick = false;
+      }, 100);
     }
-    event.stopPropagation();
-
-    this.draggingNodeId.set(node.id);
     this.hasDraggedNode = false;
-    this.stateService.selectNode(node.id, false);
-
-    const container = this.canvasContainer()?.nativeElement;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const vp = this.viewport();
-
-    const touch = event.touches[0];
-    const canvasX = (touch.clientX - rect.left - vp.x) / vp.zoom;
-    const canvasY = (touch.clientY - rect.top - vp.y) / vp.zoom;
-    this.dragStartCanvasPos = { x: canvasX, y: canvasY };
-
     this.initialNodePositions.clear();
-    const currentSelected = this.stateService.selectedNodeIds();
-    const nodeMap = this.nodeMap();
-    if (currentSelected.has(node.id)) {
-      for (const id of currentSelected) {
-        const n = nodeMap.get(id);
-        if (n) {
-          this.initialNodePositions.set(id, { x: n.x, y: n.y });
-        }
-      }
-    } else {
-      this.initialNodePositions.set(node.id, { x: node.x, y: node.y });
-    }
   }
 
   // ── Touch Gestures (Canvas Pan & Pinch-to-Zoom) ───────────────────────────
@@ -681,19 +667,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
     if (event.touches.length === 0) {
       this.isPanning.set(false);
       this.isPinching = false;
-      if (this.draggingNodeId()) {
-        this.flushPendingDrag();
-        this.stateService.isDraggingNode.set(false);
-        this.draggingNodeId.set(null);
-        if (this.hasDraggedNode) {
-          this.ignoreNextClick = true;
-          setTimeout(() => {
-            this.ignoreNextClick = false;
-          }, 100);
-        }
-        this.hasDraggedNode = false;
-        this.initialNodePositions.clear();
-      }
+      this.endNodeDrag(true);
     } else if (event.touches.length === 1 && this.isPinching) {
       this.isPinching = false;
       this.isPanning.set(true);

@@ -2977,7 +2977,12 @@
       "reportAndMore": "... et {{count}} de plus",
       "reportStatusErrors": "Terminé avec {{count}} erreur(s)",
       "reportStatusMatched": "Les {{count}} fichier(s) correspondent à l'identique (0 différence).",
-      "reportStatus": "Statut"
+      "reportStatus": "Statut",
+      "missingWorkflowId": "L'ID du flux de travail est manquant pour la mise à jour",
+      "workflowNotFound": "Flux de travail « {{id}} » introuvable",
+      "saveFailed": "Échec de l'enregistrement du flux de travail : {{error}}",
+      "deleteFailed": "Échec de la suppression du flux de travail : {{error}}",
+      "copyName": "{{name}} (copie)"
     },
     "mount": {
       "pointEmpty": "Le point de montage ne peut être vide",
@@ -3866,7 +3871,9 @@
         "branch2": "Branche 2",
         "in1": "Entrée 1",
         "in2": "Entrée 2",
-        "done": "Terminé"
+        "done": "Terminé",
+        "inN": "Entrée {{n}}",
+        "branchN": "Branche {{n}}"
       },
       "nodes": {
         "manualTrigger": "Déclencheur manuel",
@@ -3910,7 +3917,11 @@
         "logAudit": "Journal d'audit",
         "logAuditDesc": "Ajoute une entrée au journal d'exécution du flux",
         "stopServe": "Arrêter le partage",
-        "stopServeDesc": "Arrête les services de partage réseau actifs pour un distant"
+        "stopServeDesc": "Arrête les services de partage réseau actifs pour un distant",
+        "sync": "Synchroniser",
+        "copy": "Copier",
+        "check": "Vérifier",
+        "mount": "Monter"
       },
       "logs": {
         "stepRunning": "L'étape « {{title}} » est en cours d'exécution...",
@@ -4038,7 +4049,8 @@
         "title": "Bienvenue dans le constructeur de flux",
         "subtitle": "Créez un nouveau flux de travail ou choisissez un modèle pour automatiser vos opérations rclone."
       },
-      "showInTray": "Afficher dans la zone de notification"
+      "showInTray": "Afficher dans la zone de notification",
+      "copyName": "{{name}} (copie)"
     },
     "shortcuts": {
       "title": "Raccourcis clavier de Flow"

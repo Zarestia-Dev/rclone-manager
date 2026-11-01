@@ -43,7 +43,28 @@ describe('WorkflowWorkspaceComponent', () => {
             workflows: (): WorkflowDefinition[] => [],
             presetTemplates: presets.asReadonly(),
             loadPresetTemplates: vi.fn().mockResolvedValue([]),
+            isSaving: signal(false),
             saveWorkflow: vi.fn().mockResolvedValue({}),
+            // The real behaviour is covered by the storage service spec; here it stands in for it.
+            saveCurrentWorkflow: vi.fn().mockImplementation(async () => {
+              const state = TestBed.inject(WorkflowStateService);
+              const storage = TestBed.inject(WorkflowStorageService);
+              const current = state.currentWorkflow();
+              if (!current) return false;
+              try {
+                await storage.saveWorkflow(current);
+                state.markSaved(current);
+                return true;
+              } catch {
+                TestBed.inject(NotificationService).showError('error');
+                return false;
+              }
+            }),
+            createAndOpenWorkflow: vi.fn().mockImplementation(async () => {
+              const created = TestBed.inject(WorkflowStateService).createNewWorkflow();
+              await TestBed.inject(WorkflowStorageService).saveWorkflow(created);
+            }),
+            openTemplate: vi.fn(),
             deleteWorkflow: vi.fn(),
             duplicateWorkflow: vi.fn(),
             cleanDuplicates: vi.fn(),

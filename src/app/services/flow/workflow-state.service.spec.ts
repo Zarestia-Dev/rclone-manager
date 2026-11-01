@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { WorkflowStateService } from './workflow-state.service';
 
 describe('WorkflowStateService', () => {
@@ -7,8 +8,13 @@ describe('WorkflowStateService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [WorkflowStateService],
+      providers: [provideTranslateService(), WorkflowStateService],
     });
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      flow: { workflow: { copyName: '{{name}} (Copy)', untitled: 'Untitled Workflow' } },
+    });
+    translate.use('en');
     service = TestBed.inject(WorkflowStateService);
   });
 
@@ -308,6 +314,133 @@ describe('WorkflowStateService', () => {
       service.resetMobileUiState();
       expect(service.isWorkspaceDrawerOpen()).toBe(false);
       expect(service.isMobileFocusMode()).toBe(false);
+    });
+  });
+  describe('editing history', () => {
+    it('joins quick edits of the same field into one undo step', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('delay', 'logic', 'Wait', 0, 0);
+
+      for (const value of ['1', '12', '123']) {
+        service.updateNodeConfig(node.id, { delaySeconds: value });
+      }
+      expect(service.currentWorkflow()?.nodes[0].config['delaySeconds']).toBe('123');
+
+      service.undo();
+      expect(service.currentWorkflow()?.nodes[0].config['delaySeconds']).toBeUndefined();
+    });
+
+    it('keeps edits of different fields as separate steps', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('delay', 'logic', 'Wait', 0, 0);
+
+      service.updateNodeConfig(node.id, { delaySeconds: 5 });
+      service.updateNodeConfig(node.id, { label: 'x' });
+      service.undo();
+
+      expect(service.currentWorkflow()?.nodes[0].config).toEqual({ delaySeconds: 5 });
+    });
+
+    it('keeps the results of a run on the nodes when stepping through history', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('delay', 'logic', 'Wait', 0, 0);
+      service.updateNodeConfig(node.id, { delaySeconds: 5 });
+      service.updateNodeExecutionState(node.id, 'success', undefined, 40, { waited: 5 });
+
+      service.undo();
+
+      const restored = service.currentWorkflow()?.nodes[0];
+      expect(restored?.config['delaySeconds']).toBeUndefined();
+      expect(restored?.state).toBe('success');
+      expect(restored?.lastOutput).toEqual({ waited: 5 });
+    });
+
+    it('does not keep the results of a run in the history', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('delay', 'logic', 'Wait', 0, 0);
+      service.updateNodeExecutionState(node.id, 'success', undefined, 40, { big: 'x'.repeat(100) });
+      service.updateNodeConfig(node.id, { delaySeconds: 5 });
+
+      const stack = (service as unknown as { undoStack: { nodes: object[] }[] }).undoStack;
+      expect(JSON.stringify(stack)).not.toContain('xxxx');
+    });
+  });
+
+  describe('node settings by path', () => {
+    it('sets nested settings, creating the levels between, as one step', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('serve', 'task', 'Serve', 0, 0);
+
+      service.updateNodeConfigPaths(node.id, {
+        'config.rclone.serveType': 'http',
+        'config.rclone.type': 'http',
+        remoteName: 'drive',
+      });
+
+      expect(service.currentWorkflow()?.nodes[0].config).toEqual({
+        remoteName: 'drive',
+        config: { rclone: { serveType: 'http', type: 'http' } },
+      });
+      service.undo();
+      expect(service.currentWorkflow()?.nodes[0].config).toEqual({});
+    });
+
+    it('leaves the other settings alone', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('sync', 'task', 'Sync', 0, 0, {
+        config: { remoteName: 'a', config: { app: { autoStart: true }, rclone: { srcFs: 'a:' } } },
+      });
+
+      service.updateNodeConfigPaths(node.id, { 'config.rclone.dstFs': '/backup' });
+
+      expect(service.currentWorkflow()?.nodes[0].config).toEqual({
+        remoteName: 'a',
+        config: { app: { autoStart: true }, rclone: { srcFs: 'a:', dstFs: '/backup' } },
+      });
+    });
+  });
+
+  describe('wiring', () => {
+    it('refuses a wire that would close a loop', () => {
+      service.createNewWorkflow();
+      const a = service.addNode('sync', 'task', 'A', 0, 0);
+      const b = service.addNode('sync', 'task', 'B', 200, 0);
+      const c = service.addNode('sync', 'task', 'C', 400, 0);
+
+      expect(service.connectPorts(a.id, 'success', b.id, 'in')).toBe(true);
+      expect(service.connectPorts(b.id, 'success', c.id, 'in')).toBe(true);
+      expect(service.connectPorts(c.id, 'success', a.id, 'in')).toBe(false);
+      expect(service.currentWorkflow()?.edges.length).toBe(2);
+    });
+  });
+
+  describe('ports', () => {
+    it('numbers added ports past any existing id and keeps their label translatable', () => {
+      service.createNewWorkflow();
+      const join = service.addNode('join', 'logic', 'Join', 0, 0);
+      service.addJoinInputPort(join.id);
+      service.addJoinInputPort(join.id);
+      service.removeJoinInputPort(join.id, 'in3');
+      service.addJoinInputPort(join.id);
+
+      const ports = service.currentWorkflow()?.nodes[0].inputs ?? [];
+      expect(ports.map(p => p.id)).toEqual(['in1', 'in2', 'in4', 'in5']);
+      expect(ports[3].labelKey).toBe('flow.workflow.ports.inN');
+      expect(ports[3].labelParams).toEqual({ n: 5 });
+    });
+  });
+
+  describe('dirty state while dragging', () => {
+    it('reports changes without hashing the workflow while a node is dragged', () => {
+      service.createNewWorkflow();
+      const node = service.addNode('sync', 'task', 'A', 0, 0);
+      service.markSaved();
+      expect(service.hasUnsavedChanges()).toBe(false);
+
+      service.snapshot();
+      service.isDraggingNode.set(true);
+      service.updateNodePosition(node.id, 0, 0);
+      expect(service.hasUnsavedChanges()).toBe(true);
     });
   });
 });

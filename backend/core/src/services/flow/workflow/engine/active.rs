@@ -16,6 +16,8 @@ pub(crate) struct ActiveWorkflowState {
     pub(crate) backend: Backend,
     pub(crate) cancel: CancelToken,
     pub(crate) active_job_ids: Arc<RwLock<HashSet<u64>>>,
+    /// Identifies this run among every run of the workflow, so cleanup only touches what it started.
+    pub(crate) run_id: String,
 }
 
 /// A run is identified by its backend and workflow id: each backend has its own
@@ -131,7 +133,7 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
             .await;
         }
 
-        cleanup_workflow_resources(app, &state.backend, workflow_id).await;
+        cleanup_workflow_resources(app, &state.backend, workflow_id, &state.run_id).await;
 
         Ok(())
     } else {
@@ -140,11 +142,13 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
     }
 }
 
-/// Cleans up any lingering mount or serve resources spawned by the given workflow.
+/// Cleans up the mount and serve resources the given run of a workflow started.
+/// Those of earlier runs are left as they are.
 pub(crate) async fn cleanup_workflow_resources(
     app: &AppHandle,
     backend: &Backend,
     workflow_id: &str,
+    run_id: &str,
 ) {
     let backend_manager = app.state::<BackendManager>();
     let mounted = backend_manager
@@ -152,7 +156,8 @@ pub(crate) async fn cleanup_workflow_resources(
         .get_mounted_remotes()
         .await;
     for m in mounted {
-        if m.workflow_id.as_deref() == Some(workflow_id) {
+        if m.workflow_id.as_deref() == Some(workflow_id) && m.execute_id.as_deref() == Some(run_id)
+        {
             info!(
                 "Unmounting mount '{}' spawned by workflow '{workflow_id}'",
                 m.mount_point
@@ -172,7 +177,8 @@ pub(crate) async fn cleanup_workflow_resources(
         .get_serves()
         .await;
     for s in serves {
-        if s.workflow_id.as_deref() == Some(workflow_id) {
+        if s.workflow_id.as_deref() == Some(workflow_id) && s.execute_id.as_deref() == Some(run_id)
+        {
             info!(
                 "Stopping serve '{}' spawned by workflow '{workflow_id}'",
                 s.id
@@ -211,6 +217,7 @@ mod tests {
             backend: Backend::new_local("Local"),
             cancel: CancelToken::new(),
             active_job_ids: Arc::new(RwLock::new(HashSet::new())),
+            run_id: "test-run".into(),
         }
     }
 

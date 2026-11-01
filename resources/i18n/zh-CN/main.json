@@ -2977,7 +2977,12 @@
       "reportAndMore": "……另外还有 {{count}} 个",
       "reportStatusErrors": "完成，有 {{count}} 个错误",
       "reportStatusMatched": "全部 {{count}} 个文件完全一致（0 处差异）。",
-      "reportStatus": "状态"
+      "reportStatus": "状态",
+      "missingWorkflowId": "缺少用于更新的工作流 ID",
+      "workflowNotFound": "未找到工作流“{{id}}”",
+      "saveFailed": "保存工作流失败：{{error}}",
+      "deleteFailed": "删除工作流失败：{{error}}",
+      "copyName": "{{name}}（副本）"
     },
     "mount": {
       "pointEmpty": "挂载点不能为空",
@@ -3866,7 +3871,9 @@
         "branch2": "分支 2",
         "in1": "输入 1",
         "in2": "输入 2",
-        "done": "完成"
+        "done": "完成",
+        "inN": "输入 {{n}}",
+        "branchN": "分支 {{n}}"
       },
       "nodes": {
         "manualTrigger": "手动触发",
@@ -3910,7 +3917,11 @@
         "logAudit": "审计日志",
         "logAuditDesc": "在工作流执行日志中写入记录",
         "stopServe": "停止服务",
-        "stopServeDesc": "停止远端连接的活动网络服务实例"
+        "stopServeDesc": "停止远端连接的活动网络服务实例",
+        "sync": "同步",
+        "copy": "复制",
+        "check": "检查",
+        "mount": "挂载"
       },
       "logs": {
         "stepRunning": "步骤“{{title}}”正在执行...",
@@ -4038,7 +4049,8 @@
         "title": "欢迎使用工作流构建器",
         "subtitle": "创建新的工作流或选择预设模板，以自动化您的 rclone 操作。"
       },
-      "showInTray": "在系统托盘显示"
+      "showInTray": "在系统托盘显示",
+      "copyName": "{{name}}（副本）"
     },
     "shortcuts": {
       "title": "Flow 键盘快捷键"

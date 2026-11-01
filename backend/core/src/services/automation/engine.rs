@@ -460,20 +460,26 @@ pub async fn execute_automation(
                     .await;
 
                 // execute_workflow emits its own dedicated NotificationEvent::Workflow events
+                let trigger = if watch.is_some() {
+                    crate::services::flow::workflow::engine::RunTrigger::Watcher
+                } else {
+                    crate::services::flow::workflow::engine::RunTrigger::Cron
+                };
                 crate::services::flow::workflow::engine::execute_workflow(
                     app_handle.clone(),
                     backend.clone(),
                     wf_id.to_string(),
                     false,
+                    trigger,
                 )
                 .await
                 .and_then(|exec_res| {
                     if exec_res.success {
                         Ok(AutomationExecutionOutcome::Success)
                     } else {
-                        Err(exec_res
-                            .error
-                            .unwrap_or_else(|| "Workflow execution failed".to_string()))
+                        Err(exec_res.error.unwrap_or_else(|| {
+                            crate::localized_error!("backendErrors.workflow.unknownError")
+                        }))
                     }
                 })
             }

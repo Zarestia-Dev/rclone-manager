@@ -8,6 +8,8 @@ export interface WorkflowPort {
   type: WorkflowPortType;
   label?: string;
   labelKey?: string;
+  /** Values for the placeholders of `labelKey`. */
+  labelParams?: Record<string, unknown>;
   description?: string;
 }
 

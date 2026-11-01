@@ -94,13 +94,13 @@ describe('SidebarComponent', () => {
 
   const mockSelectedQuickRunId = signal<string | null>(null);
   const mockCurrentWorkflow = signal<WorkflowDefinition | null>(null);
-  const mockIsExecuting = signal<boolean>(false);
+  const mockRunningIds = signal<ReadonlySet<string>>(new Set());
   const mockLoadWorkflow = vi.fn();
 
   beforeEach(async () => {
     mockSelectedQuickRunId.set(null);
     mockCurrentWorkflow.set(null);
-    mockIsExecuting.set(false);
+    mockRunningIds.set(new Set());
     mockLoadWorkflow.mockClear();
 
     await TestBed.configureTestingModule({
@@ -167,7 +167,7 @@ describe('SidebarComponent', () => {
         {
           provide: WorkflowEngineService,
           useValue: {
-            isExecuting: mockIsExecuting,
+            isRunning: (id: string): boolean => mockRunningIds().has(id),
           },
         },
       ],

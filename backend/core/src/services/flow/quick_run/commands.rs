@@ -152,7 +152,16 @@ pub(crate) async fn start_quick_run_on_backend(
     execute_id: Option<String>,
 ) -> Result<OperationExecutionResult, String> {
     let qr = crate::services::automation::runtime::quick_run(&app, &quick_run_id)?;
-    start_quick_run_snapshot(app, backend, qr, workflow_id, node_id, execute_id).await
+    start_quick_run_snapshot(
+        app,
+        backend,
+        qr,
+        workflow_id,
+        node_id,
+        execute_id,
+        Vec::new(),
+    )
+    .await
 }
 
 pub(crate) async fn start_quick_run_snapshot(
@@ -162,6 +171,7 @@ pub(crate) async fn start_quick_run_snapshot(
     workflow_id: Option<String>,
     node_id: Option<String>,
     execute_id: Option<String>,
+    workflow_lineage: Vec<String>,
 ) -> Result<OperationExecutionResult, String> {
     let quick_run_id = qr.id.clone();
     info!("Starting quick run: {quick_run_id}");
@@ -256,6 +266,7 @@ pub(crate) async fn start_quick_run_snapshot(
     .with_quick_run_id(Some(quick_run_id.clone()))
     .with_execute_id(Some(execute_id.clone()))
     .with_workflow_id(workflow_id)
+    .with_workflow_lineage(workflow_lineage)
     .with_node_id(node_id);
 
     let job_id_str = submit_transfer_batch(

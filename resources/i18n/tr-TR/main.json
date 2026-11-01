@@ -3018,7 +3018,12 @@
       "reportAndMore": "... ve {{count}} tane daha",
       "reportStatusErrors": "{{count}} hatayla tamamlandı",
       "reportStatusMatched": "{{count}} dosyanın tümü birebir eşleşti (0 fark).",
-      "reportStatus": "Durum"
+      "reportStatus": "Durum",
+      "missingWorkflowId": "Güncelleme için iş akışı kimliği eksik",
+      "workflowNotFound": "'{{id}}' iş akışı bulunamadı",
+      "saveFailed": "İş akışı kaydedilemedi: {{error}}",
+      "deleteFailed": "İş akışı silinemedi: {{error}}",
+      "copyName": "{{name}} (Kopya)"
     },
     "mount": {
       "pointEmpty": "Bağlama noktası boş olamaz",
@@ -3911,7 +3916,9 @@
         "branch2": "2. Dal",
         "in1": "1. Giriş",
         "in2": "2. Giriş",
-        "done": "Bitti"
+        "done": "Bitti",
+        "inN": "{{n}}. Giriş",
+        "branchN": "{{n}}. Dal"
       },
       "nodes": {
         "manualTrigger": "Manuel Tetikleyici",
@@ -3955,7 +3962,11 @@
         "systemPower": "Sistem Güç Eylemi",
         "systemPowerDesc": "Sistemi uyut, kilitle veya kapat",
         "logAudit": "Özel Günlük Kaydı",
-        "logAuditDesc": "İş akışı yürütme günlüğüne özel kayıt ekle"
+        "logAuditDesc": "İş akışı yürütme günlüğüne özel kayıt ekle",
+        "sync": "Senk",
+        "copy": "Kopyala",
+        "check": "Denetle",
+        "mount": "Bağla"
       },
       "logs": {
         "stepRunning": "\"{{title}}\" adımı çalışıyor...",
@@ -4079,7 +4090,8 @@
       "emptyState": {
         "title": "İş Akışı Oluşturucu'ya Hoş Geldiniz",
         "subtitle": "Rclone işlemlerinizi otomatikleştirmek için yeni bir iş akışı oluşturun veya hazır bir şablon seçerek başlayın."
-      }
+      },
+      "copyName": "{{name}} (Kopya)"
     },
     "shortcuts": {
       "title": "Flow Klavye Kısayolları"

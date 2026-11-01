@@ -123,7 +123,9 @@
             <div
               class="port-slot port-slot-in"
               [attr.title]="
-                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+                inPort.labelKey
+                  ? (inPort.labelKey | translate: inPort.labelParams)
+                  : inPort.label || inPort.name
               "
             >
               <div
@@ -137,7 +139,9 @@
                 (touchstart)="onPortTouchStart(inPort, false, $event)"
               ></div>
               <span class="port-label truncate">{{
-                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+                inPort.labelKey
+                  ? (inPort.labelKey | translate: inPort.labelParams)
+                  : inPort.label || inPort.name
               }}</span>
             </div>
           }
@@ -147,11 +151,15 @@
             <div
               class="port-slot port-slot-out"
               [attr.title]="
-                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+                outPort.labelKey
+                  ? (outPort.labelKey | translate: outPort.labelParams)
+                  : outPort.label || outPort.name
               "
             >
               <span class="port-label truncate">{{
-                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+                outPort.labelKey
+                  ? (outPort.labelKey | translate: outPort.labelParams)
+                  : outPort.label || outPort.name
               }}</span>
               <div
                 class="port-handle output-handle"

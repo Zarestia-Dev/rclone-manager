@@ -111,6 +111,7 @@ impl JobCache {
             parent_job_id: metadata.parent_job_id,
             workflow_id: metadata.workflow_id,
             node_id: metadata.node_id,
+            workflow_lineage: metadata.workflow_lineage,
         };
 
         self.add_job(job).await;
@@ -572,6 +573,7 @@ mod tests {
             parent_job_id: None,
             workflow_id: None,
             node_id: None,
+            workflow_lineage: Vec::new(),
         }
     }
 

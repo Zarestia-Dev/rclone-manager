@@ -33,7 +33,7 @@ export class WorkflowEventService extends TauriBaseService {
       const active = (await this.invokeCommand<string[] | null>('get_active_workflows')) ?? [];
       // An event that arrived meanwhile is newer than this answer.
       if (this.executionEvents !== eventsBefore) return;
-      if (active.length > 0) this.engineService.isExecuting.set(true);
+      active.forEach(id => this.engineService.beginRun(id));
     } catch (error) {
       console.error('[WorkflowEventService] Failed to load active workflows:', error);
     }
@@ -69,8 +69,10 @@ export class WorkflowEventService extends TauriBaseService {
     const errorMessage = payload.errorMessage
       ? this.backendTranslation.translateBackendMessage(payload.errorMessage)
       : undefined;
-    const currentWf = this.stateService.currentWorkflow();
-    if (currentWf && currentWf.id === payload.workflowId) {
+    // Workflows of the same copy share node ids, so a node only counts on the canvas of its own workflow.
+    const canvas = this.stateService.currentWorkflow();
+    const onCanvas = canvas?.id === payload.workflowId ? canvas : null;
+    if (onCanvas) {
       this.stateService.updateNodeExecutionState(
         payload.nodeId,
         payload.state,
@@ -80,32 +82,28 @@ export class WorkflowEventService extends TauriBaseService {
       );
     }
 
-    const targetNode = currentWf?.nodes.find(n => n.id === payload.nodeId);
+    const targetNode = onCanvas?.nodes.find(n => n.id === payload.nodeId);
     const nodeTitle = targetNode ? targetNode.title : payload.nodeId;
 
     // Update active edges leading to / from this node for animated wire pulse flow
-    if (currentWf) {
+    if (onCanvas) {
       if (payload.state === 'running') {
-        const activeEdges = currentWf.edges
-          .filter(e => e.targetNodeId === payload.nodeId || e.sourceNodeId === payload.nodeId)
-          .map(e => e.id);
-        this.engineService.activeEdgeIds.update(set => {
-          const next = new Set(set);
-          activeEdges.forEach(id => next.add(id));
-          return next;
+        this.engineService.updateActiveEdges(payload.workflowId, edges => {
+          for (const e of onCanvas.edges) {
+            if (e.targetNodeId === payload.nodeId || e.sourceNodeId === payload.nodeId) {
+              edges.add(e.id);
+            }
+          }
         });
       } else if (
         payload.state === 'success' ||
         payload.state === 'failed' ||
         payload.state === 'skipped'
       ) {
-        const removeEdges = currentWf.edges
-          .filter(e => e.targetNodeId === payload.nodeId)
-          .map(e => e.id);
-        this.engineService.activeEdgeIds.update(set => {
-          const next = new Set(set);
-          removeEdges.forEach(id => next.delete(id));
-          return next;
+        this.engineService.updateActiveEdges(payload.workflowId, edges => {
+          for (const e of onCanvas.edges) {
+            if (e.targetNodeId === payload.nodeId) edges.delete(e.id);
+          }
         });
       }
     }
@@ -150,20 +148,18 @@ export class WorkflowEventService extends TauriBaseService {
 
   private handleExecutionStateChanged(payload: WorkflowExecutionStatePayload): void {
     this.executionEvents++;
-    if (payload.state === 'started') {
-      this.engineService.isExecuting.set(true);
+    if (payload.state === 'started' || payload.state === 'running') {
+      this.engineService.beginRun(payload.workflowId);
     } else if (
       payload.state === 'completed' ||
       payload.state === 'failed' ||
       payload.state === 'cancelled'
     ) {
-      this.engineService.isExecuting.set(false);
-      this.engineService.executionProgress.set(null);
-      this.engineService.activeEdgeIds.set(new Set());
+      this.engineService.endRun(payload.workflowId);
     }
 
-    if (payload.progress) {
-      this.engineService.executionProgress.set({
+    if (payload.progress && this.engineService.isRunning(payload.workflowId)) {
+      this.engineService.setProgress(payload.workflowId, {
         ...payload.progress,
         currentStepTitle: this.backendTranslation.translateBackendMessage(
           payload.progress.currentStepTitle
