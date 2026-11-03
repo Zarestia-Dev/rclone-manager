@@ -7,10 +7,7 @@ pub(crate) mod window;
 #[cfg(not(feature = "web-server"))]
 pub(crate) mod debug;
 
-#[cfg(any(
-    feature = "tauri-plugin-autostart",
-    all(target_os = "linux", feature = "flatpak")
-))]
+#[cfg(any(autostart_plugin, autostart_portal))]
 pub(crate) mod autostart;
 #[cfg(all(target_os = "linux", not(feature = "web-server")))]
 pub(crate) mod graphics;

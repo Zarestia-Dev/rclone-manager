@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, HttpErrorResponse } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
-import { Entry } from '@app/types';
+import { ArchiveListItem, Entry } from '@app/types';
 
 import { FileViewerModalComponent } from './file-viewer-modal.component';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
@@ -190,6 +190,40 @@ describe('FileViewerModalComponent', () => {
       resolveOld('http://localhost/old.jpg');
       await first;
       expect(component.currentUrl()).toBe('http://localhost/second.jpg');
+    });
+
+    it('clears the previous archive listing while the next archive is being listed', async () => {
+      (iconServiceMock.getFileTypeCategory as Mock).mockReturnValue('archive');
+      component.data.items = [
+        { ...mockItems[0], Name: 'a.zip', Path: 'a.zip', MimeType: 'application/zip' },
+        { ...mockItems[0], Name: 'b.zip', Path: 'b.zip', MimeType: 'application/zip' },
+      ];
+      (remoteOpsMock.archiveList as Mock).mockResolvedValueOnce({
+        success: true,
+        items: [{ path: 'from-a.txt', isDir: false }],
+      });
+      await component.updateData();
+      expect(component.parsedArchiveItems().map(item => item.path)).toEqual(['from-a.txt']);
+      // The listing belongs to the viewer's job group, so moving on or closing cancels it.
+      expect(remoteOpsMock.archiveList).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ long: true, group: expect.stringMatching(/^ui\/file-viewer\//) })
+      );
+
+      let finish!: (listing: { success: boolean; items: ArchiveListItem[] }) => void;
+      (remoteOpsMock.archiveList as Mock).mockReturnValueOnce(
+        new Promise(resolve => {
+          finish = resolve;
+        })
+      );
+      component.currentIndex.set(1);
+      const switching = component.updateData();
+      // The old rows must be gone as soon as the next archive starts loading.
+      expect(component.parsedArchiveItems()).toEqual([]);
+
+      finish({ success: true, items: [{ path: 'from-b.txt', isDir: false }] });
+      await switching;
+      expect(component.parsedArchiveItems().map(item => item.path)).toEqual(['from-b.txt']);
     });
 
     it('does not restart media after destruction while job cancellation is pending', async () => {

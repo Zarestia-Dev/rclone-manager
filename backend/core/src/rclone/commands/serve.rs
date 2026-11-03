@@ -365,6 +365,30 @@ pub(crate) async fn stop_serve_on_backend(
     Ok(crate::localized_success!("backendSuccess.serve.stopSuccess", "serverId" => &server_id))
 }
 
+/// Stop the serve that `profile_name` started on `remote_name`.
+///
+/// Profile names repeat across remotes, so the remote is part of the lookup.
+pub async fn stop_serve_profile(
+    app: AppHandle,
+    remote_name: String,
+    profile_name: String,
+) -> Result<String, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    let serve = app
+        .state::<BackendManager>()
+        .remote_cache_for(&backend.name)
+        .find_serve_by_profile(&remote_name, &profile_name)
+        .await
+        .ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.serve.profileNotRunning",
+                "remote" => remote_name,
+                "profile" => profile_name
+            )
+        })?;
+    stop_serve_on_backend(app, backend, serve.id, remote_name).await
+}
+
 /// Stop all serves on the backend selected when the command starts.
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");

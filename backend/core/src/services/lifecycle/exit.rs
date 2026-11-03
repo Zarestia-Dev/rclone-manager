@@ -10,6 +10,20 @@ pub struct ActiveOperationsSummary {
     pub active_serves_count: usize,
 }
 
+impl ActiveOperationsSummary {
+    /// A locked UI only needs to know that confirmation is required, not how many
+    /// private operations are running.
+    #[must_use]
+    pub fn redacted(mut self, locked: bool) -> Self {
+        if locked {
+            self.active_jobs_count = 0;
+            self.active_mounts_count = 0;
+            self.active_serves_count = 0;
+        }
+        self
+    }
+}
+
 #[derive(Default)]
 struct PendingExit(parking_lot::Mutex<Option<ActiveOperationsSummary>>);
 
@@ -74,6 +88,35 @@ mod exit_tests {
         Arc,
         atomic::{AtomicBool, Ordering},
     };
+
+    #[test]
+    fn locked_summaries_hide_counts_but_keep_the_need_for_confirmation() {
+        let summary = ActiveOperationsSummary {
+            has_active_operations: true,
+            active_jobs_count: 2,
+            active_mounts_count: 3,
+            active_serves_count: 4,
+        };
+        let locked = summary.clone().redacted(true);
+        assert!(locked.has_active_operations);
+        assert_eq!(
+            (
+                locked.active_jobs_count,
+                locked.active_mounts_count,
+                locked.active_serves_count
+            ),
+            (0, 0, 0)
+        );
+        let open = summary.redacted(false);
+        assert_eq!(
+            (
+                open.active_jobs_count,
+                open.active_mounts_count,
+                open.active_serves_count
+            ),
+            (2, 3, 4)
+        );
+    }
 
     #[test]
     fn pending_confirmation_belongs_to_one_application_and_is_consumed_once() {

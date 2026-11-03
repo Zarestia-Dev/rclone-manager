@@ -328,19 +328,27 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('archive_extract', { source, destination });
   }
 
+  /**
+   * Lists an archive's entries. The listing runs as a job in `group`, so stopping that group
+   * cancels it (a large archive on a remote can take minutes to read).
+   */
   async archiveList(
     source: string,
-    long?: boolean,
-    plain?: boolean,
-    filesOnly?: boolean,
-    dirsOnly?: boolean
+    options: {
+      long?: boolean;
+      plain?: boolean;
+      filesOnly?: boolean;
+      dirsOnly?: boolean;
+      group?: string;
+    } = {}
   ): Promise<ArchiveListResponse> {
     return this.invokeCommand<ArchiveListResponse>('archive_list', {
       source,
-      long,
-      plain,
-      files_only: filesOnly,
-      dirs_only: dirsOnly,
+      long: options.long,
+      plain: options.plain,
+      files_only: options.filesOnly,
+      dirs_only: options.dirsOnly,
+      group: options.group,
     });
   }
 }

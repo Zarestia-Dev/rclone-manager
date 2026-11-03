@@ -2,7 +2,7 @@
 use crate::rclone::backend::{RcloneTransport, transport::BackendError};
 use futures::stream;
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::StreamReader;
 
 pub const FILE_CHUNK_SIZE: u64 = 2 * 1024 * 1024;
@@ -211,6 +211,108 @@ pub fn local_file_reader(
         },
     );
     StreamReader::new(Box::pin(chunks))
+}
+
+/// Reported for directories and special files; classifies as HTTP 403.
+const NOT_A_REGULAR_FILE: &str = "Permission denied: only regular files can be streamed";
+
+/// A readable file: opened directly when this host can, otherwise through rclone.
+pub enum AssetSource {
+    Local {
+        file: tokio::fs::File,
+        metadata: std::fs::Metadata,
+    },
+    Remote {
+        transport: Arc<dyn RcloneTransport>,
+        remote: String,
+        path: String,
+        version: FileVersion,
+    },
+}
+
+impl AssetSource {
+    pub fn total(&self) -> u64 {
+        match self {
+            Self::Local { metadata, .. } => metadata.len(),
+            Self::Remote { version, .. } => version.size,
+        }
+    }
+
+    /// Reads `length` bytes from `start`, failing if the file changes meanwhile.
+    pub async fn into_reader(
+        self,
+        start: u64,
+        length: u64,
+    ) -> std::io::Result<Box<dyn AsyncRead + Unpin + Send>> {
+        match self {
+            Self::Local { mut file, metadata } => {
+                file.seek(std::io::SeekFrom::Start(start)).await?;
+                Ok(Box::new(local_file_reader(file, metadata, length)))
+            }
+            Self::Remote {
+                transport,
+                remote,
+                path,
+                version,
+            } => Ok(Box::new(file_reader(
+                transport,
+                remote,
+                path,
+                start,
+                length,
+                Some(version),
+            ))),
+        }
+    }
+}
+
+/// Opens `path` for ranged reads. An empty `remote` means a path on the host: it is
+/// opened directly, and only read through rclone when the host cannot open it
+/// (for example Android storage providers). Directories are never served.
+pub async fn open_asset(
+    transport: Arc<dyn RcloneTransport>,
+    remote: &str,
+    path: &str,
+) -> Result<AssetSource, String> {
+    if remote.is_empty()
+        && let Some(local) = open_local_regular_file(path).await?
+    {
+        return Ok(local);
+    }
+    let transport = pin_file_transport(transport)
+        .await
+        .map_err(|e| e.to_string())?;
+    let version = file_metadata(transport.as_ref(), remote, path)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(AssetSource::Remote {
+        transport,
+        remote: remote.to_string(),
+        path: path.to_string(),
+        version,
+    })
+}
+
+/// `Ok(None)` when the file cannot be opened here, so the caller may try rclone.
+async fn open_local_regular_file(path: &str) -> Result<Option<AssetSource>, String> {
+    // Checked before opening: opening a FIFO can block.
+    if let Ok(metadata) = tokio::fs::metadata(path).await
+        && !metadata.is_file()
+    {
+        return Err(NOT_A_REGULAR_FILE.into());
+    }
+    let file = match tokio::fs::File::open(path).await {
+        Ok(file) => file,
+        Err(error) => {
+            log::debug!("Direct open of {path} failed, falling back to rclone: {error}");
+            return Ok(None);
+        }
+    };
+    let metadata = file.metadata().await.map_err(|e| e.to_string())?;
+    if !metadata.is_file() {
+        return Err(NOT_A_REGULAR_FILE.into());
+    }
+    Ok(Some(AssetSource::Local { file, metadata }))
 }
 
 #[cfg(test)]
@@ -517,5 +619,74 @@ mod tests {
             reader.read_to_end(&mut vec![]).await.unwrap_err().kind(),
             std::io::ErrorKind::UnexpectedEof
         );
+    }
+
+    async fn read_all(source: AssetSource, start: u64, length: u64) -> Vec<u8> {
+        let mut bytes = vec![];
+        source
+            .into_reader(start, length)
+            .await
+            .unwrap()
+            .read_to_end(&mut bytes)
+            .await
+            .unwrap();
+        bytes
+    }
+
+    #[tokio::test]
+    async fn local_files_open_directly_and_support_ranges() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("clip.bin");
+        tokio::fs::write(&path, b"0123456789").await.unwrap();
+        // The transport must stay untouched: any call would fail the stat assertion.
+        let source = open_asset(
+            transport(serde_json::json!({}), false),
+            "",
+            path.to_str().unwrap(),
+        )
+        .await
+        .unwrap();
+        assert!(matches!(source, AssetSource::Local { .. }));
+        assert_eq!(source.total(), 10);
+        assert_eq!(read_all(source, 3, 4).await, b"3456");
+    }
+
+    #[tokio::test]
+    async fn directories_are_refused_without_asking_rclone() {
+        let directory = tempfile::tempdir().unwrap();
+        let error = open_asset(
+            transport(serde_json::json!({}), false),
+            "",
+            directory.path().to_str().unwrap(),
+        )
+        .await
+        .err()
+        .unwrap();
+        assert!(error.contains("Permission denied"));
+    }
+
+    #[tokio::test]
+    async fn unreadable_local_paths_fall_back_to_rclone() {
+        let t = transport(serde_json::json!({"item": {"Size": 5, "ID": "x"}}), false);
+        let source = open_asset(t.clone(), "", "/definitely/not/here.bin")
+            .await
+            .unwrap();
+        assert!(matches!(source, AssetSource::Remote { .. }));
+        assert_eq!(source.total(), 5);
+        read_all(source, 1, 3).await;
+        assert_eq!(*t.reads.lock().unwrap(), vec![(1, Some(3))]);
+    }
+
+    #[tokio::test]
+    async fn named_remotes_are_never_opened_locally() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("same-name");
+        tokio::fs::write(&path, b"local").await.unwrap();
+        let t = transport(serde_json::json!({"item": {"Size": 9, "ID": "x"}}), false);
+        let source = open_asset(t, "drive:", path.to_str().unwrap())
+            .await
+            .unwrap();
+        assert!(matches!(source, AssetSource::Remote { .. }));
+        assert_eq!(source.total(), 9);
     }
 }

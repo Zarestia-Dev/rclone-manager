@@ -815,6 +815,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoadingCover.set(false);
     this.isEditing.set(false);
     this.editContent.set('');
+    this.parsedArchiveItems.set([]);
     this.archiveError.set(null);
     this.errorMessage.set(null);
     this.resetZoom();
@@ -992,7 +993,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         const source = this.getArchiveSource(item);
 
         try {
-          const res = await this.remoteOps.archiveList(source, true); // Use long format for more info
+          const res = await this.remoteOps.archiveList(source, {
+            long: true, // size and date columns
+            group: this.readJobGroup, // stopped when the viewer moves on
+          });
           if (!this.isStillViewing(targetPath, generation)) return;
           if (res?.success) {
             this.parsedArchiveItems.set(res.items);

@@ -3,9 +3,9 @@ use crate::{context::Manager, services};
 use tauri::WindowEvent;
 
 pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
-    builder.on_window_event(|_window, event| match event {
+    builder.on_window_event(|window, event| match event {
         WindowEvent::CloseRequested { api, .. } => {
-            let app_handle = _window.app_handle();
+            let app_handle = window.app_handle();
 
             let destroy_on_close = app_handle
                 .backend_try_state::<services::settings::AppSettingsManager>()
@@ -17,12 +17,12 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
                 })
                 .unwrap_or(false);
 
-            if _window.label() == "main" {
+            if window.label() == "main" {
                 if has_visible_tray(app_handle.backend()) {
                     if destroy_on_close {
                         log::debug!("Optimization Enabled: Destroying window to free RAM");
                     } else {
-                        if let Err(e) = _window.hide() {
+                        if let Err(e) = window.hide() {
                             log::error!("Failed to hide window: {e}");
                         }
                         api.prevent_close();
@@ -43,34 +43,38 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
         }
         WindowEvent::Destroyed => {
             #[cfg(target_os = "macos")]
-            crate::native::dock::update_macos_dock_visibility(_window.app_handle());
+            crate::native::dock::update_macos_dock_visibility(window.app_handle());
         }
         WindowEvent::Focused(true) => {
             #[cfg(target_os = "macos")]
-            crate::native::dock::update_macos_dock_visibility(_window.app_handle());
+            crate::native::dock::update_macos_dock_visibility(window.app_handle());
         }
         _ => {}
     })
 }
 
-#[cfg(feature = "tray")]
+/// Whether closing the window can leave the app reachable in the background.
+/// Builds without a tray (or with the tray hidden or failed) must exit instead.
 fn has_visible_tray(app: &rclone_manager_core::context::AppHandle) -> bool {
-    app.try_state::<crate::desktop::tray::TrayMenuState>()
-        .is_some_and(|state| state.visible.load(std::sync::atomic::Ordering::SeqCst))
-}
-
-// Window close handling also runs in builds without tray support.
-#[cfg(not(feature = "tray"))]
-fn has_visible_tray(_app: &rclone_manager_core::context::AppHandle) -> bool {
-    false
-}
-
-pub(super) fn should_open_main_window(args: &crate::cli::CliArgs) -> bool {
     #[cfg(feature = "tray")]
-    if args.tray {
-        return false;
+    return app
+        .try_state::<crate::desktop::tray::TrayMenuState>()
+        .is_some_and(|state| state.visible.load(std::sync::atomic::Ordering::SeqCst));
+    #[cfg(not(feature = "tray"))]
+    {
+        let _ = app;
+        false
     }
-    args.general.send_to_remote.is_none()
+}
+
+/// Whether startup shows the main window.
+///
+/// `--tray` (autostart) starts hidden, except while the vault is locked: initialization
+/// is postponed until it is unlocked, so neither the tray nor any other window exists,
+/// and the window is the only place to enter the password.
+pub(super) fn should_open_main_window(args: &crate::cli::CliArgs, vault_locked: bool) -> bool {
+    let hidden_start = args.start_in_tray() && !vault_locked;
+    !hidden_start && args.general.send_to_remote.is_none()
 }
 
 #[cfg(test)]
@@ -107,14 +111,22 @@ mod tests {
     #[test]
     fn normal_desktop_startup_opens_its_window() {
         let args = CliArgs::try_parse_from(["app"]).unwrap();
-        assert!(should_open_main_window(&args));
+        assert!(should_open_main_window(&args, false));
     }
 
     #[cfg(feature = "tray")]
     #[test]
     fn explicit_tray_startup_hides_the_window() {
         let args = CliArgs::try_parse_from(["app", "--tray"]).unwrap();
-        assert!(!should_open_main_window(&args));
+        assert!(!should_open_main_window(&args, false));
+    }
+
+    #[cfg(feature = "tray")]
+    #[test]
+    fn a_locked_vault_shows_the_window_even_for_a_hidden_start() {
+        // Initialization waits for the unlock, so no tray exists to open it from.
+        let args = CliArgs::try_parse_from(["app", "--tray"]).unwrap();
+        assert!(should_open_main_window(&args, true));
     }
 
     #[cfg(not(feature = "tray"))]
@@ -126,6 +138,7 @@ mod tests {
     #[test]
     fn send_to_does_not_open_a_window() {
         let args = CliArgs::try_parse_from(["app", "--send-to-remote", "remote"]).unwrap();
-        assert!(!should_open_main_window(&args));
+        assert!(!should_open_main_window(&args, false));
+        assert!(!should_open_main_window(&args, true));
     }
 }

@@ -2,9 +2,7 @@
 #[cfg(feature = "tauri-plugin-single-instance")]
 use crate::context::BackendContext;
 #[cfg(feature = "tauri-plugin-single-instance")]
-use crate::rclone::commands::upload::execute_upload_batch;
-#[cfg(feature = "tauri-plugin-single-instance")]
-use rclone_manager_core::app::send_to::build_send_to_params;
+use rclone_manager_core::app::send_to;
 
 pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     #[cfg(feature = "tauri-plugin-single-instance")]
@@ -16,7 +14,7 @@ pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
     #[cfg(all(feature = "tauri-plugin-deep-link", not(feature = "web-server")))]
     let builder = builder.plugin(tauri_plugin_deep_link::init());
 
-    #[cfg(all(feature = "tauri-plugin-autostart", not(feature = "flatpak")))]
+    #[cfg(autostart_plugin)]
     let builder = builder.plugin(tauri_plugin_autostart::init(
         tauri_plugin_autostart::MacosLauncher::LaunchAgent,
         Some(vec!["--tray"]),
@@ -35,7 +33,11 @@ pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
         .plugin(tauri_plugin_clipboard_manager::init());
 
     #[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
-    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    let builder = builder.plugin(
+        tauri_plugin_window_state::Builder::default()
+            .with_filter(remembers_window_state)
+            .build(),
+    );
 
     builder
 }
@@ -54,28 +56,24 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
     builder.plugin(
         si_builder
             .callback(|app: &crate::context::AppHandle, argv, cwd| {
-                if let Ok(cli_args) = <crate::cli::CliArgs as clap::Parser>::try_parse_from(&argv) && let Some(remote) = cli_args.general.send_to_remote {
-                        let path = cli_args.general.send_to_path;
-                        let sources = cli_args.general.send_to_sources;
-                        let app_handle_clone = app.clone();
-                        let cwd_path = std::path::PathBuf::from(cwd);
-                        crate::utils::spawn(async move {
-                            let params = build_send_to_params(remote, path, sources, Some(&cwd_path));
-
-                            log::info!(
-                                "Executing SendTo transfer in running instance: {:?} -> {}:{}",
-                                params.local_paths, params.remote, params.path
-                            );
-                            match execute_upload_batch(app_handle_clone.backend().clone(), params).await {
-                                Ok(jobid) => {
-                                    log::info!("SendTo transfer initiated successfully in running instance. Job ID: {jobid}");
-                                }
-                                Err(e) => {
-                                    log::error!("SendTo transfer failed in running instance: {e}");
-                                }
+                if let Ok(cli_args) = <crate::cli::CliArgs as clap::Parser>::try_parse_from(&argv)
+                    && let Some(remote) = cli_args.general.send_to_remote
+                {
+                    let core = app.backend().clone();
+                    let (path, sources) = (
+                        cli_args.general.send_to_path,
+                        cli_args.general.send_to_sources,
+                    );
+                    let cwd = std::path::PathBuf::from(cwd);
+                    crate::utils::spawn(async move {
+                        match send_to::execute(&core, remote, path, sources, Some(&cwd)).await {
+                            Ok(jobid) => log::info!("SendTo transfer finished. Job ID: {jobid}"),
+                            Err(e) => {
+                                log::error!("SendTo transfer failed in running instance: {e}")
                             }
-                        });
-                        return;
+                        }
+                    });
+                    return;
                 }
 
                 #[cfg(all(feature = "web-server", feature = "tray"))]
@@ -97,4 +95,30 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
             })
             .build(),
     )
+}
+
+/// Only long-lived windows keep their position and size. File-browser windows get a new
+/// random label every time (so remembering them would grow the state file forever), and
+/// dialogs are sized by their content.
+#[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
+fn remembers_window_state(label: &str) -> bool {
+    !label.starts_with("nautilus-") && !label.starts_with("dialog-")
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
+    #[test]
+    fn only_long_lived_windows_remember_their_state() {
+        for label in ["main", "main-standalone", "flow", "nautilus"] {
+            assert!(super::remembers_window_state(label), "{label}");
+        }
+        for label in [
+            "nautilus-lx3k9a-001-ab12",
+            "nautilus-gdrive",
+            "dialog-settings",
+        ] {
+            assert!(!super::remembers_window_state(label), "{label}");
+        }
+    }
 }

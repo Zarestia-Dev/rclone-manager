@@ -83,7 +83,7 @@ export class DownloadService extends TauriBaseService {
         this.notificationService.showError(
           this.translate.instant('shared.transferActivity.actions.failDownload') +
             ': ' +
-            (err instanceof Error ? err.message : String(err))
+            this.backendTranslation.translateBackendMessage(err)
         );
         throw err;
       }
@@ -160,7 +160,7 @@ export class DownloadService extends TauriBaseService {
       this.notificationService.showError(
         this.translate.instant('fileBrowser.fileViewer.errorOpenNative') +
           ': ' +
-          (err instanceof Error ? err.message : String(err))
+          this.backendTranslation.translateBackendMessage(err)
       );
       throw err;
     }

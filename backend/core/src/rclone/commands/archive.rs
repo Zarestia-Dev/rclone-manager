@@ -139,6 +139,9 @@ pub async fn archive_extract(
     Ok(json!({ "success": true, "jobid": submission.job_id }))
 }
 
+/// Lists an archive's entries. Listing runs as a job in `group`, so stopping that group
+/// (for example when the viewer moves on to another file) cancels it: reading a large
+/// archive from a remote can take minutes.
 pub async fn archive_list(
     app: AppHandle,
     source: String,
@@ -146,15 +149,12 @@ pub async fn archive_list(
     plain: Option<bool>,
     files_only: Option<bool>,
     dirs_only: Option<bool>,
+    group: Option<String>,
 ) -> Result<Value, String> {
     debug!("archive_list: source={source}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let transport = crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
-        app.clone(),
-        backend.clone(),
-    );
 
     let (endpoint, payload) = if backend.is_librclone_local() {
         let mut p = json!({
@@ -192,9 +192,11 @@ pub async fn archive_list(
         let os = backend_manager.get_runtime_os(&backend.name).await;
         (
             core::COMMAND,
-            backend.build_core_command_payload("archive", args, false, os),
+            backend.build_core_command_payload("archive", args, true, os),
         )
     };
+    let mut payload = payload;
+    payload["_async"] = json!(true);
 
     let remote_name =
         Some(crate::utils::json_helpers::extract_remote_name_from_fs(&source).into_owned());
@@ -209,7 +211,25 @@ pub async fn archive_list(
         })),
     );
 
-    let response = transport.rpc(endpoint, Some(&payload)).await.map_err(|e| {
+    let metadata = JobMetadata::for_query(
+        remote_name.clone().unwrap_or_default(),
+        source.clone(),
+        JobType::ArchiveList,
+        Some(Origin::FileManager),
+        group,
+    );
+    let submission = submit_job_with_options(
+        app.clone(),
+        endpoint,
+        payload,
+        metadata,
+        SubmitJobOptions {
+            wait_for_completion: true,
+            backend: Some(backend),
+        },
+    )
+    .await
+    .map_err(|e| {
         let err_msg = format!("Failed to list archive: {e}");
         log_operation(
             LogLevel::Error,
@@ -220,6 +240,7 @@ pub async fn archive_list(
         );
         err_msg
     })?;
+    let response = submission.output.unwrap_or_else(|| json!({}));
 
     let error = response
         .get("error")

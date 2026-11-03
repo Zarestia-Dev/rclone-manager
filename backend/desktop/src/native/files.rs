@@ -1,12 +1,40 @@
+//! Native file commands: dialogs, the system file manager, previews and downloads.
 use crate::context::BackendContext;
+use crate::services::paths::AppPaths;
 use crate::services::settings::access;
-use crate::utils::io::file_stream::{file_metadata, file_reader, pin_file_transport};
+use crate::utils::io::file_stream::open_asset;
+use crate::utils::io::staged_file::{CopyError, StagedFile, copy_in_chunks};
 use crate::utils::types::events::{FILE_DOWNLOAD_PROGRESS, FileDownloadProgressPayload};
 use log::debug;
+use std::fmt::Display;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Window};
 use tauri_plugin_dialog::DialogExt;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
+/// Preview files of remote documents, below the cache directory.
+const TEMP_VIEWS_DIR: &str = "temp_views";
+
+/// Falls back to this when a preview has no usable file name.
+const DEFAULT_PREVIEW_NAME: &str = "document.pdf";
+
+fn io_error(error: impl Display) -> String {
+    rclone_manager_core::localized_error!("backendErrors.file.ioError", "error" => error)
+}
+
+fn open_failed(error: impl Display) -> String {
+    rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error)
+}
+
+fn copy_error(error: CopyError) -> String {
+    match error {
+        CopyError::Io(error) => io_error(error),
+        CopyError::Aborted(message) => message,
+    }
+}
+
+/// Runs a file operation for the vault session that was open when it started: if the
+/// vault locks or changes meanwhile, nothing is returned to the caller.
 async fn with_file_access<T>(
     app: &AppHandle,
     revision: Option<u64>,
@@ -18,6 +46,17 @@ async fn with_file_access<T>(
     result
 }
 
+/// Native dialogs block their thread until the user answers.
+async fn blocking_dialog<T: Send + 'static>(
+    dialog: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    crate::utils::spawn_blocking(dialog)
+        .await
+        .map_err(open_failed)
+}
+
+// Dialogs
+
 #[tauri::command]
 #[cfg(desktop)]
 pub async fn get_folder_location(
@@ -26,84 +65,89 @@ pub async fn get_folder_location(
     initial_path: Option<String>,
 ) -> Result<Option<String>, String> {
     let revision = access::revision(app.backend());
-    with_file_access(&app, revision, async {
+    with_file_access(
+        &app,
+        revision,
+        pick_folder(&app, revision, require_empty, initial_path),
+    )
+    .await
+}
+
+#[cfg(desktop)]
+async fn pick_folder(
+    app: &AppHandle,
+    revision: Option<u64>,
+    require_empty: bool,
+    initial_path: Option<String>,
+) -> Result<Option<String>, String> {
     let mut dialog = app.dialog().file();
     if let Some(path) = initial_path {
         dialog = dialog.set_directory(path);
     }
-    let selected = crate::utils::spawn_blocking(move || dialog
-        .set_title("Select Folder").blocking_pick_folder().map(|path| path.to_string()))
-        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
+    let selected = blocking_dialog(move || {
+        dialog
+            .set_title("Select Folder")
+            .blocking_pick_folder()
+            .map(|path| path.to_string())
+    })
+    .await?;
+    // The dialog can stay open for minutes; the checks below touch the filesystem.
     access::require_session(app.backend(), revision)?;
-    let folder = match selected {
-        Some(path) if path.is_empty() => {
-            debug!("User selected empty path");
-            return Ok(None);
-        }
-        Some(path) => path,
-        _ => {
-            debug!("User cancelled folder selection");
-            return Ok(None);
-        }
+
+    let Some(folder) = selected.filter(|path| !path.is_empty()) else {
+        debug!("User cancelled folder selection");
+        return Ok(None);
     };
 
     #[cfg(target_os = "windows")]
-    {
-        // If the selected path is a drive root (e.g., D:\), prevent selection and show error
-
-        use std::path::{Component, Path};
-        let path = Path::new(&folder);
-        if let Some(drive) = path.components().next()
-            && matches!(drive, Component::Prefix(_))
-            && path.parent().is_none()
-        {
-            debug!("Selected path is a drive root, which is not allowed for mounting");
-            return Err(rclone_manager_core::localized_error!(
-                "backendErrors.file.driveRoot"
-            ));
-        }
-    }
+    reject_drive_root(&folder)?;
 
     if require_empty {
-        debug!("Checking if folder is empty: {folder}");
-        let path = std::path::Path::new(&folder);
+        ensure_empty_folder(&folder).await?;
+    }
+    Ok(Some(folder))
+}
 
-        // Check if folder exists and is empty
-        match tokio::fs::read_dir(path).await {
-            Ok(mut entries) => match entries.next_entry().await {
-                Ok(Some(_)) => {
-                    return Err(rclone_manager_core::localized_error!(
-                        "backendErrors.file.folderNotEmpty"
-                    ));
-                }
-                Ok(_) => (), // Folder is empty
-                Err(e) => {
-                    log::error!("Error reading directory: {e}");
-                    return Err(format!("Error checking folder: {e}"));
-                }
-            },
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (), // Folder doesn't exist
-            Err(e) => {
-                log::error!("Error accessing folder: {e}");
-                return Err(format!("Error accessing folder: {e}"));
+/// A whole drive (`D:\`) cannot be a mount point.
+#[cfg(target_os = "windows")]
+fn reject_drive_root(folder: &str) -> Result<(), String> {
+    use std::path::Component;
+    let path = Path::new(folder);
+    if matches!(path.components().next(), Some(Component::Prefix(_))) && path.parent().is_none() {
+        debug!("Selected path is a drive root, which is not allowed for mounting");
+        return Err(rclone_manager_core::localized_error!(
+            "backendErrors.file.driveRoot"
+        ));
+    }
+    Ok(())
+}
+
+/// A missing folder passes (rclone creates it). On Windows an empty one is removed,
+/// because WinFsp needs the mount directory not to exist.
+#[cfg(desktop)]
+async fn ensure_empty_folder(folder: &str) -> Result<(), String> {
+    debug!("Checking if folder is empty: {folder}");
+    let path = Path::new(folder);
+    match tokio::fs::read_dir(path).await {
+        Ok(mut entries) => {
+            if entries.next_entry().await.map_err(io_error)?.is_some() {
+                return Err(rclone_manager_core::localized_error!(
+                    "backendErrors.file.folderNotEmpty"
+                ));
             }
         }
-
-        // On Windows, clean up the empty folder if it exists
-        #[cfg(target_os = "windows")]
-        if let Err(e) = remove_empty_mount_directory(path).await {
-            log::error!("Failed to remove empty mount folder: {e}");
-            return Err(format!("Failed to prepare folder: {e}"));
-        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(io_error(e)),
     }
 
-    Ok(Some(folder))
-    }).await
+    #[cfg(target_os = "windows")]
+    remove_empty_mount_directory(path).await.map_err(io_error)?;
+    Ok(())
 }
 
 // Never recurse: a file may appear after the dialog's emptiness check.
 #[cfg(any(target_os = "windows", test))]
-async fn remove_empty_mount_directory(path: &std::path::Path) -> std::io::Result<()> {
+async fn remove_empty_mount_directory(path: &Path) -> std::io::Result<()> {
     match tokio::fs::remove_dir(path).await {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         result => result,
@@ -111,65 +155,115 @@ async fn remove_empty_mount_directory(path: &std::path::Path) -> std::io::Result
 }
 
 #[tauri::command]
-pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
-    let clean_path = path.trim();
-    if clean_path.is_empty() {
+pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
+    let app = window.app_handle().clone();
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
+        let dialog = window.dialog().file();
+        blocking_dialog(move || dialog.blocking_pick_file().map(|path| path.to_string())).await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
+    let app = window.app_handle().clone();
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
+        let dialog = window.dialog().file();
+        blocking_dialog(move || {
+            dialog
+                .blocking_pick_files()
+                .map(|paths| paths.into_iter().map(|path| path.to_string()).collect())
+        })
+        .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_save_file_location(
+    app: AppHandle,
+    default_name: Option<String>,
+) -> Result<Option<String>, String> {
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
+        let mut dialog = app.dialog().file();
+        if let Some(name) = &default_name {
+            dialog = dialog.set_file_name(name);
+        }
+        blocking_dialog(move || dialog.blocking_save_file().map(|path| path.to_string())).await
+    })
+    .await
+}
+
+// System file manager
+
+#[tauri::command]
+pub async fn open_in_files(app: AppHandle, path: String) -> Result<(), String> {
+    let path = path.trim();
+    if path.is_empty() {
         return Err(rclone_manager_core::localized_error!(
             "backendErrors.file.invalidPath"
         ));
     }
+    open_in_file_manager(&app, path)
+}
 
-    #[cfg(target_os = "android")]
-    {
-        let _ = app;
-        if let Some(saf_target) = clean_path.strip_prefix("saf://") {
-            let remote = saf_target.split('/').next().unwrap_or("").trim_matches(':');
-            if remote.is_empty() {
-                return Err(rclone_manager_core::localized_error!(
-                    "backendErrors.file.invalidPath"
-                ));
-            }
-            if crate::rclone::backend::saf_bridge::open_saf_remote(remote) {
-                return Ok(format!("Opened SAF remote {} in system files", remote));
-            } else {
-                return Err(rclone_manager_core::localized_error!(
-                    "backendErrors.file.failedToOpen",
-                    "error" => "SAF opener failed"
-                ));
-            }
-        }
-
-        if crate::rclone::backend::saf_bridge::open_local_path(clean_path) {
-            Ok(format!("Opened local path {} in file manager", clean_path))
-        } else {
-            Err(rclone_manager_core::localized_error!(
-                "backendErrors.file.failedToOpen",
-                "error" => "Failed to open local path in file manager"
-            ))
-        }
-    }
-
-    #[cfg(not(target_os = "android"))]
-    {
-        use tauri_plugin_opener::OpenerExt;
-        let p = std::path::Path::new(clean_path);
-        if !p.exists() {
+#[cfg(target_os = "android")]
+fn open_in_file_manager(_app: &AppHandle, path: &str) -> Result<(), String> {
+    use crate::rclone::backend::saf_bridge;
+    let opened = if let Some(saf_target) = path.strip_prefix("saf://") {
+        let remote = saf_target.split('/').next().unwrap_or("").trim_matches(':');
+        if remote.is_empty() {
             return Err(rclone_manager_core::localized_error!(
-                "backendErrors.file.notFound",
-                "path" => clean_path.to_string()
+                "backendErrors.file.invalidPath"
             ));
         }
-
-        match app.opener().open_path(clean_path, None::<String>) {
-            Ok(()) => Ok(format!("Opened file manager at {}", clean_path)),
-            Err(e) => Err(rclone_manager_core::localized_error!(
-                "backendErrors.file.failedToOpen",
-                "error" => e.to_string()
-            )),
-        }
+        saf_bridge::open_saf_remote(remote)
+    } else {
+        saf_bridge::open_local_path(path)
+    };
+    if opened {
+        Ok(())
+    } else {
+        Err(open_failed("the system file manager rejected the path"))
     }
 }
 
+#[cfg(not(target_os = "android"))]
+fn open_in_file_manager(app: &AppHandle, path: &str) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    if !Path::new(path).exists() {
+        return Err(rclone_manager_core::localized_error!(
+            "backendErrors.file.notFound",
+            "path" => path
+        ));
+    }
+    app.opener()
+        .open_path(path, None::<String>)
+        .map_err(open_failed)
+}
+
+/// Hands `path` to the operating system's default application for it.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn open_with_default_app(app: &AppHandle, path: &str) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(path, None::<String>)
+        .map_err(open_failed)
+}
+
+/// Android shares the file through the Kotlin bridge after this command returns.
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn open_with_default_app(_app: &AppHandle, _path: &str) -> Result<(), String> {
+    Ok(())
+}
+
+// Previews
+
+/// Opens a file in its default application and returns the local path that was opened.
+/// Remote files are first copied into a private preview directory.
 #[tauri::command]
 pub async fn open_file_natively(
     app: AppHandle,
@@ -180,120 +274,233 @@ pub async fn open_file_natively(
 ) -> Result<String, String> {
     let revision = access::revision(app.backend());
     with_file_access(&app, revision, async {
-
-    let clean_file_name = std::path::Path::new(&file_name)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("document.pdf");
-
-    access::require_session(app.backend(), revision)?;
-    if is_local {
-        let mut full_path = std::path::PathBuf::from(&remote);
-        full_path.push(&path);
-
-        if !full_path.exists() {
-            return Err(rclone_manager_core::localized_error!(
-                "backendErrors.file.notFound",
-                "path" => full_path.display().to_string()
-            ));
+        if is_local {
+            open_local_file(&app, &remote, &path)
+        } else {
+            preview_remote_file(&app, revision, remote, path, &file_name).await
         }
-
-        let path_str = full_path
-            .to_str()
-            .ok_or_else(|| format!("Invalid path: {}", full_path.display()))?
-            .to_string();
-
-        #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        {
-            use tauri_plugin_opener::OpenerExt;
-            app.opener()
-                .open_path(&path_str, None::<String>)
-                .map_err(|e| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
-        }
-
-        return Ok(path_str);
-    }
-
-    let cache_dir = app
-        .path()
-        .app_cache_dir()
-        .map_err(|e| format!("Failed to get cache directory: {e}"))?
-        .join("temp_views");
-
-    tokio::fs::create_dir_all(&cache_dir)
-        .await
-        .map_err(|e| format!("Failed to create temp_views directory: {e}"))?;
-
-    // Each preview keeps its own original filename in an isolated directory.
-    // Two remotes (or concurrent opens) must not overwrite the same cached file.
-    let temp_directory = create_preview_directory(cache_dir).await?;
-    let dest_path = temp_directory.path().join(clean_file_name);
-    let dest_str = dest_path
-        .to_str()
-        .ok_or_else(|| format!("Invalid target path: {}", dest_path.display()))?
-        .to_string();
-
-    let transport = crate::rclone::commands::common::transport(app.backend());
-
-    let transport = pin_file_transport(transport)
-        .await
-        .map_err(|e| format!("Failed to select file backend: {e}"))?;
-    let version = file_metadata(transport.as_ref(), &remote, &path)
-        .await
-        .map_err(|e| format!("Failed to read remote file metadata: {e}"))?;
-    let size = version.size;
-    let mut reader = file_reader(transport, remote, path, 0, size, Some(version));
-
-    let mut file = tokio::fs::File::create(&dest_path)
-        .await
-        .map_err(|e| format!("Failed to create temporary file: {e}"))?;
-
-    let mut buffer = vec![0; 65536];
-    loop {
-        access::require_session(app.backend(), revision)?;
-        let n = reader
-            .read(&mut buffer)
-            .await
-            .map_err(|e| format!("Error reading remote file stream: {e}"))?;
-        if n == 0 {
-            break;
-        }
-        access::require_session(app.backend(), revision)?;
-        file.write_all(&buffer[..n])
-            .await
-            .map_err(|e| format!("Error writing temporary file: {e}"))?;
-    }
-    file.flush()
-        .await
-        .map_err(|e| format!("Error flushing temporary file: {e}"))?;
-    access::require_session(app.backend(), revision)?;
-    // The external application may still be reading it after this command returns.
-    // Startup/shutdown cleanup owns successful preview directories.
-    let _ = temp_directory.keep();
-
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    {
-        use tauri_plugin_opener::OpenerExt;
-        app.opener()
-            .open_path(&dest_str, None::<String>)
-            .map_err(|e| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
-    }
-
-    Ok(dest_str)
-    }).await
+    })
+    .await
 }
 
-async fn create_preview_directory(
-    cache_dir: std::path::PathBuf,
-) -> Result<tempfile::TempDir, String> {
+/// For local files the "remote" is the folder and the path is relative to it.
+fn local_file_path(folder: &str, path: &str) -> PathBuf {
+    PathBuf::from(folder).join(path)
+}
+
+fn open_local_file(app: &AppHandle, folder: &str, path: &str) -> Result<String, String> {
+    let full_path = local_file_path(folder, path);
+    if !full_path.exists() {
+        return Err(rclone_manager_core::localized_error!(
+            "backendErrors.file.notFound",
+            "path" => full_path.display()
+        ));
+    }
+    let full_path = full_path
+        .to_str()
+        .ok_or_else(|| rclone_manager_core::localized_error!("backendErrors.file.invalidPath"))?;
+    open_with_default_app(app, full_path)?;
+    Ok(full_path.to_string())
+}
+
+/// The last component of `file_name`, so a preview can never leave its directory.
+fn preview_file_name(file_name: &str) -> &str {
+    Path::new(file_name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(DEFAULT_PREVIEW_NAME)
+}
+
+async fn preview_remote_file(
+    app: &AppHandle,
+    revision: Option<u64>,
+    remote: String,
+    path: String,
+    file_name: &str,
+) -> Result<String, String> {
+    let cache_dir = temp_views_dir(app)?;
+    tokio::fs::create_dir_all(&cache_dir)
+        .await
+        .map_err(io_error)?;
+
+    // Each preview keeps its original filename in an isolated directory: two remotes
+    // (or concurrent opens) must not overwrite the same cached file.
+    let preview_directory = create_preview_directory(cache_dir).await?;
+    let destination = preview_directory.path().join(preview_file_name(file_name));
+    let destination_str = destination
+        .to_str()
+        .ok_or_else(|| rclone_manager_core::localized_error!("backendErrors.file.invalidPath"))?;
+
+    let transport = crate::rclone::commands::common::transport(app.backend());
+    let source = open_asset(transport, &remote, &path)
+        .await
+        .map_err(io_error)?;
+    let size = source.total();
+    let mut reader = source.into_reader(0, size).await.map_err(io_error)?;
+
+    let mut file = tokio::fs::File::create(&destination)
+        .await
+        .map_err(io_error)?;
+    copy_in_chunks(&mut reader, &mut file, |_| {
+        access::require_session(app.backend(), revision)
+    })
+    .await
+    .map_err(copy_error)?;
+    file.flush().await.map_err(io_error)?;
+    access::require_session(app.backend(), revision)?;
+
+    // The external application may still be reading it after this command returns.
+    // Startup/shutdown cleanup owns successful preview directories.
+    let _ = preview_directory.keep();
+
+    open_with_default_app(app, destination_str)?;
+    Ok(destination_str.to_string())
+}
+
+async fn create_preview_directory(cache_dir: PathBuf) -> Result<tempfile::TempDir, String> {
     crate::utils::spawn_blocking(move || {
         tempfile::Builder::new()
             .prefix("view-")
             .tempdir_in(cache_dir)
     })
     .await
-    .map_err(|e| format!("Failed to create preview directory: {e}"))?
-    .map_err(|e| format!("Failed to create preview directory: {e}"))
+    .map_err(io_error)?
+    .map_err(io_error)
+}
+
+fn temp_views_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    AppPaths::from_app_handle(app.backend())
+        .map(|paths| paths.cache_dir.join(TEMP_VIEWS_DIR))
+        .map_err(io_error)
+}
+
+/// Removes all temporary preview files. Called during app startup and shutdown.
+#[cfg(not(target_os = "android"))]
+pub fn cleanup_temp_views(app: &AppHandle) {
+    if let Ok(paths) = AppPaths::from_app_handle(app.backend()) {
+        remove_temp_views(&paths.cache_dir);
+    }
+}
+
+pub fn remove_temp_views(cache_dir: &Path) {
+    let temp_views_dir = cache_dir.join(TEMP_VIEWS_DIR);
+    if temp_views_dir.exists() {
+        if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
+            log::warn!("Failed to clean up temp_views directory: {e}");
+        } else {
+            debug!("Successfully cleaned up temp_views directory");
+        }
+    }
+}
+
+// Downloads
+
+/// An empty file is complete as soon as it exists.
+fn percentage(done: u64, total: u64) -> f64 {
+    if total == 0 {
+        100.0
+    } else {
+        done as f64 / total as f64 * 100.0
+    }
+}
+
+/// Minimum time between progress events.
+const PROGRESS_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
+
+#[tauri::command]
+pub async fn download_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    destination: String,
+    is_local: bool,
+) -> Result<(), String> {
+    let revision = access::revision(app.backend());
+    with_file_access(
+        &app,
+        revision,
+        save_to_destination(&app, revision, remote, path, destination, is_local),
+    )
+    .await
+}
+
+async fn save_to_destination(
+    app: &AppHandle,
+    revision: Option<u64>,
+    remote: String,
+    path: String,
+    destination: String,
+    is_local: bool,
+) -> Result<(), String> {
+    // Local files are addressed through rclone as a bare path.
+    let (remote, path) = if is_local {
+        (
+            String::new(),
+            local_file_path(&remote, &path)
+                .to_string_lossy()
+                .into_owned(),
+        )
+    } else {
+        (remote, path)
+    };
+
+    let transport = crate::rclone::commands::common::transport(app.backend());
+    let source = open_asset(transport, &remote, &path)
+        .await
+        .map_err(io_error)?;
+    let size = source.total();
+    let mut reader = source.into_reader(0, size).await.map_err(io_error)?;
+
+    let mut target = open_destination(&destination).await?;
+    let progress = |downloaded: u64| {
+        crate::services::bridge::emit(
+            FILE_DOWNLOAD_PROGRESS,
+            FileDownloadProgressPayload {
+                destination: destination.clone(),
+                downloaded,
+                total: Some(size),
+                percentage: Some(percentage(downloaded, size)),
+            },
+        );
+    };
+
+    let mut last_progress = std::time::Instant::now();
+    let downloaded = copy_in_chunks(&mut reader, target.writer(), |downloaded| {
+        access::require_session(app.backend(), revision)?;
+        if downloaded < size && last_progress.elapsed() >= PROGRESS_INTERVAL {
+            progress(downloaded);
+            last_progress = std::time::Instant::now();
+        }
+        Ok(())
+    })
+    .await
+    .map_err(copy_error)?;
+
+    drop(reader);
+    access::require_session(app.backend(), revision)?;
+    target
+        .commit(Path::new(&destination))
+        .await
+        .map_err(io_error)?;
+    progress(downloaded);
+    Ok(())
+}
+
+/// Content URIs on Android are written in place: storage providers offer no portable
+/// atomic replacement. Everything else keeps the old file until the new one is complete.
+async fn open_destination(destination: &str) -> Result<StagedFile, String> {
+    #[cfg(target_os = "android")]
+    if destination.starts_with("content://") {
+        use std::os::fd::FromRawFd;
+        let raw_fd = crate::rclone::backend::saf_bridge::open_content_uri_fd(destination, "wt")
+            .map_err(io_error)?;
+        // SAFETY: the bridge hands over ownership of a freshly opened descriptor.
+        let file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
+        return Ok(StagedFile::in_place(tokio::fs::File::from_std(file)));
+    }
+    StagedFile::create(Path::new(destination))
+        .await
+        .map_err(io_error)
 }
 
 #[cfg(test)]
@@ -316,39 +523,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unfinished_download_preserves_existing_destination_and_cleans_up() {
+    async fn mount_folders_must_be_empty_or_missing() {
         let directory = tempfile::tempdir().unwrap();
-        let destination = directory.path().join("song.mp3");
-        tokio::fs::write(&destination, b"original").await.unwrap();
-        let (mut file, temporary) = stage_download(destination.to_str().unwrap()).await.unwrap();
-        let temporary_path = temporary.path().to_owned();
-        file.write_all(b"partial").await.unwrap();
-        drop(file);
-        drop(temporary);
-        assert_eq!(tokio::fs::read(destination).await.unwrap(), b"original");
-        assert!(!temporary_path.exists());
-    }
+        let missing = directory.path().join("missing");
+        ensure_empty_folder(missing.to_str().unwrap())
+            .await
+            .unwrap();
 
-    #[tokio::test]
-    async fn downloading_a_file_to_itself_preserves_its_contents() {
-        let directory = tempfile::tempdir().unwrap();
-        let destination = directory.path().join("song.mp3");
-        tokio::fs::write(&destination, b"complete source")
+        let full = directory.path().join("full");
+        tokio::fs::create_dir(&full).await.unwrap();
+        tokio::fs::write(full.join("file"), b"x").await.unwrap();
+        let error = ensure_empty_folder(full.to_str().unwrap())
             .await
-            .unwrap();
-        let (mut file, temporary) = stage_download(destination.to_str().unwrap()).await.unwrap();
-        let mut source = tokio::fs::File::open(&destination).await.unwrap();
-        tokio::io::copy(&mut source, &mut file).await.unwrap();
-        file.flush().await.unwrap();
-        drop(source);
-        drop(file);
-        commit_download(temporary, destination.to_string_lossy().into_owned())
-            .await
-            .unwrap();
-        assert_eq!(
-            tokio::fs::read(destination).await.unwrap(),
-            b"complete source"
-        );
+            .unwrap_err();
+        assert!(error.contains("backendErrors.file.folderNotEmpty"));
     }
 
     #[tokio::test]
@@ -371,226 +559,46 @@ mod tests {
         drop(first);
         assert!(!failed_directory.exists());
     }
-}
 
-/// Removes all temporary preview/viewer files cached in `app_cache_dir()/temp_views`.
-/// Called during app startup and shutdown.
-#[cfg(not(target_os = "android"))]
-pub fn cleanup_temp_views(app: &AppHandle) {
-    use tauri::Manager;
-    if let Ok(cache_dir) = app.path().app_cache_dir() {
-        remove_temp_views(&cache_dir);
+    #[test]
+    fn progress_of_an_empty_file_is_complete() {
+        assert_eq!(percentage(0, 0), 100.0);
+        assert_eq!(percentage(50, 200), 25.0);
+        assert_eq!(percentage(200, 200), 100.0);
     }
-}
 
-pub fn remove_temp_views(cache_dir: &std::path::Path) {
-    let temp_views_dir = cache_dir.join("temp_views");
-    if temp_views_dir.exists() {
-        if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
-            log::warn!("Failed to clean up temp_views directory: {e}");
-        } else {
-            debug!("Successfully cleaned up temp_views directory");
+    #[test]
+    fn preview_names_cannot_escape_their_directory() {
+        assert_eq!(preview_file_name("report.pdf"), "report.pdf");
+        assert_eq!(preview_file_name("../../etc/passwd"), "passwd");
+        assert_eq!(preview_file_name("dir/sub/clip.mp4"), "clip.mp4");
+        for unusable in ["", "..", "/"] {
+            assert_eq!(preview_file_name(unusable), DEFAULT_PREVIEW_NAME);
         }
     }
-}
 
-#[tauri::command]
-pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
-    let app = window.app_handle().clone();
-    let revision = access::revision(app.backend());
-    with_file_access(&app, revision, async {
-    debug!("Opening file picker dialog...");
-
-    let dialog = window.dialog().file();
-    let file_location = crate::utils::spawn_blocking(move || dialog.blocking_pick_file().map(|path| path.to_string()))
-        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
-
-    debug!("File location: {file_location:?}");
-
-    Ok(file_location)
-    }).await
-}
-
-#[tauri::command]
-pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
-    let app = window.app_handle().clone();
-    let revision = access::revision(app.backend());
-    with_file_access(&app, revision, async {
-    debug!("Opening multi-file picker dialog...");
-
-    let dialog = window.dialog().file();
-    let file_locations = crate::utils::spawn_blocking(move || dialog.blocking_pick_files().map(|paths| {
-        paths.into_iter().map(|path| path.to_string()).collect::<Vec<_>>()
-    })).await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
-
-    debug!("File locations: {file_locations:?}");
-
-    Ok(file_locations)
-    }).await
-}
-
-#[tauri::command]
-pub async fn get_save_file_location(
-    app: AppHandle,
-    default_name: Option<String>,
-) -> Result<Option<String>, String> {
-    let revision = access::revision(app.backend());
-    with_file_access(&app, revision, async {
-    let mut dialog = app.dialog().file();
-    if let Some(ref name) = default_name {
-        dialog = dialog.set_file_name(name);
-    }
-    let file_location = crate::utils::spawn_blocking(move || dialog.blocking_save_file().map(|path| path.to_string()))
-        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
-    Ok(file_location)
-    }).await
-}
-
-// Keep the existing destination intact until the complete source has been verified.
-async fn stage_download(
-    destination: &str,
-) -> std::io::Result<(tokio::fs::File, tempfile::NamedTempFile)> {
-    let parent = std::path::Path::new(destination)
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| std::path::Path::new("."))
-        .to_path_buf();
-    tokio::fs::create_dir_all(&parent).await?;
-    let (file, temporary) = crate::utils::spawn_blocking(move || {
-        let temporary = tempfile::Builder::new()
-            .prefix(".rcman-download-")
-            .tempfile_in(parent)?;
-        let file = temporary.as_file().try_clone()?;
-        Ok::<_, std::io::Error>((file, temporary))
-    })
-    .await
-    .map_err(std::io::Error::other)??;
-    Ok((tokio::fs::File::from_std(file), temporary))
-}
-
-async fn commit_download(
-    temporary: tempfile::NamedTempFile,
-    destination: String,
-) -> std::io::Result<()> {
-    crate::utils::spawn_blocking(move || {
-        temporary
-            .persist(destination)
-            .map(|_| ())
-            .map_err(|e| e.error)
-    })
-    .await
-    .map_err(std::io::Error::other)?
-}
-
-fn download_error(error: impl std::fmt::Display) -> String {
-    rclone_manager_core::localized_error!("backendErrors.file.ioError", "error" => error.to_string())
-}
-
-#[tauri::command]
-pub async fn download_file(
-    app: AppHandle,
-    remote: String,
-    path: String,
-    destination: String,
-    total_size: Option<u64>,
-    is_local: bool,
-) -> Result<(), String> {
-    let revision = access::revision(app.backend());
-    with_file_access(&app, revision, async {
-        let transport = crate::rclone::commands::common::transport(app.backend());
-
-        // Resolve target path and remote for rclone
-        let (remote_arg, path_arg) = if is_local {
-            let mut full_path = std::path::PathBuf::from(remote);
-            full_path.push(path);
-            ("".to_string(), full_path.to_string_lossy().into_owned())
-        } else {
-            (remote, path)
-        };
-
-        let transport = pin_file_transport(transport)
-            .await
-            .map_err(download_error)?;
-        let version = file_metadata(transport.as_ref(), &remote_arg, &path_arg)
-            .await
-            .map_err(download_error)?;
-        let size = version.size;
-        let mut reader = file_reader(transport, remote_arg, path_arg, 0, size, Some(version));
-
-        #[cfg(target_os = "android")]
-        let (mut file, temporary) = if destination.starts_with("content://") {
-            // SAF providers do not offer a portable atomic replacement operation.
-            use std::os::fd::FromRawFd;
-            let raw_fd =
-                crate::rclone::backend::saf_bridge::open_content_uri_fd(&destination, "wt")
-                    .map_err(download_error)?;
-            let std_file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
-            (tokio::fs::File::from_std(std_file), None)
-        } else {
-            let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
-            (file, Some(temporary))
-        };
-
-        #[cfg(not(target_os = "android"))]
-        let (mut file, temporary) = {
-            let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
-            (file, Some(temporary))
-        };
-
-        let mut buffer = vec![0; 65536]; // 64KB chunk
-        let mut downloaded_bytes: u64 = 0;
-
-        if total_size.is_some_and(|hint| hint != size) {
-            debug!("Download size hint differs from source metadata; using {size} bytes");
-        }
-        let mut last_progress = std::time::Instant::now();
-
-        loop {
-            let n = reader.read(&mut buffer).await.map_err(download_error)?;
-            if n == 0 {
-                break;
-            }
-            file.write_all(&buffer[..n]).await.map_err(download_error)?;
-            downloaded_bytes += n as u64;
-
-            if downloaded_bytes < size
-                && last_progress.elapsed() >= std::time::Duration::from_millis(100)
-            {
-                crate::services::bridge::emit(
-                    FILE_DOWNLOAD_PROGRESS,
-                    FileDownloadProgressPayload {
-                        destination: destination.clone(),
-                        downloaded: downloaded_bytes,
-                        total: Some(size),
-                        percentage: Some(downloaded_bytes as f64 / size as f64 * 100.0),
-                    },
-                );
-                last_progress = std::time::Instant::now();
-            }
-        }
-
-        drop(reader);
-        file.flush().await.map_err(download_error)?;
-
-        if let Some(temporary) = temporary {
-            file.sync_all().await.map_err(download_error)?;
-            drop(file);
-            commit_download(temporary, destination.clone())
-                .await
-                .map_err(download_error)?;
-        }
-
-        crate::services::bridge::emit(
-            FILE_DOWNLOAD_PROGRESS,
-            FileDownloadProgressPayload {
-                destination: destination.clone(),
-                downloaded: downloaded_bytes,
-                total: Some(size),
-                percentage: Some(100.0),
-            },
+    #[test]
+    fn local_files_resolve_inside_their_folder_unless_the_path_is_absolute() {
+        assert_eq!(
+            local_file_path("/data", "a/b.txt"),
+            Path::new("/data/a/b.txt")
         );
+        assert_eq!(
+            local_file_path("/data", "/etc/hosts"),
+            Path::new("/etc/hosts")
+        );
+    }
 
-        Ok(())
-    })
-    .await
+    #[test]
+    fn temp_views_are_removed_from_the_given_cache_directory_only() {
+        let cache = tempfile::tempdir().unwrap();
+        let views = cache.path().join(TEMP_VIEWS_DIR).join("view-1");
+        std::fs::create_dir_all(&views).unwrap();
+        std::fs::write(views.join("a.pdf"), b"x").unwrap();
+        std::fs::write(cache.path().join("keep.txt"), b"x").unwrap();
+        remove_temp_views(cache.path());
+        assert!(!cache.path().join(TEMP_VIEWS_DIR).exists());
+        assert!(cache.path().join("keep.txt").exists());
+        remove_temp_views(cache.path());
+    }
 }

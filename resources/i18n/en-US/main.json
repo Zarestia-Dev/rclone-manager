@@ -3139,7 +3139,8 @@
       "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
       "driveLetterInUse": "Selected drive letter is already in use by the system.",
       "permissionDenied": "Permission denied while attempting to mount.",
-      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again."
+      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again.",
+      "profileNotMounted": "Profile '{{profile}}' is not mounted on {{remote}}"
     },
     "operations": {
       "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
@@ -3151,7 +3152,8 @@
       "privilegedPort": "Ports below 1024 require administrator privileges. Please choose a port numbered 1024 or higher.",
       "tlsError": "Failed to load or parse SSL/TLS certificate.",
       "startFailed": "Failed to start serve: {{error}}",
-      "stopFailed": "Failed to stop serve: {{error}}"
+      "stopFailed": "Failed to stop serve: {{error}}",
+      "profileNotRunning": "No running serve found for profile '{{profile}}' on {{remote}}"
     },
     "request": {
       "failed": "Request failed: {{error}}"
@@ -3240,7 +3242,8 @@
       "notFound": "JobInfo not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
       "executionFailed": "Job execution failed: {{error}}",
-      "corruptedTransfer": "File corrupted during transfer or checksum verification failed."
+      "corruptedTransfer": "File corrupted during transfer or checksum verification failed.",
+      "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}"
     },
     "cache": {
       "fetchConfigFailed": "Failed to fetch remotes config",
@@ -3306,6 +3309,9 @@
       "notEnabled": "Vault is not enabled",
       "invalidPassword": "Incorrect vault master password",
       "operationFailed": "Vault operation failed: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "Could not show the system notification: {{error}}"
     }
   },
   "backendSuccess": {

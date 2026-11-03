@@ -281,6 +281,28 @@ pub async fn unmount_remote(
     unmount_remote_on_backend(app, backend, mount_point, remote_name).await
 }
 
+/// Unmount the mount that `profile_name` started on `remote_name`.
+pub async fn unmount_remote_profile(
+    app: AppHandle,
+    remote_name: String,
+    profile_name: String,
+) -> Result<String, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    let mounted = app
+        .state::<BackendManager>()
+        .remote_cache_for(&backend.name)
+        .find_mount_by_profile(&remote_name, &profile_name)
+        .await
+        .ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.mount.profileNotMounted",
+                "remote" => remote_name,
+                "profile" => profile_name
+            )
+        })?;
+    unmount_remote_on_backend(app, backend, mounted.mount_point, remote_name).await
+}
+
 pub(crate) async fn unmount_remote_on_backend(
     app: AppHandle,
     backend: Backend,

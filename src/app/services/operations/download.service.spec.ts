@@ -124,6 +124,31 @@ describe('DownloadService', () => {
   });
 
   describe('native file actions', () => {
+    it('shows a localized backend error as readable text, not as raw JSON', async () => {
+      const blocked = JSON.stringify({
+        key: 'backendErrors.file.notFound',
+        params: { path: '/data/report.pdf' },
+      });
+      apiClientMock.invoke.mockRejectedValueOnce(blocked);
+      vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(
+        (key: string | string[], params?: object): string =>
+          key === 'backendErrors.file.notFound'
+            ? `missing ${(params as { path: string }).path}`
+            : String(key)
+      );
+
+      await expect(
+        service.openFileNatively('remote', 'path/report.pdf', 'report.pdf', true)
+      ).rejects.toBe(blocked);
+
+      expect(notificationServiceMock.showError).toHaveBeenCalledWith(
+        expect.stringContaining('missing /data/report.pdf')
+      );
+      expect(notificationServiceMock.showError).not.toHaveBeenCalledWith(
+        expect.stringContaining('"key"')
+      );
+    });
+
     it('openFileNatively calls open_file_natively with action open', async () => {
       apiClientMock.invoke.mockResolvedValueOnce('/tmp/cached_file.txt');
 

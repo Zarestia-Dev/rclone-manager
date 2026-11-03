@@ -3098,7 +3098,8 @@
       "macfuseMissing": "O macFUSE / FUSE-T não está instalado. Instale o macFUSE para ativar a montagem no macOS.",
       "driveLetterInUse": "A letra da unidade selecionada já está em uso pelo sistema.",
       "permissionDenied": "Permissão negada ao tentar montar.",
-      "deviceBusy": "O ponto de montagem ou dispositivo de destino está ocupado. Feche os arquivos abertos, gerenciadores de arquivos ou terminais que estão acessando o diretório e tente novamente."
+      "deviceBusy": "O ponto de montagem ou dispositivo de destino está ocupado. Feche os arquivos abertos, gerenciadores de arquivos ou terminais que estão acessando o diretório e tente novamente.",
+      "profileNotMounted": "O perfil '{{profile}}' não está montado em {{remote}}"
     },
     "operations": {
       "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'"
@@ -3110,7 +3111,8 @@
       "privilegedPort": "Portas abaixo de 1024 requerem privilégios de administrador. Escolha uma porta 1024 ou superior.",
       "tlsError": "Falha ao carregar ou analisar o certificado SSL/TLS.",
       "startFailed": "Falha ao iniciar o servidor: {{error}}",
-      "stopFailed": "Falha ao parar o servidor: {{error}}"
+      "stopFailed": "Falha ao parar o servidor: {{error}}",
+      "profileNotRunning": "Nenhum servidor em execução encontrado para o perfil '{{profile}}' em {{remote}}"
     },
     "request": {
       "failed": "Solicitação falhou: {{error}}"
@@ -3199,7 +3201,8 @@
       "notFound": "Informação de tarefa não encontrada.",
       "monitoringFailed": "Erros demais na tarefa de monitoramento: {{error}}",
       "executionFailed": "Execução da tarefa falhou: {{error}}",
-      "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum."
+      "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum.",
+      "profileNotRunning": "Nenhuma tarefa {{jobType}} ativa encontrada para o perfil '{{profile}}' em {{remote}}"
     },
     "cache": {
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
@@ -3265,6 +3268,9 @@
       "notEnabled": "O cofre não está ativado",
       "invalidPassword": "Senha mestra do cofre incorreta",
       "operationFailed": "Falha na operação do cofre: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "Não foi possível exibir a notificação do sistema: {{error}}"
     }
   },
   "backendSuccess": {

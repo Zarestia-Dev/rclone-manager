@@ -1,8 +1,5 @@
 //! File operation handlers (streaming, etc.)
 
-use std::io::SeekFrom;
-use std::path::PathBuf;
-
 use axum::{
     extract::{Query, State},
     http::{HeaderMap, Method, StatusCode, header},
@@ -10,13 +7,9 @@ use axum::{
 };
 
 use serde::Deserialize;
-use tokio::fs::File;
-use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
-use crate::utils::io::file_stream::{
-    file_metadata, file_reader, local_file_reader, pin_file_transport,
-};
+use crate::utils::io::file_stream::{AssetSource, open_asset};
 use crate::utils::io::http_helpers::{
     classify_error_status, content_disposition, has_parent_path_component, normalize_asset_path,
     resolve_byte_range,
@@ -50,45 +43,20 @@ pub async fn stream_remote_file_handler(
         format!("{}:", query.remote)
     };
     let transport = state.app_handle.state::<RcloneState>().transport.clone();
-    let transport = pin_file_transport(transport).await.map_err(stream_error)?;
-    let version = file_metadata(transport.as_ref(), &remote, &query.path)
+    let source = open_asset(transport, &remote, &query.path)
         .await
         .map_err(stream_error)?;
-    let total = version.size;
-    let range = match resolve_byte_range(
-        (method == Method::GET)
-            .then(|| headers.get(header::RANGE).and_then(|v| v.to_str().ok()))
-            .flatten(),
-        total,
-    ) {
-        Ok(range) => range,
-        Err(_) => return unsatisfiable_response(total),
-    };
-    let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
-    let reader = file_reader(
-        transport,
-        remote,
-        query.path.clone(),
-        start,
-        length,
-        Some(version),
-    );
-    let byte_range = range.map(|(start, end)| (start, Some(end)));
 
     let filename = query.path.split('/').next_back().unwrap_or("file");
-    let mime_type = mime_guess::from_path(&query.path)
-        .first_or_octet_stream()
-        .to_string();
-
-    let body = axum::body::Body::from_stream(ReaderStream::new(reader));
-    build_stream_response(
-        body,
+    respond(
+        source,
+        &method,
+        &headers,
         filename,
-        &mime_type,
+        &query.path,
         query.download.unwrap_or(false),
-        byte_range,
-        Some(total),
     )
+    .await
 }
 
 #[derive(Deserialize)]
@@ -103,130 +71,70 @@ pub async fn stream_file_handler(
     headers: HeaderMap,
     Query(query): Query<StreamFileQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    let path_str = normalize_asset_path(query.path);
+    let path = normalize_asset_path(query.path);
 
-    if has_parent_path_component(&path_str) {
+    if has_parent_path_component(&path) {
         return Err(AppError::BadRequest(anyhow::anyhow!(
             "Path traversal denied"
         )));
     }
 
-    let path = PathBuf::from(&path_str);
+    let transport = state.app_handle.state::<RcloneState>().transport.clone();
+    let source = open_asset(transport, "", &path)
+        .await
+        .map_err(stream_error)?;
 
+    let filename = std::path::Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file");
+    respond(
+        source,
+        &method,
+        &headers,
+        filename,
+        &path,
+        query.download.unwrap_or(false),
+    )
+    .await
+}
+
+/// Answers a GET/HEAD for `source`, honouring a single `Range` header.
+async fn respond(
+    source: AssetSource,
+    method: &Method,
+    headers: &HeaderMap,
+    filename: &str,
+    mime_path: &str,
+    download: bool,
+) -> Result<axum::response::Response, AppError> {
+    let total = source.total();
     let range_header = (method == Method::GET)
         .then(|| headers.get(header::RANGE).and_then(|v| v.to_str().ok()))
         .flatten();
-
-    let filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("file")
-        .to_string();
-    let mime_type = mime_guess::from_path(&path)
+    let range = match resolve_byte_range(range_header, total) {
+        Ok(range) => range,
+        Err(_) => return unsatisfiable_response(total),
+    };
+    let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
+    let reader = source
+        .into_reader(start, length)
+        .await
+        .map_err(|e| AppError::InternalServerError(e.into()))?;
+    let mime_type = mime_guess::from_path(mime_path)
         .first_or_octet_stream()
         .to_string();
-
-    // Try standard local file opening first
-    if let Ok(metadata) = tokio::fs::metadata(&path).await
-        && !metadata.is_file()
-    {
-        return Err(AppError::BadRequest(anyhow::anyhow!(
-            "Only regular files can be streamed"
-        )));
-    }
-    let file_result = File::open(&path).await;
-
-    match file_result {
-        Ok(mut file) => {
-            let metadata = file.metadata().await.map_err(anyhow::Error::msg)?;
-            if !metadata.is_file() {
-                return Err(AppError::BadRequest(anyhow::anyhow!(
-                    "Only regular files can be streamed"
-                )));
-            }
-            let total_len = metadata.len();
-
-            let byte_range = match resolve_byte_range(range_header, total_len) {
-                Ok(range) => range.map(|(start, end)| (start, Some(end))),
-                Err(_) => return unsatisfiable_response(total_len),
-            };
-            if let Some((start, end_opt)) = byte_range {
-                file.seek(SeekFrom::Start(start))
-                    .await
-                    .map_err(anyhow::Error::msg)?;
-
-                let count = match end_opt {
-                    Some(end) if end >= start && end < total_len => end - start + 1,
-                    _ => total_len - start,
-                };
-
-                let body = axum::body::Body::from_stream(ReaderStream::new(local_file_reader(
-                    file, metadata, count,
-                )));
-                build_stream_response(
-                    body,
-                    &filename,
-                    &mime_type,
-                    query.download.unwrap_or(false),
-                    Some((start, end_opt)),
-                    Some(total_len),
-                )
-            } else {
-                let body = axum::body::Body::from_stream(ReaderStream::new(local_file_reader(
-                    file, metadata, total_len,
-                )));
-                build_stream_response(
-                    body,
-                    &filename,
-                    &mime_type,
-                    query.download.unwrap_or(false),
-                    None,
-                    Some(total_len),
-                )
-            }
-        }
-        Err(e) => {
-            // Fallback to rclone cat
-            log::debug!(
-                "⚠️ Standard stream failed for {}, attempting cat fallback: {}",
-                path_str,
-                e
-            );
-            let rclone_state = state.app_handle.state::<RcloneState>();
-            let transport = rclone_state.transport.clone();
-
-            let transport = pin_file_transport(transport).await.map_err(stream_error)?;
-            let version = file_metadata(transport.as_ref(), "", &path_str)
-                .await
-                .map_err(stream_error)?;
-            let total = version.size;
-            let range = match resolve_byte_range(range_header, total) {
-                Ok(range) => range,
-                Err(_) => return unsatisfiable_response(total),
-            };
-            let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
-            let reader = file_reader(
-                transport,
-                String::new(),
-                path_str,
-                start,
-                length,
-                Some(version),
-            );
-            build_stream_response(
-                axum::body::Body::from_stream(ReaderStream::new(reader)),
-                &filename,
-                &mime_type,
-                query.download.unwrap_or(false),
-                range.map(|(start, end)| (start, Some(end))),
-                Some(total),
-            )
-        }
-    }
+    build_stream_response(
+        axum::body::Body::from_stream(ReaderStream::new(reader)),
+        filename,
+        &mime_type,
+        download,
+        range.map(|(start, end)| (start, Some(end))),
+        Some(total),
+    )
 }
 
-fn stream_error(error: crate::rclone::backend::transport::BackendError) -> AppError {
-    let message = error.to_string();
+fn stream_error(message: String) -> AppError {
     match classify_error_status(&message) {
         StatusCode::NOT_FOUND => AppError::NotFound(message),
         StatusCode::FORBIDDEN | StatusCode::LOCKED => {

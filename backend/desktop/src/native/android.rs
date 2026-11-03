@@ -70,7 +70,10 @@ impl Host for AndroidHost {
         if crate::rclone::backend::saf_bridge::show_notification(&ctx.title, &ctx.body) {
             Ok(())
         } else {
-            Err("Android notification bridge unavailable".into())
+            Err(rclone_manager_core::localized_error!(
+                "backendErrors.notification.toastFailed",
+                "error" => "Android notification bridge unavailable"
+            ))
         }
     }
 }

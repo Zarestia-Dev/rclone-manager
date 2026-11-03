@@ -63,8 +63,8 @@
           [attr.aria-pressed]="statusFilter() === null"
           (click)="statusFilter.set(null)"
         >
-          {{ 'common.all' | translate }}
-          <span class="count-badge">{{ config().completedTransfers.length }}</span>
+          {{ 'common.all' | translate }}:
+          {{ config().completedTransfers.length }}
         </button>
         @for (option of statusOptions(); track option.status) {
           <button
@@ -75,8 +75,8 @@
             [attr.aria-pressed]="statusFilter() === option.status"
             (click)="statusFilter.set(option.status)"
           >
-            {{ option.badge.text | translate }}
-            <span class="count-badge">{{ option.count }}</span>
+            {{ option.badge.text | translate }}:
+            {{ option.count }}
           </button>
         }
       </div>

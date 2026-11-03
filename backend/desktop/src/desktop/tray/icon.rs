@@ -33,40 +33,25 @@ impl TrayIconKind {
     }
 
     #[must_use]
-    pub fn resolve(is_active: bool, theme_style: &str) -> Self {
-        match theme_style {
-            "color" => {
-                if is_active {
-                    Self::ColorActive
-                } else {
-                    Self::ColorNormal
-                }
-            }
-            "monochrome_light" => {
-                if is_active {
-                    Self::MonoLightActive
-                } else {
-                    Self::MonoLightNormal
-                }
-            }
-            "monochrome_dark" => {
-                if is_active {
-                    Self::MonoDarkActive
-                } else {
-                    Self::MonoDarkNormal
-                }
-            }
-            // "system" or fallback: auto-detect system theme
-            _ => {
-                let dark = is_system_dark();
-                match (dark, is_active) {
-                    (true, true) => Self::MonoLightActive,
-                    (true, false) => Self::MonoLightNormal,
-                    (false, true) => Self::MonoDarkActive,
-                    (false, false) => Self::MonoDarkNormal,
-                }
-            }
+    pub fn active(self) -> Self {
+        match self {
+            Self::ColorNormal | Self::ColorActive => Self::ColorActive,
+            Self::MonoLightNormal | Self::MonoLightActive => Self::MonoLightActive,
+            Self::MonoDarkNormal | Self::MonoDarkActive => Self::MonoDarkActive,
         }
+    }
+
+    #[must_use]
+    pub fn resolve(is_active: bool, theme_style: &str) -> Self {
+        let idle = match theme_style {
+            "color" => Self::ColorNormal,
+            "monochrome_light" => Self::MonoLightNormal,
+            "monochrome_dark" => Self::MonoDarkNormal,
+            // "system" or fallback: a dark panel needs the light icon
+            _ if crate::native::theme::is_system_dark() => Self::MonoLightNormal,
+            _ => Self::MonoDarkNormal,
+        };
+        if is_active { idle.active() } else { idle }
     }
 
     #[must_use]
@@ -85,17 +70,6 @@ impl TrayIconKind {
     }
 }
 
-pub(crate) fn is_system_dark() -> bool {
-    #[cfg(not(feature = "web-server"))]
-    {
-        crate::native::theme::is_system_dark()
-    }
-    #[cfg(feature = "web-server")]
-    {
-        true
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,6 +84,22 @@ mod tests {
             assert_eq!(active.inactive(), normal);
             assert_eq!(normal.inactive(), normal);
         }
+    }
+
+    #[test]
+    fn active_icons_keep_the_theme() {
+        assert_eq!(
+            TrayIconKind::ColorNormal.active(),
+            TrayIconKind::ColorActive
+        );
+        assert_eq!(
+            TrayIconKind::MonoLightActive.active(),
+            TrayIconKind::MonoLightActive
+        );
+        assert_eq!(
+            TrayIconKind::MonoDarkNormal.active(),
+            TrayIconKind::MonoDarkActive
+        );
     }
 
     #[test]

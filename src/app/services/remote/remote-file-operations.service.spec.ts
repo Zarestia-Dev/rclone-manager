@@ -151,3 +151,45 @@ describe('RemoteFileOperationsService uploads', () => {
     expect(service.pendingWebUploads()).toEqual([]);
   });
 });
+
+describe('RemoteFileOperationsService archives', () => {
+  let service: RemoteFileOperationsService;
+  const invoke = vi.fn().mockResolvedValue({ success: true, items: [] });
+
+  beforeEach(() => {
+    invoke.mockClear();
+    TestBed.configureTestingModule({
+      providers: [
+        RemoteFileOperationsService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ApiClientService, useValue: { getApiBase: (): string => '/api', invoke } },
+        { provide: SseClientService, useValue: {} },
+        { provide: BackendTranslationService, useValue: {} },
+        { provide: NotificationService, useValue: {} },
+        { provide: TranslateService, useValue: {} },
+      ],
+    });
+    service = TestBed.inject(RemoteFileOperationsService);
+  });
+
+  it("lists an archive as a job in the caller's group so it can be cancelled", async () => {
+    await service.archiveList('drive:a.zip', { long: true, group: 'ui/file-viewer/abc' });
+    expect(invoke).toHaveBeenCalledWith('archive_list', {
+      source: 'drive:a.zip',
+      long: true,
+      plain: undefined,
+      files_only: undefined,
+      dirs_only: undefined,
+      group: 'ui/file-viewer/abc',
+    });
+  });
+
+  it('lists without options and without a group', async () => {
+    await service.archiveList('drive:a.zip');
+    expect(invoke).toHaveBeenCalledWith(
+      'archive_list',
+      expect.objectContaining({ source: 'drive:a.zip', group: undefined })
+    );
+  });
+});

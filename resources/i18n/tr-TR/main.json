@@ -3139,7 +3139,8 @@
       "macfuseMissing": "Sisteminizde macFUSE / FUSE-T kurulu değil. macOS üzerinde bağlama yapabilmek için lütfen macFUSE kurun.",
       "driveLetterInUse": "Seçilen sürücü harfi sistem tarafından zaten kullanılıyor.",
       "permissionDenied": "Bağlama sırasında erişim engellendi / yetki yetersiz.",
-      "deviceBusy": "Hedef bağlama noktası veya aygıt meşgul. Dizine erişen açık dosyaları, dosya yöneticilerini veya uçbirimleri kapatıp tekrar deneyin."
+      "deviceBusy": "Hedef bağlama noktası veya aygıt meşgul. Dizine erişen açık dosyaları, dosya yöneticilerini veya uçbirimleri kapatıp tekrar deneyin.",
+      "profileNotMounted": "'{{profile}}' profili {{remote}} üzerinde bağlı değil"
     },
     "operations": {
       "configIncomplete": "'{{profile}}' profili için yapılandırma eksik"
@@ -3151,7 +3152,8 @@
       "privilegedPort": "1024'ten küçük portlar yönetici ayrıcalığı gerektirir. Lütfen 1024 veya üzeri bir port seçin.",
       "tlsError": "SSL/TLS sertifikası yüklenemedi veya geçersiz.",
       "startFailed": "Sunucu başlatılamadı: {{error}}",
-      "stopFailed": "Sunucu durdurulamadı: {{error}}"
+      "stopFailed": "Sunucu durdurulamadı: {{error}}",
+      "profileNotRunning": "{{remote}} üzerinde '{{profile}}' profili için çalışan bir sunucu bulunamadı"
     },
     "request": {
       "failed": "İstek başarısız: {{error}}"
@@ -3240,7 +3242,8 @@
       "notFound": "İş bilgisi bulunamadı",
       "monitoringFailed": "İş izlenirken çok fazla hata oluştu: {{error}}",
       "executionFailed": "İş yürütme başarısız: {{error}}",
-      "corruptedTransfer": "Aktarım sırasında dosya bozuldu veya doğrulama toplamı uyuşmadı."
+      "corruptedTransfer": "Aktarım sırasında dosya bozuldu veya doğrulama toplamı uyuşmadı.",
+      "profileNotRunning": "{{remote}} üzerinde '{{profile}}' profili için etkin bir {{jobType}} işi bulunamadı"
     },
     "cache": {
       "fetchConfigFailed": "Uzak bağlantı yapılandırması alınamadı",
@@ -3306,6 +3309,9 @@
       "notEnabled": "Kasa etkin değil",
       "invalidPassword": "Hatalı kasa ana parolası",
       "operationFailed": "Kasa işlemi başarısız oldu: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "Sistem bildirimi gösterilemedi: {{error}}"
     }
   },
   "backendSuccess": {

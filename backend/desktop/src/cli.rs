@@ -29,6 +29,20 @@ pub(crate) struct CliArgs {
     pub headless: rclone_manager_server::HttpArgs,
 }
 impl CliArgs {
+    /// `--tray`: start in the tray (hidden, and shown even if the setting is off).
+    /// Builds without a tray never do. Used by the desktop window and the tray setup.
+    #[cfg(any(all(desktop, not(feature = "web-server")), feature = "tray"))]
+    pub fn start_in_tray(&self) -> bool {
+        #[cfg(feature = "tray")]
+        {
+            self.tray
+        }
+        #[cfg(not(feature = "tray"))]
+        {
+            false
+        }
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         self.general.validate()?;
         #[cfg(feature = "web-server")]

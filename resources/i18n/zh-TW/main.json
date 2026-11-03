@@ -3139,7 +3139,8 @@
       "macfuseMissing": "系統未安裝 macFUSE / FUSE-T。在 macOS 上掛載需要安裝 macFUSE。",
       "driveLetterInUse": "所選磁碟機代號已被系統佔用。",
       "permissionDenied": "嘗試掛載時許可權不足。",
-      "deviceBusy": "目標掛載點或裝置正忙。請關閉存取該目錄的已開啟檔案、檔案管理員或終端機後重試。"
+      "deviceBusy": "目標掛載點或裝置正忙。請關閉存取該目錄的已開啟檔案、檔案管理員或終端機後重試。",
+      "profileNotMounted": "設定檔案 '{{profile}}' 未在 {{remote}} 上掛載"
     },
     "operations": {
       "configIncomplete": "設定檔案 '{{profile}}' 設定不完整"
@@ -3151,7 +3152,8 @@
       "privilegedPort": "1024 以下的連線埠需要管理員許可權。請選擇 1024 或更高的連線埠。",
       "tlsError": "載入或解析 SSL/TLS 證書失敗。",
       "startFailed": "啟動服務失敗：{{error}}",
-      "stopFailed": "停止服務失敗：{{error}}"
+      "stopFailed": "停止服務失敗：{{error}}",
+      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的服務"
     },
     "request": {
       "failed": "請求失敗：{{error}}"
@@ -3240,7 +3242,8 @@
       "notFound": "未找到任務資訊",
       "monitoringFailed": "任務監控錯誤過多：{{error}}",
       "executionFailed": "任務執行失敗：{{error}}",
-      "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。"
+      "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。",
+      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務"
     },
     "cache": {
       "fetchConfigFailed": "取得遠端連線設定失敗",
@@ -3306,6 +3309,9 @@
       "notEnabled": "保存庫未啟用",
       "invalidPassword": "保存庫主密碼不正確",
       "operationFailed": "保存庫操作失敗：{{error}}"
+    },
+    "notification": {
+      "toastFailed": "無法顯示系統通知：{{error}}"
     }
   },
   "backendSuccess": {

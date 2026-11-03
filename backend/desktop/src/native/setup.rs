@@ -7,7 +7,7 @@ pub(crate) fn prepare(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Clean up temporary file preview/viewer cache from previous sessions
     #[cfg(not(feature = "web-server"))]
-    crate::native::files::cleanup_temp_views(_app);
+    crate::native::files::remove_temp_views(&_app_paths.cache_dir);
 
     #[cfg(target_os = "ios")]
     {
@@ -40,9 +40,12 @@ pub(crate) fn start(_app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
 pub(crate) fn present(_app: &AppHandle, _cli_args: &crate::cli::CliArgs) {
     #[cfg(all(desktop, not(feature = "web-server")))]
-    if super::window::should_open_main_window(_cli_args) {
+    if super::window::should_open_main_window(
+        _cli_args,
+        crate::services::settings::access::is_locked(crate::context::BackendContext::backend(_app)),
+    ) {
         log::debug!("Creating main window");
-        crate::desktop::window::create_app_window(_app.clone());
+        crate::desktop::window::create_app_window(_app).expect("Failed to build main window");
     }
 }
 

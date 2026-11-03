@@ -3098,7 +3098,8 @@
       "macfuseMissing": "系统未安装 macFUSE / FUSE-T。在 macOS 上挂载需要安装 macFUSE。",
       "driveLetterInUse": "所选盘符已被系统占用。",
       "permissionDenied": "尝试挂载时权限不足。",
-      "deviceBusy": "目标挂载点或设备正忙。请关闭访问该目录的已打开文件、文件管理器或终端后重试。"
+      "deviceBusy": "目标挂载点或设备正忙。请关闭访问该目录的已打开文件、文件管理器或终端后重试。",
+      "profileNotMounted": "配置文件 '{{profile}}' 未在 {{remote}} 上挂载"
     },
     "operations": {
       "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
@@ -3110,7 +3111,8 @@
       "privilegedPort": "1024 以下的端口需要管理员权限。请选择 1024 或更高的端口。",
       "tlsError": "加载或解析 SSL/TLS 证书失败。",
       "startFailed": "启动服务失败：{{error}}",
-      "stopFailed": "停止服务失败：{{error}}"
+      "stopFailed": "停止服务失败：{{error}}",
+      "profileNotRunning": "在 {{remote}} 上未找到配置文件 '{{profile}}' 正在运行的服务"
     },
     "request": {
       "failed": "请求失败：{{error}}"
@@ -3199,7 +3201,8 @@
       "notFound": "未找到任务信息",
       "monitoringFailed": "任务监控错误过多：{{error}}",
       "executionFailed": "任务执行失败：{{error}}",
-      "corruptedTransfer": "传输过程中文件损坏或校验和验证失败。"
+      "corruptedTransfer": "传输过程中文件损坏或校验和验证失败。",
+      "profileNotRunning": "在 {{remote}} 上未找到配置文件 '{{profile}}' 正在运行的 {{jobType}} 任务"
     },
     "cache": {
       "fetchConfigFailed": "获取远程存储配置失败",
@@ -3265,6 +3268,9 @@
       "notEnabled": "保管库未启用",
       "invalidPassword": "保管库主密码不正确",
       "operationFailed": "保管库操作失败：{{error}}"
+    },
+    "notification": {
+      "toastFailed": "无法显示系统通知：{{error}}"
     }
   },
   "backendSuccess": {

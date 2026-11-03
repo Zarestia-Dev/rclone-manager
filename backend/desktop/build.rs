@@ -1,4 +1,5 @@
 fn main() {
+    declare_autostart_cfgs();
     println!("cargo:rerun-if-env-changed=LIBRCLONE_SKIP_LINK_CHECK");
     #[cfg(feature = "librclone")]
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("android") {
@@ -43,4 +44,20 @@ fn package_librclone() {
         .join(abi);
     std::fs::create_dir_all(&destination).expect("Create Android JNI directory");
     std::fs::copy(source, destination.join("librclone.so")).expect("Package librclone for Android");
+}
+
+/// Flatpak on Linux registers autostart through the background portal; every other
+/// build that has the autostart feature uses the Tauri plugin.
+fn declare_autostart_cfgs() {
+    println!("cargo:rustc-check-cfg=cfg(autostart_portal)");
+    println!("cargo:rustc-check-cfg=cfg(autostart_plugin)");
+    let portal = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")
+        && std::env::var_os("CARGO_FEATURE_FLATPAK").is_some();
+    let plugin = std::env::var_os("CARGO_FEATURE_TAURI_PLUGIN_AUTOSTART").is_some() && !portal;
+    if portal {
+        println!("cargo:rustc-cfg=autostart_portal");
+    }
+    if plugin {
+        println!("cargo:rustc-cfg=autostart_plugin");
+    }
 }

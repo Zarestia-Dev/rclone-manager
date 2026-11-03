@@ -119,7 +119,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // ARCHIVE OPERATIONS
             (archive_create, $crate::rclone::commands::archive::archive_create, [source: String, destination: String, format: Option<String>, prefix: Option<String>, full_path: Option<bool>, include: Option<Vec<String>>]);
             (archive_extract, $crate::rclone::commands::archive::archive_extract, [source: String, destination: String]);
-            (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>]);
+            (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>, group: Option<String>]);
 
             // FLAGS & OPTIONS
             (get_operation_flags, $crate::rclone::queries::flags::get_operation_flags, [operation: String]);

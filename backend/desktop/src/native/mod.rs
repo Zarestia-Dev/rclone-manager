@@ -9,7 +9,7 @@ pub use runtime::run;
 mod ipc;
 #[cfg(not(feature = "web-server"))]
 pub(crate) mod protocol;
-#[cfg(not(feature = "web-server"))]
+#[cfg(any(not(feature = "web-server"), feature = "tray"))]
 pub(crate) mod theme;
 #[cfg(all(not(feature = "web-server"), desktop))]
 mod window;
@@ -33,9 +33,6 @@ pub(crate) mod notification;
 
 #[cfg(feature = "updater")]
 pub(crate) mod updater;
-
-#[cfg(not(target_os = "android"))]
-pub(crate) mod lifecycle;
 
 #[cfg(not(target_os = "android"))]
 pub(crate) mod host;

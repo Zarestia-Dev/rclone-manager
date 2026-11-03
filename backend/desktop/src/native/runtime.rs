@@ -5,11 +5,6 @@ use crate::utils::types::state::RcloneState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
-    // webview is created; skipped in headless web-server and mobile builds.
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
-    crate::desktop::graphics::apply_linux_graphics_quirks();
-
     let cli_args = match <crate::cli::CliArgs as clap::Parser>::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
@@ -33,7 +28,7 @@ pub fn run() {
         builder = super::window::configure(builder);
     }
 
-    builder = builder.setup(move |app| crate::app::setup_context(app.handle(), cli_args.clone()));
+    builder = builder.setup(move |app| crate::app::setup_context(app.handle(), cli_args));
 
     #[cfg(all(desktop, feature = "tray"))]
     {
@@ -75,26 +70,29 @@ pub fn run() {
                     api.prevent_exit();
 
                     #[cfg(target_os = "linux")]
-                    {
-                        std::thread::spawn(|| {
-                            use sysinfo::{ProcessesToUpdate, System};
-
-                            let mut system = System::new();
-                            system.refresh_processes(ProcessesToUpdate::All, true);
-                            let my_pid = std::process::id();
-
-                            for process in system.processes().values() {
-                                let name = process.name().to_string_lossy();
-                                if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
-                                    && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
-                                {
-                                    let _ = process.kill();
-                                }
-                            }
-                        });
-                    }
+                    std::thread::spawn(kill_webkit_children);
                 }
             }
         });
+    }
+}
+
+/// Closing the last window leaves WebKit's helper processes running; stop our own
+/// children so a tray-resident app does not keep the web engine's memory.
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
+fn kill_webkit_children() {
+    use sysinfo::{ProcessesToUpdate, System};
+
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+    let my_pid = std::process::id();
+
+    for process in system.processes().values() {
+        let name = process.name().to_string_lossy();
+        if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
+            && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
+        {
+            let _ = process.kill();
+        }
     }
 }

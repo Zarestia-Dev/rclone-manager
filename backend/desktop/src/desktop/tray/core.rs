@@ -17,41 +17,33 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
     }
 
     let state = app.backend_state::<TrayMenuState>();
-
-    // Try to acquire the update lock. If another update is in-flight, mark pending and return immediately.
-    let mut guard = match state.update_lock.try_lock() {
-        Ok(guard) => guard,
-        Err(_) => {
-            state.has_pending.store(true, Ordering::SeqCst);
-            match state.update_lock.try_lock() {
-                Ok(guard) => guard,
-                Err(_) => return Ok(()),
-            }
-        }
-    };
-
-    loop {
-        state.has_pending.store(false, Ordering::SeqCst);
-        perform_update_tray_menu(&app, &state).await?;
-        // Release before checking pending work so a trigger at the end cannot be lost.
-        drop(guard);
-        if !state.has_pending.load(Ordering::SeqCst) {
-            break;
-        }
-        guard = match state.update_lock.try_lock() {
-            Ok(guard) => guard,
-            Err(_) => break,
-        };
+    // A tray that was asked for (by the setting or by `--tray`) keeps refreshing; one that
+    // was switched off stays as it is.
+    if !state.requested_visible.load(Ordering::SeqCst) {
+        return Ok(());
     }
 
-    Ok(())
+    // A running update re-checks the flag before it finishes, so a request that finds
+    // the lock taken only has to raise it.
+    state.has_pending.store(true, Ordering::SeqCst);
+    loop {
+        let Ok(guard) = state.update_lock.try_lock() else {
+            return Ok(());
+        };
+        while state.has_pending.swap(false, Ordering::SeqCst) {
+            perform_update_tray_menu(&app, &state).await?;
+        }
+        // Release before the last check so a trigger arriving now cannot be lost.
+        drop(guard);
+        if !state.has_pending.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+    }
 }
 
-fn locked_tray_visuals(state: &TrayMenuState) -> (MenuPlan, String, TrayIconKind) {
+pub(super) fn locked_tray_visuals(state: &TrayMenuState) -> (MenuPlan, String, TrayIconKind) {
     let icon = state
-        .cache
-        .lock()
-        .unwrap()
+        .visuals()
         .icon
         .unwrap_or(TrayIconKind::ColorNormal)
         .inactive();
@@ -62,36 +54,33 @@ fn locked_tray_visuals(state: &TrayMenuState) -> (MenuPlan, String, TrayIconKind
     )
 }
 
-async fn build_tray_visuals<R: Runtime>(
+/// The plan, tooltip and icon the tray should show now.
+pub(super) async fn build_tray_visuals<R: Runtime>(
     app: &AppHandle<R>,
     state: &TrayMenuState,
     settings_manager: &AppSettingsManager,
-) -> tauri::Result<Option<(MenuPlan, String, TrayIconKind)>> {
+) -> tauri::Result<(MenuPlan, String, TrayIconKind)> {
     if crate::services::settings::access::is_locked(app.backend()) {
-        return Ok(Some(locked_tray_visuals(state)));
+        return Ok(locked_tray_visuals(state));
     }
 
     let settings = settings_manager
         .get_all()
         .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
 
-    if !settings.general.tray_enabled {
-        return Ok(None);
-    }
-
     let snapshot = TraySnapshot::fetch(app).await?;
     if crate::services::settings::access::is_locked(app.backend()) {
-        return Ok(Some(locked_tray_visuals(state)));
+        return Ok(locked_tray_visuals(state));
     }
 
-    Ok(Some((
+    Ok((
         MenuPlan::build(&snapshot, settings.core.max_tray_items),
         build_tooltip(&snapshot),
         TrayIconKind::resolve(
             !snapshot.active_jobs.is_empty(),
             &settings.general.tray_icon_theme,
         ),
-    )))
+    ))
 }
 
 async fn perform_update_tray_menu<R: Runtime>(
@@ -99,11 +88,7 @@ async fn perform_update_tray_menu<R: Runtime>(
     state: &TrayMenuState,
 ) -> tauri::Result<()> {
     let settings_manager = app.backend_state::<AppSettingsManager>();
-    let Some((plan, tooltip, icon_kind)) =
-        build_tray_visuals(app, state, &settings_manager).await?
-    else {
-        return Ok(());
-    };
+    let (plan, tooltip, icon_kind) = build_tray_visuals(app, state, &settings_manager).await?;
 
     let app_clone = app.clone();
     app.run_on_main_thread(move || {
@@ -113,6 +98,19 @@ async fn perform_update_tray_menu<R: Runtime>(
     })?;
 
     Ok(())
+}
+
+/// Checked at delivery time: a queued update may outlive the unlocked session.
+pub(super) fn deliverable_visuals<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &TrayMenuState,
+    visuals: (MenuPlan, String, TrayIconKind),
+) -> (MenuPlan, String, TrayIconKind) {
+    if crate::services::settings::access::is_locked(app.backend()) {
+        locked_tray_visuals(state)
+    } else {
+        visuals
+    }
 }
 
 fn apply_tray_visuals<R: Runtime>(
@@ -126,15 +124,9 @@ fn apply_tray_visuals<R: Runtime>(
         return Ok(());
     };
     let state = app.backend_state::<TrayMenuState>();
-    // Check at delivery time: a queued update may outlive the unlocked session.
-    let (plan, tooltip, icon_kind) = if crate::services::settings::access::is_locked(app.backend())
-    {
-        locked_tray_visuals(&state)
-    } else {
-        (plan, tooltip, icon_kind)
-    };
+    let (plan, tooltip, icon_kind) = deliverable_visuals(app, &state, (plan, tooltip, icon_kind));
     let (plan_changed, tooltip_changed, icon_changed) =
-        state.cache.lock().unwrap().diff(&plan, &tooltip, icon_kind);
+        state.visuals().diff(&plan, &tooltip, icon_kind);
     if !plan_changed && !tooltip_changed && !icon_changed {
         return Ok(());
     }
@@ -142,15 +134,15 @@ fn apply_tray_visuals<R: Runtime>(
     // Commit each successful change so a later failure cannot leave the cache stale.
     if plan_changed {
         tray.set_menu(Some(create_tray_menu_from_plan(app, &plan)?))?;
-        state.cache.lock().unwrap().plan = Some(plan);
+        state.visuals().plan = Some(plan);
     }
     if icon_changed {
         tray.set_icon(Some(icon_kind.to_image()))?;
-        state.cache.lock().unwrap().icon = Some(icon_kind);
+        state.visuals().icon = Some(icon_kind);
     }
     if tooltip_changed {
         tray.set_tooltip(Some(&tooltip))?;
-        state.cache.lock().unwrap().tooltip = Some(tooltip);
+        state.visuals().tooltip = Some(tooltip);
     }
     Ok(())
 }
@@ -227,7 +219,6 @@ mod tests {
         let state = TrayMenuState::default();
         let (plan, tooltip, _) = build_tray_visuals(app.handle(), &state, &manager)
             .await
-            .unwrap()
             .unwrap();
         assert_eq!(plan, MenuPlan::locked());
         assert_eq!(tooltip, rclone_manager_core::t!("tray.tooltipDefault"));

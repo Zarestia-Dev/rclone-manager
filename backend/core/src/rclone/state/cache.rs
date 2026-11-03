@@ -12,6 +12,7 @@ use crate::{
         },
     },
     services::settings::AppSettingsManager,
+    utils::json_helpers::{extract_remote_name_from_fs, normalize_remote_name},
     utils::types::{
         events::{MOUNT_STATE_CHANGED, REMOTE_CACHE_CHANGED, SERVE_STATE_CHANGED},
         remotes::{MountedRemote, RemoteCache, ServeInstance},
@@ -263,6 +264,40 @@ impl RemoteCache {
             .cloned()
     }
 
+    /// The running mount started from `profile_name` on `remote_name`.
+    pub async fn find_mount_by_profile(
+        &self,
+        remote_name: &str,
+        profile_name: &str,
+    ) -> Option<MountedRemote> {
+        self.mounted
+            .read()
+            .await
+            .iter()
+            .find(|m| {
+                fs_belongs_to_remote(&m.fs, remote_name)
+                    && m.profile.as_deref() == Some(profile_name)
+            })
+            .cloned()
+    }
+
+    /// The running serve started from `profile_name` on `remote_name`.
+    pub async fn find_serve_by_profile(
+        &self,
+        remote_name: &str,
+        profile_name: &str,
+    ) -> Option<ServeInstance> {
+        self.serves
+            .read()
+            .await
+            .iter()
+            .find(|s| {
+                serve_belongs_to_remote(s, remote_name)
+                    && s.profile.as_deref() == Some(profile_name)
+            })
+            .cloned()
+    }
+
     // PROFILE RENAME — called when a profile is renamed in settings
 
     /// Rename a profile in all mounted remotes for a given remote.
@@ -275,7 +310,9 @@ impl RemoteCache {
         let mut mounts = self.mounted.write().await;
         let mut count = 0;
         for mount in mounts.iter_mut() {
-            if mount.fs.starts_with(remote_name) && mount.profile.as_deref() == Some(old_name) {
+            if fs_belongs_to_remote(&mount.fs, remote_name)
+                && mount.profile.as_deref() == Some(old_name)
+            {
                 mount.profile = Some(new_name.to_string());
                 count += 1;
             }
@@ -293,18 +330,33 @@ impl RemoteCache {
         let mut serves = self.serves.write().await;
         let mut count = 0;
         for serve in serves.iter_mut() {
-            let fs_matches = serve
-                .params
-                .get("fs")
-                .and_then(|v| v.as_str())
-                .is_some_and(|fs| fs.starts_with(remote_name));
-            if fs_matches && serve.profile.as_deref() == Some(old_name) {
+            if serve_belongs_to_remote(serve, remote_name)
+                && serve.profile.as_deref() == Some(old_name)
+            {
                 serve.profile = Some(new_name.to_string());
                 count += 1;
             }
         }
         count
     }
+}
+
+/// Whether an rclone `fs` string (`remote:path`) points into `remote_name`.
+///
+/// Compares whole remote names, so `gdrive` never matches `gdrive2:`.
+#[must_use]
+pub fn fs_belongs_to_remote(fs: &str, remote_name: &str) -> bool {
+    extract_remote_name_from_fs(fs) == normalize_remote_name(remote_name)
+}
+
+/// Whether a serve's source `fs` points into `remote_name`.
+#[must_use]
+pub fn serve_belongs_to_remote(serve: &ServeInstance, remote_name: &str) -> bool {
+    serve
+        .params
+        .get("fs")
+        .and_then(|v| v.as_str())
+        .is_some_and(|fs| fs_belongs_to_remote(fs, remote_name))
 }
 
 /// Check if a path is a local path (i.e. not a remote path).
@@ -461,6 +513,96 @@ mod tests {
                 .unwrap_err()
                 .contains("backendErrors.cache.fetchConfigFailed")
         );
+    }
+
+    fn profiled_mount(fs: &str, mount_point: &str, profile: &str) -> MountedRemote {
+        let mut mount = MountedRemote::new(fs, mount_point);
+        mount.profile = Some(profile.into());
+        mount
+    }
+
+    #[test]
+    fn fs_matches_whole_remote_names_only() {
+        assert!(fs_belongs_to_remote("gdrive:", "gdrive"));
+        assert!(fs_belongs_to_remote("gdrive:photos/2024", "gdrive:"));
+        assert!(fs_belongs_to_remote("Mega{abc12}:docs", "Mega"));
+        assert!(!fs_belongs_to_remote("gdrive2:photos", "gdrive"));
+        assert!(!fs_belongs_to_remote("gdrive:", "gdrive2"));
+        assert!(!fs_belongs_to_remote("", "gdrive"));
+    }
+
+    #[tokio::test]
+    async fn profile_lookups_are_scoped_to_their_remote() {
+        let cache = RemoteCache::new();
+        let serve = |id: &str, fs: &str| {
+            let mut serve = ServeInstance::new(id, "127.0.0.1:1", json!({ "fs": fs }));
+            serve.profile = Some("Default".into());
+            serve
+        };
+        *cache.serves.write().await = vec![serve("a", "alpha:data"), serve("b", "beta:")];
+        *cache.mounted.write().await = vec![
+            profiled_mount("alpha:data", "/mnt/a", "Default"),
+            profiled_mount("beta:", "/mnt/b", "Default"),
+        ];
+
+        assert_eq!(
+            cache
+                .find_serve_by_profile("beta", "Default")
+                .await
+                .unwrap()
+                .id,
+            "b"
+        );
+        assert_eq!(
+            cache
+                .find_serve_by_profile("alpha", "Default")
+                .await
+                .unwrap()
+                .id,
+            "a"
+        );
+        assert!(
+            cache
+                .find_serve_by_profile("alpha", "Other")
+                .await
+                .is_none()
+        );
+        assert!(
+            cache
+                .find_serve_by_profile("alph", "Default")
+                .await
+                .is_none()
+        );
+        assert_eq!(
+            cache
+                .find_mount_by_profile("beta", "Default")
+                .await
+                .unwrap()
+                .mount_point,
+            "/mnt/b"
+        );
+        assert!(
+            cache
+                .find_mount_by_profile("gamma", "Default")
+                .await
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn profile_rename_does_not_touch_a_remote_with_a_longer_name() {
+        let cache = RemoteCache::new();
+        *cache.mounted.write().await = vec![
+            profiled_mount("gdrive2:", "/mnt/2", "old"),
+            profiled_mount("gdrive:", "/mnt/1", "old"),
+        ];
+        assert_eq!(
+            cache.rename_profile_in_mounts("gdrive", "old", "new").await,
+            1
+        );
+        let mounts = cache.mounted.read().await;
+        assert_eq!(mounts[0].profile.as_deref(), Some("old"));
+        assert_eq!(mounts[1].profile.as_deref(), Some("new"));
     }
 
     #[test]

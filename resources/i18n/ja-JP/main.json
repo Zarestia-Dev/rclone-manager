@@ -3098,7 +3098,8 @@
       "macfuseMissing": "macFUSE / FUSE-T がインストールされていません。macOS でマウントするには macFUSE をインストールしてください。",
       "driveLetterInUse": "選択したドライブ文字は既にシステムで使用されています。",
       "permissionDenied": "マウント処理の権限が拒否されました。",
-      "deviceBusy": "ターゲットのマウントポイントまたはデバイスが使用中です。ディレクトリにアクセスしているファイル、ファイルマネージャー、またはターミナルを閉じて再試行してください。"
+      "deviceBusy": "ターゲットのマウントポイントまたはデバイスが使用中です。ディレクトリにアクセスしているファイル、ファイルマネージャー、またはターミナルを閉じて再試行してください。",
+      "profileNotMounted": "{{remote}} のプロファイル「{{profile}}」はマウントされていません"
     },
     "operations": {
       "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
@@ -3110,7 +3111,8 @@
       "privilegedPort": "1024 未満のポートには管理者権限が必要です。1024 以上のポートを選択してください。",
       "tlsError": "SSL/TLS 証明書の読み込みまたは解析に失敗しました。",
       "startFailed": "サーバーの起動に失敗しました: {{error}}",
-      "stopFailed": "サーバーの停止に失敗しました: {{error}}"
+      "stopFailed": "サーバーの停止に失敗しました: {{error}}",
+      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中のサーバーが見つかりません"
     },
     "request": {
       "failed": "リクエストに失敗しました: {{error}}"
@@ -3199,7 +3201,8 @@
       "notFound": "JobInfoが見つかりません",
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
       "executionFailed": "ジョブの実行に失敗しました: {{error}}",
-      "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。"
+      "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。",
+      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません"
     },
     "cache": {
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
@@ -3265,6 +3268,9 @@
       "notEnabled": "ボルトは有効になっていません",
       "invalidPassword": "ボルトのマスターパスワードが正しくありません",
       "operationFailed": "ボルトの操作に失敗しました: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "システム通知を表示できませんでした: {{error}}"
     }
   },
   "backendSuccess": {

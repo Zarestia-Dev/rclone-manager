@@ -3098,7 +3098,8 @@
       "macfuseMissing": "macFUSE / FUSE-T n'est pas installé. Veuillez installer macFUSE pour activer le montage sur macOS.",
       "driveLetterInUse": "La lettre de lecteur sélectionnée est déjà utilisée par le système.",
       "permissionDenied": "Permission refusée lors de la tentative de montage.",
-      "deviceBusy": "Le point de montage ou le périphérique cible est occupé. Fermez les fichiers ouverts, gestionnaires de fichiers ou terminaux accédant au répertoire et réessayez."
+      "deviceBusy": "Le point de montage ou le périphérique cible est occupé. Fermez les fichiers ouverts, gestionnaires de fichiers ou terminaux accédant au répertoire et réessayez.",
+      "profileNotMounted": "Le profil '{{profile}}' n'est pas monté sur {{remote}}"
     },
     "operations": {
       "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
@@ -3110,7 +3111,8 @@
       "privilegedPort": "Les ports inférieurs à 1024 nécessitent des privilèges d'administrateur. Veuillez choisir un port 1024 ou supérieur.",
       "tlsError": "Échec du chargement ou de l'analyse du certificat SSL/TLS.",
       "startFailed": "Échec du démarrage du serveur: {{error}}",
-      "stopFailed": "Échec de l'arrêt du serveur: {{error}}"
+      "stopFailed": "Échec de l'arrêt du serveur: {{error}}",
+      "profileNotRunning": "Aucun serveur en cours d'exécution trouvé pour le profil '{{profile}}' sur {{remote}}"
     },
     "request": {
       "failed": "Échec de la requête : {{error}}"
@@ -3199,7 +3201,8 @@
       "notFound": "JobInfo non trouvé",
       "monitoringFailed": "Trop d'erreurs de surveillance du job : {{error}}",
       "executionFailed": "Échec de l'exécution du job : {{error}}",
-      "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide."
+      "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide.",
+      "profileNotRunning": "Aucun job {{jobType}} actif trouvé pour le profil '{{profile}}' sur {{remote}}"
     },
     "cache": {
       "fetchConfigFailed": "Échec de la récupération de la configuration des dépôts distants",
@@ -3265,6 +3268,9 @@
       "notEnabled": "Le coffre-fort n'est pas activé",
       "invalidPassword": "Mot de passe maître du coffre incorrect",
       "operationFailed": "L'opération du coffre-fort a échoué: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "Impossible d'afficher la notification système : {{error}}"
     }
   },
   "backendSuccess": {

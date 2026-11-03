@@ -204,8 +204,10 @@ Rust lives in the `backend` Cargo workspace: `core` (shared), `server` (HTTP), a
 > When `librclone.a` / Go toolchain is not compiled locally, set `export LIBRCLONE_SKIP_LINK_CHECK=1` so Clippy can type-check Rust without linking errors.
 
 ```bash
-# 1. Clippy check - Desktop target
-cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features -- -D warnings
+# 1. Clippy check - Desktop targets (with and without the tray, and portable)
+for features in desktop desktop,tray portable; do
+  cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features -- -D warnings
+done
 
 # 2. Clippy check - Web Server target
 mkdir -p dist/rclone-manager/browser
@@ -219,7 +221,11 @@ cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features --lib
+# The tray tests need the tray feature and the Tauri mock runtime; graphics tests mutate the
+# environment, so run these single-threaded.
+for features in desktop desktop,tray,tauri-test; do
+  cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features --lib -- --test-threads=1
+done
 
 # 6. Updater unit tests (they spawn processes and use file locks, so CI runs them single-threaded)
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1

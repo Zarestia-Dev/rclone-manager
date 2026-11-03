@@ -3098,7 +3098,8 @@
       "macfuseMissing": "macFUSE / FUSE-T no está instalado. Instale macFUSE para habilitar el montaje en macOS.",
       "driveLetterInUse": "La letra de unidad seleccionada ya está en uso por el sistema.",
       "permissionDenied": "Permiso denegado al intentar montar.",
-      "deviceBusy": "El punto de montaje o dispositivo de destino está ocupado. Cierre los archivos abiertos, administradores de archivos o terminales que accedan al directorio e inténtelo de nuevo."
+      "deviceBusy": "El punto de montaje o dispositivo de destino está ocupado. Cierre los archivos abiertos, administradores de archivos o terminales que accedan al directorio e inténtelo de nuevo.",
+      "profileNotMounted": "El perfil '{{profile}}' no está montado en {{remote}}"
     },
     "operations": {
       "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
@@ -3110,7 +3111,8 @@
       "privilegedPort": "Los puertos inferiores a 1024 requieren permisos de administrador. Elija un puerto igual o superior a 1024.",
       "tlsError": "Error al cargar o analizar el certificado SSL/TLS.",
       "startFailed": "Error al iniciar el servidor: {{error}}",
-      "stopFailed": "Error al detener el servidor: {{error}}"
+      "stopFailed": "Error al detener el servidor: {{error}}",
+      "profileNotRunning": "No se encontró ningún servidor en ejecución para el perfil '{{profile}}' en {{remote}}"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"
@@ -3199,7 +3201,8 @@
       "notFound": "JobInfo no encontrado",
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
       "executionFailed": "Ejecución del trabajo fallida: {{error}}",
-      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
+      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación.",
+      "profileNotRunning": "No se encontró ningún trabajo {{jobType}} activo para el perfil '{{profile}}' en {{remote}}"
     },
     "cache": {
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
@@ -3265,6 +3268,9 @@
       "notEnabled": "La bóveda no está habilitada",
       "invalidPassword": "Contraseña maestra de la bóveda incorrecta",
       "operationFailed": "Operación de la bóveda fallida: {{error}}"
+    },
+    "notification": {
+      "toastFailed": "No se pudo mostrar la notificación del sistema: {{error}}"
     }
   },
   "backendSuccess": {

@@ -870,6 +870,36 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
     stop_job_on_backend(app, backend, jobid, remote_name).await
 }
 
+/// Stop the running `job_type` job that `profile_name` started on `remote_name`.
+pub async fn stop_job_profile(
+    app: AppHandle,
+    remote_name: String,
+    profile_name: String,
+    job_type: JobType,
+) -> Result<(), String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    let running = app
+        .state::<BackendManager>()
+        .job_cache_for(&backend.name)
+        .get_active_jobs()
+        .await
+        .into_iter()
+        .find(|j| {
+            j.remote_name == remote_name
+                && j.job_type == job_type
+                && j.profile.as_deref() == Some(profile_name.as_str())
+        })
+        .ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.job.profileNotRunning",
+                "remote" => remote_name,
+                "profile" => profile_name,
+                "jobType" => job_type
+            )
+        })?;
+    stop_job_on_backend(app, backend, running.jobid, remote_name).await
+}
+
 pub(crate) async fn stop_job_on_backend(
     app: AppHandle,
     backend: Backend,
