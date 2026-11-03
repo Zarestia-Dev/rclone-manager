@@ -61,9 +61,16 @@ For a remote server, an SSH tunnel lets you keep the web port bound to localhost
 ssh -L 8080:127.0.0.1:8080 user@your-server
 ```
 
-Then open `http://localhost:8080` on your computer. Cloud-provider OAuth can also
-require forwarding port `53682`; see the configuration guide for Docker host
-networking and manual `rclone authorize` alternatives.
+Then open `http://localhost:8080` on your computer.
+
+Cloud-provider OAuth is different: Rclone's callback server listens on
+`127.0.0.1:53682` inside the container, so `-p 53682:53682` cannot reach it. Either:
+
+- run the container with `--network host` and also forward the callback port,
+  `ssh -L 8080:127.0.0.1:8080 -L 53682:127.0.0.1:53682 user@your-server`, or
+- answer **No** to "Use web browser to automatically authenticate?" while creating
+  the remote, run the `rclone authorize "<provider>"` command it shows on a machine
+  with a browser, and paste the resulting token back.
 
 ## Build and run the pure server
 
