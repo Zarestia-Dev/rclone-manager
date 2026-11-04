@@ -156,12 +156,8 @@ async fn shutdown(app_handle: AppHandle) {
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.
-    if let Some(env_manager) =
-        app_handle.try_state::<crate::services::security::SafeEnvironmentManager>()
-    {
-        env_manager.clear_config_password();
-        debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
-    }
+    crate::services::security::rclone_env::clear_config_password();
+    debug!("Cleared RCLONE_CONFIG_PASS from the environment");
 
     // Clear temporary file preview/viewer cache files
     app_handle.host().cleanup();

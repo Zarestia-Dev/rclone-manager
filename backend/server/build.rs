@@ -1,5 +1,15 @@
 use std::{env, fs, path::Path};
 
+/// FNV-1a: a stable content fingerprint for `ETag`, no dependency required.
+fn fingerprint(path: &Path) -> u64 {
+    fs::read(path)
+        .expect("Cannot read frontend asset")
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
+        })
+}
+
 fn collect_assets(root: &Path, directory: &Path, assets: &mut Vec<(String, String)>) {
     println!("cargo:rerun-if-changed={}", directory.display());
     for entry in fs::read_dir(directory).expect("Cannot read frontend directory") {
@@ -53,9 +63,10 @@ fn main() {
     let mut assets = Vec::new();
     collect_assets(&root, &root, &mut assets);
     assets.sort();
-    let mut source = String::from("static ASSETS: &[(&str, &[u8])] = &[\n");
+    let mut source = String::from("static ASSETS: &[(&str, &[u8], u64)] = &[\n");
     for (name, path) in assets {
-        source.push_str(&format!("({name:?}, include_bytes!({path:?})),\n"));
+        let etag = fingerprint(Path::new(&path));
+        source.push_str(&format!("({name:?}, include_bytes!({path:?}), {etag}),\n"));
     }
     source.push_str("];\n");
     fs::write(

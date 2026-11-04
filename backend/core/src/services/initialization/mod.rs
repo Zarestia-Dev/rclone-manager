@@ -9,7 +9,7 @@ use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::types::Backend;
 use crate::services::bridge;
 use crate::services::lifecycle::startup::autostart_profiles;
-use crate::services::security::SafeEnvironmentManager;
+use crate::services::security::rclone_env;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::app::notification::{NotificationEvent, SystemStage, notify};
 #[cfg(not(feature = "librclone"))]
@@ -178,9 +178,7 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     #[cfg(feature = "librclone")]
     let restarted = false;
 
-    if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
-        let _ = env_manager.init_with_stored_credentials(manager.inner());
-    }
+    rclone_env::load_stored_config_password(manager.inner());
 
     // A restarted engine's post-start setup has already refreshed the remote caches. A failed
     // refresh must not leave the rest of the restore unapplied, so it is reported last.
@@ -319,12 +317,7 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
         .get_all()
         .map_err(|e| format!("Failed to load settings during Phase 0: {e}"))?;
 
-    if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
-        debug!("Initializing environment manager credentials...");
-        if let Err(e) = env_manager.init_with_stored_credentials(rcman_manager.inner()) {
-            error!("Failed to initialize environment manager: {e}");
-        }
-    }
+    rclone_env::load_stored_config_password(rcman_manager.inner());
     crate::utils::i18n::init();
     crate::utils::i18n::set_language(&settings.general.language);
     app_handle

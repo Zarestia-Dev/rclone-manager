@@ -55,6 +55,13 @@ pub trait RcloneTransport: Send + Sync {
         Ok(None)
     }
 
+    /// Whether a path with no remote name names a file on the machine running this
+    /// process. False when the engine is a daemon on another machine, whose
+    /// filesystem is the one the path refers to.
+    fn shares_host_filesystem(&self) -> bool {
+        true
+    }
+
     async fn rpc(&self, endpoint: &str, payload: Option<&Value>) -> Result<Value, BackendError>;
 
     /// Open a pull-driven reader when the backend supports a real stream.

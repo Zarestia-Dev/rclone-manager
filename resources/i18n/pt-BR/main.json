@@ -3128,6 +3128,12 @@
       "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação.",
       "ioError": "Erro de E/S: {{error}}"
     },
+    "upload": {
+      "legacyBatch": "Este envio foi iniciado por uma página desatualizada. Recarregue o aplicativo e tente novamente.",
+      "noFiles": "O envio não contém arquivos.",
+      "invalidPath": "O envio contém um caminho de arquivo ou pasta inválido.",
+      "invalidModifiedTime": "O envio contém uma data de modificação inválida."
+    },
     "rclone": {
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
       "mountPluginVerificationFailed": "A instalação foi bem-sucedida, mas a verificação falhou. Pode ser necessário reiniciar.",

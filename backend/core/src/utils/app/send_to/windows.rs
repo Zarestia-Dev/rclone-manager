@@ -156,7 +156,7 @@ pub async fn register(
         );
     };
 
-    let output = crate::utils::process::command::Command::new(powershell_executable)
+    let output = crate::utils::process::command::command(powershell_executable)
         .args(["-NoProfile", "-Command", &powershell_cmd])
         .output()
         .await

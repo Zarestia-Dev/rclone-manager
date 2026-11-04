@@ -3128,6 +3128,12 @@
       "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture.",
       "ioError": "IO erreur : {{error}}"
     },
+    "upload": {
+      "legacyBatch": "Ce téléversement a été lancé par une page obsolète. Rechargez l'application et réessayez.",
+      "noFiles": "Le téléversement ne contient aucun fichier.",
+      "invalidPath": "Le téléversement contient un chemin de fichier ou de dossier non valide.",
+      "invalidModifiedTime": "Le téléversement contient une date de modification non valide."
+    },
     "rclone": {
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
       "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",

@@ -3169,6 +3169,12 @@
       "readOnly": "目標檔案系統為只讀或受防寫。",
       "ioError": "IO 錯誤：{{error}}"
     },
+    "upload": {
+      "legacyBatch": "此上傳由過期的頁面發起。請重新載入應用程式後再試一次。",
+      "noFiles": "上傳中沒有檔案。",
+      "invalidPath": "上傳包含無效的檔案或資料夾路徑。",
+      "invalidModifiedTime": "上傳包含無效的修改時間。"
+    },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",
       "noUpdateAvailable": "沒有可用的更新",

@@ -92,17 +92,6 @@ impl NodeKind {
     }
 }
 
-/// Resolves the canonical category for a given node type name, including
-/// names from older or planned versions that are not executable here.
-#[must_use]
-pub fn category_for_node_type(node_type: &str) -> WorkflowNodeCategory {
-    match node_type {
-        "branch" | "filter" | "merge" | "retry" | "fork" | "loop" => WorkflowNodeCategory::Logic,
-        "command" | "webhook" => WorkflowNodeCategory::Action,
-        other => NodeKind::parse(other).category(),
-    }
-}
-
 /// Port type on a workflow node.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -214,16 +203,11 @@ impl WorkflowNode {
         NodeKind::parse(&self.node_type)
     }
 
-    #[must_use]
-    pub fn resolved_category(&self) -> WorkflowNodeCategory {
-        category_for_node_type(&self.node_type)
-    }
-
     /// Whether the node starts a run, by its stored category or by what its type says.
     #[must_use]
     pub fn is_trigger(&self) -> bool {
         self.category == WorkflowNodeCategory::Trigger
-            || self.resolved_category() == WorkflowNodeCategory::Trigger
+            || self.kind().category() == WorkflowNodeCategory::Trigger
     }
 }
 
@@ -656,31 +640,6 @@ mod tests {
     }
 
     #[test]
-    fn test_category_for_node_type_helper() {
-        assert_eq!(
-            category_for_node_type("manual"),
-            WorkflowNodeCategory::Trigger
-        );
-        assert_eq!(
-            category_for_node_type("cron"),
-            WorkflowNodeCategory::Trigger
-        );
-        assert_eq!(category_for_node_type("sync"), WorkflowNodeCategory::Task);
-        assert_eq!(
-            category_for_node_type("branch"),
-            WorkflowNodeCategory::Logic
-        );
-        assert_eq!(
-            category_for_node_type("schedule_wait"),
-            WorkflowNodeCategory::Logic
-        );
-        assert_eq!(
-            category_for_node_type("notification"),
-            WorkflowNodeCategory::Action
-        );
-    }
-
-    #[test]
     fn node_kinds_cover_every_executable_type_and_leave_the_rest_unknown() {
         for (name, kind) in [
             ("manual", NodeKind::Manual),
@@ -712,17 +671,30 @@ mod tests {
         for (name, category) in [
             ("manual", Trigger),
             ("job_event", Trigger),
+            ("cron", Trigger),
             ("delay", Logic),
             ("join", Logic),
-            ("loop", Logic),
+            ("schedule_wait", Logic),
             ("notification", Action),
-            ("webhook", Action),
             ("condition", Task),
             ("stop", Task),
             ("sync", Task),
             ("unheard_of", Task),
         ] {
-            assert_eq!(category_for_node_type(name), category, "{name}");
+            assert_eq!(NodeKind::parse(name).category(), category, "{name}");
         }
+    }
+
+    #[test]
+    fn a_node_is_a_trigger_by_its_stored_category_or_by_its_type() {
+        let node = |node_type: &str, category| WorkflowNode {
+            node_type: node_type.into(),
+            category,
+            ..Default::default()
+        };
+        assert!(node("cron", WorkflowNodeCategory::Task).is_trigger());
+        assert!(node("from_a_newer_version", WorkflowNodeCategory::Trigger).is_trigger());
+        assert!(!node("sync", WorkflowNodeCategory::Task).is_trigger());
+        assert!(!node("from_a_newer_version", WorkflowNodeCategory::Action).is_trigger());
     }
 }

@@ -3128,6 +3128,12 @@
       "readOnly": "目标文件系统为只读或受写保护。",
       "ioError": "IO 错误：{{error}}"
     },
+    "upload": {
+      "legacyBatch": "此上传由过期的页面发起。请重新加载应用程序后重试。",
+      "noFiles": "上传中没有文件。",
+      "invalidPath": "上传包含无效的文件或文件夹路径。",
+      "invalidModifiedTime": "上传包含无效的修改时间。"
+    },
     "rclone": {
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
       "mountPluginVerificationFailed": "安装成功但验证失败。可能需要重新启动。",

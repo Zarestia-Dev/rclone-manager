@@ -8,13 +8,13 @@ use log::info;
 /// - `"hibernate"`: Hibernates the system
 /// - `"lock"`: Locks the current user screen/session
 pub async fn execute_system_power(action: String) -> Result<(), String> {
-    execute_system_power_internal(&action).await
-}
-
-pub async fn execute_system_power_internal(action: &str) -> Result<(), String> {
+    // Platform code treats an unrecognised name as "sleep", so refuse it here.
+    if !matches!(action.as_str(), "sleep" | "shutdown" | "hibernate" | "lock") {
+        return Err(format!("Unknown power action: {action}"));
+    }
     info!("Executing native system power action: {action}");
 
-    execute_platform_power(action).await
+    execute_platform_power(&action).await
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
@@ -122,7 +122,7 @@ async fn execute_platform_power(action: &str) -> Result<(), String> {
                 .map_err(|e| format!("Failed to initiate Windows shutdown: {e}"))?;
             Ok(())
         }
-        unknown => Err(format!("Unknown Windows power action: {unknown}")),
+        unknown => Err(format!("Unknown power action: {unknown}")),
     }
 }
 
@@ -155,23 +155,15 @@ async fn execute_platform_power(action: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_execute_system_power_syntax_check() {
-        // Validation that power action names are handled
-        let valid_actions = ["sleep", "shutdown", "hibernate", "lock"];
-        for action in valid_actions {
-            assert!(!action.is_empty());
-        }
-    }
-
-    #[cfg(target_os = "windows")]
+    /// Unknown names are rejected before any platform code can act on them; Linux
+    /// and macOS would otherwise suspend the machine.
     #[tokio::test]
-    async fn test_windows_power_unknown_action() {
-        for action in ["invalid_action", "", "shutdown; other-command"] {
-            let error = super::execute_system_power_internal(action)
+    async fn unknown_actions_are_rejected_without_side_effects() {
+        for action in ["invalid_action", "", "shutdown; other-command", "SLEEP"] {
+            let error = super::execute_system_power(action.to_string())
                 .await
                 .unwrap_err();
-            assert_eq!(error, format!("Unknown Windows power action: {action}"));
+            assert_eq!(error, format!("Unknown power action: {action}"));
         }
     }
 
@@ -187,7 +179,7 @@ mod tests {
             "invalid_action",
         ] {
             assert_eq!(
-                super::execute_system_power_internal(action)
+                super::execute_system_power(action.to_string())
                     .await
                     .unwrap_err(),
                 "System power actions are not supported on this platform"

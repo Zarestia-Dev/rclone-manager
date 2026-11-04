@@ -125,8 +125,21 @@ For an explicit Cargo target, binaries are under
 Use `--user` and `--pass` together to enable authentication, and `--tls-cert` and
 `--tls-key` together to enable HTTPS. Equivalent `RCLONE_MANAGER_*` environment
 variables also work for standalone binaries. Run `--help` for the complete list.
+Prefer `RCLONE_MANAGER_PASS` over `--pass`: command-line arguments are visible to
+other users in the process list. Repeated wrong passwords are slowed down; the
+correct password is never delayed.
 The pure server has no `--tray` option and no Tauri updater. It updates itself from
 the signed release ZIP when its executable and directory belong to the user running it.
+
+### Uploads and reverse proxies
+
+Files uploaded from the browser are staged in `<cache-dir>/uploads` and removed
+when the transfer ends, so the cache directory needs room for your largest upload.
+The upload request stays open until the transfer to the remote has finished. Behind
+a reverse proxy, raise the request-body limit and the read timeout (for nginx:
+`client_max_body_size 0;`, `proxy_request_buffering off;` and a long
+`proxy_read_timeout`), or large uploads fail in the browser while the transfer
+carries on.
 
 ## Linux systemd service
 

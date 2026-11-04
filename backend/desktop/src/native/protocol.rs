@@ -12,7 +12,6 @@
 
 use crate::context::BackendContext;
 use rclone_manager_core::context::AppHandle as CoreHandle;
-use std::path::Path;
 
 use http::{Method, Request, Response, StatusCode, header};
 use log::{debug, error, warn};
@@ -20,11 +19,10 @@ use tauri::{Builder, Runtime};
 use tokio::io::AsyncReadExt;
 
 use crate::utils::app::audio;
-use crate::utils::io::file_stream::{FILE_CHUNK_SIZE, open_asset, pin_file_transport};
+use crate::utils::io::file_stream::{FILE_CHUNK_SIZE, open_asset};
 use crate::utils::io::http_helpers::{
-    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name,
-    has_parent_path_component, normalize_asset_path, resolve_byte_range, strip_protocol_prefix,
-    strip_protocol_prefix_trimmed, url_decode,
+    classify_error_status, decode_remote_name, has_parent_path_component, normalize_asset_path,
+    resolve_byte_range, strip_protocol_prefix, strip_protocol_prefix_trimmed, url_decode,
 };
 use crate::utils::types::state::RcloneState;
 
@@ -358,41 +356,22 @@ fn picture_response(picture: Option<audio::PictureData>) -> Response<Vec<u8>> {
 
 async fn remote_cover_response(core: &CoreHandle, remote: &str, path: &str) -> Response<Vec<u8>> {
     let transport = core.state::<RcloneState>().transport.clone();
-    let transport = match pin_file_transport(transport).await {
-        Ok(transport) => transport,
-        Err(error) => return error_response(500, error.to_string()),
-    };
-    let Some(_input_permit) = audio::cover_input_permit().await else {
-        return error_response(503, "Cover reader unavailable");
-    };
-    let range = Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES - 1)));
-    let reader = match transport.read_file(remote, path, range).await {
-        Ok(reader) => reader,
-        Err(e) => {
-            warn!("Failed to fetch remote cover for {remote}:{path}: {e}");
-            return error_response(500, vec![]);
+    match audio::extract_remote_cover(transport, remote, path).await {
+        Ok(picture) => picture_response(picture),
+        Err(audio::RemoteCoverError::Unavailable) => {
+            error_response(503, "Cover reader unavailable")
         }
-    };
-    let mut bytes = Vec::new();
-    if reader
-        .take(MAX_AUDIO_COVER_PROBE_BYTES)
-        .read_to_end(&mut bytes)
-        .await
-        .is_err()
-        || bytes.is_empty()
-    {
-        return error_response(404, vec![]);
+        Err(audio::RemoteCoverError::Transport(error)) => {
+            warn!("Failed to fetch remote cover for {remote}:{path}: {error}");
+            error_response(500, vec![])
+        }
     }
-    let extension = Path::new(path)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(str::to_owned);
-    picture_response(audio::extract_picture_from_bytes(bytes, extension).await)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[tokio::test]
     async fn simultaneous_native_responses_share_one_buffer_budget() {

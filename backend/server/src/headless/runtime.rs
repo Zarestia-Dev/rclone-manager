@@ -16,7 +16,7 @@ pub fn run() {
         eprintln!("Failed to initialize application: {error}");
         std::process::exit(1);
     }
-    let server = crate::start(
+    let mut server = crate::start(
         &app,
         &cli_args.headless,
         app.state::<std::sync::Arc<services::bridge::EventBridge>>()
@@ -34,7 +34,6 @@ pub fn run() {
         {
             log::error!("Application cleanup exceeded shutdown deadline");
         }
-        let mut server = server;
         match tokio::time::timeout(std::time::Duration::from_secs(6), &mut server).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => log::error!("HTTP task failed: {error}"),
@@ -44,6 +43,11 @@ pub fn run() {
             }
         }
     });
+    #[cfg(not(unix))]
+    if let Err(error) = super::lifecycle::spawn_pending_restart() {
+        log::error!("Restart failed: {error}");
+        std::process::exit(1);
+    }
     std::process::exit(code);
 }
 
@@ -61,44 +65,6 @@ impl rclone_manager_core::context::Host for ServerHost {
     }
     fn restart(&self, app: &rclone_manager_core::context::AppHandle) -> Result<(), String> {
         super::lifecycle::restart(app)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::cli::CliArgs;
-    use clap::Parser;
-    use rclone_manager_core::services::paths::AppPaths;
-
-    #[test]
-    fn headless_paths_respect_cli_overrides_and_create_directories() {
-        let temp = tempfile::tempdir().unwrap();
-        let data = temp.path().join("data with spaces");
-        let cache = temp.path().join("cache");
-        let logs = temp.path().join("logs");
-        let args = CliArgs::try_parse_from([
-            "server",
-            "--data-dir",
-            data.to_str().unwrap(),
-            "--cache-dir",
-            cache.to_str().unwrap(),
-            "--logs-dir",
-            logs.to_str().unwrap(),
-        ])
-        .unwrap();
-        let app = rclone_manager_core::context::AppHandle::new(
-            std::sync::Arc::new(ServerHost),
-            crate::PRODUCT,
-        );
-        app.manage(args.general);
-        let paths = AppPaths::setup(&app).unwrap();
-        assert_eq!(paths.config_dir, data);
-        assert_eq!(paths.cache_dir, cache);
-        assert_eq!(paths.logs_dir, logs);
-        assert!(data.is_dir());
-        assert!(paths.get_app_log_dir().is_dir());
-        assert!(paths.get_rclone_log_dir().is_dir());
     }
 }
 
@@ -137,9 +103,42 @@ async fn wait_for_shutdown(
 }
 
 #[cfg(test)]
-mod shutdown_tests {
-    use super::wait_for_shutdown;
+mod tests {
+    use super::*;
+    use crate::cli::CliArgs;
+    use clap::Parser;
     use rclone_manager_core::context::AppHandle;
+    use rclone_manager_core::services::paths::AppPaths;
+
+    #[test]
+    fn headless_paths_respect_cli_overrides_and_create_directories() {
+        let temp = tempfile::tempdir().unwrap();
+        let data = temp.path().join("data with spaces");
+        let cache = temp.path().join("cache");
+        let logs = temp.path().join("logs");
+        let args = CliArgs::try_parse_from([
+            "server",
+            "--data-dir",
+            data.to_str().unwrap(),
+            "--cache-dir",
+            cache.to_str().unwrap(),
+            "--logs-dir",
+            logs.to_str().unwrap(),
+        ])
+        .unwrap();
+        let app = rclone_manager_core::context::AppHandle::new(
+            std::sync::Arc::new(ServerHost),
+            crate::PRODUCT,
+        );
+        app.manage(args.general);
+        let paths = AppPaths::setup(&app).unwrap();
+        assert_eq!(paths.config_dir, data);
+        assert_eq!(paths.cache_dir, cache);
+        assert_eq!(paths.logs_dir, logs);
+        assert!(data.is_dir());
+        assert!(paths.get_app_log_dir().is_dir());
+        assert!(paths.get_rclone_log_dir().is_dir());
+    }
 
     #[tokio::test]
     async fn signal_requests_exit_and_retains_code() {

@@ -198,14 +198,6 @@ impl JobCache {
         Ok(())
     }
 
-    pub async fn update_job(
-        &self,
-        jobid: u64,
-        update_fn: impl FnOnce(&mut JobInfo),
-    ) -> Result<JobInfo, String> {
-        self.update_job_for_execution(jobid, None, update_fn).await
-    }
-
     async fn update_job_for_execution(
         &self,
         jobid: u64,
@@ -331,7 +323,7 @@ impl JobCache {
     }
 
     pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
-        self.update_job(jobid, |j| {
+        self.update_job_for_execution(jobid, None, |j| {
             if !j.status.is_finished() {
                 j.status = JobStatus::Stopped;
                 j.end_time = Some(chrono::Utc::now());

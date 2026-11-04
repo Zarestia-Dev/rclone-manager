@@ -3169,6 +3169,12 @@
       "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı.",
       "ioError": "Giriş/Çıkış hatası: {{error}}"
     },
+    "upload": {
+      "legacyBatch": "Bu yükleme eski bir sayfa tarafından başlatıldı. Uygulamayı yeniden yükleyip tekrar deneyin.",
+      "noFiles": "Yüklemede dosya yok.",
+      "invalidPath": "Yükleme geçersiz bir dosya veya klasör yolu içeriyor.",
+      "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor."
+    },
     "rclone": {
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",
       "noUpdateAvailable": "Kullanılabilir güncelleme yok",

@@ -343,11 +343,11 @@ pub(crate) async fn refresh_with_definitions(
         .await;
     let workflows = match workflows {
         Some(workflows) => workflows,
-        None => crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?,
+        None => crate::services::flow::workflow::commands::get_all_workflows(&manager)?,
     };
     let quick_runs = match quick_runs {
         Some(quick_runs) => quick_runs,
-        None => crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)?,
+        None => crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?,
     };
     let workflows: HashMap<_, _> = workflows
         .into_iter()

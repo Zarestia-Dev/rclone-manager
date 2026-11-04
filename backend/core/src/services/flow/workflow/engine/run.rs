@@ -918,7 +918,7 @@ mod tests {
             let mut edited = timed_workflow("edited-while-running", 1);
             edited.name = "Renamed by the user".into();
             save_workflow_record(&manager, &edited).unwrap();
-            crate::services::flow::workflow::commands::delete_workflow_by_id_sync(
+            crate::services::flow::workflow::commands::delete_workflow_by_id(
                 &manager,
                 "deleted-while-running",
             )

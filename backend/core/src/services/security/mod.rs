@@ -1,5 +1,4 @@
 pub mod commands;
-pub mod env_manager;
+pub mod rclone_env;
 
 pub use commands::*;
-pub use env_manager::*;

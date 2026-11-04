@@ -38,7 +38,7 @@ const VERSION_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_sec
 pub async fn get_rclone_version(rclone_binary: &std::path::Path) -> Option<String> {
     let output = tokio::time::timeout(
         VERSION_CHECK_TIMEOUT,
-        crate::utils::process::command::Command::new(rclone_binary)
+        crate::utils::process::command::command(rclone_binary)
             .arg("version")
             .output(),
     )
@@ -112,15 +112,15 @@ pub fn build_rclone_command(
     bin_override: Option<&str>,
     config_override: Option<&std::path::Path>,
     args: Option<&[&str]>,
-) -> crate::utils::process::command::Command {
+) -> tokio::process::Command {
     let binary_path = resolve_rclone_binary(app, bin_override.map(std::path::Path::new));
-    let mut cmd = crate::utils::process::command::Command::new(binary_path);
+    let mut cmd = crate::utils::process::command::command(binary_path);
 
     if let Some(cfg) = config_override.filter(|c| !c.to_string_lossy().is_empty()) {
-        cmd = cmd.arg("--config").arg(cfg);
+        cmd.arg("--config").arg(cfg);
     }
     if let Some(a) = args.filter(|a| !a.is_empty()) {
-        cmd = cmd.args(a);
+        cmd.args(a);
     }
 
     cmd

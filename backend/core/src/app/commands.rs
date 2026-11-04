@@ -256,7 +256,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (encrypt_config, $crate::services::security::encrypt_config, [password: String]);
             (unencrypt_config, $crate::services::security::unencrypt_config, [password: String]);
             (change_config_password, $crate::services::security::change_config_password, [old_password: String, new_password: String]);
-            (set_config_password_env, $crate::services::security::set_config_password_env, [password: String]);
+            (set_config_password_env, $crate::services::security::set_config_password_env, [password: String], [no_app]);
 
             // CONFIGURATION VAULT (rcman)
             (get_vault_info, $crate::services::settings::vault::get_vault_info, []);

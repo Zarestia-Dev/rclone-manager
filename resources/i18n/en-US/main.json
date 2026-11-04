@@ -3169,6 +3169,12 @@
       "readOnly": "The target file system is read-only or write-protected.",
       "ioError": "IO error: {{error}}"
     },
+    "upload": {
+      "legacyBatch": "This upload was started by an outdated page. Reload the application and try again.",
+      "noFiles": "The upload contains no files.",
+      "invalidPath": "The upload contains an invalid file or folder path.",
+      "invalidModifiedTime": "The upload contains an invalid modification time."
+    },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",
       "noUpdateAvailable": "No update available",

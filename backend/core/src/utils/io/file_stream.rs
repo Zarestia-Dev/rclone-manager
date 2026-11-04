@@ -266,22 +266,25 @@ impl AssetSource {
     }
 }
 
-/// Opens `path` for ranged reads. An empty `remote` means a path on the host: it is
-/// opened directly, and only read through rclone when the host cannot open it
-/// (for example Android storage providers). Directories are never served.
+/// Opens `path` for ranged reads. An empty `remote` means a path on the engine's
+/// machine: when that is this host the file is opened directly, and only read
+/// through rclone when the host cannot open it (for example Android storage
+/// providers). A daemon on another machine always reads through rclone, so the
+/// same path here is never mistaken for its file. Directories are never served.
 pub async fn open_asset(
     transport: Arc<dyn RcloneTransport>,
     remote: &str,
     path: &str,
 ) -> Result<AssetSource, String> {
+    let transport = pin_file_transport(transport)
+        .await
+        .map_err(|e| e.to_string())?;
     if remote.is_empty()
+        && transport.shares_host_filesystem()
         && let Some(local) = open_local_regular_file(path).await?
     {
         return Ok(local);
     }
-    let transport = pin_file_transport(transport)
-        .await
-        .map_err(|e| e.to_string())?;
     let version = file_metadata(transport.as_ref(), remote, path)
         .await
         .map_err(|e| e.to_string())?;
@@ -675,6 +678,57 @@ mod tests {
         assert_eq!(source.total(), 5);
         read_all(source, 1, 3).await;
         assert_eq!(*t.reads.lock().unwrap(), vec![(1, Some(3))]);
+    }
+
+    /// A daemon on another machine: its filesystem is not this host's.
+    struct RemoteHost(Arc<Transport>);
+
+    #[async_trait::async_trait]
+    impl RcloneTransport for RemoteHost {
+        async fn kind(&self) -> TransportKind {
+            TransportKind::HttpDaemon
+        }
+        fn shares_host_filesystem(&self) -> bool {
+            false
+        }
+        async fn rpc(
+            &self,
+            endpoint: &str,
+            payload: Option<&serde_json::Value>,
+        ) -> Result<serde_json::Value, BackendError> {
+            self.0.rpc(endpoint, payload).await
+        }
+        async fn read_file(
+            &self,
+            remote: &str,
+            path: &str,
+            range: Option<(u64, Option<u64>)>,
+        ) -> Result<Box<dyn AsyncRead + Unpin + Send>, BackendError> {
+            self.0.read_file(remote, path, range).await
+        }
+    }
+
+    #[tokio::test]
+    async fn a_daemon_on_another_machine_never_gets_this_hosts_file_for_the_same_path() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("same-path");
+        tokio::fs::write(&path, b"this host").await.unwrap();
+        let daemon = transport(serde_json::json!({"item": {"Size": 4, "ID": "x"}}), false);
+        let source = open_asset(
+            Arc::new(RemoteHost(daemon.clone())),
+            "",
+            path.to_str().unwrap(),
+        )
+        .await
+        .unwrap();
+        assert!(matches!(source, AssetSource::Remote { .. }));
+        assert_eq!(
+            source.total(),
+            4,
+            "size comes from the daemon, not the local file"
+        );
+        read_all(source, 0, 4).await;
+        assert_eq!(*daemon.reads.lock().unwrap(), vec![(0, Some(3))]);
     }
 
     #[tokio::test]

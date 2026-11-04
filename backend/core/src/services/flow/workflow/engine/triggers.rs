@@ -117,7 +117,7 @@ fn live_event_inputs(
     manager: &AppSettingsManager,
     job: &crate::utils::types::jobs::JobInfo,
 ) -> Result<(Arc<Vec<WorkflowDefinition>>, Option<String>), String> {
-    let load = || crate::services::flow::workflow::commands::get_all_workflows_sync(manager);
+    let load = || crate::services::flow::workflow::commands::get_all_workflows(manager);
     let workflows = match app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         Some(runtime) => runtime.event_triggers(load)?,
         None => Arc::new(

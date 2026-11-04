@@ -65,6 +65,10 @@ impl RcloneTransport for RcHttpBackend {
         TransportKind::HttpDaemon
     }
 
+    fn shares_host_filesystem(&self) -> bool {
+        self.backend.as_ref().is_none_or(|backend| backend.is_local)
+    }
+
     async fn open_file_stream(
         &self,
         remote: &str,
@@ -319,6 +323,22 @@ mod tests {
         let backend = Backend::new_remote("test", "127.0.0.1", port);
         let dynamic = RcHttpBackend::new(app);
         dynamic.for_backend(backend)
+    }
+
+    #[test]
+    fn only_the_app_managed_daemon_shares_the_host_filesystem() {
+        let transport = RcHttpBackend::new(AppHandle::default());
+        assert!(transport.shares_host_filesystem());
+        for (is_local, expected) in [(true, true), (false, false)] {
+            let backend = Backend {
+                is_local,
+                ..Backend::default()
+            };
+            assert_eq!(
+                transport.for_backend(backend).shares_host_filesystem(),
+                expected
+            );
+        }
     }
 
     #[tokio::test]

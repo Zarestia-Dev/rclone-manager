@@ -3128,6 +3128,12 @@
       "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura.",
       "ioError": "Error de E/S: {{error}}"
     },
+    "upload": {
+      "legacyBatch": "Esta subida la inició una página desactualizada. Recarga la aplicación e inténtalo de nuevo.",
+      "noFiles": "La subida no contiene archivos.",
+      "invalidPath": "La subida contiene una ruta de archivo o carpeta no válida.",
+      "invalidModifiedTime": "La subida contiene una fecha de modificación no válida."
+    },
     "rclone": {
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",

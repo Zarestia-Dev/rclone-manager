@@ -254,7 +254,7 @@ impl TraySnapshot {
             })
             .collect();
 
-        let raw_quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(
+        let raw_quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs(
             settings_manager.inner(),
         )
         .unwrap_or_default();
@@ -278,10 +278,9 @@ impl TraySnapshot {
             })
             .collect();
 
-        let raw_workflows = crate::services::flow::workflow::commands::get_all_workflows_sync(
-            settings_manager.inner(),
-        )
-        .unwrap_or_default();
+        let raw_workflows =
+            crate::services::flow::workflow::commands::get_all_workflows(settings_manager.inner())
+                .unwrap_or_default();
 
         let active_wf_ids =
             crate::services::flow::workflow::engine::get_active_workflow_ids(&backend.name);

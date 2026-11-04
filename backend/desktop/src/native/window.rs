@@ -8,7 +8,8 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
             let app_handle = window.app_handle();
 
             let destroy_on_close = app_handle
-                .backend_try_state::<services::settings::AppSettingsManager>()
+                .backend()
+                .try_state::<services::settings::AppSettingsManager>()
                 .and_then(|manager| {
                     manager
                         .get_all()

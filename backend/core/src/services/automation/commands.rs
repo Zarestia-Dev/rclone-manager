@@ -83,8 +83,8 @@ pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, S
     if manager.is_locked() {
         return Ok(cache.get_all_automations().await.len());
     }
-    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)?;
-    let workflows = crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?;
+    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?;
+    let workflows = crate::services::flow::workflow::commands::get_all_workflows(&manager)?;
 
     let result = cache
         .load_from_remote_configs(&all_settings, &backend.name)

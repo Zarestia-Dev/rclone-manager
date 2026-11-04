@@ -11,6 +11,15 @@ pub(crate) fn listen_address(host: &str, port: u16) -> Result<SocketAddr, AddrPa
     Ok(SocketAddr::new(unbracket(host).parse()?, port))
 }
 
+/// Whether a bind address only accepts connections from this machine.
+pub(crate) fn is_loopback_host(host: &str) -> bool {
+    let host = unbracket(host);
+    host.parse::<IpAddr>().map_or_else(
+        |_| host.eq_ignore_ascii_case("localhost"),
+        |address| address.is_loopback(),
+    )
+}
+
 pub(crate) fn browser_origin(host: &str, port: u16, tls: bool) -> String {
     let host = match unbracket(host).parse::<IpAddr>() {
         Ok(IpAddr::V4(ip)) if ip.is_unspecified() => "127.0.0.1".to_string(),
@@ -35,6 +44,16 @@ mod tests {
         }
         for host in ["", "invalid", "[::1", "127.0.0.1:80"] {
             assert!(listen_address(host, 8080).is_err());
+        }
+    }
+
+    #[test]
+    fn only_loopback_hosts_are_considered_local() {
+        for host in ["127.0.0.1", "::1", "[::1]", "localhost", "LOCALHOST"] {
+            assert!(is_loopback_host(host), "{host}");
+        }
+        for host in ["0.0.0.0", "::", "[::]", "192.168.1.5", "example.com", ""] {
+            assert!(!is_loopback_host(host), "{host}");
         }
     }
 

@@ -13,7 +13,7 @@ use crate::utils::constants::SUB_WORKFLOWS;
 /// Lists all saved workflows from storage.
 pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, String> {
     let manager = app.state::<AppSettingsManager>();
-    get_all_workflows_sync(&manager)
+    get_all_workflows(&manager)
 }
 
 /// Ids of the workflows running on the active backend. Run state is only announced
@@ -97,7 +97,7 @@ pub async fn update_workflow(
 pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), String> {
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
-    delete_workflow_by_id_sync(&manager, &workflow_id)?;
+    delete_workflow_by_id(&manager, &workflow_id)?;
     refresh_after_change(&app, &workflow_id).await?;
     Ok(())
 }
@@ -112,7 +112,7 @@ pub async fn duplicate_workflow(
         || crate::localized_error!("backendErrors.workflow.workflowNotFound", "id" => workflow_id),
     )?;
 
-    let all = get_all_workflows_sync(&manager)?;
+    let all = get_all_workflows(&manager)?;
     let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
     let base_name = crate::t!("backendErrors.workflow.copyName", "name" => existing.name);
@@ -189,9 +189,7 @@ pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> St
     }
 }
 
-pub fn get_all_workflows_sync(
-    manager: &AppSettingsManager,
-) -> Result<Vec<WorkflowDefinition>, String> {
+pub fn get_all_workflows(manager: &AppSettingsManager) -> Result<Vec<WorkflowDefinition>, String> {
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
@@ -258,7 +256,7 @@ pub fn save_workflow_record(
         .map_err(|e| crate::localized_error!("backendErrors.workflow.saveFailed", "error" => e))
 }
 
-pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
+pub fn delete_workflow_by_id(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
@@ -280,7 +278,7 @@ pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
     let revision = app
         .state::<crate::services::automation::runtime::RuntimeTasks>()
         .revision();
-    let workflows = get_all_workflows_sync(&manager)?;
+    let workflows = get_all_workflows(&manager)?;
     cache.load_from_workflows(&workflows, &backend_name).await?;
     crate::services::automation::runtime::refresh_with_definitions(
         app,
@@ -374,7 +372,7 @@ mod tests {
         };
 
         // 1. Initially empty
-        let list = get_all_workflows_sync(&manager).unwrap();
+        let list = get_all_workflows(&manager).unwrap();
         assert!(list.is_empty());
 
         // 2. Save
@@ -395,12 +393,12 @@ mod tests {
         );
 
         // 4. List
-        let list = get_all_workflows_sync(&manager).unwrap();
+        let list = get_all_workflows(&manager).unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, "wf-test-1");
 
         // 5. Delete
-        delete_workflow_by_id_sync(&manager, "wf-test-1").unwrap();
+        delete_workflow_by_id(&manager, "wf-test-1").unwrap();
         let after_delete = get_workflow_by_id(&manager, "wf-test-1").unwrap();
         assert!(after_delete.is_none());
     }
@@ -441,7 +439,7 @@ mod tests {
             .set("damaged", &serde_json::json!({"nodes": "not a list"}))
             .unwrap();
 
-        let all = get_all_workflows_sync(&manager).unwrap();
+        let all = get_all_workflows(&manager).unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "valid");
     }

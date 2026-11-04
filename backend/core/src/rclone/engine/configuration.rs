@@ -2,7 +2,7 @@ use crate::context::AppHandle;
 use log::{error, info, warn};
 
 use crate::{
-    services::security::SafeEnvironmentManager,
+    services::security::rclone_env,
     utils::types::{
         events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
         state::RcApiEngine,
@@ -102,12 +102,7 @@ impl RcApiEngine {
 
         info!("Configuration is encrypted, testing password");
 
-        let env_vars = if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-            env_manager.get_env_vars()
-        } else {
-            warn!("SafeEnvironmentManager not available, using system environment");
-            std::env::vars().collect()
-        };
+        let env_vars = rclone_env::vars();
 
         if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
             warn!("No password available for encrypted configuration");

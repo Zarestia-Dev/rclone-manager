@@ -115,7 +115,7 @@ pub async fn sync_quick_run_automations(app: &AppHandle) -> Result<(), String> {
     let revision = app
         .state::<crate::services::automation::runtime::RuntimeTasks>()
         .revision();
-    let quick_runs = get_all_quick_runs_sync(&manager)?;
+    let quick_runs = get_all_quick_runs(&manager)?;
     cache
         .load_from_quick_runs(&quick_runs, &backend_name)
         .await?;
@@ -370,7 +370,7 @@ pub async fn stop_quick_run(
 
 // ── Persistence Helpers ──────────────────────────────────────────────────
 
-pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<QuickRun>, String> {
+pub fn get_all_quick_runs(manager: &AppSettingsManager) -> Result<Vec<QuickRun>, String> {
     let sub = manager
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;
@@ -380,10 +380,6 @@ pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<Quick
 
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
-}
-
-fn get_all_quick_runs(manager: &AppSettingsManager) -> Result<Vec<QuickRun>, String> {
-    get_all_quick_runs_sync(manager)
 }
 
 pub(crate) fn get_quick_run(
@@ -614,7 +610,7 @@ mod tests {
             .set("damaged", &serde_json::json!({"operationType": 7}))
             .unwrap();
 
-        let all = get_all_quick_runs_sync(&manager).unwrap();
+        let all = get_all_quick_runs(&manager).unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "valid");
     }

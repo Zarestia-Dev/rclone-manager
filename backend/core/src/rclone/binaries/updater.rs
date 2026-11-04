@@ -620,7 +620,7 @@ pub async fn activate_pending_rclone_update(
 
 /// Helper to get the version of a specific rclone binary.
 async fn get_binary_version(path: &Path) -> Option<String> {
-    let output = crate::utils::process::command::Command::new(path)
+    let output = crate::utils::process::command::command(path)
         .arg("version")
         .output()
         .await

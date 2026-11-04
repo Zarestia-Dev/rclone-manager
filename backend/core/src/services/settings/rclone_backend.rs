@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::rclone::engine::lifecycle::restart_for_config_change;
 
 /// Sync version for use in initialization
-pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Value {
+pub fn load_backend_options(manager: &AppSettingsManager) -> serde_json::Value {
     let sub = match manager.sub_settings(crate::utils::constants::SUB_BACKEND) {
         Ok(s) => s,
         Err(_) => return json!({}),
@@ -135,7 +135,7 @@ mod tests {
     async fn persists_exact_values_for_the_initialization_loader() {
         let (_directory, app) = test_app();
         assert_eq!(
-            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            load_backend_options(app.state::<AppSettingsManager>().inner()),
             json!({})
         );
         let values = json!({
@@ -152,7 +152,7 @@ mod tests {
                 .unwrap();
         }
         assert_eq!(
-            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            load_backend_options(app.state::<AppSettingsManager>().inner()),
             json!({"main": values})
         );
     }
@@ -169,14 +169,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            load_backend_options(app.state::<AppSettingsManager>().inner()),
             json!({"main": {"AskPassword": false}})
         );
         remove_rclone_backend_option(app.clone(), "main".into(), "AskPassword".into())
             .await
             .unwrap();
         assert_eq!(
-            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            load_backend_options(app.state::<AppSettingsManager>().inner()),
             json!({})
         );
     }
@@ -197,7 +197,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            load_backend_options_sync(manager.inner()),
+            load_backend_options(manager.inner()),
             json!({"main": false})
         );
     }

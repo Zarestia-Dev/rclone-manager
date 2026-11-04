@@ -70,14 +70,10 @@ pub fn setup_context(
         }
     });
 
-    use crate::services::security::SafeEnvironmentManager;
-    let env_manager = SafeEnvironmentManager::new();
-
     use crate::rclone::backend::BackendManager;
     let backend_manager = BackendManager::new();
 
     app.manage(backend_manager);
-    app.manage(env_manager);
     app.manage(rcman_manager);
 
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));

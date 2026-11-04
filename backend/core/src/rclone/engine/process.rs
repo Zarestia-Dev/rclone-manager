@@ -19,7 +19,7 @@ impl RcApiEngine {
 
         self.current_api_port = backend.port;
 
-        let engine_cmd = match build_rclone_process_command(app).await {
+        let mut engine_cmd = match build_rclone_process_command(app).await {
             Ok(cmd) => cmd,
             Err(e) => {
                 error!("Failed to create engine command: {e}");

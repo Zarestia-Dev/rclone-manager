@@ -131,8 +131,8 @@ pub(super) async fn initialize_automations(
     info!("📋 Loading automations from remote configs...");
 
     let backend_name = backend.name.clone();
-    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)?;
-    let workflows = crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?;
+    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?;
+    let workflows = crate::services::flow::workflow::commands::get_all_workflows(&manager)?;
 
     let result = cache_state
         .load_from_remote_configs(&all_settings, &backend_name)
