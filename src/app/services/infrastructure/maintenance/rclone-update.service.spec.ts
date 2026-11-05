@@ -7,6 +7,7 @@ import {
   DownloadStateStatus,
   DownloadStatus,
   UpdateInfo,
+  UpdaterSnapshot,
   UpdaterStateChanged,
 } from '@app/types';
 import { RcloneUpdateService } from './rclone-update.service';
@@ -40,6 +41,7 @@ describe('RcloneUpdateService state restoration', () => {
   const invoke = vi.fn();
   const saveSetting = vi.fn();
   const showError = vi.fn();
+  const showWarning = vi.fn();
   const translate = vi.fn((message: unknown) => String(message));
 
   beforeEach(() => {
@@ -50,13 +52,12 @@ describe('RcloneUpdateService state restoration', () => {
     progress = new Subject();
     info = { ...available, status: BackendUpdateStatus.Downloading, download };
     invoke.mockReset().mockImplementation(async (command: string) => {
-      if (command === 'get_rclone_update_info') return info;
+      if (command === 'get_rclone_update_info') return { update: info, checking: false };
       if (command === 'is_librclone') return false;
-      if (command === 'can_auto_install') return true;
-      if (command === 'get_build_type') return 'portable';
       return null;
     });
     showError.mockReset();
+    showWarning.mockReset();
     translate.mockClear();
     saveSetting.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -69,7 +70,7 @@ describe('RcloneUpdateService state restoration', () => {
             showError,
             showInfo: vi.fn(),
             showSuccess: vi.fn(),
-            showWarning: vi.fn(),
+            showWarning,
             confirmModal: vi.fn().mockResolvedValue(true),
           },
         },
@@ -143,7 +144,7 @@ describe('RcloneUpdateService state restoration', () => {
 
   it('ignores an older snapshot that arrives after a newer state notification', async () => {
     await service.initialize();
-    let resolve!: (info: UpdateInfo | null) => void;
+    let resolve!: (snapshot: UpdaterSnapshot) => void;
     invoke.mockImplementationOnce(
       () =>
         new Promise(done => {
@@ -154,7 +155,10 @@ describe('RcloneUpdateService state restoration', () => {
     info = { ...available, status: BackendUpdateStatus.ReadyToRestart };
     changed.next({ target: 'rclone' });
     await Promise.resolve();
-    resolve({ ...available, status: BackendUpdateStatus.Downloading });
+    resolve({
+      update: { ...available, status: BackendUpdateStatus.Downloading },
+      checking: false,
+    });
     await Promise.resolve();
     expect(service.readyToRestart()).toBe(true);
   });
@@ -218,7 +222,47 @@ describe('RcloneUpdateService state restoration', () => {
     translate.mockReturnValueOnce('No update available');
     expect(await service.performUpdate()).toBe(false);
     expect(translate).toHaveBeenCalledWith(message);
-    expect(service.error()).toBe('No update available');
+    expect(showWarning).toHaveBeenCalledWith('No update available');
+  });
+
+  it('shows what the backend recorded, also after a reload or from a scheduled check', async () => {
+    invoke.mockImplementation(async (command: string) => {
+      if (command === 'is_librclone') return false;
+      if (command === 'get_rclone_update_info') {
+        return {
+          update: null,
+          checking: true,
+          lastCheckedAt: '2026-11-05T10:00:00Z',
+          error: 'backendErrors.updater.githubRateLimit',
+          notice: 'backendSuccess.rclone.remoteRestartRequired',
+        } satisfies UpdaterSnapshot;
+      }
+      return null;
+    });
+    await service.initialize();
+    expect(service.isChecking()).toBe(true);
+    expect(service.lastCheckedAt()).toBe('2026-11-05T10:00:00Z');
+    expect(service.error()).toBe('backendErrors.updater.githubRateLimit');
+    expect(service.notice()).toBe('backendSuccess.rclone.remoteRestartRequired');
+  });
+
+  it('shows a failed check from the snapshot even when its own response arrives late', async () => {
+    info = null;
+    await service.initialize();
+    invoke.mockImplementation(async (command: string) => {
+      if (command === 'check_rclone_update') {
+        // The backend announces its new state before the command returns.
+        changed.next({ target: 'rclone' });
+        throw new Error('rate limited');
+      }
+      if (command === 'get_rclone_update_info') {
+        return { update: null, checking: false, error: 'backendErrors.updater.github' };
+      }
+      return null;
+    });
+    await service.checkForUpdates();
+    expect(service.error()).toBe('backendErrors.updater.github');
+    expect(service.isChecking()).toBe(false);
   });
 
   it('does not restore a separate updater for librclone', async () => {

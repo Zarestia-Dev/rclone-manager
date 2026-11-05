@@ -151,5 +151,33 @@ describe('BackendTranslationService', () => {
 
       expect(result).toBe('123');
     });
+
+    it('translates localized errors nested in params, like the backend resolver', () => {
+      const dictionary: Record<string, string> = {
+        'backendErrors.updater.rolledBack': 'Update {{version}} was rolled back: {{reason}}',
+        'backendErrors.updater.rollback.installFailed': 'Not installed: {{error}}',
+        'backendErrors.updater.missingBackup': 'Backup missing',
+      };
+      translateServiceMock.instant.mockImplementation(
+        (key: string, params?: Record<string, string>) =>
+          (dictionary[key] ?? key).replace(/{{(\w+)}}/g, (_, name) => params?.[name] ?? '')
+      );
+      const message = JSON.stringify({
+        key: 'backendErrors.updater.rolledBack',
+        params: {
+          version: '0.3.5',
+          reason: JSON.stringify({
+            key: 'backendErrors.updater.rollback.installFailed',
+            params: { error: 'backendErrors.updater.missingBackup' },
+          }),
+        },
+      });
+
+      expect(service.translateBackendMessage(message)).toBe(
+        'Update 0.3.5 was rolled back: Not installed: Backup missing'
+      );
+      // Plain values that merely contain dots are never looked up.
+      expect(translateServiceMock.instant).not.toHaveBeenCalledWith('0.3.5', undefined);
+    });
   });
 });

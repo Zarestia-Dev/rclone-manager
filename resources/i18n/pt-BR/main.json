@@ -268,8 +268,7 @@
     "skipped": "Versão do Rclone {{version}} ignorada",
     "restored": "Versão do Rclone {{version}} restaurada",
     "autoCheckEnabled": "Atualização automática de Rclone habilitada",
-    "autoCheckDisabled": "Atualização automática do Rclone desabilitada",
-    "manualRestartRequired": "O Rclone foi atualizado no servidor remoto. Por favor, reinicie manualmente o serviço de Rclone remoto para aplicar a nova versão."
+    "autoCheckDisabled": "Atualização automática do Rclone desabilitada"
   },
   "alerts": {
     "title": "Alertas e Notificações",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "Descartar download",
     "cancelFailed": "Falha ao cancelar o download da atualização.",
-    "installSuccess": "Atualização instalada. Por favor, reinicie o aplicativo.",
+    "downloadComplete": "Atualização baixada e pronta para instalar.",
     "checkFailed": "Falha ao verificar atualizações: {{error}}",
     "installFailed": "Falha ao instalar atualização: {{error}}",
     "restartFailed": "Falha ao reiniciar o aplicativo: {{error}}",
@@ -1981,10 +1980,10 @@
       "wiki": "Página do Wiki",
       "reportIssues": "Reportar Problemas",
       "rcloneWebsite": "Website do Rclone",
-      "readyToRestart": "Reinício Necessário",
-      "restartDescription": "Foi instalada uma atualização. Por favor, reinicie a aplicação para aplicar as alterações.",
-      "rcloneRestartRequired": "Reinício do Rclone Necessário",
-      "rcloneRestartDescription": "Uma atualização do Rclone foi instalada. Por favor, reinicie o motor para aplicar as alterações.",
+      "readyToRestart": "Atualização Pronta",
+      "restartDescription": "A atualização foi baixada. Reinicie a aplicação para instalá-la.",
+      "rcloneRestartRequired": "Atualização do Rclone Pronta",
+      "rcloneRestartDescription": "A atualização do Rclone foi baixada. Reinicie o motor para instalá-la.",
       "restartNow": "Reiniciar Agora",
       "updateAvailable": "Atualização disponível",
       "version": "Versão",
@@ -2076,7 +2075,8 @@
       "clear": "Limpar",
       "cacheCleared": "O cache foi limpo com sucesso",
       "cacheClearFailed": "Falha ao limpar o cache",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Última verificação: {{time}}"
     },
     "logs": {
       "fetchError": "Falha ao recuperar os registros da aplicação.",
@@ -3238,13 +3238,11 @@
     },
     "updater": {
       "noPending": "Não há atualizações pendentes",
-      "invalidUrl": "Endereço URL inválido: {{error}}",
       "github": "Erro de API do GitHub: {{error}}",
       "githubRateLimit": "Limite de requisições da API do GitHub excedido. Tente novamente mais tarde.",
       "updateFailed": "Atualização falhou: {{error}}",
       "updateUnavailable": "O artefato de atualização não está mais disponível: {{error}}",
       "relaunchFailed": "Reinício falhou: {{error}}",
-      "restartFailed": "Reiniciar falhou: {{error}}",
       "notWritable": "O caminho de atualização não é gravável",
       "rollback": {
         "exited": "O aplicativo atualizado foi encerrado antes de confirmar a inicialização (código {{code}}).",
@@ -3259,7 +3257,22 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "A instalação deste pacote precisa de uma solicitação de senha de administrador (pkexec, zenity ou kdialog), mas nenhuma foi encontrada.",
+      "verificationFailed": "Não foi possível verificar a atualização: a assinatura, a soma de verificação ou os metadados não correspondem.",
+      "insecureDownload": "O download da atualização não foi fornecido via HTTPS.",
+      "downloadTooLarge": "O download da atualização é maior do que o esperado.",
+      "missingAsset": "A versão não tem nenhum arquivo de atualização chamado {{name}}.",
+      "unexpectedAsset": "A versão lista um arquivo de atualização inesperado ou duplicado.",
+      "argumentsTooLong": "Os argumentos de inicialização são longos demais para serem mantidos durante uma atualização.",
+      "startupPending": "A atualização anterior ainda está confirmando que iniciou. Tente novamente em alguns segundos.",
+      "versionMustIncrease": "Uma atualização seguinte deve ter uma versão mais recente.",
+      "invalidBundle": "O aplicativo portátil não é um pacote de aplicativo macOS completo.",
+      "missingBackup": "O backup da versão atual está ausente.",
+      "invalidStagingDirectory": "A pasta de preparação da atualização é inválida.",
+      "helperFailed": "O assistente de atualização não pôde ser iniciado ({{error}}) e a reinicialização do aplicativo falhou: {{restart}}",
+      "processUnavailable": "Não foi possível supervisionar o processo do aplicativo atualizado.",
+      "ownedByAnotherUser": "O arquivo do aplicativo pertence a outro usuário."
     },
     "settings": {
       "loadFailed": "Falha ao carregar configurações: {{error}}",
@@ -3302,7 +3315,8 @@
     },
     "rclone": {
       "updated": "Rclone foi atualizado com sucesso (canal {{channel}})",
-      "mountPluginInstalled": "O plugin de montagem foi instalado com sucesso"
+      "mountPluginInstalled": "O plugin de montagem foi instalado com sucesso",
+      "remoteRestartRequired": "O Rclone foi atualizado no servidor remoto. Por favor, reinicie manualmente o serviço de Rclone remoto para aplicar a nova versão."
     },
     "job": {
       "stopped": "O tarefa foi concluído com sucesso",

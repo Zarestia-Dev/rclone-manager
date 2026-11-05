@@ -268,8 +268,7 @@
     "skipped": "Rclone sürümü {{version}} atlandı",
     "restored": "Rclone sürümü {{version}} geri yüklendi",
     "autoCheckEnabled": "Rclone otomatik güncelleme kontrolü etkinleştirildi",
-    "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı",
-    "manualRestartRequired": "Rclone uzak sunucuda güncellendi. Yeni sürümü uygulamak için lütfen uzak rclone servisini manuel olarak yeniden başlatın."
+    "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı"
   },
   "alerts": {
     "title": "Uyarılar ve Bildirimler",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "İndirilen güncellemeyi sil",
     "cancelFailed": "Güncelleme indirmesi iptal edilemedi.",
-    "installSuccess": "Güncelleme kuruldu. Lütfen uygulamayı yeniden başlatın.",
+    "downloadComplete": "Güncelleme indirildi ve kuruluma hazır.",
     "checkFailed": "Güncellemeler kontrol edilemedi: {{error}}",
     "installFailed": "Güncelleme kurulamadı: {{error}}",
     "restartFailed": "Uygulama yeniden başlatılamadı: {{error}}",
@@ -2022,10 +2021,10 @@
       "wiki": "Wiki Sayfası",
       "reportIssues": "Hata Bildir",
       "rcloneWebsite": "Rclone Web Sitesi",
-      "readyToRestart": "Yeniden Başlatma Gerekli",
-      "restartDescription": "Bir güncelleme yüklendi. Değişiklikleri uygulamak için lütfen uygulamayı yeniden başlatın.",
-      "rcloneRestartRequired": "Rclone Yeniden Başlatma Gerekli",
-      "rcloneRestartDescription": "Bir Rclone güncellemesi yüklendi. Değişiklikleri uygulamak için lütfen motoru yeniden başlatın.",
+      "readyToRestart": "Güncelleme Hazır",
+      "restartDescription": "Güncelleme indirildi. Yüklemek için lütfen uygulamayı yeniden başlatın.",
+      "rcloneRestartRequired": "Rclone Güncellemesi Hazır",
+      "rcloneRestartDescription": "Rclone güncellemesi indirildi. Yüklemek için lütfen motoru yeniden başlatın.",
       "restartNow": "Şimdi Yeniden Başlat",
       "updateAvailable": "Güncelleme Mevcut",
       "version": "Sürüm",
@@ -2117,7 +2116,8 @@
       "clear": "Temizle",
       "cacheCleared": "Önbellek başarıyla temizlendi",
       "cacheClearFailed": "Önbellek temizlenemedi",
-      "openAur": "AUR sayfasını aç"
+      "openAur": "AUR sayfasını aç",
+      "lastChecked": "Son kontrol: {{time}}"
     },
     "logs": {
       "fetchError": "Uygulama günlükleri alınamadı.",
@@ -3279,13 +3279,11 @@
     },
     "updater": {
       "noPending": "Bekleyen güncelleme yok",
-      "invalidUrl": "Geçersiz URL: {{error}}",
       "github": "GitHub API hatası: {{error}}",
       "githubRateLimit": "GitHub API istek sınırı aşıldı. Lütfen daha sonra tekrar deneyin.",
       "updateFailed": "Güncelleme başarısız: {{error}}",
       "updateUnavailable": "Güncelleme dosyası artık mevcut değil: {{error}}",
       "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",
-      "restartFailed": "Yeniden başlatma başarısız: {{error}}",
       "notWritable": "Güncelleme yolu yazılabilir değil",
       "rollback": {
         "exited": "Güncellenen uygulama, başlatmayı doğrulamadan kapandı (kod {{code}}).",
@@ -3300,7 +3298,22 @@
       "disabledByAdministrator": "Uygulama güncellemeleri yönetici tarafından devre dışı bırakıldı.",
       "unsupportedInstallation": "Bu kurulum otomatik güncelleme yüklemeyi desteklemiyor.",
       "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
-      "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır."
+      "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır.",
+      "noPrivilegePrompt": "Bu paketin kurulması için bir yönetici parolası istemi (pkexec, zenity veya kdialog) gerekiyor, ancak hiçbiri bulunamadı.",
+      "verificationFailed": "Güncelleme doğrulanamadı: imzası, sağlama toplamı veya meta verileri eşleşmiyor.",
+      "insecureDownload": "Güncelleme indirmesi HTTPS üzerinden sunulmadı.",
+      "downloadTooLarge": "Güncelleme indirmesi beklenenden büyük.",
+      "missingAsset": "Sürümde {{name}} adlı bir güncelleme dosyası yok.",
+      "unexpectedAsset": "Sürümde beklenmeyen veya yinelenen bir güncelleme dosyası var.",
+      "argumentsTooLong": "Başlatma argümanları, güncelleme boyunca korunamayacak kadar uzun.",
+      "startupPending": "Önceki güncelleme hâlâ başlatıldığını doğruluyor. Birkaç saniye sonra tekrar deneyin.",
+      "versionMustIncrease": "Ardından gelen bir güncellemenin daha yeni bir sürümü olmalıdır.",
+      "invalidBundle": "Taşınabilir uygulama eksiksiz bir macOS uygulama paketi değil.",
+      "missingBackup": "Geçerli sürümün yedeği bulunamadı.",
+      "invalidStagingDirectory": "Güncelleme hazırlık klasörü geçersiz.",
+      "helperFailed": "Güncelleme yardımcısı başlatılamadı ({{error}}) ve uygulama yeniden başlatılamadı: {{restart}}",
+      "processUnavailable": "Güncellenen uygulamanın işlemi izlenemedi.",
+      "ownedByAnotherUser": "Uygulama dosyası başka bir kullanıcıya ait."
     },
     "settings": {
       "loadFailed": "Ayarlar yüklenemedi: {{error}}",
@@ -3343,7 +3356,8 @@
     },
     "rclone": {
       "updated": "Rclone başarıyla güncellendi ({{channel}} kanalı)",
-      "mountPluginInstalled": "Bağlama eklentisi başarıyla kuruldu"
+      "mountPluginInstalled": "Bağlama eklentisi başarıyla kuruldu",
+      "remoteRestartRequired": "Rclone uzak sunucuda güncellendi. Yeni sürümü uygulamak için lütfen uzak rclone servisini manuel olarak yeniden başlatın."
     },
     "job": {
       "stopped": "İş başarıyla durduruldu",

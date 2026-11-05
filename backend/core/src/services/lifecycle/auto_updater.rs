@@ -75,7 +75,7 @@ async fn run_update_checks(app: &AppHandle) -> bool {
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
         info!("Checking for app updates (channel: {channel})...");
-        if let Err(e) = check_app_update(app, &channel).await {
+        if let Err(e) = crate::services::updates::fetch_update(app.clone(), channel).await {
             warn!("App update check failed: {e}");
         }
     }
@@ -91,13 +91,6 @@ async fn run_update_checks(app: &AppHandle) -> bool {
         }
     }
     true
-}
-
-async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
-    crate::services::updates::fetch_update(app.clone(), channel.to_string())
-        .await
-        .map(|_| ())
-        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

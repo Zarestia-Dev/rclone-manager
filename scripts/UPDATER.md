@@ -51,11 +51,10 @@ do not replace earlier queued jobs. Any additional writer must join the relevant
 group. These jobs do not publish the local signature sidecars or individual per-target
 JSON files.
 
-New clients can still read legacy per-target manifests when a release has no catalog.
-Already installed clients that only understand legacy filenames need a manual update
-to this version before they can use catalog-only releases. If such clients have been
-distributed, keep the legacy signed manifests alongside the catalog for a transition
-release before removing them. Do not alter previously published releases.
+Clients read only the catalog: a release without `updater.json` is not offered to
+direct installers. No published release ever carried per-target manifests (releases
+before 0.3.4 have no signed metadata at all), so there is no legacy format to keep.
+Do not alter previously published releases.
 
 Standalone server releases publish one ZIP per OS and architecture, plus the custom
 catalog:
@@ -72,7 +71,7 @@ signed `archive` metadata as portable packages, with `binaryPath` set to
 `rclone-manager-server/rclone-manager-server[.exe]`. The same ZIP serves manual
 downloads and automatic updates, which extract only the executable. Server ZIPs
 never contain an application bundle, including on macOS. A server manifest without
-`archive` is invalid, and server updates have no legacy per-target manifests.
+`archive` is invalid.
 There are no separate checksum files.
 
 Android publishes one `android-<arch>-<version>.apk` per architecture from

@@ -268,8 +268,7 @@
     "skipped": "Rclone version {{version}} skipped",
     "restored": "Rclone version {{version}} restored",
     "autoCheckEnabled": "Rclone auto-check updates enabled",
-    "autoCheckDisabled": "Rclone auto-check updates disabled",
-    "manualRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
+    "autoCheckDisabled": "Rclone auto-check updates disabled"
   },
   "alerts": {
     "title": "Alerts & Notifications",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "Discard download",
     "cancelFailed": "Failed to cancel the update download.",
-    "installSuccess": "Update installed. Please restart the app.",
+    "downloadComplete": "Update downloaded and ready to install.",
     "checkFailed": "Failed to check for updates: {{error}}",
     "installFailed": "Failed to install update: {{error}}",
     "restartFailed": "Failed to restart application: {{error}}",
@@ -2022,10 +2021,10 @@
       "wiki": "Wiki Page",
       "reportIssues": "Report Issues",
       "rcloneWebsite": "Rclone Website",
-      "readyToRestart": "Restart Required",
-      "restartDescription": "An update has been installed. Please restart the application to apply the changes.",
-      "rcloneRestartRequired": "Rclone Restart Required",
-      "rcloneRestartDescription": "An Rclone update has been installed. Please restart the engine to apply the changes.",
+      "readyToRestart": "Update Ready",
+      "restartDescription": "The update has been downloaded. Restart the application to install it.",
+      "rcloneRestartRequired": "Rclone Update Ready",
+      "rcloneRestartDescription": "The Rclone update has been downloaded. Restart the engine to install it.",
       "restartNow": "Restart Now",
       "updateAvailable": "Update Available",
       "version": "Version",
@@ -2117,7 +2116,8 @@
       "clear": "Clear",
       "cacheCleared": "Cache cleared successfully",
       "cacheClearFailed": "Failed to clear cache",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Last checked: {{time}}"
     },
     "logs": {
       "fetchError": "Failed to fetch application logs.",
@@ -3279,13 +3279,11 @@
     },
     "updater": {
       "noPending": "There is no pending update",
-      "invalidUrl": "Invalid URL: {{error}}",
       "github": "GitHub API error: {{error}}",
       "githubRateLimit": "GitHub API rate limit exceeded. Please try again later.",
       "updateFailed": "Update failed: {{error}}",
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",
-      "restartFailed": "Restart failed: {{error}}",
       "notWritable": "Update path is not writable",
       "rollback": {
         "exited": "The updated application exited before it confirmed startup (code {{code}}).",
@@ -3300,7 +3298,22 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "Installing this package needs an administrator password prompt (pkexec, zenity or kdialog), but none was found.",
+      "verificationFailed": "The update could not be verified: its signature, checksum or metadata does not match.",
+      "insecureDownload": "The update download was not served over HTTPS.",
+      "downloadTooLarge": "The update download is larger than expected.",
+      "missingAsset": "The release has no update file named {{name}}.",
+      "unexpectedAsset": "The release lists an unexpected or duplicate update file.",
+      "argumentsTooLong": "The launch arguments are too long to keep across an update.",
+      "startupPending": "The previous update is still confirming that it started. Try again in a few seconds.",
+      "versionMustIncrease": "A follow-up update must have a newer version.",
+      "invalidBundle": "The portable app is not a complete macOS app bundle.",
+      "missingBackup": "The backup of the current version is missing.",
+      "invalidStagingDirectory": "The update staging folder is invalid.",
+      "helperFailed": "The update helper could not start ({{error}}), and restarting the application failed: {{restart}}",
+      "processUnavailable": "The updated application's process could not be supervised.",
+      "ownedByAnotherUser": "The application file belongs to another user."
     },
     "settings": {
       "loadFailed": "Failed to load settings: {{error}}",
@@ -3343,7 +3356,8 @@
     },
     "rclone": {
       "updated": "Rclone updated successfully ({{channel}} channel)",
-      "mountPluginInstalled": "Mount plugin installed successfully"
+      "mountPluginInstalled": "Mount plugin installed successfully",
+      "remoteRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
     },
     "job": {
       "stopped": "Job stopped successfully",

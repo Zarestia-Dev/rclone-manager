@@ -6,6 +6,31 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub(super) const DIRECTORY_ENV: &str = "RCMAN_UPDATE_HEALTH_DIRECTORY";
 pub(super) const TOKEN_ENV: &str = "RCMAN_UPDATE_HEALTH_TOKEN";
 
+/// The staging directory and attempt token a supervisor started this process with.
+static TRIAL: std::sync::OnceLock<Option<(PathBuf, String)>> = std::sync::OnceLock::new();
+
+/// Take the trial out of the environment, so rclone, scripts and a restarted
+/// application never inherit a stale receipt directory or token. Entry points
+/// call this before creating threads.
+pub(super) fn capture_trial() {
+    let trial = std::env::var_os(DIRECTORY_ENV)
+        .map(PathBuf::from)
+        .zip(std::env::var(TOKEN_ENV).ok());
+    unsafe {
+        std::env::remove_var(DIRECTORY_ENV);
+        std::env::remove_var(TOKEN_ENV);
+    }
+    let _ = TRIAL.set(trial);
+}
+
+/// The staging directory of the trial this process runs in, if any.
+pub(super) fn trial_directory() -> Option<&'static Path> {
+    TRIAL
+        .get()?
+        .as_ref()
+        .map(|(directory, _)| directory.as_path())
+}
+
 #[derive(Default)]
 pub struct StartupHealth {
     core: AtomicBool,
@@ -63,16 +88,13 @@ fn report_if_ready(health: &StartupHealth) {
     if !health.ready() {
         return;
     }
-    let Some(directory) = std::env::var_os(DIRECTORY_ENV).map(PathBuf::from) else {
-        return;
-    };
-    let Ok(token) = std::env::var(TOKEN_ENV) else {
+    let Some((directory, token)) = TRIAL.get().and_then(Option::as_ref) else {
         return;
     };
     let result = (|| -> Result<(), Box<dyn std::error::Error>> {
         let executable = std::env::current_exe()?.canonicalize()?;
         let directory = directory.canonicalize()?;
-        confirm_startup(&directory, &executable, &token, env!("CARGO_PKG_VERSION"))?;
+        confirm_startup(&directory, &executable, token, env!("CARGO_PKG_VERSION"))?;
         Ok(())
     })();
     match result {
@@ -130,6 +152,34 @@ pub(super) fn confirmed(directory: &Path, token: &str, version: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Runs in a separate test process, which owns its environment.
+    #[test]
+    fn trial_fixture() {
+        let Some(expected) = std::env::var_os("RCMAN_TEST_EXPECTED_TRIAL") else {
+            return;
+        };
+        capture_trial();
+        assert_eq!(trial_directory(), Some(Path::new(&expected)));
+        assert!(std::env::var_os(DIRECTORY_ENV).is_none());
+        assert!(std::env::var_os(TOKEN_ENV).is_none());
+    }
+
+    #[test]
+    fn the_trial_is_taken_out_of_the_environment_for_child_processes() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "services::updates::health::tests::trial_fixture",
+                "--nocapture",
+            ])
+            .env(DIRECTORY_ENV, "/stage")
+            .env(TOKEN_ENV, "token")
+            .env("RCMAN_TEST_EXPECTED_TRIAL", "/stage")
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
 
     #[test]
     fn startup_receipts_use_the_same_staging_directory_as_the_installer() {

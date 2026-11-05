@@ -137,6 +137,15 @@ pub const ALERT_FIRED: &str = "alert_fired";
 
 pub const APP_EVENT: &str = "app_event";
 
+/// `status` values of updater [`APP_EVENT`]s, consumed by `EventListenersService`.
+/// `UPDATE_FOUND`/`RCLONE_UPDATE_FOUND` carry an `UpdateInfo` (services/updates,
+/// rclone/binaries/updater); `DOWNLOAD_PROGRESS` a `DownloadStatus` (updates/install).
+pub mod app_event_status {
+    pub const UPDATE_FOUND: &str = "update_found";
+    pub const RCLONE_UPDATE_FOUND: &str = "rclone_update_found";
+    pub const DOWNLOAD_PROGRESS: &str = "download_progress";
+}
+
 /// Emitted by app/rclone updaters after state changes; consumed by frontend update services.
 pub const UPDATER_STATE_CHANGED: &str = "updater_state_changed";
 

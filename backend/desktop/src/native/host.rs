@@ -20,6 +20,17 @@ impl Host for NativeHost {
             UpdateMethod::Unavailable
         }
     }
+    #[cfg(all(feature = "updater", target_os = "linux"))]
+    fn native_bundle(&self) -> Option<crate::services::updates::policy::InstallationKind> {
+        use crate::services::updates::policy::InstallationKind;
+        use tauri::utils::config::BundleType;
+        match tauri::utils::platform::bundle_type()? {
+            BundleType::Deb => Some(InstallationKind::Deb),
+            BundleType::Rpm => Some(InstallationKind::Rpm),
+            BundleType::AppImage => Some(InstallationKind::Appimage),
+            _ => None,
+        }
+    }
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<crate::services::paths::AppPaths, String> {
         resolve_paths(&self.0)
     }
@@ -160,8 +171,8 @@ impl Host for NativeHost {
     async fn check_update(
         &self,
         release: &crate::utils::github_client::Release,
-        metadata: &mut crate::utils::types::updater::UpdateMetadata,
+        expected_version: &str,
     ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
-        super::updater::check_native_updater(&self.0, release, metadata).await
+        super::updater::check_native_updater(&self.0, release, expected_version).await
     }
 }

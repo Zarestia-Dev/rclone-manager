@@ -268,8 +268,7 @@
     "skipped": "Version de rclone {{version}} ignorée",
     "restored": "Version de rclone {{version}} restaurée",
     "autoCheckEnabled": "Activer les mises à jour de vérification automatique de rclone",
-    "autoCheckDisabled": "Rclone auto-vérification des mises à jour désactivée",
-    "manualRestartRequired": "Rclone a été mis à jour sur le serveur distant. Veuillez redémarrer le service de Rclone distant manuellement pour appliquer la nouvelle version."
+    "autoCheckDisabled": "Rclone auto-vérification des mises à jour désactivée"
   },
   "alerts": {
     "title": "Alertes et notifications",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "Supprimer le téléchargement",
     "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",
-    "installSuccess": "Mise à jour installée. Veuillez redémarrer l'application.",
+    "downloadComplete": "Mise à jour téléchargée et prête à être installée.",
     "checkFailed": "Échec de la vérification des mises à jour: {{error}}",
     "installFailed": "Échec de l'installation de la mise à jour: {{error}}",
     "restartFailed": "Impossible de redémarrer l'application : {{error}}",
@@ -1981,10 +1980,10 @@
       "wiki": "Page Wiki",
       "reportIssues": "Signaler des problèmes",
       "rcloneWebsite": "Site Web de rclone",
-      "readyToRestart": "Redémarrage requis",
-      "restartDescription": "Une mise à jour a été installée. Veuillez redémarrer l'application pour appliquer les modifications.",
-      "rcloneRestartRequired": "Redémarrage du rclone requis",
-      "rcloneRestartDescription": "Une mise à jour de rclone a été installée. Veuillez redémarrer le moteur pour appliquer les modifications.",
+      "readyToRestart": "Mise à jour prête",
+      "restartDescription": "La mise à jour a été téléchargée. Redémarrez l'application pour l'installer.",
+      "rcloneRestartRequired": "Mise à jour de rclone prête",
+      "rcloneRestartDescription": "La mise à jour de rclone a été téléchargée. Redémarrez le moteur pour l'installer.",
       "restartNow": "Redémarrer maintenant",
       "updateAvailable": "Mise à jour disponible",
       "version": "Version",
@@ -2076,7 +2075,8 @@
       "clear": "Effacer",
       "cacheCleared": "Cache effacé avec succès",
       "cacheClearFailed": "Échec du vidage du cache",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Dernière vérification : {{time}}"
     },
     "logs": {
       "fetchError": "Impossible de récupérer les logs de l'application.",
@@ -3238,13 +3238,11 @@
     },
     "updater": {
       "noPending": "Aucune mise à jour en attente",
-      "invalidUrl": "URL invalide : {{error}}",
       "github": "GitHub API erreur : {{error}}",
       "githubRateLimit": "Limite de requêtes de l'API GitHub dépassée. Veuillez réessayer plus tard.",
       "updateFailed": "Échec de la mise à jour : {{error}}",
       "updateUnavailable": "La mise à jour de l'artefact n'est plus disponible : {{error}}",
       "relaunchFailed": "La relance a échoué : {{error}}",
-      "restartFailed": "Redémarrage échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
       "rollback": {
         "exited": "L'application mise à jour s'est arrêtée avant de confirmer son démarrage (code {{code}}).",
@@ -3259,7 +3257,22 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "L'installation de ce paquet nécessite une demande de mot de passe administrateur (pkexec, zenity ou kdialog), mais aucune n'a été trouvée.",
+      "verificationFailed": "La mise à jour n'a pas pu être vérifiée : sa signature, sa somme de contrôle ou ses métadonnées ne correspondent pas.",
+      "insecureDownload": "Le téléchargement de la mise à jour n'a pas été fourni via HTTPS.",
+      "downloadTooLarge": "Le téléchargement de la mise à jour est plus volumineux que prévu.",
+      "missingAsset": "La version ne contient aucun fichier de mise à jour nommé {{name}}.",
+      "unexpectedAsset": "La version contient un fichier de mise à jour inattendu ou en double.",
+      "argumentsTooLong": "Les arguments de lancement sont trop longs pour être conservés lors d'une mise à jour.",
+      "startupPending": "La mise à jour précédente confirme encore son démarrage. Réessayez dans quelques secondes.",
+      "versionMustIncrease": "Une mise à jour suivante doit avoir une version plus récente.",
+      "invalidBundle": "L'application portable n'est pas un paquet d'application macOS complet.",
+      "missingBackup": "La sauvegarde de la version actuelle est introuvable.",
+      "invalidStagingDirectory": "Le dossier de préparation de la mise à jour n'est pas valide.",
+      "helperFailed": "L'assistant de mise à jour n'a pas pu démarrer ({{error}}) et le redémarrage de l'application a échoué : {{restart}}",
+      "processUnavailable": "Le processus de l'application mise à jour n'a pas pu être surveillé.",
+      "ownedByAnotherUser": "Le fichier de l'application appartient à un autre utilisateur."
     },
     "settings": {
       "loadFailed": "Échec du chargement des paramètres : {{error}}",
@@ -3302,7 +3315,8 @@
     },
     "rclone": {
       "updated": "Rclone mis à jour avec succès ( canal{{channel}})",
-      "mountPluginInstalled": "Plug-in de montage installé avec succès"
+      "mountPluginInstalled": "Plug-in de montage installé avec succès",
+      "remoteRestartRequired": "Rclone a été mis à jour sur le serveur distant. Veuillez redémarrer le service de Rclone distant manuellement pour appliquer la nouvelle version."
     },
     "job": {
       "stopped": "Job arrêté avec succès",

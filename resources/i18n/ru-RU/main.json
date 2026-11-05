@@ -268,8 +268,7 @@
     "skipped": "Версия Rclone {{version}} пропущена",
     "restored": "Версия Rclone {{version}} восстановлена",
     "autoCheckEnabled": "Автоматическая проверка обновлений Rclone включена",
-    "autoCheckDisabled": "Автоматическая проверка обновлений Rclone отключена",
-    "manualRestartRequired": "Rclone обновлён на удалённом сервере. Перезапустите удалённую службу rclone вручную, чтобы применить новую версию."
+    "autoCheckDisabled": "Автоматическая проверка обновлений Rclone отключена"
   },
   "alerts": {
     "title": "Оповещения и уведомления",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "Удалить загруженное обновление",
     "cancelFailed": "Не удалось отменить загрузку обновления.",
-    "installSuccess": "Обновление установлено. Перезапустите приложение.",
+    "downloadComplete": "Обновление загружено и готово к установке.",
     "checkFailed": "Не удалось проверить обновления: {{error}}",
     "installFailed": "Не удалось установить обновление: {{error}}",
     "restartFailed": "Не удалось перезапустить приложение: {{error}}",
@@ -1981,10 +1980,10 @@
       "wiki": "Вики",
       "reportIssues": "Сообщить о проблеме",
       "rcloneWebsite": "Сайт Rclone",
-      "readyToRestart": "Требуется перезапуск",
-      "restartDescription": "Обновление установлено. Перезапустите приложение, чтобы применить изменения.",
-      "rcloneRestartRequired": "Требуется перезапуск Rclone",
-      "rcloneRestartDescription": "Обновление Rclone установлено. Перезапустите движок, чтобы применить изменения.",
+      "readyToRestart": "Обновление готово",
+      "restartDescription": "Обновление загружено. Перезапустите приложение, чтобы установить его.",
+      "rcloneRestartRequired": "Обновление Rclone готово",
+      "rcloneRestartDescription": "Обновление Rclone загружено. Перезапустите движок, чтобы установить его.",
       "restartNow": "Перезапустить сейчас",
       "updateAvailable": "Доступно обновление",
       "version": "Версия",
@@ -2076,7 +2075,8 @@
       "clear": "Очистить",
       "cacheCleared": "Кэш успешно очищен",
       "cacheClearFailed": "Не удалось очистить кэш",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Последняя проверка: {{time}}"
     },
     "logs": {
       "fetchError": "Не удалось получить журналы приложения.",
@@ -3238,13 +3238,11 @@
     },
     "updater": {
       "noPending": "Нет ожидающего обновления",
-      "invalidUrl": "Некорректный URL: {{error}}",
       "github": "Ошибка API GitHub: {{error}}",
       "githubRateLimit": "Превышен лимит запросов к API GitHub. Пожалуйста, повторите попытку позже.",
       "updateFailed": "Ошибка обновления: {{error}}",
       "updateUnavailable": "Файл обновления больше недоступен: {{error}}",
       "relaunchFailed": "Не удалось повторно запустить приложение: {{error}}",
-      "restartFailed": "Не удалось перезапустить: {{error}}",
       "notWritable": "Нет прав на запись в папку обновления",
       "rollback": {
         "exited": "Обновлённое приложение завершилось до подтверждения запуска (код {{code}}).",
@@ -3259,7 +3257,22 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "Для установки этого пакета нужен запрос пароля администратора (pkexec, zenity или kdialog), но ни один из них не найден.",
+      "verificationFailed": "Не удалось проверить обновление: подпись, контрольная сумма или метаданные не совпадают.",
+      "insecureDownload": "Обновление было загружено не по HTTPS.",
+      "downloadTooLarge": "Размер загружаемого обновления больше ожидаемого.",
+      "missingAsset": "В выпуске нет файла обновления с именем {{name}}.",
+      "unexpectedAsset": "В выпуске указан неожиданный или повторяющийся файл обновления.",
+      "argumentsTooLong": "Аргументы запуска слишком длинные, чтобы сохранить их при обновлении.",
+      "startupPending": "Предыдущее обновление ещё подтверждает успешный запуск. Повторите попытку через несколько секунд.",
+      "versionMustIncrease": "Следующее обновление должно иметь более новую версию.",
+      "invalidBundle": "Портативное приложение не является полным пакетом приложения macOS.",
+      "missingBackup": "Резервная копия текущей версии отсутствует.",
+      "invalidStagingDirectory": "Папка подготовки обновления недействительна.",
+      "helperFailed": "Не удалось запустить помощник обновления ({{error}}), и перезапуск приложения завершился ошибкой: {{restart}}",
+      "processUnavailable": "Не удалось отслеживать процесс обновлённого приложения.",
+      "ownedByAnotherUser": "Файл приложения принадлежит другому пользователю."
     },
     "settings": {
       "loadFailed": "Не удалось загрузить настройки: {{error}}",
@@ -3302,7 +3315,8 @@
     },
     "rclone": {
       "updated": "Rclone успешно обновлён (канал: {{channel}})",
-      "mountPluginInstalled": "Компонент подключения дисков успешно установлен"
+      "mountPluginInstalled": "Компонент подключения дисков успешно установлен",
+      "remoteRestartRequired": "Rclone обновлён на удалённом сервере. Перезапустите удалённую службу rclone вручную, чтобы применить новую версию."
     },
     "job": {
       "stopped": "Задание успешно остановлено",

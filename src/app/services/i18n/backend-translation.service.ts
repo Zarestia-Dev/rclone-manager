@@ -113,12 +113,28 @@ export class BackendTranslationService {
     return /^[a-z0-9_]+(\.[a-z0-9_]+)+$/i.test(message.trim());
   }
 
+  /** Backend messages nest localized errors in params, like the backend's own resolver. */
+  private resolveParams(params?: Record<string, string>): Record<string, string> | undefined {
+    if (!params) return params;
+    return Object.fromEntries(
+      Object.entries(params).map(([name, value]) => {
+        if (typeof value !== 'string') return [name, value];
+        const nested = this.tryParseLocalizedError(value);
+        if (nested) return [name, this.translateWithFallback(nested.key, nested.params, value)];
+        const key = value.trim();
+        return /^backend(Errors|Success)\./.test(key) && this.looksLikeTranslationKey(key)
+          ? [name, this.translateWithFallback(key, undefined, value)]
+          : [name, value];
+      })
+    );
+  }
+
   private translateWithFallback(
     key: string,
     params?: Record<string, string>,
     fallback?: string
   ): string {
-    const translated = this.translate.instant(key, params);
+    const translated = this.translate.instant(key, this.resolveParams(params));
     // If translation returns the key itself, it wasn't found
     return translated !== key ? translated : (fallback ?? key);
   }

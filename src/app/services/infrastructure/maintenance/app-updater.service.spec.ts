@@ -8,6 +8,7 @@ import {
   DownloadStatus,
   UpdateInfo,
   UpdatePolicy,
+  UpdaterSnapshot,
   UpdaterStateChanged,
 } from '@app/types';
 import { AppUpdaterService } from './app-updater.service';
@@ -52,7 +53,8 @@ describe('AppUpdaterService state restoration', () => {
     info = { ...available, status: BackendUpdateStatus.Downloading, download };
     policy = { installation: 'portable', method: 'binary', canInstall: true };
     invoke.mockReset().mockImplementation(async (command: string) => {
-      if (command === 'get_app_update_info' || command === 'fetch_update') return info;
+      if (command === 'get_app_update_info') return { update: info, checking: false };
+      if (command === 'fetch_update') return info;
       if (command === 'is_librclone') return false;
       if (command === 'get_update_policy') return policy;
       return null;
@@ -175,7 +177,7 @@ describe('AppUpdaterService state restoration', () => {
 
   it('ignores an older snapshot that arrives after a newer state notification', async () => {
     await service.initialize();
-    let resolve!: (info: UpdateInfo | null) => void;
+    let resolve!: (snapshot: UpdaterSnapshot) => void;
     invoke.mockImplementationOnce(
       () =>
         new Promise(done => {
@@ -186,9 +188,34 @@ describe('AppUpdaterService state restoration', () => {
     info = { ...available, status: BackendUpdateStatus.ReadyToRestart };
     changed.next({ target: 'app' });
     await Promise.resolve();
-    resolve({ ...available, status: BackendUpdateStatus.Downloading });
+    resolve({
+      update: { ...available, status: BackendUpdateStatus.Downloading },
+      checking: false,
+    });
     await Promise.resolve();
     expect(service.readyToRestart()).toBe(true);
+  });
+
+  it('shows checks, failures and rollbacks the backend recorded, also after a reload', async () => {
+    invoke.mockImplementation(async (command: string) => {
+      if (command === 'get_app_update_info') {
+        return {
+          update: null,
+          checking: true,
+          lastCheckedAt: '2026-11-05T10:00:00Z',
+          error: 'backendErrors.updater.githubRateLimit',
+          rolledBack: [{ version: '1.2.0', reason: 'did not start' }],
+        } satisfies UpdaterSnapshot;
+      }
+      if (command === 'get_update_policy') return policy;
+      return null;
+    });
+    await service.initialize();
+    // A scheduled check, or one from another window, shows as running here.
+    expect(service.isChecking()).toBe(true);
+    expect(service.lastCheckedAt()).toBe('2026-11-05T10:00:00Z');
+    expect(service.checkError()).toBe('backendErrors.updater.githubRateLimit');
+    expect(service.rolledBack()).toEqual([{ version: '1.2.0', reason: 'did not start' }]);
   });
 
   it('keeps the active state when a status request fails', async () => {
@@ -303,8 +330,6 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.canAutoInstall()).toBe(false);
     await service.initialize();
     expect(service.canAutoInstall()).toBe(true);
-    expect(invoke).not.toHaveBeenCalledWith('get_build_type', undefined);
-    expect(invoke).not.toHaveBeenCalledWith('can_auto_install', undefined);
   });
 
   it('recovers eligibility and clears the old reason when a fresh policy permits installation', async () => {

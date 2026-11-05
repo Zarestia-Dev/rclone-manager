@@ -2,6 +2,15 @@ import { signal } from '@angular/core';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { UpdateInfo, BackendUpdateStatus } from '@app/types';
 
+/** A download, installation or staged update that a check, skip or channel change must keep. */
+export function isUpdateInFlight(status: BackendUpdateStatus | undefined): boolean {
+  return (
+    status === BackendUpdateStatus.Downloading ||
+    status === BackendUpdateStatus.Installing ||
+    status === BackendUpdateStatus.ReadyToRestart
+  );
+}
+
 export interface UpdateSettingsConfig {
   namespace: string;
   skippedVersionsKey: string;
@@ -9,10 +18,7 @@ export interface UpdateSettingsConfig {
   autoCheckKey: string;
 }
 
-/**
- * Manages persisted settings for update services: skipped versions, update channel, and auto-check flag.
- * Provides a cleaner alternative to inheritance-based settings management.
- */
+/** Persisted update settings: skipped versions, update channel and the auto-check flag. */
 export class UpdateSettingsManager {
   private readonly _skippedVersions = signal<string[]>([]);
   private readonly _updateChannel = signal<string>('stable');
@@ -66,10 +72,7 @@ export class UpdateSettingsManager {
    */
   computeAvailableUpdate(update: UpdateInfo | null): UpdateInfo | null {
     if (!update) return null;
-    return update.status === BackendUpdateStatus.Downloading ||
-      update.status === BackendUpdateStatus.Installing ||
-      update.status === BackendUpdateStatus.ReadyToRestart ||
-      !this.isVersionSkipped(update.version)
+    return isUpdateInFlight(update.status) || !this.isVersionSkipped(update.version)
       ? update
       : null;
   }

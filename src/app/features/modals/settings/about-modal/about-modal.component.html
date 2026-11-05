@@ -195,6 +195,9 @@
             }
           </div>
 
+          @for (rollback of appRolledBack(); track $index) {
+            <app-alert-banner severity="warning" [description]="rollback" />
+          }
           @if (appInstallationFailure()) {
             <app-alert-banner severity="error" [description]="appInstallationFailure()" />
           }
@@ -320,7 +323,9 @@
                       (click)="cancelAppUpdate()"
                       [disabled]="appIsCancelling()"
                     >
-                      <mat-icon [svgIcon]="appIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
+                      <mat-icon
+                        [svgIcon]="appIsCancelling() ? 'spinner' : 'circle-xmark'"
+                      ></mat-icon>
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {
@@ -347,6 +352,12 @@
               (appIsChecking() ? 'modals.about.checking' : 'modals.about.checkUpdates') | translate
             }}
           </button>
+          <ng-container
+            *ngTemplateOutlet="
+              checkStatus;
+              context: { at: appLastCheckedAt(), error: appCheckError() }
+            "
+          ></ng-container>
 
           <div class="settings-section">
             <h4>{{ 'modals.about.updateSettings' | translate }}</h4>
@@ -534,6 +545,9 @@
             }
           </div>
           @if (rcloneUpdateEnabled()) {
+            @if (rcloneNotice()) {
+              <app-alert-banner severity="info" [description]="rcloneNotice()" />
+            }
             @if (rcloneReadyToRestart()) {
               <ng-container
                 *ngTemplateOutlet="
@@ -597,7 +611,9 @@
                       (click)="cancelRcloneUpdate()"
                       [disabled]="rcloneIsCancelling()"
                     >
-                      <mat-icon [svgIcon]="rcloneIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
+                      <mat-icon
+                        [svgIcon]="rcloneIsCancelling() ? 'spinner' : 'circle-xmark'"
+                      ></mat-icon>
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {
@@ -627,6 +643,12 @@
                   | translate
               }}
             </button>
+            <ng-container
+              *ngTemplateOutlet="
+                checkStatus;
+                context: { at: rcloneLastCheckedAt(), error: rcloneUpdateError() }
+              "
+            ></ng-container>
 
             <div class="settings-section">
               <h4>{{ 'modals.about.rcloneUpdateSettings' | translate }}</h4>
@@ -860,6 +882,17 @@
 }
 
 <!-- Up To Date template -->
+<ng-template #checkStatus let-at="at" let-error="error">
+  @if (error) {
+    <app-alert-banner severity="warning" [description]="error" />
+  }
+  @if (at) {
+    <p class="last-checked">
+      {{ 'modals.about.lastChecked' | translate: { time: at | formatRelativeDate } }}
+    </p>
+  }
+</ng-template>
+
 <ng-template #upToDateCard let-title>
   <div class="update-card up-to-date">
     <mat-icon svgIcon="check-circle"></mat-icon>

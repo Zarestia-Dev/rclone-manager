@@ -105,18 +105,6 @@ mod tests {
                 .unwrap(),
             json!(cfg!(feature = "librclone"))
         );
-        assert_eq!(
-            bridge_dispatch(&app, "get_build_type", json!({}))
-                .await
-                .unwrap(),
-            json!(crate::utils::app::platform::get_build_type())
-        );
-        assert_eq!(
-            bridge_dispatch(&app, "can_auto_install", json!({}))
-                .await
-                .unwrap(),
-            json!(false)
-        );
         let policy = bridge_dispatch(&app, "get_update_policy", json!({}))
             .await
             .unwrap();

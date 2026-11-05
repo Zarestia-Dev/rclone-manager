@@ -1,10 +1,10 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../system/event-listeners.service';
-import { UpdateInfo, UpdateResult, BackendUpdateStatus } from '@app/types';
+import { UpdateInfo, UpdateResult, BackendUpdateStatus, UpdaterSnapshot } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import { UpdateSettingsManager } from './update-settings-manager';
+import { UpdateSettingsManager, isUpdateInFlight } from './update-settings-manager';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneUpdateService extends TauriBaseService {
@@ -21,15 +21,24 @@ export class RcloneUpdateService extends TauriBaseService {
   private _latestCheckId = 0;
 
   private readonly _isUpdaterEnabled = signal<boolean>(true);
+  /** A check started by this viewer, until the backend reports it. */
   private readonly _isChecking = signal<boolean>(false);
   private readonly _isCancelling = signal<boolean>(false);
-  private readonly _updateState = signal<UpdateInfo | null>(null);
-  private readonly _error = signal<string | null>(null);
+  private readonly _snapshot = signal<UpdaterSnapshot | null>(null);
 
   public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
-  public readonly isChecking = this._isChecking.asReadonly();
+  public readonly isChecking = computed(() => this._isChecking() || !!this._snapshot()?.checking);
   public readonly isCancelling = this._isCancelling.asReadonly();
-  public readonly error = this._error.asReadonly();
+  /** The last check or update failure, translated; kept by the backend across reloads. */
+  public readonly error = computed(() => this.translateBackend(this._snapshot()?.error));
+  /** A note such as "restart the remote rclone", kept by the backend across reloads. */
+  public readonly notice = computed(() => this.translateBackend(this._snapshot()?.notice));
+  public readonly lastCheckedAt = computed(() => this._snapshot()?.lastCheckedAt ?? null);
+
+  private readonly _updateState = computed(() => {
+    const info = this._snapshot()?.update ?? null;
+    return info && (info.updateAvailable || isUpdateInFlight(info.status)) ? info : null;
+  });
 
   public readonly updateAvailable = computed(() =>
     this.settings.computeAvailableUpdate(this._updateState())
@@ -56,41 +65,31 @@ export class RcloneUpdateService extends TauriBaseService {
   async checkForUpdates(): Promise<UpdateInfo | null> {
     if (this.isChecking()) return this._updateState();
     if (this.downloading() || this.readyToRestart()) return this.restoreUpdateState();
-    const checkId = ++this._latestCheckId;
-
     this._isChecking.set(true);
-    this._error.set(null);
-
     try {
-      const info = await this.invokeCommand<UpdateInfo>('check_rclone_update', {
+      // The backend records the outcome, including failures, in the snapshot.
+      await this.invokeCommand<UpdateInfo>('check_rclone_update', {
         channel: this.settings.updateChannel(),
       });
-
-      if (checkId !== this._latestCheckId) {
-        return null;
-      }
-
-      this.processUpdateResult(info);
-      return info;
     } catch (error) {
-      if (checkId !== this._latestCheckId) return null;
-
       console.error('Failed to check for rclone updates:', error);
-      this._isChecking.set(false);
-      this._error.set(this.backendTranslation.translateBackendMessage(error));
-      return null;
     } finally {
-      if (checkId === this._latestCheckId) {
-        this._isChecking.set(false);
-      }
+      this._isChecking.set(false);
     }
+    return this.restoreUpdateState();
   }
 
   async performUpdate(): Promise<boolean> {
     if (this.downloading() || this.readyToRestart() || this.isChecking()) return false;
     ++this._latestCheckId;
-    this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
-    this._error.set(null);
+    this._snapshot.update(snapshot =>
+      snapshot?.update
+        ? {
+            ...snapshot,
+            update: { ...snapshot.update, status: BackendUpdateStatus.Downloading },
+          }
+        : snapshot
+    );
 
     try {
       const result = await this.invokeWithNotification<UpdateResult>(
@@ -98,23 +97,19 @@ export class RcloneUpdateService extends TauriBaseService {
         { channel: this.settings.updateChannel() },
         { errorKey: 'rcloneUpdate.failed' }
       );
-
-      if (result.success) {
-        if (result.manual) {
-          this.notificationService.showWarning(
-            this.translate.instant('rcloneUpdate.manualRestartRequired')
-          );
-        }
-        return true;
+      if (result.success && result.manual) {
+        this.notificationService.showWarning(
+          this.translate.instant('backendSuccess.rclone.remoteRestartRequired')
+        );
+      } else if (!result.success && result.message && !this._isCancelling()) {
+        // e.g. no update to install; a cancellation is reported by cancelUpdate.
+        this.notificationService.showWarning(
+          this.backendTranslation.translateBackendMessage(result.message)
+        );
       }
-
-      this._error.set(
-        result.message ? this.backendTranslation.translateBackendMessage(result.message) : null
-      );
-      return false;
+      return result.success;
     } catch (error) {
       console.error('Failed to update rclone:', error);
-      this._error.set(this.backendTranslation.translateBackendMessage(error));
       return false;
     } finally {
       await this.restoreUpdateState();
@@ -130,7 +125,6 @@ export class RcloneUpdateService extends TauriBaseService {
         successKey: 'rcloneUpdate.cancelled',
         errorKey: 'rcloneUpdate.cancelFailed',
       });
-      this._error.set(null);
     } catch (error) {
       console.error('Failed to cancel rclone update:', error);
     } finally {
@@ -157,8 +151,7 @@ export class RcloneUpdateService extends TauriBaseService {
   async setChannel(channel: string): Promise<void> {
     if (this.downloading() || this.readyToRestart() || this.isChecking()) return;
     await this.settings.setChannel(channel);
-    this._updateState.set(null);
-    this._error.set(null);
+    this._snapshot.update(snapshot => (snapshot ? { ...snapshot, update: null } : snapshot));
 
     this.notificationService.showInfo(
       this.translate.instant('rcloneUpdate.channelChanged', { channel })
@@ -223,37 +216,26 @@ export class RcloneUpdateService extends TauriBaseService {
       .subscribe(info => {
         if (!this.isUpdaterEnabled()) return;
         ++this._latestCheckId;
-        this.processUpdateResult(info);
+        this._snapshot.update(snapshot => ({
+          ...(snapshot ?? { checking: false }),
+          update: info,
+        }));
       });
   }
 
+  /** Reads the backend snapshot; a newer read or update replaces an older answer. */
   private async restoreUpdateState(): Promise<UpdateInfo | null> {
     const request = ++this._latestCheckId;
     try {
-      const info = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
-      if (request !== this._latestCheckId) return this._updateState();
-      this.processUpdateResult(info);
-      return info;
+      const snapshot = await this.invokeCommand<UpdaterSnapshot>('get_rclone_update_info');
+      if (request === this._latestCheckId) this._snapshot.set(snapshot);
     } catch (error) {
       console.error('Failed to restore rclone update state:', error);
-      return this._updateState();
-    } finally {
-      if (request === this._latestCheckId) this._isChecking.set(false);
     }
+    return this._updateState();
   }
 
-  private processUpdateResult(info: UpdateInfo | null): void {
-    if (
-      !info ||
-      (!info.updateAvailable &&
-        info.status !== BackendUpdateStatus.Downloading &&
-        info.status !== BackendUpdateStatus.ReadyToRestart)
-    ) {
-      this._updateState.set(null);
-    } else {
-      this._updateState.set(info);
-    }
-
-    this._isChecking.set(false);
+  private translateBackend(message: string | null | undefined): string {
+    return message ? this.backendTranslation.translateBackendMessage(message) : '';
   }
 }

@@ -268,8 +268,7 @@
     "skipped": "已跳過 Rclone 版本 {{version}}",
     "restored": "已恢復 Rclone 版本 {{version}}",
     "autoCheckEnabled": "已啟用 Rclone 自動檢查更新",
-    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新",
-    "manualRestartRequired": "Rclone 已在遠端伺服器上更新。請手動重新啟動遠端 rclone 服務以應用新版本。"
+    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新"
   },
   "alerts": {
     "title": "警報與通知",
@@ -1558,7 +1557,7 @@
   "updates": {
     "discardDownload": "捨棄下載",
     "cancelFailed": "取消更新下載失敗。",
-    "installSuccess": "更新已安裝，請重新啟動應用",
+    "downloadComplete": "更新已下載，可以安裝。",
     "checkFailed": "檢查更新失敗：{{error}}",
     "installFailed": "安裝更新失敗：{{error}}",
     "restartFailed": "重新啟動應用失敗：{{error}}",
@@ -2022,10 +2021,10 @@
       "wiki": "Wiki 頁面",
       "reportIssues": "報告問題",
       "rcloneWebsite": "Rclone 官網",
-      "readyToRestart": "需要重新啟動",
-      "restartDescription": "已安裝更新，請重新啟動應用以生效。",
-      "rcloneRestartRequired": "需要重新啟動 Rclone",
-      "rcloneRestartDescription": "已安裝 Rclone 更新，請重新啟動引擎以生效。",
+      "readyToRestart": "更新已就緒",
+      "restartDescription": "更新已下載，請重新啟動應用以安裝。",
+      "rcloneRestartRequired": "Rclone 更新已就緒",
+      "rcloneRestartDescription": "Rclone 更新已下載，請重新啟動引擎以安裝。",
       "restartNow": "立即重新啟動",
       "updateAvailable": "有更新可用",
       "version": "版本",
@@ -2117,7 +2116,8 @@
       "clear": "清除",
       "cacheCleared": "快取已清除",
       "cacheClearFailed": "清除快取失敗",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "上次檢查：{{time}}"
     },
     "logs": {
       "fetchError": "取得應用日誌失敗。",
@@ -3279,13 +3279,11 @@
     },
     "updater": {
       "noPending": "暫無待處理更新",
-      "invalidUrl": "URL 無效：{{error}}",
       "github": "GitHub API 錯誤：{{error}}",
       "githubRateLimit": "超出 GitHub API 請求頻率限制，請稍後重試。",
       "updateFailed": "更新失敗：{{error}}",
       "updateUnavailable": "更新檔案不再可用：{{error}}",
       "relaunchFailed": "重新啟動失敗：{{error}}",
-      "restartFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
       "rollback": {
         "exited": "更新後的應用程式在確認啟動前結束（代碼 {{code}}）。",
@@ -3300,7 +3298,22 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "安裝此套件需要管理員密碼提示工具（pkexec、zenity 或 kdialog），但找不到任何一個。",
+      "verificationFailed": "無法驗證更新：其簽章、總和檢查碼或中繼資料不符。",
+      "insecureDownload": "更新下載未透過 HTTPS 提供。",
+      "downloadTooLarge": "更新下載的大小超出預期。",
+      "missingAsset": "此版本沒有名為 {{name}} 的更新檔案。",
+      "unexpectedAsset": "此版本列出了非預期或重複的更新檔案。",
+      "argumentsTooLong": "啟動參數過長，無法在更新後保留。",
+      "startupPending": "上一次更新仍在確認啟動。請幾秒後再試一次。",
+      "versionMustIncrease": "後續更新必須是較新的版本。",
+      "invalidBundle": "可攜版應用程式不是完整的 macOS 應用程式套件。",
+      "missingBackup": "目前版本的備份遺失。",
+      "invalidStagingDirectory": "更新暫存資料夾無效。",
+      "helperFailed": "無法啟動更新協助程式（{{error}}），且重新啟動應用程式失敗：{{restart}}",
+      "processUnavailable": "無法監控已更新應用程式的處理程序。",
+      "ownedByAnotherUser": "應用程式檔案屬於其他使用者。"
     },
     "settings": {
       "loadFailed": "載入設定失敗：{{error}}",
@@ -3343,7 +3356,8 @@
     },
     "rclone": {
       "updated": "Rclone 更新成功（{{channel}} 通道）",
-      "mountPluginInstalled": "掛載外掛程式安裝成功"
+      "mountPluginInstalled": "掛載外掛程式安裝成功",
+      "remoteRestartRequired": "Rclone 已在遠端伺服器上更新。請手動重新啟動遠端 rclone 服務以應用新版本。"
     },
     "job": {
       "stopped": "任務已停止",

@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Live Update Status Chip (Android)**: The keep-alive notification shows the number of running jobs, mounts, and serves in the status bar and summarizes them in its text.
 - **Notification Actions (Android)**: The keep-alive notification has a **Quit** action, which asks for confirmation before shutting the app down, and a **Stop jobs** action that appears while jobs are running.
 - **Onboarding Permissions (Android)**: The first-run wizard has an optional step to allow access to all files and to exempt the app from battery optimization. Both can be skipped and granted later.
+- **AUR Update Instructions**: AUR installs (`rclone-manager`, `-headless`, `-server`) show the command that updates them (`paru -S` or `yay -S` when installed, otherwise the `makepkg` steps) and link to their own AUR page. An update is offered once the AUR publishes it, whatever the update channel; `-git` packages are not offered releases.
+- **Update Status Survives Reloads**: The About page shows when updates were last checked and why a check failed, including scheduled checks and checks started in another window. Updates that were rolled back and the reminder to restart a remote rclone after it updated itself are shown too, so a reloaded web UI and headless servers without OS notifications see them.
 
 ### Changed
 
@@ -20,9 +22,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Count Badges**: Counters in sidebars and panels have a minimum width and aligned digits, so one- and two-digit counts look the same.
 - **Background Service Runs Without the Window (Android)**: The backend now starts and runs the keep-alive service on its own, so jobs, mounts, and schedules keep working while the app window is closed.
 - **Start on Startup Description**: The desktop setting now notes that a locked configuration vault stays locked until the app is opened.
+- **Updates on Slow Connections**: Update checks and downloads no longer have a total time limit. A request fails only when the connection stalls (30 seconds to connect, 120 seconds without data), and the native installer's check and download use the same limits.
+- **Fewer Update Requests**: The release list is revalidated with its ETag, which GitHub does not count against the rate limit, the rclone changelog is downloaded once per version, and rclone beta builds no longer look up a GitHub release that does not exist.
+- **Translated Updater Errors**: The updater's own errors, including rollback reasons and rclone update failures in notifications, are now translated in all ten languages; messages nested in another message are translated too.
+- **Update Commands**: Flatpak shows the product's own app ID (the headless build had the desktop one), Docker shows `docker compose pull && docker compose up -d` instead of pulling `:latest`, and an AUR install is labelled AUR.
+- **Updater Cleanup**: Removed the unused `can_auto_install` and `get_build_type` commands, support for per-target update manifests that no release ever published, a download URL rewrite that never matched, and unused fields of update results.
 
 ### Fixed
 
+- **DEB and RPM In-App Updates (Linux)**: Installations from the `.deb` or `.rpm` package update in the app again, through the system password prompt (pkexec, zenity or kdialog); 0.3.4 had treated them as externally managed. AUR packages, which repackage the `.deb`, stay with the AUR. DEB and RPM installs are only offered newer versions, since `rpm` refuses downgrades.
+- **rclone Engine After a Failed Update**: When swapping in a downloaded rclone failed, the engine stayed stopped; the original binary now starts again. A failed check before the swap no longer reports a running engine as stopped.
+- **Remote rclone Updates**: Updating a remote backend's rclone no longer leaves "Restart to apply" showing, which also blocked later checks until the app restarted.
+- **Hidden rclone Update Errors**: Failed rclone update checks were never shown; the About page now shows them.
+- **Update Notices**: A finished download says the update is ready to install instead of "installed", and the pre-release badge follows the release's pre-release flag instead of "beta" in its tag.
+- **Updater Stuck After a Stalled Request**: A stalled update check could block installing, applying and cancelling until the app restarted.
+- **Failed Restart After an Update**: If the app could not restart itself after installing an update, it now exits so the installed version starts next, instead of staying open with its services stopped.
+- **Windows Update Helper**: Ending `updater.exe` after a successful update, for example from Task Manager, no longer closes the application.
+- **Android Update Storage**: The downloaded APK is kept once instead of twice in the app cache.
 - **Start on Startup Lost After Reinstall (Desktop)**: When "Start on startup" is on but the system autostart entry is missing, for example after an uninstall removed it during an upgrade, the app now re-creates the entry at startup instead of leaving the setting enabled with nothing to launch it. Development builds and Flatpak are not affected. See [#340](https://github.com/orgs/Zarestia-Dev/discussions/340).
 
 ## [0.3.5] - 2026-10-29

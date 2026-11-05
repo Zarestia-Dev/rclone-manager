@@ -18,10 +18,11 @@ pub(super) struct ProcessTree(Option<u32>);
 #[cfg(unix)]
 impl ProcessTree {
     pub(super) fn attach(child: &Child) -> std::io::Result<Self> {
-        child
-            .id()
-            .map(|pid| Self(Some(pid)))
-            .ok_or_else(|| std::io::Error::other("Child already exited"))
+        child.id().map(|pid| Self(Some(pid))).ok_or_else(|| {
+            std::io::Error::other(crate::localized_error!(
+                "backendErrors.updater.processUnavailable"
+            ))
+        })
     }
     pub(super) fn disarm(&mut self) -> std::io::Result<()> {
         self.0 = None;
@@ -71,9 +72,11 @@ impl ProcessTree {
         let job = Self(unsafe { OwnedHandle::from_raw_handle(handle) });
         let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { std::mem::zeroed() };
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        let child_handle = child
-            .raw_handle()
-            .ok_or_else(|| std::io::Error::other("Child already exited"))?;
+        let child_handle = child.raw_handle().ok_or_else(|| {
+            std::io::Error::other(crate::localized_error!(
+                "backendErrors.updater.processUnavailable"
+            ))
+        })?;
         if unsafe {
             SetInformationJobObject(
                 handle,
@@ -137,10 +140,11 @@ pub(super) fn wait_for_assignment() {
 #[cfg(windows)]
 pub(super) async fn release_child(child: &mut Child) -> std::io::Result<()> {
     use tokio::io::AsyncWriteExt;
-    let mut input = child
-        .stdin
-        .take()
-        .ok_or_else(|| std::io::Error::other("Missing update launch gate"))?;
+    let mut input = child.stdin.take().ok_or_else(|| {
+        std::io::Error::other(crate::localized_error!(
+            "backendErrors.updater.processUnavailable"
+        ))
+    })?;
     input.write_all(&[1]).await
 }
 
