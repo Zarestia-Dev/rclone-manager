@@ -98,7 +98,6 @@ const READ_ONLY_COMMANDS = new Set([
   'operations/hashsum',
   'operations/getfile',
   'operations/hashsumfile',
-  'operations/index',
   'operations/list',
   'operations/size',
   'operations/stat',

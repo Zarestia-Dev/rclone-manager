@@ -88,6 +88,8 @@ export interface GlobalStats {
   fatalError: boolean;
   lastError: string;
   renames: number;
+  /** Directories whose modtime or metadata was set; absent on jobs stored before rclone 1.76. */
+  updatedDirs?: number;
   retryError: boolean;
   serverSideCopies: number;
   serverSideCopyBytes: number;

@@ -189,6 +189,7 @@ export class JobDetailModalComponent {
       checks: `${s.checks} / ${s.totalChecks}`,
       deletes: s.deletes + s.deletedDirs,
       renames: s.renames,
+      updatedDirs: s.updatedDirs ?? 0,
       listed: s.listed,
     };
   });

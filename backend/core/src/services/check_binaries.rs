@@ -7,7 +7,7 @@ use crate::rclone::binaries::util::RCLONE_EXECUTABLE;
 use crate::utils::types::events::EngineStatus;
 use crate::utils::types::events::RCLONE_ENGINE_STATUS_CHANGED;
 
-pub const MIN_RCLONE_VERSION: &str = "1.75.0";
+pub const MIN_RCLONE_VERSION: &str = "1.76.0";
 
 fn resolve_path(path: &std::path::Path) -> PathBuf {
     if path.is_file() {

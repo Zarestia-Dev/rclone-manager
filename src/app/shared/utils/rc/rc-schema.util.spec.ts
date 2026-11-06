@@ -13,6 +13,8 @@ describe('rc-schema.util', () => {
   describe('requiredParams', () => {
     it('knows the checked calls and nothing else', () => {
       expect(requiredParams('operations/list')).toEqual(['fs', 'remote']);
+      expect(requiredParams('operations/getfile')).toEqual(['fs']);
+      expect(requiredParams('operations/index')).toEqual(['fs']);
       expect(requiredParams('sync/copy')).toEqual(['srcFs', 'dstFs']);
       expect(requiredParams('vfs/refresh')).toEqual([]);
       expect(requiredParams('made/up')).toEqual([]);

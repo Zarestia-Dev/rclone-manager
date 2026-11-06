@@ -1,4 +1,6 @@
-use crate::utils::io::file_stream::{FILE_CHUNK_SIZE, file_metadata, file_reader};
+use crate::utils::io::file_stream::{
+    FILE_CHUNK_SIZE, decode_file_chunk, file_metadata, file_reader,
+};
 use async_trait::async_trait;
 use serde_json::{Map, Value};
 
@@ -71,7 +73,7 @@ impl RcloneTransport for RcloneLibBackend {
         };
         let response = self
             .rpc(
-                "operations/readfile",
+                crate::rclone::endpoints::operations::GETFILE,
                 Some(&serde_json::json!({
                     "fs": full_path, "offset": offset, "count": count,
                     "base64": true, "readToken": token,
@@ -80,19 +82,7 @@ impl RcloneTransport for RcloneLibBackend {
             .await;
         cancel.armed = false;
         let response = response?;
-        use base64::Engine as _;
-        let bytes = base64::engine::general_purpose::STANDARD
-            .decode(
-                response["result"]
-                    .as_str()
-                    .ok_or_else(|| BackendError::Stream("Missing file bytes".into()))?,
-            )
-            .map_err(|e| BackendError::Stream(e.to_string()))?;
-        if bytes.len() as i64 > count {
-            return Err(BackendError::Stream(
-                "Read exceeded requested file range".into(),
-            ));
-        }
+        let bytes = decode_file_chunk(&response, count as u64)?;
         Ok(Box::new(std::io::Cursor::new(bytes)))
     }
 }

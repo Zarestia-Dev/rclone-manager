@@ -25,6 +25,28 @@ pub fn file_location<'a>(remote: &'a str, path: &'a str) -> (&'a str, &'a str) {
     }
 }
 
+/// Decode an `operations/getfile` response requested
+/// with `base64: true`, refusing more than the `count` bytes that were asked for.
+pub fn decode_file_chunk(
+    response: &serde_json::Value,
+    count: u64,
+) -> Result<Vec<u8>, BackendError> {
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(
+            response["result"]
+                .as_str()
+                .ok_or_else(|| BackendError::Stream("Missing file bytes".into()))?,
+        )
+        .map_err(|e| BackendError::Stream(e.to_string()))?;
+    if bytes.len() as u64 > count {
+        return Err(BackendError::Stream(
+            "Read exceeded requested file range".into(),
+        ));
+    }
+    Ok(bytes)
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct FileVersion {
     pub size: u64,
@@ -320,6 +342,20 @@ async fn open_local_regular_file(path: &str) -> Result<Option<AssetSource>, Stri
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn decodes_getfile_chunks_and_rejects_oversized_or_malformed_replies() {
+        let binary = serde_json::json!({"result": "aGVsbG///g=="});
+        assert_eq!(decode_file_chunk(&binary, 7).unwrap(), b"hello\xff\xfe");
+        assert!(decode_file_chunk(&binary, 6).is_err());
+        assert!(
+            decode_file_chunk(&serde_json::json!({"result": ""}), 0)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(decode_file_chunk(&serde_json::json!({}), 1).is_err());
+        assert!(decode_file_chunk(&serde_json::json!({"result": "not base64!"}), 99).is_err());
+    }
+
     use super::*;
     use crate::rclone::backend::transport::TransportKind;
     use std::sync::Mutex;

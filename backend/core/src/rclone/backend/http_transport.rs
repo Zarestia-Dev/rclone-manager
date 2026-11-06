@@ -1,10 +1,11 @@
 use crate::context::AppHandle;
-use crate::utils::io::file_stream::{FILE_CHUNK_SIZE, file_metadata, file_reader};
+use crate::utils::io::file_stream::{
+    FILE_CHUNK_SIZE, decode_file_chunk, file_location, file_metadata, file_reader,
+};
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tokio::io::AsyncReadExt;
 
 use crate::rclone::backend::transport::{BackendError, TransportKind};
 use crate::rclone::backend::types::Backend;
@@ -141,7 +142,8 @@ impl RcloneTransport for RcHttpBackend {
             }
             _ => {
                 self.direct_reads.store(false, Ordering::Relaxed);
-                // Fall back to rclone cat via core/command (e.g. for reading local paths on remote daemon hosts)
+                // Read through operations/getfile, which also reaches local paths on a
+                // daemon running on another machine
                 let count = match range {
                     Some((start, Some(end))) => Some(
                         end.checked_sub(start)
@@ -171,101 +173,31 @@ impl RcloneTransport for RcHttpBackend {
                         Some(version),
                     )));
                 }
-                let backend_manager = self.app.try_state::<BackendManager>().ok_or_else(|| {
-                    BackendError::NotConnected("BackendManager not in state".into())
-                })?;
-                let os = backend_manager.get_runtime_os(&backend.name).await;
-
-                let payload = cat_stream_payload(&backend, remote, path, range, os)?;
-                let response = backend
+                let count = count
+                    .ok_or_else(|| BackendError::Stream("Missing bounded file range".into()))?;
+                let (fs, file) = file_location(remote, path);
+                let offset = range.map_or(0, |(start, _)| start);
+                let payload = serde_json::json!({
+                    "fs": fs, "remote": file, "offset": offset, "count": count, "base64": true,
+                });
+                let response: Value = backend
                     .make_request(
                         &client,
                         reqwest::Method::POST,
-                        crate::rclone::endpoints::core::COMMAND,
+                        crate::rclone::endpoints::operations::GETFILE,
                         Some(&payload),
                         None,
                     )
-                    .await?;
-                // Do not trust a daemon to honour --count: bound the fallback
-                // body too, including rcserver's three-byte JSON trailer.
-                let limit = count
-                    .ok_or_else(|| BackendError::Stream("Missing bounded file range".into()))?
-                    + 3;
-                let stream = response
-                    .bytes_stream()
-                    .map(|result| result.map_err(std::io::Error::other));
-                let bytes =
-                    read_cat_stream(tokio_util::io::StreamReader::new(stream), limit).await?;
+                    .await?
+                    .json()
+                    .await
+                    .map_err(|e| BackendError::Other(format!("Failed to parse response: {e}")))?;
+                let bytes = decode_file_chunk(&response, count)?;
 
                 Ok(Box::new(std::io::Cursor::new(bytes)))
             }
         }
     }
-}
-
-fn cat_stream_payload(
-    backend: &Backend,
-    remote: &str,
-    path: &str,
-    range: Option<(u64, Option<u64>)>,
-    os: Option<String>,
-) -> Result<Value, BackendError> {
-    let full_path = if remote.is_empty() || remote == ":" {
-        path.to_string()
-    } else {
-        let remote = if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
-            remote.to_string()
-        } else {
-            format!("{remote}:")
-        };
-        crate::utils::json_helpers::build_full_path(&remote, path)
-    };
-    let mut args = vec![full_path];
-    if let Some((start, end)) = range {
-        let offset = i64::try_from(start).map_err(|e| BackendError::Other(e.to_string()))?;
-        args.push(format!("--offset={offset}"));
-        if let Some(end) = end {
-            let count = end
-                .checked_sub(start)
-                .and_then(|n| n.checked_add(1))
-                .and_then(|n| i64::try_from(n).ok())
-                .ok_or_else(|| BackendError::Other("Invalid file range".into()))?;
-            args.push(format!("--count={count}"));
-        }
-    }
-    let mut payload = backend.build_core_command_payload("cat", args, false, os);
-    // COMBINED_OUTPUT converts arbitrary bytes to a JSON string, irreversibly
-    // replacing invalid UTF-8. Keep stdout binary and stderr out of the file.
-    payload["returnType"] = serde_json::json!("STREAM_ONLY_STDOUT");
-    Ok(payload)
-}
-
-async fn read_cat_stream(
-    reader: impl tokio::io::AsyncRead + Unpin,
-    limit: u64,
-) -> Result<Vec<u8>, BackendError> {
-    let mut bytes = Vec::new();
-    reader
-        .take(limit.saturating_add(1))
-        .read_to_end(&mut bytes)
-        .await
-        .map_err(|e| BackendError::Stream(e.to_string()))?;
-    if bytes.len() as u64 > limit {
-        return Err(BackendError::Stream(
-            "rclone cat exceeded the requested byte count".into(),
-        ));
-    }
-    let length = decode_cat_stream(&bytes)?.len();
-    bytes.truncate(length);
-    Ok(bytes)
-}
-
-fn decode_cat_stream(bytes: &[u8]) -> Result<&[u8], BackendError> {
-    // rcserver appends the empty JSON result after streamed stdout. Remove only
-    // that exact trailer; command failures append an error object instead.
-    bytes.strip_suffix(b"{}\n").ok_or_else(|| {
-        BackendError::Stream("rclone cat stream did not complete successfully".into())
-    })
 }
 
 /// A server may ignore Range and return 200. Never label those bytes as a later
@@ -310,6 +242,7 @@ fn matches_file_range(response: &reqwest::Response, range: Option<(u64, Option<u
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::io::AsyncReadExt;
     fn test_transport(port: u16) -> RcHttpBackend {
         let app = AppHandle::default();
         app.manage(BackendManager::new());
@@ -363,7 +296,7 @@ mod tests {
                 let response: &[u8] = if method == "GET" {
                     b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                 } else {
-                    b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\nConnection: close\r\n\r\nabc{}\n"
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 17\r\nConnection: close\r\n\r\n{\"result\":\"YWJj\"}"
                 };
                 socket.write_all(response).await.unwrap();
                 methods.push(method);
@@ -397,7 +330,7 @@ mod tests {
         assert_eq!(requests.await.unwrap(), ["GET", "POST", "POST", "GET"]);
     }
     #[tokio::test]
-    async fn unbounded_cat_fallback_returns_a_lazy_chunked_reader() {
+    async fn unbounded_getfile_fallback_returns_a_lazy_chunked_reader() {
         use tokio::io::AsyncWriteExt;
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -416,7 +349,7 @@ mod tests {
                 } else if path.ends_with("operations/stat") {
                     ("200 OK", r#"{"item":{"Size":6,"ModTime":"stable"}}"#)
                 } else {
-                    ("200 OK", "abc123{}\n")
+                    ("200 OK", r#"{"result":"YWJjMTIz"}"#)
                 };
                 let response = format!(
                     "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -443,24 +376,12 @@ mod tests {
         assert_eq!(
             paths
                 .iter()
-                .filter(|path| path.ends_with("core/command"))
+                .filter(|path| path.ends_with("operations/getfile"))
                 .count(),
             1
         );
     }
 
-    #[tokio::test]
-    async fn cat_fallback_bounds_bytes_and_requires_a_complete_trailer() {
-        assert_eq!(read_cat_stream(&b"abc{}\n"[..], 6).await.unwrap(), b"abc");
-        assert!(read_cat_stream(&b"abcd{}\n"[..], 6).await.is_err());
-        assert!(read_cat_stream(&b"abc{"[..], 6).await.is_err());
-        assert!(
-            read_cat_stream(&b"abc{\"error\":\"failed\"}\n"[..], 100)
-                .await
-                .is_err()
-        );
-        assert!(read_cat_stream(&b"{}\n"[..], 3).await.unwrap().is_empty());
-    }
     fn response(status: u16, range: &str) -> reqwest::Response {
         http::Response::builder()
             .status(status)
@@ -469,26 +390,6 @@ mod tests {
             .unwrap()
             .into()
     }
-    #[test]
-    fn binary_cat_fallback_preserves_non_utf8_and_removes_only_rc_trailer() {
-        let binary: Vec<u8> = (0..=255).chain(b"{}\n".iter().copied()).collect();
-        let mut response = binary.clone();
-        response.extend_from_slice(b"{}\n");
-        assert_eq!(decode_cat_stream(&response).unwrap(), binary);
-        assert!(decode_cat_stream(b"partial{\"error\":\"failed\"}\n").is_err());
-        assert!(decode_cat_stream(b"").is_err());
-        assert_eq!(decode_cat_stream(b"{}\n").unwrap(), Vec::<u8>::new());
-        let backend = Backend::new_remote("test", "localhost", 1234);
-        let payload =
-            cat_stream_payload(&backend, "drive:", "a #+.mp3", Some((100, Some(199))), None)
-                .unwrap();
-        assert_eq!(payload["returnType"], "STREAM_ONLY_STDOUT");
-        assert_eq!(payload["arg"][0], "drive:a #+.mp3");
-        assert_eq!(payload["arg"][1], "--offset=100");
-        assert_eq!(payload["arg"][2], "--count=100");
-        assert!(cat_stream_payload(&backend, "", "file", Some((10, Some(9))), None).is_err());
-    }
-
     #[test]
     fn validates_upstream_range_before_forwarding_bytes() {
         let range = Some((100, Some(199)));

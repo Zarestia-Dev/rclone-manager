@@ -143,6 +143,7 @@ impl UploadProgress {
             "totalBytes": total_bytes,
             "totalChecks": 0,
             "totalTransfers": total_files,
+            "updatedDirs": 0,
             "transferTime": elapsed,
             "transferring": self.transferring,
             "transfers": self.completed.len() - self.errors.len(),

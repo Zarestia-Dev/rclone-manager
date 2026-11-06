@@ -132,6 +132,19 @@ describe('JobDetailModalComponent', () => {
     expect(component.progress()).toBe(100);
   });
 
+  it('shows updated directories and treats jobs stored without the counter as zero', () => {
+    expect(component.fileCounters()?.updatedDirs).toBe(0);
+    jobManagementSpy.getJob.mockReturnValue({
+      ...mockJob,
+      stats: { ...mockJob.stats, updatedDirs: 7 },
+    });
+    fixture.destroy();
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.fileCounters()?.updatedDirs).toBe(7);
+    expect(fixture.nativeElement.textContent).toContain('modals.jobDetail.fields.updatedDirs');
+  });
+
   it('should close the dialog when close() is invoked', () => {
     component.close();
     expect(dialogRefSpy.close).toHaveBeenCalled();

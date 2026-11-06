@@ -267,6 +267,8 @@ describe('rc-console.util', () => {
     it('allows reads and blocks writes and unknown calls', () => {
       expect(isReadOnlyCommand('operations/list')).toBe(true);
       expect(isReadOnlyCommand('/core/version/')).toBe(true);
+      expect(isReadOnlyCommand('operations/getfile')).toBe(true);
+      expect(isReadOnlyCommand('operations/index')).toBe(false);
       expect(isReadOnlyCommand('sync/copy')).toBe(false);
       expect(isReadOnlyCommand('core/bwlimit')).toBe(false);
       expect(isReadOnlyCommand('made/up')).toBe(false);

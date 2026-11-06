@@ -23,6 +23,8 @@ const REQUIRED_PARAMS: Readonly<Record<string, readonly string[]>> = {
   'operations/publiclink': ['fs', 'remote'],
   'operations/hashsum': ['fs', 'hashType'],
   'operations/hashsumfile': ['fs', 'remote'],
+  'operations/getfile': ['fs'],
+  'operations/index': ['fs'],
   'operations/mkdir': ['fs', 'remote'],
   'operations/rmdir': ['fs', 'remote'],
   'operations/rmdirs': ['fs', 'remote'],

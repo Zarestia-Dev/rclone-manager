@@ -102,6 +102,7 @@ export class JobsOverviewPanelComponent {
       { labelKey: 'generalOverview.jobs.errors', value: s.errors, error: s.errors > 0 },
       { labelKey: 'generalOverview.jobs.deletes', value: s.deletes },
       { labelKey: 'generalOverview.jobs.renames', value: s.renames },
+      { labelKey: 'generalOverview.jobs.updatedDirs', value: s.updatedDirs ?? 0 },
       { labelKey: 'generalOverview.jobs.serverCopies', value: s.serverSideCopies },
       { labelKey: 'generalOverview.jobs.serverMoves', value: s.serverSideMoves },
     ];
