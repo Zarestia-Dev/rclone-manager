@@ -3279,14 +3279,18 @@
       "saveFailed": "保存设置失败：{{error}}",
       "resetFailed": "重置设置失败：{{error}}",
       "resetAllFailed": "重置所有设置失败：{{error}}",
-      "subSettingsFailed": "获取子设置失败：{{error}}",
-      "deleteFailed": "删除远程存储设置失败：{{error}}"
+      "deleteFailed": "删除远程存储设置失败：{{error}}",
+      "taskFailed": "设置任务失败：{{error}}",
+      "deleteEntryFailed": "无法删除设置条目：{{error}}",
+      "managerInitFailed": "无法创建设置管理器：{{error}}"
     },
     "vault": {
       "passwordEmpty": "保管库密码不能为空",
       "notEnabled": "保管库未启用",
       "invalidPassword": "保管库主密码不正确",
-      "operationFailed": "保管库操作失败：{{error}}"
+      "operationFailed": "保管库操作失败：{{error}}",
+      "operationInProgress": "另一项保管库操作正在进行",
+      "workflowsActive": "启用保管库前，请等待正在运行的工作流完成"
     },
     "notification": {
       "toastFailed": "无法显示系统通知：{{error}}"

@@ -3279,14 +3279,18 @@
       "saveFailed": "Échec de l'enregistrement du paramètre : {{error}}",
       "resetFailed": "Échec de la réinitialisation du paramètre : {{error}}",
       "resetAllFailed": "Échec de la réinitialisation de tous les paramètres : {{error}}",
-      "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
-      "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
+      "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}",
+      "taskFailed": "La tâche des paramètres a échoué : {{error}}",
+      "deleteEntryFailed": "Impossible de supprimer l’entrée de paramètres : {{error}}",
+      "managerInitFailed": "Impossible de créer le gestionnaire de paramètres : {{error}}"
     },
     "vault": {
       "passwordEmpty": "Le mot de passe du coffre ne peut pas être vide",
       "notEnabled": "Le coffre-fort n'est pas activé",
       "invalidPassword": "Mot de passe maître du coffre incorrect",
-      "operationFailed": "L'opération du coffre-fort a échoué: {{error}}"
+      "operationFailed": "L'opération du coffre-fort a échoué: {{error}}",
+      "operationInProgress": "Une autre opération du coffre est en cours",
+      "workflowsActive": "Attendez la fin des workflows en cours avant d’activer le coffre"
     },
     "notification": {
       "toastFailed": "Impossible d'afficher la notification système : {{error}}"

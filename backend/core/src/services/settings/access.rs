@@ -64,8 +64,11 @@ impl VaultAccess {
     }
 
     fn persist(&self, preferences: &InterfacePreferences) -> Result<(), String> {
-        let mut file = tempfile::NamedTempFile::new_in(self.path.parent().unwrap())
-            .map_err(|e| e.to_string())?;
+        let directory = self
+            .path
+            .parent()
+            .ok_or_else(|| "interface cache path has no directory".to_string())?;
+        let mut file = tempfile::NamedTempFile::new_in(directory).map_err(|e| e.to_string())?;
         serde_json::to_writer(&mut file, preferences).map_err(|e| e.to_string())?;
         file.flush().map_err(|e| e.to_string())?;
         file.as_file().sync_all().map_err(|e| e.to_string())?;

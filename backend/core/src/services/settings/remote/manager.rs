@@ -5,7 +5,8 @@
 //! `config/remotes/{remoteName}.json`.
 
 use crate::context::AppHandle;
-use crate::services::settings::AppSettingsManager;
+use crate::services::settings::with_sub_settings;
+use crate::utils::constants::SUB_REMOTES;
 use log::{info, warn};
 use serde_json::Value;
 
@@ -38,17 +39,18 @@ pub async fn save_remote_settings(
             crate::localized_error!("backendErrors.request.failed", "error" => "Backend selection changed"),
         );
     }
-    let manager = app.state::<AppSettingsManager>();
-    let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
-    let existing = match remotes.get_value(&remote_name) {
-        Ok(value) => value,
-        Err(error) if error.is_not_found() => serde_json::json!({}),
-        Err(error) => {
-            return Err(
-                crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
-            );
-        }
-    };
+    let stored_name = remote_name.clone();
+    let existing = with_sub_settings(
+        &app,
+        SUB_REMOTES,
+        "backendErrors.settings.saveFailed",
+        move |remotes| match remotes.get_value(&stored_name) {
+            Ok(value) => Ok(value),
+            Err(error) if error.is_not_found() => Ok(serde_json::json!({})),
+            Err(error) => Err(error),
+        },
+    )
+    .await?;
     let mut settings = merge_settings(&existing, &settings)?;
     settings["name"] = Value::String(remote_name.clone());
     settings = migrate_to_multi_profile(settings);
@@ -86,9 +88,14 @@ pub async fn save_remote_settings(
             }
         }
     }
-    remotes.set(&remote_name, &parsed).map_err(
-        |error| crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
-    )?;
+    let stored_name = remote_name.clone();
+    with_sub_settings(
+        &app,
+        SUB_REMOTES,
+        "backendErrors.settings.saveFailed",
+        move |remotes| remotes.set(&stored_name, &resolved_settings),
+    )
+    .await?;
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_remote(&remote_name);
     }
@@ -133,13 +140,18 @@ pub(crate) async fn delete_remote_settings_on_backend(
     remote_name: String,
     backend: &str,
 ) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
-    match remotes.get_value(&remote_name) {
-        Ok(_) => remotes.delete(&remote_name).map_err(|error| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error))?,
-        Err(error) if error.is_not_found() => {},
-        Err(error) => return Err(crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error)),
-    }
+    let deleted_name = remote_name.clone();
+    with_sub_settings(
+        app,
+        SUB_REMOTES,
+        "backendErrors.settings.deleteFailed",
+        move |remotes| match remotes.get_value(&deleted_name) {
+            Ok(_) => remotes.delete(&deleted_name),
+            Err(error) if error.is_not_found() => Ok(()),
+            Err(error) => Err(error),
+        },
+    )
+    .await?;
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_remote(&remote_name);
     }
@@ -425,6 +437,7 @@ fn partition_profile_to_app_and_rclone(profile: &mut Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::settings::AppSettingsManager;
     use serde_json::json;
 
     #[tokio::test]

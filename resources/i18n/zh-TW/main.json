@@ -3320,14 +3320,18 @@
       "saveFailed": "儲存設定失敗：{{error}}",
       "resetFailed": "重設設定失敗：{{error}}",
       "resetAllFailed": "重設所有設定失敗：{{error}}",
-      "subSettingsFailed": "取得子設定失敗：{{error}}",
-      "deleteFailed": "刪除遠端連線設定失敗：{{error}}"
+      "deleteFailed": "刪除遠端連線設定失敗：{{error}}",
+      "taskFailed": "設定工作失敗：{{error}}",
+      "deleteEntryFailed": "無法刪除設定項目：{{error}}",
+      "managerInitFailed": "無法建立設定管理員：{{error}}"
     },
     "vault": {
       "passwordEmpty": "保存庫密碼不能為空",
       "notEnabled": "保存庫未啟用",
       "invalidPassword": "保存庫主密碼不正確",
-      "operationFailed": "保存庫操作失敗：{{error}}"
+      "operationFailed": "保存庫操作失敗：{{error}}",
+      "operationInProgress": "另一項保險庫操作正在進行中",
+      "workflowsActive": "啟用保險庫前，請等待執行中的工作流程完成"
     },
     "notification": {
       "toastFailed": "無法顯示系統通知：{{error}}"

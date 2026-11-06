@@ -3279,14 +3279,18 @@
       "saveFailed": "Error al guardar la configuración: {{error}}",
       "resetFailed": "Error al restablecer la configuración: {{error}}",
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
-      "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
-      "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
+      "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}",
+      "taskFailed": "La tarea de ajustes falló: {{error}}",
+      "deleteEntryFailed": "No se pudo eliminar la entrada de ajustes: {{error}}",
+      "managerInitFailed": "No se pudo crear el administrador de ajustes: {{error}}"
     },
     "vault": {
       "passwordEmpty": "La contraseña de la bóveda no puede estar vacía",
       "notEnabled": "La bóveda no está habilitada",
       "invalidPassword": "Contraseña maestra de la bóveda incorrecta",
-      "operationFailed": "Operación de la bóveda fallida: {{error}}"
+      "operationFailed": "Operación de la bóveda fallida: {{error}}",
+      "operationInProgress": "Hay otra operación de la bóveda en curso",
+      "workflowsActive": "Espere a que terminen los flujos de trabajo en ejecución antes de activar la bóveda"
     },
     "notification": {
       "toastFailed": "No se pudo mostrar la notificación del sistema: {{error}}"

@@ -3279,14 +3279,18 @@
       "saveFailed": "Falha ao salvar configuração: {{error}}",
       "resetFailed": "Falha ao reiniciar configuração: {{error}}",
       "resetAllFailed": "Falha ao redefinir todas as configurações: {{error}}",
-      "subSettingsFailed": "Falha ao obter sub-configurações: {{error}}",
-      "deleteFailed": "Falha ao excluir configurações remotas: {{error}}"
+      "deleteFailed": "Falha ao excluir configurações remotas: {{error}}",
+      "taskFailed": "A tarefa de configurações falhou: {{error}}",
+      "deleteEntryFailed": "Falha ao excluir a entrada de configuração: {{error}}",
+      "managerInitFailed": "Falha ao criar o gerenciador de configurações: {{error}}"
     },
     "vault": {
       "passwordEmpty": "A senha do cofre não pode ficar vazia",
       "notEnabled": "O cofre não está ativado",
       "invalidPassword": "Senha mestra do cofre incorreta",
-      "operationFailed": "Falha na operação do cofre: {{error}}"
+      "operationFailed": "Falha na operação do cofre: {{error}}",
+      "operationInProgress": "Outra operação do cofre está em andamento",
+      "workflowsActive": "Aguarde a conclusão dos fluxos de trabalho em execução antes de ativar o cofre"
     },
     "notification": {
       "toastFailed": "Não foi possível exibir a notificação do sistema: {{error}}"

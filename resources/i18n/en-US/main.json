@@ -3320,14 +3320,18 @@
       "saveFailed": "Failed to save setting: {{error}}",
       "resetFailed": "Failed to reset setting: {{error}}",
       "resetAllFailed": "Failed to reset all settings: {{error}}",
-      "subSettingsFailed": "Failed to get sub-settings: {{error}}",
-      "deleteFailed": "Failed to delete remote settings: {{error}}"
+      "deleteFailed": "Failed to delete remote settings: {{error}}",
+      "taskFailed": "Settings task failed: {{error}}",
+      "deleteEntryFailed": "Failed to delete setting entry: {{error}}",
+      "managerInitFailed": "Failed to create the settings manager: {{error}}"
     },
     "vault": {
       "passwordEmpty": "Vault password cannot be empty",
       "notEnabled": "Vault is not enabled",
       "invalidPassword": "Incorrect vault master password",
-      "operationFailed": "Vault operation failed: {{error}}"
+      "operationFailed": "Vault operation failed: {{error}}",
+      "operationInProgress": "Another vault operation is in progress",
+      "workflowsActive": "Wait for running workflows to finish before enabling the vault"
     },
     "notification": {
       "toastFailed": "Could not show the system notification: {{error}}"

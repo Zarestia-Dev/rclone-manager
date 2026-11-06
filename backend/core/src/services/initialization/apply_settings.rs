@@ -2,9 +2,7 @@ use log::{debug, error, info};
 
 use crate::{
     rclone::{commands::system::bandwidth_limit, queries::flags::set_rclone_options_bulk},
-    services::settings::{
-        AppSettingsManager, rclone_backend::load_backend_options, schema::AppSettings,
-    },
+    services::settings::{rclone_backend::load_backend_options, schema::AppSettings},
 };
 
 /// Apply every core setting: the ones the engine needs, then the application's own.
@@ -48,8 +46,7 @@ pub fn apply_app_settings(settings: &AppSettings) {
 pub async fn apply_backend_settings(app_handle: &crate::context::AppHandle) -> Result<(), String> {
     debug!("🔧 Applying RClone backend settings from rcman");
 
-    let manager = app_handle.state::<AppSettingsManager>();
-    let backend_options = load_backend_options(manager.inner());
+    let backend_options = load_backend_options(app_handle).await?;
 
     // Only send request if there are options configured
     if let Some(obj) = backend_options.as_object()

@@ -50,9 +50,9 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         builder = builder.with_vault_password_source(source);
     }
 
-    builder
-        .build()
-        .map_err(|e| format!("Failed to create rcman settings manager: {e}"))
+    builder.build().map_err(
+        |e| crate::localized_error!("backendErrors.settings.managerInitFailed", "error" => e),
+    )
 }
 
 /// Select the startup vault password source. Empty variables count as unset, so

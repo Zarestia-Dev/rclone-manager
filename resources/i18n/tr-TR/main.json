@@ -3320,14 +3320,18 @@
       "saveFailed": "Ayar kaydedilemedi: {{error}}",
       "resetFailed": "Ayar sıfırlanamadı: {{error}}",
       "resetAllFailed": "Tüm ayarlar sıfırlanamadı: {{error}}",
-      "subSettingsFailed": "Alt ayarlar alınamadı: {{error}}",
-      "deleteFailed": "Uzak bağlantı ayarları silinemedi: {{error}}"
+      "deleteFailed": "Uzak bağlantı ayarları silinemedi: {{error}}",
+      "taskFailed": "Ayar görevi başarısız oldu: {{error}}",
+      "deleteEntryFailed": "Ayar girdisi silinemedi: {{error}}",
+      "managerInitFailed": "Ayar yöneticisi oluşturulamadı: {{error}}"
     },
     "vault": {
       "passwordEmpty": "Kasa parolası boş olamaz",
       "notEnabled": "Kasa etkin değil",
       "invalidPassword": "Hatalı kasa ana parolası",
-      "operationFailed": "Kasa işlemi başarısız oldu: {{error}}"
+      "operationFailed": "Kasa işlemi başarısız oldu: {{error}}",
+      "operationInProgress": "Başka bir kasa işlemi devam ediyor",
+      "workflowsActive": "Kasayı etkinleştirmeden önce çalışan iş akışlarının bitmesini bekleyin"
     },
     "notification": {
       "toastFailed": "Sistem bildirimi gösterilemedi: {{error}}"

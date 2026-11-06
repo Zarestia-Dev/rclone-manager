@@ -3279,14 +3279,18 @@
       "saveFailed": "設定の保存に失敗しました: {{error}}",
       "resetFailed": "設定のリセットに失敗しました: {{error}}",
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
-      "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
-      "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
+      "deleteFailed": "リモート設定の削除に失敗しました: {{error}}",
+      "taskFailed": "設定タスクが失敗しました: {{error}}",
+      "deleteEntryFailed": "設定エントリを削除できませんでした: {{error}}",
+      "managerInitFailed": "設定マネージャーを作成できませんでした: {{error}}"
     },
     "vault": {
       "passwordEmpty": "ボルトのパスワードを空にすることはできません",
       "notEnabled": "ボルトは有効になっていません",
       "invalidPassword": "ボルトのマスターパスワードが正しくありません",
-      "operationFailed": "ボルトの操作に失敗しました: {{error}}"
+      "operationFailed": "ボルトの操作に失敗しました: {{error}}",
+      "operationInProgress": "別のボールト操作が進行中です",
+      "workflowsActive": "ボールトを有効にする前に、実行中のワークフローが完了するまでお待ちください"
     },
     "notification": {
       "toastFailed": "システム通知を表示できませんでした: {{error}}"
