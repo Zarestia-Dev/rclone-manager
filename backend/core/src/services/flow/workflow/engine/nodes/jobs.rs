@@ -11,7 +11,8 @@ use serde_json::{Value, json};
 use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::commands::{
-    common::parse_common_config, job::JobMetadata, sync::submit_transfer_batch,
+    common::parse_common_config, job::JobMetadata, job_chain::ChainMode,
+    sync::submit_transfer_batch,
 };
 use crate::rclone::state::job::JobPoll;
 use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
@@ -229,6 +230,12 @@ fn build_job_execution_output(
         }
     }
 
+    // The file reports of a sync, copy or move that asked for them, as `{{prev.reports.combined}}`.
+    if let (Some(report), Some(obj)) = (job.report.as_deref(), out.as_object_mut()) {
+        obj.insert("reports".to_string(), report.clone());
+        obj.insert("reportCounts".to_string(), json!(job.report_counts));
+    }
+
     if let (Some(err), Some(obj)) = (error_msg, out.as_object_mut()) {
         obj.insert("error".to_string(), json!(err));
         obj.insert("errorMessage".to_string(), json!(err));
@@ -444,7 +451,7 @@ pub(crate) async fn transfer_node(
         op_type,
         target_pairs,
         &common,
-        *dry_run,
+        ChainMode::Foreground,
         metadata,
     )
     .await?;
@@ -536,6 +543,8 @@ mod tests {
             workflow_id: None,
             node_id: None,
             workflow_lineage: Vec::new(),
+            report: None,
+            report_counts: None,
         }
     }
 
@@ -758,6 +767,9 @@ mod tests {
             workflow_id: None,
             node_id: None,
             workflow_lineage: Vec::new(),
+
+            report: None,
+            report_counts: None,
         };
 
         let output = build_job_execution_output(job.clone(), true, None);
@@ -774,6 +786,49 @@ mod tests {
                 .unwrap()
                 .contains("2 difference(s)")
         );
+    }
+
+    #[test]
+    fn a_job_output_carries_the_file_reports_only_when_the_job_kept_some() {
+        let mut job = crate::utils::types::jobs::JobInfo {
+            stats_revision: 0,
+            jobid: 5,
+            job_type: JobType::Copy,
+            remote_name: "drive:".to_string(),
+            source: vec!["/local".to_string()],
+            destination: "drive:backup".to_string(),
+            start_time: Utc::now(),
+            end_time: Some(Utc::now()),
+            status: JobStatus::Completed,
+            error: None,
+            stats: None,
+            group: "job-5".to_string(),
+            profile: None,
+            execute_id: None,
+            quick_run_id: None,
+            origin: None,
+            backend_name: "local".to_string(),
+            dry_run: false,
+            parent_job_id: None,
+            workflow_id: None,
+            node_id: None,
+            workflow_lineage: Vec::new(),
+            report: None,
+            report_counts: None,
+        };
+
+        let plain = build_job_execution_output(job.clone(), true, None);
+        assert!(plain.get("reports").is_none());
+        assert!(plain.get("reportCounts").is_none());
+
+        let report = json!({"combined": ["+ a.txt", "+ b.txt"], "error": []});
+        job.report_counts = Some(crate::rclone::state::job_report::report_counts(&report));
+        job.report = Some(Arc::new(report));
+        let output = build_job_execution_output(job.clone(), false, Some("boom"));
+        assert_eq!(output["reports"]["combined"][1], "+ b.txt");
+        assert_eq!(output["reportCounts"]["combined"], 2);
+        assert_eq!(output["reportCounts"]["error"], 0);
+        assert_eq!(output["errorMessage"], "boom");
     }
 
     #[tokio::test]

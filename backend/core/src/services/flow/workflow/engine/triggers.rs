@@ -287,6 +287,8 @@ mod tests {
             workflow_id: workflow_id.map(String::from),
             node_id: None,
             workflow_lineage: Vec::new(),
+            report: None,
+            report_counts: None,
         }
     }
 
@@ -329,6 +331,9 @@ mod tests {
                 workflow_id: None,
                 node_id: None,
                 workflow_lineage: Vec::new(),
+
+                report: None,
+                report_counts: None,
             };
 
         // 1. Matches profile with eventState 'any'
@@ -443,6 +448,9 @@ mod tests {
             workflow_id: None,
             node_id: None,
             workflow_lineage: Vec::new(),
+
+            report: None,
+            report_counts: None,
         };
         let seen = |job: &JobInfo| {
             TRIGGERED_JOB_FINISH_EVENTS.lock().contains(&(

@@ -891,7 +891,8 @@
       "resetStats": "Reiniciar Estatísticas",
       "tabs": {
         "active": "Ativo ({{count}})",
-        "recent": "Recente ({{count}})"
+        "recent": "Recente ({{count}})",
+        "report": "Relatório de arquivos"
       },
       "table": {
         "size": "Tamanho",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Atividade de exclusão",
       "titleActivity": "Atividade",
-      "loadMore": "Mostrar mais"
+      "loadMore": "Mostrar mais",
+      "report": {
+        "tabs": {
+          "combined": "Combinado",
+          "missingOnDst": "Ausentes no destino",
+          "differ": "Diferentes",
+          "missingOnSrc": "Ausentes na origem",
+          "match": "Iguais",
+          "error": "Erros",
+          "destAfter": "Destino depois"
+        },
+        "sigils": {
+          "missingOnDst": "Ausente no destino",
+          "missingOnSrc": "Ausente na origem",
+          "differ": "Diferente",
+          "match": "Igual",
+          "error": "Erro"
+        },
+        "empty": "Nenhum arquivo neste relatório.",
+        "loadFailed": "Não foi possível carregar o relatório.",
+        "showMore": "Mostrar mais {{count}}"
+      }
     },
     "inputModal": {
       "name": "Nome",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "O perfil '{{profile}}' não está montado em {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'"
+      "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'",
+      "singleSourceOnly": "{{operation}} aceita apenas um caminho de origem",
+      "directoriesOnly": "{{operation}} aceita apenas diretórios, não arquivos: {{source}}",
+      "sourcePathInvalid": "Não foi possível ler o caminho de origem: {{path}}",
+      "destinationPathInvalid": "Não foi possível ler o caminho de destino: {{path}}",
+      "filePathsInvalid": "Não foi possível ler a origem '{{source}}' ou o destino '{{destination}}' como caminho de arquivo. Use o formato 'remote:caminho/do/arquivo' ou um caminho local.",
+      "unsupportedOperation": "A operação {{operation}} não pode ser executada como transferência",
+      "destinationMissing": "Nenhum destino especificado"
     },
     "serve": {
       "parseFailed": "Falha ao processar resposta: {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "Erros demais na tarefa de monitoramento: {{error}}",
       "executionFailed": "Execução da tarefa falhou: {{error}}",
       "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum.",
-      "profileNotRunning": "Nenhuma tarefa {{jobType}} ativa encontrada para o perfil '{{profile}}' em {{remote}}"
+      "profileNotRunning": "Nenhuma tarefa {{jobType}} ativa encontrada para o perfil '{{profile}}' em {{remote}}",
+      "stopped": "Tarefa interrompida",
+      "failed": "A tarefa falhou",
+      "lost": "O Rclone não reconhece mais esta tarefa. Ela expirou após terminar ou o motor foi reiniciado, então o resultado não está disponível."
     },
     "cache": {
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
@@ -3226,7 +3258,15 @@
       "startFailed": "Falha ao iniciar o motor de automação: {{error}}",
       "stopFailed": "Falha ao parar o motor de automação: {{error}}",
       "invalidCron": "Expressão cron inválida: {{error}}",
-      "automationNotFound": "Automação não encontrada"
+      "automationNotFound": "Automação não encontrada",
+      "watcherPending": "A vigilância aguarda pastas que ainda não existem: {{paths}}",
+      "noLocalPaths": "Não há caminhos locais para vigiar",
+      "alreadyExists": "Já existe uma automação com o ID {{id}}",
+      "noCronExpression": "A automação não tem expressão cron",
+      "schedulerNotInitialized": "O agendador não está inicializado",
+      "profileNotFound": "O perfil {{operation}} '{{profile}}' de '{{remote}}' não foi encontrado",
+      "workflowNotFound": "O fluxo de trabalho '{{id}}' não foi encontrado",
+      "quickRunNotFound": "A execução rápida '{{id}}' não foi encontrada"
     },
     "system": {
       "unlockFailed": "Falha ao desbloquear: {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "Retomado em",
           "command": "Comando",
           "result": "Resultado do comando",
-          "json": "JSON formatado"
+          "json": "JSON formatado",
+          "reports": "Relatórios de arquivos",
+          "reportCounts": "Contagem dos relatórios de arquivos"
         }
       },
       "details": "Detalhes do Fluxo de Trabalho",

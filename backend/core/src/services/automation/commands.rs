@@ -3,8 +3,11 @@ use log::{error, info};
 
 use crate::{
     rclone::state::automations::AutomationsCache,
-    services::automation::engine::{AutomationScheduler, get_next_run, validate_cron_expression},
-    utils::types::automation::{Automation, AutomationStatus, CronValidationResponse},
+    services::automation::engine::AutomationScheduler,
+    utils::{
+        cron::{get_next_run, validate_cron_expression},
+        types::automation::{Automation, AutomationStatus, CronValidationResponse},
+    },
 };
 
 /// Toggle automation scheduling state.
@@ -160,7 +163,7 @@ mod tests {
         reload_automations_from_configs(&app).await.unwrap();
         let automation = cache.get_automation(&workflow.id).await.unwrap();
         assert_eq!(automation.cron_expression.as_deref(), Some("0 4 * * *"));
-        assert!(automation.scheduler_job_id.is_some());
+        assert!(scheduler.scheduled_job(&workflow.id).await.is_some());
         scheduler.stop().await.unwrap();
     }
 }

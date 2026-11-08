@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "Mount Type",
     "help": "Mount type to use."
+  },
+  "allow_https_downgrade": {
+    "title": "Allow Https Downgrade",
+    "help": "Follow redirects from HTTPS to HTTP (insecure)"
+  },
+  "directory_markers": {
+    "title": "Directory Markers",
+    "help": "List every directory as a directory marker object"
+  },
+  "max_delete_renames_aware": {
+    "title": "Max Delete Renames Aware",
+    "help": "Exclude tracked renames from the --max-delete safety check (requires --track-renames)."
+  },
+  "sftp_key": {
+    "title": "Host Key",
+    "help": "SSH private host key file (Can be multi-valued, leave blank to auto generate)"
+  },
+  "bisync_max_delete": {
+    "title": "Max Delete (%)",
+    "help": "Abort the run if more than this percentage of files would be deleted (0-100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "No Cleanup",
+    "help": "Retain working files."
+  },
+  "dest_after": {
+    "title": "Destination After",
+    "help": "Report all files that exist on the destination after the operation."
   }
 }

@@ -192,11 +192,11 @@ impl BackendManager {
         let mut counts = (0, 0, 0);
         for (jobs, remotes) in caches {
             let (jobs, mounts, serves) = tokio::join!(
-                jobs.get_active_jobs(),
+                jobs.active_job_count(),
                 remotes.get_mounted_remotes(),
                 remotes.get_serves(),
             );
-            counts.0 += jobs.len();
+            counts.0 += jobs;
             counts.1 += mounts.len();
             counts.2 += serves.len();
         }

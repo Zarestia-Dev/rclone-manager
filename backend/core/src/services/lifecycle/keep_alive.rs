@@ -57,9 +57,8 @@ async fn sync(app: &AppHandle) {
     let manager = app.state::<BackendManager>();
     let jobs = manager
         .job_cache_for(LOCAL_BACKEND_NAME)
-        .get_active_jobs()
-        .await
-        .len();
+        .active_job_count()
+        .await;
     let remotes = manager.remote_cache_for(LOCAL_BACKEND_NAME);
     let (mounts, serves) = tokio::join!(remotes.get_mounted_remotes(), remotes.get_serves());
 

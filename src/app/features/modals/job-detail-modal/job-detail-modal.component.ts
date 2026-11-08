@@ -13,11 +13,13 @@ import {
   NON_JOB_OPS,
   DEFAULT_PROFILE_NAME,
 } from '@app/types';
+import { jobReportOf } from 'src/app/shared/utils/job-report.util';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
 import { TransferActivityPanelComponent } from '../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
 import { PathDisplayComponent } from '../../../shared/detail-shared/path-display/path-display.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -58,6 +60,7 @@ export class JobDetailModalComponent {
   private readonly nautilusService = inject(NautilusService);
   private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
   readonly jobData = computed<JobInfo>(() => {
     return (
@@ -136,6 +139,7 @@ export class JobDetailModalComponent {
       remoteName: pathUtils.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
       jobType: job.job_type,
+      report: jobReportOf(job),
     };
   });
 
@@ -152,9 +156,10 @@ export class JobDetailModalComponent {
   readonly speedAvg = computed(
     () => (this.jobData().stats as { speedAvg?: number })?.speedAvg ?? 0
   );
-  readonly lastError = computed(
-    () => this.jobData().stats?.lastError || this.jobData().error || null
-  );
+  readonly lastError = computed(() => {
+    const error = this.jobData().stats?.lastError || this.jobData().error;
+    return error ? this.backendTranslation.translateBackendMessage(error) : null;
+  });
 
   readonly statisticsTitle = computed(() =>
     this.jobData().job_type === 'mount'

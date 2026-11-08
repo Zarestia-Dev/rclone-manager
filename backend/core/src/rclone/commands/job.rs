@@ -12,8 +12,7 @@ use crate::rclone::backend::{
 use crate::rclone::endpoints::core;
 use crate::rclone::endpoints::job;
 use crate::rclone::state::automations::AutomationsCache;
-use crate::services::automation::engine::get_next_run;
-use crate::utils::app::notification::AutomationStage;
+use crate::rclone::state::job_report::job_report;
 use crate::utils::app::notification::JobStage;
 use crate::utils::app::notification::NotificationEvent;
 use crate::utils::app::notification::notify;
@@ -161,23 +160,10 @@ impl JobMetadata {
         origin: Option<Origin>,
         group: Option<String>,
     ) -> Self {
-        Self {
-            remote_name: remote_name.into(),
-            job_type,
-            source: vec![source.into()],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-            quick_run_id: None,
-            execute_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
-        }
+        Self::new(remote_name, job_type, vec![source.into()], "")
+            .with_origin(origin)
+            .with_group(group)
+            .with_no_cache(true)
     }
 
     /// Build a `JobMetadata` for a mutating operation (e.g. `mkdir`,
@@ -194,23 +180,9 @@ impl JobMetadata {
         origin: Option<Origin>,
         group: Option<String>,
     ) -> Self {
-        Self {
-            remote_name: remote_name.into(),
-            job_type,
-            source,
-            destination: destination.into(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-            quick_run_id: None,
-            execute_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
-        }
+        Self::new(remote_name, job_type, source, destination)
+            .with_origin(origin)
+            .with_group(group)
     }
 
     pub fn group_name(&self) -> String {
@@ -358,6 +330,7 @@ pub async fn submit_job_with_options(
             .cache
             .create_job(jobid, metadata.clone(), context.backend_name.clone())
             .await;
+        context.cache.prune_finished(Some(&app)).await;
         if metadata.job_type != JobType::Mount {
             notify(&app, metadata.started_event(context.backend_name.clone()));
         }
@@ -441,6 +414,17 @@ pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
         .await)
 }
 
+/// The file reports a finished sync, copy or move job kept, or `None` when it kept none.
+pub async fn get_job_report(app: AppHandle, jobid: u64) -> Result<Option<Value>, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .job_cache()
+        .await
+        .get_job_report(jobid)
+        .await
+        .map(|report| (*report).clone()))
+}
+
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     info!("Deleting job with ID: {jobid}");
     app.state::<BackendManager>()
@@ -489,6 +473,51 @@ fn monitor_status(batch: &Value) -> Result<&Value, String> {
     Ok(status)
 }
 
+/// One poll: the job's status, and its group's stats with the completed transfers when kept.
+struct PolledJob {
+    status: Value,
+    stats: Option<Value>,
+}
+
+/// Takes the parts of a poll's batch response, after checking the job status in it.
+fn split_poll(mut batch: Value) -> Result<PolledJob, String> {
+    monitor_status(&batch)?;
+    let results = batch
+        .get_mut("results")
+        .and_then(Value::as_array_mut)
+        .ok_or_else(|| "Missing job status in batch response".to_string())?;
+    let stats = match results.as_mut_slice() {
+        [_, stats, history, ..]
+            if stats.is_object()
+                && stats
+                    .get("status")
+                    .and_then(Value::as_u64)
+                    .is_none_or(|code| code < 400) =>
+        {
+            let mut stats = stats.take();
+            if let Some(history) = history
+                .get_mut("transferred")
+                .map(Value::take)
+                .filter(Value::is_array)
+            {
+                stats["completed"] = history;
+            }
+            Some(stats)
+        }
+        _ => None,
+    };
+    Ok(PolledJob {
+        status: results[0].take(),
+        stats,
+    })
+}
+
+/// rclone forgot the job: it expired after finishing, or the engine restarted and numbers
+/// its jobs from 1 again. Waiting longer cannot bring the result back.
+fn job_is_gone(error: &str) -> bool {
+    error.contains("job not found")
+}
+
 async fn monitor_job(
     context: JobContext,
     metadata: JobMetadata,
@@ -504,6 +533,8 @@ async fn monitor_job(
     );
 
     let mut consecutive_errors = 0u8;
+    // The engine run that owns the job; a different one answering means the job id was reused.
+    let mut engine_run: Option<String> = None;
 
     let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
     if !metadata.no_cache {
@@ -536,32 +567,21 @@ async fn monitor_job(
             .rpc(job::BATCH, Some(&json!({ "inputs": &inputs })))
             .await
             .map_err(|error| error.to_string())
-            .and_then(|batch| {
-                let status = monitor_status(&batch)?.clone();
-                Ok((status, batch))
-            });
+            .and_then(split_poll);
 
         match poll_result {
-            Ok((status, batch)) => {
+            Ok(PolledJob { status, stats }) => {
                 consecutive_errors = 0;
-                let mut last_stats = None;
-                if !metadata.no_cache
-                    && let Some(results) = batch["results"].as_array()
-                    && results.len() >= 3
-                    && results[1].is_object()
-                    && results[1]
-                        .get("status")
-                        .and_then(Value::as_u64)
-                        .is_none_or(|code| code < 400)
-                {
-                    let mut stats = results[1].clone();
-                    if let Some(history) = results[2]
-                        .get("transferred")
-                        .filter(|value| value.is_array())
-                    {
-                        stats["completed"] = history.clone();
+                if let Some(run) = status.get("executeId").and_then(Value::as_str) {
+                    let first = engine_run.get_or_insert_with(|| run.to_owned());
+                    if first != run {
+                        return finish_lost_job(&context, jobid, &metadata, &app).await;
                     }
-                    if status["finished"] == true {
+                }
+                let finished = status["finished"] == true;
+                let mut last_stats = None;
+                if let Some(stats) = stats {
+                    if finished {
                         last_stats = Some(stats);
                     } else if job_cache
                         .update_job_stats_for_execution(
@@ -583,12 +603,16 @@ async fn monitor_job(
                         .await;
                     }
                 }
-                if status["finished"] == true {
+                if finished {
                     return handle_job_completion(
                         &context, jobid, &metadata, status, &app, last_stats,
                     )
                     .await;
                 }
+            }
+            Err(error) if job_is_gone(&error) => {
+                warn!("Job {jobid} is no longer known to rclone: {error}");
+                return finish_lost_job(&context, jobid, &metadata, &app).await;
             }
             Err(error) => {
                 consecutive_errors += 1;
@@ -614,11 +638,29 @@ async fn monitor_job(
     }
 }
 
+async fn finish_lost_job(
+    context: &JobContext,
+    jobid: u64,
+    metadata: &JobMetadata,
+    app: &AppHandle,
+) -> Result<Value, String> {
+    let error = crate::localized_error!("backendErrors.job.lost");
+    handle_job_completion(
+        context,
+        jobid,
+        metadata,
+        json!({"finished": true, "success": false, "error": error}),
+        app,
+        None,
+    )
+    .await
+}
+
 async fn handle_job_completion(
     context: &JobContext,
     jobid: u64,
     metadata: &JobMetadata,
-    job_status: Value,
+    mut job_status: Value,
     app: &AppHandle,
     last_stats: Option<Value>,
 ) -> Result<Value, String> {
@@ -644,7 +686,7 @@ async fn handle_job_completion(
         );
     }
 
-    update_associated_automation(
+    crate::services::automation::engine::finish_job_execution(
         app,
         &context.backend_name,
         metadata.execute_id.as_deref(),
@@ -659,12 +701,28 @@ async fn handle_job_completion(
         metadata,
         &outcome,
         &job_status,
-    )?;
+    );
 
-    if !outcome.success {
-        return Err(outcome.error_msg.unwrap_or_else(|| crate::localized_error!("backendErrors.job.executionFailed", "error" => "Job stopped")));
+    match failure_message(&outcome) {
+        Some(error) => Err(error),
+        None => Ok(job_status
+            .get_mut("output")
+            .map_or_else(|| json!({}), Value::take)),
     }
-    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
+}
+
+/// What the waiter for a job receives when it did not succeed.
+fn failure_message(outcome: &JobOutcome) -> Option<String> {
+    if outcome.success {
+        return None;
+    }
+    Some(outcome.error_msg.clone().unwrap_or_else(|| {
+        if outcome.stopped {
+            crate::localized_error!("backendErrors.job.stopped")
+        } else {
+            crate::localized_error!("backendErrors.job.failed")
+        }
+    }))
 }
 
 async fn persist_final_job_state(
@@ -689,6 +747,11 @@ async fn persist_final_job_state(
     if let (Some(obj), Some(output)) = (final_stats.as_object_mut(), check_output) {
         obj.insert("checkOutput".to_string(), output.clone());
     }
+    let had_errors = !outcome.success
+        || final_stats
+            .get("errors")
+            .and_then(Value::as_u64)
+            .is_some_and(|errors| errors > 0);
     job_cache
         .complete_job_for_execution(
             jobid,
@@ -699,66 +762,10 @@ async fn persist_final_job_state(
                 .as_object()
                 .is_some_and(|stats| !stats.is_empty())
                 .then_some(final_stats),
+            job_report(&metadata.job_type, raw_output, had_errors),
         )
         .await?;
     Ok(())
-}
-
-async fn update_associated_automation(
-    app: &AppHandle,
-    backend_name: &str,
-    execute_id: Option<&str>,
-    outcome: &JobOutcome,
-) {
-    let Some(execute_id) = execute_id else {
-        return;
-    };
-    let Some(automation) = app
-        .state::<AutomationsCache>()
-        .update_execution(backend_name, execute_id, |automation| {
-            if outcome.success {
-                automation.mark_success();
-            } else if outcome.stopped {
-                automation.mark_stopped();
-            } else {
-                automation.mark_failure(outcome.error_msg.clone().unwrap_or_default());
-            }
-            automation.next_run = automation
-                .cron_expression
-                .as_deref()
-                .and_then(|expr| get_next_run(expr).ok());
-        })
-        .await
-    else {
-        return;
-    };
-    let event = if outcome.success {
-        AutomationStage::Completed {
-            backend: automation.backend_name.clone(),
-            remote: automation.remote_name.clone(),
-            profile: automation.profile_name.clone(),
-            automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
-        }
-    } else if outcome.stopped {
-        AutomationStage::Stopped {
-            backend: automation.backend_name.clone(),
-            remote: automation.remote_name.clone(),
-            profile: automation.profile_name.clone(),
-            automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
-        }
-    } else {
-        AutomationStage::Failed {
-            backend: automation.backend_name.clone(),
-            remote: automation.remote_name.clone(),
-            profile: automation.profile_name.clone(),
-            automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
-            error: outcome.error_msg.clone().unwrap_or_default(),
-        }
-    };
-    notify(app, NotificationEvent::Automation(event));
 }
 
 fn dispatch_job_completion_effects(
@@ -768,19 +775,18 @@ fn dispatch_job_completion_effects(
     metadata: &JobMetadata,
     outcome: &JobOutcome,
     job_status: &Value,
-) -> Result<(), String> {
+) {
     if outcome.stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
         if !metadata.no_cache {
             notify(app, metadata.stopped_event(backend_name.to_string()));
         }
-        return Ok(());
+        return;
     }
 
-    if !outcome.success {
-        let raw_err = outcome.error_msg.as_deref().unwrap_or("Job failed");
-        let error_for_notify = crate::rclone::engine::error_mapper::map_rclone_error(raw_err)
-            .unwrap_or_else(|| raw_err.to_string());
+    if let Some(raw_err) = failure_message(outcome) {
+        let error_for_notify = crate::rclone::engine::error_mapper::map_rclone_error(&raw_err)
+            .unwrap_or_else(|| raw_err.clone());
         if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
@@ -797,7 +803,7 @@ fn dispatch_job_completion_effects(
                 metadata.failed_event(backend_name.to_string(), &error_for_notify),
             );
         }
-        return Err(raw_err.to_string());
+        return;
     }
 
     if !metadata.no_cache {
@@ -815,8 +821,6 @@ fn dispatch_job_completion_effects(
             notify(app, metadata.completed_event(backend_name.to_string()));
         }
     }
-
-    Ok(())
 }
 
 async fn collect_final_stats(
@@ -824,45 +828,31 @@ async fn collect_final_stats(
     metadata: &JobMetadata,
     last_stats: Option<Value>,
 ) -> Value {
-    let last_stats = match last_stats {
+    let params = json!({ "group": metadata.group_name() });
+    let (mut stats, transferred) = match last_stats {
         Some(stats) if stats.get("completed").is_some_and(Value::is_array) => return stats,
-        other => other,
-    };
-    let group = metadata.group_name();
-
-    let needs_stats_fetch = last_stats
-        .as_ref()
-        .is_none_or(|s| s.is_null() || s == &json!({}));
-
-    let stats_fut = async {
-        if needs_stats_fetch {
-            transport
-                .rpc(core::STATS, Some(&json!({ "group": group })))
-                .await
-                .ok()
-        } else {
-            None
+        Some(stats) if stats.as_object().is_some_and(|stats| !stats.is_empty()) => {
+            let transferred = transport.rpc(core::TRANSFERRED, Some(&params)).await;
+            (stats, transferred)
+        }
+        _ => {
+            let (stats, transferred) = tokio::join!(
+                transport.rpc(core::STATS, Some(&params)),
+                transport.rpc(core::TRANSFERRED, Some(&params)),
+            );
+            (stats.unwrap_or_else(|_| json!({})), transferred)
         }
     };
-    let transferred_params = json!({ "group": group });
-    let transferred_fut = transport.rpc(core::TRANSFERRED, Some(&transferred_params));
 
-    let (stats_result, transferred_result) = tokio::join!(stats_fut, transferred_fut);
-
-    let mut final_stats = if needs_stats_fetch {
-        stats_result.unwrap_or(json!({}))
-    } else {
-        last_stats.unwrap_or(json!({}))
-    };
-
-    if let Ok(data) = transferred_result
-        && let Some(history) = data.get("transferred").filter(|value| value.is_array())
-        && let Some(obj) = final_stats.as_object_mut()
+    if let Ok(mut data) = transferred
+        && let Some(history) = data.get_mut("transferred").map(Value::take)
+        && history.is_array()
+        && let Some(stats) = stats.as_object_mut()
     {
-        obj.insert("completed".to_string(), history.clone());
+        stats.insert("completed".to_string(), history);
     }
 
-    final_stats
+    stats
 }
 
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
@@ -1261,7 +1251,7 @@ mod tests {
                         1 => {
                             assert_eq!(path, "/job/batch");
                             json!({"results": [
-                            {"finished": true, "success": success, "error": if success { "" } else { "transfer failed" }, "output": {"owner": "A"}},
+                            {"finished": true, "success": success, "error": if success { "" } else { "transfer failed" }, "output": if batch { json!({"owner": "A", "results": [{"combined": ["+ new.txt", "- old.txt"]}]}) } else { json!({"owner": "A", "combined": ["+ new.txt", "- old.txt"]}) }},
                                 {"bytes": 123}, {"transferred": []}
                             ]})
                         }
@@ -1344,6 +1334,14 @@ mod tests {
             123
         );
         assert_eq!(a_cache.get_job(7).await.unwrap().execute_id, execution);
+        // The reports rclone returned stay with the job on its own backend, whether it worked or not.
+        let finished = a_cache.get_job(7).await.unwrap();
+        assert_eq!(finished.report_counts.unwrap()["combined"], 2);
+        assert_eq!(
+            a_cache.get_job_report(7).await.unwrap()["combined"][1],
+            "- old.txt"
+        );
+        assert!(b_cache.get_job_report(7).await.is_none());
         let automation = automations.get_automation(&automation_id).await.unwrap();
         assert!(automation.current_job_id.is_none());
         assert!(automation.execution_id.is_none());
@@ -1358,6 +1356,62 @@ mod tests {
             manager.job_cache().await.get_job(7).await.unwrap().status,
             expected_status
         );
+    }
+
+    #[test]
+    fn a_poll_is_split_without_losing_stats_or_history() {
+        let batch = json!({"results": [
+            {"finished": false, "executeId": "run-1"},
+            {"bytes": 5},
+            {"transferred": [{"name": "a.txt"}]},
+        ]});
+        let polled = split_poll(batch).unwrap();
+        assert_eq!(polled.status["executeId"], "run-1");
+        let stats = polled.stats.unwrap();
+        assert_eq!(stats["bytes"], 5);
+        assert_eq!(stats["completed"][0]["name"], "a.txt");
+
+        // A failed stats call or a status-only poll keeps the status and drops the stats.
+        let failed_stats = json!({"results": [
+            {"finished": false},
+            {"status": 500, "error": "no group"},
+            {"transferred": []},
+        ]});
+        assert!(split_poll(failed_stats).unwrap().stats.is_none());
+        let status_only = json!({"results": [{"finished": false}]});
+        assert!(split_poll(status_only).unwrap().stats.is_none());
+        // Without a history the stats come through as rclone returned them.
+        let no_history =
+            json!({"results": [{"finished": false}, {"bytes": 1}, {"transferred": "x"}]});
+        let stats = split_poll(no_history).unwrap().stats.unwrap();
+        assert!(stats.get("completed").is_none());
+    }
+
+    #[test]
+    fn a_poll_with_a_missing_job_is_an_error_that_stops_the_monitor() {
+        let batch = json!({"results": [{"status": 500, "error": "job not found"}]});
+        let error = split_poll(batch).err().unwrap();
+        assert!(job_is_gone(&error));
+        assert!(!job_is_gone("connection refused"));
+    }
+
+    #[test]
+    fn waiters_get_a_localized_error_for_stopped_and_failed_jobs() {
+        let outcome = |success, stopped, error: Option<&str>| JobOutcome {
+            success,
+            stopped,
+            error_msg: error.map(str::to_string),
+            cryptcheck_output: None,
+        };
+        assert_eq!(failure_message(&outcome(true, false, None)), None);
+        assert_eq!(
+            failure_message(&outcome(false, false, Some("boom"))).as_deref(),
+            Some("boom")
+        );
+        let stopped = failure_message(&outcome(false, true, None)).unwrap();
+        assert!(stopped.contains("backendErrors.job.stopped"));
+        let failed = failure_message(&outcome(false, false, None)).unwrap();
+        assert!(failed.contains("backendErrors.job.failed"));
     }
 
     #[tokio::test]

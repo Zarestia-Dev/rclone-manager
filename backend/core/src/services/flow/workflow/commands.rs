@@ -240,7 +240,7 @@ pub fn save_workflow_record(
 ) -> Result<(), String> {
     for node in &wf.nodes {
         if matches!(node.kind(), NodeKind::Cron | NodeKind::ScheduleWait) {
-            crate::services::automation::engine::validate_enabled_cron(
+            crate::utils::cron::validate_enabled_cron(
                 true,
                 node.config
                     .get("cronExpression")

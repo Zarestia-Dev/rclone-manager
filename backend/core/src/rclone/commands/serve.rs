@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::serve;
-use crate::rclone::state::watcher::refresh_serves_quietly;
+use crate::rclone::state::remote_refresh::refresh_serves_quietly;
 use crate::services::paths::AppPaths;
 use crate::utils::app::notification::NotificationEvent;
 use crate::utils::app::notification::ServeStage;

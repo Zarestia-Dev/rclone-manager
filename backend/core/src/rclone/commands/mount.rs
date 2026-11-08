@@ -5,7 +5,7 @@ use log::info;
 use serde_json::{Value, json};
 
 use crate::{
-    rclone::{backend::BackendManager, state::watcher::refresh_mounts_quietly},
+    rclone::{backend::BackendManager, state::remote_refresh::refresh_mounts_quietly},
     utils::{
         app::notification::{MountStage, NotificationEvent, notify},
         logging::log::log_operation,

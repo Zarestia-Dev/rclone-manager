@@ -1,3 +1,5 @@
+//! Refreshing the mounted-remote and serve caches on demand.
+
 use crate::context::AppHandle;
 use log::{debug, warn};
 

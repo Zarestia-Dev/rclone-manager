@@ -292,6 +292,7 @@ export interface BisyncConfig {
     checkAccess?: boolean;
     checkFilename?: string;
     maxDelete?: number;
+    maxDeleteRenamesAware?: boolean;
     force?: boolean;
     checkSync?: boolean | 'only';
     compare?: string;
@@ -412,6 +413,8 @@ export interface RcConfigExample {
 export interface RcConfigOption {
   Name: string;
   FieldName: string;
+  /** Translation key base when `Name` collides with an unrelated option (e.g. `bisync_max_delete`). */
+  TranslationKey?: string;
   Help: string;
   Provider?: string;
   Groups?: string;

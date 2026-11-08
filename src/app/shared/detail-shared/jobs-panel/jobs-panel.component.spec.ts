@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_JOB_STATS, JobInfo } from '@app/types';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -62,6 +62,19 @@ describe('JobsPanelComponent job actions', () => {
     } finally {
       log.mockRestore();
     }
+  });
+
+  it('shows a localized backend error as text, not as its raw JSON', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', { backendErrors: { job: { lost: 'Rclone lost this job' } } });
+    translate.use('en');
+    const lost = '{"key":"backendErrors.job.lost","params":{}}';
+    fixture.componentRef.setInput('config', {
+      jobs: [{ ...first, status: 'Failed', error: lost }],
+    });
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.has-error')?.getAttribute('title');
+    expect(title).toBe('Rclone lost this job');
   });
 
   it('keeps deleting a finished job separate from stopping a running job', () => {

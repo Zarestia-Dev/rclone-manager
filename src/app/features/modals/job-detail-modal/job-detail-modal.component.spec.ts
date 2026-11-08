@@ -23,6 +23,7 @@ describe('JobDetailModalComponent', () => {
     deleteJob: ReturnType<typeof vi.fn>;
     resetGroupStats: ReturnType<typeof vi.fn>;
     getJob: ReturnType<typeof vi.fn>;
+    getJobReport: ReturnType<typeof vi.fn>;
   };
   let fileSystemSpy: {
     openInFiles: ReturnType<typeof vi.fn>;
@@ -93,6 +94,7 @@ describe('JobDetailModalComponent', () => {
       deleteJob: vi.fn().mockResolvedValue(undefined),
       resetGroupStats: vi.fn().mockResolvedValue(undefined),
       getJob: vi.fn().mockReturnValue(mockJob),
+      getJobReport: vi.fn().mockResolvedValue(null),
     };
     fileSystemSpy = {
       openInFiles: vi.fn().mockResolvedValue(undefined),
@@ -194,5 +196,17 @@ describe('JobDetailModalComponent', () => {
 
   it('should query jobService.getJob with execute_id and jobid', () => {
     expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42, undefined);
+  });
+
+  it('hands the activity panel the reports of a job that kept some', () => {
+    expect(component.transferActivityConfig().report).toBeUndefined();
+    jobManagementSpy.getJob.mockReturnValue({ ...mockJob, report_counts: { combined: 3 } });
+    fixture.destroy();
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.transferActivityConfig().report).toEqual({
+      jobId: 42,
+      counts: { combined: 3 },
+    });
   });
 });

@@ -183,6 +183,8 @@ mod tests {
             workflow_id: None,
             node_id: None,
             workflow_lineage: Vec::new(),
+            report: None,
+            report_counts: None,
         }
     }
 

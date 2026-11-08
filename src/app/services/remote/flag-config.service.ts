@@ -12,7 +12,7 @@ import {
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
-import { staticFlagDefinitions } from './flag-definitions';
+import { serveTranslationKeys, staticFlagDefinitions } from './flag-definitions';
 import { MemoizedLoader, memoizedLoader } from './utils/memoized-loader.util';
 
 const SYNC_FLAG_TYPES: ReadonlySet<string> = new Set(
@@ -85,7 +85,15 @@ export class FlagConfigService extends TauriBaseService {
           this.serveTypesLoader.load(),
         ]);
         const staticFlags = (staticFlagDefinitions['serve'] || []).map(option => ({ ...option }));
-        const combined = [...staticFlags, ...(flags ?? [])];
+        const translationKeys = serveTranslationKeys[serveType] ?? {};
+        const combined = [
+          ...staticFlags,
+          ...(flags ?? []).map(flag =>
+            translationKeys[flag.Name]
+              ? { ...flag, TranslationKey: translationKeys[flag.Name] }
+              : flag
+          ),
+        ];
         this.decorateServeTypeOption(combined, serveTypes);
         return combined;
       } catch (error) {

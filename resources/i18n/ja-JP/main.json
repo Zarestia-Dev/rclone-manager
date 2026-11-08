@@ -891,7 +891,8 @@
       "resetStats": "統計をリセット",
       "tabs": {
         "active": "実行中 ({{count}})",
-        "recent": "履歴 ({{count}})"
+        "recent": "履歴 ({{count}})",
+        "report": "ファイルレポート"
       },
       "table": {
         "size": "サイズ",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "削除のアクティビティ",
       "titleActivity": "アクティビティ",
-      "loadMore": "さらに表示"
+      "loadMore": "さらに表示",
+      "report": {
+        "tabs": {
+          "combined": "統合",
+          "missingOnDst": "転送先にない",
+          "differ": "相違",
+          "missingOnSrc": "転送元にない",
+          "match": "一致",
+          "error": "エラー",
+          "destAfter": "処理後の転送先"
+        },
+        "sigils": {
+          "missingOnDst": "転送先にない",
+          "missingOnSrc": "転送元にない",
+          "differ": "相違",
+          "match": "一致",
+          "error": "エラー"
+        },
+        "empty": "このレポートにファイルはありません。",
+        "loadFailed": "レポートを読み込めませんでした。",
+        "showMore": "さらに {{count}} 件を表示"
+      }
     },
     "inputModal": {
       "name": "名前",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "{{remote}} のプロファイル「{{profile}}」はマウントされていません"
     },
     "operations": {
-      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
+      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です",
+      "singleSourceOnly": "{{operation}} は単一のソースパスのみ対応しています",
+      "directoriesOnly": "{{operation}} はディレクトリのみ対応しており、ファイルには対応していません: {{source}}",
+      "sourcePathInvalid": "ソースパスを解析できませんでした: {{path}}",
+      "destinationPathInvalid": "宛先パスを解析できませんでした: {{path}}",
+      "filePathsInvalid": "ソース '{{source}}' または宛先 '{{destination}}' をファイルパスとして解析できませんでした。'remote:path/to/file' 形式かローカルパスを使用してください。",
+      "unsupportedOperation": "操作 {{operation}} は転送として実行できません",
+      "destinationMissing": "宛先が指定されていません"
     },
     "serve": {
       "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
       "executionFailed": "ジョブの実行に失敗しました: {{error}}",
       "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。",
-      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません"
+      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません",
+      "stopped": "ジョブが停止されました",
+      "failed": "ジョブが失敗しました",
+      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。"
     },
     "cache": {
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
@@ -3226,7 +3258,15 @@
       "startFailed": "自動化エンジンの開始に失敗しました: {{error}}",
       "stopFailed": "自動化エンジンの停止に失敗しました: {{error}}",
       "invalidCron": "無効なCron式です: {{error}}",
-      "automationNotFound": "自動化が見つかりません"
+      "automationNotFound": "自動化が見つかりません",
+      "watcherPending": "まだ存在しないフォルダーを待機しています: {{paths}}",
+      "noLocalPaths": "監視するローカルパスがありません",
+      "alreadyExists": "ID {{id}} のオートメーションは既に存在します",
+      "noCronExpression": "オートメーションに cron 式がありません",
+      "schedulerNotInitialized": "スケジューラーが初期化されていません",
+      "profileNotFound": "'{{remote}}' の {{operation}} プロファイル '{{profile}}' が見つかりません",
+      "workflowNotFound": "ワークフロー '{{id}}' が見つかりません",
+      "quickRunNotFound": "クイック実行 '{{id}}' が見つかりません"
     },
     "system": {
       "unlockFailed": "ロック解除に失敗しました: {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "再開時刻",
           "command": "コマンド",
           "result": "コマンド結果",
-          "json": "整形済みJSON"
+          "json": "整形済みJSON",
+          "reports": "ファイルレポート",
+          "reportCounts": "ファイルレポート件数"
         }
       },
       "details": "ワークフロー詳細",

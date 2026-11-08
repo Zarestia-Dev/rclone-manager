@@ -29,8 +29,11 @@ pub struct AutomationArgs {
     pub dst_paths: Vec<String>,
 }
 
+/// Seconds a watched change must stay quiet before the automation runs.
+pub const DEFAULT_WATCH_DELAY: u64 = 5;
+
 fn default_watch_delay() -> u64 {
-    5
+    DEFAULT_WATCH_DELAY
 }
 
 /// Represents an automation with cron configuration
@@ -82,10 +85,6 @@ pub struct Automation {
     #[serde(skip)]
     pub execution_id: Option<String>,
 
-    /// Scheduler job UUID (used to unschedule the automation)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scheduler_job_id: Option<String>,
-
     /// Total number of times this automation has run
     pub run_count: u64,
 
@@ -113,6 +112,39 @@ pub struct Automation {
 }
 
 impl Automation {
+    /// An enabled automation that has never run, with no schedule and no watching.
+    #[must_use]
+    pub fn new(
+        id: String,
+        automation_type: OperationType,
+        args: AutomationArgs,
+        backend_name: &str,
+    ) -> Self {
+        Self {
+            id,
+            automation_type,
+            remote_name: args.params.remote_name.clone(),
+            profile_name: args.params.profile_name.clone(),
+            cron_expression: None,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            created_at: Utc::now(),
+            last_run: None,
+            next_run: None,
+            last_error: None,
+            current_job_id: None,
+            execution_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled: false,
+            watch_delay: DEFAULT_WATCH_DELAY,
+            watch_changed_only: false,
+        }
+    }
+
     /// Quick Run and workflow definitions are global; remote profiles are scoped.
     #[must_use]
     pub fn is_global(&self) -> bool {
@@ -262,7 +294,6 @@ mod tests {
             last_error: None,
             current_job_id: None,
             execution_id: None,
-            scheduler_job_id: None,
             run_count: 0,
             success_count: 0,
             failure_count: 0,

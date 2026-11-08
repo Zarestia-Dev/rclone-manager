@@ -1,0 +1,57 @@
+<div class="report-tabs">
+  @for (tab of tabs(); track tab.key) {
+    <button
+      type="button"
+      class="app-pill interactive"
+      [class.is-selected]="tab.key === activeReport()"
+      [attr.aria-pressed]="tab.key === activeReport()"
+      (click)="select(tab.key)"
+    >
+      {{ 'shared.transferActivity.report.tabs.' + tab.key | translate }}
+      <span class="count-badge">{{ tab.count | number }}</span>
+    </button>
+  }
+  @if (text()) {
+    <button
+      type="button"
+      class="action-button report-copy"
+      [appCopyToClipboard]="text()"
+      [attr.title]="'common.copy' | translate"
+      [attr.aria-label]="'common.copy' | translate"
+    >
+      <mat-icon svgIcon="copy"></mat-icon>
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <div class="loading-container">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+} @else if (failed()) {
+  <div class="empty-state">
+    <span>{{ 'shared.transferActivity.report.loadFailed' | translate }}</span>
+  </div>
+} @else if (rows().length === 0) {
+  <div class="empty-state">
+    <span>{{ 'shared.transferActivity.report.empty' | translate }}</span>
+  </div>
+} @else {
+  <ul class="report-list">
+    @for (row of rows(); track $index) {
+      <li class="report-row">
+        @if (row.sigil; as sigil) {
+          <span class="app-pill pill-sm {{ row.pill }}" [attr.title]="row.labelKey | translate">{{
+            sigil
+          }}</span>
+        }
+        <span class="report-path truncate" [attr.title]="row.path">{{ row.path }}</span>
+      </li>
+    }
+  </ul>
+  @if (hiddenCount() > 0) {
+    <button type="button" class="app-pill interactive report-more" (click)="showMore()">
+      {{ 'shared.transferActivity.report.showMore' | translate: { count: hiddenCount() } }}
+    </button>
+  }
+}

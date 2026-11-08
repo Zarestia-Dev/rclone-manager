@@ -241,7 +241,7 @@ pub(crate) async fn execute_schedule_wait_node(
         .filter(|s| !s.is_empty())
         .unwrap_or("0 2 * * *");
 
-    let next_run = crate::services::automation::engine::get_next_run(cron_expr).map_err(|e| {
+    let next_run = crate::utils::cron::get_next_run(cron_expr).map_err(|e| {
         crate::localized_error!(
             "backendErrors.workflow.invalidSchedule",
             "cron" => cron_expr,

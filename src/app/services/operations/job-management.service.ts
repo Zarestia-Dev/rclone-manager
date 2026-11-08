@@ -5,6 +5,7 @@ import {
   BatchApiLabel,
   JobInfo,
   JobActionType,
+  JobReport,
   JobStatsUpdatedEvent,
   JOB_STATUS,
   Origin,
@@ -259,6 +260,11 @@ export class JobManagementService extends TauriBaseService {
         errorParams: { id: jobid.toString() },
       }
     );
+  }
+
+  /** The file reports a finished sync, copy or move kept; `null` when it kept none. */
+  async getJobReport(jobid: number): Promise<JobReport | null> {
+    return this.invokeCommand<JobReport | null>('get_job_report', { jobid });
   }
 
   async deleteJob(jobid: number): Promise<void> {

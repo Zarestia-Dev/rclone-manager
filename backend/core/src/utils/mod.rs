@@ -5,6 +5,7 @@ pub mod app;
 ))]
 pub(crate) mod archive;
 pub mod constants;
+pub mod cron;
 pub mod format;
 pub mod github_client;
 pub mod i18n;

@@ -22,6 +22,7 @@ import {
 } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
 const TRANSFERRED_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   delete: 'fileBrowser.operations.details.deletedFiles',
@@ -81,6 +82,7 @@ export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
   /** Tracks language changes so all derived labels reactively update on switch. */
   private readonly currentLang = toSignal(this.translate.onLangChange, { initialValue: null });
@@ -207,7 +209,8 @@ export class OperationsPanelComponent {
 
   getFormattedJobError(errors: string | string[] | undefined): string | null {
     if (!errors) return null;
-    return Array.isArray(errors) ? errors.join('\n') : errors;
+    const text = Array.isArray(errors) ? errors.join('\n') : errors;
+    return this.backendTranslation.translateBackendMessage(text);
   }
 
   getTransferredFiles(job: JobInfo): CompletedTransfer[] {

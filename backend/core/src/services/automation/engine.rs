@@ -1,15 +1,25 @@
 //! Cron scheduler engine using tokio-cron-scheduler
 
 use crate::context::{AppHandle, State};
+use crate::rclone::backend::{BackendManager, types::Backend};
+use crate::rclone::commands::job_parser::JobOutcome;
 use crate::rclone::commands::sync::start_resolved_profile_batch;
 use crate::rclone::state::automations::AutomationsCache;
+use crate::services::settings::AppSettingsManager;
 use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify};
+use crate::utils::cron::get_next_run;
 use crate::utils::types::automation::{Automation, AutomationStatus};
+use crate::utils::types::origin::Origin;
+use crate::utils::types::remotes::OperationType;
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
+
+fn scheduler_not_initialized() -> String {
+    crate::localized_error!("backendErrors.automation.schedulerNotInitialized")
+}
 
 struct SchedulerRuntime {
     scheduler: JobScheduler,
@@ -54,12 +64,7 @@ impl AutomationScheduler {
 
     pub async fn start(&self) -> Result<(), String> {
         let mut guard = self.scheduler.write().await;
-        let runtime = guard.as_mut().ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.automation.initFailed",
-                "error" => "Scheduler not initialized"
-            )
-        })?;
+        let runtime = guard.as_mut().ok_or_else(scheduler_not_initialized)?;
 
         if runtime.started {
             return Ok(());
@@ -103,12 +108,9 @@ impl AutomationScheduler {
         }
 
         let scheduler_guard = self.scheduler.read().await;
-        let runtime = scheduler_guard.as_ref().ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.automation.initFailed",
-                "error" => "Scheduler not initialized"
-            )
-        })?;
+        let runtime = scheduler_guard
+            .as_ref()
+            .ok_or_else(scheduler_not_initialized)?;
 
         let app_handle = runtime.app.clone();
 
@@ -121,7 +123,7 @@ impl AutomationScheduler {
         let cron_expr_5_field = automation
             .cron_expression
             .as_deref()
-            .ok_or_else(|| "Automation has no cron expression".to_string())?;
+            .ok_or_else(|| crate::localized_error!("backendErrors.automation.noCronExpression"))?;
         let cron_expr_6_field = format!("0 {cron_expr_5_field}");
 
         let app_handle_for_job = app_handle.clone();
@@ -167,14 +169,26 @@ impl AutomationScheduler {
 
     async fn remove_job(&self, id: Uuid) -> Result<(), String> {
         let guard = self.scheduler.read().await;
-        let runtime = guard.as_ref().ok_or("Scheduler not initialized")?;
+        let runtime = guard.as_ref().ok_or_else(scheduler_not_initialized)?;
         runtime.scheduler.remove(&id).await.map_err(|error| crate::localized_error!("backendErrors.automation.executionFailed", "error" => error))
     }
 
-    pub async fn unschedule_automation(&self, id: Uuid) -> Result<(), String> {
+    /// The cron job installed for an automation.
+    #[cfg(test)]
+    pub(crate) async fn scheduled_job(&self, automation_id: &str) -> Option<Uuid> {
+        let installed = self.installed.lock().await;
+        installed.get(automation_id).map(|(job, _)| *job)
+    }
+
+    /// Removes the automation's cron job. A failed removal keeps the entry, so a later
+    /// reconciliation retries it.
+    pub async fn unschedule_automation(&self, automation_id: &str) -> Result<(), String> {
         let mut installed = self.installed.lock().await;
-        self.remove_job(id).await?;
-        installed.retain(|_, (job, _)| *job != id);
+        let Some((job, _)) = installed.get(automation_id).cloned() else {
+            return Ok(());
+        };
+        self.remove_job(job).await?;
+        installed.remove(automation_id);
         Ok(())
     }
 
@@ -192,7 +206,7 @@ impl AutomationScheduler {
             .read()
             .await
             .as_ref()
-            .ok_or("Scheduler not initialized")?
+            .ok_or_else(scheduler_not_initialized)?
             .app
             .clone();
         let backend = app
@@ -205,14 +219,6 @@ impl AutomationScheduler {
             .as_deref()
             .filter(|_| automation.should_schedule(&backend));
         if previous.as_ref().map(|(_, expression)| expression.as_str()) == desired {
-            let id = previous.map(|(id, _)| id.to_string());
-            if automation.scheduler_job_id != id {
-                cache
-                    .update_automation(&automation.id, |automation| {
-                        automation.scheduler_job_id = id
-                    })
-                    .await?;
-            }
             return Ok(());
         }
         // Build and install the replacement while the old schedule still exists.
@@ -232,16 +238,14 @@ impl AutomationScheduler {
             }
             return Err(error);
         }
-        if let Some(id) = replacement {
-            installed.insert(automation.id.clone(), (id, desired.unwrap().to_string()));
-        } else {
-            installed.remove(&automation.id);
+        match (replacement, desired) {
+            (Some(id), Some(expression)) => {
+                installed.insert(automation.id.clone(), (id, expression.to_string()));
+            }
+            _ => {
+                installed.remove(&automation.id);
+            }
         }
-        cache
-            .update_automation(&automation.id, |automation| {
-                automation.scheduler_job_id = replacement.map(|id| id.to_string())
-            })
-            .await?;
         Ok(())
     }
 
@@ -254,17 +258,17 @@ impl AutomationScheduler {
             .iter()
             .map(|automation| automation.id.as_str())
             .collect();
-        let removed: Vec<_> = self
+        let removed: Vec<String> = self
             .installed
             .lock()
             .await
-            .iter()
-            .filter(|(id, _)| !ids.contains(id.as_str()))
-            .map(|(_, (id, _))| *id)
+            .keys()
+            .filter(|id| !ids.contains(id.as_str()))
+            .cloned()
             .collect();
         let mut errors = Vec::new();
         for id in removed {
-            if let Err(error) = self.unschedule_automation(id).await {
+            if let Err(error) = self.unschedule_automation(&id).await {
                 errors.push(error);
             }
         }
@@ -302,51 +306,14 @@ pub async fn apply_and_sync_automations(app: &AppHandle) -> Result<(), String> {
     schedule_result.and(watch_result)
 }
 
-pub fn validate_enabled_cron(enabled: bool, expression: Option<&str>) -> Result<(), String> {
-    if !enabled {
-        return Ok(());
-    }
-    let expression = expression.filter(|value| !value.trim().is_empty()).ok_or_else(|| crate::localized_error!("backendErrors.automation.invalidCron", "error" => "Cron expression is required"))?;
-    validate_cron_expression(expression)
-}
-
-pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
-    if cron_expr.split_whitespace().count() == 6 {
-        return Err(
-            crate::localized_error!("backendErrors.automation.invalidCron", "error" => "unexpected number of fields"),
-        );
-    }
-    croner::parser::CronParser::new().parse(cron_expr).map_err(
-        |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
-    )?;
-
-    let cron_6_field = format!("0 {cron_expr}");
-    JobBuilder::new()
-        .with_cron_job_type()
-        .with_schedule(&cron_6_field)
-        .map_err(
-            |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
-        )?;
-
-    Ok(())
-}
-
-/// Calculate the next UTC fire time for a 5-field cron expression.
-pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
-    let cron = croner::parser::CronParser::new()
-        .parse(cron_expr)
-        .map_err(|e| format!("Invalid cron expression: {e}"))?;
-
-    let next_local = cron.find_next_occurrence(&Local::now(), false).map_err(
-        |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
-    )?;
-
-    Ok(next_local.with_timezone(&Utc))
-}
-
 pub struct WatchTrigger {
     pub args: crate::utils::types::automation::AutomationArgs,
     pub changed_paths: std::collections::HashSet<std::path::PathBuf>,
+}
+
+enum AutomationExecutionOutcome {
+    Running(String),
+    Success,
 }
 
 pub async fn execute_automation(
@@ -354,37 +321,36 @@ pub async fn execute_automation(
     app_handle: &AppHandle,
     watch: Option<WatchTrigger>,
 ) -> Result<bool, String> {
-    let backend_state = app_handle.state::<crate::rclone::backend::BackendManager>();
-    let selection = backend_state.switch_lock.lock().await;
+    let backend_manager = app_handle.state::<BackendManager>();
+    let selection = backend_manager.switch_lock.lock().await;
     let cache = app_handle.state::<AutomationsCache>();
     let automation = cache
         .get_automation(automation_id)
         .await
         .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
 
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     if !automation.belongs_to_backend(&backend.name) {
         debug!("Skipping automation '{automation_id}': its backend is not selected");
         return Ok(false);
     }
-    let job_cache = backend_manager.job_cache_for(&backend.name);
 
-    let remote_name = automation.args.params.remote_name.clone();
-    let job_type = automation.automation_type.as_job_type().unwrap();
-    let profile = Some(automation.args.params.profile_name.as_str());
-
-    if job_cache
-        .is_job_running(&remote_name, job_type.clone(), profile)
-        .await
-    {
-        let automation_name = automation.log_name();
-        warn!(
-            "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running (automation status: {:?}).",
-            automation_name, job_type, remote_name, profile, automation.status
-        );
-        return Ok(false);
+    // A serve quick run starts a serve, not a job, so there is no job to collide with.
+    if let Some(job_type) = automation.automation_type.as_job_type() {
+        let remote_name = &automation.args.params.remote_name;
+        let profile = Some(automation.args.params.profile_name.as_str());
+        let activity = backend_manager
+            .job_cache_for(&backend.name)
+            .job_activity(remote_name, &job_type, profile)
+            .await;
+        if activity.running {
+            warn!(
+                "Skipping '{}': a '{job_type}' job for '{remote_name}' (profile: {profile:?}) is already running (automation status: {:?}).",
+                automation.log_name(),
+                automation.status
+            );
+            return Ok(false);
+        }
     }
 
     let Some(automation) = cache
@@ -398,20 +364,15 @@ pub async fn execute_automation(
         debug!("Skipping automation '{automation_id}': execution permission was not granted");
         return Ok(false);
     };
+    let Some(execution_id) = automation.execution_id.clone() else {
+        debug!("Skipping automation '{automation_id}': it started without an execution identity");
+        return Ok(false);
+    };
 
-    let execution_id = automation
-        .execution_id
-        .clone()
-        .expect("start reserves an execution identity");
     let mut selection = Some(selection);
     if automation.is_global() {
         drop(selection.take());
     }
-    enum AutomationExecutionOutcome {
-        Running(String),
-        Success,
-    }
-
     let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
 
     notify(
@@ -425,163 +386,247 @@ pub async fn execute_automation(
         }),
     );
 
-    let execution_result: Result<AutomationExecutionOutcome, String> =
-        match automation.args.params.source {
-            Some(crate::utils::types::origin::Origin::QuickRun) => {
-                let qr_id = &automation.id;
-                info!("Executing quick run automation: {qr_id}");
-                crate::services::flow::quick_run::commands::start_quick_run_on_backend(
-                    app_handle.clone(),
-                    backend.clone(),
-                    qr_id.to_string(),
-                    None,
-                    None,
-                    Some(execution_id.clone()),
-                )
-                .await
-                .map(|res| {
-                    let job_handle = res
-                        .job_id
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| res.execute_id);
-                    AutomationExecutionOutcome::Running(job_handle)
-                })
-            }
-            Some(crate::utils::types::origin::Origin::Flow) => {
-                let wf_id = &automation.id;
-                info!("Executing workflow automation: {wf_id}");
-                let _ = cache
-                    .update_automation(automation_id, |t| {
-                        if t.execution_id.as_deref() == Some(&execution_id) {
-                            t.current_job_id = Some(wf_id.clone());
-                        }
-                        t.next_run = next_run;
-                    })
-                    .await;
-
-                // execute_workflow emits its own dedicated NotificationEvent::Workflow events
-                let trigger = if watch.is_some() {
-                    crate::services::flow::workflow::engine::RunTrigger::Watcher
-                } else {
-                    crate::services::flow::workflow::engine::RunTrigger::Cron
-                };
-                crate::services::flow::workflow::engine::execute_workflow(
-                    app_handle.clone(),
-                    backend.clone(),
-                    wf_id.to_string(),
-                    false,
-                    trigger,
-                )
-                .await
-                .and_then(|exec_res| {
-                    if exec_res.success {
-                        Ok(AutomationExecutionOutcome::Success)
-                    } else {
-                        Err(exec_res.error.unwrap_or_else(|| {
-                            crate::localized_error!("backendErrors.workflow.unknownError")
-                        }))
-                    }
-                })
-            }
-            _ => {
-                let mut params = automation.args.params.clone();
-                params.source = Some(crate::utils::types::origin::Origin::Automation);
-                params.scoped_targets = if automation.watch_changed_only
-                    && automation.automation_type
-                        != crate::utils::types::remotes::OperationType::Bisync
-                {
-                    watch.as_ref().map(|trigger| {
-                        crate::services::automation::watcher::compute_scoped_targets(
-                            &automation.args.src_paths,
-                            &automation.args.dst_paths,
-                            &trigger.changed_paths,
-                        )
-                    })
-                } else {
-                    None
-                };
-                params.backend_name = Some(automation.backend_name.clone());
-                params.execute_id = Some(execution_id.clone());
-
-                let transfer_type = automation.automation_type;
-                let mut resolved = if app_handle
-                    .state::<crate::services::settings::AppSettingsManager>()
-                    .is_locked()
-                {
-                    super::runtime::profile(app_handle, automation_id, &backend)
-                } else {
-                    crate::rclone::commands::common::resolve_profile_settings(
-                        app_handle,
-                        &params.remote_name,
-                        &params.profile_name,
-                        transfer_type,
-                        params.backend_name.as_deref(),
-                    )
-                    .await
-                };
-                // Auto-lock may happen during the asynchronous backend lookup.
-                if resolved.is_err()
-                    && app_handle
-                        .state::<crate::services::settings::AppSettingsManager>()
-                        .is_locked()
-                {
-                    resolved = super::runtime::profile(app_handle, automation_id, &backend);
-                }
-                // Execute an immutable profile snapshot without holding the
-                // selection/settings lock through a long remote operation.
-                drop(selection.take());
-                match resolved {
-                    Ok(resolved) => start_resolved_profile_batch(
-                        app_handle.clone(),
-                        resolved,
-                        transfer_type,
-                        params,
-                    )
-                    .await
-                    .map(AutomationExecutionOutcome::Running),
-                    Err(error) => Err(error),
-                }
-            }
-        };
-
-    match execution_result {
-        Ok(AutomationExecutionOutcome::Running(job_handle)) => {
-            cache
-                .update_automation(automation_id, |t| {
-                    if t.execution_id.as_deref() == Some(&execution_id) {
-                        t.current_job_id = Some(job_handle);
-                        t.next_run = next_run;
-                    }
-                })
-                .await
-                .ok();
-            Ok(true)
+    let execution = match automation.args.params.source {
+        Some(Origin::QuickRun) => {
+            run_quick_run(app_handle, &backend, &automation, &execution_id).await
         }
-        Ok(AutomationExecutionOutcome::Success) => {
-            cache
-                .update_automation(automation_id, |t| {
-                    if t.execution_id.as_deref() == Some(&execution_id) {
-                        t.mark_success();
-                        t.next_run = next_run;
-                    }
-                })
-                .await
-                .ok();
-            Ok(true)
+        Some(Origin::Flow) => {
+            let watched = watch.is_some();
+            run_workflow(
+                app_handle,
+                &backend,
+                &cache,
+                &automation,
+                &execution_id,
+                next_run,
+                watched,
+            )
+            .await
         }
-        Err(e) => {
-            cache
-                .update_automation(automation_id, |t| {
-                    if t.execution_id.as_deref() == Some(&execution_id) {
-                        t.mark_failure(e.clone());
-                        t.next_run = next_run;
-                    }
-                })
-                .await
-                .ok();
-            Err(e)
+        _ => {
+            run_profile(
+                app_handle,
+                &backend,
+                &automation,
+                &execution_id,
+                watch.as_ref(),
+                &mut selection,
+            )
+            .await
         }
+    };
+    finish_execution(&cache, automation_id, &execution_id, next_run, execution).await
+}
+
+async fn run_quick_run(
+    app: &AppHandle,
+    backend: &Backend,
+    automation: &Automation,
+    execution_id: &str,
+) -> Result<AutomationExecutionOutcome, String> {
+    info!("Executing quick run automation: {}", automation.id);
+    let started = crate::services::flow::quick_run::commands::start_quick_run_on_backend(
+        app.clone(),
+        backend.clone(),
+        automation.id.clone(),
+        None,
+        None,
+        Some(execution_id.to_owned()),
+    )
+    .await?;
+    // A serve is a running resource, not a job, so nothing would ever finish this execution.
+    if started.serve_id.is_some() {
+        return Ok(AutomationExecutionOutcome::Success);
     }
+    let handle = started
+        .job_id
+        .map_or(started.execute_id, |id| id.to_string());
+    Ok(AutomationExecutionOutcome::Running(handle))
+}
+
+async fn run_workflow(
+    app: &AppHandle,
+    backend: &Backend,
+    cache: &AutomationsCache,
+    automation: &Automation,
+    execution_id: &str,
+    next_run: Option<chrono::DateTime<Utc>>,
+    watched: bool,
+) -> Result<AutomationExecutionOutcome, String> {
+    use crate::services::flow::workflow::engine::{RunTrigger, execute_workflow};
+
+    info!("Executing workflow automation: {}", automation.id);
+    let _ = cache
+        .update_automation(&automation.id, |t| {
+            if t.execution_id.as_deref() == Some(execution_id) {
+                t.current_job_id = Some(automation.id.clone());
+            }
+            t.next_run = next_run;
+        })
+        .await;
+
+    // execute_workflow emits its own dedicated NotificationEvent::Workflow events
+    let trigger = if watched {
+        RunTrigger::Watcher
+    } else {
+        RunTrigger::Cron
+    };
+    let result = execute_workflow(
+        app.clone(),
+        backend.clone(),
+        automation.id.clone(),
+        false,
+        trigger,
+    )
+    .await?;
+    if result.success {
+        Ok(AutomationExecutionOutcome::Success)
+    } else {
+        Err(result
+            .error
+            .unwrap_or_else(|| crate::localized_error!("backendErrors.workflow.unknownError")))
+    }
+}
+
+async fn run_profile(
+    app: &AppHandle,
+    backend: &Backend,
+    automation: &Automation,
+    execution_id: &str,
+    watch: Option<&WatchTrigger>,
+    selection: &mut Option<tokio::sync::MutexGuard<'_, ()>>,
+) -> Result<AutomationExecutionOutcome, String> {
+    let transfer_type = automation.automation_type;
+    let mut params = automation.args.params.clone();
+    params.source = Some(Origin::Automation);
+    params.scoped_targets = match watch {
+        Some(trigger)
+            if automation.watch_changed_only && transfer_type != OperationType::Bisync =>
+        {
+            // Telling files from directories asks the file system about every changed path.
+            let (src, dst, changed) = (
+                automation.args.src_paths.clone(),
+                automation.args.dst_paths.clone(),
+                trigger.changed_paths.clone(),
+            );
+            let targets = crate::utils::spawn_blocking(move || {
+                crate::services::automation::watcher::compute_scoped_targets(&src, &dst, &changed)
+            })
+            .await
+            .map_err(|error| error.to_string())?;
+            Some(targets)
+        }
+        _ => None,
+    };
+    params.backend_name = Some(automation.backend_name.clone());
+    params.execute_id = Some(execution_id.to_owned());
+
+    let settings = app.state::<AppSettingsManager>();
+    let mut resolved = if settings.is_locked() {
+        super::runtime::profile(app, &automation.id, backend)
+    } else {
+        crate::rclone::commands::common::resolve_profile_settings(
+            app,
+            &params.remote_name,
+            &params.profile_name,
+            transfer_type,
+            params.backend_name.as_deref(),
+        )
+        .await
+    };
+    // Auto-lock may happen during the asynchronous backend lookup.
+    if resolved.is_err() && settings.is_locked() {
+        resolved = super::runtime::profile(app, &automation.id, backend);
+    }
+    // Execute an immutable profile snapshot without holding the
+    // selection/settings lock through a long remote operation.
+    drop(selection.take());
+    start_resolved_profile_batch(app.clone(), resolved?, transfer_type, params)
+        .await
+        .map(AutomationExecutionOutcome::Running)
+}
+
+/// Records how a started execution ended, unless a newer execution replaced it.
+async fn finish_execution(
+    cache: &AutomationsCache,
+    automation_id: &str,
+    execution_id: &str,
+    next_run: Option<chrono::DateTime<Utc>>,
+    execution: Result<AutomationExecutionOutcome, String>,
+) -> Result<bool, String> {
+    let _ = cache
+        .update_automation(automation_id, |automation| {
+            if automation.execution_id.as_deref() != Some(execution_id) {
+                return;
+            }
+            match &execution {
+                Ok(AutomationExecutionOutcome::Running(job)) => {
+                    // A job that already bound itself (the last of a chain) is the newer handle.
+                    automation.current_job_id.get_or_insert_with(|| job.clone());
+                }
+                Ok(AutomationExecutionOutcome::Success) => automation.mark_success(),
+                Err(error) => automation.mark_failure(error.clone()),
+            }
+            automation.next_run = next_run;
+        })
+        .await;
+    execution.map(|_| true)
+}
+
+/// A job an automation started has ended: records the outcome, sets the next cron run and
+/// announces the result.
+pub(crate) async fn finish_job_execution(
+    app: &AppHandle,
+    backend_name: &str,
+    execute_id: Option<&str>,
+    outcome: &JobOutcome,
+) {
+    let Some(execute_id) = execute_id else {
+        return;
+    };
+    let Some(automation) = app
+        .state::<AutomationsCache>()
+        .update_execution(backend_name, execute_id, |automation| {
+            if outcome.success {
+                automation.mark_success();
+            } else if outcome.stopped {
+                automation.mark_stopped();
+            } else {
+                automation.mark_failure(outcome.error_msg.clone().unwrap_or_default());
+            }
+            automation.next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+        })
+        .await
+    else {
+        return;
+    };
+    let event = if outcome.success {
+        AutomationStage::Completed {
+            backend: automation.backend_name.clone(),
+            remote: automation.remote_name.clone(),
+            profile: automation.profile_name.clone(),
+            automation_name: automation.display_name(),
+            automation_type: automation.automation_type,
+        }
+    } else if outcome.stopped {
+        AutomationStage::Stopped {
+            backend: automation.backend_name.clone(),
+            remote: automation.remote_name.clone(),
+            profile: automation.profile_name.clone(),
+            automation_name: automation.display_name(),
+            automation_type: automation.automation_type,
+        }
+    } else {
+        AutomationStage::Failed {
+            backend: automation.backend_name.clone(),
+            remote: automation.remote_name.clone(),
+            profile: automation.profile_name.clone(),
+            automation_name: automation.display_name(),
+            automation_type: automation.automation_type,
+            error: outcome.error_msg.clone().unwrap_or_default(),
+        }
+    };
+    notify(app, NotificationEvent::Automation(event));
 }
 
 fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>> {
@@ -594,16 +639,8 @@ fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Datelike, Timelike};
-
-    #[test]
-    fn enabled_cron_requires_a_valid_expression() {
-        for expression in [None, Some(""), Some("   "), Some("invalid")] {
-            assert!(validate_enabled_cron(true, expression).is_err());
-        }
-        assert!(validate_enabled_cron(false, None).is_ok());
-        assert!(validate_enabled_cron(false, Some("invalid")).is_ok());
-        assert!(validate_enabled_cron(true, Some("0 2 * * *")).is_ok());
+    async fn scheduled(scheduler: &AutomationScheduler, id: &str) -> Option<String> {
+        scheduler.scheduled_job(id).await.map(|job| job.to_string())
     }
 
     #[tokio::test]
@@ -668,12 +705,7 @@ mod tests {
         scheduler.start().await.unwrap();
 
         scheduler.reload_automations(app.clone()).await.unwrap();
-        let local_cron = cache
-            .get_automation(&local.id)
-            .await
-            .unwrap()
-            .scheduler_job_id
-            .unwrap();
+        let local_cron = scheduled(&scheduler, &local.id).await.unwrap();
         // A startup retry must keep the live scheduler that owns this job ID.
         let (first, second) = tokio::join!(
             scheduler.initialize(app.clone()),
@@ -694,14 +726,7 @@ mod tests {
                 .to_string(),
             local_cron
         );
-        assert!(
-            cache
-                .get_automation(&other.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .is_none()
-        );
+        assert!(scheduled(&scheduler, &other.id).await.is_none());
         cache
             .update_automation(&local.id, |a| {
                 a.mark_starting().unwrap();
@@ -711,12 +736,7 @@ mod tests {
             .unwrap();
         scheduler.reload_automations(app.clone()).await.unwrap();
         assert_eq!(
-            cache
-                .get_automation(&local.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .as_deref(),
+            scheduled(&scheduler, &local.id).await.as_deref(),
             Some(local_cron.as_str())
         );
 
@@ -728,12 +748,7 @@ mod tests {
             .unwrap();
         assert!(scheduler.reload_automations(app.clone()).await.is_err());
         assert_eq!(
-            cache
-                .get_automation(&local.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .as_deref(),
+            scheduled(&scheduler, &local.id).await.as_deref(),
             Some(local_cron.as_str())
         );
         cache
@@ -747,118 +762,20 @@ mod tests {
         manager.switch_to(&settings, "Other").await.unwrap();
         scheduler.reload_automations(app.clone()).await.unwrap();
         let running = cache.get_automation(&local.id).await.unwrap();
-        assert!(running.scheduler_job_id.is_none());
+        assert!(scheduled(&scheduler, &local.id).await.is_none());
         assert_eq!(running.current_job_id.as_deref(), Some("7"));
         assert_eq!(running.status, AutomationStatus::Running);
-        assert!(
-            cache
-                .get_automation(&other.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .is_some()
-        );
+        assert!(scheduled(&scheduler, &other.id).await.is_some());
 
         manager
             .switch_to(&settings, LOCAL_BACKEND_NAME)
             .await
             .unwrap();
         scheduler.reload_automations(app.clone()).await.unwrap();
-        assert!(
-            cache
-                .get_automation(&local.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .is_some()
-        );
-        assert!(
-            cache
-                .get_automation(&other.id)
-                .await
-                .unwrap()
-                .scheduler_job_id
-                .is_none()
-        );
+        assert!(scheduled(&scheduler, &local.id).await.is_some());
+        assert!(scheduled(&scheduler, &other.id).await.is_none());
         scheduler.stop().await.unwrap();
         assert!(scheduler.installed.lock().await.is_empty());
-    }
-
-    // -----------------------------------------------------------------------
-    // validate_cron_expression
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn test_validate_cron_valid_expressions() {
-        assert!(validate_cron_expression("* * * * *").is_ok());
-        assert!(validate_cron_expression("0 9 * * 1-5").is_ok());
-        assert!(validate_cron_expression("*/15 * * * *").is_ok());
-        assert!(validate_cron_expression("0 0 1 * *").is_ok());
-        assert!(validate_cron_expression("30 6 * * 1,3,5").is_ok());
-    }
-
-    #[test]
-    fn test_validate_cron_invalid_expressions() {
-        assert!(validate_cron_expression("invalid").is_err());
-        // 6 fields from the user is rejected (we add the seconds field ourselves)
-        assert!(validate_cron_expression("* * * * * *").is_err());
-        // Minute 60 is out of range
-        assert!(validate_cron_expression("60 * * * *").is_err());
-        // Empty string
-        assert!(validate_cron_expression("").is_err());
-    }
-
-    // -----------------------------------------------------------------------
-    // get_next_run
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn test_get_next_run_is_in_the_future() {
-        let now = Utc::now();
-        let next = get_next_run("* * * * *").unwrap();
-        assert!(next > now, "next run must be after now");
-    }
-
-    #[test]
-    fn test_get_next_run_specific_date() {
-        // Jan 1st midnight — local time
-        let next = get_next_run("0 0 1 1 *").unwrap();
-        let local = next.with_timezone(&Local);
-        assert_eq!(local.minute(), 0);
-        assert_eq!(local.hour(), 0);
-        assert_eq!(local.day(), 1);
-        assert_eq!(local.month(), 1);
-    }
-
-    #[test]
-    fn test_get_next_run_invalid_expression_returns_err() {
-        assert!(get_next_run("not-valid").is_err());
-        assert!(get_next_run("").is_err());
-    }
-
-    // -----------------------------------------------------------------------
-    // validate_cron_expression — boundary values
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn test_validate_cron_boundary_minutes() {
-        // Minute 0 and 59 are valid
-        assert!(validate_cron_expression("0 * * * *").is_ok());
-        assert!(validate_cron_expression("59 * * * *").is_ok());
-        // Minute 60 is invalid
-        assert!(validate_cron_expression("60 * * * *").is_err());
-    }
-
-    #[test]
-    fn test_validate_cron_step_values() {
-        assert!(validate_cron_expression("*/5 * * * *").is_ok());
-        assert!(validate_cron_expression("*/30 * * * *").is_ok());
-    }
-
-    #[test]
-    fn test_validate_cron_ranges() {
-        assert!(validate_cron_expression("0 9-17 * * *").is_ok());
-        assert!(validate_cron_expression("0 0 * * 1-5").is_ok());
     }
 
     #[tokio::test]

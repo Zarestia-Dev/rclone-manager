@@ -63,6 +63,26 @@ describe('ConfigSearchService', () => {
     );
   });
 
+  it('searches the TranslationKey text instead of an unrelated option with the same name', () => {
+    translate.setTranslation(
+      'tr',
+      {
+        max_delete: { title: 'Maksimum Silme', help: 'Silme sayısını sınırla' },
+        bisync_max_delete: { title: 'Maksimum Silme (%)', help: 'Yüzdeyi aşarsa durdur' },
+      },
+      true
+    );
+    const bisync = {
+      ...field,
+      Name: 'maxDelete',
+      TranslationKey: 'bisync_max_delete',
+      Help: 'Percentage',
+    };
+    expect(service.matches(bisync, 'yüzdeyi aşarsa')).toBe(true);
+    expect(service.matches(bisync, 'silme sayısını')).toBe(false);
+    expect(service.matches({ ...bisync, TranslationKey: undefined }, 'silme sayısını')).toBe(true);
+  });
+
   it('recomputes cached matches after changing language', () => {
     const match = computed(() => service.matches(field, 'Benimle Paylaşılanlar', 'drive'));
     expect(match()).toBe(true);

@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "挂载类型",
     "help": "要使用的挂载类型。"
+  },
+  "allow_https_downgrade": {
+    "title": "允许 HTTPS 降级",
+    "help": "跟随从 HTTPS 到 HTTP 的重定向（不安全）"
+  },
+  "directory_markers": {
+    "title": "目录标记",
+    "help": "将每个目录列为目录标记对象"
+  },
+  "max_delete_renames_aware": {
+    "title": "最大删除（感知重命名）",
+    "help": "在 --max-delete 安全检查中排除已跟踪的重命名（需要 --track-renames）。"
+  },
+  "sftp_key": {
+    "title": "主机密钥",
+    "help": "SSH 主机私钥文件（可指定多个值，留空则自动生成）"
+  },
+  "bisync_max_delete": {
+    "title": "最大删除比例 (%)",
+    "help": "如果将删除超过此百分比的文件，则中止运行（0-100）。"
+  },
+  "bisync_no_cleanup": {
+    "title": "不清理",
+    "help": "保留工作文件。"
+  },
+  "dest_after": {
+    "title": "操作后的目标",
+    "help": "报告操作后目标中存在的所有文件。"
   }
 }

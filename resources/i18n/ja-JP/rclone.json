@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "マウント種別",
     "help": "使用するマウントのタイプ"
+  },
+  "allow_https_downgrade": {
+    "title": "HTTPS ダウングレードを許可",
+    "help": "HTTPS から HTTP へのリダイレクトに従う（安全ではありません）"
+  },
+  "directory_markers": {
+    "title": "ディレクトリマーカー",
+    "help": "すべてのディレクトリをディレクトリマーカーオブジェクトとして一覧表示する"
+  },
+  "max_delete_renames_aware": {
+    "title": "最大削除（リネーム考慮）",
+    "help": "追跡されたリネームを --max-delete の安全チェックから除外します（--track-renames が必要）。"
+  },
+  "sftp_key": {
+    "title": "ホスト鍵",
+    "help": "SSH ホスト秘密鍵ファイル（複数指定可、空欄の場合は自動生成）"
+  },
+  "bisync_max_delete": {
+    "title": "最大削除率 (%)",
+    "help": "削除されるファイルがこの割合を超える場合は実行を中止します（0〜100）。"
+  },
+  "bisync_no_cleanup": {
+    "title": "クリーンアップ無効化",
+    "help": "作業用ファイルを保持します。"
+  },
+  "dest_after": {
+    "title": "操作後の転送先",
+    "help": "操作後に転送先に存在するすべてのファイルをレポートします。"
   }
 }

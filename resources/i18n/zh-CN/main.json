@@ -891,7 +891,8 @@
       "resetStats": "重置统计",
       "tabs": {
         "active": "进行中（{{count}}）",
-        "recent": "最近完成（{{count}}）"
+        "recent": "最近完成（{{count}}）",
+        "report": "文件报告"
       },
       "table": {
         "size": "大小",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "删除活动",
       "titleActivity": "活动",
-      "loadMore": "显示更多"
+      "loadMore": "显示更多",
+      "report": {
+        "tabs": {
+          "combined": "合并",
+          "missingOnDst": "目标端缺失",
+          "differ": "不同",
+          "missingOnSrc": "源端缺失",
+          "match": "相同",
+          "error": "错误",
+          "destAfter": "操作后的目标"
+        },
+        "sigils": {
+          "missingOnDst": "目标端缺失",
+          "missingOnSrc": "源端缺失",
+          "differ": "不同",
+          "match": "相同",
+          "error": "错误"
+        },
+        "empty": "此报告中没有文件。",
+        "loadFailed": "无法加载报告。",
+        "showMore": "再显示 {{count}} 项"
+      }
     },
     "inputModal": {
       "name": "名称",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "配置文件 '{{profile}}' 未在 {{remote}} 上挂载"
     },
     "operations": {
-      "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
+      "configIncomplete": "配置文件 '{{profile}}' 配置不完整",
+      "singleSourceOnly": "{{operation}} 仅支持单个源路径",
+      "directoriesOnly": "{{operation}} 仅支持目录，不支持文件：{{source}}",
+      "sourcePathInvalid": "无法解析源路径：{{path}}",
+      "destinationPathInvalid": "无法解析目标路径：{{path}}",
+      "filePathsInvalid": "无法将源 '{{source}}' 或目标 '{{destination}}' 解析为文件路径。请使用 'remote:path/to/file' 格式或本地路径。",
+      "unsupportedOperation": "操作 {{operation}} 无法作为传输运行",
+      "destinationMissing": "未指定目标"
     },
     "serve": {
       "parseFailed": "解析响应失败：{{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "任务监控错误过多：{{error}}",
       "executionFailed": "任务执行失败：{{error}}",
       "corruptedTransfer": "传输过程中文件损坏或校验和验证失败。",
-      "profileNotRunning": "在 {{remote}} 上未找到配置文件 '{{profile}}' 正在运行的 {{jobType}} 任务"
+      "profileNotRunning": "在 {{remote}} 上未找到配置文件 '{{profile}}' 正在运行的 {{jobType}} 任务",
+      "stopped": "任务已停止",
+      "failed": "任务失败",
+      "lost": "Rclone 已不再识别此任务。任务在完成后已过期，或引擎已重启，因此无法获取其结果。"
     },
     "cache": {
       "fetchConfigFailed": "获取远程存储配置失败",
@@ -3226,7 +3258,15 @@
       "startFailed": "启动自动化引擎失败：{{error}}",
       "stopFailed": "停止自动化引擎失败：{{error}}",
       "invalidCron": "Cron 表达式无效：{{error}}",
-      "automationNotFound": "未找到自动化"
+      "automationNotFound": "未找到自动化",
+      "watcherPending": "监视正在等待尚不存在的文件夹：{{paths}}",
+      "noLocalPaths": "没有可监视的本地路径",
+      "alreadyExists": "ID 为 {{id}} 的自动化已存在",
+      "noCronExpression": "自动化没有 cron 表达式",
+      "schedulerNotInitialized": "调度器尚未初始化",
+      "profileNotFound": "未找到 '{{remote}}' 的 {{operation}} 配置文件 '{{profile}}'",
+      "workflowNotFound": "未找到工作流 '{{id}}'",
+      "quickRunNotFound": "未找到快速运行 '{{id}}'"
     },
     "system": {
       "unlockFailed": "解锁失败：{{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "恢复执行时间",
           "command": "命令",
           "result": "命令结果",
-          "json": "格式化 JSON"
+          "json": "格式化 JSON",
+          "reports": "文件报告",
+          "reportCounts": "文件报告数量"
         }
       },
       "details": "工作流详情",

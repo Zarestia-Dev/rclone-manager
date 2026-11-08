@@ -891,7 +891,8 @@
       "resetStats": "Скинути статистику",
       "tabs": {
         "active": "Активні ({{count}})",
-        "recent": "Нещодавні ({{count}})"
+        "recent": "Нещодавні ({{count}})",
+        "report": "Звіт про файли"
       },
       "table": {
         "size": "Розмір",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Видалення файлів",
       "titleActivity": "Активність",
-      "loadMore": "Показати ще"
+      "loadMore": "Показати ще",
+      "report": {
+        "tabs": {
+          "combined": "Загальний",
+          "missingOnDst": "Відсутні в призначенні",
+          "differ": "Відрізняються",
+          "missingOnSrc": "Відсутні в джерелі",
+          "match": "Збігаються",
+          "error": "Помилки",
+          "destAfter": "Призначення після"
+        },
+        "sigils": {
+          "missingOnDst": "Немає в призначенні",
+          "missingOnSrc": "Немає в джерелі",
+          "differ": "Відрізняється",
+          "match": "Збігається",
+          "error": "Помилка"
+        },
+        "empty": "У цьому звіті немає файлів.",
+        "loadFailed": "Не вдалося завантажити звіт.",
+        "showMore": "Показати ще {{count}}"
+      }
     },
     "inputModal": {
       "name": "Назва",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "Профіль «{{profile}}» не змонтовано на {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»"
+      "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»",
+      "singleSourceOnly": "{{operation}} підтримує лише один вихідний шлях",
+      "directoriesOnly": "{{operation}} підтримує лише каталоги, а не файли: {{source}}",
+      "sourcePathInvalid": "Не вдалося розібрати вихідний шлях: {{path}}",
+      "destinationPathInvalid": "Не вдалося розібрати шлях призначення: {{path}}",
+      "filePathsInvalid": "Не вдалося розібрати джерело '{{source}}' або призначення '{{destination}}' як шлях до файлу. Використайте формат 'remote:шлях/до/файлу' або локальний шлях.",
+      "unsupportedOperation": "Операцію {{operation}} не можна виконати як передачу",
+      "destinationMissing": "Призначення не вказано"
     },
     "serve": {
       "parseFailed": "Не вдалося розібрати відповідь: {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "Забагато помилок під час моніторингу завдання: {{error}}",
       "executionFailed": "Не вдалося виконати завдання: {{error}}",
       "corruptedTransfer": "Файл пошкоджено під час передачі або не збіглася контрольна сума.",
-      "profileNotRunning": "Не знайдено активного завдання {{jobType}} для профілю «{{profile}}» на {{remote}}"
+      "profileNotRunning": "Не знайдено активного завдання {{jobType}} для профілю «{{profile}}» на {{remote}}",
+      "stopped": "Завдання зупинено",
+      "failed": "Завдання завершилося з помилкою",
+      "lost": "Rclone більше не знає про це завдання. Воно застаріло після завершення або рушій було перезапущено, тому результат недоступний."
     },
     "cache": {
       "fetchConfigFailed": "Не вдалося отримати конфігурацію сховищ",
@@ -3226,7 +3258,15 @@
       "startFailed": "Не вдалося запустити рушій автоматизації: {{error}}",
       "stopFailed": "Не вдалося зупинити рушій автоматизації: {{error}}",
       "invalidCron": "Невірний cron-вираз: {{error}}",
-      "automationNotFound": "Автоматизацію не знайдено"
+      "automationNotFound": "Автоматизацію не знайдено",
+      "watcherPending": "Спостереження очікує на папки, яких ще немає: {{paths}}",
+      "noLocalPaths": "Немає локальних шляхів для спостереження",
+      "alreadyExists": "Автоматизація з ID {{id}} уже існує",
+      "noCronExpression": "В автоматизації немає cron-виразу",
+      "schedulerNotInitialized": "Планувальник не ініціалізовано",
+      "profileNotFound": "Профіль {{operation}} '{{profile}}' для '{{remote}}' не знайдено",
+      "workflowNotFound": "Робочий процес '{{id}}' не знайдено",
+      "quickRunNotFound": "Швидкий запуск '{{id}}' не знайдено"
     },
     "system": {
       "unlockFailed": "Не вдалося розблокувати: {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "Відновлено о",
           "command": "Команда",
           "result": "Результат команди",
-          "json": "Форматований JSON"
+          "json": "Форматований JSON",
+          "reports": "Звіти про файли",
+          "reportCounts": "Кількість файлів у звітах"
         }
       },
       "details": "Властивості процесу",

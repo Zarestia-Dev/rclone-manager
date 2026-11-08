@@ -891,7 +891,8 @@
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
-        "recent": "Recent ({{count}})"
+        "recent": "Recent ({{count}})",
+        "report": "File Report"
       },
       "table": {
         "size": "Size",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Delete Activity",
       "titleActivity": "Activity",
-      "loadMore": "Show more"
+      "loadMore": "Show more",
+      "report": {
+        "tabs": {
+          "combined": "Combined",
+          "missingOnDst": "Missing on destination",
+          "differ": "Differ",
+          "missingOnSrc": "Missing on source",
+          "match": "Match",
+          "error": "Errors",
+          "destAfter": "Destination after"
+        },
+        "sigils": {
+          "missingOnDst": "Missing on destination",
+          "missingOnSrc": "Missing on source",
+          "differ": "Differs",
+          "match": "Matches",
+          "error": "Error"
+        },
+        "empty": "No files in this report.",
+        "loadFailed": "Could not load the report.",
+        "showMore": "Show {{count}} more"
+      }
     },
     "inputModal": {
       "name": "Name",
@@ -3145,7 +3167,14 @@
       "profileNotMounted": "Profile '{{profile}}' is not mounted on {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
+      "configIncomplete": "Configuration incomplete for profile '{{profile}}'",
+      "singleSourceOnly": "{{operation}} supports only a single source path",
+      "directoriesOnly": "{{operation}} supports only directories, not files: {{source}}",
+      "sourcePathInvalid": "Could not read the source path: {{path}}",
+      "destinationPathInvalid": "Could not read the destination path: {{path}}",
+      "filePathsInvalid": "Could not read source '{{source}}' or destination '{{destination}}' as a file path. Use the format 'remote:path/to/file' or a local path.",
+      "unsupportedOperation": "The operation {{operation}} cannot run as a transfer",
+      "destinationMissing": "No destination specified"
     },
     "serve": {
       "parseFailed": "Failed to parse response: {{error}}",
@@ -3251,7 +3280,10 @@
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
       "executionFailed": "Job execution failed: {{error}}",
       "corruptedTransfer": "File corrupted during transfer or checksum verification failed.",
-      "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}"
+      "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}",
+      "stopped": "Job stopped",
+      "failed": "Job failed",
+      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable."
     },
     "cache": {
       "fetchConfigFailed": "Failed to fetch remotes config",
@@ -3267,7 +3299,15 @@
       "startFailed": "Failed to start automation engine: {{error}}",
       "stopFailed": "Failed to stop automation engine: {{error}}",
       "invalidCron": "Invalid cron expression: {{error}}",
-      "automationNotFound": "Automation not found"
+      "automationNotFound": "Automation not found",
+      "watcherPending": "Watching waits for folders that do not exist yet: {{paths}}",
+      "noLocalPaths": "No local paths to watch",
+      "alreadyExists": "Automation with ID {{id}} already exists",
+      "noCronExpression": "Automation has no cron expression",
+      "schedulerNotInitialized": "The scheduler is not initialized",
+      "profileNotFound": "{{operation}} profile '{{profile}}' for '{{remote}}' was not found",
+      "workflowNotFound": "Workflow '{{id}}' was not found",
+      "quickRunNotFound": "Quick run '{{id}}' was not found"
     },
     "system": {
       "unlockFailed": "Unlock failed: {{error}}"
@@ -4159,7 +4199,9 @@
           "resumedAt": "Resumed At",
           "command": "Command",
           "result": "Command Result",
-          "json": "Formatted JSON"
+          "json": "Formatted JSON",
+          "reports": "File Reports",
+          "reportCounts": "File Report Counts"
         }
       },
       "details": "Workflow Details",

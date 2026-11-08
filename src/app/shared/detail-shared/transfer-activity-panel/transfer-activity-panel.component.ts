@@ -17,6 +17,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { CheckResultsTableComponent } from './check-results-table.component';
+import { JobReportComponent } from '../job-report/job-report.component';
 import { SearchContainerComponent } from '../../components/search-container/search-container.component';
 import {
   CHECK_OPERATIONS,
@@ -42,6 +43,7 @@ import { activityStatusBadge, effectiveTransferStatus } from './activity.utils';
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
     CheckResultsTableComponent,
+    JobReportComponent,
     SearchContainerComponent,
   ],
   templateUrl: './transfer-activity-panel.component.html',
@@ -63,6 +65,8 @@ export class TransferActivityPanelComponent {
       ? 'shared.transferActivity.title'
       : 'shared.transferActivity.titleActivity';
   });
+  /** A finished job that kept file reports offers them first. */
+  readonly showReport = computed(() => !!this.config().report && !this.isJobRunning());
   readonly activeCount = computed(
     () => this.config().activeTransfers.length + (this.config().activeChecks?.length || 0)
   );

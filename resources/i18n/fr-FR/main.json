@@ -891,7 +891,8 @@
       "resetStats": "Réinitialiser les Statistiques",
       "tabs": {
         "active": "Actif ({{count}})",
-        "recent": "Récent ({{count}})"
+        "recent": "Récent ({{count}})",
+        "report": "Rapport de fichiers"
       },
       "table": {
         "size": "Taille",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Activité de suppression",
       "titleActivity": "Activité",
-      "loadMore": "Afficher plus"
+      "loadMore": "Afficher plus",
+      "report": {
+        "tabs": {
+          "combined": "Combiné",
+          "missingOnDst": "Absents de la destination",
+          "differ": "Différents",
+          "missingOnSrc": "Absents de la source",
+          "match": "Identiques",
+          "error": "Erreurs",
+          "destAfter": "Destination après"
+        },
+        "sigils": {
+          "missingOnDst": "Absent de la destination",
+          "missingOnSrc": "Absent de la source",
+          "differ": "Différent",
+          "match": "Identique",
+          "error": "Erreur"
+        },
+        "empty": "Aucun fichier dans ce rapport.",
+        "loadFailed": "Impossible de charger le rapport.",
+        "showMore": "Afficher {{count}} de plus"
+      }
     },
     "inputModal": {
       "name": "Nom",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "Le profil '{{profile}}' n'est pas monté sur {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
+      "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'",
+      "singleSourceOnly": "{{operation}} ne prend en charge qu'un seul chemin source",
+      "directoriesOnly": "{{operation}} ne prend en charge que les dossiers, pas les fichiers : {{source}}",
+      "sourcePathInvalid": "Impossible de lire le chemin source : {{path}}",
+      "destinationPathInvalid": "Impossible de lire le chemin de destination : {{path}}",
+      "filePathsInvalid": "Impossible de lire la source '{{source}}' ou la destination '{{destination}}' comme chemin de fichier. Utilisez le format 'remote:chemin/vers/fichier' ou un chemin local.",
+      "unsupportedOperation": "L'opération {{operation}} ne peut pas s'exécuter comme un transfert",
+      "destinationMissing": "Aucune destination spécifiée"
     },
     "serve": {
       "parseFailed": "Échec de l'analyse de la réponse : {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "Trop d'erreurs de surveillance du job : {{error}}",
       "executionFailed": "Échec de l'exécution du job : {{error}}",
       "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide.",
-      "profileNotRunning": "Aucun job {{jobType}} actif trouvé pour le profil '{{profile}}' sur {{remote}}"
+      "profileNotRunning": "Aucun job {{jobType}} actif trouvé pour le profil '{{profile}}' sur {{remote}}",
+      "stopped": "Tâche arrêtée",
+      "failed": "La tâche a échoué",
+      "lost": "Rclone ne connaît plus cette tâche. Elle a expiré après sa fin ou le moteur a redémarré, son résultat n'est donc pas disponible."
     },
     "cache": {
       "fetchConfigFailed": "Échec de la récupération de la configuration des dépôts distants",
@@ -3226,7 +3258,15 @@
       "startFailed": "Impossible de démarrer le moteur d’automatisation : {{error}}",
       "stopFailed": "Échec de l'arrêt du moteur d'automatisation : {{error}}",
       "invalidCron": "Expression cron invalide : {{error}}",
-      "automationNotFound": "Automatisation non trouvée"
+      "automationNotFound": "Automatisation non trouvée",
+      "watcherPending": "La surveillance attend des dossiers qui n'existent pas encore : {{paths}}",
+      "noLocalPaths": "Aucun chemin local à surveiller",
+      "alreadyExists": "Une automatisation avec l'ID {{id}} existe déjà",
+      "noCronExpression": "L'automatisation n'a pas d'expression cron",
+      "schedulerNotInitialized": "Le planificateur n'est pas initialisé",
+      "profileNotFound": "Le profil {{operation}} '{{profile}}' de '{{remote}}' est introuvable",
+      "workflowNotFound": "Le workflow '{{id}}' est introuvable",
+      "quickRunNotFound": "L'exécution rapide '{{id}}' est introuvable"
     },
     "system": {
       "unlockFailed": "Échec du déblocage : {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "Repris à",
           "command": "Commande",
           "result": "Résultat de la commande",
-          "json": "JSON formaté"
+          "json": "JSON formaté",
+          "reports": "Rapports de fichiers",
+          "reportCounts": "Nombre de fichiers par rapport"
         }
       },
       "details": "Détails du flux",

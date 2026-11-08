@@ -891,7 +891,8 @@
       "resetStats": "重設統計",
       "tabs": {
         "active": "進行中（{{count}}）",
-        "recent": "最近完成（{{count}}）"
+        "recent": "最近完成（{{count}}）",
+        "report": "檔案報告"
       },
       "table": {
         "size": "大小",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "刪除活動",
       "titleActivity": "活動",
-      "loadMore": "顯示更多"
+      "loadMore": "顯示更多",
+      "report": {
+        "tabs": {
+          "combined": "合併",
+          "missingOnDst": "目的端缺少",
+          "differ": "不同",
+          "missingOnSrc": "來源端缺少",
+          "match": "相同",
+          "error": "錯誤",
+          "destAfter": "操作後的目的端"
+        },
+        "sigils": {
+          "missingOnDst": "目的端缺少",
+          "missingOnSrc": "來源端缺少",
+          "differ": "不同",
+          "match": "相同",
+          "error": "錯誤"
+        },
+        "empty": "此報告中沒有檔案。",
+        "loadFailed": "無法載入報告。",
+        "showMore": "再顯示 {{count}} 項"
+      }
     },
     "inputModal": {
       "name": "名稱",
@@ -3145,7 +3167,14 @@
       "profileNotMounted": "設定檔案 '{{profile}}' 未在 {{remote}} 上掛載"
     },
     "operations": {
-      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整"
+      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整",
+      "singleSourceOnly": "{{operation}} 僅支援單一來源路徑",
+      "directoriesOnly": "{{operation}} 僅支援目錄，不支援檔案：{{source}}",
+      "sourcePathInvalid": "無法解析來源路徑：{{path}}",
+      "destinationPathInvalid": "無法解析目的路徑：{{path}}",
+      "filePathsInvalid": "無法將來源 '{{source}}' 或目的地 '{{destination}}' 解析為檔案路徑。請使用 'remote:path/to/file' 格式或本機路徑。",
+      "unsupportedOperation": "操作 {{operation}} 無法作為傳輸執行",
+      "destinationMissing": "未指定目的地"
     },
     "serve": {
       "parseFailed": "解析響應失敗：{{error}}",
@@ -3251,7 +3280,10 @@
       "monitoringFailed": "任務監控錯誤過多：{{error}}",
       "executionFailed": "任務執行失敗：{{error}}",
       "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。",
-      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務"
+      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務",
+      "stopped": "工作已停止",
+      "failed": "工作失敗",
+      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。"
     },
     "cache": {
       "fetchConfigFailed": "取得遠端連線設定失敗",
@@ -3267,7 +3299,15 @@
       "startFailed": "啟動自動化引擎失敗：{{error}}",
       "stopFailed": "停止自動化引擎失敗：{{error}}",
       "invalidCron": "Cron 運算式無效：{{error}}",
-      "automationNotFound": "未找到自動化"
+      "automationNotFound": "未找到自動化",
+      "watcherPending": "監看正在等待尚不存在的資料夾：{{paths}}",
+      "noLocalPaths": "沒有可監看的本機路徑",
+      "alreadyExists": "ID 為 {{id}} 的自動化已存在",
+      "noCronExpression": "自動化沒有 cron 運算式",
+      "schedulerNotInitialized": "排程器尚未初始化",
+      "profileNotFound": "找不到 '{{remote}}' 的 {{operation}} 設定檔 '{{profile}}'",
+      "workflowNotFound": "找不到工作流程 '{{id}}'",
+      "quickRunNotFound": "找不到快速執行 '{{id}}'"
     },
     "system": {
       "unlockFailed": "解鎖失敗：{{error}}"
@@ -4159,7 +4199,9 @@
           "resumedAt": "恢復執行時間",
           "command": "命令",
           "result": "命令結果",
-          "json": "格式化 JSON"
+          "json": "格式化 JSON",
+          "reports": "檔案報告",
+          "reportCounts": "檔案報告數量"
         }
       },
       "details": "工作流詳情",

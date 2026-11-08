@@ -7,6 +7,7 @@ use crate::{
     rclone::commands::{
         common::parse_common_config,
         job::JobMetadata,
+        job_chain::ChainMode,
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
         sync::{lookup_dry_run, submit_transfer_batch},
@@ -73,8 +74,9 @@ pub async fn update_quick_run(
 
     info!("Updating quick run: {id}");
 
-    let mut existing =
-        get_quick_run(&manager, id)?.ok_or_else(|| format!("Quick run '{id}' not found"))?;
+    let mut existing = get_quick_run(&manager, id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.automation.quickRunNotFound", "id" => id),
+    )?;
 
     existing.name = quick_run.name;
     existing.description = quick_run.description;
@@ -254,6 +256,12 @@ pub(crate) async fn start_quick_run_snapshot(
         .map(|s| (s.clone(), common.dest.clone()))
         .collect();
 
+    // A workflow follows the last job; the UI and automations must not wait for the chain.
+    let chain = if workflow_id.is_some() {
+        ChainMode::Foreground
+    } else {
+        ChainMode::Background
+    };
     let metadata = JobMetadata::new(
         qr.remote_name.clone(),
         qr.operation_type.as_job_type().unwrap_or(JobType::Sync),
@@ -275,7 +283,7 @@ pub(crate) async fn start_quick_run_snapshot(
         qr.operation_type,
         target_pairs,
         &common,
-        dry_run,
+        chain,
         metadata,
     )
     .await?;
@@ -398,7 +406,7 @@ pub(crate) fn get_quick_run(
 }
 
 fn save_quick_run(manager: &AppSettingsManager, qr: &QuickRun) -> Result<(), String> {
-    crate::services::automation::engine::validate_enabled_cron(
+    crate::utils::cron::validate_enabled_cron(
         qr.is_cron_enabled(),
         qr.cron_expression().as_deref(),
     )?;

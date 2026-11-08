@@ -186,6 +186,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // JOBS
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
+            (get_job_report, $crate::rclone::commands::job::get_job_report, [jobid: u64]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
             (stop_all_active_jobs, $crate::services::lifecycle::shutdown::stop_all_active_jobs, []);
@@ -233,8 +234,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (stop_workflow, $crate::services::flow::workflow::commands::stop_workflow, [workflow_id: String]);
 
             // WATCHERS
-            (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
-            (force_check_serves, $crate::rclone::state::watcher::force_check_serves, []);
+            (force_check_mounted_remotes, $crate::rclone::state::remote_refresh::force_check_mounted_remotes, []);
+            (force_check_serves, $crate::rclone::state::remote_refresh::force_check_serves, []);
             (set_poller_visibility, $crate::rclone::engine::poller::set_poller_visibility, [visible: bool], [sync]);
             (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 

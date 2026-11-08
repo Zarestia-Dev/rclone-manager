@@ -257,6 +257,22 @@ describe('JobManagementService', () => {
     });
   });
 
+  describe('getJobReport', () => {
+    it('asks the backend for the report of one job', async () => {
+      const report = { combined: ['+ a.txt'], error: [] };
+      mockApiClient.invoke.mockClear();
+      mockApiClient.invoke.mockResolvedValueOnce(report);
+
+      await expect(service.getJobReport(7)).resolves.toEqual(report);
+      expect(mockApiClient.invoke).toHaveBeenCalledWith('get_job_report', { jobid: 7 });
+    });
+
+    it('returns null for a job that kept no report', async () => {
+      mockApiClient.invoke.mockResolvedValueOnce(null);
+      await expect(service.getJobReport(8)).resolves.toBeNull();
+    });
+  });
+
   describe('areJobGroupsEqual & jobsByRemote reference stability', () => {
     it('returns true for same reference or structurally identical groups', () => {
       const jobA = createMockJob({ jobid: 1, remote_name: 'r1', status: 'Running' });

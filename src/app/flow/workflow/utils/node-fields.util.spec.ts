@@ -51,6 +51,20 @@ describe('node-fields.util', () => {
     }
   });
 
+  it('adds the file reports only to the nodes whose jobs can return them', () => {
+    for (const type of ['sync', 'copy', 'move']) {
+      const keys = getNodeFieldsForType(type).map(f => f.key);
+      expect(keys).toContain('reportCounts');
+      expect(keys).toContain('reports');
+      expect(keys.filter(key => key === 'summary')).toHaveLength(1);
+    }
+    for (const type of ['bisync', 'delete', 'copyurl', 'archivecreate', 'check']) {
+      const keys = getNodeFieldsForType(type).map(f => f.key);
+      expect(keys).not.toContain('reportCounts');
+      expect(keys).not.toContain('reports');
+    }
+  });
+
   it('returns mount-specific fields for mount node', () => {
     const fields = getNodeFieldsForType('mount');
     expect(fields.map(f => f.key)).toEqual(['mountPoint', 'remote', 'status', 'jobId', 'error']);

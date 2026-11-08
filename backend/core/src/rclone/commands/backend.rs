@@ -323,11 +323,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
             automations.len()
         );
         for automation in automations {
-            if let Some(job_id_str) = &automation.scheduler_job_id
-                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
-            {
-                let _ = scheduler.unschedule_automation(job_id).await;
-            }
+            let _ = scheduler.unschedule_automation(&automation.id).await;
         }
         automations_cache.clear_backend_automations(&name).await;
     }

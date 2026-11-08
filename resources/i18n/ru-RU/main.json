@@ -891,7 +891,8 @@
       "resetStats": "Сбросить статистику",
       "tabs": {
         "active": "Активные ({{count}})",
-        "recent": "Недавние ({{count}})"
+        "recent": "Недавние ({{count}})",
+        "report": "Отчёт по файлам"
       },
       "table": {
         "size": "Размер",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Удаление файлов",
       "titleActivity": "Активность",
-      "loadMore": "Показать ещё"
+      "loadMore": "Показать ещё",
+      "report": {
+        "tabs": {
+          "combined": "Общий",
+          "missingOnDst": "Отсутствуют в приёмнике",
+          "differ": "Различаются",
+          "missingOnSrc": "Отсутствуют в источнике",
+          "match": "Совпадают",
+          "error": "Ошибки",
+          "destAfter": "Приёмник после"
+        },
+        "sigils": {
+          "missingOnDst": "Нет в приёмнике",
+          "missingOnSrc": "Нет в источнике",
+          "differ": "Отличается",
+          "match": "Совпадает",
+          "error": "Ошибка"
+        },
+        "empty": "В этом отчёте нет файлов.",
+        "loadFailed": "Не удалось загрузить отчёт.",
+        "showMore": "Показать ещё {{count}}"
+      }
     },
     "inputModal": {
       "name": "Название",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "Профиль «{{profile}}» не подключён на {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью"
+      "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью",
+      "singleSourceOnly": "{{operation}} поддерживает только один исходный путь",
+      "directoriesOnly": "{{operation}} поддерживает только каталоги, а не файлы: {{source}}",
+      "sourcePathInvalid": "Не удалось разобрать исходный путь: {{path}}",
+      "destinationPathInvalid": "Не удалось разобрать путь назначения: {{path}}",
+      "filePathsInvalid": "Не удалось разобрать источник '{{source}}' или назначение '{{destination}}' как путь к файлу. Используйте формат 'remote:путь/к/файлу' или локальный путь.",
+      "unsupportedOperation": "Операция {{operation}} не может выполняться как передача",
+      "destinationMissing": "Назначение не указано"
     },
     "serve": {
       "parseFailed": "Не удалось разобрать ответ: {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "Слишком много ошибок при отслеживании задания: {{error}}",
       "executionFailed": "Ошибка выполнения задания: {{error}}",
       "corruptedTransfer": "Файл поврежден при передаче или не совпала контрольная сумма.",
-      "profileNotRunning": "Не найдено активное задание {{jobType}} для профиля «{{profile}}» на {{remote}}"
+      "profileNotRunning": "Не найдено активное задание {{jobType}} для профиля «{{profile}}» на {{remote}}",
+      "stopped": "Задание остановлено",
+      "failed": "Задание завершилось с ошибкой",
+      "lost": "Rclone больше не знает об этом задании. Оно истекло после завершения или движок был перезапущен, поэтому результат недоступен."
     },
     "cache": {
       "fetchConfigFailed": "Не удалось получить конфигурации подключений",
@@ -3226,7 +3258,15 @@
       "startFailed": "Не удалось запустить движок автоматизаций: {{error}}",
       "stopFailed": "Не удалось остановить движок автоматизаций: {{error}}",
       "invalidCron": "Некорректное cron-выражение: {{error}}",
-      "automationNotFound": "Автоматизация не найдена"
+      "automationNotFound": "Автоматизация не найдена",
+      "watcherPending": "Наблюдение ждёт папки, которых ещё нет: {{paths}}",
+      "noLocalPaths": "Нет локальных путей для наблюдения",
+      "alreadyExists": "Автоматизация с ID {{id}} уже существует",
+      "noCronExpression": "У автоматизации нет cron-выражения",
+      "schedulerNotInitialized": "Планировщик не инициализирован",
+      "profileNotFound": "Профиль {{operation}} '{{profile}}' для '{{remote}}' не найден",
+      "workflowNotFound": "Рабочий процесс '{{id}}' не найден",
+      "quickRunNotFound": "Быстрый запуск '{{id}}' не найден"
     },
     "system": {
       "unlockFailed": "Не удалось разблокировать: {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "Возобновлено в",
           "command": "Команда",
           "result": "Результат команды",
-          "json": "Форматированный JSON"
+          "json": "Форматированный JSON",
+          "reports": "Отчёты по файлам",
+          "reportCounts": "Количество файлов в отчётах"
         }
       },
       "details": "Свойства процесса",

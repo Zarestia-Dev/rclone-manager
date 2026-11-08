@@ -891,7 +891,8 @@
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
-        "recent": "Reciente ({{count}})"
+        "recent": "Reciente ({{count}})",
+        "report": "Informe de archivos"
       },
       "table": {
         "size": "Tamaño",
@@ -953,7 +954,28 @@
       },
       "titleDelete": "Actividad de eliminación",
       "titleActivity": "Actividad",
-      "loadMore": "Mostrar más"
+      "loadMore": "Mostrar más",
+      "report": {
+        "tabs": {
+          "combined": "Combinado",
+          "missingOnDst": "Faltan en destino",
+          "differ": "Diferentes",
+          "missingOnSrc": "Faltan en origen",
+          "match": "Coinciden",
+          "error": "Errores",
+          "destAfter": "Destino después"
+        },
+        "sigils": {
+          "missingOnDst": "Falta en destino",
+          "missingOnSrc": "Falta en origen",
+          "differ": "Difiere",
+          "match": "Coincide",
+          "error": "Error"
+        },
+        "empty": "No hay archivos en este informe.",
+        "loadFailed": "No se pudo cargar el informe.",
+        "showMore": "Mostrar {{count}} más"
+      }
     },
     "inputModal": {
       "name": "Nombre",
@@ -3104,7 +3126,14 @@
       "profileNotMounted": "El perfil '{{profile}}' no está montado en {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
+      "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'",
+      "singleSourceOnly": "{{operation}} solo admite una ruta de origen",
+      "directoriesOnly": "{{operation}} solo admite directorios, no archivos: {{source}}",
+      "sourcePathInvalid": "No se pudo leer la ruta de origen: {{path}}",
+      "destinationPathInvalid": "No se pudo leer la ruta de destino: {{path}}",
+      "filePathsInvalid": "No se pudo leer el origen '{{source}}' o el destino '{{destination}}' como ruta de archivo. Usa el formato 'remote:ruta/al/archivo' o una ruta local.",
+      "unsupportedOperation": "La operación {{operation}} no se puede ejecutar como transferencia",
+      "destinationMissing": "No se especificó ningún destino"
     },
     "serve": {
       "parseFailed": "Error al analizar la respuesta: {{error}}",
@@ -3210,7 +3239,10 @@
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
       "executionFailed": "Ejecución del trabajo fallida: {{error}}",
       "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación.",
-      "profileNotRunning": "No se encontró ningún trabajo {{jobType}} activo para el perfil '{{profile}}' en {{remote}}"
+      "profileNotRunning": "No se encontró ningún trabajo {{jobType}} activo para el perfil '{{profile}}' en {{remote}}",
+      "stopped": "Trabajo detenido",
+      "failed": "El trabajo falló",
+      "lost": "Rclone ya no conoce este trabajo. Caducó tras finalizar o el motor se reinició, por lo que su resultado no está disponible."
     },
     "cache": {
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
@@ -3226,7 +3258,15 @@
       "startFailed": "Error al iniciar el motor de automatización: {{error}}",
       "stopFailed": "Error al detener el motor de automatización: {{error}}",
       "invalidCron": "Expresión cron inválida: {{error}}",
-      "automationNotFound": "Automatización no encontrada"
+      "automationNotFound": "Automatización no encontrada",
+      "watcherPending": "La vigilancia espera carpetas que aún no existen: {{paths}}",
+      "noLocalPaths": "No hay rutas locales que vigilar",
+      "alreadyExists": "Ya existe una automatización con el ID {{id}}",
+      "noCronExpression": "La automatización no tiene expresión cron",
+      "schedulerNotInitialized": "El programador no está inicializado",
+      "profileNotFound": "No se encontró el perfil {{operation}} '{{profile}}' de '{{remote}}'",
+      "workflowNotFound": "No se encontró el flujo de trabajo '{{id}}'",
+      "quickRunNotFound": "No se encontró la ejecución rápida '{{id}}'"
     },
     "system": {
       "unlockFailed": "Desbloqueo fallido: {{error}}"
@@ -4114,7 +4154,9 @@
           "resumedAt": "Reanudado en",
           "command": "Comando",
           "result": "Resultado del comando",
-          "json": "JSON formateado"
+          "json": "JSON formateado",
+          "reports": "Informes de archivos",
+          "reportCounts": "Recuento de informes de archivos"
         }
       },
       "details": "Detalles del flujo de trabajo",

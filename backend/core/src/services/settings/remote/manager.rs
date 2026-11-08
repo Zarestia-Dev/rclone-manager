@@ -65,7 +65,7 @@ pub async fn save_remote_settings(
     for operation in OperationType::ALL {
         if let Some(profiles) = parsed.get_configs(*operation) {
             for profile in profiles.values() {
-                crate::services::automation::engine::validate_enabled_cron(
+                crate::utils::cron::validate_enabled_cron(
                     profile.app.cron_enabled == Some(true),
                     profile.app.cron_expression.as_deref(),
                 )?;

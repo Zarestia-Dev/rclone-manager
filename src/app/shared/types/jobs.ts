@@ -180,7 +180,19 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
+  /** Files listed per report of a finished sync, copy or move; the lists come from `getJobReport`. */
+  report_counts?: JobReportCounts;
 }
+
+/** The report parameters rclone accepts on sync/copy, sync/move and sync/sync. */
+export type JobReportKey =
+  'combined' | 'missingOnSrc' | 'missingOnDst' | 'match' | 'differ' | 'error' | 'destAfter';
+
+/** How many files each report of a job lists. */
+export type JobReportCounts = Partial<Record<JobReportKey, number>>;
+
+/** The reports rclone returned, as it returned them. */
+export type JobReport = Partial<Record<JobReportKey, string[]>>;
 
 export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   completed: 'p-primary',

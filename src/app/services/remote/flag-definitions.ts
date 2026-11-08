@@ -14,6 +14,91 @@ export const SUPPORTED_ARCHIVE_FORMATS = [
   'tar.lz4',
 ] as const;
 
+/**
+ * Serve options whose name means something different per server type. They are translated under
+ * the mapped key instead of the shared one (`key` is a TLS key for most servers, an SSH host key for sftp).
+ */
+export const serveTranslationKeys: Record<string, Record<string, string>> = {
+  sftp: { key: 'sftp_key' },
+};
+
+/**
+ * The file reports sync, copy and move can return. Each one is off by default because a report
+ * lists every file it covers; the job keeps what rclone returns (see `get_job_report`).
+ */
+const SYNC_REPORT_FLAGS: RcConfigOption[] = [
+  {
+    Name: 'combined',
+    Help: 'Make a combined report of changes.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'combined',
+  },
+  {
+    Name: 'missingOnSrc',
+    Help: 'Report all files missing from the source.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'missingOnSrc',
+  },
+  {
+    Name: 'missingOnDst',
+    Help: 'Report all files missing from the destination.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'missingOnDst',
+  },
+  {
+    Name: 'match',
+    Help: 'Report all matching files.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'match',
+  },
+  {
+    Name: 'differ',
+    Help: 'Report all non-matching files.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'differ',
+  },
+  {
+    Name: 'error',
+    Help: 'Report all files with errors (hashing or reading).',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'error',
+  },
+  {
+    Name: 'destAfter',
+    Help: 'Report all files that exist on the destination after the operation.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'destAfter',
+  },
+];
+
 export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   move: [
     {
@@ -36,6 +121,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'deleteEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   copy: [
     {
@@ -48,6 +134,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'createEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   sync: [
     {
@@ -60,6 +147,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'createEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   check: [
     {
@@ -235,7 +323,8 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
     },
     {
       Name: 'maxDelete',
-      Help: 'Abort sync if percentage of deleted files is above this threshold.',
+      TranslationKey: 'bisync_max_delete',
+      Help: 'Abort the run if more than this percentage of files would be deleted (0-100).',
       Default: 50,
       DefaultStr: '50',
       Value: 50,
@@ -252,6 +341,16 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Type: 'bool',
       Advanced: false,
       FieldName: 'force',
+    },
+    {
+      Name: 'maxDeleteRenamesAware',
+      Help: 'Exclude tracked renames from the --max-delete safety check (requires --track-renames).',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: false,
+      FieldName: 'maxDeleteRenamesAware',
     },
     {
       Name: 'checkSync',
@@ -454,6 +553,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
     },
     {
       Name: 'noCleanup',
+      TranslationKey: 'bisync_no_cleanup',
       Help: 'Retain working files.',
       Default: false,
       DefaultStr: 'false',

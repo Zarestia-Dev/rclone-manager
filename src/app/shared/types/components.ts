@@ -1,4 +1,4 @@
-import type { JobInfo, TransferFile, CompletedTransfer } from './jobs';
+import type { JobInfo, JobReportCounts, TransferFile, CompletedTransfer } from './jobs';
 import type { JobActionType, PrimaryActionType, RemoteAction } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 
@@ -111,6 +111,8 @@ export interface TransferActivityPanelConfig {
   remoteName: string;
   showHistory: boolean;
   jobType?: JobActionType;
+  /** The finished job whose file reports the panel offers as a tab, when it kept any. */
+  report?: { jobId: number; counts: JobReportCounts };
 }
 
 // ── Installation wizard ─────────────────────────────────────────────────────

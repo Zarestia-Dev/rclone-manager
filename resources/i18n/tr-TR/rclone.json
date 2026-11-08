@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "Bağlama Türü",
     "help": "Kullanılacak bağlama türü."
+  },
+  "allow_https_downgrade": {
+    "title": "HTTPS Düşürmeye İzin Ver",
+    "help": "HTTPS'den HTTP'ye yönlendirmeleri takip et (güvensiz)"
+  },
+  "directory_markers": {
+    "title": "Dizin İşaretçileri",
+    "help": "Her dizini bir dizin işaretçi nesnesi olarak listele"
+  },
+  "max_delete_renames_aware": {
+    "title": "Yeniden Adlandırma Farkındalıklı Maks. Silme",
+    "help": "İzlenen yeniden adlandırmaları --max-delete güvenlik denetiminin dışında tut (--track-renames gerektirir)."
+  },
+  "sftp_key": {
+    "title": "Ana Makine Anahtarı",
+    "help": "SSH ana makine özel anahtar dosyası (birden fazla değer olabilir, otomatik oluşturmak için boş bırakın)"
+  },
+  "bisync_max_delete": {
+    "title": "Maksimum Silme (%)",
+    "help": "Dosyaların bu yüzdeden fazlası silinecekse çalıştırmayı iptal et (0-100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "Temizlik Yapma",
+    "help": "Çalışma dosyalarını koru."
+  },
+  "dest_after": {
+    "title": "İşlem Sonrası Hedef",
+    "help": "İşlemden sonra hedefte bulunan tüm dosyaları raporla."
   }
 }

@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "掛載型別",
     "help": "要使用的掛載型別。"
+  },
+  "allow_https_downgrade": {
+    "title": "允許 HTTPS 降級",
+    "help": "跟隨從 HTTPS 到 HTTP 的重新導向（不安全）"
+  },
+  "directory_markers": {
+    "title": "目錄標記",
+    "help": "將每個目錄列為目錄標記物件"
+  },
+  "max_delete_renames_aware": {
+    "title": "最大刪除（感知重新命名）",
+    "help": "在 --max-delete 安全檢查中排除已追蹤的重新命名（需要 --track-renames）。"
+  },
+  "sftp_key": {
+    "title": "主機金鑰",
+    "help": "SSH 主機私鑰檔案（可指定多個值，留空則自動產生）"
+  },
+  "bisync_max_delete": {
+    "title": "最大刪除比例 (%)",
+    "help": "若將刪除超過此百分比的檔案，則中止執行（0-100）。"
+  },
+  "bisync_no_cleanup": {
+    "title": "不清理",
+    "help": "保留工作檔案。"
+  },
+  "dest_after": {
+    "title": "操作後的目標",
+    "help": "回報操作後目標中存在的所有檔案。"
   }
 }

@@ -1358,5 +1358,33 @@
   "mount_type": {
     "title": "Tipo de montaje",
     "help": "Tipo de montaje a utilizar."
+  },
+  "allow_https_downgrade": {
+    "title": "Permitir degradación a HTTP",
+    "help": "Seguir redirecciones de HTTPS a HTTP (inseguro)"
+  },
+  "directory_markers": {
+    "title": "Marcadores de directorio",
+    "help": "Listar cada directorio como un objeto marcador de directorio"
+  },
+  "max_delete_renames_aware": {
+    "title": "Max Delete con detección de renombrados",
+    "help": "Excluir los renombrados rastreados de la comprobación de seguridad --max-delete (requiere --track-renames)."
+  },
+  "sftp_key": {
+    "title": "Clave de host",
+    "help": "Archivo de clave privada de host SSH (puede tener varios valores; dejar en blanco para generarla automáticamente)"
+  },
+  "bisync_max_delete": {
+    "title": "Borrado máximo (%)",
+    "help": "Anular la ejecución si se fuera a eliminar más de este porcentaje de archivos (0-100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "Sin limpieza",
+    "help": "Conservar los archivos de trabajo."
+  },
+  "dest_after": {
+    "title": "Destino después",
+    "help": "Informar de todos los archivos que existen en el destino después de la operación."
   }
 }

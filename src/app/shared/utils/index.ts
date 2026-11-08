@@ -10,3 +10,4 @@ export * from './slide-menu.util';
 export * from './path.utils';
 export * from './binary-signature.util';
 export * from './cli-parser.util';
+export * from './job-report.util';

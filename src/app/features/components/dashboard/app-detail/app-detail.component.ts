@@ -68,6 +68,7 @@ import {
 } from '@app/types';
 import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
 import { MatDialog } from '@angular/material/dialog';
+import { jobReportOf } from '../../../../shared/utils/job-report.util';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
 import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
@@ -786,6 +787,7 @@ export class AppDetailComponent {
     remoteName: this.selectedRemote().name,
     showHistory: this.completedTransfers().length > 0,
     jobType: this.currentOpType(),
+    report: jobReportOf(this.activeGroupJob()),
   }));
 
   // --- Public Methods ---

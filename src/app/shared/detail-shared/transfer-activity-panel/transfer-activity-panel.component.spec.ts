@@ -104,4 +104,19 @@ describe('transfer activity status filters', () => {
     ]);
     expect(repaired.status).toBe('failed');
   });
+
+  it('offers the reports of a finished job, and never of one that is still running', () => {
+    const fixture = TestBed.createComponent(TransferActivityPanelComponent);
+    const component = fixture.componentInstance;
+    fixture.componentRef.setInput('config', config([row('checked')]));
+    expect(component.showReport()).toBe(false);
+    fixture.componentRef.setInput('config', {
+      ...config([]),
+      showHistory: false,
+      report: { jobId: 7, counts: { combined: 1 } },
+    });
+    expect(component.showReport()).toBe(true);
+    fixture.componentRef.setInput('isJobRunning', true);
+    expect(component.showReport()).toBe(false);
+  });
 });

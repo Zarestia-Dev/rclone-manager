@@ -275,20 +275,10 @@ mod tests {
         store.set(&preset.id, &preset).unwrap();
         let first = initialize_automations(app.clone()).await.unwrap();
         app.state::<AutomationScheduler>().start().await.unwrap();
-        let cache = app.state::<AutomationsCache>();
-        let first_job = cache
-            .get_automation(&preset.id)
-            .await
-            .unwrap()
-            .scheduler_job_id
-            .unwrap();
+        let scheduler = app.state::<AutomationScheduler>();
+        let first_job = scheduler.scheduled_job(&preset.id).await.unwrap();
         let second = initialize_automations(app.clone()).await.unwrap();
-        let second_job = cache
-            .get_automation(&preset.id)
-            .await
-            .unwrap()
-            .scheduler_job_id
-            .unwrap();
+        let second_job = scheduler.scheduled_job(&preset.id).await.unwrap();
         assert_eq!(first_job, second_job);
         assert_eq!(first.tasks.len(), 1);
         assert_eq!(second.tasks.len(), 1);
