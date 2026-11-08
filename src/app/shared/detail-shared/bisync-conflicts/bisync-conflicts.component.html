@@ -1,0 +1,126 @@
+<div class="card-list-container">
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+    </div>
+  } @else if (failed()) {
+    <div class="empty-state">
+      <mat-icon svgIcon="circle-exclamation"></mat-icon>
+      <span>{{ 'shared.transferActivity.conflicts.loadFailed' | translate }}</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="empty-state">
+      <mat-icon svgIcon="check-circle"></mat-icon>
+      <span>{{ 'shared.transferActivity.conflicts.empty' | translate }}</span>
+    </div>
+  } @else {
+    @if (openRows().length > 0) {
+      <div class="list-bar">
+        <mat-checkbox
+          class="list-bar-select"
+          [checked]="allSelected()"
+          [indeterminate]="selectedRows().length > 0 && !allSelected()"
+          (change)="toggleAll($event.checked)"
+        >
+          {{ 'shared.transferActivity.bulk.selectAll' | translate: { count: openRows().length } }}
+        </mat-checkbox>
+      </div>
+    }
+    @for (row of rows(); track row.conflict.path) {
+      <div class="card-row-item" [class.is-selected]="selection().has(row.conflict.path)">
+        <div class="card-header">
+          <div class="card-info-left">
+            @if (!row.settledKeep) {
+              <mat-checkbox
+                [checked]="selection().has(row.conflict.path)"
+                (change)="toggle(row.conflict.path, $event.checked)"
+                [attr.aria-label]="row.conflict.path"
+              ></mat-checkbox>
+            } @else {
+              <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+            }
+            <span class="card-title">
+              <span class="file-dir truncate" [title]="row.conflict.path">{{
+                splitName(row.conflict.path).dir
+              }}</span>
+              <span
+                class="card-title-text truncate"
+                [appCopyToClipboard]="row.conflict.path"
+                [attr.title]="'common.copy' | translate"
+                >{{ splitName(row.conflict.path).base }}</span
+              >
+            </span>
+          </div>
+          <div class="card-info-right">
+            @if (row.settledKeep) {
+              <span class="app-pill p-primary">
+                <mat-icon svgIcon="check-circle"></mat-icon>
+                {{
+                  (row.settledKeep === 'path1'
+                    ? 'shared.transferActivity.conflicts.keptPath1'
+                    : 'shared.transferActivity.conflicts.keptPath2'
+                  ) | translate
+                }}
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="action-button"
+                [disabled]="busy()"
+                (click)="resolveOne(row.conflict)"
+                [attr.title]="'shared.transferActivity.actions.resolveChoose' | translate"
+                [attr.aria-label]="'shared.transferActivity.actions.resolveChoose' | translate"
+              >
+                <mat-icon
+                  [svgIcon]="row.resolving ? 'spinner' : 'right-left'"
+                  [class.colorful-spinner]="row.resolving"
+                ></mat-icon>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="card-paths">
+          <div class="path-segment">
+            <div class="app-pill p-dim path-endpoint src" role="group">
+              <code class="truncate" [title]="row.conflict.path1Now">{{
+                row.conflict.path1Now
+              }}</code>
+            </div>
+          </div>
+          <mat-icon svgIcon="right-left" class="arrow-icon"></mat-icon>
+          <div class="path-segment">
+            <div class="app-pill p-dim path-endpoint dst" role="group">
+              <code class="truncate" [title]="row.conflict.path2Now">{{
+                row.conflict.path2Now
+              }}</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+    @if (selectedRows().length > 0) {
+      <div
+        class="bulk-bar"
+        role="region"
+        [attr.aria-label]="'shared.transferActivity.bulk.title' | translate"
+      >
+        <div class="bulk-summary">
+          <strong>{{
+            'shared.transferActivity.bulk.selected' | translate: { count: selectedRows().length }
+          }}</strong>
+        </div>
+        <div class="bulk-actions">
+          <button type="button" matButton (click)="clearSelection()">
+            {{ 'shared.transferActivity.bulk.clear' | translate }}
+          </button>
+          <button type="button" matButton="filled" [disabled]="busy()" (click)="reviewSelected()">
+            {{
+              'shared.transferActivity.bulk.review' | translate: { count: selectedRows().length }
+            }}
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

@@ -29,6 +29,7 @@ import {
   ExportModalData,
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
+import type { CheckCompareData } from '../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
@@ -242,6 +243,10 @@ export class ModalService extends TauriBaseService {
     vault: () =>
       import('../../features/modals/settings/vault-modal/vault-modal.component').then(
         m => m.VaultModalComponent
+      ),
+    'check-compare': () =>
+      import('../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component').then(
+        m => m.CheckCompareDialogComponent
       ),
     'job-detail': () =>
       import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
@@ -592,6 +597,19 @@ export class ModalService extends TauriBaseService {
         suffix: String(job.jobid),
       }
     );
+  }
+
+  /**
+   * Asks which version of each file should win, all in one dialog. The dialog calls back into the
+   * opener for every answer, which a separate window could not do, so it never opens as one.
+   */
+  openCheckCompare(data: CheckCompareData): DialogRefLike<void> {
+    return this.openModal('check-compare', {
+      width: '680px',
+      maxWidth: '100vw',
+      data,
+      panelClass: 'mobile-sheet-dialog',
+    });
   }
 
   openRestorePreview<TResult = unknown>(options: RestorePreviewOptions): DialogRefLike<TResult> {

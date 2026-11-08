@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "İş Bilgisi",
-      "type": "İş Türü",
-      "id": "İş Kimliği",
-      "status": "Görev Durumu",
       "started": "Başlangıç",
       "finished": "Bitiş",
       "duration": "Süre"
@@ -221,10 +217,6 @@
       "moving": "Taşınıyor",
       "copying": "Kopyalanıyor",
       "serving": "Sunuluyor"
-    },
-    "stats": {
-      "emptyTitle": "İstatistik yok",
-      "emptyMessage": "Bir işlem çalışırken istatistikler gösterilecektir"
     },
     "pathDisplay": {
       "source": "Kaynak",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "Aktif ({{count}})",
         "recent": "Son ({{count}})",
-        "report": "Dosya Raporu"
+        "report": "Dosya Raporu",
+        "conflicts": "Çakışmalar ({{count}})"
       },
       "table": {
         "size": "Boyut",
-        "transferred": "aktarıldı"
+        "transferred": "aktarıldı",
+        "file": "Dosya",
+        "direction": "Yön",
+        "took": "Süre",
+        "when": "Zaman",
+        "progress": "İlerleme",
+        "speed": "Hız",
+        "eta": "Kalan süre"
       },
       "status": {
         "failed": "Başarısız",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "Hedefe Kopyala",
         "resolveToSrc": "Kaynağa Kopyala",
-        "resolveOverwrite": "Dosya Uyuşmazliğini Gider",
-        "resolveOverwriteTitle": "Dosya Uyuşmazliğini Gider",
-        "resolveOverwriteMessage": "'{{name}}' dosyası hem kaynakta hem de hedefte mevcut ancak içerikleri farklı. Hedefteki dosyanın üzerine kaynak dosyasının yazılmasını istiyor musunuz?",
-        "overwriteDst": "Hedefin Üzerine Yaz",
         "copyUrl": "URL Kopyala",
         "download": "Dosyayı İndir",
         "successSync": "Dosya senkronizasyon işlemi başarıyla başlatıldı",
@@ -926,7 +922,8 @@
         "successCopyUrl": "İndirme bağlantısı panoya kopyalandı",
         "failCopyUrl": "İndirme URL'si oluşturulamadı",
         "successDownload": "Dosya başarıyla indirildi",
-        "failDownload": "Dosya indirilemedi"
+        "failDownload": "Dosya indirilemedi",
+        "resolveChoose": "Hangi sürümün korunacağını seç"
       },
       "empty": {
         "noRecent": "Yakın zamanda dosya etkinliği yok",
@@ -975,6 +972,72 @@
         "empty": "Bu raporda dosya yok.",
         "loadFailed": "Rapor yüklenemedi.",
         "showMore": "{{count}} tane daha göster"
+      },
+      "direction": {
+        "toDestination": "Kaynakta yeni: hedefe kopyala",
+        "toSource": "Yalnızca hedefte: kaynağa kopyala",
+        "choose": "İki tarafta da farklı: hangisinin geçerli olacağını siz seçin",
+        "labelToDestination": "Hedefe",
+        "labelToSource": "Kaynağa",
+        "labelChoose": "Seçim gerekli"
+      },
+      "bulk": {
+        "title": "Seçilen farklar",
+        "selectAll": "Açık {{count}} farkın tümünü seç",
+        "selected": "{{count}} seçili",
+        "toDestination": "{{count}} hedefe",
+        "toSource": "{{count}} kaynağa",
+        "choose": "{{count}} karar bekliyor",
+        "clear": "Temizle",
+        "applyOneWay": "{{count}} dosyayı kopyala",
+        "review": "{{count}} çakışmayı incele…",
+        "started": "{{count}} dosyanın kopyalanması başlatıldı",
+        "partial": "{{started}} kopyalama başlatıldı, {{failed}} başarısız oldu"
+      },
+      "compare": {
+        "title": "Dosya iki tarafta da değişti",
+        "position": "{{index}} / {{total}}",
+        "source": "Kaynak",
+        "destination": "Hedef",
+        "modified": "Değiştirilme",
+        "unknown": "Bilinmiyor",
+        "larger": "Daha büyük",
+        "newer": "Daha yeni",
+        "missing": "Bu dosya artık burada yok.",
+        "loadFailed": "Dosya okunamadı: {{error}}",
+        "which": "Hangi sürüm geçerli olsun?",
+        "keepSource": "Kaynak sürümünü koru",
+        "keepDestination": "Hedef sürümünü koru",
+        "overwrites": "{{path}} üzerine yazılacak. Yalnızca bu uzak depo eski sürümleri tutuyorsa geri alınabilir.",
+        "recreates": "{{path}}, koruduğunuz sürümden oluşturulacak.",
+        "hint": "Bir sürüm seçin. Uygulayana kadar hiçbir şey değişmez.",
+        "skip": "Bu dosyayı atla",
+        "apply": "Uygula",
+        "applyNext": "Uygula ve sonraki",
+        "checksum": {
+          "verify": "Sağlama toplamlarını karşılaştır",
+          "match": "{{type}} sağlama toplamları aynı",
+          "differ": "{{type}} sağlama toplamları farklı",
+          "none": "Bu uzak depoların ortak bir sağlama toplamı türü yok",
+          "failed": "Sağlama toplamları okunamadı"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Path1 sürümünü koru",
+        "keepPath2": "Path2 sürümünü koru",
+        "titleBisync": "Dosya iki yolda da değişti",
+        "discards": "Diğer sürüm ({{path}}), iki yoldaki kopyalarıyla birlikte silinecek. Yalnızca uzak depolar eski sürümleri tutuyorsa geri alınabilir."
+      },
+      "export": {
+        "copy": "CSV olarak kopyala",
+        "copied": "{{count}} satır CSV olarak kopyalandı"
+      },
+      "conflicts": {
+        "empty": "Bu çalıştırmada çakışma yok.",
+        "loadFailed": "Çakışmalar yüklenemedi.",
+        "resolved": "{{name}} çözüldü",
+        "keptPath1": "Path1 sürümü korundu",
+        "keptPath2": "Path2 sürümü korundu"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "Bu alan zorunludur.",
       "min": "Değer en az {{val}} olmalıdır."
+    },
+    "monitor": {
+      "status": {
+        "running": "Çalışıyor",
+        "completed": "Tamamlandı",
+        "failed": "Başarısız",
+        "stopped": "Durduruldu"
+      },
+      "kpi": {
+        "progress": "İlerleme",
+        "speed": "Hız",
+        "avgSpeed": "Ortalama hız",
+        "eta": "Kalan süre",
+        "took": "Süre",
+        "files": "Dosyalar",
+        "checks": "Kontroller",
+        "errors": "Hatalar",
+        "avg": "ort.",
+        "peak": "en yüksek",
+        "total": "toplam",
+        "left": "kalan",
+        "speedHistory": "Zamana göre aktarım hızı",
+        "checked": "Kontrol edildi",
+        "compared": "Karşılaştırıldı",
+        "matched": "Eşleşen",
+        "differences": "Farklar",
+        "unreadable": "Okunamayan",
+        "onlyOnSource": "yalnızca kaynakta",
+        "onlyOnDestination": "yalnızca hedefte",
+        "differ": "farklı",
+        "deleted": "Silinen"
+      }
     }
   },
   "wizards": {
@@ -1997,7 +2092,6 @@
       "title": "İş Detayları #{{id}}",
       "sections": {
         "overview": "İş Bilgileri",
-        "statistics": "İstatistikler",
         "paths": "Yollar",
         "errors": "Hatalar",
         "profile": "Profil",
@@ -2010,10 +2104,7 @@
         "started": "Başlangıç",
         "finished": "Bitiş",
         "duration": "Süre",
-        "speed": "Hız",
-        "eta": "Tahmini Süre",
         "files": "Dosyalar",
-        "checks": "Kontroller",
         "deleted": "Silinenler",
         "renamed": "Yeniden Adlandırılanlar",
         "updatedDirs": "Güncellenen Dizinler",
@@ -2028,9 +2119,7 @@
         "serverSideCopies": "Sunucu Tarafı Kopyalar",
         "serverSideMoves": "Sunucu Tarafı Taşımalar",
         "retryError": "Yeniden Deneme Hatası",
-        "fatalError": "Ölümcül Hata",
-        "speedAvg": "Ortalama Hız",
-        "transferred": "Aktarılan"
+        "fatalError": "Ölümcül Hata"
       }
     },
     "about": {
@@ -3377,6 +3466,10 @@
     },
     "notification": {
       "toastFailed": "Sistem bildirimi gösterilemedi: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "Bu sürüm artık yok: {{path}}. Güncel çakışmaları görmek için bisync'i yeniden çalıştırın.",
+      "stepFailed": "{{path}} güncellenemedi: {{error}}"
     }
   },
   "backendSuccess": {

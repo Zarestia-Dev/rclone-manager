@@ -220,8 +220,11 @@
             [config]="opConfig"
             [dryRun]="isDryRun()"
             [resync]="isResync()"
+            [reports]="activeReports()"
             (toggleDryRun)="toggleDryRun()"
             (toggleResync)="toggleResync()"
+            (toggleFileReport)="toggleFileReport()"
+            (toggleReport)="toggleReport($event)"
             (startJob)="
               startJob.emit({
                 type: $event,
@@ -346,17 +349,13 @@
         }
 
         @if (isOperationsType()) {
-          <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
-
-          <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
-
-          <app-transfer-activity-panel
-            [config]="transferActivityConfig()"
-            [isJobRunning]="operationActiveState()"
+          <app-job-monitor
+            [config]="jobMonitorConfig()"
+            [canOpenDetail]="!!activeGroupJob()"
             (resetStats)="onResetStats()"
             (deleteJob)="onDeleteJob()"
-            class="activity-panel"
-          ></app-transfer-activity-panel>
+            (openDetail)="onOpenJobDetail()"
+          ></app-job-monitor>
         }
 
         @if (currentOpType() === 'serve' && filteredRunningServes().length > 0) {

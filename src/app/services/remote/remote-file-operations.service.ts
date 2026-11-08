@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { generatePrefixedId } from 'src/app/shared/utils';
 import {
+  BisyncConflict,
   Entry,
   FsInfo,
   Origin,
@@ -188,6 +189,28 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('rename', {
       items,
+      origin: source,
+      group,
+    });
+  }
+
+  /**
+   * Keeps one version of a file bisync could not reconcile on both of the job's paths.
+   * Resolves when every step has finished; a failed step stops the rest.
+   */
+  async resolveBisyncConflict(
+    path1: string,
+    path2: string,
+    conflict: BisyncConflict,
+    keep: 'path1' | 'path2',
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('resolve_bisync_conflict', {
+      path1,
+      path2,
+      conflict,
+      keep,
       origin: source,
       group,
     });

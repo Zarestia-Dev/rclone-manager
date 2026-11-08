@@ -58,3 +58,30 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--box-shadow);
 }
+
+// The reports to choose from slide open under the switch while file reports are on.
+.report-options {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--transition-standard);
+
+  &.open {
+    grid-template-rows: 1fr;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.report-options-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-options-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding-top: var(--space-sm);
+}

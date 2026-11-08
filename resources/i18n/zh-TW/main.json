@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "任務資訊",
-      "type": "任務型別",
-      "id": "任務 ID",
-      "status": "任務狀態",
       "started": "開始時間",
       "finished": "完成時間",
       "duration": "持續時間"
@@ -221,10 +217,6 @@
       "moving": "移動中",
       "copying": "複製中",
       "serving": "服務執行中"
-    },
-    "stats": {
-      "emptyTitle": "暫無統計資料",
-      "emptyMessage": "操作執行時將顯示統計資訊"
     },
     "pathDisplay": {
       "source": "源路徑",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "進行中（{{count}}）",
         "recent": "最近完成（{{count}}）",
-        "report": "檔案報告"
+        "report": "檔案報告",
+        "conflicts": "衝突 ({{count}})"
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸"
+        "transferred": "已傳輸",
+        "file": "檔案",
+        "direction": "方向",
+        "took": "耗時",
+        "when": "時間",
+        "progress": "進度",
+        "speed": "速度",
+        "eta": "剩餘時間"
       },
       "status": {
         "failed": "失敗",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "複製到目的地",
         "resolveToSrc": "複製到源",
-        "resolveOverwrite": "解決檔案衝突",
-        "resolveOverwriteTitle": "解決檔案衝突",
-        "resolveOverwriteMessage": "檔案“{{name}}”在源和目的地都存在但內容不同。您要用源檔案覆蓋目的地檔案嗎？",
-        "overwriteDst": "覆蓋目的地",
         "copyUrl": "複製 URL",
         "download": "下載檔案",
         "successSync": "檔案同步操作成功啟動",
@@ -926,7 +922,8 @@
         "successCopyUrl": "下載 URL 已複製到剪貼簿",
         "failCopyUrl": "生成下載 URL 失敗",
         "successDownload": "檔案下載成功",
-        "failDownload": "下載檔案失敗"
+        "failDownload": "下載檔案失敗",
+        "resolveChoose": "選擇要保留的版本"
       },
       "messages": {
         "resolveStarted": "檔案不匹配處理已開始",
@@ -975,6 +972,72 @@
         "empty": "此報告中沒有檔案。",
         "loadFailed": "無法載入報告。",
         "showMore": "再顯示 {{count}} 項"
+      },
+      "direction": {
+        "toDestination": "來源端新增:複製到目的地",
+        "toSource": "僅目的地存在:複製到來源端",
+        "choose": "兩端內容不同:由你決定保留哪一個",
+        "labelToDestination": "到目的地",
+        "labelToSource": "到源",
+        "labelChoose": "需要選擇"
+      },
+      "bulk": {
+        "title": "已選差異",
+        "selectAll": "全選 {{count}} 項未處理差異",
+        "selected": "已選 {{count}} 項",
+        "toDestination": "{{count}} 項到目的地",
+        "toSource": "{{count}} 項到來源端",
+        "choose": "{{count}} 項需要決定",
+        "clear": "清除",
+        "applyOneWay": "複製 {{count}} 個檔案",
+        "review": "檢視 {{count}} 個衝突…",
+        "started": "已開始複製 {{count}} 個檔案",
+        "partial": "已開始 {{started}} 個複製工作,{{failed}} 個失敗"
+      },
+      "compare": {
+        "title": "檔案在兩端都已變更",
+        "position": "第 {{index}} 個,共 {{total}} 個",
+        "source": "來源端",
+        "destination": "目的地",
+        "modified": "修改時間",
+        "unknown": "未知",
+        "larger": "較大",
+        "newer": "較新",
+        "missing": "此處已不存在該檔案。",
+        "loadFailed": "無法讀取檔案:{{error}}",
+        "which": "應保留哪個版本?",
+        "keepSource": "保留來源端版本",
+        "keepDestination": "保留目的地版本",
+        "overwrites": "{{path}} 將被覆寫。只有該遠端保留了歷史版本時才能還原。",
+        "recreates": "{{path}} 將依你保留的版本建立。",
+        "hint": "請選擇一個版本。按下套用之前不會有任何變更。",
+        "skip": "略過此檔案",
+        "apply": "套用",
+        "applyNext": "套用並繼續",
+        "checksum": {
+          "verify": "比較檢查碼",
+          "match": "{{type}} 檢查碼相同",
+          "differ": "{{type}} 檢查碼不同",
+          "none": "這些遠端沒有共同的檢查碼類型",
+          "failed": "無法讀取檢查碼"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "保留 Path1 的版本",
+        "keepPath2": "保留 Path2 的版本",
+        "titleBisync": "檔案在兩個路徑上都已變更",
+        "discards": "另一個版本({{path}})及其在兩個路徑上的副本將被捨棄。只有遠端保留了歷史版本時才能還原。"
+      },
+      "export": {
+        "copy": "複製為 CSV",
+        "copied": "已將 {{count}} 列複製為 CSV"
+      },
+      "conflicts": {
+        "empty": "本次執行沒有衝突。",
+        "loadFailed": "無法載入衝突。",
+        "resolved": "已解決 {{name}}",
+        "keptPath1": "已保留 Path1 的版本",
+        "keptPath2": "已保留 Path2 的版本"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "此欄位是必需的。",
       "min": "值必須至少為 {{val}}。"
+    },
+    "monitor": {
+      "status": {
+        "running": "執行中",
+        "completed": "已完成",
+        "failed": "失敗",
+        "stopped": "已停止"
+      },
+      "kpi": {
+        "progress": "進度",
+        "speed": "速度",
+        "avgSpeed": "平均速度",
+        "eta": "剩餘時間",
+        "took": "耗時",
+        "files": "檔案",
+        "checks": "檢查",
+        "errors": "錯誤",
+        "avg": "平均",
+        "peak": "峰值",
+        "total": "總計",
+        "left": "剩餘",
+        "speedHistory": "傳輸速度變化",
+        "checked": "已檢查",
+        "compared": "已比較",
+        "matched": "相符",
+        "differences": "差異",
+        "unreadable": "無法讀取",
+        "onlyOnSource": "僅來源端",
+        "onlyOnDestination": "僅目的地",
+        "differ": "內容不同",
+        "deleted": "已刪除"
+      }
     }
   },
   "wizards": {
@@ -1997,7 +2092,6 @@
       "title": "任務詳情 #{{id}}",
       "sections": {
         "overview": "任務詳情",
-        "statistics": "統計資料",
         "paths": "路徑",
         "errors": "錯誤",
         "profile": "設定檔案",
@@ -2010,10 +2104,7 @@
         "started": "開始時間",
         "finished": "完成時間",
         "duration": "耗時",
-        "speed": "速度",
-        "eta": "預計剩餘時間",
         "files": "檔案",
-        "checks": "檢查",
         "deleted": "已刪除",
         "renamed": "已重新命名",
         "updatedDirs": "更新目錄",
@@ -2028,9 +2119,7 @@
         "serverSideCopies": "服務端複製",
         "serverSideMoves": "服務端移動",
         "retryError": "重試錯誤",
-        "fatalError": "致命錯誤",
-        "speedAvg": "平均速度",
-        "transferred": "已傳輸"
+        "fatalError": "致命錯誤"
       }
     },
     "about": {
@@ -3377,6 +3466,10 @@
     },
     "notification": {
       "toastFailed": "無法顯示系統通知：{{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "該版本已不存在:{{path}}。請重新執行 bisync 以查看目前的衝突。",
+      "stepFailed": "無法更新 {{path}}:{{error}}"
     }
   },
   "backendSuccess": {

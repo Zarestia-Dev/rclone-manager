@@ -1,5 +1,6 @@
 pub mod archive;
 pub mod backend;
+pub mod bisync_conflict;
 pub mod common;
 pub mod filesystem;
 pub mod job;

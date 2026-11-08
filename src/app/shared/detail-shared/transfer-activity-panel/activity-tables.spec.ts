@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
+import { Observable, of } from 'rxjs';
 import { CompletedTransfer, ResolveState } from '@app/types';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { CheckResultsTableComponent } from './check-results-table.component';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { TransferOperationsService } from './transfer-operations.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import type { CheckCompareData } from './check-compare-dialog.component';
+import type { CheckDirection } from './activity.utils';
 
 const row = (i: number, status: CompletedTransfer['status'] = 'completed'): CompletedTransfer => ({
   jobid: 7,
@@ -32,7 +36,9 @@ const resolved: ResolveState = {
 
 describe('activity tables', () => {
   const copyFile = vi.fn().mockResolvedValue('job');
-  const ops = { copyFile };
+  const resolveCheck = vi.fn().mockResolvedValue('job');
+  const ops = { copyFile, resolveCheck };
+  const openCheckCompare = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,6 +46,7 @@ describe('activity tables', () => {
       providers: [
         provideTranslateService(),
         { provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+        { provide: ModalService, useValue: { openCheckCompare } },
         {
           provide: PathService,
           useValue: { extractName: (path: string): string => path.split('/').at(-1) || '' },
@@ -150,7 +157,7 @@ describe('activity tables', () => {
     expect(component['processedItems']()).toHaveLength(0);
     await component.onResolve({ ...item, status: 'failed' });
     await component.onResolve({ ...item, status: 'missing_dst', srcFs: '' });
-    expect(copyFile).not.toHaveBeenCalled();
+    expect(resolveCheck).not.toHaveBeenCalled();
   });
 
   it('delegates file retries and reverse check repairs to the same copy service', async () => {
@@ -162,9 +169,141 @@ describe('activity tables', () => {
     const missing = { ...row(1, 'missing_src'), uniqueId: 'missing' };
     const check = TestBed.createComponent(CheckResultsTableComponent).componentInstance;
     await check.onResolve(missing);
-    expect(copyFile).toHaveBeenLastCalledWith(missing, true);
+    expect(resolveCheck).toHaveBeenLastCalledWith(missing, 'toSource');
     expect(completed.resolvingIds().size).toBe(0);
     expect(check.resolvingIds().size).toBe(0);
+  });
+
+  describe('card titles', () => {
+    it('splits the name into folders and file for the card title', () => {
+      const fixture = TestBed.createComponent(CompletedTransfersTableComponent);
+      fixture.componentRef.setInput('transfers', [row(3)]);
+      fixture.detectChanges();
+      const item = fixture.componentInstance['processedItems']()[0];
+      expect([item.dir, item.base]).toEqual(['folder/', 'file-3.txt']);
+    });
+  });
+
+  describe('check differences', () => {
+    const open = (rows: CompletedTransfer[]): CheckResultsTableComponent => {
+      const fixture = TestBed.createComponent(CheckResultsTableComponent);
+      fixture.componentRef.setInput('transfers', rows);
+      fixture.detectChanges();
+      return fixture.componentInstance;
+    };
+    const rows = [
+      row(0, 'missing_dst'),
+      row(1, 'missing_src'),
+      row(2, 'partial'),
+      row(3, 'checked'),
+    ];
+
+    it('offers a decision only for differences that are still open', () => {
+      const component = open([...rows, { ...row(4, 'partial'), resolveState: resolved }]);
+      expect(component['openItems']().map(item => item.name)).toEqual([
+        'folder/file-0.txt',
+        'folder/file-1.txt',
+        'folder/file-2.txt',
+      ]);
+      expect(component['processedItems']().map(item => item.resolution?.directionKey)).toEqual([
+        'shared.transferActivity.direction.toDestination',
+        'shared.transferActivity.direction.toSource',
+        'shared.transferActivity.direction.choose',
+        undefined,
+        undefined,
+      ]);
+    });
+
+    it('counts a selection by direction and selects every open difference at once', () => {
+      const component = open(rows);
+      component['toggleAll'](true);
+      expect(component['selectedCounts']()).toEqual({ toDestination: 1, toSource: 1, choose: 1 });
+      expect(component['allSelected']()).toBe(true);
+      component['toggle'](component['openItems']()[0].uniqueId, false);
+      expect(component['selectedItems']()).toHaveLength(2);
+      component['clearSelection']();
+      expect(component['selectedItems']()).toHaveLength(0);
+    });
+
+    it('applies the one-way changes of a selection and leaves conflicts for review', async () => {
+      const component = open(rows);
+      component['toggleAll'](true);
+      await component['applyOneWay']();
+      expect(resolveCheck).toHaveBeenCalledTimes(2);
+      expect(resolveCheck).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'missing_dst' }),
+        'toDestination'
+      );
+      expect(resolveCheck).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'missing_src' }),
+        'toSource'
+      );
+      expect(component['selectedItems']().map(item => item.status)).toEqual(['partial']);
+    });
+
+    it('keeps a failed copy selected and still starts the others', async () => {
+      resolveCheck.mockRejectedValueOnce(new Error('denied'));
+      const component = open(rows);
+      component['toggleAll'](true);
+      await component['applyOneWay']();
+      expect(resolveCheck).toHaveBeenCalledTimes(2);
+      expect(component['selectedItems']().map(item => item.status)).toEqual([
+        'missing_dst',
+        'partial',
+      ]);
+    });
+
+    /** Plays the user's answers, one per file in the order asked; `null` skips the file. */
+    const answer = (...answers: (CheckDirection | null)[]): void => {
+      openCheckCompare.mockImplementation(
+        (data: CheckCompareData): { afterClosed: () => Observable<undefined> } => {
+          answers.forEach((direction, index) => direction && data.apply(index, direction));
+          return { afterClosed: () => of(undefined) };
+        }
+      );
+    };
+
+    it('asks about the selected conflicts in one dialog and starts each answered change', async () => {
+      const conflicts = [row(2, 'partial'), row(3, 'partial'), row(4, 'partial')];
+      answer('toSource', null, 'toDestination');
+      const component = open(conflicts);
+      component['toggleAll'](true);
+      await component['reviewConflicts']();
+      expect(openCheckCompare).toHaveBeenCalledOnce();
+      expect(
+        openCheckCompare.mock.calls[0][0].entries.map((entry: { name: string }) => entry.name)
+      ).toEqual(['folder/file-2.txt', 'folder/file-3.txt', 'folder/file-4.txt']);
+      await vi.waitFor(() => expect(resolveCheck).toHaveBeenCalledTimes(2));
+      expect(resolveCheck).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'folder/file-2.txt' }),
+        'toSource'
+      );
+      expect(resolveCheck).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'folder/file-4.txt' }),
+        'toDestination'
+      );
+      expect(component['bulkBusy']()).toBe(false);
+    });
+
+    it('asks which side wins before it copies a single differing file', async () => {
+      answer('toDestination');
+      const component = open([row(2, 'partial')]);
+      await component.onResolve(component['processedItems']()[0]);
+      expect(openCheckCompare.mock.calls[0][0].entries).toHaveLength(1);
+      await vi.waitFor(() =>
+        expect(resolveCheck).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'folder/file-2.txt' }),
+          'toDestination'
+        )
+      );
+    });
+
+    it('copies nothing when the dialog is closed without an answer', async () => {
+      answer();
+      const component = open([row(2, 'partial')]);
+      await component.onResolve(component['processedItems']()[0]);
+      expect(resolveCheck).not.toHaveBeenCalled();
+    });
   });
 
   it('shows and searches live non-transfer work without manufacturing transfer rows', () => {

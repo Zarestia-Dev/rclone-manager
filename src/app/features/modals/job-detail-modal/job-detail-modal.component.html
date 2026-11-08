@@ -21,37 +21,60 @@
 </header>
 
 <main>
-  <div class="dashboard-grids">
-    <div class="counter-grid">
-      <span class="grid-header">
-        <mat-icon svgIcon="info"></mat-icon>
-        {{ 'modals.jobDetail.sections.overview' | translate }}
+  @if (showStatistics()) {
+    <app-job-monitor
+      [config]="jobMonitorConfig()"
+      (resetStats)="onResetStats()"
+      (deleteJob)="onDeleteJob()"
+    ></app-job-monitor>
+  } @else if (lastError(); as err) {
+    <section class="detail-section">
+      <span class="section-title error">
+        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.status' | translate }}</span>
-        <span class="value status-tag" [attr.data-status]="jobStatus()">
-          {{ jobStatus() | titlecase }}
+      <app-alert-banner
+        severity="error"
+        [description]="err"
+        [appCopyToClipboard]="err"
+        [attr.title]="'common.copy' | translate"
+      />
+    </section>
+  }
+
+  <div class="dashboard-grids">
+    @if (!showStatistics()) {
+      <div class="counter-grid">
+        <span class="grid-header">
+          <mat-icon svgIcon="info"></mat-icon>
+          {{ 'modals.jobDetail.sections.overview' | translate }}
         </span>
-      </div>
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.type' | translate }}</span>
-        <span class="value">{{ jobData().job_type | titlecase }}</span>
-      </div>
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.started' | translate }}</span>
-        <span class="value">{{ jobData().start_time | date: 'medium' }}</span>
-      </div>
-      @if (jobData().end_time) {
         <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.finished' | translate }}</span>
-          <span class="value">{{ jobData().end_time | date: 'medium' }}</span>
+          <span class="label">{{ 'modals.jobDetail.fields.status' | translate }}</span>
+          <span class="value status-tag" [attr.data-status]="jobStatus()">
+            {{ jobStatus() | titlecase }}
+          </span>
         </div>
-      }
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.duration' | translate }}</span>
-        <span class="value">{{ durationSeconds() | formatTime }}</span>
+        <div class="grid-item">
+          <span class="label">{{ 'modals.jobDetail.fields.type' | translate }}</span>
+          <span class="value">{{ jobData().job_type | titlecase }}</span>
+        </div>
+        <div class="grid-item">
+          <span class="label">{{ 'modals.jobDetail.fields.started' | translate }}</span>
+          <span class="value">{{ jobData().start_time | date: 'medium' }}</span>
+        </div>
+        @if (jobData().end_time) {
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.finished' | translate }}</span>
+            <span class="value">{{ jobData().end_time | date: 'medium' }}</span>
+          </div>
+        }
+        <div class="grid-item">
+          <span class="label">{{ 'modals.jobDetail.fields.duration' | translate }}</span>
+          <span class="value">{{ durationSeconds() | formatTime }}</span>
+        </div>
       </div>
-    </div>
+    }
 
     <div class="counter-grid">
       <span class="grid-header">
@@ -107,49 +130,10 @@
   </div>
 
   @if (showStatistics()) {
-    <div class="counter-grid">
-      <span class="grid-header">
-        <mat-icon svgIcon="chart"></mat-icon>
-        {{ statisticsTitle() | translate: { op: (jobData().job_type | titlecase) } }}
-      </span>
-
-      <div class="progress-details">
-        <div class="progress-info">
-          <span class="main-percentage">{{ progress() | number: '1.0-1' }}%</span>
-          <span class="main-bytes">
-            {{ jobData().stats.bytes | formatFileSize }} /
-            {{ jobData().stats.totalBytes | formatFileSize }}
-          </span>
-        </div>
-        <mat-progress-bar mode="determinate" [value]="progress()"></mat-progress-bar>
-      </div>
-
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
-        <span class="value">{{ jobData().stats.speed | formatFileSize }}/s</span>
-      </div>
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.speedAvg' | translate }}</span>
-        <span class="value">{{ speedAvg() | formatFileSize }}/s</span>
-      </div>
-      <div class="grid-item highlight">
-        <span class="label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
-        <span class="value">{{ jobData().stats.eta | formatEta }}</span>
-      </div>
-    </div>
-
     <div class="dashboard-grids">
       <div class="counter-grid">
         <span class="grid-header">{{ 'modals.jobDetail.fields.files' | translate }}</span>
         @if (fileCounters(); as counters) {
-          <div class="grid-item">
-            <span class="label">{{ 'modals.jobDetail.fields.transferred' | translate }}</span
-            ><span class="value">{{ counters.transfers }}</span>
-          </div>
-          <div class="grid-item">
-            <span class="label">{{ 'modals.jobDetail.fields.checks' | translate }}</span
-            ><span class="value">{{ counters.checks }}</span>
-          </div>
           <div class="grid-item">
             <span class="label">{{ 'modals.jobDetail.fields.deleted' | translate }}</span
             ><span class="value">{{ counters.deletes }}</span>
@@ -207,27 +191,5 @@
         </div>
       </div>
     </div>
-
-    <app-transfer-activity-panel
-      [config]="transferActivityConfig()"
-      [isJobRunning]="jobStatus() === 'running'"
-      (resetStats)="onResetStats()"
-      (deleteJob)="onDeleteJob()"
-    ></app-transfer-activity-panel>
-  }
-
-  @if (lastError(); as err) {
-    <section class="detail-section">
-      <span class="section-title error">
-        <mat-icon svgIcon="circle-exclamation"></mat-icon>
-        {{ 'modals.jobDetail.sections.errors' | translate }}
-      </span>
-      <app-alert-banner
-        severity="error"
-        [description]="err"
-        [appCopyToClipboard]="err"
-        [attr.title]="'common.copy' | translate"
-      />
-    </section>
   }
 </main>

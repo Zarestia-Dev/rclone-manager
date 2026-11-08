@@ -1,0 +1,154 @@
+<ng-template #figure let-value="value" let-format="format" let-total="total">
+  @switch (format) {
+    @case ('percent') {
+      {{ value | number: '1.0-1' }}<small>%</small>
+    }
+    @case ('rate') {
+      {{ value | formatFileSize }}<small>/s</small>
+    }
+    @case ('bytes') {
+      {{ value | formatFileSize }}
+    }
+    @case ('duration') {
+      @if (value > 0 && value < 1) {
+        {{ 'shared.transferActivity.time.duration.lessThanSecond' | translate }}
+      } @else {
+        {{ value | formatTime }}
+      }
+    }
+    @case ('fraction') {
+      {{ value | number }}<small> / {{ total | number }}</small>
+    }
+    @default {
+      {{ value | number }}
+    }
+  }
+</ng-template>
+
+<mat-card class="monitor">
+  <header class="monitor-header">
+    <div class="monitor-heading">
+      <mat-icon [svgIcon]="config().icon" class="monitor-icon"></mat-icon>
+      <h2 class="truncate">{{ config().title }}</h2>
+      @if (config().jobId) {
+        <code class="job-id">#{{ config().jobId }}</code>
+      }
+      @if (statusPill(); as pill) {
+        <span class="app-pill pill-sm" [class]="pill.cssClass" [class.live]="config().running">
+          @if (config().running) {
+            <span class="live-dot" aria-hidden="true"></span>
+          }
+          {{ pill.textKey | translate }}
+        </span>
+      }
+      @if (config().dryRun) {
+        <span class="app-pill p-accent pill-sm">{{
+          'dashboard.appDetail.dryRun' | translate
+        }}</span>
+      }
+    </div>
+
+    <dl class="monitor-meta">
+      @if (config().startTime) {
+        <div>
+          <dt>{{ 'detailShared.jobInfo.started' | translate }}</dt>
+          <dd>{{ config().startTime | date: 'medium' }}</dd>
+        </div>
+      }
+      @if (config().endTime) {
+        <div>
+          <dt>{{ 'detailShared.jobInfo.finished' | translate }}</dt>
+          <dd>{{ config().endTime | date: 'medium' }}</dd>
+        </div>
+      }
+      @if (config().duration && config().running) {
+        <div>
+          <dt>{{ 'detailShared.jobInfo.duration' | translate }}</dt>
+          <dd>{{ config().duration }}</dd>
+        </div>
+      }
+    </dl>
+  </header>
+
+  @if (error(); as message) {
+    <div class="monitor-error">
+      <app-alert-banner
+        severity="error"
+        [description]="message"
+        [appCopyToClipboard]="message"
+        [attr.title]="'common.copy' | translate"
+      />
+    </div>
+  }
+
+  @if (hasJob()) {
+    <div class="kpi-strip" role="list">
+      @for (kpi of kpis(); track kpi.key) {
+        <div
+          class="kpi"
+          role="listitem"
+          [class.hero]="kpi.hero"
+          [class.tone-warn]="kpi.tone === 'warn'"
+          [class.tone-orange]="kpi.tone === 'orange'"
+        >
+          <span class="kpi-label">{{ kpi.labelKey | translate }}</span>
+          <span class="kpi-value">
+            <ng-container
+              [ngTemplateOutlet]="figure"
+              [ngTemplateOutletContext]="{ value: kpi.value, format: kpi.format, total: kpi.total }"
+            ></ng-container>
+          </span>
+          @if (kpi.progress !== undefined) {
+            <mat-progress-bar mode="determinate" [value]="kpi.progress"></mat-progress-bar>
+          }
+          @if (kpi.sparkline && spark().line) {
+            <svg
+              class="sparkline"
+              [attr.viewBox]="'0 0 ' + sparkWidth + ' ' + sparkHeight"
+              preserveAspectRatio="none"
+              role="img"
+              [attr.aria-label]="'shared.monitor.kpi.speedHistory' | translate"
+            >
+              <path [attr.d]="spark().area" class="spark-area"></path>
+              <path [attr.d]="spark().line" class="spark-line"></path>
+              @if (spark().last; as last) {
+                <circle [attr.cx]="last.x" [attr.cy]="last.y" r="2.5" class="spark-dot"></circle>
+              }
+            </svg>
+          }
+          @if (kpi.subs?.length || kpi.subText) {
+            <span class="kpi-sub">
+              @for (sub of kpi.subs; track sub.key ?? $index; let first = $first) {
+                @if (!first) {
+                  <span aria-hidden="true"> · </span>
+                }
+                @if (sub.key && sub.format !== 'count') {
+                  {{ sub.key | translate }}
+                }
+                <ng-container
+                  [ngTemplateOutlet]="figure"
+                  [ngTemplateOutletContext]="{ value: sub.value, format: sub.format }"
+                ></ng-container>
+                @if (sub.key && sub.format === 'count') {
+                  {{ sub.key | translate }}
+                }
+              }
+              @if (kpi.subText) {
+                <span class="truncate" [title]="kpi.subText">{{ kpi.subText }}</span>
+              }
+            </span>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <app-transfer-activity-panel
+    [config]="config().activity"
+    [isJobRunning]="config().running"
+    [canOpenDetail]="canOpenDetail()"
+    (resetStats)="resetStats.emit()"
+    (deleteJob)="deleteJob.emit()"
+    (openDetail)="openDetail.emit()"
+  ></app-transfer-activity-panel>
+</mat-card>

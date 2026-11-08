@@ -738,9 +738,12 @@ $dark-theme: (
         background: var(--active-bg-color);
       }
 
+      // A selected pill reads at a glance: a stronger fill and an inner ring, as in GNOME. The ring
+      // is a shadow, not a border, so the pill keeps its size.
       &.is-selected {
-        background: var(--selected-bg-color);
+        background: var(--active-bg-color);
         color: var(--window-fg-color);
+        box-shadow: inset 0 0 0 1px currentColor;
       }
     }
 
@@ -771,12 +774,13 @@ $dark-theme: (
         color: var(--#{$color});
 
         &.interactive:hover {
-          background: rgba(var(--#{$color}-rgb), 0.25);
+          background: rgba(var(--#{$color}-rgb), 0.22);
         }
 
         &.interactive.is-selected {
-          background: rgba(var(--#{$color}-rgb), 0.25);
+          background: rgba(var(--#{$color}-rgb), 0.3);
           color: var(--#{$color});
+          box-shadow: inset 0 0 0 1.5px currentColor;
         }
       }
     }

@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "任务信息",
-      "type": "任务类型",
-      "id": "任务 ID",
-      "status": "任务状态",
       "started": "开始时间",
       "finished": "完成时间",
       "duration": "持续时间"
@@ -221,10 +217,6 @@
       "moving": "移动中",
       "copying": "复制中",
       "serving": "服务运行中"
-    },
-    "stats": {
-      "emptyTitle": "暂无统计数据",
-      "emptyMessage": "操作运行时将显示统计信息"
     },
     "pathDisplay": {
       "source": "源路径",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "进行中（{{count}}）",
         "recent": "最近完成（{{count}}）",
-        "report": "文件报告"
+        "report": "文件报告",
+        "conflicts": "冲突 ({{count}})"
       },
       "table": {
         "size": "大小",
-        "transferred": "已传输"
+        "transferred": "已传输",
+        "file": "文件",
+        "direction": "方向",
+        "took": "耗时",
+        "when": "时间",
+        "progress": "进度",
+        "speed": "速度",
+        "eta": "剩余时间"
       },
       "status": {
         "failed": "失败",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "复制到目的地",
         "resolveToSrc": "复制到源",
-        "resolveOverwrite": "解决文件冲突",
-        "resolveOverwriteTitle": "解决文件冲突",
-        "resolveOverwriteMessage": "文件“{{name}}”在源和目的地都存在但内容不同。您要用源文件覆盖目的地文件吗？",
-        "overwriteDst": "覆盖目的地",
         "copyUrl": "复制 URL",
         "download": "下载文件",
         "successSync": "文件同步操作成功启动",
@@ -926,7 +922,8 @@
         "successCopyUrl": "下载 URL 已复制到剪贴板",
         "failCopyUrl": "生成下载 URL 失败",
         "successDownload": "文件下载成功",
-        "failDownload": "下载文件失败"
+        "failDownload": "下载文件失败",
+        "resolveChoose": "选择要保留的版本"
       },
       "empty": {
         "noRecent": "没有最近的文件活动",
@@ -975,6 +972,72 @@
         "empty": "此报告中没有文件。",
         "loadFailed": "无法加载报告。",
         "showMore": "再显示 {{count}} 项"
+      },
+      "direction": {
+        "toDestination": "源端新增:复制到目标",
+        "toSource": "仅目标端存在:复制到源端",
+        "choose": "两端内容不同:由你决定保留哪一个",
+        "labelToDestination": "到目的地",
+        "labelToSource": "到源",
+        "labelChoose": "需要选择"
+      },
+      "bulk": {
+        "title": "已选差异",
+        "selectAll": "全选 {{count}} 项未处理差异",
+        "selected": "已选 {{count}} 项",
+        "toDestination": "{{count}} 项到目标",
+        "toSource": "{{count}} 项到源端",
+        "choose": "{{count}} 项需要决定",
+        "clear": "清除",
+        "applyOneWay": "复制 {{count}} 个文件",
+        "review": "查看 {{count}} 个冲突…",
+        "started": "已开始复制 {{count}} 个文件",
+        "partial": "已开始 {{started}} 个复制任务,{{failed}} 个失败"
+      },
+      "compare": {
+        "title": "文件在两端都已更改",
+        "position": "第 {{index}} 个,共 {{total}} 个",
+        "source": "源端",
+        "destination": "目标",
+        "modified": "修改时间",
+        "unknown": "未知",
+        "larger": "更大",
+        "newer": "更新",
+        "missing": "此处已不存在该文件。",
+        "loadFailed": "无法读取文件:{{error}}",
+        "which": "应保留哪个版本?",
+        "keepSource": "保留源端版本",
+        "keepDestination": "保留目标端版本",
+        "overwrites": "{{path}} 将被覆盖。只有该远程保留了历史版本时才能恢复。",
+        "recreates": "{{path}} 将根据你保留的版本创建。",
+        "hint": "请选择一个版本。点击应用之前不会有任何更改。",
+        "skip": "跳过此文件",
+        "apply": "应用",
+        "applyNext": "应用并继续",
+        "checksum": {
+          "verify": "比较校验和",
+          "match": "{{type}} 校验和一致",
+          "differ": "{{type}} 校验和不同",
+          "none": "这些远程没有共同的校验和类型",
+          "failed": "无法读取校验和"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "保留 Path1 的版本",
+        "keepPath2": "保留 Path2 的版本",
+        "titleBisync": "文件在两个路径上都已更改",
+        "discards": "另一个版本({{path}})及其在两个路径上的副本将被丢弃。只有远程保留了历史版本时才能恢复。"
+      },
+      "export": {
+        "copy": "复制为 CSV",
+        "copied": "已将 {{count}} 行复制为 CSV"
+      },
+      "conflicts": {
+        "empty": "本次运行没有冲突。",
+        "loadFailed": "无法加载冲突。",
+        "resolved": "已解决 {{name}}",
+        "keptPath1": "已保留 Path1 的版本",
+        "keptPath2": "已保留 Path2 的版本"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "此字段是必需的。",
       "min": "值必须至少为 {{val}}。"
+    },
+    "monitor": {
+      "status": {
+        "running": "运行中",
+        "completed": "已完成",
+        "failed": "失败",
+        "stopped": "已停止"
+      },
+      "kpi": {
+        "progress": "进度",
+        "speed": "速度",
+        "avgSpeed": "平均速度",
+        "eta": "剩余时间",
+        "took": "用时",
+        "files": "文件",
+        "checks": "检查",
+        "errors": "错误",
+        "avg": "平均",
+        "peak": "峰值",
+        "total": "总计",
+        "left": "剩余",
+        "speedHistory": "传输速度变化",
+        "checked": "已检查",
+        "compared": "已比较",
+        "matched": "一致",
+        "differences": "差异",
+        "unreadable": "无法读取",
+        "onlyOnSource": "仅源端",
+        "onlyOnDestination": "仅目标端",
+        "differ": "内容不同",
+        "deleted": "已删除"
+      }
     }
   },
   "wizards": {
@@ -1956,7 +2051,6 @@
       "title": "任务详情 #{{id}}",
       "sections": {
         "overview": "任务详情",
-        "statistics": "统计数据",
         "paths": "路径",
         "errors": "错误",
         "profile": "配置文件",
@@ -1969,10 +2063,7 @@
         "started": "开始时间",
         "finished": "完成时间",
         "duration": "耗时",
-        "speed": "速度",
-        "eta": "预计剩余时间",
         "files": "文件",
-        "checks": "检查",
         "deleted": "已删除",
         "renamed": "已重命名",
         "updatedDirs": "更新目录",
@@ -1987,9 +2078,7 @@
         "serverSideCopies": "服务端复制",
         "serverSideMoves": "服务端移动",
         "retryError": "重试错误",
-        "fatalError": "致命错误",
-        "speedAvg": "平均速度",
-        "transferred": "已传输"
+        "fatalError": "致命错误"
       }
     },
     "about": {
@@ -3336,6 +3425,10 @@
     },
     "notification": {
       "toastFailed": "无法显示系统通知：{{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "该版本已不存在:{{path}}。请重新运行 bisync 以查看当前冲突。",
+      "stepFailed": "无法更新 {{path}}:{{error}}"
     }
   },
   "backendSuccess": {

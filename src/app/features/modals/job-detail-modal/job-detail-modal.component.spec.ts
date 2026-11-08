@@ -131,7 +131,6 @@ describe('JobDetailModalComponent', () => {
     expect(component.jobData().jobid).toBe(42);
     expect(component.jobStatus()).toBe('completed');
     expect(component.isMount()).toBe(false);
-    expect(component.progress()).toBe(100);
   });
 
   it('shows updated directories and treats jobs stored without the counter as zero', () => {
@@ -207,6 +206,9 @@ describe('JobDetailModalComponent', () => {
     expect(fixture.componentInstance.transferActivityConfig().report).toEqual({
       jobId: 42,
       counts: { combined: 3 },
+      path1: mockJob.source[0],
+      path2: mockJob.destination,
+      dryRun: mockJob.dry_run,
     });
   });
 });

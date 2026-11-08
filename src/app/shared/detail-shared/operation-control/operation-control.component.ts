@@ -19,11 +19,13 @@ import {
   OperationControlConfig,
   PrimaryActionType,
   LocalDiskUsage,
+  JobReportKey,
   OPERATION_ICONS,
   SYNC_TYPES,
   DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
+import { FILE_REPORT_OPERATIONS, JOB_REPORT_KEYS, REPORT_PILLS } from '../../utils/job-report.util';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -48,11 +50,15 @@ export class OperationControlComponent {
   readonly config = input.required<OperationControlConfig>();
   readonly dryRun = input<boolean>(false);
   readonly resync = input<boolean>(false);
+  /** The reports the profile or Quick Run asks for; file reports are on while there is one. */
+  readonly reports = input<readonly JobReportKey[]>([]);
   readonly startJob = output<PrimaryActionType>();
   readonly stopJob = output<PrimaryActionType>();
   readonly openPath = output<string>();
   readonly toggleDryRun = output<void>();
   readonly toggleResync = output<void>();
+  readonly toggleFileReport = output<void>();
+  readonly toggleReport = output<JobReportKey>();
 
   private readonly systemInfo = inject(SystemInfoService);
 
@@ -73,6 +79,16 @@ export class OperationControlComponent {
     if (pct > 70) return 'accent';
     return 'primary';
   });
+
+  /** The reports to choose from once file reports are on; the combined one is the switch itself. */
+  protected readonly extraReports = JOB_REPORT_KEYS.filter(key => key !== 'combined');
+  protected readonly pills = REPORT_PILLS;
+  protected readonly fileReport = computed(() => this.reports().length > 0);
+
+  /** Only these jobs keep a file report. */
+  protected readonly canReport = computed(() =>
+    FILE_REPORT_OPERATIONS.has(this.config().operationType)
+  );
 
   readonly isOperationsType = computed(() =>
     (SYNC_TYPES as string[]).includes(this.config().operationType)

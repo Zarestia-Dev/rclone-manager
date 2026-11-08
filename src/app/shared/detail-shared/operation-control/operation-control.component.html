@@ -94,6 +94,17 @@
 
     @if (isOperationsType()) {
       <div class="controls">
+        @if (canReport()) {
+          <mat-slide-toggle
+            class="control"
+            [checked]="fileReport()"
+            (change)="toggleFileReport.emit()"
+            [disabled]="config().isActive || config().isLoading"
+          >
+            {{ 'shared.transferActivity.tabs.report' | translate }}
+          </mat-slide-toggle>
+        }
+
         <mat-slide-toggle
           class="control"
           [checked]="dryRun()"
@@ -114,6 +125,36 @@
           </mat-slide-toggle>
         }
       </div>
+
+      @if (canReport()) {
+        <div
+          class="report-options"
+          [class.open]="fileReport()"
+          [attr.inert]="fileReport() ? null : ''"
+        >
+          <div class="report-options-inner">
+            <div
+              class="report-options-list"
+              role="group"
+              [attr.aria-label]="'shared.transferActivity.tabs.report' | translate"
+            >
+              @for (key of extraReports; track key) {
+                <button
+                  type="button"
+                  class="app-pill interactive"
+                  [class]="pills[key]"
+                  [class.is-selected]="reports().includes(key)"
+                  [attr.aria-pressed]="reports().includes(key)"
+                  [disabled]="config().isActive || config().isLoading"
+                  (click)="toggleReport.emit(key)"
+                >
+                  {{ 'shared.transferActivity.report.tabs.' + key | translate }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
     }
 
     <button

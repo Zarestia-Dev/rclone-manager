@@ -88,7 +88,7 @@ describe('TransferActivityPanelComponent with file reports', () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
-    const labels = Array.from(el.querySelectorAll('.mdc-tab__text-label')).map(tab =>
+    const labels = Array.from(el.querySelectorAll('.activity-tab')).map(tab =>
       tab.textContent?.trim()
     );
     expect(labels).toEqual([
@@ -104,7 +104,7 @@ describe('TransferActivityPanelComponent with file reports', () => {
       showHistory: false,
       report: { jobId: 7, counts: { match: 4 } },
     });
-    expect(el.querySelector('mat-tab-group')).toBeNull();
+    expect(el.querySelectorAll('.activity-tab')).toHaveLength(1);
     expect(el.querySelector('app-job-report')).not.toBeNull();
   });
 

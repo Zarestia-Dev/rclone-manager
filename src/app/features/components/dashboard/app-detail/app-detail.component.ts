@@ -16,7 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
+import { FormatTimePipe } from '@app/pipes';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { extractProfileSource, extractProfileDest } from 'src/app/shared/utils';
 import {
@@ -25,7 +25,8 @@ import {
   DEFAULT_JOB_STATS,
   DEFAULT_PROFILE_NAME,
   JobInfo,
-  JobInfoConfig,
+  JobMonitorConfig,
+  JobReportKey,
   OperationColor,
   OperationControlConfig,
   PathDisplayConfig,
@@ -39,7 +40,6 @@ import {
   RemoteSettingsSection,
   ServeListItem,
   SettingsPanelConfig,
-  StatsPanelConfig,
   SyncOperationViewModel,
   SyncOperationType,
   TransferActivityPanelConfig,
@@ -68,12 +68,16 @@ import {
 } from '@app/types';
 import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
 import { MatDialog } from '@angular/material/dialog';
-import { jobReportOf } from '../../../../shared/utils/job-report.util';
-import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
+import {
+  FILE_REPORT_OPERATIONS,
+  JOB_REPORT_KEYS,
+  jobReportOf,
+  withFileReport,
+  withReport,
+} from '../../../../shared/utils/job-report.util';
+import { JobMonitorComponent } from '../../../../shared/detail-shared/job-monitor/job-monitor.component';
 import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
-import { StatsPanelComponent } from '../../../../shared/detail-shared/stats-panel/stats-panel.component';
-import { TransferActivityPanelComponent } from '../../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -108,15 +112,13 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
     CdkMenuModule,
     AlertBannerComponent,
     OperationControlComponent,
-    JobInfoPanelComponent,
-    StatsPanelComponent,
+    JobMonitorComponent,
     SettingsPanelComponent,
-    TransferActivityPanelComponent,
     VfsControlPanelComponent,
     ServeCardComponent,
     TranslatePipe,
   ],
-  providers: [FormatFileSizePipe, FormatTimePipe],
+  providers: [FormatTimePipe],
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],
 })
@@ -147,7 +149,6 @@ export class AppDetailComponent {
   private readonly quickRunService = inject(QuickRunService);
   protected readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
-  private readonly formatFileSize = inject(FormatFileSizePipe);
   private readonly formatTime = inject(FormatTimePipe);
   private readonly localStorage = inject(LocalStorageService);
   private readonly dialog = inject(MatDialog);
@@ -447,6 +448,18 @@ export class AppDetailComponent {
     this.getDryRunState(this.currentOpType(), this.selectedProfile())
   );
 
+  /** The reports the selected profile or Quick Run asks rclone for. */
+  readonly activeReports = computed<readonly JobReportKey[]>(() => {
+    if (!FILE_REPORT_OPERATIONS.has(this.currentOpType())) return [];
+    const rclone =
+      this.mode() === 'quickRun'
+        ? this.quickRun()?.config?.rclone
+        : this.getProfileConfigMap<ProfileConfig>(this.currentOpType())?.[this.selectedProfile()]
+            ?.rclone;
+    return JOB_REPORT_KEYS.filter(key => rclone?.[key] === true);
+  });
+  readonly isFileReport = computed(() => this.activeReports().length > 0);
+
   readonly isResync = computed(() => {
     if (this.currentOpType() !== 'bisync') return false;
     if (this.mode() === 'quickRun') {
@@ -713,73 +726,7 @@ export class AppDetailComponent {
     };
   });
 
-  // --- Derived: Stats & Transfer Panels ---
-  readonly jobInfoConfig = computed<JobInfoConfig>(() => {
-    const startTime = this.resolvedStartTime();
-    const endTime = this.resolvedEndTime();
-    const elapsedSeconds = this.resolvedElapsedSeconds();
-    const duration = elapsedSeconds > 0 ? this.formatTime.transform(elapsedSeconds) : undefined;
-
-    return {
-      operationType: this.isOperationsType()
-        ? this.selectedSyncOperation()
-        : (this.mainOperationType() as unknown as PrimaryActionType),
-      jobId: this.jobId() ? Number(this.jobId()) : undefined,
-      status: this.activeGroupJob()?.status,
-      startTime,
-      endTime,
-      duration,
-      dryRun: this.activeGroupJob()?.dry_run,
-    };
-  });
-
-  readonly statsConfig = computed<StatsPanelConfig>(() => {
-    const s = this.jobStats();
-    const meta = this.currentOpMetadata();
-    const progress = s.totalBytes > 0 ? Math.min(100, (s.bytes / s.totalBytes) * 100) : 0;
-    const etaProgress =
-      s.elapsedTime && s.eta ? (s.elapsedTime / (s.elapsedTime + s.eta)) * 100 : 0;
-    const t = (key: string, params?: object): string => this.translate.instant(key, params);
-
-    return {
-      title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
-      icon: meta?.icon ?? 'chart',
-      operationColor: this.operationColor(),
-      stats: [
-        {
-          value: this.formatProgress(),
-          label: t('dashboard.appDetail.progress'),
-          isPrimary: true,
-          progress,
-        },
-        {
-          value: `${this.formatFileSize.transform(s.speed || 0)}/s`,
-          label: t('dashboard.appDetail.speed'),
-        },
-        {
-          value: this.formatTime.transform(s.eta),
-          label: t('dashboard.appDetail.eta'),
-          isPrimary: true,
-          progress: etaProgress,
-        },
-        {
-          value: `${s.transfers || 0}/${s.totalTransfers || 0}`,
-          label: t('dashboard.appDetail.files'),
-        },
-        {
-          value: `${s.checks || 0}/${s.totalChecks || 0}`,
-          label: t('dashboard.appDetail.checks'),
-        },
-        {
-          value: s.errors || 0,
-          label: t('dashboard.appDetail.errors'),
-          hasError: (s.errors || 0) > 0,
-          tooltip: s.lastError || undefined,
-        },
-      ],
-    };
-  });
-
+  // --- Derived: Job monitor ---
   readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => ({
     activeTransfers: this.activeTransfers(),
     activeChecks: this.jobStats().checking ?? [],
@@ -789,6 +736,30 @@ export class AppDetailComponent {
     jobType: this.currentOpType(),
     report: jobReportOf(this.activeGroupJob()),
   }));
+
+  readonly jobMonitorConfig = computed<JobMonitorConfig>(() => {
+    const job = this.activeGroupJob();
+    const metadata = this.currentOpMetadata();
+    const jobType = this.currentOpType();
+    const elapsedSeconds = this.resolvedElapsedSeconds();
+    return {
+      jobType,
+      title: metadata?.typeLabel
+        ? this.translate.instant(metadata.typeLabel)
+        : jobType.charAt(0).toUpperCase() + jobType.slice(1),
+      icon: metadata?.icon ?? 'chart',
+      jobId: this.jobId() ? Number(this.jobId()) : undefined,
+      status: job?.status,
+      running: this.operationActiveState(),
+      dryRun: job?.dry_run,
+      error: job?.stats?.lastError || job?.error || undefined,
+      startTime: this.resolvedStartTime(),
+      endTime: this.resolvedEndTime(),
+      duration: elapsedSeconds > 0 ? this.formatTime.transform(elapsedSeconds) : undefined,
+      stats: this.jobStats(),
+      activity: this.transferActivityConfig(),
+    };
+  });
 
   // --- Public Methods ---
 
@@ -887,6 +858,11 @@ export class AppDetailComponent {
     }
   }
 
+  onOpenJobDetail(): void {
+    const job = this.activeGroupJob();
+    if (job) this.modalService.openJobDetail(job);
+  }
+
   async onDeleteJob(): Promise<void> {
     const job = this.activeGroupJob();
     if (!job) return;
@@ -950,6 +926,45 @@ export class AppDetailComponent {
         },
       });
     }
+  }
+
+  /** Turns file reports on, with the combined report, or every report off. */
+  toggleFileReport(): Promise<void> {
+    const on = !this.isFileReport();
+    return this.changeReportOptions(rclone => withFileReport(rclone, on));
+  }
+
+  /** Turns one report on or off. */
+  toggleReport(key: JobReportKey): Promise<void> {
+    const on = !this.activeReports().includes(key);
+    return this.changeReportOptions(rclone => withReport(rclone, key, on));
+  }
+
+  /** Writes new rclone options to the selected profile or Quick Run. */
+  private async changeReportOptions(
+    change: (rclone: Record<string, unknown> | undefined) => Record<string, unknown>
+  ): Promise<void> {
+    const opType = this.currentOpType();
+    if (!FILE_REPORT_OPERATIONS.has(opType)) return;
+
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (qr) {
+        await this.quickRunService.save({
+          ...qr,
+          config: { ...qr.config, rclone: change(qr.config?.rclone) },
+        });
+      }
+      return;
+    }
+
+    const configKey = REMOTE_CONFIG_KEYS[opType as keyof typeof REMOTE_CONFIG_KEYS];
+    const profile = this.selectedProfile();
+    const profiles = this.getProfileConfigMap<ProfileConfig>(opType) ?? {};
+    const existing = profiles[profile];
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      [configKey]: { ...profiles, [profile]: { ...existing, rclone: change(existing?.rclone) } },
+    } as Partial<RemoteSettings>);
   }
 
   async toggleResync(): Promise<void> {
@@ -1175,13 +1190,6 @@ export class AppDetailComponent {
       operationDescription: metadata.description ? t(metadata.description) : undefined,
       profileName,
     };
-  }
-
-  private formatProgress(): string {
-    const { bytes, totalBytes } = this.jobStats();
-    return totalBytes > 0
-      ? `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`
-      : this.formatFileSize.transform(bytes);
   }
 
   private normalizeSinglePath(path: string | string[]): string {

@@ -15,7 +15,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { JobReport, JobReportCounts, JobReportKey } from '@app/types';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-import { JOB_REPORT_KEYS, reportEntries } from '../../utils/job-report.util';
+import { JOB_REPORT_KEYS, REPORT_PILLS, reportEntries } from '../../utils/job-report.util';
+import { splitPath } from '../transfer-activity-panel/activity.utils';
 
 /** Rows of a report shown at once; a report can list every file of a large job. */
 export const REPORT_PAGE_SIZE = 200;
@@ -36,6 +37,9 @@ export const REPORT_PAGE_SIZE = 200;
 })
 export class JobReportComponent {
   private readonly jobService = inject(JobManagementService);
+
+  protected readonly pills = REPORT_PILLS;
+  protected readonly splitName = splitPath;
 
   readonly jobId = input.required<number>();
   readonly counts = input.required<JobReportCounts>();
@@ -76,9 +80,6 @@ export class JobReportComponent {
   });
 
   readonly hiddenCount = computed(() => Math.max(0, this.lines().length - this.limit()));
-
-  /** What the copy button copies: every line on show, not only the visible page. */
-  readonly text = computed(() => this.lines().join('\n'));
 
   /** Changes when another job, or another result of it, is shown. */
   private readonly source = computed(() => `${this.jobId()}:${JSON.stringify(this.counts())}`);

@@ -57,7 +57,10 @@ describe('JobReportComponent', () => {
       ['-', 'old.txt'],
       ['=', 'same.txt'],
     ]);
-    expect(fixture.nativeElement.querySelectorAll('.report-row')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelectorAll('.card-row-item')).toHaveLength(3);
+    // Each file's result is a labelled pill, not the bare sigil.
+    expect(fixture.nativeElement.querySelectorAll('.card-row-item .app-pill')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelector('.file-dir')).not.toBeNull();
   });
 
   it('switches reports and shows plain paths without sigils', async () => {
@@ -68,6 +71,14 @@ describe('JobReportComponent', () => {
     fixture.detectChanges();
     expect(component.rows()).toEqual([]);
     expect(fixture.nativeElement.querySelector('.empty-state')).not.toBeNull();
+  });
+
+  it('gives a file of a single-result report no result pill', async () => {
+    const component = await show({ combined: 3, missingOnDst: 1 });
+    component.select('missingOnDst');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.card-row-item')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.card-row-item .app-pill')).toBeNull();
   });
 
   it('opens the first report when none lists a file', async () => {
@@ -88,17 +99,16 @@ describe('JobReportComponent', () => {
     expect(component.rows()).toHaveLength(REPORT_PAGE_SIZE);
   });
 
-  it('narrows the list by the search text and copies what is shown, not only the page', async () => {
+  it('narrows the list by the search text, ignoring case and surrounding spaces', async () => {
     const files = Array.from({ length: 450 }, (_, i) => `f${i}.txt`);
     const component = await show({ match: 450 }, { match: files });
-    expect(component.text().split('\n')).toHaveLength(450);
     fixture.componentRef.setInput('searchTerm', ' F44 ');
-    expect(component.text()).toBe(
-      'f44.txt\nf440.txt\nf441.txt\nf442.txt\nf443.txt\nf444.txt\nf445.txt\nf446.txt\nf447.txt\nf448.txt\nf449.txt'
-    );
+    expect(component.rows().map(row => row.path)).toEqual([
+      'f44.txt',
+      ...Array.from({ length: 10 }, (_, i) => `f44${i}.txt`),
+    ]);
     fixture.componentRef.setInput('searchTerm', 'nothing like it');
     expect(component.rows()).toEqual([]);
-    expect(component.text()).toBe('');
   });
 
   it('says so when the report cannot be loaded', async () => {

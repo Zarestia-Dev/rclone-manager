@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "ジョブ情報",
-      "type": "ジョブタイプ",
-      "id": "ジョブID",
-      "status": "ジョブステータス",
       "started": "開始日時",
       "finished": "終了日時",
       "duration": "所要時間"
@@ -221,10 +217,6 @@
       "moving": "移動中",
       "copying": "コピー中",
       "serving": "公開中"
-    },
-    "stats": {
-      "emptyTitle": "利用可能な統計情報はありません",
-      "emptyMessage": "操作の実行時に統計情報が表示されます"
     },
     "pathDisplay": {
       "source": "転送元",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "実行中 ({{count}})",
         "recent": "履歴 ({{count}})",
-        "report": "ファイルレポート"
+        "report": "ファイルレポート",
+        "conflicts": "競合 ({{count}})"
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み"
+        "transferred": "転送済み",
+        "file": "ファイル",
+        "direction": "方向",
+        "took": "所要時間",
+        "when": "日時",
+        "progress": "進捗",
+        "speed": "速度",
+        "eta": "残り時間"
       },
       "status": {
         "failed": "失敗",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "転送先へコピー",
         "resolveToSrc": "転送元へコピー",
-        "resolveOverwrite": "ファイルの不一致を解決",
-        "resolveOverwriteTitle": "ファイルの不一致を解決",
-        "resolveOverwriteMessage": "ファイル 「{{name}}」 は転送元と転送先の両方に存在しますが、内容が異なります。転送先のファイルを転送元のファイルで上書きしますか?",
-        "overwriteDst": "転送先を上書き",
         "copyUrl": "URLをコピー",
         "download": "ファイルをダウンロード",
         "successSync": "ファイル同期操作を正常に開始しました",
@@ -926,7 +922,8 @@
         "successCopyUrl": "ダウンロードURLをクリップボードにコピーしました",
         "failCopyUrl": "ダウンロードURLの生成に失敗しました",
         "successDownload": "ファイルを正常にダウンロードしました",
-        "failDownload": "ファイルのダウンロードに失敗しました"
+        "failDownload": "ファイルのダウンロードに失敗しました",
+        "resolveChoose": "残すバージョンを選択"
       },
       "messages": {
         "resolveStarted": "不一致の解決を開始しました",
@@ -975,6 +972,72 @@
         "empty": "このレポートにファイルはありません。",
         "loadFailed": "レポートを読み込めませんでした。",
         "showMore": "さらに {{count}} 件を表示"
+      },
+      "direction": {
+        "toDestination": "ソースにのみ存在: 宛先へコピー",
+        "toSource": "宛先にのみ存在: ソースへコピー",
+        "choose": "両側で異なります: 残す側を選択",
+        "labelToDestination": "転送先へ",
+        "labelToSource": "転送元へ",
+        "labelChoose": "選択が必要"
+      },
+      "bulk": {
+        "title": "選択した差分",
+        "selectAll": "未解決の差分 {{count}} 件をすべて選択",
+        "selected": "{{count}} 件選択中",
+        "toDestination": "宛先へ {{count}} 件",
+        "toSource": "ソースへ {{count}} 件",
+        "choose": "要判断 {{count}} 件",
+        "clear": "選択解除",
+        "applyOneWay": "{{count}} 件のファイルをコピー",
+        "review": "{{count}} 件の競合を確認…",
+        "started": "{{count}} 件のファイルのコピーを開始しました",
+        "partial": "{{started}} 件のコピーを開始、{{failed}} 件は失敗しました"
+      },
+      "compare": {
+        "title": "ファイルが両側で変更されています",
+        "position": "{{index}} / {{total}}",
+        "source": "ソース",
+        "destination": "宛先",
+        "modified": "更新日時",
+        "unknown": "不明",
+        "larger": "サイズ大",
+        "newer": "新しい",
+        "missing": "このファイルはここには存在しません。",
+        "loadFailed": "ファイルを読み取れませんでした: {{error}}",
+        "which": "どちらのバージョンを残しますか?",
+        "keepSource": "ソース側のバージョンを残す",
+        "keepDestination": "宛先側のバージョンを残す",
+        "overwrites": "{{path}} が上書きされます。そのリモートが古いバージョンを保持している場合のみ復元できます。",
+        "recreates": "{{path}} は残すバージョンから作成されます。",
+        "hint": "バージョンを選択してください。適用するまで何も変更されません。",
+        "skip": "このファイルをスキップ",
+        "apply": "適用",
+        "applyNext": "適用して次へ",
+        "checksum": {
+          "verify": "チェックサムを比較",
+          "match": "{{type}} チェックサムは一致しています",
+          "differ": "{{type}} チェックサムが異なります",
+          "none": "これらのリモートに共通のチェックサム形式がありません",
+          "failed": "チェックサムを読み取れませんでした"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Path1 のバージョンを残す",
+        "keepPath2": "Path2 のバージョンを残す",
+        "titleBisync": "ファイルが両方のパスで変更されています",
+        "discards": "もう一方のバージョン({{path}})は、両方のパスにあるコピーとともに破棄されます。リモートが古いバージョンを保持している場合のみ復元できます。"
+      },
+      "export": {
+        "copy": "CSVとしてコピー",
+        "copied": "{{count}} 行をCSVとしてコピーしました"
+      },
+      "conflicts": {
+        "empty": "この実行に競合はありません。",
+        "loadFailed": "競合を読み込めませんでした。",
+        "resolved": "{{name}} を解決しました",
+        "keptPath1": "Path1 のバージョンを保持",
+        "keptPath2": "Path2 のバージョンを保持"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "この項目は必須です。",
       "min": "値は{{val}}以上である必要があります。"
+    },
+    "monitor": {
+      "status": {
+        "running": "実行中",
+        "completed": "完了",
+        "failed": "失敗",
+        "stopped": "停止"
+      },
+      "kpi": {
+        "progress": "進行状況",
+        "speed": "速度",
+        "avgSpeed": "平均速度",
+        "eta": "残り時間",
+        "took": "所要時間",
+        "files": "ファイル",
+        "checks": "チェック",
+        "errors": "エラー",
+        "avg": "平均",
+        "peak": "最大",
+        "total": "合計",
+        "left": "残り",
+        "speedHistory": "転送速度の推移",
+        "checked": "チェック済み",
+        "compared": "比較済み",
+        "matched": "一致",
+        "differences": "差分",
+        "unreadable": "読み取り不可",
+        "onlyOnSource": "ソースのみ",
+        "onlyOnDestination": "宛先のみ",
+        "differ": "相違",
+        "deleted": "削除済み"
+      }
     }
   },
   "wizards": {
@@ -1956,7 +2051,6 @@
       "title": "ジョブの詳細 #{{id}}",
       "sections": {
         "overview": "ジョブ情報",
-        "statistics": "統計情報",
         "paths": "パス",
         "errors": "エラー",
         "profile": "プロファイル",
@@ -1969,10 +2063,7 @@
         "started": "開始日時",
         "finished": "終了日時",
         "duration": "所要時間",
-        "speed": "転送速度",
-        "eta": "完了見込み時間",
         "files": "ファイル",
-        "checks": "チェック数",
         "deleted": "削除数",
         "renamed": "名前変更数",
         "updatedDirs": "更新ディレクトリ数",
@@ -1987,9 +2078,7 @@
         "serverSideCopies": "サーバーサイドコピー",
         "serverSideMoves": "サーバーサイド移動",
         "retryError": "再試行エラー",
-        "fatalError": "致命的エラー",
-        "speedAvg": "平均速度",
-        "transferred": "転送量"
+        "fatalError": "致命的エラー"
       }
     },
     "about": {
@@ -3336,6 +3425,10 @@
     },
     "notification": {
       "toastFailed": "システム通知を表示できませんでした: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "そのバージョンはもう存在しません: {{path}}。bisync を再実行して現在の競合を確認してください。",
+      "stepFailed": "{{path}} を更新できませんでした: {{error}}"
     }
   },
   "backendSuccess": {

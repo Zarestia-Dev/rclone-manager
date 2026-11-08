@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Onboarding Permissions (Android)**: The first-run wizard has an optional step to allow access to all files and to exempt the app from battery optimization. Both can be skipped and granted later.
 - **AUR Update Instructions**: AUR installs (`rclone-manager`, `-headless`, `-server`) show the command that updates them (`paru -S` or `yay -S` when installed, otherwise the `makepkg` steps) and link to their own AUR page. An update is offered once the AUR publishes it, whatever the update channel; `-git` packages are not offered releases.
 - **Update Status Survives Reloads**: The About page shows when updates were last checked and why a check failed, including scheduled checks and checks started in another window. Updates that were rolled back and the reminder to restart a remote rclone after it updated itself are shown too, so a reloaded web UI and headless servers without OS notifications see them.
+- **Job Monitor**: One card replaces the separate job information, statistics and activity cards on the dashboard and in the job details. It shows the figures that matter for the kind of job: progress, speed with a live graph, time left or time taken, files and checks for transfers; compared, matched and different files for a check; and how many files a delete removed. A failed job shows its error above the figures, only while it failed or still counts errors. The layout follows the width of the card, so it works on a phone, a tablet and a wide window. A button on the card opens the job details.
+- **Resolve Check Differences**: The Check results say what each difference is: new on the source, only on the destination, or different on both sides, with the direction a copy would go. A file that exists on one side is copied with one click. For a file that differs on both sides, a dialog shows both versions with their real paths, size, modified time and which is newer or larger, can compare checksums, and asks which version should win. Several differences can be selected at once: one-way copies apply together and the others are reviewed one after another in the same dialog. Implements [#329](https://github.com/Zarestia-Dev/rclone-manager/issues/329).
+- **Resolve BiSync Conflicts**: A finished BiSync run with conflicts has a **Conflicts** tab listing the files that changed on both paths. Pick which version to keep, one file or a selection reviewed in one dialog; the kept version gets the original name on both paths and the other copies are removed. Conflicts are read from the rclone log, so it works with any rclone version. Conflicts that BiSync settled by itself, with `--conflict-resolve` or `--conflict-loser delete`, are not listed. Implements [#329](https://github.com/Zarestia-Dev/rclone-manager/issues/329).
+- **File Report**: A finished sync, copy or move job keeps the lists rclone reports (new, different, missing, matching and failed files) and shows them as tabs with a status for every file.
 
 ### Changed
 
@@ -27,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Translated Updater Errors**: The updater's own errors, including rollback reasons and rclone update failures in notifications, are now translated in all ten languages; messages nested in another message are translated too.
 - **Update Commands**: Flatpak shows the product's own app ID (the headless build had the desktop one), Docker shows `docker compose pull && docker compose up -d` instead of pulling `:latest`, and an AUR install is labelled AUR.
 - **Updater Cleanup**: Removed the unused `can_auto_install` and `get_build_type` commands, support for per-target update manifests that no release ever published, a download URL rewrite that never matched, and unused fields of update results.
+- **Activity Panel**: Files in the activity lists are cards with the folder above the name and their paths always shown. The tabs (Active, Recent, File Report, Conflicts) and the search, copy and delete buttons share one row; on a narrow card the buttons move to a second row. The status filters stay inside the Recent view, and the panel's title bar is left out while it would hold nothing but its title.
+- **Job Details Order**: The monitor comes first, then the profile or Quick Run, then the paths and the counters.
 
 ### Fixed
 
@@ -40,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Windows Update Helper**: Ending `updater.exe` after a successful update, for example from Task Manager, no longer closes the application.
 - **Android Update Storage**: The downloaded APK is kept once instead of twice in the app cache.
 - **Start on Startup Lost After Reinstall (Desktop)**: When "Start on startup" is on but the system autostart entry is missing, for example after an uninstall removed it during an upgrade, the app now re-creates the entry at startup instead of leaving the setting enabled with nothing to launch it. Development builds and Flatpak are not affected. See [#340](https://github.com/orgs/Zarestia-Dev/discussions/340).
+- **Quick Run Jobs Shown as "Default"**: The job details said a Quick Run job ran the Default profile. They now show the Quick Run's name, which the job keeps even if the Quick Run is renamed or deleted later. Jobs started before this update have no name to show.
 
 ## [0.3.5] - 2026-10-29
 

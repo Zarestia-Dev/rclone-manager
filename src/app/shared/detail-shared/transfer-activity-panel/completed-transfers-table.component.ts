@@ -18,6 +18,7 @@ import {
   activityError,
   canCopyFailedTransfer,
   effectiveTransferStatus,
+  splitPath,
 } from './activity.utils';
 
 @Component({
@@ -40,14 +41,16 @@ import {
           <div class="card-row-item" [class]="transfer.displayStatus">
             <div class="card-header">
               <div class="card-info-left">
-                <mat-icon
-                  svgIcon="file"
-                  class="card-primary-icon"
-                  [attr.title]="transfer.name"
-                ></mat-icon>
-                <span class="card-title-text truncate" [title]="transfer.name">{{
-                  transfer.name
-                }}</span>
+                <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+                <span class="card-title">
+                  <span class="file-dir truncate" [title]="transfer.name">{{ transfer.dir }}</span>
+                  <span
+                    class="card-title-text truncate"
+                    [appCopyToClipboard]="transfer.name"
+                    [attr.title]="'common.copy' | translate"
+                    >{{ transfer.base }}</span
+                  >
+                </span>
               </div>
               <div class="card-info-right">
                 <span
@@ -58,7 +61,6 @@ import {
                   <mat-icon [svgIcon]="transfer.badge.icon"></mat-icon>
                   {{ transfer.badge.text | translate }}
                 </span>
-
                 @if (canResolve(transfer)) {
                   <button
                     type="button"
@@ -75,14 +77,6 @@ import {
                 }
               </div>
             </div>
-
-            <app-activity-paths
-              [item]="transfer"
-              [rowId]="transfer.uniqueId"
-              [jobType]="jobType()"
-              [fallbackLabel]="remoteName()"
-              [allowDelete]="true"
-            ></app-activity-paths>
 
             <div class="card-footer">
               <div class="card-footer-left">
@@ -108,6 +102,13 @@ import {
               </div>
             </div>
 
+            <app-activity-paths
+              [item]="transfer"
+              [rowId]="transfer.uniqueId"
+              [jobType]="jobType()"
+              [fallbackLabel]="remoteName()"
+              [allowDelete]="true"
+            ></app-activity-paths>
             @if (isResolving(transfer)) {
               <app-activity-progress [state]="transfer.resolveState"></app-activity-progress>
             }
@@ -184,6 +185,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
 
       return {
         ...transfer,
+        ...splitPath(transfer.name),
         displayStatus: status,
         displayError: activityError(transfer),
         relativeTime: transfer.completedAt ? this.getRelativeTime(transfer.completedAt) : '',

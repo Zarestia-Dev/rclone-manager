@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "Job Information",
-      "type": "Job Type",
-      "id": "Job ID",
-      "status": "Job Status",
       "started": "Started",
       "finished": "Finished",
       "duration": "Duration"
@@ -221,10 +217,6 @@
       "moving": "Moving",
       "copying": "Copying",
       "serving": "Serving"
-    },
-    "stats": {
-      "emptyTitle": "No statistics available",
-      "emptyMessage": "Statistics will be shown when an operation is running"
     },
     "pathDisplay": {
       "source": "Source",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "Active ({{count}})",
         "recent": "Recent ({{count}})",
-        "report": "File Report"
+        "report": "File Report",
+        "conflicts": "Conflicts ({{count}})"
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred"
+        "transferred": "transferred",
+        "file": "File",
+        "direction": "Direction",
+        "took": "Took",
+        "when": "When",
+        "progress": "Progress",
+        "speed": "Speed",
+        "eta": "ETA"
       },
       "status": {
         "failed": "Failed",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "Copy to Destination",
         "resolveToSrc": "Copy to Source",
-        "resolveOverwrite": "Resolve File Mismatch",
-        "resolveOverwriteTitle": "Resolve File Mismatch",
-        "resolveOverwriteMessage": "The file '{{name}}' exists on both source and destination but differs. Do you want to overwrite the file on destination with the source file?",
-        "overwriteDst": "Overwrite Destination",
         "copyUrl": "Copy URL",
         "download": "Download File",
         "successSync": "File sync operation started successfully",
@@ -926,7 +922,8 @@
         "successCopyUrl": "Download URL copied to clipboard",
         "failCopyUrl": "Failed to generate download URL",
         "successDownload": "File downloaded successfully",
-        "failDownload": "Failed to download file"
+        "failDownload": "Failed to download file",
+        "resolveChoose": "Choose which version to keep"
       },
       "messages": {
         "resolveStarted": "File mismatch resolution started",
@@ -975,6 +972,72 @@
         "empty": "No files in this report.",
         "loadFailed": "Could not load the report.",
         "showMore": "Show {{count}} more"
+      },
+      "direction": {
+        "toDestination": "New on source: copy to destination",
+        "toSource": "Only on destination: copy to source",
+        "choose": "Differs on both sides: you choose the winner",
+        "labelToDestination": "To destination",
+        "labelToSource": "To source",
+        "labelChoose": "Choose winner"
+      },
+      "bulk": {
+        "title": "Selected differences",
+        "selectAll": "Select all {{count}} open differences",
+        "selected": "{{count}} selected",
+        "toDestination": "{{count}} to destination",
+        "toSource": "{{count}} to source",
+        "choose": "{{count}} need a decision",
+        "clear": "Clear",
+        "applyOneWay": "Copy {{count}} files",
+        "review": "Review {{count}} conflicts…",
+        "started": "Started copying {{count}} files",
+        "partial": "Started {{started}} copies, {{failed}} failed"
+      },
+      "compare": {
+        "title": "File changed on both sides",
+        "position": "{{index}} of {{total}}",
+        "source": "Source",
+        "destination": "Destination",
+        "modified": "Modified",
+        "unknown": "Unknown",
+        "larger": "Larger",
+        "newer": "Newer",
+        "missing": "This file no longer exists here.",
+        "loadFailed": "Could not read the file: {{error}}",
+        "which": "Which version should win?",
+        "keepSource": "Keep the source version",
+        "keepDestination": "Keep the destination version",
+        "overwrites": "{{path}} will be overwritten. It can only be recovered if that remote keeps old versions.",
+        "recreates": "{{path}} will be created from the version you keep.",
+        "hint": "Choose a version. Nothing changes until you apply.",
+        "skip": "Skip this file",
+        "apply": "Apply",
+        "applyNext": "Apply and next",
+        "checksum": {
+          "verify": "Compare checksums",
+          "match": "{{type}} checksums are identical",
+          "differ": "{{type}} checksums differ",
+          "none": "These remotes share no checksum type",
+          "failed": "Could not read the checksums"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Keep the Path1 version",
+        "keepPath2": "Keep the Path2 version",
+        "titleBisync": "File changed on both paths",
+        "discards": "The other version ({{path}}) will be discarded, along with its copies on both paths. It can only be recovered if the remotes keep old versions."
+      },
+      "export": {
+        "copy": "Copy as CSV",
+        "copied": "{{count}} rows copied as CSV"
+      },
+      "conflicts": {
+        "empty": "No conflicts in this run.",
+        "loadFailed": "Could not load the conflicts.",
+        "resolved": "Resolved {{name}}",
+        "keptPath1": "Path1 version kept",
+        "keptPath2": "Path2 version kept"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "This field is required.",
       "min": "Value must be at least {{val}}."
+    },
+    "monitor": {
+      "status": {
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped"
+      },
+      "kpi": {
+        "progress": "Progress",
+        "speed": "Speed",
+        "avgSpeed": "Average speed",
+        "eta": "ETA",
+        "took": "Took",
+        "files": "Files",
+        "checks": "Checks",
+        "errors": "Errors",
+        "avg": "avg",
+        "peak": "peak",
+        "total": "total",
+        "left": "left",
+        "speedHistory": "Transfer speed over time",
+        "checked": "Checked",
+        "compared": "Compared",
+        "matched": "Matched",
+        "differences": "Differences",
+        "unreadable": "Unreadable",
+        "onlyOnSource": "only on source",
+        "onlyOnDestination": "only on destination",
+        "differ": "differ",
+        "deleted": "Deleted"
+      }
     }
   },
   "wizards": {
@@ -1997,7 +2092,6 @@
       "title": "Job Details #{{id}}",
       "sections": {
         "overview": "Job Information",
-        "statistics": "Statistics",
         "paths": "Paths",
         "errors": "Errors",
         "profile": "Profile",
@@ -2010,10 +2104,7 @@
         "started": "Started",
         "finished": "Finished",
         "duration": "Duration",
-        "speed": "Speed",
-        "eta": "ETA",
         "files": "Files",
-        "checks": "Checks",
         "deleted": "Deleted",
         "renamed": "Renamed",
         "updatedDirs": "Updated Dirs",
@@ -2028,9 +2119,7 @@
         "serverSideCopies": "Server-side Copies",
         "serverSideMoves": "Server-side Moves",
         "retryError": "Retry Error",
-        "fatalError": "Fatal Error",
-        "speedAvg": "Average Speed",
-        "transferred": "Transferred"
+        "fatalError": "Fatal Error"
       }
     },
     "about": {
@@ -3377,6 +3466,10 @@
     },
     "notification": {
       "toastFailed": "Could not show the system notification: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "That version no longer exists: {{path}}. Run bisync again to see the current conflicts.",
+      "stepFailed": "Could not update {{path}}: {{error}}"
     }
   },
   "backendSuccess": {

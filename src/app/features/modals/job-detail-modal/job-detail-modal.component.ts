@@ -1,30 +1,31 @@
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { DecimalPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
+import { DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   JobInfo,
+  JobMonitorConfig,
+  OPERATION_METADATA,
   PathDisplayConfig,
   TransferActivityPanelConfig,
   NON_JOB_OPS,
   DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { jobReportOf } from 'src/app/shared/utils/job-report.util';
-import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
-import { TransferActivityPanelComponent } from '../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
+import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { JobMonitorComponent } from '../../../shared/detail-shared/job-monitor/job-monitor.component';
 import { PathDisplayComponent } from '../../../shared/detail-shared/path-display/path-display.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
-import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 @Component({
@@ -32,20 +33,18 @@ import { EscapeCloseDirective } from '../../../shared/directives/escape-close.di
   imports: [
     MatIconModule,
     MatButtonModule,
-    MatProgressBarModule,
     TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
-    FormatEtaPipe,
-    DecimalPipe,
     DatePipe,
     TitleCasePipe,
     UpperCasePipe,
-    TransferActivityPanelComponent,
+    JobMonitorComponent,
     PathDisplayComponent,
-    CopyToClipboardDirective,
     AlertBannerComponent,
+    CopyToClipboardDirective,
   ],
+  providers: [FormatTimePipe],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -60,6 +59,7 @@ export class JobDetailModalComponent {
   private readonly nautilusService = inject(NautilusService);
   private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
+  private readonly formatTime = inject(FormatTimePipe);
   private readonly backendTranslation = inject(BackendTranslationService);
 
   readonly jobData = computed<JobInfo>(() => {
@@ -143,30 +143,17 @@ export class JobDetailModalComponent {
     };
   });
 
-  readonly progress = computed(() => {
-    const stats = this.jobData().stats;
-    return stats?.totalBytes ? (stats.bytes / stats.totalBytes) * 100 : 0;
-  });
-
   readonly jobStatus = computed(() => this.jobData().status.toLowerCase());
   readonly isMount = computed(() => this.jobData().job_type === 'mount');
   readonly showStatistics = computed(
     () => !(NON_JOB_OPS as readonly string[]).includes(this.jobData().job_type)
   );
-  readonly speedAvg = computed(
-    () => (this.jobData().stats as { speedAvg?: number })?.speedAvg ?? 0
-  );
+
+  /** What went wrong, for the operations that have no monitor to show it. */
   readonly lastError = computed(() => {
     const error = this.jobData().stats?.lastError || this.jobData().error;
-    return error ? this.backendTranslation.translateBackendMessage(error) : null;
+    return error ? this.backendTranslation.translateBackendMessage(error) || null : null;
   });
-
-  readonly statisticsTitle = computed(() =>
-    this.jobData().job_type === 'mount'
-      ? 'modals.jobDetail.sections.statistics'
-      : 'dashboard.appDetail.transferStatistics'
-  );
-
   readonly durationSeconds = computed(() => {
     const job = this.jobData();
     if (job.start_time && job.end_time) {
@@ -175,6 +162,29 @@ export class JobDetailModalComponent {
       if (!isNaN(start) && !isNaN(end) && end >= start) return (end - start) / 1000;
     }
     return job.stats?.transferTime ?? job.stats?.elapsedTime ?? 0;
+  });
+
+  readonly jobMonitorConfig = computed<JobMonitorConfig>(() => {
+    const job = this.jobData();
+    const operation = OPERATION_METADATA[job.job_type];
+    const seconds = this.durationSeconds();
+    return {
+      jobType: job.job_type,
+      title: operation?.typeLabel
+        ? this.translate.instant(operation.typeLabel)
+        : job.job_type.charAt(0).toUpperCase() + job.job_type.slice(1),
+      icon: operation?.icon ?? 'jobs',
+      jobId: job.jobid,
+      status: job.status,
+      running: this.jobStatus() === 'running',
+      dryRun: job.dry_run,
+      error: job.stats?.lastError || job.error || undefined,
+      startTime: job.start_time,
+      endTime: job.end_time ?? undefined,
+      duration: seconds > 0 ? this.formatTime.transform(seconds) : undefined,
+      stats: job.stats,
+      activity: this.transferActivityConfig(),
+    };
   });
 
   readonly healthStatus = computed(() => {
@@ -190,8 +200,6 @@ export class JobDetailModalComponent {
     const s = this.jobData().stats;
     if (!s) return null;
     return {
-      transfers: `${s.transfers} / ${s.totalTransfers}`,
-      checks: `${s.checks} / ${s.totalChecks}`,
       deletes: s.deletes + s.deletedDirs,
       renames: s.renames,
       updatedDirs: s.updatedDirs ?? 0,

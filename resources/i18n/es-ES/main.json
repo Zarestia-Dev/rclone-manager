@@ -196,10 +196,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "Información del trabajo",
-      "type": "Tipo de trabajo",
-      "id": "ID del trabajo",
-      "status": "Estado de la tarea",
       "started": "Iniciado",
       "finished": "Finalizado",
       "duration": "Duración"
@@ -221,10 +217,6 @@
       "moving": "Moviendo",
       "copying": "Copiando",
       "serving": "Sirviendo"
-    },
-    "stats": {
-      "emptyTitle": "No hay estadísticas disponibles",
-      "emptyMessage": "Las estadísticas se mostrarán cuando se esté ejecutando una operación"
     },
     "pathDisplay": {
       "source": "Fuente",
@@ -892,11 +884,19 @@
       "tabs": {
         "active": "Activo ({{count}})",
         "recent": "Reciente ({{count}})",
-        "report": "Informe de archivos"
+        "report": "Informe de archivos",
+        "conflicts": "Conflictos ({{count}})"
       },
       "table": {
         "size": "Tamaño",
-        "transferred": "transferido"
+        "transferred": "transferido",
+        "file": "Archivo",
+        "direction": "Dirección",
+        "took": "Duración",
+        "when": "Cuándo",
+        "progress": "Progreso",
+        "speed": "Velocidad",
+        "eta": "Tiempo restante"
       },
       "status": {
         "failed": "Fallido",
@@ -915,10 +915,6 @@
       "actions": {
         "resolveToDst": "Copiar al destino",
         "resolveToSrc": "Copiar al origen",
-        "resolveOverwrite": "Resolver conflicto de archivos",
-        "resolveOverwriteTitle": "Resolver conflicto de archivos",
-        "resolveOverwriteMessage": "El archivo '{{name}}' existe tanto en el origen como en el destino, pero difiere. ¿Desea sobrescribir el archivo en el destino con el archivo de origen?",
-        "overwriteDst": "Sobrescribir destino",
         "copyUrl": "Copiar URL",
         "download": "Descargar archivo",
         "successSync": "Operación de sincronización de archivo iniciada correctamente",
@@ -926,7 +922,8 @@
         "successCopyUrl": "URL de descarga copiada al portapapeles",
         "failCopyUrl": "Error al generar la URL de descarga",
         "successDownload": "Archivo descargado correctamente",
-        "failDownload": "Error al descargar el archivo"
+        "failDownload": "Error al descargar el archivo",
+        "resolveChoose": "Elegir qué versión conservar"
       },
       "empty": {
         "noRecent": "No hay actividad de archivos reciente",
@@ -975,6 +972,72 @@
         "empty": "No hay archivos en este informe.",
         "loadFailed": "No se pudo cargar el informe.",
         "showMore": "Mostrar {{count}} más"
+      },
+      "direction": {
+        "toDestination": "Nuevo en el origen: copiar al destino",
+        "toSource": "Solo en el destino: copiar al origen",
+        "choose": "Difiere en ambos lados: tú decides cuál gana",
+        "labelToDestination": "Al destino",
+        "labelToSource": "Al origen",
+        "labelChoose": "Elegir ganador"
+      },
+      "bulk": {
+        "title": "Diferencias seleccionadas",
+        "selectAll": "Seleccionar las {{count}} diferencias abiertas",
+        "selected": "{{count}} seleccionadas",
+        "toDestination": "{{count}} al destino",
+        "toSource": "{{count}} al origen",
+        "choose": "{{count}} requieren una decisión",
+        "clear": "Borrar selección",
+        "applyOneWay": "Copiar {{count}} archivos",
+        "review": "Revisar {{count}} conflictos…",
+        "started": "Se inició la copia de {{count}} archivos",
+        "partial": "Se iniciaron {{started}} copias, {{failed}} fallaron"
+      },
+      "compare": {
+        "title": "El archivo cambió en ambos lados",
+        "position": "{{index}} de {{total}}",
+        "source": "Origen",
+        "destination": "Destino",
+        "modified": "Modificado",
+        "unknown": "Desconocido",
+        "larger": "Mayor",
+        "newer": "Más reciente",
+        "missing": "Este archivo ya no existe aquí.",
+        "loadFailed": "No se pudo leer el archivo: {{error}}",
+        "which": "¿Qué versión debe prevalecer?",
+        "keepSource": "Conservar la versión del origen",
+        "keepDestination": "Conservar la versión del destino",
+        "overwrites": "Se sobrescribirá {{path}}. Solo se puede recuperar si ese remoto conserva versiones anteriores.",
+        "recreates": "Se creará {{path}} a partir de la versión que conserves.",
+        "hint": "Elige una versión. No cambia nada hasta que apliques.",
+        "skip": "Omitir este archivo",
+        "apply": "Aplicar",
+        "applyNext": "Aplicar y siguiente",
+        "checksum": {
+          "verify": "Comparar sumas de verificación",
+          "match": "Las sumas {{type}} son idénticas",
+          "differ": "Las sumas {{type}} difieren",
+          "none": "Estos remotos no comparten ningún tipo de suma",
+          "failed": "No se pudieron leer las sumas de verificación"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Conservar la versión de Path1",
+        "keepPath2": "Conservar la versión de Path2",
+        "titleBisync": "Archivo modificado en ambas rutas",
+        "discards": "La otra versión ({{path}}) se descartará, junto con sus copias en ambas rutas. Solo se puede recuperar si los remotos conservan versiones anteriores."
+      },
+      "export": {
+        "copy": "Copiar como CSV",
+        "copied": "{{count}} filas copiadas como CSV"
+      },
+      "conflicts": {
+        "empty": "No hay conflictos en esta ejecución.",
+        "loadFailed": "No se pudieron cargar los conflictos.",
+        "resolved": "{{name}} resuelto",
+        "keptPath1": "Versión de Path1 conservada",
+        "keptPath2": "Versión de Path2 conservada"
       }
     },
     "inputModal": {
@@ -1182,6 +1245,38 @@
     "validation": {
       "required": "Este campo es obligatorio.",
       "min": "El valor debe ser al menos {{val}}."
+    },
+    "monitor": {
+      "status": {
+        "running": "En curso",
+        "completed": "Completado",
+        "failed": "Fallido",
+        "stopped": "Detenido"
+      },
+      "kpi": {
+        "progress": "Progreso",
+        "speed": "Velocidad",
+        "avgSpeed": "Velocidad media",
+        "eta": "Tiempo restante",
+        "took": "Duración",
+        "files": "Archivos",
+        "checks": "Comprobaciones",
+        "errors": "Errores",
+        "avg": "media",
+        "peak": "pico",
+        "total": "total",
+        "left": "restantes",
+        "speedHistory": "Velocidad de transferencia en el tiempo",
+        "checked": "Comprobados",
+        "compared": "Comparados",
+        "matched": "Coinciden",
+        "differences": "Diferencias",
+        "unreadable": "No legibles",
+        "onlyOnSource": "solo en el origen",
+        "onlyOnDestination": "solo en el destino",
+        "differ": "difieren",
+        "deleted": "Eliminados"
+      }
     }
   },
   "wizards": {
@@ -1956,7 +2051,6 @@
       "title": "Detalles del trabajo #{{id}}",
       "sections": {
         "overview": "Información del trabajo",
-        "statistics": "Estadísticas",
         "paths": "Rutas",
         "errors": "Errores",
         "profile": "Perfil",
@@ -1969,10 +2063,7 @@
         "started": "Iniciado",
         "finished": "Finalizado",
         "duration": "Duración",
-        "speed": "Velocidad",
-        "eta": "Tiempo restante",
         "files": "Archivos",
-        "checks": "Comprobaciones",
         "deleted": "Eliminados",
         "renamed": "Renombrados",
         "updatedDirs": "Directorios actualizados",
@@ -1987,9 +2078,7 @@
         "serverSideCopies": "Copias del Lado del Servidor",
         "serverSideMoves": "Movimientos del Lado del Servidor",
         "retryError": "Error de Reintento",
-        "fatalError": "Error Fatal",
-        "speedAvg": "Velocidad Promedio",
-        "transferred": "Transferido"
+        "fatalError": "Error Fatal"
       }
     },
     "about": {
@@ -3336,6 +3425,10 @@
     },
     "notification": {
       "toastFailed": "No se pudo mostrar la notificación del sistema: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "Esa versión ya no existe: {{path}}. Ejecuta bisync de nuevo para ver los conflictos actuales.",
+      "stepFailed": "No se pudo actualizar {{path}}: {{error}}"
     }
   },
   "backendSuccess": {

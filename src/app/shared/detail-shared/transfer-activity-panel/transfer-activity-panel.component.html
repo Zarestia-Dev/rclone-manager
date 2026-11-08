@@ -1,39 +1,93 @@
-<mat-card class="detail-panel">
-  <mat-card-header class="panel-header">
-    <mat-card-title>
-      <mat-icon [svgIcon]="activityIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
-      <span>{{ titleKey() | translate }}</span>
+<section class="activity" [attr.aria-label]="titleKey() | translate">
+  @if (showToolbar()) {
+    <div class="activity-toolbar">
+      <div
+        class="activity-tabs hide-scrollbar"
+        role="tablist"
+        [attr.aria-label]="titleKey() | translate"
+      >
+        @for (tab of tabs(); track tab.id) {
+          <button
+            type="button"
+            role="tab"
+            class="activity-tab"
+            [class.is-selected]="tab.id === currentTab().id"
+            [attr.aria-selected]="tab.id === currentTab().id"
+            [attr.tabindex]="tab.id === currentTab().id ? 0 : -1"
+            (click)="selectTab(tab.id)"
+            (keydown)="onTabKey($event)"
+          >
+            {{ tab.labelKey | translate: { count: tab.count } }}
+          </button>
+        }
+      </div>
 
-      @if (config().completedTransfers.length > 0 || activeCount() > 0 || showReport()) {
-        <button
-          matIconButton
-          [class.search-open]="searchVisible()"
-          (click)="toggleSearch()"
-          [attr.title]="'shared.search.toggle' | translate"
-        >
-          <mat-icon svgIcon="search"></mat-icon>
-        </button>
-      }
+      <div class="activity-actions">
+        @if (canOpenDetail()) {
+          <button
+            type="button"
+            class="action-button"
+            (click)="openDetail.emit()"
+            [attr.title]="'common.viewDetails' | translate"
+            [attr.aria-label]="'common.viewDetails' | translate"
+          >
+            <mat-icon svgIcon="circle-info"></mat-icon>
+          </button>
+        }
 
-      @if (config().showHistory) {
-        <button
-          matIconButton
-          (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
-          [attr.title]="
-            (isJobRunning()
-              ? 'shared.transferActivity.resetStats'
-              : 'detailShared.jobs.actions.delete'
-            ) | translate
-          "
-        >
-          <mat-icon
-            [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
-            [class.warn]="!isJobRunning()"
-          ></mat-icon>
-        </button>
-      }
-    </mat-card-title>
-  </mat-card-header>
+        @if (canSearch()) {
+          <button
+            type="button"
+            class="action-button"
+            [class.search-open]="searchVisible()"
+            (click)="toggleSearch()"
+            [attr.title]="'shared.search.toggle' | translate"
+            [attr.aria-label]="'shared.search.toggle' | translate"
+            [attr.aria-pressed]="searchVisible()"
+          >
+            <mat-icon svgIcon="search"></mat-icon>
+          </button>
+        }
+
+        @if (exportRows().length > 0) {
+          <button
+            type="button"
+            class="action-button"
+            (click)="copyCsv()"
+            [attr.title]="'shared.transferActivity.export.copy' | translate"
+            [attr.aria-label]="'shared.transferActivity.export.copy' | translate"
+          >
+            <mat-icon svgIcon="copy"></mat-icon>
+          </button>
+        }
+
+        @if (config().showHistory) {
+          <button
+            type="button"
+            class="action-button"
+            (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
+            [attr.title]="
+              (isJobRunning()
+                ? 'shared.transferActivity.resetStats'
+                : 'detailShared.jobs.actions.delete'
+              ) | translate
+            "
+            [attr.aria-label]="
+              (isJobRunning()
+                ? 'shared.transferActivity.resetStats'
+                : 'detailShared.jobs.actions.delete'
+              ) | translate
+            "
+          >
+            <mat-icon
+              [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
+              [class.warn]="!isJobRunning()"
+            ></mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  }
 
   <app-search-container
     [visible]="searchVisible()"
@@ -42,123 +96,87 @@
     (searchTextChange)="searchTerm.set($event)"
   ></app-search-container>
 
-  <ng-template #active>
-    <app-active-transfers-table
-      [transfers]="config().activeTransfers"
-      [checks]="config().activeChecks || []"
-      [jobType]="config().jobType || 'sync'"
-      [remoteName]="config().remoteName"
-      [searchTerm]="searchTerm()"
-      [isJobRunning]="isJobRunning()"
-    ></app-active-transfers-table>
-  </ng-template>
-
-  <ng-template #history>
-    @if (statusOptions().length > 1) {
-      <div class="activity-filters" role="group" [attr.aria-label]="'common.status' | translate">
-        <button
-          type="button"
-          class="app-pill interactive p-dim"
-          [class.is-selected]="statusFilter() === null"
-          [attr.aria-pressed]="statusFilter() === null"
-          (click)="statusFilter.set(null)"
-        >
-          {{ 'common.all' | translate }}:
-          {{ config().completedTransfers.length }}
-        </button>
-        @for (option of statusOptions(); track option.status) {
-          <button
-            type="button"
-            class="app-pill interactive"
-            [class]="option.badge.cssClass"
-            [class.is-selected]="statusFilter() === option.status"
-            [attr.aria-pressed]="statusFilter() === option.status"
-            (click)="statusFilter.set(option.status)"
-          >
-            {{ option.badge.text | translate }}:
-            {{ option.count }}
-          </button>
+  <div class="activity-body" role="tabpanel">
+    @switch (currentTab().id) {
+      @case ('conflicts') {
+        @if (conflictsTarget(); as target) {
+          <app-bisync-conflicts
+            [jobId]="target.jobId"
+            [path1]="target.path1"
+            [path2]="target.path2"
+            [searchTerm]="searchTerm()"
+          ></app-bisync-conflicts>
         }
-      </div>
-    }
-    @if (isCheck()) {
-      <app-check-results-table
-        [transfers]="config().completedTransfers"
-        [jobType]="config().jobType || 'check'"
-        [remoteName]="config().remoteName"
-        [searchTerm]="searchTerm()"
-        [statusFilter]="statusFilter()"
-      ></app-check-results-table>
-    } @else {
-      <app-completed-transfers-table
-        [transfers]="config().completedTransfers"
-        [jobType]="config().jobType || 'sync'"
-        [remoteName]="config().remoteName"
-        [searchTerm]="searchTerm()"
-        [statusFilter]="statusFilter()"
-      ></app-completed-transfers-table>
-    }
-  </ng-template>
-
-  <ng-template #report>
-    @if (config().report; as data) {
-      <app-job-report
-        [jobId]="data.jobId"
-        [counts]="data.counts"
-        [searchTerm]="searchTerm()"
-      ></app-job-report>
-    }
-  </ng-template>
-
-  <mat-card-content class="panel-content">
-    @if (showReport()) {
-      @if (config().completedTransfers.length > 0) {
-        <mat-tab-group>
-          <mat-tab [label]="'shared.transferActivity.tabs.report' | translate">
-            <ng-template matTabContent
-              ><ng-container [ngTemplateOutlet]="report"></ng-container
-            ></ng-template>
-          </mat-tab>
-          <mat-tab
-            [label]="
-              'shared.transferActivity.tabs.recent'
-                | translate: { count: config().completedTransfers.length }
-            "
-          >
-            <ng-template matTabContent
-              ><ng-container [ngTemplateOutlet]="history"></ng-container
-            ></ng-template>
-          </mat-tab>
-        </mat-tab-group>
-      } @else {
-        <ng-container [ngTemplateOutlet]="report"></ng-container>
       }
-    } @else if (
-      config().showHistory && activeCount() > 0 && config().completedTransfers.length > 0
-    ) {
-      <mat-tab-group>
-        <mat-tab
-          [label]="'shared.transferActivity.tabs.active' | translate: { count: activeCount() }"
-        >
-          <ng-template matTabContent
-            ><ng-container [ngTemplateOutlet]="active"></ng-container
-          ></ng-template>
-        </mat-tab>
-        <mat-tab
-          [label]="
-            'shared.transferActivity.tabs.recent'
-              | translate: { count: config().completedTransfers.length }
-          "
-        >
-          <ng-template matTabContent
-            ><ng-container [ngTemplateOutlet]="history"></ng-container
-          ></ng-template>
-        </mat-tab>
-      </mat-tab-group>
-    } @else if (activeCount() > 0 || !config().showHistory || isJobRunning()) {
-      <ng-container [ngTemplateOutlet]="active"></ng-container>
-    } @else {
-      <ng-container [ngTemplateOutlet]="history"></ng-container>
+      @case ('report') {
+        @if (config().report; as data) {
+          <app-job-report
+            [jobId]="data.jobId"
+            [counts]="data.counts"
+            [searchTerm]="searchTerm()"
+          ></app-job-report>
+        }
+      }
+      @case ('active') {
+        <app-active-transfers-table
+          [transfers]="config().activeTransfers"
+          [checks]="config().activeChecks || []"
+          [jobType]="config().jobType || 'sync'"
+          [remoteName]="config().remoteName"
+          [searchTerm]="searchTerm()"
+          [isJobRunning]="isJobRunning()"
+        ></app-active-transfers-table>
+      }
+      @default {
+        @if (statusOptions().length > 1) {
+          <div
+            class="activity-filters"
+            role="group"
+            [attr.aria-label]="'common.status' | translate"
+          >
+            <button
+              type="button"
+              class="app-pill interactive p-dim"
+              [class.is-selected]="statusFilter() === null"
+              [attr.aria-pressed]="statusFilter() === null"
+              (click)="statusFilter.set(null)"
+            >
+              {{ 'common.all' | translate }}:
+              {{ config().completedTransfers.length }}
+            </button>
+            @for (option of statusOptions(); track option.status) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class]="option.badge.cssClass"
+                [class.is-selected]="statusFilter() === option.status"
+                [attr.aria-pressed]="statusFilter() === option.status"
+                (click)="statusFilter.set(option.status)"
+              >
+                {{ option.badge.text | translate }}:
+                {{ option.count }}
+              </button>
+            }
+          </div>
+        }
+        @if (isCheck()) {
+          <app-check-results-table
+            [transfers]="config().completedTransfers"
+            [jobType]="config().jobType || 'check'"
+            [remoteName]="config().remoteName"
+            [searchTerm]="searchTerm()"
+            [statusFilter]="statusFilter()"
+          ></app-check-results-table>
+        } @else {
+          <app-completed-transfers-table
+            [transfers]="config().completedTransfers"
+            [jobType]="config().jobType || 'sync'"
+            [remoteName]="config().remoteName"
+            [searchTerm]="searchTerm()"
+            [statusFilter]="statusFilter()"
+          ></app-completed-transfers-table>
+        }
+      }
     }
-  </mat-card-content>
-</mat-card>
+  </div>
+</section>

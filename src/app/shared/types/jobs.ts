@@ -188,11 +188,23 @@ export interface JobInfo {
 export type JobReportKey =
   'combined' | 'missingOnSrc' | 'missingOnDst' | 'match' | 'differ' | 'error' | 'destAfter';
 
-/** How many files each report of a job lists. */
-export type JobReportCounts = Partial<Record<JobReportKey, number>>;
+/**
+ * A file that changed on both paths of a bisync run. Bisync kept both versions: the one from Path1
+ * is now under `path1Now`, the one from Path2 under `path2Now` (names relative to their path), and
+ * each was copied to the other path.
+ */
+export interface BisyncConflict {
+  /** The file's name, the same on both paths. */
+  path: string;
+  path1Now: string;
+  path2Now: string;
+}
+
+/** How many files each report of a job lists, and how many conflicts a bisync run settled. */
+export type JobReportCounts = Partial<Record<JobReportKey, number>> & { conflicts?: number };
 
 /** The reports rclone returned, as it returned them. */
-export type JobReport = Partial<Record<JobReportKey, string[]>>;
+export type JobReport = Partial<Record<JobReportKey, string[]>> & { conflicts?: BisyncConflict[] };
 
 export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   completed: 'p-primary',
