@@ -307,7 +307,7 @@
       "startup": "启动",
       "update": "更新",
       "internal": "内部",
-      "flow": "Flow 工作区",
+      "workflow": "工作流",
       "quickrun": "快速运行"
     },
     "rule": {
@@ -2053,12 +2053,14 @@
         "overview": "任务详情",
         "paths": "路径",
         "errors": "错误",
-        "profile": "配置文件",
+        "execution": "执行",
         "serverSideFlags": "服务端与标志"
       },
       "fields": {
         "type": "任务类型",
         "profile": "配置文件",
+        "quickRun": "快捷运行",
+        "workflow": "工作流",
         "status": "状态",
         "started": "开始时间",
         "finished": "完成时间",

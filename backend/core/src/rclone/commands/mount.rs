@@ -12,6 +12,7 @@ use crate::{
         types::{
             logs::LogLevel,
             remotes::{OperationType, ProfileParams},
+            starter::{self, Starter},
         },
     },
 };
@@ -34,12 +35,9 @@ pub struct MountParams {
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
+    pub starter: Option<Starter>,
     pub origin: Option<crate::utils::types::origin::Origin>,
-    pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
-    pub workflow_id: Option<String>,
-    pub node_id: Option<String>,
     pub no_cache: Option<bool>,
 }
 
@@ -87,12 +85,9 @@ impl MountParams {
             filter_options: common.filter_options,
             backend_options: common.backend_options,
             runtime_remote_options: common.runtime_remote_options,
-            profile: common.profile,
+            starter: None,
             origin: None,
-            quick_run_id: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
             no_cache: None,
         })
     }
@@ -121,6 +116,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         None => backend_manager.get_active().await,
     };
     let cache = backend_manager.remote_cache_for(&backend.name);
+    let profile = starter::profile_name(params.starter.as_ref()).map(str::to_string);
 
     #[cfg(target_os = "android")]
     if params.mount_type == "saf" {
@@ -159,12 +155,9 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         let mounted_remote = crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
             mount_point: mount_point.clone(),
-            profile: params.profile.clone(),
-            quick_run_id: params.quick_run_id.clone(),
+            starter: params.starter.clone(),
             execute_id: params.execute_id.clone(),
             origin: params.origin.clone(),
-            workflow_id: params.workflow_id.clone(),
-            node_id: params.node_id.clone(),
         };
 
         cache.preseed_mount_metadata(mounted_remote).await;
@@ -175,7 +168,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             NotificationEvent::Mount(MountStage::Succeeded {
                 backend: backend_name,
                 remote: params.remote_name.clone(),
-                profile: params.profile.clone(),
+                profile: profile.clone(),
                 mount_point: mount_point.clone(),
             }),
         );
@@ -221,13 +214,10 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         vec![params.source.clone()],
         params.mount_point.clone(),
     )
-    .with_profile(params.profile.clone())
+    .with_starter(params.starter.clone())
     .with_origin(params.origin.clone())
     .with_no_cache(params.no_cache.unwrap_or(false))
-    .with_quick_run_id(params.quick_run_id.clone())
-    .with_execute_id(params.execute_id.clone())
-    .with_workflow_id(params.workflow_id.clone())
-    .with_node_id(params.node_id.clone());
+    .with_execute_id(params.execute_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
     let _ = super::job::submit_job_with_options(
@@ -242,17 +232,14 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     )
     .await?;
 
-    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
+    // Pre-seed metadata so the reconciliation attaches the starter atomically
     cache
         .preseed_mount_metadata(crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
             mount_point: params.mount_point.clone(),
-            profile: params.profile.clone(),
-            quick_run_id: params.quick_run_id.clone(),
+            starter: params.starter.clone(),
             origin: params.origin.clone(),
             execute_id: params.execute_id.clone(),
-            workflow_id: params.workflow_id.clone(),
-            node_id: params.node_id.clone(),
         })
         .await;
     refresh_mounts_quietly(&app, &backend).await;
@@ -263,7 +250,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         NotificationEvent::Mount(MountStage::Succeeded {
             backend: backend_name,
             remote: params.remote_name.clone(),
-            profile: params.profile.clone(),
+            profile,
             mount_point: params.mount_point.clone(),
         }),
     );
@@ -340,7 +327,7 @@ pub(crate) async fn unmount_remote_on_backend(
             .await;
         let profile = mounted_entry
             .as_ref()
-            .and_then(|m| m.profile.clone())
+            .and_then(|m| starter::profile_name(m.starter.as_ref()).map(str::to_string))
             .filter(|p| !p.trim().is_empty());
         let fs_name = mounted_entry
             .as_ref()
@@ -402,7 +389,7 @@ pub(crate) async fn unmount_remote_on_backend(
         .remote_cache_for(&backend.name)
         .get_mount_by_point(&mount_point)
         .await
-        .and_then(|m| m.profile)
+        .and_then(|m| starter::profile_name(m.starter.as_ref()).map(str::to_string))
         .filter(|p| !p.trim().is_empty());
 
     let backend_name_for_err = backend.name.clone();
@@ -576,11 +563,10 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.backend = Some(resolved.backend);
-    mount_params.profile = Some(params.profile_name.clone());
+    mount_params.starter = Some(Starter::profile(params.profile_name.clone()));
     mount_params.origin = params
         .source
         .or(Some(crate::utils::types::origin::Origin::Dashboard));
-    mount_params.quick_run_id = None;
     mount_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
     mount_params.no_cache = params.no_cache;
 
@@ -727,12 +713,9 @@ mod tests {
                 ("AutoConfirm".to_string(), json!(true)),
             ])),
             runtime_remote_options: None,
-            profile: Some("my_profile".to_string()),
-            quick_run_id: None,
+            starter: Some(Starter::profile("my_profile")),
             execute_id: None,
             origin: None,
-            workflow_id: None,
-            node_id: None,
             no_cache: None,
         };
 

@@ -9,6 +9,7 @@ import {
   PrimaryActionType,
   JobInfo,
   OperationExecutionResult,
+  quickRunIdOf,
 } from '@app/types';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
@@ -95,19 +96,20 @@ export class QuickRunService extends TauriBaseService {
 
           // Pre-index active mounts and serves for O(1) membership checks
           const activeMountIds = new Set(
-            (mounts ?? []).map(m => m.quick_run_id).filter((id): id is string => Boolean(id))
+            (mounts ?? []).map(quickRunIdOf).filter((id): id is string => Boolean(id))
           );
           const activeServeIds = new Set(
-            (serves ?? []).map(s => s.quick_run_id).filter((id): id is string => Boolean(id))
+            (serves ?? []).map(quickRunIdOf).filter((id): id is string => Boolean(id))
           );
 
-          // Pre-index latest job per quick_run_id in a single O(J) pass
+          // Pre-index latest job per Quick Run id in a single O(J) pass
           const latestJobByQrId = new Map<string, JobInfo>();
           for (const job of jobs ?? []) {
-            if (!job.quick_run_id || job.parent_job_id != null) continue;
-            const existing = latestJobByQrId.get(job.quick_run_id);
+            const qrId = quickRunIdOf(job);
+            if (!qrId || job.parent_job_id != null) continue;
+            const existing = latestJobByQrId.get(qrId);
             if (!existing || compareJobsRunningFirst(job, existing) < 0) {
-              latestJobByQrId.set(job.quick_run_id, job);
+              latestJobByQrId.set(qrId, job);
             }
           }
 

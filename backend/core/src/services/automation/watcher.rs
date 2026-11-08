@@ -139,7 +139,7 @@ impl Default for WatcherManager {
 
 /// The glob patterns a workflow trigger filters changed paths with.
 fn workflow_patterns(app: &AppHandle, automation: &Automation) -> Result<Vec<String>, String> {
-    if automation.args.params.source != Some(Origin::Flow) {
+    if automation.args.params.source != Some(Origin::Workflow) {
         return Ok(Vec::new());
     }
     let manager = app.state::<AppSettingsManager>();

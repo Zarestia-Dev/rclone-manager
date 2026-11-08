@@ -82,7 +82,7 @@ mod exit_tests {
     use super::*;
     use crate::context::{AppHandle, ExitDecision, Host};
     use crate::rclone::backend::BackendManager;
-    use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
+    use crate::utils::types::jobs::{JobInfo, JobType};
     use futures::FutureExt;
     use std::sync::{
         Arc,
@@ -168,31 +168,12 @@ mod exit_tests {
             .job_cache()
             .await
             .add_job(JobInfo {
-                stats_revision: 0,
-                jobid: 1,
                 job_type: JobType::Copy,
                 remote_name: "remote".into(),
                 source: vec!["remote:file".into()],
                 destination: "/destination".into(),
-                start_time: chrono::Utc::now(),
-                end_time: None,
-                status: JobStatus::Running,
-                error: None,
-                stats: None,
                 group: "job/1".into(),
-                profile: None,
-                execute_id: None,
-                quick_run_id: None,
-                origin: None,
-                backend_name: crate::rclone::backend::types::default_backend_name(),
-                dry_run: false,
-                parent_job_id: None,
-                workflow_id: None,
-                node_id: None,
-                workflow_lineage: Vec::new(),
-
-                report: None,
-                report_counts: None,
+                ..JobInfo::for_test()
             })
             .await;
         app.manage(manager);

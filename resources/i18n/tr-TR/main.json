@@ -307,7 +307,7 @@
       "startup": "Başlangıç",
       "update": "Güncelleme",
       "internal": "Dahili",
-      "flow": "Akış Çalışma Alanı",
+      "workflow": "İş Akışı",
       "quickrun": "Hızlı Çalıştırma"
     },
     "rule": {
@@ -2094,12 +2094,14 @@
         "overview": "İş Bilgileri",
         "paths": "Yollar",
         "errors": "Hatalar",
-        "profile": "Profil",
+        "execution": "Yürütme",
         "serverSideFlags": "Sunucu Tarafı ve Bayraklar"
       },
       "fields": {
         "type": "İş Türü",
         "profile": "Profil",
+        "quickRun": "Hızlı Çalıştırma",
+        "workflow": "İş Akışı",
         "status": "Durum",
         "started": "Başlangıç",
         "finished": "Bitiş",

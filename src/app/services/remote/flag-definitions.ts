@@ -635,16 +635,6 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'oneWay',
     },
     {
-      Name: 'download',
-      Help: 'Download and decrypt both sides to compare hashes.',
-      Default: false,
-      DefaultStr: 'false',
-      Value: false,
-      Type: 'bool',
-      Advanced: false,
-      FieldName: 'download',
-    },
-    {
       Name: 'combined',
       Help: 'Make a combined report of changes to this file.',
       Default: '',

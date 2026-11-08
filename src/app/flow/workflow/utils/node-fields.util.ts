@@ -100,10 +100,11 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
         'jobId',
         'error',
       ]);
+    // Mounting and serving start no job to follow, so there is no `jobId`.
     case 'mount':
-      return createTokenFields(['mountPoint', 'remote', 'status', 'jobId', 'error']);
+      return createTokenFields(['mountPoint', 'remote', 'status', 'error']);
     case 'serve':
-      return createTokenFields(['addr', 'remote', 'status', 'jobId', 'error']);
+      return createTokenFields(['addr', 'remote', 'status', 'error']);
     case 'condition':
       return createTokenFields(['conditionMet', 'branch']);
     case 'schedule_wait':

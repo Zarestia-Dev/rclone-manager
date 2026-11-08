@@ -386,7 +386,7 @@ describe('QuickRunService', () => {
       expect(service.actionInProgress()['qr-1']).toBeUndefined();
     });
 
-    it('should isolate mount status by quick_run_id and not falsely mark other quick runs as mounted', async () => {
+    it('should isolate mount status by Quick Run id and not falsely mark other quick runs as mounted', async () => {
       const mountQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-mount-1',
@@ -411,7 +411,7 @@ describe('QuickRunService', () => {
         {
           fs: 'drive:',
           mount_point: '/mnt/test',
-          quick_run_id: 'qr-mount-1',
+          starter: { kind: 'quick_run', id: 'qr-mount-1', name: 'qr-mount-1' },
           origin: 'quickrun',
         },
       ]);
@@ -422,7 +422,7 @@ describe('QuickRunService', () => {
       expect(service.runningIds().has('qr-mount-2')).toBe(false);
     });
 
-    it('should isolate serve status by quick_run_id and not activate on remote profile serves', async () => {
+    it('should isolate serve status by Quick Run id and not activate on remote profile serves', async () => {
       const serveQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-serve-1',
@@ -446,14 +446,14 @@ describe('QuickRunService', () => {
           id: 'srv-1',
           addr: '127.0.0.1:8080',
           params: { fs: 'drive:' },
-          quick_run_id: 'qr-serve-1',
+          starter: { kind: 'quick_run', id: 'qr-serve-1', name: 'qr-serve-1' },
           origin: 'quickrun',
         },
         {
           id: 'srv-dashboard',
           addr: '127.0.0.1:8081',
           params: { fs: 'drive:' },
-          profile: 'Serve 2', // Same name as qr-serve-2, but it's a dashboard profile!
+          starter: { kind: 'profile', name: 'Serve 2' }, // Same name as qr-serve-2, but it's a dashboard profile!
           origin: 'dashboard',
         },
       ]);
@@ -472,20 +472,20 @@ describe('QuickRunService', () => {
         {
           jobid: 500,
           status: 'Completed',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-01T00:00:00Z',
         },
         {
           jobid: 1,
           status: 'Running',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-02T00:00:00Z',
         },
         {
           jobid: 2,
           parent_job_id: 1,
           status: 'Completed',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-03T00:00:00Z',
         },
       ]);
@@ -493,7 +493,7 @@ describe('QuickRunService', () => {
       expect(service.runningIds().has('qr-master')).toBe(true);
     });
 
-    it('should isolate sync job status by quick_run_id and ignore remote profile jobs', async () => {
+    it('should isolate sync job status by Quick Run id and ignore remote profile jobs', async () => {
       const syncQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-sync-1',
@@ -521,7 +521,7 @@ describe('QuickRunService', () => {
           destination: '/local/dest1',
           status: 'Running',
           execute_id: 'exec-qr-1',
-          quick_run_id: 'qr-sync-1',
+          starter: { kind: 'quick_run', id: 'qr-sync-1', name: 'qr-sync-1' },
           origin: 'quickrun',
         },
         {
@@ -530,7 +530,7 @@ describe('QuickRunService', () => {
           remote_name: 'drive:',
           source: 'drive:path2',
           destination: '/local/dest2',
-          profile: 'Sync 2',
+          starter: { kind: 'profile', name: 'Sync 2' },
           status: 'Running',
           execute_id: 'exec-dash-2',
           origin: 'dashboard',

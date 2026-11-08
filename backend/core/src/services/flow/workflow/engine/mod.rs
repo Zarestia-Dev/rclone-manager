@@ -28,6 +28,7 @@ use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
 use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::types::{NodeKind, WorkflowNode};
+use crate::utils::types::starter::WorkflowRun;
 
 pub use active::{get_active_workflow_ids, has_active_workflows, stop_workflow};
 pub use run::execute_workflow;
@@ -45,9 +46,20 @@ pub(crate) struct RunContext {
     /// Identifies this execution, unlike the workflow id shared by every run.
     pub(crate) run_id: String,
     pub(crate) dry_run: bool,
-    /// The workflows whose jobs led to this run, followed by this one: what the jobs
-    /// it starts are marked with.
-    pub(crate) lineage: Vec<String>,
+    /// The workflows whose jobs led to this run; what the work it starts is marked with.
+    pub(crate) ancestors: Vec<String>,
+}
+
+impl RunContext {
+    /// What the work `node` starts is marked with.
+    pub(crate) fn workflow_run(&self, node: &WorkflowNode) -> WorkflowRun {
+        WorkflowRun::new(
+            self.snapshot.definition.id.clone(),
+            self.snapshot.definition.name.clone(),
+            node.id.clone(),
+            self.ancestors.clone(),
+        )
+    }
 }
 
 /// What started a run. Only the triggers of that kind begin it; a workflow with

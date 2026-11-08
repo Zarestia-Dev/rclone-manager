@@ -1,4 +1,5 @@
 import { GlobalStats, JobStatus } from './jobs';
+import { Starter } from './starter';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
@@ -93,10 +94,7 @@ export interface JobChangeEvent {
   source?: string;
   sources?: string[];
   destination?: string;
-  profile?: string;
-  quickRunId?: string;
-  workflowId?: string;
-  nodeId?: string;
+  starter?: Starter;
 }
 
 export interface JobStatsUpdatedEvent {

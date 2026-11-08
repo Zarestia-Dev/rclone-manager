@@ -307,7 +307,7 @@
       "startup": "Inicio",
       "update": "Actualización",
       "internal": "Interno",
-      "flow": "Espacio de Trabajo Flow",
+      "workflow": "Flujo de Trabajo",
       "quickrun": "Ejecución Rápida"
     },
     "rule": {
@@ -2053,12 +2053,14 @@
         "overview": "Información del trabajo",
         "paths": "Rutas",
         "errors": "Errores",
-        "profile": "Perfil",
+        "execution": "Ejecución",
         "serverSideFlags": "Lado del servidor y flags"
       },
       "fields": {
         "type": "Tipo de trabajo",
         "profile": "Perfil",
+        "quickRun": "Ejecución Rápida",
+        "workflow": "Flujo de Trabajo",
         "status": "Estado",
         "started": "Iniciado",
         "finished": "Finalizado",

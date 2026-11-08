@@ -390,7 +390,7 @@ pub async fn execute_automation(
         Some(Origin::QuickRun) => {
             run_quick_run(app_handle, &backend, &automation, &execution_id).await
         }
-        Some(Origin::Flow) => {
+        Some(Origin::Workflow) => {
             let watched = watch.is_some();
             run_workflow(
                 app_handle,
@@ -429,8 +429,6 @@ async fn run_quick_run(
         app.clone(),
         backend.clone(),
         automation.id.clone(),
-        None,
-        None,
         Some(execution_id.to_owned()),
     )
     .await?;

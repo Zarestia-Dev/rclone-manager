@@ -68,7 +68,7 @@ fn dispatch_tray_action(app: &crate::context::AppHandle, action: TrayAction) {
         }
         TrayAction::StartQuickRun(id) => run_action(
             format!("start quick run {id}"),
-            quick_run::start_quick_run(core.clone(), id, None, None),
+            quick_run::start_quick_run(core.clone(), id),
         ),
         TrayAction::StopQuickRun(id) => run_action(
             format!("stop quick run {id}"),

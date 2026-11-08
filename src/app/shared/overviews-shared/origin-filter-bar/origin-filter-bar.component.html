@@ -11,12 +11,12 @@
   <button
     type="button"
     class="app-pill interactive"
-    [class.is-selected]="selected() === 'flow'"
-    (click)="selected.set('flow')"
-    [attr.title]="'flow.title' | translate"
+    [class.is-selected]="selected() === 'workflow'"
+    (click)="selected.set('workflow')"
+    [attr.title]="'flow.tabs.workflow' | translate"
   >
     <mat-icon svgIcon="workflow"></mat-icon>
-    <span>{{ 'flow.title' | translate }}</span>
+    <span>{{ 'flow.tabs.workflow' | translate }}</span>
   </button>
   <button
     type="button"

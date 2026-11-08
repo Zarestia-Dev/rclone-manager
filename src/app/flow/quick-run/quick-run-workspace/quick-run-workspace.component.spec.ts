@@ -139,7 +139,7 @@ describe('QuickRunWorkspaceComponent', () => {
 
     it('should delegate emptyTrash to RemoteFacadeService with "flow" origin', async () => {
       await component.emptyTrash(mockRemote);
-      expect(mockRemoteFacade.emptyTrash).toHaveBeenCalledWith(mockRemote, 'flow');
+      expect(mockRemoteFacade.emptyTrash).toHaveBeenCalledWith(mockRemote);
     });
   });
 

@@ -17,7 +17,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 'drive:',
       automationType: 'sync',
       status: 'enabled',
-      args: { source: 'flow' },
+      args: { source: 'workflow' },
     },
     {
       id: 'auto-2',
@@ -55,10 +55,10 @@ describe('AutomationsOverviewPanelComponent', () => {
     fixture.detectChanges();
   });
 
-  it('filters automations by flow origin correctly', () => {
+  it('filters automations by workflow origin correctly', () => {
     expect(component.allAutomations().length).toBe(3);
 
-    component.selectedOriginFilter.set('flow');
+    component.selectedOriginFilter.set('workflow');
     fixture.detectChanges();
     expect(component.allAutomations().length).toBe(1);
     expect(component.allAutomations()[0].id).toBe('auto-1');

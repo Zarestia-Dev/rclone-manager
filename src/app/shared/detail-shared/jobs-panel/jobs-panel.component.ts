@@ -19,6 +19,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { relativeTimeLabel } from '../../utils/relative-time.util';
+import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -32,6 +33,7 @@ import { relativeTimeLabel } from '../../utils/relative-time.util';
     FormatFileSizePipe,
     FormatTimePipe,
     TranslatePipe,
+    StarterPillComponent,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   templateUrl: './jobs-panel.component.html',

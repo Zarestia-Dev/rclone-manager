@@ -140,7 +140,7 @@ mod tests {
             node_results: Arc::new(RwLock::new(node_results)),
             run_id: "test-run".into(),
             dry_run: true,
-            lineage: Vec::new(),
+            ancestors: Vec::new(),
         }
     }
 
@@ -429,6 +429,30 @@ mod tests {
             copyurl_body.get("_path").unwrap(),
             crate::rclone::endpoints::operations::COPYURL
         );
+    }
+
+    #[test]
+    fn work_a_node_starts_is_marked_with_the_workflow_it_ran_in_and_the_ones_before() {
+        let node = WorkflowNode {
+            id: "n1".into(),
+            ..Default::default()
+        };
+        let snapshot = crate::services::automation::runtime::WorkflowSnapshot {
+            definition: WorkflowDefinition {
+                id: "wf-b".into(),
+                name: "Nightly".into(),
+                ..Default::default()
+            },
+            quick_runs: HashMap::new(),
+            quick_run_names: HashMap::new(),
+        };
+        let mut ctx = test_context(&AppHandle::default(), snapshot, HashMap::new());
+        ctx.ancestors = vec!["wf-a".into()];
+
+        let run = ctx.workflow_run(&node);
+        assert_eq!(run.workflow_name, "Nightly");
+        assert!(run.is_node("wf-b", "n1"));
+        assert_eq!(run.lineage(), ["wf-a", "wf-b"]);
     }
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

@@ -197,6 +197,76 @@ describe('JobDetailModalComponent', () => {
     expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42, undefined);
   });
 
+  describe('what started the job', () => {
+    const run = { workflowId: 'wf', workflowName: 'Nightly backup', nodeId: 'n1', ancestors: [] };
+    const identifiersFor = (job: Partial<JobInfo>): ReturnType<typeof component.identifiers> => {
+      jobManagementSpy.getJob.mockReturnValue({ ...mockJob, ...job });
+      fixture.destroy();
+      fixture = TestBed.createComponent(JobDetailModalComponent);
+      fixture.detectChanges();
+      return fixture.componentInstance.identifiers();
+    };
+
+    it('names the profile of a profile job', () => {
+      const identifiers = identifiersFor({ starter: { kind: 'profile', name: 'Daily' } });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.profile',
+        name: 'Daily',
+      });
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names the Quick Run of a Quick Run job instead of the default profile', () => {
+      const identifiers = identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly' },
+      });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.quickRun',
+        name: 'Nightly',
+      });
+      expect(identifiers.origin).toBe('quickrun');
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names the workflow of a workflow node, which has no profile or Quick Run', () => {
+      const identifiers = identifiersFor({ starter: { kind: 'workflow', ...run } });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.workflow',
+        name: 'Nightly backup',
+      });
+      expect(identifiers.origin).toBe('workflow');
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names both the Quick Run and the workflow node that ran it', () => {
+      const identifiers = identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly', workflow: run },
+      });
+      expect(identifiers.starter?.name).toBe('Nightly');
+      expect(identifiers.viaWorkflow).toBe('Nightly backup');
+      expect(identifiers.origin).toBe('workflow');
+    });
+
+    it('names nothing for work nothing started, keeping its stored origin', () => {
+      const identifiers = identifiersFor({ origin: 'filemanager' });
+      expect(identifiers.starter).toBeNull();
+      expect(identifiers.viaWorkflow).toBeNull();
+      expect(identifiers.origin).toBe('filemanager');
+    });
+
+    it('shows the rows that name what started the job', () => {
+      identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly', workflow: run },
+      });
+      const text: string = fixture.nativeElement.textContent;
+      expect(text).toContain('modals.jobDetail.fields.quickRun');
+      expect(text).toContain('Nightly');
+      expect(text).toContain('modals.jobDetail.fields.workflow');
+      expect(text).toContain('Nightly backup');
+      expect(text).toContain('modals.jobDetail.sections.execution');
+    });
+  });
+
   it('hands the activity panel the reports of a job that kept some', () => {
     expect(component.transferActivityConfig().report).toBeUndefined();
     jobManagementSpy.getJob.mockReturnValue({ ...mockJob, report_counts: { combined: 3 } });

@@ -16,6 +16,7 @@ use crate::{
     utils::types::{
         events::{MOUNT_STATE_CHANGED, REMOTE_CACHE_CHANGED, SERVE_STATE_CHANGED},
         remotes::{MountedRemote, RemoteCache, ServeInstance},
+        starter::{self, Starter},
     },
 };
 
@@ -30,8 +31,9 @@ impl RemoteCache {
         }
     }
 
-    // These carry the profile field forward from the existing cache entry when the
-    // rclone API (which has no concept of profiles) returns fresh data.
+    // These carry what started the entry (its starter) and the other launch metadata forward
+    // from the existing cache entry when the rclone API, which knows nothing of them,
+    // returns fresh data.
 
     fn merge_mount_profiles(
         incoming: Vec<MountedRemote>,
@@ -45,12 +47,9 @@ impl RemoteCache {
                     .iter()
                     .find(|e| normalize_mount_path(&e.mount_point) == norm)
                 {
-                    m.profile = e.profile.clone();
-                    m.quick_run_id = e.quick_run_id.clone();
+                    m.starter = e.starter.clone();
                     m.execute_id = e.execute_id.clone();
                     m.origin = e.origin.clone();
-                    m.workflow_id = e.workflow_id.clone();
-                    m.node_id = e.node_id.clone();
                 }
                 m
             })
@@ -65,12 +64,9 @@ impl RemoteCache {
             .into_iter()
             .map(|mut s| {
                 if let Some(e) = existing.iter().find(|e| e.id == s.id) {
-                    s.profile = e.profile.clone();
-                    s.quick_run_id = e.quick_run_id.clone();
+                    s.starter = e.starter.clone();
                     s.execute_id = e.execute_id.clone();
                     s.origin = e.origin.clone();
-                    s.workflow_id = e.workflow_id.clone();
-                    s.node_id = e.node_id.clone();
                 }
                 s
             })
@@ -276,7 +272,7 @@ impl RemoteCache {
             .iter()
             .find(|m| {
                 fs_belongs_to_remote(&m.fs, remote_name)
-                    && m.profile.as_deref() == Some(profile_name)
+                    && starter::profile_name(m.starter.as_ref()) == Some(profile_name)
             })
             .cloned()
     }
@@ -293,7 +289,7 @@ impl RemoteCache {
             .iter()
             .find(|s| {
                 serve_belongs_to_remote(s, remote_name)
-                    && s.profile.as_deref() == Some(profile_name)
+                    && starter::profile_name(s.starter.as_ref()) == Some(profile_name)
             })
             .cloned()
     }
@@ -311,9 +307,9 @@ impl RemoteCache {
         let mut count = 0;
         for mount in mounts.iter_mut() {
             if fs_belongs_to_remote(&mount.fs, remote_name)
-                && mount.profile.as_deref() == Some(old_name)
+                && starter::profile_name(mount.starter.as_ref()) == Some(old_name)
             {
-                mount.profile = Some(new_name.to_string());
+                mount.starter = Some(Starter::profile(new_name));
                 count += 1;
             }
         }
@@ -331,9 +327,9 @@ impl RemoteCache {
         let mut count = 0;
         for serve in serves.iter_mut() {
             if serve_belongs_to_remote(serve, remote_name)
-                && serve.profile.as_deref() == Some(old_name)
+                && starter::profile_name(serve.starter.as_ref()) == Some(old_name)
             {
-                serve.profile = Some(new_name.to_string());
+                serve.starter = Some(Starter::profile(new_name));
                 count += 1;
             }
         }
@@ -496,6 +492,7 @@ impl Default for RemoteCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::types::starter::WorkflowRun;
 
     #[tokio::test]
     async fn failed_remote_config_fetch_is_not_reported_as_a_successful_refresh() {
@@ -517,7 +514,7 @@ mod tests {
 
     fn profiled_mount(fs: &str, mount_point: &str, profile: &str) -> MountedRemote {
         let mut mount = MountedRemote::new(fs, mount_point);
-        mount.profile = Some(profile.into());
+        mount.starter = Some(Starter::profile(profile));
         mount
     }
 
@@ -536,7 +533,7 @@ mod tests {
         let cache = RemoteCache::new();
         let serve = |id: &str, fs: &str| {
             let mut serve = ServeInstance::new(id, "127.0.0.1:1", json!({ "fs": fs }));
-            serve.profile = Some("Default".into());
+            serve.starter = Some(Starter::profile("Default"));
             serve
         };
         *cache.serves.write().await = vec![serve("a", "alpha:data"), serve("b", "beta:")];
@@ -601,8 +598,35 @@ mod tests {
             1
         );
         let mounts = cache.mounted.read().await;
-        assert_eq!(mounts[0].profile.as_deref(), Some("old"));
-        assert_eq!(mounts[1].profile.as_deref(), Some("new"));
+        assert_eq!(
+            starter::profile_name(mounts[0].starter.as_ref()),
+            Some("old")
+        );
+        assert_eq!(
+            starter::profile_name(mounts[1].starter.as_ref()),
+            Some("new")
+        );
+    }
+
+    #[tokio::test]
+    async fn renaming_a_profile_leaves_quick_runs_of_the_same_name_alone() {
+        let cache = RemoteCache::new();
+        let mut quick_run = MountedRemote::new("gdrive:", "/mnt/qr");
+        quick_run.starter = Some(Starter::quick_run("qr-1", "old", None));
+        *cache.mounted.write().await = vec![quick_run, profiled_mount("gdrive:", "/mnt/p", "old")];
+        assert_eq!(
+            cache.rename_profile_in_mounts("gdrive", "old", "new").await,
+            1
+        );
+        let mounts = cache.mounted.read().await;
+        assert_eq!(
+            mounts[0].starter,
+            Some(Starter::quick_run("qr-1", "old", None))
+        );
+        assert_eq!(
+            starter::profile_name(mounts[1].starter.as_ref()),
+            Some("new")
+        );
     }
 
     #[test]
@@ -619,12 +643,18 @@ mod tests {
         let existing = vec![MountedRemote {
             fs: "drive:".to_string(),
             mount_point: "/mnt/drive".to_string(),
-            profile: Some("my-profile".to_string()),
-            quick_run_id: Some("qr-123".to_string()),
-            origin: Some(crate::utils::types::origin::Origin::QuickRun),
+            starter: Some(Starter::quick_run(
+                "qr-123",
+                "Nightly",
+                Some(WorkflowRun::new(
+                    "wf-1",
+                    "Workflow",
+                    "node-1",
+                    vec!["wf-0".into()],
+                )),
+            )),
+            origin: Some(crate::utils::types::origin::Origin::Dashboard),
             execute_id: Some("exec-1".to_string()),
-            workflow_id: Some("wf-1".to_string()),
-            node_id: Some("node-1".to_string()),
         }];
 
         // Incoming mount from rclone with trailing slash
@@ -632,14 +662,23 @@ mod tests {
 
         let merged = RemoteCache::merge_mount_profiles(incoming, &existing);
         assert_eq!(merged.len(), 1);
-        assert_eq!(merged[0].profile.as_deref(), Some("my-profile"));
-        assert_eq!(merged[0].quick_run_id.as_deref(), Some("qr-123"));
+        assert_eq!(
+            merged[0].starter,
+            Some(Starter::quick_run(
+                "qr-123",
+                "Nightly",
+                Some(WorkflowRun::new(
+                    "wf-1",
+                    "Workflow",
+                    "node-1",
+                    vec!["wf-0".into()]
+                ))
+            ))
+        );
         assert_eq!(merged[0].execute_id.as_deref(), Some("exec-1"));
-        assert_eq!(merged[0].workflow_id.as_deref(), Some("wf-1"));
-        assert_eq!(merged[0].node_id.as_deref(), Some("node-1"));
         assert_eq!(
             merged[0].origin,
-            Some(crate::utils::types::origin::Origin::QuickRun)
+            Some(crate::utils::types::origin::Origin::Dashboard)
         );
     }
 
@@ -668,12 +707,9 @@ mod tests {
         let mounts1 = vec![MountedRemote {
             fs: "drive:".to_string(),
             mount_point: "/mnt/drive".to_string(),
-            profile: Some("profile-a".to_string()),
-            quick_run_id: None,
+            starter: Some(Starter::profile("profile-a")),
             origin: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
         }];
 
         // Initial update: should return true (changed from empty)
@@ -693,12 +729,9 @@ mod tests {
             id: "serve-1".to_string(),
             addr: "127.0.0.1:8080".to_string(),
             params: json!({"fs": "myremote:"}),
-            profile: Some("srv-profile".to_string()),
-            quick_run_id: None,
+            starter: Some(Starter::profile("srv-profile")),
             origin: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
         }];
 
         // Initial update: should return true (changed from empty)

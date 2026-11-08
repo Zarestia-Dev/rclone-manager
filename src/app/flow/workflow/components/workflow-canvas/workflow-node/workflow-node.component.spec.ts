@@ -160,8 +160,13 @@ describe('WorkflowNodeComponent', () => {
       {
         fs: 'gdrive:',
         mount_point: '/mnt/gdrive',
-        workflow_id: 'other-workflow-id',
-        node_id: 'other-node-id',
+        starter: {
+          kind: 'workflow',
+          workflowId: 'other-workflow-id',
+          workflowName: 'Workflow',
+          nodeId: 'other-node-id',
+          ancestors: [],
+        },
       },
     ]);
     fixture.detectChanges();
@@ -173,8 +178,13 @@ describe('WorkflowNodeComponent', () => {
       {
         fs: 'gdrive:',
         mount_point: '/mnt/gdrive',
-        workflow_id: wfId,
-        node_id: 'node-mount-exact',
+        starter: {
+          kind: 'workflow',
+          workflowId: wfId,
+          workflowName: 'Workflow',
+          nodeId: 'node-mount-exact',
+          ancestors: [],
+        },
       },
     ]);
     fixture.detectChanges();
@@ -267,8 +277,13 @@ describe('WorkflowNodeComponent', () => {
         listed: 0,
         completed: [],
       },
-      workflow_id: wfId,
-      node_id: mockNode.id,
+      starter: {
+        kind: 'workflow',
+        workflowId: wfId,
+        workflowName: 'Workflow',
+        nodeId: mockNode.id,
+        ancestors: [],
+      },
     };
 
     mockJobService.getLatestJobForWorkflowNode.mockReturnValue(mockJob);
@@ -324,8 +339,13 @@ describe('WorkflowNodeComponent', () => {
         listed: 0,
         completed: [],
       },
-      workflow_id: wfId,
-      node_id: mockNode.id,
+      starter: {
+        kind: 'workflow',
+        workflowId: wfId,
+        workflowName: 'Workflow',
+        nodeId: mockNode.id,
+        ancestors: [],
+      },
     };
 
     mockJobService.getLatestJobForWorkflowNode.mockReturnValue(mockJob);

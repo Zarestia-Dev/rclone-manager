@@ -7,7 +7,6 @@ use serde_json::{Value, json};
 use crate::rclone::backend::{BackendManager, RcloneTransport, types::Backend};
 use crate::rclone::endpoints::operations;
 use crate::services::settings::AppSettingsManager;
-use crate::utils::json_helpers::get_string;
 use crate::utils::json_helpers::{
     DEFAULT_PROFILE_NAME, find_profile, is_default_profile, resolve_profile_options,
 };
@@ -112,7 +111,7 @@ pub async fn resolve_profile_settings(
         "backendConfigs": settings.backend_configs,
         "runtimeRemoteConfigs": settings.runtime_remote_configs,
     });
-    let params = parse_profile_config(config, &options, Some(profile_name.to_string()))?;
+    let params = parse_profile_config(config, &options)?;
     Ok(ResolvedProfile { backend, params })
 }
 
@@ -164,7 +163,6 @@ pub struct CommonConfigParams {
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
 }
 
 /// Builder for constructing rclone RC command payloads with uniform config layering.
@@ -597,16 +595,12 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Result<CommonCon
     let profile = ProfileConfig::parse_from_value(config).map_err(
         |error| crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => error),
     )?;
-
-    let name = Some(interpolate_shell_commands(&get_string(config, &["name"])).into_owned())
-        .filter(|s| !s.is_empty());
-    parse_profile_config(&profile, settings, name)
+    parse_profile_config(&profile, settings)
 }
 
 pub(crate) fn parse_profile_config(
     profile: &ProfileConfig,
     settings: &Value,
-    name: Option<String>,
 ) -> Result<CommonConfigParams, String> {
     let mut app = profile.app.clone();
     for reference in [
@@ -674,7 +668,6 @@ pub(crate) fn parse_profile_config(
             helper_config_keys::BACKEND,
         )?,
         runtime_remote_options: resolve_runtime_remote_options(&app, &rclone, settings)?,
-        profile: name,
     })
 }
 
@@ -1315,7 +1308,6 @@ mod tests {
                 resolved.backend.name,
                 crate::utils::constants::LOCAL_BACKEND_NAME
             );
-            assert_eq!(resolved.params.profile.as_deref(), Some("Daily"));
             assert_eq!(
                 resolved.params.source[0],
                 if operation == OperationType::Sync {

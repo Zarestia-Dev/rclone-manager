@@ -128,9 +128,7 @@
                             <span class="truncate">{{ vm.job.remote_name }}</span>
                           </span>
                         }
-                        @if (vm.job.profile) {
-                          <span class="app-pill p-dim pill-sm truncate">{{ vm.job.profile }}</span>
-                        }
+                        <app-starter-pill [starter]="vm.job.starter" />
                         <span class="app-pill {{ vm.originBadgeClass }} pill-sm">
                           {{ vm.originLabel }}
                         </span>

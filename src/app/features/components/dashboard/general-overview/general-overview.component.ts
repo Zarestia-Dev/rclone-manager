@@ -24,6 +24,7 @@ import {
   SCROLL_DELAY_MS,
   ALL_PANELS,
   OpenInFilesEvent,
+  profileOf,
 } from '@app/types';
 
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
@@ -178,7 +179,7 @@ export class GeneralOverviewComponent {
         type: 'serve',
         remoteName,
         serveId: serve.id,
-        profileName: serve.profile || '',
+        profileName: profileOf(serve) || '',
       });
   }
 

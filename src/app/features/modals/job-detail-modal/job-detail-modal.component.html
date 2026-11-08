@@ -79,14 +79,20 @@
     <div class="counter-grid">
       <span class="grid-header">
         <mat-icon svgIcon="gear"></mat-icon>
-        {{ 'modals.jobDetail.sections.profile' | translate }}
+        {{ 'modals.jobDetail.sections.execution' | translate }}
       </span>
-      <div class="grid-item">
-        <span class="label">{{ 'modals.jobDetail.fields.profile' | translate }}</span>
-        <span class="value truncate" [attr.title]="identifiers().profile">{{
-          identifiers().profile
-        }}</span>
-      </div>
+      @if (identifiers().starter; as starter) {
+        <div class="grid-item">
+          <span class="label">{{ starter.label | translate }}</span>
+          <span class="value truncate" [attr.title]="starter.name">{{ starter.name }}</span>
+        </div>
+      }
+      @if (identifiers().viaWorkflow; as workflowName) {
+        <div class="grid-item">
+          <span class="label">{{ 'modals.jobDetail.fields.workflow' | translate }}</span>
+          <span class="value truncate" [attr.title]="workflowName">{{ workflowName }}</span>
+        </div>
+      }
       <div class="grid-item">
         <span class="label">{{ 'modals.jobDetail.fields.backend' | translate }}</span>
         <span class="value truncate" [attr.title]="identifiers().backend">{{
@@ -96,7 +102,7 @@
       @if (identifiers().origin) {
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.origin' | translate }}</span>
-          <span class="value">{{ identifiers().origin | titlecase }}</span>
+          <span class="value">{{ 'alerts.origins.' + identifiers().origin | translate }}</span>
         </div>
       }
       @if (identifiers().group) {

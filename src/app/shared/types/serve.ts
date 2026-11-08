@@ -13,6 +13,7 @@ export interface ServeStartResponse {
 }
 
 import { Origin } from './origin';
+import { Starter } from './starter';
 
 /**
  * Running serve instance information
@@ -20,12 +21,9 @@ import { Origin } from './origin';
 export interface ServeListItem {
   id: string;
   addr: string;
-  profile?: string;
-  quick_run_id?: string;
+  starter?: Starter;
   execute_id?: string;
   origin?: Origin;
-  workflow_id?: string;
-  node_id?: string;
   params: {
     fs: string;
     type: string;

@@ -127,8 +127,10 @@ impl AutomationsCache {
             .iter()
             .filter_map(|wf| create_automation_from_workflow(backend_name, wf))
             .collect();
-        self.sync_automations(automations, |t| t.args.params.source == Some(Origin::Flow))
-            .await
+        self.sync_automations(automations, |t| {
+            t.args.params.source == Some(Origin::Workflow)
+        })
+        .await
     }
 
     /// Makes the automations within `in_scope` match `new_automations` under one lock, keeping
@@ -625,7 +627,7 @@ fn create_automation_from_workflow(
             remote_name: "Workflow".to_string(),
             profile_name: wf.name.clone(),
             backend_name: None,
-            source: Some(Origin::Flow),
+            source: Some(Origin::Workflow),
             no_cache: None,
             scoped_targets: None,
             execute_id: None,
@@ -1625,7 +1627,7 @@ mod tests {
         let cache = make_cache();
         for (id, source) in [
             ("quick", crate::utils::types::origin::Origin::QuickRun),
-            ("flow", crate::utils::types::origin::Origin::Flow),
+            ("flow", crate::utils::types::origin::Origin::Workflow),
         ] {
             let mut automation = base_automation();
             automation.id = id.to_string();
@@ -1756,7 +1758,7 @@ mod tests {
         assert!(!a1.watch_enabled);
         assert_eq!(
             a1.args.params.source,
-            Some(crate::utils::types::origin::Origin::Flow)
+            Some(crate::utils::types::origin::Origin::Workflow)
         );
 
         let auto2 = create_automation_from_workflow("local", &wf_without_cron);

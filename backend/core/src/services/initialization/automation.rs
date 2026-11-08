@@ -79,13 +79,7 @@ impl AutostartTasks {
                         info!("Auto-starting Quick Run: {id}");
                         if let Err(error) =
                             crate::services::flow::quick_run::commands::start_quick_run_snapshot(
-                                app,
-                                backend,
-                                quick_run,
-                                None,
-                                None,
-                                None,
-                                Vec::new(),
+                                app, backend, quick_run, None, None,
                             )
                             .await
                         {

@@ -496,9 +496,25 @@ describe('RemoteFacadeService', () => {
     >;
     jobs.set({
       drive: [
-        { jobid: 3, job_type: 'sync', status: 'Completed', profile: 'photos' },
-        { jobid: 9, job_type: 'sync', status: 'Completed', profile: 'photos' },
-        { jobid: 20, job_type: 'sync', status: 'Running', profile: 'photos', origin: 'quickrun' },
+        {
+          jobid: 3,
+          job_type: 'sync',
+          status: 'Completed',
+          starter: { kind: 'profile', name: 'photos' },
+        },
+        {
+          jobid: 9,
+          job_type: 'sync',
+          status: 'Completed',
+          starter: { kind: 'profile', name: 'photos' },
+        },
+        {
+          jobid: 20,
+          job_type: 'sync',
+          status: 'Running',
+          starter: { kind: 'profile', name: 'photos' },
+          origin: 'quickrun',
+        },
       ] as JobInfo[],
     });
     await service.loadRemotes();
@@ -645,7 +661,9 @@ describe('RemoteFacadeService', () => {
     const mounts = TestBed.inject(MountManagementService).mountedRemotes as WritableSignal<
       import('@app/types').MountedRemote[]
     >;
-    mounts.set([{ fs: 'drive:', mount_point: '/tmp/other', profile: 'other' }]);
+    mounts.set([
+      { fs: 'drive:', mount_point: '/tmp/other', starter: { kind: 'profile', name: 'other' } },
+    ]);
     await expect(service.stopJob('drive', 'mount', undefined, 'missing')).rejects.toThrow(
       'Active mount not found'
     );

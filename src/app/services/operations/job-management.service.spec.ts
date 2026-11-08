@@ -72,35 +72,55 @@ describe('JobManagementService', () => {
       const jobs: JobInfo[] = [
         createMockJob({
           jobid: 101,
-          workflow_id: 'wf-1',
-          node_id: 'node-sync-1',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'wf-1',
+            workflowName: 'Workflow',
+            nodeId: 'node-sync-1',
+            ancestors: [],
+          },
           start_time: '2026-09-10T10:00:00Z',
           status: 'Completed',
         }),
         createMockJob({
           jobid: 102,
-          workflow_id: 'wf-1',
-          node_id: 'node-sync-1',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'wf-1',
+            workflowName: 'Workflow',
+            nodeId: 'node-sync-1',
+            ancestors: [],
+          },
           start_time: '2026-09-10T10:30:00Z',
           status: 'Running',
         }),
         createMockJob({
           jobid: 103,
-          workflow_id: 'wf-1',
-          node_id: 'node-copy-2',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'wf-1',
+            workflowName: 'Workflow',
+            nodeId: 'node-copy-2',
+            ancestors: [],
+          },
           start_time: '2026-09-10T09:00:00Z',
           status: 'Completed',
         }),
         createMockJob({
           jobid: 104,
-          quick_run_id: 'qr-special',
+          starter: { kind: 'quick_run', id: 'qr-special', name: 'qr-special' },
           start_time: '2026-09-10T11:00:00Z',
           status: 'Completed',
         }),
         createMockJob({
           jobid: 105,
-          workflow_id: 'wf-1',
-          node_id: 'node-sync-1',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'wf-1',
+            workflowName: 'Workflow',
+            nodeId: 'node-sync-1',
+            ancestors: [],
+          },
           parent_job_id: 102, // Sub-job should be ignored
           start_time: '2026-09-10T10:31:00Z',
           status: 'Running',
@@ -310,7 +330,7 @@ describe('JobManagementService', () => {
         jobid: 1,
         remote_name: 'r1',
         status: 'Running',
-        profile: 'prof-a',
+        starter: { kind: 'profile', name: 'prof-a' },
       });
       const jobDifferentError = createMockJob({
         jobid: 1,
@@ -327,15 +347,49 @@ describe('JobManagementService', () => {
 
     it.each<Partial<JobInfo>>([
       { origin: 'quickrun' },
-      { quick_run_id: 'qr' },
-      { workflow_id: 'workflow' },
-      { node_id: 'node' },
+      { starter: { kind: 'quick_run', id: 'qr', name: 'qr' } },
+      {
+        starter: {
+          kind: 'workflow',
+          workflowId: 'workflow',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      },
+      {
+        starter: {
+          kind: 'workflow',
+          workflowId: 'wf',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      },
       { execute_id: 'replacement' },
       { backend_name: 'Other' },
       { start_time: '2026-10-17T00:00:00Z' },
     ])('invalidates groups when execution ownership or identity changes: %j', changes => {
       const job = createMockJob({ remote_name: 'drive' });
       expect(areJobGroupsEqual({ drive: [job] }, { drive: [{ ...job, ...changes }] })).toBe(false);
+    });
+
+    it('tells a profile from a Quick Run of the same name, and ignores an equal starter', () => {
+      const profileJob = createMockJob({
+        remote_name: 'drive',
+        starter: { kind: 'profile', name: 'daily' },
+      });
+      const quickRunJob = createMockJob({
+        remote_name: 'drive',
+        starter: { kind: 'quick_run', id: 'qr', name: 'daily' },
+      });
+      const copyOfProfileJob = {
+        ...profileJob,
+        starter: { kind: 'profile', name: 'daily' },
+      } as JobInfo;
+
+      expect(areJobGroupsEqual({ drive: [profileJob] }, { drive: [quickRunJob] })).toBe(false);
+      expect(areJobGroupsEqual({ drive: [profileJob] }, { drive: [copyOfProfileJob] })).toBe(true);
     });
 
     it('returns false when remotes count, keys, or array lengths differ', () => {
@@ -491,29 +545,36 @@ describe('JobManagementService', () => {
     it('sorts snapshots once and isolates dashboard profiles from workflow and quick-run jobs', async () => {
       await service.refreshJobs();
       mockApiClient.invoke.mockResolvedValueOnce([
-        createMockJob({ jobid: 50, profile: 'daily', start_time: '2026-10-01T10:00:00Z' }),
+        createMockJob({
+          jobid: 50,
+          starter: { kind: 'profile', name: 'daily' },
+          start_time: '2026-10-01T10:00:00Z',
+        }),
         createMockJob({
           jobid: 1,
-          profile: 'daily',
+          starter: { kind: 'profile', name: 'daily' },
           status: 'Running',
           start_time: '2026-10-02T10:00:00Z',
         }),
         createMockJob({
           jobid: 60,
-          profile: 'daily',
-          quick_run_id: 'qr',
+          starter: { kind: 'quick_run', id: 'qr', name: 'qr' },
           start_time: '2026-10-03T10:00:00Z',
         }),
         createMockJob({
           jobid: 61,
-          profile: 'daily',
-          workflow_id: 'flow',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'flow',
+            workflowName: 'Workflow',
+            nodeId: 'node',
+            ancestors: [],
+          },
           start_time: '2026-10-04T10:00:00Z',
         }),
         createMockJob({
           jobid: 62,
-          profile: 'daily',
-          quick_run_id: 'qr',
+          starter: { kind: 'quick_run', id: 'qr', name: 'qr' },
           parent_job_id: 60,
           start_time: '2026-10-05T10:00:00Z',
         }),
@@ -527,8 +588,34 @@ describe('JobManagementService', () => {
     it('prefers the selected workflow node over an unrelated execution of the same quick run', async () => {
       await service.refreshJobs();
       mockApiClient.invoke.mockResolvedValueOnce([
-        createMockJob({ jobid: 1, workflow_id: 'selected', node_id: 'node', quick_run_id: 'qr' }),
-        createMockJob({ jobid: 2, workflow_id: 'other', node_id: 'node', quick_run_id: 'qr' }),
+        createMockJob({
+          jobid: 1,
+          starter: {
+            kind: 'quick_run',
+            id: 'qr',
+            name: 'qr',
+            workflow: {
+              workflowId: 'selected',
+              workflowName: 'Workflow',
+              nodeId: 'node',
+              ancestors: [],
+            },
+          },
+        }),
+        createMockJob({
+          jobid: 2,
+          starter: {
+            kind: 'quick_run',
+            id: 'qr',
+            name: 'qr',
+            workflow: {
+              workflowId: 'other',
+              workflowName: 'Workflow',
+              nodeId: 'node',
+              ancestors: [],
+            },
+          },
+        }),
       ]);
       await service.refreshJobs();
       expect(service.getLatestJobForWorkflowNode('selected', 'node', 'qr')?.jobid).toBe(1);

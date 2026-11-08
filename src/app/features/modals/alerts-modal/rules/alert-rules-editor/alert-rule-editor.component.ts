@@ -90,7 +90,7 @@ export class AlertRuleEditorComponent {
     'startup',
     'update',
     'internal',
-    'flow',
+    'workflow',
     'quickrun',
   ];
 

@@ -183,37 +183,16 @@ fn failure(error: Option<String>) -> JobOutcome {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rclone::backend::types::default_backend_name;
     use crate::utils::types::jobs::{JobCache, JobInfo, JobStatus, JobType};
     use serde_json::json;
 
     async fn cache_with(status: JobStatus, error: Option<&str>) -> JobCache {
         let cache = JobCache::new();
         let job = JobInfo {
-            stats_revision: 0,
-            jobid: 1,
-            execute_id: None,
-            quick_run_id: None,
             job_type: JobType::ArchiveCreate,
-            remote_name: "drive:".into(),
             source: vec!["drive:a".into()],
             destination: "/out".into(),
-            start_time: chrono::Utc::now(),
-            end_time: None,
-            status: JobStatus::Running,
-            error: None,
-            stats: None,
-            group: "g".into(),
-            profile: None,
-            origin: None,
-            backend_name: default_backend_name(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
-            report: None,
-            report_counts: None,
+            ..JobInfo::for_test()
         };
         cache.add_job(job).await;
         match status {

@@ -152,7 +152,7 @@ impl Automation {
             self.args.params.source,
             Some(
                 crate::utils::types::origin::Origin::QuickRun
-                    | crate::utils::types::origin::Origin::Flow
+                    | crate::utils::types::origin::Origin::Workflow
             )
         )
     }
@@ -351,7 +351,7 @@ mod tests {
         let mut automation = create_test_automation();
         for source in [
             crate::utils::types::origin::Origin::QuickRun,
-            crate::utils::types::origin::Origin::Flow,
+            crate::utils::types::origin::Origin::Workflow,
         ] {
             automation.args.params.source = Some(source);
             assert!(automation.belongs_to_backend("Other"));

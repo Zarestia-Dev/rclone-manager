@@ -307,7 +307,7 @@
       "startup": "Démarrage",
       "update": "Mettre à jour",
       "internal": "Interne",
-      "flow": "Espace de travail Flow",
+      "workflow": "Flux de Travail",
       "quickrun": "Exécution rapide"
     },
     "rule": {
@@ -2053,12 +2053,14 @@
         "overview": "Informations du job",
         "paths": "Chemins",
         "errors": "Erreurs",
-        "profile": "Profil",
+        "execution": "Exécution",
         "serverSideFlags": "Côté serveur et drapeaux"
       },
       "fields": {
         "type": "Type de job",
         "profile": "Profil",
+        "quickRun": "Exécution Rapide",
+        "workflow": "Flux de Travail",
         "status": "Statut du job",
         "started": "Démarré",
         "finished": "Terminé",

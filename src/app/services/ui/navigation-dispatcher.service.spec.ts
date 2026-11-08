@@ -188,7 +188,7 @@ describe('NavigationDispatcherService', () => {
         status: 'enabled',
         backendName: 'Local',
         args: {
-          source: 'flow',
+          source: 'workflow',
           srcPaths: ['Nightly Sync'],
           dstPaths: ['Workflow Engine'],
           remoteName: 'Workflow',
@@ -235,21 +235,30 @@ describe('NavigationDispatcherService', () => {
     });
   });
 
-  describe('navigateToServe with quick run profile', () => {
-    it('should navigate to flow quick run when serve has profile', (): void => {
-      mockPathService.getRemoteNameFromFs.mockReturnValue(null);
-      const serve: ServeListItem = {
-        id: 'serve-2',
-        addr: 'localhost:8080',
-        profile: 'Sync Drive',
-        params: { fs: 'remote:path', type: 'http' },
-      };
+  describe('navigateToServe without a remote', () => {
+    const serveWith = (starter: ServeListItem['starter']): ServeListItem => ({
+      id: 'serve-2',
+      addr: 'localhost:8080',
+      starter,
+      params: { fs: 'remote:path', type: 'http' },
+    });
 
-      service.navigateToServe(serve);
+    it('should navigate to the Quick Run that started the serve', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue(null);
+
+      service.navigateToServe(serveWith({ kind: 'quick_run', id: 'qr-1', name: 'Sync Drive' }));
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+    });
+
+    it('should not treat a profile as a Quick Run of the same name', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue(null);
+
+      service.navigateToServe(serveWith({ kind: 'profile', name: 'Sync Drive' }));
+
+      expect(mockQuickRunService.select).not.toHaveBeenCalled();
     });
   });
 });

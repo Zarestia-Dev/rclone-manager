@@ -307,7 +307,7 @@
       "startup": "Startup",
       "update": "Update",
       "internal": "Internal",
-      "flow": "Flow Workspace",
+      "workflow": "Workflow",
       "quickrun": "Quick Run"
     },
     "rule": {
@@ -2094,12 +2094,14 @@
         "overview": "Job Information",
         "paths": "Paths",
         "errors": "Errors",
-        "profile": "Profile",
+        "execution": "Execution",
         "serverSideFlags": "Server-side & Flags"
       },
       "fields": {
         "type": "Job Type",
         "profile": "Profile",
+        "quickRun": "Quick Run",
+        "workflow": "Workflow",
         "status": "Job Status",
         "started": "Started",
         "finished": "Finished",

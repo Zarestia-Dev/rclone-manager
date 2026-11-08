@@ -212,7 +212,7 @@ pub fn resolve_job_outcome(
         }
         apply_batch_results(&mut outcome, output, job_type, source_paths);
         apply_command_error(&mut outcome, output);
-        if *job_type == JobType::Check {
+        if matches!(job_type, JobType::Check | JobType::CryptCheck) {
             apply_check_result(&mut outcome, output);
         }
     }
@@ -229,6 +229,13 @@ fn output_flags_error(output: &Value) -> bool {
 /// `operations/cryptcheck` answers with text; what it found decides the outcome.
 fn apply_cryptcheck_output(outcome: &mut JobOutcome, output: &Value) {
     let Some(raw) = output.get("result").and_then(Value::as_str) else {
+        // The in-process endpoint answers as `operations/check` does, with the files of each
+        // report: that answer is the report. `apply_batch_results` and `apply_check_result`
+        // read from it whether the check passed.
+        if output.is_object() && (output.get("results").is_some() || output.get("status").is_some())
+        {
+            outcome.cryptcheck_output = Some(output.clone());
+        }
         return;
     };
     let report = parse_cryptcheck_output(raw);
@@ -280,7 +287,7 @@ fn batch_failure(result: &Value, job_type: &JobType) -> Option<String> {
     });
     Some(match from_error.filter(|text| !text.trim().is_empty()) {
         Some(text) => text,
-        None if *job_type == JobType::Check => result
+        None if matches!(job_type, JobType::Check | JobType::CryptCheck) => result
             .get("status")
             .and_then(Value::as_str)
             .unwrap_or("Differences found")
@@ -299,7 +306,8 @@ fn apply_batch_results(
     let Some(results) = output.get("results").and_then(Value::as_array) else {
         return;
     };
-    for result in results {
+    let all_sources = source_paths.join(", ");
+    for (index, result) in results.iter().enumerate() {
         let Some(error) = batch_failure(result, job_type) else {
             continue;
         };
@@ -307,17 +315,31 @@ fn apply_batch_results(
         if error.is_empty() {
             continue;
         }
-        let source = source_paths.join(", ");
+        // Results follow the order of the inputs, which follows the order of the sources.
+        let source = source_paths
+            .get(index)
+            .filter(|source| !source.is_empty())
+            .unwrap_or(&all_sources);
         let item = result
             .get("input")
             .and_then(|input| {
-                ["srcRemote", "remote", "dstRemote", "path1", "path2"]
-                    .iter()
-                    .find_map(|key| input.get(*key))
+                // `srcFs` and `src` are what the check and cryptcheck inputs name their source.
+                [
+                    "srcRemote",
+                    "remote",
+                    "dstRemote",
+                    "path1",
+                    "path2",
+                    "srcFs",
+                    "src",
+                ]
+                .iter()
+                .find_map(|key| input.get(*key))
             })
             .and_then(Value::as_str)
-            .unwrap_or(&source);
-        let full = format!("{item}: {error}");
+            .unwrap_or(source);
+        // A remote's root already ends with the colon the message is separated by.
+        let full = format!("{}: {error}", item.trim_end_matches(':'));
         match outcome.error_msg.as_mut() {
             None => outcome.error_msg = Some(full),
             Some(message) if !message.contains(&full) => {
@@ -498,7 +520,56 @@ mod tests {
         assert!(!outcome.success);
         assert_eq!(
             outcome.error_msg.as_deref(),
-            Some("a:: boom; src: x, y; src: Unknown error")
+            Some("a: boom; src: x, y; src: Unknown error")
+        );
+    }
+
+    #[test]
+    fn a_cryptcheck_answered_like_check_is_the_report_and_decides_the_outcome() {
+        let answer = json!({
+            "hashType": "md5",
+            "status": "1 differences found",
+            "success": false,
+            "missingOnSrc": ["extra.txt"],
+            "missingOnDst": [],
+            "differ": [],
+            "error": []
+        });
+        let status = json!({ "finished": true, "success": true, "output": answer });
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &["src".to_string()]);
+        assert!(!outcome.success);
+        assert_eq!(outcome.error_msg.as_deref(), Some("1 differences found"));
+        assert_eq!(outcome.cryptcheck_output, Some(answer));
+
+        let passed = json!({ "status": "OK", "success": true, "differ": [], "error": [] });
+        let status = json!({ "finished": true, "success": true, "output": passed });
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &["src".to_string()]);
+        assert!(outcome.success);
+        assert_eq!(outcome.error_msg, None);
+        assert_eq!(outcome.cryptcheck_output, Some(passed));
+    }
+
+    #[test]
+    fn a_batch_of_cryptchecks_names_the_source_each_failure_belongs_to() {
+        let results = json!([
+            { "status": "OK", "success": true, "differ": [] },
+            { "status": "2 differences found", "success": false, "missingOnDst": ["a", "b"] }
+        ]);
+        let status = json!({
+            "finished": true,
+            "success": true,
+            "output": { "results": results }
+        });
+        let sources = ["first:".to_string(), "second:".to_string()];
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &sources);
+        assert!(!outcome.success);
+        assert_eq!(
+            outcome.error_msg.as_deref(),
+            Some("second: 2 differences found")
+        );
+        assert_eq!(
+            outcome.cryptcheck_output,
+            Some(json!({ "results": results }))
         );
     }
 

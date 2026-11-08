@@ -1,4 +1,5 @@
 use crate::utils::types::origin::Origin;
+use crate::utils::types::starter::Starter;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -195,8 +196,6 @@ pub struct JobInfo {
     pub stats_revision: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
     pub job_type: JobType,
     pub remote_name: String,
     pub source: Vec<String>,
@@ -209,7 +208,9 @@ pub struct JobInfo {
     pub error: Option<String>,
     pub stats: Option<Value>,
     pub group: String,
-    pub profile: Option<String>,
+    /// What started this job; none for ad hoc work.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub starter: Option<Starter>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
     #[serde(default = "crate::rclone::backend::types::default_backend_name")]
@@ -219,14 +220,6 @@ pub struct JobInfo {
     pub dry_run: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_job_id: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
-    /// The workflows that led to this job, the one that started it last. A workflow
-    /// does not react to jobs it led to, so workflows cannot start each other forever.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub workflow_lineage: Vec<String>,
     /// The file reports rclone returned for a sync, copy or move, exactly as it returned them.
     /// They can be large, so they never travel with the job; `get_job_report` fetches them.
     #[serde(skip)]
@@ -255,4 +248,34 @@ pub struct JobCache {
 pub(crate) struct UploadCancellation {
     pub token: tokio_util::sync::CancellationToken,
     pub result: tokio::sync::watch::Receiver<Option<Result<(), String>>>,
+}
+
+#[cfg(test)]
+impl JobInfo {
+    /// A running job for tests: set what a test cares about, take the rest from here
+    /// (`JobInfo { jobid: 2, ..JobInfo::for_test() }`), so a new field is added once.
+    pub(crate) fn for_test() -> Self {
+        Self {
+            stats_revision: 0,
+            jobid: 1,
+            execute_id: None,
+            job_type: JobType::Sync,
+            remote_name: "drive:".into(),
+            source: Vec::new(),
+            destination: String::new(),
+            start_time: Utc::now(),
+            end_time: None,
+            status: JobStatus::Running,
+            error: None,
+            stats: None,
+            group: "g".into(),
+            starter: None,
+            origin: None,
+            backend_name: crate::rclone::backend::types::default_backend_name(),
+            dry_run: false,
+            parent_job_id: None,
+            report: None,
+            report_counts: None,
+        }
+    }
 }

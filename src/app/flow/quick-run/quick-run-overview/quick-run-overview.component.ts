@@ -22,6 +22,7 @@ import {
   ServeListItem,
   Automation,
   OpenInFilesEvent,
+  profileOf,
 } from '@app/types';
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
@@ -249,7 +250,7 @@ export class QuickRunOverviewComponent {
   handleStopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName) {
-      void this.remoteFacade.stopJob(remoteName, 'serve', serve.id, serve.profile);
+      void this.remoteFacade.stopJob(remoteName, 'serve', serve.id, profileOf(serve));
     }
   }
 

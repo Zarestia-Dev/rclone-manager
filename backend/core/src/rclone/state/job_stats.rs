@@ -26,6 +26,22 @@ pub fn normalize_job_stats(job: &mut JobInfo) {
     }
 }
 
+/// The check results a Check or CryptCheck job kept: one per source root of a batch
+/// (`{ "results": [..] }`), or the single result of one `operations/check` call. Each result
+/// lists `differ`, `missingOnDst`, `missingOnSrc`, `match` and `error` as rclone returned them.
+pub(crate) fn check_reports(stats: &Value) -> Vec<&Value> {
+    let Some(output) = stats
+        .get("checkOutput")
+        .filter(|output| output.is_object() || output.is_array())
+    else {
+        return Vec::new();
+    };
+    let results = output.get("results").unwrap_or(output);
+    results
+        .as_array()
+        .map_or_else(|| vec![results], |reports| reports.iter().collect())
+}
+
 pub fn compute_completed_transfers(
     jobid: u64,
     job_type: &JobType,
@@ -37,15 +53,8 @@ pub fn compute_completed_transfers(
 ) -> Option<Vec<CompletedTransfer>> {
     let stats = stats.as_ref()?;
 
-    if matches!(job_type, JobType::Check | JobType::CryptCheck)
-        && let Some(check_output) = stats
-            .get("checkOutput")
-            .filter(|output| output.is_object() || output.is_array())
-    {
-        let results = check_output.get("results").unwrap_or(check_output);
-        let reports = results
-            .as_array()
-            .map_or_else(|| std::slice::from_ref(results), Vec::as_slice);
+    let reports = check_reports(stats);
+    if matches!(job_type, JobType::Check | JobType::CryptCheck) && !reports.is_empty() {
         const REPORT_STATUSES: &[(&str, TransferStatus)] = &[
             ("missingOnDst", TransferStatus::MissingDst),
             ("missingOnSrc", TransferStatus::MissingSrc),

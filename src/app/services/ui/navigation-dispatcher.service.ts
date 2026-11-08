@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Automation, Remote, ServeListItem, AppTab, QuickRun } from '@app/types';
+import { Automation, Remote, ServeListItem, AppTab, QuickRun, quickRunIdOf } from '@app/types';
 import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -46,19 +46,15 @@ export class NavigationDispatcherService {
       return;
     }
 
-    if (serve.profile) {
-      const qr = this.findQuickRun(serve.profile);
-      if (qr) {
-        this.navigateToQuickRun(qr.id);
-      }
-    }
+    const quickRunId = quickRunIdOf(serve);
+    if (quickRunId) this.navigateToQuickRun(quickRunId);
   }
 
   /**
    * Navigate to the remote, Quick Run, or Workflow corresponding to the given automation.
    */
   navigateToAutomation(automation: Automation): void {
-    if (automation.args?.source === 'flow') {
+    if (automation.args?.source === 'workflow') {
       this.navigateToWorkflow(automation.id, automation.profileName);
       return;
     }

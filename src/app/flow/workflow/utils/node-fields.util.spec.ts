@@ -67,12 +67,12 @@ describe('node-fields.util', () => {
 
   it('returns mount-specific fields for mount node', () => {
     const fields = getNodeFieldsForType('mount');
-    expect(fields.map(f => f.key)).toEqual(['mountPoint', 'remote', 'status', 'jobId', 'error']);
+    expect(fields.map(f => f.key)).toEqual(['mountPoint', 'remote', 'status', 'error']);
   });
 
   it('returns serve-specific fields for serve node', () => {
     const fields = getNodeFieldsForType('serve');
-    expect(fields.map(f => f.key)).toEqual(['addr', 'remote', 'status', 'jobId', 'error']);
+    expect(fields.map(f => f.key)).toEqual(['addr', 'remote', 'status', 'error']);
   });
 
   it('returns condition-specific fields for condition node', () => {

@@ -10,9 +10,9 @@ import {
   DEFAULT_ICON,
   URL_BASED_PROTOCOLS,
   getExecutionOrigin,
+  profileOf,
 } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 @Component({
@@ -32,7 +32,6 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 export class ServeCardComponent {
   private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
-  private readonly quickRunService = inject(QuickRunService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
@@ -40,25 +39,20 @@ export class ServeCardComponent {
   stopServe = output<ServeListItem>();
   cardClick = output<ServeListItem>();
 
-  readonly isFlow = computed(() => {
-    return getExecutionOrigin(this.serve()) === 'flow';
+  readonly isWorkflow = computed(() => {
+    return getExecutionOrigin(this.serve()) === 'workflow';
   });
 
   readonly isQuickRun = computed(() => {
-    if (this.isFlow()) return false;
-    const s = this.serve();
-    if (getExecutionOrigin(s) === 'quickrun') return true;
-    const profile = s.profile;
-    if (!profile) return false;
-    return this.quickRunService
-      .quickRuns()
-      .some(qr => qr.operationType === 'serve' && qr.name === profile);
+    return !this.isWorkflow() && getExecutionOrigin(this.serve()) === 'quickrun';
   });
 
+  readonly profile = computed(() => profileOf(this.serve()));
+
   readonly originLabel = computed(() => {
-    if (this.isFlow()) {
-      const t = this.translate.instant('flow.title');
-      return t === 'flow.title' ? 'Flow' : t;
+    if (this.isWorkflow()) {
+      const t = this.translate.instant('flow.tabs.workflow');
+      return t === 'flow.tabs.workflow' ? 'Workflow' : t;
     }
     if (this.isQuickRun()) {
       const t = this.translate.instant('flow.tabs.quickRun');
@@ -69,7 +63,7 @@ export class ServeCardComponent {
   });
 
   readonly originIcon = computed(() => {
-    if (this.isFlow()) return 'flow';
+    if (this.isWorkflow()) return 'workflow';
     return this.isQuickRun() ? 'quick-run' : 'cloud';
   });
 

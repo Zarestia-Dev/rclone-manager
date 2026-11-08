@@ -22,15 +22,21 @@ describe('ServesOverviewPanelComponent', () => {
       id: 'serve-1',
       addr: 'http://localhost:8080',
       params: { type: 'http', fs: 'drive:' },
-      origin: 'flow',
-      workflow_id: 'wf-1',
+      origin: 'workflow',
+      starter: {
+        kind: 'workflow',
+        workflowId: 'wf-1',
+        workflowName: 'Workflow',
+        nodeId: 'node',
+        ancestors: [],
+      },
     },
     {
       id: 'serve-2',
       addr: 'http://localhost:8081',
       params: { type: 'webdav', fs: 's3:' },
       origin: 'quickrun',
-      quick_run_id: 'qr-1',
+      starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' },
     },
     {
       id: 'serve-3',
@@ -69,7 +75,7 @@ describe('ServesOverviewPanelComponent', () => {
   it('filters serves by flow origin correctly', () => {
     expect(component.allServes().length).toBe(3);
 
-    component.selectedOriginFilter.set('flow');
+    component.selectedOriginFilter.set('workflow');
     fixture.detectChanges();
     expect(component.allServes().length).toBe(1);
     expect(component.allServes()[0].id).toBe('serve-1');
@@ -102,15 +108,38 @@ describe('ServesOverviewPanelComponent', () => {
 
   it.each<[ExecutionScope, Origin]>([
     [{ origin: undefined }, 'dashboard'],
-    [{ origin: 'dashboard', quick_run_id: 'qr' }, 'quickrun'],
-    [{ origin: 'automation', workflow_id: 'wf' }, 'flow'],
-    [{ origin: 'quickrun', workflow_id: 'wf', quick_run_id: 'qr' }, 'flow'],
-    [{ origin: 'flow', quick_run_id: 'qr' }, 'flow'],
+    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, 'quickrun'],
+    [
+      {
+        origin: 'automation',
+        starter: {
+          kind: 'workflow',
+          workflowId: 'wf',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      },
+      'workflow',
+    ],
+    [
+      {
+        origin: 'quickrun',
+        starter: {
+          kind: 'quick_run',
+          id: 'qr',
+          name: 'qr',
+          workflow: { workflowId: 'wf', workflowName: 'Workflow', nodeId: 'node', ancestors: [] },
+        },
+      },
+      'workflow',
+    ],
+    [{ origin: 'workflow' }, 'workflow'],
     [{ origin: 'filemanager' }, 'filemanager'],
   ])('uses execution ownership for filtering: %j', (scope, expected) => {
     const serve: ServeListItem = { ...mockServes[2], ...scope };
     runningServes.set([serve]);
-    for (const filter of ['dashboard', 'quickrun', 'flow', 'filemanager']) {
+    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager']) {
       component.selectedOriginFilter.set(filter);
       expect(component.allServes()).toEqual(filter === expected ? [serve] : []);
     }

@@ -225,8 +225,8 @@
             </div>
             <div class="live-service-details">
               <span class="detail-item"><strong>FS:</strong> {{ mount.fs }}</span>
-              @if (mount.profile) {
-                <span class="detail-item"><strong>Profile:</strong> {{ mount.profile }}</span>
+              @if (profileOf(mount); as profile) {
+                <span class="detail-item"><strong>Profile:</strong> {{ profile }}</span>
               }
             </div>
           </div>

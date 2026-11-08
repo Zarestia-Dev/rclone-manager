@@ -307,7 +307,7 @@
       "startup": "起動時",
       "update": "アップデート",
       "internal": "内部",
-      "flow": "フローワークスペース",
+      "workflow": "ワークフロー",
       "quickrun": "クイックラン"
     },
     "rule": {
@@ -2053,12 +2053,14 @@
         "overview": "ジョブ情報",
         "paths": "パス",
         "errors": "エラー",
-        "profile": "プロファイル",
+        "execution": "実行",
         "serverSideFlags": "サーバー側とフラグ"
       },
       "fields": {
         "type": "ジョブタイプ",
         "profile": "プロファイル",
+        "quickRun": "クイック実行",
+        "workflow": "ワークフロー",
         "status": "ジョブステータス",
         "started": "開始日時",
         "finished": "終了日時",

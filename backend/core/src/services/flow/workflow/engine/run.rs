@@ -200,7 +200,7 @@ async fn execute_workflow_inner(
         NotificationEvent::Workflow(WorkflowStage::Started {
             workflow_id: workflow_id.clone(),
             workflow_name: workflow.name.clone(),
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         }),
     );
 
@@ -217,12 +217,7 @@ async fn execute_workflow_inner(
         node_results: Arc::new(RwLock::new(HashMap::new())),
         run_id: run_id.clone(),
         dry_run,
-        lineage: trigger
-            .ancestors()
-            .iter()
-            .cloned()
-            .chain([workflow_id.clone()])
-            .collect(),
+        ancestors: trigger.ancestors().to_vec(),
     });
     let (tx, mut rx) = tokio::sync::mpsc::channel::<NodeFinishedEvent>(total_nodes.max(1));
 
@@ -533,7 +528,7 @@ async fn finish_run(
                     "count" => failed_nodes
                 ),
                 failed_node_title: None,
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     } else if is_cancelled {
@@ -542,7 +537,7 @@ async fn finish_run(
             NotificationEvent::Workflow(WorkflowStage::Stopped {
                 workflow_id: workflow_id.clone(),
                 workflow_name: workflow.name.clone(),
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     } else {
@@ -552,7 +547,7 @@ async fn finish_run(
                 workflow_id: workflow_id.clone(),
                 workflow_name: workflow.name.clone(),
                 duration_ms: total_duration_ms,
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     }

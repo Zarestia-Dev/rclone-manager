@@ -17,7 +17,7 @@ describe('JobsPanelComponent job actions', () => {
     execute_id: 'first',
     job_type: 'sync',
     remote_name: 'drive',
-    profile: 'daily',
+    starter: { kind: 'profile', name: 'daily' },
     source: 'drive:',
     destination: 'backup:',
     start_time: '2026-09-02T10:00:00Z',
@@ -40,6 +40,28 @@ describe('JobsPanelComponent job actions', () => {
     fixture = TestBed.createComponent(JobsPanelComponent);
     fixture.componentRef.setInput('config', { jobs: jobs() });
     fixture.detectChanges();
+  });
+
+  it('names what started each job: its profile or its Quick Run', () => {
+    const jobsWith = (starter: JobInfo['starter'], jobid: number): JobInfo => ({
+      ...first,
+      jobid,
+      execute_id: `exec-${jobid}`,
+      starter,
+    });
+    fixture.componentRef.setInput('config', {
+      jobs: [
+        jobsWith({ kind: 'profile', name: 'Test 1' }, 1),
+        jobsWith({ kind: 'quick_run', id: 'qr-1', name: 'Nightly' }, 2),
+        jobsWith(undefined, 3),
+      ],
+    });
+    fixture.detectChanges();
+
+    const pills = [...fixture.nativeElement.querySelectorAll('.card-row-item')].map(
+      (row: HTMLElement) => row.querySelector('app-starter-pill .app-pill')?.textContent?.trim()
+    );
+    expect(pills).toEqual(['Test 1', 'Nightly', undefined]);
   });
 
   it('stops only the clicked job, even when another execution uses the same profile', async () => {

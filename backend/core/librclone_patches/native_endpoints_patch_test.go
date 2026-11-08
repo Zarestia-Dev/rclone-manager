@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,111 @@ func TestNativeCryptcheckOptionsThroughRCJob(t *testing.T) {
 				t.Fatalf("cryptcheck failed: %v", out)
 			}
 		})
+	}
+}
+
+// cryptcheckTarget is a crypt remote holding the files `names`, each with the content "data".
+func cryptcheckTarget(t *testing.T, names ...string) string {
+	t.Helper()
+	ctx := context.Background()
+	destination := ":crypt,remote='" + strings.ReplaceAll(t.TempDir(), "'", "''") + "',password='" + obscure.MustObscure("password") + "':"
+	cryptFs, err := cache.Get(ctx, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		_, err := cryptFs.Put(ctx, strings.NewReader("data"), object.NewStaticObjectInfo(name, time.Now(), 4, true, nil, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return destination
+}
+
+// cryptcheckAnswer is what operations/cryptcheck returns, read back from its JSON.
+type cryptcheckAnswer struct {
+	HashType     string   `json:"hashType"`
+	Status       string   `json:"status"`
+	Success      bool     `json:"success"`
+	MissingOnSrc []string `json:"missingOnSrc"`
+	MissingOnDst []string `json:"missingOnDst"`
+	Differ       []string `json:"differ"`
+	Error        []string `json:"error"`
+}
+
+func runCryptcheck(t *testing.T, in rc.Params) cryptcheckAnswer {
+	t.Helper()
+	in["_path"] = "operations/cryptcheck"
+	in["_config"] = rc.Params{"Checkers": 1}
+	out := jobs.NewJobFromParams(context.Background(), in)
+	raw, err := json.Marshal(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// `error` is also the report of files with errors, so only a string means the call failed.
+	var generic map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		t.Fatal(err)
+	}
+	if len(generic["error"]) > 0 && generic["error"][0] == '"' {
+		t.Fatalf("cryptcheck failed as a call: %s", raw)
+	}
+	var answer cryptcheckAnswer
+	if err := json.Unmarshal(raw, &answer); err != nil {
+		t.Fatal(err)
+	}
+	return answer
+}
+
+func TestNativeCryptcheckAnswersWithTheFilesItFound(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "keep.txt"), []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	destination := cryptcheckTarget(t, "keep.txt", "extra.txt")
+	reportFile := filepath.Join(t.TempDir(), "missing-on-src.txt")
+
+	answer := runCryptcheck(t, rc.Params{"src": source, "dst": destination, "missing_on_src": reportFile})
+
+	// A difference is part of the answer, not an error of the call.
+	if answer.Success || answer.Status == "" || answer.Status == "OK" {
+		t.Fatalf("expected a failed check with a status, got %+v", answer)
+	}
+	if answer.HashType == "" {
+		t.Fatalf("expected the hash type, got %+v", answer)
+	}
+	if len(answer.MissingOnSrc) != 1 || answer.MissingOnSrc[0] != "extra.txt" {
+		t.Fatalf("expected extra.txt missing on the source, got %+v", answer)
+	}
+	if len(answer.MissingOnDst)+len(answer.Differ)+len(answer.Error) != 0 {
+		t.Fatalf("expected no other findings, got %+v", answer)
+	}
+	// The parameter still names a file to write the report to.
+	written, err := os.ReadFile(reportFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(written) != "extra.txt\n" {
+		t.Fatalf("unexpected report file %q", written)
+	}
+}
+
+func TestNativeCryptcheckOfIdenticalRemotesSucceedsWithEmptyReports(t *testing.T) {
+	source := t.TempDir()
+	for _, name := range []string{"keep.txt", "also.txt"} {
+		if err := os.WriteFile(filepath.Join(source, name), []byte("data"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	destination := cryptcheckTarget(t, "keep.txt", "also.txt")
+
+	answer := runCryptcheck(t, rc.Params{"src": source, "dst": destination})
+
+	if !answer.Success || answer.Status != "OK" {
+		t.Fatalf("expected a passing check, got %+v", answer)
+	}
+	if answer.MissingOnSrc == nil || answer.MissingOnDst == nil || answer.Differ == nil || answer.Error == nil {
+		t.Fatalf("expected every report to be a list, even an empty one: %+v", answer)
 	}
 }
 

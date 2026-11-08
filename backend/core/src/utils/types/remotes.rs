@@ -1,5 +1,6 @@
 use crate::utils::types::jobs::{JobStatus, JobType};
 use crate::utils::types::origin::Origin;
+use crate::utils::types::starter::Starter;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,18 +13,12 @@ pub const DEST_KEYS: &[&str] = &["dest", "dstFs", "path2", "mountPoint"];
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
+    pub starter: Option<Starter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
 }
 
 impl MountedRemote {
@@ -32,12 +27,9 @@ impl MountedRemote {
         Self {
             fs: fs.into(),
             mount_point: mount_point.into(),
-            profile: None,
-            quick_run_id: None,
+            starter: None,
             execute_id: None,
             origin: None,
-            workflow_id: None,
-            node_id: None,
         }
     }
 }
@@ -47,18 +39,12 @@ pub struct ServeInstance {
     pub id: String,
     pub addr: String,
     pub params: Value,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
+    pub starter: Option<Starter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
 }
 
 impl ServeInstance {
@@ -68,12 +54,9 @@ impl ServeInstance {
             id: id.into(),
             addr: addr.into(),
             params,
-            profile: None,
-            quick_run_id: None,
+            starter: None,
             execute_id: None,
             origin: None,
-            workflow_id: None,
-            node_id: None,
         }
     }
 }
@@ -87,9 +70,7 @@ pub struct OperationExecutionResult {
     pub operation_type: OperationType,
     pub remote_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
+    pub starter: Option<Starter>,
     pub success: bool,
     pub status: JobStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]

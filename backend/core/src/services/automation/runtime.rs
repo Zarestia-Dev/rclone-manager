@@ -37,14 +37,13 @@ struct ProfileSnapshot {
     pub backend: Backend,
     profile: ProfileConfig,
     options: Value,
-    name: String,
 }
 
 impl ProfileSnapshot {
     fn resolve(&self) -> Result<ResolvedProfile, String> {
         Ok(ResolvedProfile {
             backend: self.backend.clone(),
-            params: parse_profile_config(&self.profile, &self.options, Some(self.name.clone()))?,
+            params: parse_profile_config(&self.profile, &self.options)?,
         })
     }
 }
@@ -108,7 +107,6 @@ async fn capture_profile_settings(
         backend,
         profile,
         options,
-        name: profile_name.to_owned(),
     })
 }
 
@@ -376,7 +374,7 @@ pub(crate) async fn refresh_with_definitions(
                         tasks.quick_runs.insert(qr.id.clone(), qr.clone());
                     }
                 }
-                Some(Origin::Flow) => {
+                Some(Origin::Workflow) => {
                     if let Some(wf) = workflows.get(&automation.id) {
                         tasks.workflows.insert(
                             wf.id.clone(),

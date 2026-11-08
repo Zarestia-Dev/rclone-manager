@@ -428,7 +428,7 @@ describe('AppDetailComponent', () => {
         automation({ automationType: 'copy' }),
         automation({ profileName: 'default' }),
         automation({ args: { ...managed.args, source: 'quickrun' } }),
-        automation({ args: { ...managed.args, source: 'flow' } }),
+        automation({ args: { ...managed.args, source: 'workflow' } }),
         managed,
       ]);
       expect(component.matchingAutomation()).toBe(managed);

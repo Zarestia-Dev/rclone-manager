@@ -49,6 +49,7 @@ import {
   OPERATION_TYPE_KEYS,
   MountPathCollision,
   isProfileScoped,
+  profileOf,
 } from '@app/types';
 import {
   buildRemoteProfileStatus,
@@ -588,7 +589,8 @@ export class RemoteFacadeService {
         s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName && isProfileScoped(s)
       );
       const idToStop =
-        serveId ?? (profileName ? serves.find(s => s.profile === profileName)?.id : serves[0]?.id);
+        serveId ??
+        (profileName ? serves.find(s => profileOf(s) === profileName)?.id : serves[0]?.id);
       if (!idToStop) throw new Error('Serve ID required to stop serve');
       await this.serveService.stopServe(idToStop, remoteName);
       return;
@@ -599,7 +601,7 @@ export class RemoteFacadeService {
         m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
       const mountPoint = profileName
-        ? mounts.find(m => m.profile === profileName)?.mount_point
+        ? mounts.find(m => profileOf(m) === profileName)?.mount_point
         : mounts[0]?.mount_point;
       if (!mountPoint) throw new Error(`Active mount not found for ${remoteName}`);
       await this.mountService.unmountRemote(mountPoint, remoteName);

@@ -11,7 +11,7 @@ import { ServeManagementService } from '../../../../../services/operations/serve
 import { JobManagementService } from '../../../../../services/operations/job-management.service';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { ModalService } from '../../../../../services/ui/modal.service';
-import { JobInfo } from '@app/types';
+import { JobInfo, isWorkflowNode } from '@app/types';
 
 export interface NodePortRow {
   inputPort?: WorkflowPort;
@@ -100,7 +100,7 @@ export class WorkflowNodeComponent {
     if (!currentWfId) return false;
 
     const mounts = this.mountService.mountedRemotes();
-    return mounts.some(m => m.workflow_id === currentWfId && m.node_id === n.id);
+    return mounts.some(m => isWorkflowNode(m, currentWfId, n.id));
   });
 
   readonly isLiveServing = computed(() => {
@@ -110,7 +110,7 @@ export class WorkflowNodeComponent {
     if (!currentWfId) return false;
 
     const serves = this.serveService.runningServes();
-    return serves.some(s => s.workflow_id === currentWfId && s.node_id === n.id);
+    return serves.some(s => isWorkflowNode(s, currentWfId, n.id));
   });
 
   readonly isLiveActive = computed(() => this.isLiveMounted() || this.isLiveServing());

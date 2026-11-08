@@ -38,9 +38,7 @@
               "
               >#{{ job.jobid }}</span
             >
-            @if (job.profile) {
-              <span class="app-pill p-dim pill-sm truncate">{{ job.profile }}</span>
-            }
+            <app-starter-pill [starter]="job.starter" />
           </div>
 
           <div class="card-info-right">

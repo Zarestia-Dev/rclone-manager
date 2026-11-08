@@ -1,4 +1,5 @@
 import { Origin } from './origin';
+import { Starter } from './starter';
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
@@ -39,12 +40,9 @@ export interface RemoteSettingsSection {
 export interface MountedRemote {
   fs: string;
   mount_point: string;
-  profile?: string;
-  quick_run_id?: string;
+  starter?: Starter;
   execute_id?: string;
   origin?: Origin;
-  workflow_id?: string;
-  node_id?: string;
 }
 
 /**
@@ -55,8 +53,7 @@ export interface OperationExecutionResult {
   origin: Origin;
   operationType: PrimaryActionType;
   remoteName: string;
-  quickRunId?: string;
-  profile?: string;
+  starter?: Starter;
   success: boolean;
   status: 'running' | 'completed' | 'failed' | 'stopped';
   error?: string;

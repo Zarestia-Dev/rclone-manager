@@ -12,6 +12,7 @@ use super::job_stats::normalize_job_stats;
 use crate::utils::types::{
     events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobChangeEvent, JobStatsUpdatedEvent},
     jobs::{JobCache, JobInfo, JobStatus, JobType},
+    starter,
 };
 
 pub fn spawn_stats_cleanup_by_group(
@@ -116,16 +117,12 @@ impl JobCache {
             error: None,
             stats: None,
             group,
-            profile: metadata.profile,
+            starter: metadata.starter,
             execute_id: exec_id,
-            quick_run_id: metadata.quick_run_id,
             origin: metadata.origin,
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
-            workflow_id: metadata.workflow_id,
-            node_id: metadata.node_id,
-            workflow_lineage: metadata.workflow_lineage,
 
             report: None,
             report_counts: None,
@@ -431,7 +428,7 @@ impl JobCache {
         for job in jobs.values().filter(|j| {
             j.remote_name.trim_end_matches(':') == remote_name
                 && &j.job_type == job_type
-                && j.profile.as_deref() == profile
+                && starter::profile_name(j.starter.as_ref()) == profile
         }) {
             activity.running |= job.status.is_running();
             activity.last_finished = activity.last_finished.max(job.end_time);
@@ -455,7 +452,7 @@ impl JobCache {
         self.delete_matching(
             |j| {
                 j.remote_name == remote_name
-                    && j.profile.as_deref() == Some(profile_name)
+                    && starter::profile_name(j.starter.as_ref()) == Some(profile_name)
                     && &j.job_type == job_type
                     && !j.status.is_running()
             },
@@ -585,7 +582,7 @@ impl Default for JobCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rclone::backend::types::default_backend_name;
+    use crate::utils::types::starter::Starter;
 
     #[tokio::test]
     async fn profile_cleanup_only_removes_finished_jobs_of_the_same_operation() {
@@ -613,30 +610,14 @@ mod tests {
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
         JobInfo {
-            stats_revision: 0,
             jobid,
             remote_name: remote.to_string(),
             job_type,
             source: vec![format!("{}path", remote)],
             destination: "/local/path".to_string(),
-            start_time: chrono::Utc::now(),
-            end_time: None,
-            status: JobStatus::Running,
-            error: None,
-            stats: None,
             group: format!("job/{jobid}"),
-            profile: profile.map(str::to_string),
-            execute_id: None,
-            quick_run_id: None,
-            origin: None,
-            backend_name: default_backend_name(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
-            report: None,
-            report_counts: None,
+            starter: profile.map(Starter::profile),
+            ..JobInfo::for_test()
         }
     }
 

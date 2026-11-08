@@ -22,6 +22,7 @@ import { ModalService } from '../../../services/ui/modal.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
+import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
 
 export interface RunningJobViewModel {
   job: JobInfo;
@@ -51,6 +52,7 @@ export interface RunningJobViewModel {
     CopyToClipboardDirective,
     AlertBannerComponent,
     OriginFilterBarComponent,
+    StarterPillComponent,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],
@@ -156,9 +158,9 @@ export class JobsOverviewPanelComponent {
 
   getOriginLabel(origin?: Origin): string {
     switch (origin) {
-      case 'flow': {
-        const t = this.translate.instant('flow.title');
-        return t === 'flow.title' ? 'Flow' : t;
+      case 'workflow': {
+        const t = this.translate.instant('flow.tabs.workflow');
+        return t === 'flow.tabs.workflow' ? 'Workflow' : t;
       }
       case 'quickrun': {
         const t = this.translate.instant('flow.tabs.quickRun');
@@ -183,7 +185,7 @@ export class JobsOverviewPanelComponent {
 
   getOriginBadgeClass(origin?: Origin): string {
     switch (origin) {
-      case 'flow':
+      case 'workflow':
         return 'p-accent';
       case 'quickrun':
         return 'p-primary';

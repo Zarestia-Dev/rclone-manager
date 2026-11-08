@@ -12,7 +12,8 @@ import {
   PathDisplayConfig,
   TransferActivityPanelConfig,
   NON_JOB_OPS,
-  DEFAULT_PROFILE_NAME,
+  getStarterOrigin,
+  Starter,
 } from '@app/types';
 import { jobReportOf } from 'src/app/shared/utils/job-report.util';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
@@ -27,6 +28,20 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
+
+/** The row that names what started a job; none for work nothing started. */
+function describeStarter(starter: Starter | undefined): { label: string; name: string } | null {
+  switch (starter?.kind) {
+    case 'profile':
+      return { label: 'modals.jobDetail.fields.profile', name: starter.name };
+    case 'quick_run':
+      return { label: 'modals.jobDetail.fields.quickRun', name: starter.name };
+    case 'workflow':
+      return { label: 'modals.jobDetail.fields.workflow', name: starter.workflowName };
+    case undefined:
+      return null;
+  }
+}
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -213,8 +228,11 @@ export class JobDetailModalComponent {
       executeId: job.execute_id || null,
       group: job.group ?? null,
       backend: job.backend_name ?? 'Local',
-      origin: job.origin ?? null,
-      profile: job.profile ?? DEFAULT_PROFILE_NAME,
+      origin: getStarterOrigin(job) ?? job.origin ?? null,
+      starter: describeStarter(job.starter),
+      // A Quick Run a workflow node ran is started by both: the workflow gets its own row.
+      viaWorkflow:
+        job.starter?.kind === 'quick_run' ? (job.starter.workflow?.workflowName ?? null) : null,
     };
   });
 

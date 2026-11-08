@@ -179,7 +179,7 @@ export class QuickRunWorkspaceComponent {
   }
 
   async emptyTrash(remote: Remote): Promise<void> {
-    await this.remoteFacade.emptyTrash(remote, 'flow');
+    await this.remoteFacade.emptyTrash(remote);
   }
 
   async cloneRemote(remoteName: string): Promise<void> {

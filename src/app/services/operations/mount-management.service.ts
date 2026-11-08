@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { MountedRemote, OperationContext, Origin } from '@app/types';
+import { MountedRemote, OperationContext, Origin, profileOf } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -127,6 +127,6 @@ export class MountManagementService extends TauriBaseService {
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
     const all = this.mountsByRemoteProfile().get(remoteName) ?? [];
     if (!profile) return all;
-    return all.filter(m => m.profile === profile);
+    return all.filter(m => profileOf(m) === profile);
   }
 }

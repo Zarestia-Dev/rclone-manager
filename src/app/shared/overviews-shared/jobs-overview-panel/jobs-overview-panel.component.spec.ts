@@ -30,7 +30,7 @@ describe('JobsOverviewPanelComponent', () => {
       job_type: 'sync',
       stats: { ...DEFAULT_JOB_STATS, bytes: 100, totalBytes: 200 },
       start_time: '2026-09-02T10:00:00Z',
-      origin: 'flow',
+      origin: 'workflow',
     },
     {
       ...baseJob,
@@ -82,10 +82,10 @@ describe('JobsOverviewPanelComponent', () => {
   it('filters running jobs correctly by flow origin', () => {
     expect(component.runningJobs().length).toBe(3);
 
-    component.selectedOriginFilter.set('flow');
+    component.selectedOriginFilter.set('workflow');
     fixture.detectChanges();
     expect(component.runningJobs().length).toBe(1);
-    expect(component.runningJobs()[0].origin).toBe('flow');
+    expect(component.runningJobs()[0].origin).toBe('workflow');
   });
 
   it('filters running jobs correctly by quickrun origin', () => {
@@ -104,15 +104,38 @@ describe('JobsOverviewPanelComponent', () => {
 
   it.each<[ExecutionScope, Origin]>([
     [{ origin: undefined }, 'dashboard'],
-    [{ origin: 'dashboard', quick_run_id: 'qr' }, 'quickrun'],
-    [{ origin: 'automation', workflow_id: 'wf' }, 'flow'],
-    [{ origin: 'quickrun', quick_run_id: 'qr', workflow_id: 'wf' }, 'flow'],
-    [{ origin: 'flow', quick_run_id: 'qr' }, 'flow'],
+    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, 'quickrun'],
+    [
+      {
+        origin: 'automation',
+        starter: {
+          kind: 'workflow',
+          workflowId: 'wf',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      },
+      'workflow',
+    ],
+    [
+      {
+        origin: 'quickrun',
+        starter: {
+          kind: 'quick_run',
+          id: 'qr',
+          name: 'qr',
+          workflow: { workflowId: 'wf', workflowName: 'Workflow', nodeId: 'node', ancestors: [] },
+        },
+      },
+      'workflow',
+    ],
+    [{ origin: 'workflow' }, 'workflow'],
     [{ origin: 'filemanager' }, 'filemanager'],
   ])('uses execution ownership for filtering and badges: %j', (scope, expected) => {
     const job: JobInfo = { ...mockJobs[0], ...scope };
     fixture.componentRef.setInput('jobs', [job]);
-    for (const filter of ['dashboard', 'quickrun', 'flow', 'filemanager']) {
+    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager']) {
       component.selectedOriginFilter.set(filter);
       expect(component.runningJobs()).toEqual(filter === expected ? [job] : []);
     }
@@ -123,8 +146,8 @@ describe('JobsOverviewPanelComponent', () => {
   });
 
   it('returns correct origin labels and badge classes', () => {
-    expect(component.getOriginLabel('flow')).toBe('Flow');
-    expect(component.getOriginBadgeClass('flow')).toBe('p-accent');
+    expect(component.getOriginLabel('workflow')).toBe('Workflow');
+    expect(component.getOriginBadgeClass('workflow')).toBe('p-accent');
 
     expect(component.getOriginLabel('quickrun')).toBe('Quick Run');
     expect(component.getOriginBadgeClass('quickrun')).toBe('p-primary');
@@ -140,13 +163,17 @@ describe('JobsOverviewPanelComponent', () => {
   });
 
   it('stops the selected execution when another job has the same remote, type and profile', async () => {
-    const first: JobInfo = { ...mockJobs[0], profile: 'daily', origin: 'dashboard' };
+    const first: JobInfo = {
+      ...mockJobs[0],
+      starter: { kind: 'profile', name: 'daily' },
+      origin: 'dashboard',
+    };
     const selected: JobInfo = {
       ...first,
       jobid: 202,
       execute_id: 'selected-execution',
       origin: 'quickrun',
-      quick_run_id: 'qr-1',
+      starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' },
     };
     fixture.componentRef.setInput('jobs', [first, selected]);
     const event = new MouseEvent('click');

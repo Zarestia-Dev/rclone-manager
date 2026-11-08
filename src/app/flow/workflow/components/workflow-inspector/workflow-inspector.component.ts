@@ -32,6 +32,8 @@ import {
   MountedRemote,
   ServeListItem,
   JobInfo,
+  profileOf,
+  isWorkflowNode,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import {
@@ -77,6 +79,8 @@ import { AlertBannerComponent } from '../../../../shared/components/alert-banner
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkflowInspectorComponent {
+  protected readonly profileOf = profileOf;
+
   readonly stateService = inject(WorkflowStateService);
   readonly storageService = inject(WorkflowStorageService);
   private readonly remoteFacade = inject(RemoteFacadeService);
@@ -283,7 +287,7 @@ export class WorkflowInspectorComponent {
     if (!currentWf) return null;
 
     const mounts = this.mountService.mountedRemotes();
-    return mounts.find(m => m.workflow_id === currentWf.id && m.node_id === node.id) ?? null;
+    return mounts.find(m => isWorkflowNode(m, currentWf.id, node.id)) ?? null;
   });
 
   readonly activeServe = computed<ServeListItem | null>(() => {
@@ -293,7 +297,7 @@ export class WorkflowInspectorComponent {
     if (!currentWf) return null;
 
     const serves = this.serveService.runningServes();
-    return serves.find(s => s.workflow_id === currentWf.id && s.node_id === node.id) ?? null;
+    return serves.find(s => isWorkflowNode(s, currentWf.id, node.id)) ?? null;
   });
 
   readonly activeServeUrl = computed(() => {

@@ -29,7 +29,7 @@ describe('OriginFilterBarComponent', () => {
 
     (buttons[1] as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(component.selected()).toBe('flow');
+    expect(component.selected()).toBe('workflow');
 
     (buttons[2] as HTMLButtonElement).click();
     fixture.detectChanges();

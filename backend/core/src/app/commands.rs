@@ -221,7 +221,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (create_quick_run, $crate::services::flow::quick_run::commands::create_quick_run, [quick_run: $crate::services::flow::quick_run::types::QuickRunInput]);
             (update_quick_run, $crate::services::flow::quick_run::commands::update_quick_run, [quick_run: $crate::services::flow::quick_run::types::QuickRunInput]);
             (delete_quick_run, $crate::services::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
-            (start_quick_run, $crate::services::flow::quick_run::commands::start_quick_run, [quick_run_id: String, workflow_id: Option<String>, node_id: Option<String>]);
+            (start_quick_run, $crate::services::flow::quick_run::commands::start_quick_run, [quick_run_id: String]);
             (stop_quick_run, $crate::services::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
 
             // WORKFLOWS (FLOW WORKSPACE)

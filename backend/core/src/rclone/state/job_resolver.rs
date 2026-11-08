@@ -156,35 +156,17 @@ pub fn sanitize_finished_stats(stats: &mut Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rclone::backend::types::default_backend_name;
     use crate::utils::types::jobs::JobStatus;
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType) -> JobInfo {
         JobInfo {
-            stats_revision: 0,
             jobid,
             remote_name: remote.to_string(),
             job_type,
             source: vec![format!("{remote}path/file.txt")],
             destination: "/local/path".to_string(),
-            start_time: chrono::Utc::now(),
-            end_time: None,
-            status: JobStatus::Running,
-            error: None,
-            stats: None,
             group: format!("job/{jobid}"),
-            profile: None,
-            execute_id: None,
-            quick_run_id: None,
-            origin: None,
-            backend_name: default_backend_name(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
-            report: None,
-            report_counts: None,
+            ..JobInfo::for_test()
         }
     }
 

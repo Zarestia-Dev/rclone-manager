@@ -255,8 +255,13 @@ describe('WorkflowInspectorComponent', () => {
       {
         fs: 'drive:',
         mount_point: '/mnt/drive',
-        workflow_id: 'other-wf',
-        node_id: 'other-node',
+        starter: {
+          kind: 'workflow',
+          workflowId: 'other-wf',
+          workflowName: 'Workflow',
+          nodeId: 'other-node',
+          ancestors: [],
+        },
       },
     ]);
     fixture.detectChanges();
@@ -268,8 +273,13 @@ describe('WorkflowInspectorComponent', () => {
       {
         fs: 'drive:',
         mount_point: '/mnt/drive',
-        workflow_id: wfId,
-        node_id: mountNode.id,
+        starter: {
+          kind: 'workflow',
+          workflowId: wfId,
+          workflowName: 'Workflow',
+          nodeId: mountNode.id,
+          ancestors: [],
+        },
       },
     ]);
     fixture.detectChanges();
@@ -355,8 +365,13 @@ describe('WorkflowInspectorComponent', () => {
         listed: 0,
         completed: [],
       },
-      workflow_id: wfId,
-      node_id: syncNode.id,
+      starter: {
+        kind: 'workflow',
+        workflowId: wfId,
+        workflowName: 'Workflow',
+        nodeId: syncNode.id,
+        ancestors: [],
+      },
     };
 
     jobServiceSpy.getLatestJobForWorkflowNode.mockReturnValue(mockJob);

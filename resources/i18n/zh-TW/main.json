@@ -307,7 +307,7 @@
       "startup": "啟動",
       "update": "更新",
       "internal": "內部",
-      "flow": "Flow 工作區",
+      "workflow": "工作流",
       "quickrun": "快速執行"
     },
     "rule": {
@@ -2094,12 +2094,14 @@
         "overview": "任務詳情",
         "paths": "路徑",
         "errors": "錯誤",
-        "profile": "設定檔案",
+        "execution": "執行",
         "serverSideFlags": "伺服端與旗標"
       },
       "fields": {
         "type": "任務型別",
         "profile": "設定檔案",
+        "quickRun": "快速執行",
+        "workflow": "工作流",
         "status": "狀態",
         "started": "開始時間",
         "finished": "完成時間",

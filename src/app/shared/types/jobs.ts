@@ -1,6 +1,7 @@
 import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
+import { Starter } from './starter';
 
 export const JOB_STATUS = Object.freeze({
   Running: 'Running',
@@ -169,10 +170,8 @@ export interface JobInfo {
   remote_name: string;
   stats: GlobalStats;
   group?: string;
-  profile?: string;
-  quick_run_id?: string;
-  workflow_id?: string;
-  node_id?: string;
+  /** What started the job: a profile, a Quick Run or a workflow node; absent for ad hoc work. */
+  starter?: Starter;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */

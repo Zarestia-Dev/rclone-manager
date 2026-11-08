@@ -23,6 +23,7 @@ use crate::utils::types::jobs::JobStatus;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
+use crate::utils::types::starter::{self, Starter};
 
 use super::common::redact_value;
 use super::job_parser::{JobOutcome, parse_job_response, resolve_job_outcome};
@@ -37,7 +38,7 @@ pub struct JobMetadata {
     pub job_type: JobType,
     pub source: Vec<String>,
     pub destination: String,
-    pub profile: Option<String>,
+    pub starter: Option<Starter>,
     pub origin: Option<Origin>,
     pub group: Option<String>,
     pub no_cache: bool,
@@ -47,16 +48,7 @@ pub struct JobMetadata {
     #[serde(default)]
     pub parent_job_id: Option<u64>,
     #[serde(default)]
-    pub quick_run_id: Option<String>,
-    #[serde(default)]
     pub execute_id: Option<String>,
-    #[serde(default)]
-    pub workflow_id: Option<String>,
-    #[serde(default)]
-    pub node_id: Option<String>,
-    /// The workflows that led to this job, the one that started it last.
-    #[serde(default)]
-    pub workflow_lineage: Vec<String>,
 }
 
 impl JobMetadata {
@@ -72,17 +64,13 @@ impl JobMetadata {
             job_type,
             source,
             destination: destination.into(),
-            profile: None,
+            starter: None,
             origin: None,
             group: None,
             no_cache: false,
             dry_run: false,
             parent_job_id: None,
-            quick_run_id: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
-            workflow_lineage: Vec::new(),
         }
     }
 
@@ -99,38 +87,14 @@ impl JobMetadata {
     }
 
     #[must_use]
-    pub fn with_profile(mut self, profile: Option<String>) -> Self {
-        self.profile = profile;
+    pub fn with_starter(mut self, starter: Option<Starter>) -> Self {
+        self.starter = starter;
         self
     }
 
     #[must_use]
     pub fn with_execute_id(mut self, execute_id: Option<String>) -> Self {
         self.execute_id = execute_id;
-        self
-    }
-
-    #[must_use]
-    pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
-        self.quick_run_id = quick_run_id;
-        self
-    }
-
-    #[must_use]
-    pub fn with_workflow_id(mut self, workflow_id: Option<String>) -> Self {
-        self.workflow_id = workflow_id;
-        self
-    }
-
-    #[must_use]
-    pub fn with_workflow_lineage(mut self, workflow_lineage: Vec<String>) -> Self {
-        self.workflow_lineage = workflow_lineage;
-        self
-    }
-
-    #[must_use]
-    pub fn with_node_id(mut self, node_id: Option<String>) -> Self {
-        self.node_id = node_id;
         self
     }
 
@@ -185,12 +149,17 @@ impl JobMetadata {
             .with_group(group)
     }
 
+    /// The profile that started the job, if it was a profile.
+    pub fn profile_name(&self) -> Option<&str> {
+        starter::profile_name(self.starter.as_ref())
+    }
+
     pub fn group_name(&self) -> String {
         if let Some(group) = &self.group {
             return group.clone();
         }
         let remote = self.remote_name.trim_end_matches(':').trim_end_matches('/');
-        match &self.profile {
+        match self.profile_name() {
             Some(profile) => format!("{}/{}/{}", self.job_type, remote, profile),
             None => format!("{}/{}", self.job_type, remote),
         }
@@ -211,14 +180,14 @@ impl JobMetadata {
     }
 
     fn resolved_origin(&self) -> Origin {
-        self.origin.clone().unwrap_or(Origin::Internal)
+        Origin::of_work(self.origin.as_ref(), self.starter.as_ref())
     }
 
     pub fn started_event(&self, backend: String) -> NotificationEvent {
         NotificationEvent::Job(JobStage::Started {
             backend,
             remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
+            profile: self.profile_name().map(str::to_string),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
             source: Some(self.source.join(", ")),
@@ -230,7 +199,7 @@ impl JobMetadata {
         NotificationEvent::Job(JobStage::Completed {
             backend,
             remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
+            profile: self.profile_name().map(str::to_string),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
             source: Some(self.source.join(", ")),
@@ -242,7 +211,7 @@ impl JobMetadata {
         NotificationEvent::Job(JobStage::Failed {
             backend,
             remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
+            profile: self.profile_name().map(str::to_string),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
             source: Some(self.source.join(", ")),
@@ -255,7 +224,7 @@ impl JobMetadata {
         NotificationEvent::Job(JobStage::Stopped {
             backend,
             remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
+            profile: self.profile_name().map(str::to_string),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
             source: Some(self.source.join(", ")),
@@ -877,7 +846,7 @@ pub async fn stop_job_profile(
         .find(|j| {
             j.remote_name == remote_name
                 && j.job_type == job_type
-                && j.profile.as_deref() == Some(profile_name.as_str())
+                && starter::profile_name(j.starter.as_ref()) == Some(profile_name.as_str())
         })
         .ok_or_else(|| {
             crate::localized_error!(
@@ -1058,7 +1027,7 @@ mod tests {
         let copy_url = JobMetadata::new("drive:", JobType::CopyUrl, vec![], "dst:");
         assert_eq!(copy_url.group_name(), "copyurl/drive");
         let mut first = JobMetadata::new("drive", JobType::Sync, vec!["src:".into()], "dst:")
-            .with_profile(Some("daily".into()));
+            .with_starter(Some(Starter::profile("daily")));
         let mut second = first.clone();
         first.prepare_execution();
         second.prepare_execution();
@@ -1068,6 +1037,11 @@ mod tests {
         let prepared = first.group_name();
         first.prepare_execution();
         assert_eq!(first.group_name(), prepared);
+
+        let quick_run = JobMetadata::new("drive:", JobType::Sync, vec![], "dst:")
+            .with_starter(Some(Starter::quick_run("qr-1", "daily", None)));
+        assert_eq!(quick_run.profile_name(), None);
+        assert_eq!(quick_run.group_name(), "sync/drive");
 
         let mut explicit = second.with_group(Some("shared".into()));
         let execution = explicit.execute_id.clone();
@@ -1084,7 +1058,7 @@ mod tests {
             vec!["src:a".into(), "src:b".into()],
             "dst:",
         )
-        .with_profile(Some("daily".into()))
+        .with_starter(Some(Starter::profile("daily")))
         .with_origin(Some(Origin::Dashboard));
         for event in [
             metadata.started_event("backend".into()),
@@ -1437,7 +1411,7 @@ mod tests {
     fn make_meta(origin: Option<Origin>, profile: Option<&str>) -> JobMetadata {
         JobMetadata::new("gdrive:", JobType::Sync, vec!["src".to_string()], "dst")
             .with_origin(origin)
-            .with_profile(profile.map(str::to_string))
+            .with_starter(profile.map(Starter::profile))
     }
 
     #[test]

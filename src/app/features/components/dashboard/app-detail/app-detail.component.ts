@@ -65,6 +65,7 @@ import {
   findInFlightAction,
   Automation,
   RepairSheetType,
+  profileOf,
 } from '@app/types';
 import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
 import { MatDialog } from '@angular/material/dialog';
@@ -123,6 +124,8 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
   styleUrls: ['./app-detail.component.scss'],
 })
 export class AppDetailComponent {
+  protected readonly profileOf = profileOf;
+
   // --- Inputs ---
   readonly mode = input<'remote' | 'quickRun'>('remote');
   readonly quickRun = input<QuickRun | null>(null);
@@ -1019,7 +1022,9 @@ export class AppDetailComponent {
     if (!state) return false;
     if (type === 'serve') {
       const s = state as RemoteServeState;
-      return profileName ? (s.serves?.some(sv => sv.profile === profileName) ?? false) : !!s.active;
+      return profileName
+        ? (s.serves?.some(sv => profileOf(sv) === profileName) ?? false)
+        : !!s.active;
     }
     const op = state as RemoteOperationState;
     return profileName ? !!op.activeProfiles?.[profileName] : !!op.active;

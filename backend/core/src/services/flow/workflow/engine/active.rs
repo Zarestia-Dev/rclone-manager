@@ -10,6 +10,7 @@ use serde_json::Value;
 use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::services::flow::workflow::engine::cancel::CancelToken;
+use crate::utils::types::starter;
 
 #[derive(Clone)]
 pub(crate) struct ActiveWorkflowState {
@@ -113,7 +114,7 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
                 .get_active_jobs()
                 .await
                 .into_iter()
-                .filter(|job| job.workflow_id.as_deref() == Some(workflow_id))
+                .filter(|job| starter::workflow_id(job.starter.as_ref()) == Some(workflow_id))
                 .map(|job| job.jobid),
         );
         for job_id in active_jobs {
@@ -156,7 +157,8 @@ pub(crate) async fn cleanup_workflow_resources(
         .get_mounted_remotes()
         .await;
     for m in mounted {
-        if m.workflow_id.as_deref() == Some(workflow_id) && m.execute_id.as_deref() == Some(run_id)
+        if starter::workflow_id(m.starter.as_ref()) == Some(workflow_id)
+            && m.execute_id.as_deref() == Some(run_id)
         {
             info!(
                 "Unmounting mount '{}' spawned by workflow '{workflow_id}'",
@@ -177,7 +179,8 @@ pub(crate) async fn cleanup_workflow_resources(
         .get_serves()
         .await;
     for s in serves {
-        if s.workflow_id.as_deref() == Some(workflow_id) && s.execute_id.as_deref() == Some(run_id)
+        if starter::workflow_id(s.starter.as_ref()) == Some(workflow_id)
+            && s.execute_id.as_deref() == Some(run_id)
         {
             info!(
                 "Stopping serve '{}' spawned by workflow '{workflow_id}'",

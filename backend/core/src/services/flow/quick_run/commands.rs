@@ -22,6 +22,7 @@ use crate::{
             jobs::{JobStatus, JobType},
             origin::Origin,
             remotes::{OperationExecutionResult, OperationType},
+            starter::{self, Starter, WorkflowRun},
         },
     },
 };
@@ -135,48 +136,34 @@ pub async fn sync_quick_run_automations(app: &AppHandle) -> Result<(), String> {
 pub async fn start_quick_run(
     app: AppHandle,
     quick_run_id: String,
-    workflow_id: Option<String>,
-    node_id: Option<String>,
 ) -> Result<OperationExecutionResult, String> {
     let backend = app
         .state::<crate::rclone::backend::BackendManager>()
         .get_active()
         .await;
-    start_quick_run_on_backend(app, backend, quick_run_id, workflow_id, node_id, None).await
+    start_quick_run_on_backend(app, backend, quick_run_id, None).await
 }
 
 pub(crate) async fn start_quick_run_on_backend(
     app: AppHandle,
     backend: crate::rclone::backend::types::Backend,
     quick_run_id: String,
-    workflow_id: Option<String>,
-    node_id: Option<String>,
     execute_id: Option<String>,
 ) -> Result<OperationExecutionResult, String> {
     let qr = crate::services::automation::runtime::quick_run(&app, &quick_run_id)?;
-    start_quick_run_snapshot(
-        app,
-        backend,
-        qr,
-        workflow_id,
-        node_id,
-        execute_id,
-        Vec::new(),
-    )
-    .await
+    start_quick_run_snapshot(app, backend, qr, None, execute_id).await
 }
 
 pub(crate) async fn start_quick_run_snapshot(
     app: AppHandle,
     backend: crate::rclone::backend::types::Backend,
     qr: QuickRun,
-    workflow_id: Option<String>,
-    node_id: Option<String>,
+    workflow_run: Option<WorkflowRun>,
     execute_id: Option<String>,
-    workflow_lineage: Vec<String>,
 ) -> Result<OperationExecutionResult, String> {
-    let quick_run_id = qr.id.clone();
-    info!("Starting quick run: {quick_run_id}");
+    info!("Starting quick run: {}", qr.id);
+    let starter = Starter::quick_run(qr.id.clone(), qr.name.clone(), workflow_run);
+    let origin = Origin::of_work(None, Some(&starter));
     let execute_id = execute_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let start_time = chrono::Utc::now();
     let empty_settings = json!({"name": qr.remote_name.trim_end_matches(':')});
@@ -186,21 +173,17 @@ pub(crate) async fn start_quick_run_snapshot(
             MountParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
         let mount_point = mount_params.mount_point.clone();
         mount_params.backend = Some(backend.clone());
-        mount_params.profile = None;
-        mount_params.quick_run_id = Some(quick_run_id.clone());
-        mount_params.workflow_id = workflow_id;
+        mount_params.starter = Some(starter.clone());
         mount_params.execute_id = Some(execute_id.clone());
-        mount_params.origin = Some(Origin::QuickRun);
 
         mount_remote(app.clone(), mount_params).await?;
 
         return Ok(OperationExecutionResult {
             execute_id,
-            origin: Origin::QuickRun,
+            origin,
             operation_type: OperationType::Mount,
             remote_name: qr.remote_name,
-            quick_run_id: Some(quick_run_id),
-            profile: None,
+            starter: Some(starter),
             success: true,
             status: JobStatus::Running,
             error: None,
@@ -216,21 +199,17 @@ pub(crate) async fn start_quick_run_snapshot(
         let mut serve_params =
             ServeParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
         serve_params.backend = Some(backend.clone());
-        serve_params.profile = None;
-        serve_params.quick_run_id = Some(quick_run_id.clone());
-        serve_params.workflow_id = workflow_id;
+        serve_params.starter = Some(starter.clone());
         serve_params.execute_id = Some(execute_id.clone());
-        serve_params.origin = Some(Origin::QuickRun);
 
         let serve_res = start_serve(app.clone(), serve_params).await?;
 
         return Ok(OperationExecutionResult {
             execute_id,
-            origin: Origin::QuickRun,
+            origin,
             operation_type: OperationType::Serve,
             remote_name: qr.remote_name,
-            quick_run_id: Some(quick_run_id),
-            profile: None,
+            starter: Some(starter),
             success: true,
             status: JobStatus::Running,
             error: None,
@@ -257,7 +236,7 @@ pub(crate) async fn start_quick_run_snapshot(
         .collect();
 
     // A workflow follows the last job; the UI and automations must not wait for the chain.
-    let chain = if workflow_id.is_some() {
+    let chain = if starter.workflow_run().is_some() {
         ChainMode::Foreground
     } else {
         ChainMode::Background
@@ -268,14 +247,9 @@ pub(crate) async fn start_quick_run_snapshot(
         common.source.clone(),
         common.dest.clone(),
     )
-    .with_profile(None)
-    .with_origin(Some(Origin::QuickRun))
+    .with_starter(Some(starter.clone()))
     .with_dry_run(dry_run)
-    .with_quick_run_id(Some(quick_run_id.clone()))
-    .with_execute_id(Some(execute_id.clone()))
-    .with_workflow_id(workflow_id)
-    .with_workflow_lineage(workflow_lineage)
-    .with_node_id(node_id);
+    .with_execute_id(Some(execute_id.clone()));
 
     let job_id_str = submit_transfer_batch(
         app.clone(),
@@ -294,11 +268,10 @@ pub(crate) async fn start_quick_run_snapshot(
 
     Ok(OperationExecutionResult {
         execute_id,
-        origin: Origin::QuickRun,
+        origin,
         operation_type: qr.operation_type,
         remote_name: qr.remote_name,
-        quick_run_id: Some(quick_run_id),
-        profile: None,
+        starter: Some(starter),
         success: true,
         status: JobStatus::Running,
         error: None,
@@ -326,7 +299,7 @@ pub async fn stop_quick_run(
         };
         let cache = manager.remote_cache_for(&backend.name);
         for mount in cache.get_mounted_remotes().await {
-            if mount.quick_run_id.as_deref() == Some(&quick_run_id) {
+            if starter::quick_run_id(mount.starter.as_ref()) == Some(quick_run_id.as_str()) {
                 crate::rclone::commands::mount::unmount_remote_on_backend(
                     app.clone(),
                     backend.clone(),
@@ -338,7 +311,7 @@ pub async fn stop_quick_run(
             }
         }
         for serve in cache.get_serves().await {
-            if serve.quick_run_id.as_deref() == Some(&quick_run_id) {
+            if starter::quick_run_id(serve.starter.as_ref()) == Some(quick_run_id.as_str()) {
                 let remote = serve
                     .params
                     .get("fs")
@@ -356,7 +329,7 @@ pub async fn stop_quick_run(
             }
         }
         for job in manager.job_cache_for(&backend.name).get_active_jobs().await {
-            if job.quick_run_id.as_deref() == Some(&quick_run_id)
+            if starter::quick_run_id(job.starter.as_ref()) == Some(quick_run_id.as_str())
                 && job_id.is_none_or(|id| id == job.jobid)
             {
                 crate::rclone::commands::job::stop_job_on_backend(
@@ -468,7 +441,7 @@ mod tests {
         let manager = app.state::<BackendManager>();
         let jobs = manager.job_cache().await;
         let metadata = JobMetadata::new("drive", JobType::Copy, vec!["src".into()], "dst")
-            .with_quick_run_id(Some("another-preset".into()));
+            .with_starter(Some(Starter::quick_run("another-preset", "Another", None)));
         jobs.create_job(7, metadata, "Local".into()).await;
 
         // There is no settings manager: a deleted preset's definition must not

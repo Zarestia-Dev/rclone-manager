@@ -55,9 +55,9 @@ export class AutomationCardComponent {
   toggled = output<string>();
   openInFiles = output<string>();
 
-  protected readonly isFlow = computed(() => {
+  protected readonly isWorkflow = computed(() => {
     const auto = this.automation();
-    return auto.args?.source === 'flow';
+    return auto.args?.source === 'workflow';
   });
 
   protected readonly isQuickRun = computed(() => {
@@ -66,9 +66,9 @@ export class AutomationCardComponent {
   });
 
   protected readonly originLabel = computed(() => {
-    if (this.isFlow()) {
-      const t = this.translate.instant('flow.title');
-      return t === 'flow.title' ? 'Flow' : t;
+    if (this.isWorkflow()) {
+      const t = this.translate.instant('flow.tabs.workflow');
+      return t === 'flow.tabs.workflow' ? 'Workflow' : t;
     }
     if (this.isQuickRun()) {
       const t = this.translate.instant('flow.tabs.quickRun');
@@ -79,12 +79,12 @@ export class AutomationCardComponent {
   });
 
   protected readonly originIcon = computed(() => {
-    if (this.isFlow()) return 'workflow';
+    if (this.isWorkflow()) return 'workflow';
     return this.isQuickRun() ? 'quick-run' : 'cloud';
   });
 
   protected readonly originBadgeClass = computed(() => {
-    if (this.isFlow()) return 'p-accent';
+    if (this.isWorkflow()) return 'p-accent';
     return this.isQuickRun() ? 'p-primary' : 'p-dim';
   });
 

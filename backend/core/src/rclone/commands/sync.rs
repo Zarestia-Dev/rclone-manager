@@ -9,6 +9,7 @@ use crate::rclone::endpoints::operations;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
+use crate::utils::types::starter::Starter;
 
 use super::common::{ResolvedProfile, backend_os, is_directory, parse_fs, split_file_path};
 use super::job::{JobMetadata, SubmitJobOptions};
@@ -163,6 +164,17 @@ impl GenericTransferParams {
                 builder.insert("_path", operations::ARCHIVE);
             }
             OperationType::Cryptcheck => {
+                // The form names these options as operations/check does; cryptcheck takes
+                // the CLI's names, which the patched endpoint and `--one-way` etc. share.
+                for (form, cli) in [
+                    ("oneWay", "one_way"),
+                    ("missingOnSrc", "missing_on_src"),
+                    ("missingOnDst", "missing_on_dst"),
+                ] {
+                    if let Some(value) = builder.as_map_mut().remove(form) {
+                        builder.insert(cli, value);
+                    }
+                }
                 builder.insert("src", self.source.clone());
                 builder.insert("dst", self.dest.clone());
                 builder.insert("_path", operations::CRYPTCHECK);
@@ -619,7 +631,7 @@ pub(crate) async fn start_resolved_profile_batch(
         metadata_source,
         metadata_dest,
     )
-    .with_profile(Some(params.profile_name.clone()))
+    .with_starter(Some(Starter::profile(params.profile_name.clone())))
     .with_origin(params.source)
     .with_no_cache(params.no_cache.unwrap_or(false))
     .with_dry_run(dry_run)
@@ -1006,6 +1018,38 @@ mod tests {
                     assert!(flags.contains(&"--one-way=true".to_string()));
                 }
             }
+        }
+    }
+
+    #[test]
+    fn cryptcheck_options_named_by_the_form_reach_the_endpoint_and_the_cli_by_their_cli_names() {
+        let mut params = special_params(OperationType::Cryptcheck, false);
+        params.rclone_config = json!({
+            "oneWay": true,
+            "missingOnSrc": "/tmp/src.txt",
+            "missingOnDst": "-",
+            "differ": "/tmp/differ.txt"
+        });
+        let body = params.to_rclone_body(false).unwrap();
+        assert_eq!(body["one_way"], true);
+        assert_eq!(body["missing_on_src"], "/tmp/src.txt");
+        assert_eq!(body["missing_on_dst"], "-");
+        assert_eq!(body["differ"], "/tmp/differ.txt");
+        for form in ["oneWay", "missingOnSrc", "missingOnDst"] {
+            assert!(body.get(form).is_none(), "{form} was kept");
+        }
+
+        let flags = command_flags(&body, &command_schema()).unwrap();
+        for flag in [
+            "--one-way=true",
+            "--missing-on-src=/tmp/src.txt",
+            "--missing-on-dst=-",
+            "--differ=/tmp/differ.txt",
+        ] {
+            assert!(
+                flags.contains(&flag.to_string()),
+                "missing {flag}: {flags:?}"
+            );
         }
     }
 

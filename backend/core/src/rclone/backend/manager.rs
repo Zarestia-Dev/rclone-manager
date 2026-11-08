@@ -1188,14 +1188,16 @@ mod tests {
             .await;
         // A late result from Local is written after the other backend is selected.
         let mut late = MountedRemote::new("local:", "/mount");
-        late.profile = Some("late-local-result".into());
+        late.starter = Some(crate::utils::types::starter::Starter::profile(
+            "late-local-result",
+        ));
         local.preseed_mount_metadata(late).await;
         assert!(
             other
                 .get_mount_by_point("/mount")
                 .await
                 .unwrap()
-                .profile
+                .starter
                 .is_none()
         );
         assert_eq!(
@@ -1214,8 +1216,9 @@ mod tests {
                 .get_mount_by_point("/mount")
                 .await
                 .unwrap()
-                .profile
-                .as_deref(),
+                .starter
+                .as_ref()
+                .and_then(crate::utils::types::starter::Starter::profile_name),
             Some("late-local-result")
         );
         assert_eq!(

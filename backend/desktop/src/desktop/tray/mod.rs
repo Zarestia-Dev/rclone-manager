@@ -11,8 +11,8 @@ use crate::rclone::backend::BackendManager;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::json_helpers::{extract_remote_name_from_fs, normalize_remote_name};
 use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
-use crate::utils::types::origin::Origin;
 use crate::utils::types::remotes::{MountedRemote, OperationType, ServeInstance};
+use crate::utils::types::starter;
 use icon::TrayIconKind;
 use menu::MenuPlan;
 use std::borrow::Cow;
@@ -125,20 +125,24 @@ impl<'a> ActiveProfiles<'a> {
         Self {
             jobs: jobs
                 .iter()
-                .filter(|j| j.origin != Some(Origin::QuickRun) && j.quick_run_id.is_none())
-                .filter_map(|j| Some((j.remote_name.as_str(), j.profile.as_deref()?, &j.job_type)))
+                .filter_map(|j| {
+                    let profile = starter::profile_name(j.starter.as_ref())?;
+                    Some((j.remote_name.as_str(), profile, &j.job_type))
+                })
                 .collect(),
             mounts: mounts
                 .iter()
-                .filter(|m| m.origin != Some(Origin::QuickRun) && m.quick_run_id.is_none())
-                .filter_map(|m| Some((extract_remote_name_from_fs(&m.fs), m.profile.as_deref()?)))
+                .filter_map(|m| {
+                    let profile = starter::profile_name(m.starter.as_ref())?;
+                    Some((extract_remote_name_from_fs(&m.fs), profile))
+                })
                 .collect(),
             serves: serves
                 .iter()
-                .filter(|s| s.origin != Some(Origin::QuickRun) && s.quick_run_id.is_none())
                 .filter_map(|s| {
                     let fs = s.params.get("fs").and_then(|v| v.as_str())?;
-                    Some((extract_remote_name_from_fs(fs), s.profile.as_deref()?))
+                    let profile = starter::profile_name(s.starter.as_ref())?;
+                    Some((extract_remote_name_from_fs(fs), profile))
                 })
                 .collect(),
         }
@@ -197,18 +201,18 @@ impl TraySnapshot {
         // Index active quick run IDs
         let active_qr_mounts: HashSet<&str> = mounted_remotes
             .iter()
-            .filter_map(|mt| mt.quick_run_id.as_deref())
+            .filter_map(|mt| starter::quick_run_id(mt.starter.as_ref()))
             .collect();
 
         let active_qr_serves: HashSet<&str> = active_serves
             .iter()
-            .filter_map(|srv| srv.quick_run_id.as_deref())
+            .filter_map(|srv| starter::quick_run_id(srv.starter.as_ref()))
             .collect();
 
         let active_qr_jobs: HashSet<&str> = active_jobs_raw
             .iter()
             .filter(|j| j.status == JobStatus::Running)
-            .filter_map(|j| j.quick_run_id.as_deref())
+            .filter_map(|j| starter::quick_run_id(j.starter.as_ref()))
             .collect();
 
         let all_remote_settings =
@@ -312,6 +316,7 @@ impl TraySnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::types::starter::Starter;
 
     fn cached_visuals() -> TrayVisualCache {
         TrayVisualCache {
@@ -332,20 +337,20 @@ mod tests {
             "status": "Running",
             "stats": null,
             "group": "job/1",
-            "profile": profile,
+            "starter": { "kind": "profile", "name": profile },
         }))
         .unwrap()
     }
 
     fn serve(fs: &str, profile: &str) -> ServeInstance {
         let mut serve = ServeInstance::new("id", "127.0.0.1:1", serde_json::json!({ "fs": fs }));
-        serve.profile = Some(profile.into());
+        serve.starter = Some(Starter::profile(profile));
         serve
     }
 
     fn mount(fs: &str, profile: &str) -> MountedRemote {
         let mut mount = MountedRemote::new(fs, "/mnt");
-        mount.profile = Some(profile.into());
+        mount.starter = Some(Starter::profile(profile));
         mount
     }
 
@@ -372,15 +377,20 @@ mod tests {
 
     #[test]
     fn quick_run_executions_do_not_mark_profiles_active() {
+        let quick_run = Some(Starter::quick_run("qr-1", "Default", None));
         let mut quick_job = job("gdrive", "Default", JobType::Sync);
-        quick_job.quick_run_id = Some("qr-1".into());
+        quick_job.starter.clone_from(&quick_run);
         let mut quick_mount = mount("gdrive:", "Default");
-        quick_mount.origin = Some(Origin::QuickRun);
+        quick_mount.starter.clone_from(&quick_run);
+        let mut quick_serve = serve("gdrive:", "Default");
+        quick_serve.starter = quick_run;
         let jobs = [quick_job];
         let mounts = [quick_mount];
-        let active = ActiveProfiles::new(&jobs, &mounts, &[]);
+        let serves = [quick_serve];
+        let active = ActiveProfiles::new(&jobs, &mounts, &serves);
         assert!(!active.contains("gdrive", OperationType::Sync, "Default"));
         assert!(!active.contains("gdrive", OperationType::Mount, "Default"));
+        assert!(!active.contains("gdrive", OperationType::Serve, "Default"));
     }
 
     #[test]
