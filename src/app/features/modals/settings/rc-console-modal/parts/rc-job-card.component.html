@@ -1,32 +1,27 @@
 <div class="head">
   @if (lookupError(); as error) {
-    <span class="app-pill p-warn sm">{{ 'modals.rcConsole.job.lost' | translate }}</span>
+    <span appPill tone="warn">{{ 'modals.rcConsole.job.lost' | translate }}</span>
     <span class="detail truncate">{{ error }}</span>
   } @else if (!job()) {
     <mat-icon svgIcon="spinner" class="spin"></mat-icon>
     <span class="detail">{{ 'modals.rcConsole.job.waiting' | translate: { id: jobId() } }}</span>
   } @else if (!job()!.finished) {
     <mat-icon svgIcon="spinner" class="spin"></mat-icon>
-    <span class="app-pill p-primary sm">
+    <span appPill tone="primary">
       {{ 'modals.rcConsole.job.running' | translate: { id: jobId() } }}
     </span>
     <span class="detail">{{ job()!.duration.toFixed(0) }}s</span>
-    <button
-      type="button"
-      class="app-pill interactive p-warn sm stop"
-      [disabled]="stopping()"
-      (click)="stop()"
-    >
+    <button type="button" appPill tone="warn" class="stop" [disabled]="stopping()" (click)="stop()">
       <mat-icon svgIcon="stop"></mat-icon>
       <span>{{ 'modals.rcConsole.job.stop' | translate }}</span>
     </button>
   } @else if (job()!.success) {
-    <span class="app-pill p-accent sm">
+    <span appPill tone="accent">
       {{ 'modals.rcConsole.job.done' | translate: { id: jobId() } }}
     </span>
     <span class="detail">{{ job()!.duration.toFixed(1) }}s</span>
   } @else {
-    <span class="app-pill p-warn sm">
+    <span appPill tone="warn">
       {{ 'modals.rcConsole.job.failed' | translate: { id: jobId() } }}
     </span>
     <span class="detail">{{ job()!.duration.toFixed(1) }}s</span>

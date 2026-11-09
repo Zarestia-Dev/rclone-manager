@@ -64,7 +64,7 @@
     @if (node().type === 'archivecreate') {
       <div class="summary-prop-row">
         <span class="prop-label">{{ 'flow.workflow.inspector.archiveFormat' | translate }}</span>
-        <span class="app-pill p-accent">{{ archiveFormat() | uppercase }}</span>
+        <span appPill tone="accent">{{ archiveFormat() | uppercase }}</span>
       </div>
       @if (archivePrefix()) {
         <div class="summary-prop-row">
@@ -78,7 +78,7 @@
     @if (node().type === 'serve') {
       <div class="summary-prop-row">
         <span class="prop-label">{{ 'flow.workflow.inspector.serveProtocol' | translate }}</span>
-        <span class="app-pill p-primary">{{ inspectorServeType() | uppercase }}</span>
+        <span appPill tone="primary">{{ inspectorServeType() | uppercase }}</span>
       </div>
     }
 
@@ -86,7 +86,7 @@
     @if (node().type === 'copyurl') {
       <div class="summary-prop-row">
         <span class="prop-label">{{ 'flow.workflow.inspector.autoFilename' | translate }}</span>
-        <span class="app-pill p-dim">{{
+        <span appPill tone="dim">{{
           (autoFilename() ? 'common.yes' : 'common.no') | translate
         }}</span>
       </div>
@@ -224,7 +224,7 @@
     <div class="summary-prop-row">
       <span class="prop-label">{{ 'flow.workflow.inspector.rcParameters' | translate }}</span>
       @if (rcParamCount() > 0) {
-        <span class="app-pill p-accent">
+        <span appPill tone="accent">
           {{ rcParamCount() }} {{ 'flow.workflow.inspector.parameters' | translate | lowercase }}
         </span>
       } @else {

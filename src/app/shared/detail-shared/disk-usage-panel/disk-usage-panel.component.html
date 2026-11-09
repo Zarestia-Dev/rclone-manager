@@ -10,15 +10,9 @@
     <div class="header-actions">
       @if (!cfg.notSupported && !cfg.error) {
         @if (cfg.loading) {
-          <span class="app-pill skeleton animate-shimmer" aria-hidden="true"></span>
+          <span appPill class="skeleton animate-shimmer" aria-hidden="true"></span>
         } @else {
-          <span
-            class="app-pill"
-            [class.p-primary]="usageSeverity() === 'healthy'"
-            [class.p-yellow]="usageSeverity() === 'warning'"
-            [class.p-orange]="usageSeverity() === 'high'"
-            [class.p-warn]="usageSeverity() === 'critical'"
-          >
+          <span appPill [tone]="usageTone[usageSeverity()]">
             {{ usagePercentageLabel() }}
           </span>
         }

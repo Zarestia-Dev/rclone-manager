@@ -11,10 +11,10 @@
 }
 
 .info-item {
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-xxs);
+  padding: var(--space-sm);
   display: flex;
-  border-radius: var(--card-border-radius, 8px);
+  border-radius: var(--card-border-radius);
   flex-direction: column;
   box-shadow: var(--box-shadow);
   background: var(--window-bg-color);

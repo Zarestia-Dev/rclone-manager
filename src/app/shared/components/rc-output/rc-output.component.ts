@@ -12,6 +12,7 @@ import {
   toTable,
 } from '../../utils/rc/rc-output.util';
 
+import { PillDirective } from '../../directives/pill.directive';
 type OutputView = 'pretty' | 'raw' | 'table';
 
 /** Lines shown before the rest of a long output is folded away. */
@@ -25,7 +26,7 @@ const MAX_HIGHLIGHT_CHARS = 20_000;
 
 @Component({
   selector: 'app-rc-output',
-  imports: [MatIconModule, TranslatePipe, CopyToClipboardDirective],
+  imports: [MatIconModule, TranslatePipe, CopyToClipboardDirective, PillDirective],
   templateUrl: './rc-output.component.html',
   styleUrl: './rc-output.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

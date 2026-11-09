@@ -5,27 +5,28 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Automation, AutomationStatus, OPERATION_REGISTRY } from '@app/types';
+import { Automation, AutomationStatus, OPERATION_REGISTRY, PillTone } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 const OPERATIONS = new Map(OPERATION_REGISTRY.map(op => [op.key, op]));
 
 const ORIGINS = {
-  workflow: { label: 'flow.tabs.workflow', icon: 'workflow', badge: 'p-accent' },
-  quickrun: { label: 'flow.tabs.quickRun', icon: 'quick-run', badge: 'p-primary' },
-  dashboard: { label: 'navigation.dashboard', icon: 'cloud', badge: 'p-dim' },
-} as const;
+  workflow: { label: 'flow.tabs.workflow', icon: 'workflow', tone: 'accent' },
+  quickrun: { label: 'flow.tabs.quickRun', icon: 'quick-run', tone: 'primary' },
+  dashboard: { label: 'navigation.dashboard', icon: 'cloud', tone: 'dim' },
+} as const satisfies Record<string, { label: string; icon: string; tone: PillTone }>;
 
-const STATUS_PILL: Record<AutomationStatus, string> = {
-  enabled: 'p-primary',
-  running: 'p-accent',
-  disabled: 'p-dim',
-  stopping: 'p-orange',
-  failed: 'p-warn',
+const STATUS_PILL: Record<AutomationStatus, PillTone> = {
+  enabled: 'primary',
+  running: 'accent',
+  disabled: 'dim',
+  stopping: 'orange',
+  failed: 'warn',
 };
 
 const STATUS_TOGGLE: Record<AutomationStatus, { icon: string; tooltip: string }> = {
@@ -47,6 +48,7 @@ const STATUS_TOGGLE: Record<AutomationStatus, { icon: string; tooltip: string }>
     TranslatePipe,
     CopyToClipboardDirective,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './automation-card.component.html',
   styleUrl: './automation-card.component.scss',
@@ -74,9 +76,9 @@ export class AutomationCardComponent {
   /** Icon and colour of the operation; a workflow has no operation of its own. */
   protected readonly typeMeta = computed(() => {
     const type = this.automation().automationType;
-    if (!type) return { icon: 'workflow', color: 'accent' };
+    if (!type) return { icon: 'workflow', tone: 'accent' as PillTone };
     const operation = OPERATIONS.get(type);
-    return { icon: operation?.icon ?? 'quick-run', color: operation?.cssClass ?? 'accent' };
+    return { icon: operation?.icon ?? 'quick-run', tone: operation?.tone ?? 'accent' };
   });
 
   protected readonly typeLabelKey = computed(() => {

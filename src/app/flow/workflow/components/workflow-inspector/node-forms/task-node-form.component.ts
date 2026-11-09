@@ -15,6 +15,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
 import { SUPPORTED_ARCHIVE_FORMATS } from '../../../../../services/remote/flag-definitions';
 import { hasDetailedConfig } from '../../../utils/node-style.util';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 interface RemoteItem {
   name: string;
   type?: string;
@@ -33,6 +34,7 @@ interface RemoteItem {
     MatOptionModule,
     MatSlideToggleModule,
     TranslatePipe,
+    PillDirective,
   ],
   templateUrl: './task-node-form.component.html',
   styleUrl: '../workflow-inspector.component.scss',

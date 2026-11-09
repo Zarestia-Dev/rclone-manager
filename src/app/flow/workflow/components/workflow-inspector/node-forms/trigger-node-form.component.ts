@@ -15,6 +15,7 @@ import { AlertBannerComponent } from '../../../../../shared/components/alert-ban
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { CronSummaryCardComponent } from './cron-summary-card.component';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-trigger-node-form',
   imports: [
@@ -29,6 +30,7 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
     TranslatePipe,
     AlertBannerComponent,
     CronSummaryCardComponent,
+    PillDirective,
   ],
   templateUrl: './trigger-node-form.component.html',
   styleUrl: '../workflow-inspector.component.scss',

@@ -47,6 +47,7 @@ import {
   REMOTE_FEATURE_LABEL_KEYS,
 } from 'src/app/services/remote/utils/provider-metadata.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remote-config-step',
   imports: [
@@ -62,6 +63,7 @@ import {
     TranslatePipe,
     MatIcon,
     MatDivider,
+    PillDirective,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',

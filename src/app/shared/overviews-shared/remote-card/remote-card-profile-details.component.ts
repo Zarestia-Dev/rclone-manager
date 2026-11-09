@@ -1,4 +1,4 @@
-import { NgClass, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -9,11 +9,12 @@ import {
   ProfileOpenInFilesEvent,
 } from './remote-card.types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remote-card-profile-details',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, TitleCasePipe, MatIconModule, TranslatePipe],
+  imports: [TitleCasePipe, MatIconModule, TranslatePipe, PillDirective],
   templateUrl: './remote-card-profile-details.component.html',
   styleUrls: ['./remote-card-profile-details.component.scss'],
 })

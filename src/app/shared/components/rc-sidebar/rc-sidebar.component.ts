@@ -6,6 +6,7 @@ import { RcCommandInfo } from '@app/types';
 import { SearchContainerComponent } from '../search-container/search-container.component';
 import { isDangerousCommand, isReadOnlyCommand } from '../../utils/rc/rc-console.util';
 
+import { PillDirective } from '../../directives/pill.directive';
 interface TreeGroup {
   module: string;
   commands: RcCommandInfo[];
@@ -14,7 +15,7 @@ interface TreeGroup {
 /** The list of every call rclone offers, grouped by module, in the style of the config sidebars. */
 @Component({
   selector: 'app-rc-sidebar',
-  imports: [MatIconModule, MatListModule, TranslatePipe, SearchContainerComponent],
+  imports: [MatIconModule, MatListModule, TranslatePipe, SearchContainerComponent, PillDirective],
   templateUrl: './rc-sidebar.component.html',
   styleUrl: './rc-sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

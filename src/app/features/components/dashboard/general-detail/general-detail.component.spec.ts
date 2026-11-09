@@ -11,6 +11,7 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { PillDirective } from 'src/app/shared/directives/pill.directive';
 
 describe('GeneralDetailComponent controls', () => {
   let fixture: ComponentFixture<GeneralDetailComponent>;
@@ -49,7 +50,10 @@ describe('GeneralDetailComponent controls', () => {
       ],
     }).overrideComponent(GeneralDetailComponent, {
       // Render this component's real template without descending into its panels.
-      set: { imports: [TranslatePipe, TitleCasePipe], schemas: [CUSTOM_ELEMENTS_SCHEMA] },
+      set: {
+        imports: [TranslatePipe, TitleCasePipe, PillDirective],
+        schemas: [CUSTOM_ELEMENTS_SCHEMA],
+      },
     });
     fixture = TestBed.createComponent(GeneralDetailComponent);
     fixture.detectChanges();
@@ -84,7 +88,7 @@ describe('GeneralDetailComponent controls', () => {
     );
     const stop = vi.spyOn(fixture.componentInstance.stopJob, 'emit');
     expect(button.getAttribute('aria-pressed')).toBe('true');
-    expect(button.classList.contains('p-accent')).toBe(true);
+    expect(button.dataset['tone']).toBe('accent');
     button.click();
     expect(stop).toHaveBeenCalledWith({
       type: 'mount',

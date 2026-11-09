@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { isPillTone } from '@app/types';
 import {
   hasFileReport,
   JOB_REPORT_KEYS,
@@ -20,9 +21,9 @@ describe('job-report.util', () => {
 
   it('colours every report, and the sigils of the combined one the same way', () => {
     expect(Object.keys(REPORT_PILLS).sort()).toEqual([...JOB_REPORT_KEYS].sort());
-    expect(parseReportLine('+ a', true).pill).toBe(REPORT_PILLS.missingOnDst);
-    expect(parseReportLine('* a', true).pill).toBe(REPORT_PILLS.differ);
-    expect(parseReportLine('! a', true).pill).toBe(REPORT_PILLS.error);
+    expect(parseReportLine('+ a', true).tone).toBe(REPORT_PILLS.missingOnDst);
+    expect(parseReportLine('* a', true).tone).toBe(REPORT_PILLS.differ);
+    expect(parseReportLine('! a', true).tone).toBe(REPORT_PILLS.error);
   });
 
   it('splits each sigil of a combined line from its path', () => {
@@ -31,7 +32,7 @@ describe('job-report.util', () => {
       expect(entry.sigil).toBe(sigil);
       expect(entry.path).toBe('dir/a.txt');
       expect(entry.labelKey).toContain('shared.transferActivity.report.sigils.');
-      expect(entry.pill).toMatch(/^p-/);
+      expect(isPillTone(entry.tone)).toBe(true);
       expect(entry.icon).toBeTruthy();
     }
   });

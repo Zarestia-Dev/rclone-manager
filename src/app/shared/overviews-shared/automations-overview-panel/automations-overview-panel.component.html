@@ -11,11 +11,11 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="clock" data-tone="accent" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.automations' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span class="app-pill" [class.p-primary]="active > 0" [class.p-dim]="active === 0">
+      <span appPill [tone]="active > 0 ? 'primary' : 'dim'">
         {{
           total > 0
             ? ('generalOverview.automations.activeCount'

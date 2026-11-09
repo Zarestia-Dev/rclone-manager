@@ -13,6 +13,7 @@ import {
   OpenInFilesEvent,
 } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remotes-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +23,7 @@ import {
     MatButtonModule,
     DragDropModule,
     RemoteCardComponent,
+    PillDirective,
   ],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',

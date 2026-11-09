@@ -1,6 +1,6 @@
 <header data-tauri-drag-region>
   <button tabindex="-1" aria-hidden="true">
-    <mat-icon svgIcon="trash" class="warn"></mat-icon>
+    <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
   </button>
   <p>{{ 'home.deleteRemote.title' | translate }}</p>
   <button
@@ -26,7 +26,7 @@
       </div>
       <div class="remote-identity">
         <h3 class="remote-name" [attr.title]="remoteName">{{ remoteName }}</h3>
-        <span class="app-pill p-dim">
+        <span appPill tone="dim">
           <span>{{ remoteType() | titlecase }}</span>
         </span>
       </div>
@@ -53,7 +53,7 @@
               <span class="item-title">{{ 'home.deleteRemote.types.mount' | translate }}</span>
               <span class="item-subtitle">{{ mount.mount_point }}</span>
             </div>
-            <span class="app-pill p-warn">{{ 'home.deleteRemote.willUnmount' | translate }}</span>
+            <span appPill tone="warn">{{ 'home.deleteRemote.willUnmount' | translate }}</span>
           </div>
         }
 
@@ -67,7 +67,7 @@
               >
               <span class="item-subtitle">{{ serve.addr }}</span>
             </div>
-            <span class="app-pill p-warn">{{ 'home.deleteRemote.willStop' | translate }}</span>
+            <span appPill tone="warn">{{ 'home.deleteRemote.willStop' | translate }}</span>
           </div>
         }
 
@@ -78,7 +78,7 @@
               <span class="item-title">#{{ job.jobid }} - {{ job.job_type | titlecase }}</span>
               <span class="item-subtitle">{{ job.status | titlecase }}</span>
             </div>
-            <span class="app-pill p-warn">{{ 'home.deleteRemote.willCancel' | translate }}</span>
+            <span appPill tone="warn">{{ 'home.deleteRemote.willCancel' | translate }}</span>
           </div>
         }
       </div>
@@ -96,7 +96,7 @@
       </div>
       <div class="chips-grid">
         @for (profile of profilesList(); track profile.type + '-' + profile.name) {
-          <div class="app-pill p-{{ profile.cssClass }}">
+          <div appPill [tone]="profile.tone">
             <mat-icon [svgIcon]="profile.icon"></mat-icon>
             <span class="profile-type">{{ profile.actionLabel | translate }}:</span>
             <span>{{ profile.name }}</span>
@@ -117,7 +117,7 @@
       </div>
       <div class="chips-grid">
         @for (qr of quickRunsList(); track qr.id) {
-          <div class="app-pill {{ getOpPillClass(qr.operationType) }}">
+          <div appPill [tone]="getOpTone(qr.operationType)">
             <mat-icon [svgIcon]="getOpIcon(qr.operationType)"></mat-icon>
             <span class="profile-type">{{ qr.name }}:</span>
             <span>{{ qr.operationType | titlecase }}</span>
@@ -140,7 +140,7 @@
       </div>
       <div class="chips-grid">
         @for (auto of automationsList(); track auto.id) {
-          <div class="app-pill p-accent">
+          <div appPill tone="accent">
             <mat-icon svgIcon="clock"></mat-icon>
             <span>{{ auto.profileName || auto.id }}</span>
           </div>
@@ -163,7 +163,7 @@
       </p>
       <div class="chips-grid">
         @for (wf of workflowsList(); track wf.id) {
-          <div class="app-pill p-purple" [attr.title]="wf.description || wf.name">
+          <div appPill tone="purple" [attr.title]="wf.description || wf.name">
             <mat-icon svgIcon="workflow"></mat-icon>
             <span>{{ wf.name }}</span>
           </div>
@@ -186,7 +186,7 @@
 
   <button
     matButton="filled"
-    class="warn"
+    data-tone="warn"
     (click)="onConfirm()"
     [disabled]="isDeleting()"
     [attr.aria-label]="'common.delete' | translate"

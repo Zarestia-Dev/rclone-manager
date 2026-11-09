@@ -159,7 +159,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-xxs);
 }
 
 .backend-header-row {
@@ -188,7 +188,7 @@
 
   .badge {
     font-size: var(--font-size-xs);
-    padding: 2px 8px;
+    padding: 2px var(--space-xs);
     border-radius: var(--radius-xs);
     text-transform: uppercase;
     font-weight: 600;

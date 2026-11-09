@@ -24,6 +24,7 @@ import { WorkflowEngineService } from '../../../../services/flow/workflow-engine
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { WorkflowEventService } from '../../../../services/flow/workflow-event.service';
 import { WorkflowTemplate } from '../../types/workflow.types';
+import type { PillTone } from '@app/types';
 import {
   isInputFocused,
   isKeyboardEventInScope,
@@ -31,6 +32,7 @@ import {
 } from '../../../../shared/utils/keyboard-utils';
 import { syncResponsiveSidebar } from '../../../../shared/utils';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-workflow-workspace',
   imports: [
@@ -43,6 +45,7 @@ import { syncResponsiveSidebar } from '../../../../shared/utils';
     WorkflowCanvasComponent,
     WorkflowInspectorComponent,
     WorkflowExecutionLogComponent,
+    PillDirective,
   ],
   templateUrl: './workflow-workspace.component.html',
   styleUrl: './workflow-workspace.component.scss',
@@ -160,18 +163,18 @@ export class WorkflowWorkspaceComponent {
     }
   }
 
-  getTemplatePillClass(category: string): string {
+  getTemplateTone(category: string): PillTone {
     switch (category) {
       case 'backup':
-        return 'p-primary';
+        return 'primary';
       case 'automation':
-        return 'p-orange';
+        return 'orange';
       case 'sync':
-        return 'p-accent';
+        return 'accent';
       case 'utility':
-        return 'p-purple';
+        return 'purple';
       default:
-        return 'p-accent';
+        return 'accent';
     }
   }
 

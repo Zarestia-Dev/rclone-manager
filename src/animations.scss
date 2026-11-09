@@ -97,13 +97,13 @@
 
 @keyframes pulseGreen {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0.5);
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.5);
   }
   50% {
-    box-shadow: 0 0 0 16px rgba(var(--light-green-rgb), 0);
+    box-shadow: 0 0 0 16px rgba(var(--primary-color-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0);
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0);
   }
 }
 
@@ -121,13 +121,13 @@
 
 @keyframes pulseOrange {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.5);
+    box-shadow: 0 0 0 0 rgba(var(--orange-rgb), 0.5);
   }
   50% {
-    box-shadow: 0 0 0 16px rgba(var(--light-orange-rgb), 0);
+    box-shadow: 0 0 0 16px rgba(var(--orange-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0);
+    box-shadow: 0 0 0 0 rgba(var(--orange-rgb), 0);
   }
 }
 
@@ -152,18 +152,6 @@
   }
   100% {
     box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0);
-  }
-}
-
-@keyframes pulseMode {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
   }
 }
 
@@ -197,62 +185,15 @@
 // ===== ICON PULSE ANIMATIONS =====
 // Smaller, more subtle pulse effects for icons with scaling
 
-@keyframes iconPulseRed {
+// The ring and scale pulse of an icon, in the colour of the surrounding tone scope.
+@keyframes iconPulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.4);
+    box-shadow: 0 0 0 0 rgba(var(--tone-rgb), 0.4);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(var(--warn-color-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes iconPulseGreen {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes iconPulseBlue {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--accent-color-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes iconPulseYellow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--yellow-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes iconPulseOrange {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--light-orange-rgb), 0.1);
+    box-shadow: 0 0 0 10px rgba(var(--tone-rgb), 0.1);
     transform: scale(1.05);
   }
 }
@@ -421,7 +362,7 @@
     max-height: 200px;
     padding-top: 10px;
     padding-bottom: 10px;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-sm);
   }
 }
 
@@ -431,7 +372,7 @@
     max-height: 200px;
     padding-top: 10px;
     padding-bottom: 10px;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-sm);
   }
   100% {
     opacity: 0;
@@ -508,30 +449,6 @@
   animation: pulseRed 2s infinite;
 }
 
-.animate-pulse-mode {
-  animation: pulseMode 2s infinite;
-}
-
-.animate-icon-pulse-red {
-  animation: iconPulseRed 1.5s infinite;
-}
-
-.animate-icon-pulse-green {
-  animation: iconPulseGreen 1.5s infinite;
-}
-
-.animate-icon-pulse-blue {
-  animation: iconPulseBlue 1.5s infinite;
-}
-
-.animate-icon-pulse-yellow {
-  animation: iconPulseYellow 1.5s infinite;
-}
-
-.animate-icon-pulse-orange {
-  animation: iconPulseOrange 1.5s infinite;
-}
-
 .animate-breathing {
   animation: breathing 2s ease-in-out infinite;
 }
@@ -551,7 +468,7 @@
 .skeleton-text {
   display: inline-block;
   height: 15px;
-  border-radius: 4px;
+  border-radius: var(--radius-xxs);
   background: var(--bg-elevated-3);
 }
 

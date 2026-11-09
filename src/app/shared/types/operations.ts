@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import { OPERATION_REGISTRY } from './operation-registry';
 
 // ── Types inferred directly from the registry! ──────────────────────────────
@@ -120,7 +121,7 @@ export interface SyncOperationConfig {
   /** i18n key for a descriptive tooltip. */
   description?: string;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
 }
 
 // ── View model ──────────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ export interface QuickActionButton {
   tooltip: string;
   isLoading?: boolean;
   isDisabled?: boolean;
-  cssClass?: string;
+  tone?: PillTone;
 }
 
 export const OPERATION_ICONS = Object.freeze(

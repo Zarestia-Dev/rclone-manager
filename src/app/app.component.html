@@ -9,7 +9,7 @@
           (initializationFailed() ? 'settings.loadFailed' : 'backendErrors.remote.networkError')
             | translate
         }}</span>
-        <button matButton="filled" class="accent" type="button" (click)="retryInit()">
+        <button matButton="filled" data-tone="accent" type="button" (click)="retryInit()">
           {{ 'common.retry' | translate }}
         </button>
       </div>

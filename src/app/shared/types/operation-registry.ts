@@ -1,3 +1,5 @@
+import type { PillTone } from './pill';
+
 export interface OperationDefinition {
   /** The operation key (e.g., 'sync', 'check', 'mount') */
   readonly key: string;
@@ -18,8 +20,8 @@ export interface OperationDefinition {
   readonly icon: string;
   /** Capitalized label for rclone API calls */
   readonly apiLabel: string;
-  /** CSS class for theming */
-  readonly cssClass: string;
+  /** Colour role of the operation (bisync purple, serve accent, ...); see the tone scope in custom-theme.scss. */
+  readonly tone: PillTone;
   /** Animation class when active */
   readonly animationClass: string;
 
@@ -61,7 +63,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'mount',
     apiLabel: 'Mount',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.mount',
     activeTooltip: 'mount.mounted',
@@ -86,7 +88,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'refresh',
     apiLabel: 'Sync',
-    cssClass: 'primary',
+    tone: 'primary',
     animationClass: 'animate-spin',
     actionLabel: 'actions.sync',
     activeTooltip: 'operations.syncing',
@@ -111,7 +113,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'copy',
     apiLabel: 'Copy',
-    cssClass: 'yellow',
+    tone: 'yellow',
     animationClass: 'animate-copy',
     actionLabel: 'actions.copy',
     activeTooltip: 'operations.copying',
@@ -136,7 +138,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'move',
     apiLabel: 'Move',
-    cssClass: 'orange',
+    tone: 'orange',
     animationClass: 'animate-move',
     actionLabel: 'actions.move',
     activeTooltip: 'operations.moving',
@@ -161,7 +163,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'right-left',
     apiLabel: 'Bisync',
-    cssClass: 'purple',
+    tone: 'purple',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.bisync',
     activeTooltip: 'operations.bisyncActive',
@@ -186,7 +188,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'serve',
     apiLabel: 'Serve',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-pulse-blue',
     actionLabel: 'actions.serve',
     activeTooltip: 'serve.serving',
@@ -211,7 +213,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'search',
     apiLabel: 'Check',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.check',
     activeTooltip: 'operations.checkActive',
@@ -236,7 +238,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'trash',
     apiLabel: 'Delete',
-    cssClass: 'warn',
+    tone: 'warn',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.delete',
     activeTooltip: 'operations.deleteActive',
@@ -261,7 +263,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'link',
     apiLabel: 'Copyurl',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.copyurl',
     activeTooltip: 'operations.copyurlActive',
@@ -286,7 +288,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'compress',
     apiLabel: 'Archivecreate',
-    cssClass: 'primary',
+    tone: 'primary',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.archivecreate',
     activeTooltip: 'operations.archivecreating',
@@ -311,7 +313,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'shield',
     apiLabel: 'Cryptcheck',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.cryptcheck',
     activeTooltip: 'operations.cryptcheckActive',
@@ -328,3 +330,8 @@ export const OPERATION_REGISTRY = [
     configKey: 'cryptcheckConfigs',
   },
 ] as const satisfies readonly OperationDefinition[];
+
+/** Colour role per operation key; the one place that says bisync is purple and serve is accent. */
+export const OPERATION_TONE: Readonly<Record<string, PillTone>> = Object.freeze(
+  Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.tone]))
+);

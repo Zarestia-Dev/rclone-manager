@@ -1,3 +1,5 @@
+import type { PillTone } from '../../../shared/types/pill';
+
 export type WorkflowNodeCategory = 'trigger' | 'task' | 'logic' | 'action';
 
 type WorkflowPortType = 'in' | 'out' | 'success' | 'failure' | 'true' | 'false';
@@ -94,7 +96,7 @@ export interface NodePaletteItem {
   titleKey: string;
   descriptionKey: string;
   icon: string;
-  cssClass?: string;
+  tone?: PillTone;
   defaultInputs: WorkflowPort[];
   defaultOutputs: WorkflowPort[];
   defaultConfig: Record<string, unknown>;

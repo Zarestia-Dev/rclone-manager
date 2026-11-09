@@ -18,6 +18,7 @@ import { AutomationService } from '../../../services/operations/automation.servi
 import { matchesOriginFilter } from '../../utils/automation-origin.util';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-automations-overview-panel',
   standalone: true,
@@ -28,6 +29,7 @@ import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar
     TranslatePipe,
     AutomationCardComponent,
     OriginFilterBarComponent,
+    PillDirective,
   ],
   templateUrl: './automations-overview-panel.component.html',
   styleUrls: ['./automations-overview-panel.component.scss'],

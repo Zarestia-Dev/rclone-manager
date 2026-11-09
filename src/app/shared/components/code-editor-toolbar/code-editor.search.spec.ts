@@ -122,7 +122,7 @@ describe('Code editor search panel', () => {
     expect(getSearchQuery(view.state).caseSensitive).toBe(true);
     expect(getSearchQuery(view.state).replace).toBe('dog');
     expect(button('caseSensitive').getAttribute('aria-pressed')).toBe('true');
-    expect(button('caseSensitive').classList.contains('p-accent')).toBe(true);
+    expect(button('caseSensitive').dataset['tone']).toBe('accent');
   });
 
   it('supports next, previous, Enter and Shift+Enter without bubbling navigation keys', () => {

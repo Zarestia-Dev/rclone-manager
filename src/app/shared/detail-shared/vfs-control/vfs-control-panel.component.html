@@ -163,7 +163,7 @@
                       {{ 'shared.vfsControl.queue.size' | translate }}
                     </th>
                     <td mat-cell *matCellDef="let item">
-                      <span class="app-pill p-dim pill-sm">{{ item.size | formatFileSize }}</span>
+                      <span appPill tone="dim" size="xs">{{ item.size | formatFileSize }}</span>
                     </td>
                   </ng-container>
 
@@ -178,7 +178,7 @@
                             {{ item.status }}
                           </span>
                           @if (item.tries > 0) {
-                            <span class="app-pill p-orange pill-sm"
+                            <span appPill tone="orange" size="xs"
                               >{{ item.tries }}
                               {{ 'shared.vfsControl.queue.tries' | translate }}</span
                             >
@@ -193,7 +193,7 @@
                                 'shared.vfsControl.queue.tooltips.uploadNext' | translate
                               "
                             >
-                              <mat-icon svgIcon="file-arrow-up" class="primary"></mat-icon>
+                              <mat-icon svgIcon="file-arrow-up" data-tone="primary"></mat-icon>
                             </button>
                           }
                           @if (!item.uploading) {
@@ -204,7 +204,7 @@
                                 'shared.vfsControl.queue.tooltips.delayLong' | translate
                               "
                             >
-                              <mat-icon svgIcon="stop" class="warn"></mat-icon>
+                              <mat-icon svgIcon="stop" data-tone="warn"></mat-icon>
                             </button>
                             <button
                               matIconButton
@@ -214,9 +214,11 @@
                                   ? ('shared.vfsControl.queue.tooltips.hideSlider' | translate)
                                   : ('shared.vfsControl.queue.tooltips.setDelay' | translate)
                               "
-                              [class]="showDelaySlider() === item.id ? 'primary' : undefined"
+                              [attr.data-tone]="
+                                (showDelaySlider() === item.id ? 'primary' : undefined) || null
+                              "
                             >
-                              <mat-icon svgIcon="clock" class="accent"></mat-icon>
+                              <mat-icon svgIcon="clock" data-tone="accent"></mat-icon>
                             </button>
                           }
                         </div>
@@ -255,7 +257,7 @@
                           </button>
                           <button
                             matButton="elevated"
-                            class="primary"
+                            data-tone="primary"
                             (click)="setCustomDelay(item)"
                           >
                             {{ 'shared.vfsControl.queue.slider.apply' | translate }}
@@ -468,7 +470,7 @@
         @if (loading()) {
           <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
-          <mat-icon svgIcon="refresh" class="purple"></mat-icon>
+          <mat-icon svgIcon="refresh" data-tone="purple"></mat-icon>
         }
       </button>
 
@@ -478,7 +480,7 @@
         [attr.title]="'shared.vfsControl.actions.clearCache' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
-        <mat-icon svgIcon="trash" class="warn"></mat-icon>
+        <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
       </button>
 
       <button
@@ -490,7 +492,7 @@
         @if (loading()) {
           <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
-          <mat-icon svgIcon="rotate-right" class="accent"></mat-icon>
+          <mat-icon svgIcon="rotate-right" data-tone="accent"></mat-icon>
         }
       </button>
     </div>

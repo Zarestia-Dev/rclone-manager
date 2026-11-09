@@ -40,6 +40,7 @@ import {
   type PathGroup,
   type PathInspectionStatus,
   type DefaultPathOp,
+  type PillTone,
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -59,6 +60,7 @@ import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mappe
 import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
 import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
+import { PillDirective } from '../../directives/pill.directive';
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
 
@@ -92,6 +94,7 @@ interface PathItem {
     AlertBannerComponent,
     CdkOverlayAutoposDirective,
     UrlPreviewComponent,
+    PillDirective,
   ],
   providers: [PathSelectionService],
   templateUrl: './app-operation-config.component.html',
@@ -99,6 +102,21 @@ interface PathItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OperationConfigComponent {
+  private static readonly INSPECTION_TONES: Readonly<
+    Record<PathInspectionStatus['state'], PillTone>
+  > = {
+    clean: 'primary',
+    nonEmpty: 'orange',
+    unavailable: 'orange',
+    colliding: 'warn',
+    willCreate: 'accent',
+    checking: 'dim',
+  };
+
+  protected inspectionTone(state: PathInspectionStatus['state']): PillTone {
+    return OperationConfigComponent.INSPECTION_TONES[state];
+  }
+
   readonly opFormGroup = input.required<FormGroup>();
   readonly operationType = input.required<EditTarget>();
   readonly currentRemoteName = input.required<string>();

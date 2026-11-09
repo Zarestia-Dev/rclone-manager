@@ -21,6 +21,7 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
 import { relativeTimeLabel } from '../../utils/relative-time.util';
 import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +35,7 @@ import { StarterPillComponent } from '../../components/starter-pill/starter-pill
     FormatTimePipe,
     TranslatePipe,
     StarterPillComponent,
+    PillDirective,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   templateUrl: './jobs-panel.component.html',
@@ -76,7 +78,7 @@ export class JobsPanelComponent {
       return {
         ...job,
         statusLower,
-        badgeClass: JOB_STATUS_BADGE_MAP[statusLower] || 'p-accent',
+        tone: JOB_STATUS_BADGE_MAP[statusLower] || 'accent',
         relativeTime,
         durationSeconds,
         progress: hasProgress

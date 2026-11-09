@@ -54,7 +54,9 @@ import {
 import { QuickRunCardComponent } from '../../../../flow/quick-run/quick-run-card/quick-run-card.component';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { QuickRun } from '@app/types';
+import { STATUS_INDICATOR_META } from 'src/app/shared/overviews-shared/remote-card/remote-card.types';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-general-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,11 +72,13 @@ import { QuickRun } from '@app/types';
     AutomationCardComponent,
     OriginFilterBarComponent,
     QuickRunCardComponent,
+    PillDirective,
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
 })
 export class GeneralDetailComponent {
+  protected readonly statusIndicatorMeta = STATUS_INDICATOR_META;
   protected readonly iconService = inject(IconService);
   private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);

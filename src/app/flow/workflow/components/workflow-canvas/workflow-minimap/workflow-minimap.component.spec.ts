@@ -35,7 +35,7 @@ describe('WorkflowMinimapComponent', () => {
 
   it('renders scaled nodes and viewport box', () => {
     expect(component.scaledNodes().length).toBe(1);
-    expect(component.scaledNodes()[0].colorClass).toBe('primary');
+    expect(component.scaledNodes()[0].tone).toBe('primary');
     expect(component.viewportRect().width).toBeGreaterThan(0);
   });
 
@@ -69,8 +69,8 @@ describe('WorkflowMinimapComponent', () => {
     fixture.detectChanges();
 
     expect(component.scaledEdges().length).toBe(1);
-    expect(component.scaledNodes()[0].colorClass).toBe('primary');
-    expect(component.scaledNodes()[1].colorClass).toBe('primary');
+    expect(component.scaledNodes()[0].tone).toBe('primary');
+    expect(component.scaledNodes()[1].tone).toBe('primary');
   });
 
   it('emits panTo on click', () => {

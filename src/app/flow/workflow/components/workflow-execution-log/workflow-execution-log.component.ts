@@ -19,6 +19,7 @@ import { NotificationService } from '../../../../services/ui/notification.servic
 import { WorkflowLogEntry, WorkflowLogSeverity } from '../../types/workflow.types';
 import { computed } from '@angular/core';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-workflow-execution-log',
   imports: [
@@ -28,6 +29,7 @@ import { computed } from '@angular/core';
     MatButtonModule,
     MatProgressBarModule,
     TranslatePipe,
+    PillDirective,
   ],
   templateUrl: './workflow-execution-log.component.html',
   styleUrl: './workflow-execution-log.component.scss',

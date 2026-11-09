@@ -53,6 +53,7 @@ import { LogicNodeFormComponent } from './node-forms/logic-node-form.component';
 import { ActionNodeFormComponent } from './node-forms/action-node-form.component';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-workflow-inspector',
   imports: [
@@ -73,6 +74,7 @@ import { AlertBannerComponent } from '../../../../shared/components/alert-banner
     LogicNodeFormComponent,
     ActionNodeFormComponent,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './workflow-inspector.component.html',
   styleUrl: './workflow-inspector.component.scss',
@@ -132,8 +134,7 @@ export class WorkflowInspectorComponent {
     return this.styleMeta()?.icon || 'workflow';
   });
 
-  readonly nodePillClass = computed(() => this.styleMeta()?.pillClass || 'p-dim');
-  readonly nodeCssClass = computed(() => this.styleMeta()?.cssClass || 'dim');
+  readonly nodeTone = computed(() => this.styleMeta()?.tone ?? 'dim');
 
   readonly hasDetailedConfig = computed(() => {
     const node = this.selectedNode();

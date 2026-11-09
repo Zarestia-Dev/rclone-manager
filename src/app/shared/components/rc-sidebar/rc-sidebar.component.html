@@ -29,7 +29,7 @@
             [svgIcon]="isOpen(group.module) ? 'chevron-down' : 'chevron-right'"
           ></mat-icon>
           <span matListItemTitle>{{ group.module }}</span>
-          <span matListItemMeta class="count-badge">{{ group.commands.length }}</span>
+          <span matListItemMeta appPill size="xs" tone="dim">{{ group.commands.length }}</span>
         </button>
         @if (isOpen(group.module)) {
           @for (command of group.commands; track command.Path) {
@@ -47,7 +47,7 @@
                 <mat-icon
                   matListItemMeta
                   class="flag"
-                  [class.warn]="marker === 'shield-xmark'"
+                  [attr.data-tone]="marker === 'shield-xmark' ? 'warn' : null"
                   [svgIcon]="marker"
                 ></mat-icon>
               }

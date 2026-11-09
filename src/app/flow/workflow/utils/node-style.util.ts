@@ -1,16 +1,15 @@
-import { OPERATION_REGISTRY } from '@app/types';
+import { OPERATION_REGISTRY, PillTone } from '@app/types';
 
 export interface NodeStyleMeta {
   icon: string;
-  cssClass: string;
-  pillClass: string;
+  tone: PillTone;
   titleKey?: string;
   descriptionKey?: string;
 }
 
 interface RawNodeStyleMeta {
   icon: string;
-  cssClass: string;
+  tone: PillTone;
   titleKey: string;
   descriptionKey: string;
 }
@@ -19,31 +18,31 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
   // Triggers
   manual: {
     icon: 'play',
-    cssClass: 'primary',
+    tone: 'primary',
     titleKey: 'flow.workflow.nodes.manualTrigger',
     descriptionKey: 'flow.workflow.nodes.manualTriggerDesc',
   },
   app_start: {
     icon: 'bolt',
-    cssClass: 'yellow',
+    tone: 'yellow',
     titleKey: 'flow.workflow.nodes.appStart',
     descriptionKey: 'flow.workflow.nodes.appStartDesc',
   },
   cron: {
     icon: 'clock',
-    cssClass: 'purple',
+    tone: 'purple',
     titleKey: 'flow.workflow.nodes.cronSchedule',
     descriptionKey: 'flow.workflow.nodes.cronScheduleDesc',
   },
   watcher: {
     icon: 'sync',
-    cssClass: 'orange',
+    tone: 'orange',
     titleKey: 'flow.workflow.nodes.folderWatcher',
     descriptionKey: 'flow.workflow.nodes.folderWatcherDesc',
   },
   job_event: {
     icon: 'done-all',
-    cssClass: 'accent',
+    tone: 'accent',
     titleKey: 'flow.workflow.nodes.jobEvent',
     descriptionKey: 'flow.workflow.nodes.jobEventDesc',
   },
@@ -51,31 +50,31 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
   // Tasks
   cleanup: {
     icon: 'broom',
-    cssClass: 'warn',
+    tone: 'warn',
     titleKey: 'flow.workflow.nodes.cleanup',
     descriptionKey: 'flow.workflow.nodes.cleanupDesc',
   },
   cryptcheck: {
     icon: 'shield',
-    cssClass: 'accent',
+    tone: 'accent',
     titleKey: 'flow.workflow.nodes.cryptcheck',
     descriptionKey: 'flow.workflow.nodes.cryptcheckDesc',
   },
   exec_script: {
     icon: 'terminal',
-    cssClass: 'purple',
+    tone: 'purple',
     titleKey: 'flow.workflow.nodes.execScript',
     descriptionKey: 'flow.workflow.nodes.execScriptDesc',
   },
   quick_run: {
     icon: 'quick-run',
-    cssClass: 'orange',
+    tone: 'orange',
     titleKey: 'flow.workflow.nodes.quickRun',
     descriptionKey: 'flow.workflow.nodes.quickRunDesc',
   },
   rc_command: {
     icon: 'terminal',
-    cssClass: 'accent',
+    tone: 'accent',
     titleKey: 'flow.workflow.nodes.rcCommand',
     descriptionKey: 'flow.workflow.nodes.rcCommandDesc',
   },
@@ -83,37 +82,37 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
   // Logic
   condition: {
     icon: 'flow',
-    cssClass: 'yellow',
+    tone: 'yellow',
     titleKey: 'flow.workflow.nodes.condition',
     descriptionKey: 'flow.workflow.nodes.conditionDesc',
   },
   delay: {
     icon: 'clock',
-    cssClass: 'purple',
+    tone: 'purple',
     titleKey: 'flow.workflow.nodes.delay',
     descriptionKey: 'flow.workflow.nodes.delayDesc',
   },
   schedule_wait: {
     icon: 'clock',
-    cssClass: 'purple',
+    tone: 'purple',
     titleKey: 'flow.workflow.nodes.scheduleWait',
     descriptionKey: 'flow.workflow.nodes.scheduleWaitDesc',
   },
   parallel_fork: {
     icon: 'flow',
-    cssClass: 'yellow',
+    tone: 'yellow',
     titleKey: 'flow.workflow.nodes.parallelFork',
     descriptionKey: 'flow.workflow.nodes.parallelForkDesc',
   },
   join: {
     icon: 'done-all',
-    cssClass: 'accent',
+    tone: 'accent',
     titleKey: 'flow.workflow.nodes.join',
     descriptionKey: 'flow.workflow.nodes.joinDesc',
   },
   stop: {
     icon: 'stop',
-    cssClass: 'warn',
+    tone: 'warn',
     titleKey: 'flow.workflow.nodes.stop',
     descriptionKey: 'flow.workflow.nodes.stopDesc',
   },
@@ -121,31 +120,31 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
   // Actions
   notification: {
     icon: 'bell',
-    cssClass: 'primary',
+    tone: 'primary',
     titleKey: 'flow.workflow.nodes.notification',
     descriptionKey: 'flow.workflow.nodes.notificationDesc',
   },
   unmount: {
     icon: 'eject',
-    cssClass: 'warn',
+    tone: 'warn',
     titleKey: 'flow.workflow.nodes.unmount',
     descriptionKey: 'flow.workflow.nodes.unmountDesc',
   },
   stop_serve: {
     icon: 'stop',
-    cssClass: 'warn',
+    tone: 'warn',
     titleKey: 'flow.workflow.nodes.stopServe',
     descriptionKey: 'flow.workflow.nodes.stopServeDesc',
   },
   system_power: {
     icon: 'power-off',
-    cssClass: 'yellow',
+    tone: 'yellow',
     titleKey: 'flow.workflow.nodes.systemPower',
     descriptionKey: 'flow.workflow.nodes.systemPowerDesc',
   },
   log_audit: {
     icon: 'file-lines',
-    cssClass: 'dim',
+    tone: 'dim',
     titleKey: 'flow.workflow.nodes.logAudit',
     descriptionKey: 'flow.workflow.nodes.logAuditDesc',
   },
@@ -154,11 +153,9 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
 export function getNodeStyleMeta(type: string): NodeStyleMeta {
   const opDef = OPERATION_REGISTRY.find(op => op.key === type);
   if (opDef) {
-    const cssClass = opDef.cssClass || 'accent';
     return {
       icon: opDef.icon,
-      cssClass,
-      pillClass: `p-${cssClass}`,
+      tone: opDef.tone,
       titleKey: opDef.typeLabel,
       descriptionKey: opDef.settingsDescription,
     };
@@ -168,8 +165,7 @@ export function getNodeStyleMeta(type: string): NodeStyleMeta {
   if (meta) {
     return {
       icon: meta.icon,
-      cssClass: meta.cssClass,
-      pillClass: `p-${meta.cssClass}`,
+      tone: meta.tone,
       titleKey: meta.titleKey,
       descriptionKey: meta.descriptionKey,
     };
@@ -177,8 +173,7 @@ export function getNodeStyleMeta(type: string): NodeStyleMeta {
 
   return {
     icon: 'workflow',
-    cssClass: 'dim',
-    pillClass: 'p-dim',
+    tone: 'dim',
   };
 }
 

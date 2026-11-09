@@ -10,6 +10,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertHistoryFilter, AlertSeverity } from '@app/types';
 import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-alert-history',
   imports: [
@@ -19,6 +20,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     MatTableModule,
     TranslatePipe,
     SearchContainerComponent,
+    PillDirective,
   ],
   template: `
     <div class="history-container">
@@ -26,7 +28,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         <div class="quick-filters">
           <button
             type="button"
-            class="app-pill interactive"
+            appPill
             [style]="getFilterStyle(undefined)"
             (click)="setSeverityFilter(undefined)"
           >
@@ -36,7 +38,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           @for (sev of severities; track sev) {
             <button
               type="button"
-              class="app-pill interactive"
+              appPill
               [style]="getFilterStyle(sev)"
               (click)="setSeverityFilter(sev)"
             >
@@ -99,7 +101,8 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           @if (alerts.filter().remote) {
             <button
               type="button"
-              class="app-pill interactive p-accent"
+              appPill
+              tone="accent"
               (click)="clearFilter('remote')"
               [attr.title]="alerts.filter().remote"
               [attr.aria-label]="alerts.filter().remote"
@@ -112,7 +115,8 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           @if (alerts.filter().profile) {
             <button
               type="button"
-              class="app-pill interactive p-primary"
+              appPill
+              tone="primary"
               (click)="clearFilter('profile')"
               [attr.title]="alerts.filter().profile"
               [attr.aria-label]="alerts.filter().profile"
@@ -125,7 +129,8 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           @if (alerts.filter().backend) {
             <button
               type="button"
-              class="app-pill interactive p-dim"
+              appPill
+              tone="dim"
               (click)="clearFilter('backend')"
               [attr.title]="alerts.filter().backend"
               [attr.aria-label]="alerts.filter().backend"
@@ -239,7 +244,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let alert">
                 <div class="row-actions">
-                  <span class="app-pill p-dim event-pill">
+                  <span appPill tone="dim">
                     {{ 'alerts.events.' + alert.event_kind | translate }}
                   </span>
 
@@ -248,7 +253,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                       @for (res of alert.action_results; track res.action_id) {
                         <mat-icon
                           [svgIcon]="res.success ? 'check-circle' : 'circle-xmark'"
-                          [class]="res.success ? 'primary' : 'warn'"
+                          [attr.data-tone]="res.success ? 'primary' : 'warn'"
                           [attr.title]="res.action_name + (res.error ? ': ' + res.error : '')"
                         ></mat-icon>
                       }
@@ -402,7 +407,8 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     }
 
     .mat-mdc-row {
-      border-left: 3px solid var(--row-accent, transparent);
+      --row-accent: transparent;
+      border-left: 3px solid var(--row-accent);
       transition: background 0.1s ease;
 
       &:hover {
@@ -513,12 +519,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       flex-wrap: wrap;
       gap: var(--space-xs);
       padding: var(--space-xs) 0;
-    }
-
-    .event-pill.app-pill {
-      font-size: var(--font-size-xs);
-      padding: 1px 6px;
-      min-height: unset;
     }
 
     .action-results {

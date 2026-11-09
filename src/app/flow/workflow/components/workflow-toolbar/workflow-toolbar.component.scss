@@ -13,7 +13,7 @@
   .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .toolbar-left {
@@ -28,7 +28,7 @@
     background: var(--hover-bg-color);
     box-shadow: 0 0 0 1px var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 2px 4px 2px 8px;
+    padding: 2px var(--space-xxs) 2px var(--space-xs);
     transition: var(--transition-fast);
 
     &:focus-within,
@@ -47,7 +47,7 @@
       font-family: inherit;
       min-width: 140px;
       max-width: 260px;
-      padding: 2px 4px;
+      padding: 2px var(--space-xxs);
 
       &::placeholder {
         color: var(--dim-color);
@@ -84,12 +84,12 @@
   .run-actions-group {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .run-workflow-btn {
     background: var(--primary-color);
-    color: #ffffff;
+    color: var(--accent-fg-color);
 
     &:hover {
       background: var(--gnome-green-5);
@@ -98,7 +98,7 @@
   }
 
   .dry-run-workflow-btn {
-    padding: 6px 12px;
+    padding: 6px var(--space-sm);
     background: rgba(var(--accent-color-rgb), 0.12);
     border: 1px dashed rgba(var(--accent-color-rgb), 0.45);
     color: var(--accent-color);
@@ -113,13 +113,13 @@
   .toolbar-execution-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
 
     .toolbar-execution-status {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: var(--space-xxs) 10px;
       border-radius: 999px;
       background: rgba(var(--accent-color-rgb), 0.12);
       border: 1px solid rgba(var(--accent-color-rgb), 0.25);
@@ -132,7 +132,7 @@
         border-color: rgba(var(--accent-color-rgb), 0.5);
 
         .simulation-tag {
-          margin-right: 4px;
+          margin-right: var(--space-xxs);
           font-weight: 700;
         }
       }
@@ -157,7 +157,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 6px var(--space-sm);
     border-radius: var(--button-border-radius);
     background: var(--hover-bg-color);
     box-shadow: 0 0 0 1px var(--border-color);
@@ -229,7 +229,7 @@
     .toolbar-left,
     .toolbar-center,
     .toolbar-right {
-      gap: 4px;
+      gap: var(--space-xxs);
     }
 
     .toolbar-left {
@@ -312,7 +312,7 @@
       display: flex;
       align-items: center;
       gap: 2px;
-      padding-right: 4px;
+      padding-right: var(--space-xxs);
       opacity: 0.35;
       transition: var(--transition-fast);
     }

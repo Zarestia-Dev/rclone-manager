@@ -9,6 +9,7 @@ import {
   TransferStatus,
   RcloneActivity,
   JobActionType,
+  PillTone,
 } from '@app/types';
 
 export type ActivityTarget = 'src' | 'dst';
@@ -20,49 +21,49 @@ export interface ActivityRow extends CompletedTransfer {
 }
 
 export interface ActivityBadge {
-  cssClass: string;
+  tone: PillTone;
   icon: string;
   text: string;
 }
 
 const STATUS_BADGES: Readonly<Record<TransferStatus, ActivityBadge>> = Object.freeze({
   [TRANSFER_STATUS.Completed]: {
-    cssClass: 'p-primary',
+    tone: 'primary',
     icon: 'check-circle',
     text: 'shared.transferActivity.status.completed',
   },
   [TRANSFER_STATUS.Checked]: {
-    cssClass: 'p-accent',
+    tone: 'accent',
     icon: 'check-circle',
     text: 'shared.transferActivity.status.checked',
   },
   [TRANSFER_STATUS.Failed]: {
-    cssClass: 'p-warn',
+    tone: 'warn',
     icon: 'circle-exclamation',
     text: 'shared.transferActivity.status.failed',
   },
   [TRANSFER_STATUS.Partial]: {
-    cssClass: 'p-orange',
+    tone: 'orange',
     icon: 'circle-exclamation',
     text: 'shared.transferActivity.status.partial',
   },
   [TRANSFER_STATUS.MissingDestination]: {
-    cssClass: 'p-warn',
+    tone: 'warn',
     icon: 'circle-exclamation',
     text: 'shared.transferActivity.status.missingDst',
   },
   [TRANSFER_STATUS.MissingSource]: {
-    cssClass: 'p-warn',
+    tone: 'warn',
     icon: 'circle-exclamation',
     text: 'shared.transferActivity.status.missingSrc',
   },
 });
 const DIFFERENCE_BADGE: ActivityBadge = {
-  cssClass: 'p-orange',
+  tone: 'orange',
   icon: 'circle-exclamation',
   text: 'shared.transferActivity.status.differ',
 };
-const DELETE_BADGE: ActivityBadge = { cssClass: 'p-primary', icon: 'trash', text: 'common.delete' };
+const DELETE_BADGE: ActivityBadge = { tone: 'primary', icon: 'trash', text: 'common.delete' };
 
 export function activityBadge(item: CompletedTransfer, jobType: JobActionType): ActivityBadge {
   const status = effectiveTransferStatus(item);
@@ -158,7 +159,7 @@ export function checkResolution(item: CompletedTransfer): CheckResolution | null
 
 export interface CheckResolutionInfo {
   icon: string;
-  cssClass: string;
+  tone: PillTone;
   /** Says what happens to the file and in which direction. */
   directionKey: string;
   /** The short form of `directionKey`, for a table cell. */
@@ -171,21 +172,21 @@ export const CHECK_RESOLUTION_INFO: Readonly<Record<CheckResolution, CheckResolu
   Object.freeze({
     toDestination: {
       icon: 'right-arrow',
-      cssClass: 'p-primary',
+      tone: 'primary',
       directionKey: 'shared.transferActivity.direction.toDestination',
       labelKey: 'shared.transferActivity.direction.labelToDestination',
       actionKey: 'shared.transferActivity.actions.resolveToDst',
     },
     toSource: {
       icon: 'left-arrow',
-      cssClass: 'p-accent',
+      tone: 'accent',
       directionKey: 'shared.transferActivity.direction.toSource',
       labelKey: 'shared.transferActivity.direction.labelToSource',
       actionKey: 'shared.transferActivity.actions.resolveToSrc',
     },
     choose: {
       icon: 'right-left',
-      cssClass: 'p-orange',
+      tone: 'orange',
       directionKey: 'shared.transferActivity.direction.choose',
       labelKey: 'shared.transferActivity.direction.labelChoose',
       actionKey: 'shared.transferActivity.actions.resolveChoose',

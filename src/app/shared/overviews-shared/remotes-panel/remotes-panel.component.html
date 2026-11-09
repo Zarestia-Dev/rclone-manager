@@ -11,12 +11,7 @@
       <span class="title-text">{{ title() }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span
-        class="app-pill"
-        [class.p-primary]="count() > 0"
-        [class.p-dim]="count() === 0"
-        aria-label="{{ count() }} remotes"
-      >
+      <span appPill [tone]="count() > 0 ? 'primary' : 'dim'" aria-label="{{ count() }} remotes">
         {{ count() }}
       </span>
     </mat-panel-description>

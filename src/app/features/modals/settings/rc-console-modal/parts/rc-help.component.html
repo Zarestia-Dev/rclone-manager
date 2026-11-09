@@ -5,7 +5,7 @@
     <span class="title">{{ command().Title }}</span>
   </div>
   @if (dangerous()) {
-    <span class="app-pill p-warn sm">{{ 'modals.rcConsole.dangerous' | translate }}</span>
+    <span appPill tone="warn">{{ 'modals.rcConsole.dangerous' | translate }}</span>
   }
   <button
     type="button"
@@ -27,13 +27,9 @@
           <span class="param-name">
             <code>{{ param.name }}</code>
             @if (param.required) {
-              <span class="app-pill p-accent sm">{{
-                'modals.rcConsole.help.required' | translate
-              }}</span>
+              <span appPill tone="accent">{{ 'modals.rcConsole.help.required' | translate }}</span>
             } @else if (param.optional) {
-              <span class="app-pill p-dim sm">{{
-                'modals.rcConsole.help.optional' | translate
-              }}</span>
+              <span appPill tone="dim">{{ 'modals.rcConsole.help.optional' | translate }}</span>
             }
           </span>
           <input
@@ -57,7 +53,7 @@
           'modals.rcConsole.help.requiredMissing' | translate: { count: missingRequired() }
         }}</span>
       }
-      <button type="button" class="app-pill interactive p-accent sm" (click)="insert.emit(built())">
+      <button type="button" appPill tone="accent" (click)="insert.emit(built())">
         {{ 'modals.rcConsole.help.use' | translate }}
       </button>
     </div>
@@ -72,10 +68,10 @@
     @for (example of examples(); track example) {
       <div class="example">
         <code class="example-line">{{ example }}</code>
-        <button type="button" class="app-pill interactive sm" (click)="insert.emit(example)">
+        <button type="button" appPill (click)="insert.emit(example)">
           {{ 'modals.rcConsole.help.insert' | translate }}
         </button>
-        <button type="button" class="app-pill interactive p-accent sm" (click)="run.emit(example)">
+        <button type="button" appPill tone="accent" (click)="run.emit(example)">
           {{ 'modals.rcConsole.help.run' | translate }}
         </button>
       </div>

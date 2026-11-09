@@ -14,10 +14,11 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { parseUrlInfo, buildDestinationPreview } from 'src/app/shared/utils/url.utils';
 import { Entry } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-url-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe, PillDirective],
   templateUrl: './url-preview.component.html',
   styleUrls: ['./url-preview.component.scss'],
 })

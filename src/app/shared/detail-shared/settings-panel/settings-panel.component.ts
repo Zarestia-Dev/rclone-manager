@@ -17,10 +17,11 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, MatExpansionModule, TranslatePipe],
+  imports: [MatIconModule, MatButtonModule, MatExpansionModule, TranslatePipe, PillDirective],
   styleUrls: ['./settings-panel.component.scss', '../../../styles/_panel-actions.scss'],
   templateUrl: './settings-panel.component.html',
 })

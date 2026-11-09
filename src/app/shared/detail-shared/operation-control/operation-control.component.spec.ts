@@ -11,7 +11,7 @@ const config = (operationType: PrimaryActionType, extra = {}): OperationControlC
     operationType,
     isActive: false,
     isLoading: false,
-    cssClass: '',
+    tone: 'primary',
     pathConfig: { source: 'a:', destination: 'b:' },
     primaryButtonLabel: 'start',
     primaryIcon: 'play',
@@ -57,9 +57,18 @@ describe('OperationControlComponent file reports', () => {
     });
   });
 
+  it('fills its buttons in the operation tone, and in warn while the operation runs', () => {
+    const buttons = (el: HTMLElement): string[] =>
+      Array.from(el.querySelectorAll<HTMLElement>('button[matIconButton], button[matButton]'))
+        .map(button => button.dataset['tone'] ?? '')
+        .filter(Boolean);
+    expect(new Set(buttons(show('sync')))).toEqual(new Set(['primary']));
+    expect(new Set(buttons(show('sync', { busy: true })))).toEqual(new Set(['warn']));
+  });
+
   it('offers the reports to choose from for sync, copy and move only', () => {
     for (const operation of ['sync', 'copy', 'move'] as const) {
-      expect(show(operation).querySelectorAll('.report-options .app-pill')).toHaveLength(6);
+      expect(show(operation).querySelectorAll('.report-options [appPill]')).toHaveLength(6);
     }
     expect(show('bisync').querySelector('.report-options')).toBeNull();
     expect(show('mount').querySelector('.report-options')).toBeNull();
@@ -86,20 +95,20 @@ describe('OperationControlComponent file reports', () => {
 
   it('marks the reports that are on and says which one a click turns', () => {
     const element = show('sync', { reports: ['combined', 'differ'] });
-    const pressed = Array.from(element.querySelectorAll('.report-options .app-pill')).map(pill =>
+    const pressed = Array.from(element.querySelectorAll('.report-options [appPill]')).map(pill =>
       pill.getAttribute('aria-pressed')
     );
     expect(pressed).toEqual(['false', 'true', 'false', 'false', 'false', 'false']);
 
     const toggled: JobReportKey[] = [];
     fixture.componentInstance.toggleReport.subscribe(key => toggled.push(key));
-    (element.querySelectorAll('.report-options .app-pill')[3] as HTMLElement).click();
+    (element.querySelectorAll('.report-options [appPill]')[3] as HTMLElement).click();
     expect(toggled).toEqual(['match']);
   });
 
   it('cannot change what a running job asks for', () => {
     const element = show('sync', { reports: ['combined'], busy: true });
-    const pills = element.querySelectorAll<HTMLButtonElement>('.report-options .app-pill');
+    const pills = element.querySelectorAll<HTMLButtonElement>('.report-options [appPill]');
     expect(Array.from(pills).every(pill => pill.disabled)).toBe(true);
   });
 });

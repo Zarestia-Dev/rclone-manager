@@ -50,7 +50,7 @@
       <button
         type="button"
         matButton="filled"
-        class="accent"
+        data-tone="accent"
         (click)="toggleConfigOptions()"
         [disabled]="installing() || isSubmittingPassword()"
       >
@@ -76,7 +76,7 @@
       <button
         type="button"
         matButton="filled"
-        class="accent"
+        data-tone="accent"
         (click)="toggleInstallOptions()"
         [disabled]="installing()"
       >
@@ -130,7 +130,7 @@
           <button
             type="button"
             matButton="filled"
-            class="accent"
+            data-tone="accent"
             (click)="suggestNextPort()"
             [disabled]="installing() || isSuggestingPort() || isTestingPort()"
             [attr.title]="'repairSheet.portConfig.suggestPortTooltip' | translate"

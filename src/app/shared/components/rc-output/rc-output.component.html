@@ -1,28 +1,13 @@
 <div class="bar">
   <div class="views" role="group">
-    <button
-      type="button"
-      class="app-pill interactive sm"
-      [class.is-selected]="view() === 'pretty'"
-      (click)="setView('pretty')"
-    >
+    <button type="button" appPill [selected]="view() === 'pretty'" (click)="setView('pretty')">
       {{ 'modals.rcConsole.output.pretty' | translate }}
     </button>
-    <button
-      type="button"
-      class="app-pill interactive sm"
-      [class.is-selected]="view() === 'raw'"
-      (click)="setView('raw')"
-    >
+    <button type="button" appPill [selected]="view() === 'raw'" (click)="setView('raw')">
       {{ 'modals.rcConsole.output.raw' | translate }}
     </button>
     @if (table()) {
-      <button
-        type="button"
-        class="app-pill interactive sm"
-        [class.is-selected]="view() === 'table'"
-        (click)="setView('table')"
-      >
+      <button type="button" appPill [selected]="view() === 'table'" (click)="setView('table')">
         {{ 'modals.rcConsole.output.table' | translate }}
       </button>
     }
@@ -31,7 +16,7 @@
     'modals.rcConsole.output.lines' | translate: { count: lineCount() }
   }}</span>
   @if (cutByLimit()) {
-    <span class="app-pill p-orange sm">{{ 'modals.rcConsole.truncated' | translate }}</span>
+    <span appPill tone="orange">{{ 'modals.rcConsole.truncated' | translate }}</span>
   }
   <button
     type="button"
@@ -78,7 +63,7 @@
 }
 
 @if (canFold()) {
-  <button type="button" class="app-pill interactive sm fold" (click)="toggleExpanded()">
+  <button type="button" appPill class="fold" (click)="toggleExpanded()">
     @if (expanded()) {
       {{ 'modals.rcConsole.output.collapse' | translate }}
     } @else if (showTable()) {

@@ -48,7 +48,7 @@
                 <mat-icon
                   svgIcon="check-circle"
                   class="checkmark"
-                  [class.accent]="theme.id === 'system'"
+                  [attr.data-tone]="theme.id === 'system' ? 'accent' : null"
                   aria-hidden="true"
                 ></mat-icon>
               }

@@ -96,7 +96,7 @@
     }
 
     .handle-icon {
-      stroke: #ffffff;
+      stroke: var(--accent-fg-color);
       stroke-width: 2px;
       stroke-linecap: round;
       pointer-events: none;

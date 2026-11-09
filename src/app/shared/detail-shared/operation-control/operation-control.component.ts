@@ -23,12 +23,14 @@ import {
   OPERATION_ICONS,
   SYNC_TYPES,
   DEFAULT_PROFILE_NAME,
+  PillTone,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { FILE_REPORT_OPERATIONS, JOB_REPORT_KEYS, REPORT_PILLS } from '../../utils/job-report.util';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-operation-control',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +44,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     PathDisplayComponent,
     TranslatePipe,
     FormatFileSizePipe,
+    PillDirective,
   ],
   templateUrl: './operation-control.component.html',
   styleUrls: ['./operation-control.component.scss', '../../../styles/_panel-actions.scss'],
@@ -144,8 +147,9 @@ export class OperationControlComponent {
     () => OPERATION_ICONS[this.config().operationType] ?? 'refresh'
   );
 
-  readonly buttonClass = computed(() => {
-    const { isActive, cssClass } = this.config();
-    return isActive ? 'warn' : (cssClass ?? '');
+  /** The button is filled in the operation's tone, and in warn while the operation runs. */
+  readonly buttonTone = computed<PillTone | null>(() => {
+    const { isActive, tone } = this.config();
+    return isActive ? 'warn' : (tone ?? null);
   });
 }

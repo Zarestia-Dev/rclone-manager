@@ -27,8 +27,9 @@
               </div>
               @if (providerTier(); as tier) {
                 <span
-                  class="app-pill pill-sm"
-                  [class]="tier.colorClass"
+                  appPill
+                  size="xs"
+                  [tone]="tier.tone"
                   [attr.title]="'wizards.remoteConfig.providerOverview.supportTier' | translate"
                   >{{ tier.label }}</span
                 >
@@ -54,7 +55,7 @@
           </div>
         } @else if (errorAbout()) {
           <div class="error-state">
-            <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
+            <mat-icon svgIcon="circle-exclamation" data-tone="warn"></mat-icon>
             <p>{{ errorAbout() }}</p>
           </div>
         } @else if (aboutInfo(); as about) {
@@ -174,7 +175,7 @@
             <div class="info-list">
               <div class="info-row">
                 <span class="info-label">{{ 'fileBrowser.remoteAbout.type' | translate }}</span>
-                <span class="app-pill p-primary pill-sm">{{
+                <span appPill tone="primary" size="xs">{{
                   data.remote.type || ('fileBrowser.remoteAbout.unknown' | translate) | titlecase
                 }}</span>
               </div>
@@ -203,14 +204,14 @@
                 }}</span>
               </div>
               @if (hashes().length > 0) {
-                <span class="app-pill p-primary pill-sm">{{ hashes().length }}</span>
+                <span appPill tone="primary" size="xs">{{ hashes().length }}</span>
               }
             </div>
             <div class="hashes-content">
               @if (hashes().length > 0) {
                 <div class="chip-container">
                   @for (hash of hashes(); track hash) {
-                    <span class="app-pill p-dim">{{ hash }}</span>
+                    <span appPill tone="dim">{{ hash }}</span>
                   }
                 </div>
               } @else {
@@ -234,7 +235,7 @@
         } @else if (features().length > 0) {
           <div class="features-header">
             <p>{{ 'fileBrowser.remoteAbout.liveFeatures' | translate }}</p>
-            <span class="app-pill p-primary pill-sm">
+            <span appPill tone="primary" size="xs">
               {{ supportedFeaturesCount() }} / {{ features().length }}
             </span>
           </div>

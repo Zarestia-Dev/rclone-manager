@@ -85,6 +85,7 @@ import {
 
 import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-quick-run-editor',
   hostDirectives: [EscapeCloseDirective],
@@ -107,6 +108,7 @@ import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config
     CliImportComponent,
     ObscureToolComponent,
     PresetTemplateBarComponent,
+    PillDirective,
   ],
   templateUrl: './quick-run-editor.component.html',
   styleUrls: ['./quick-run-editor.component.scss', '../../../styles/_shared-modal.scss'],

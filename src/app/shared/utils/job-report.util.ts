@@ -1,4 +1,10 @@
-import { JobInfo, JobReportCounts, JobReportKey, TransferActivityPanelConfig } from '@app/types';
+import {
+  JobInfo,
+  JobReportCounts,
+  JobReportKey,
+  PillTone,
+  TransferActivityPanelConfig,
+} from '@app/types';
 
 /** The reports in the order a view lists them. */
 export const JOB_REPORT_KEYS: readonly JobReportKey[] = [
@@ -12,14 +18,14 @@ export const JOB_REPORT_KEYS: readonly JobReportKey[] = [
 ];
 
 /** The colour each report is shown in; its sigil pills in `combined` use the same one. */
-export const REPORT_PILLS: Readonly<Record<JobReportKey, string>> = {
-  combined: 'p-dim',
-  missingOnDst: 'p-primary',
-  differ: 'p-accent',
-  missingOnSrc: 'p-orange',
-  match: 'p-dim',
-  error: 'p-warn',
-  destAfter: 'p-dim',
+export const REPORT_PILLS: Readonly<Record<JobReportKey, PillTone>> = {
+  combined: 'dim',
+  missingOnDst: 'primary',
+  differ: 'accent',
+  missingOnSrc: 'orange',
+  match: 'dim',
+  error: 'warn',
+  destAfter: 'dim',
 };
 
 /** The operations whose jobs keep file reports (the others return nothing worth keeping). */
@@ -52,30 +58,30 @@ export function withReport(
 }
 
 /** What a leading sigil of a `combined` report line means (see rclone's `operations.Sigil`). */
-const SIGIL_PILLS: Readonly<Record<string, { labelKey: string; pill: string; icon: string }>> = {
+const SIGIL_PILLS: Readonly<Record<string, { labelKey: string; tone: PillTone; icon: string }>> = {
   '+': {
     labelKey: 'shared.transferActivity.report.sigils.missingOnDst',
-    pill: REPORT_PILLS.missingOnDst,
+    tone: REPORT_PILLS.missingOnDst,
     icon: 'plus',
   },
   '-': {
     labelKey: 'shared.transferActivity.report.sigils.missingOnSrc',
-    pill: REPORT_PILLS.missingOnSrc,
+    tone: REPORT_PILLS.missingOnSrc,
     icon: 'circle-exclamation',
   },
   '*': {
     labelKey: 'shared.transferActivity.report.sigils.differ',
-    pill: REPORT_PILLS.differ,
+    tone: REPORT_PILLS.differ,
     icon: 'pen',
   },
   '=': {
     labelKey: 'shared.transferActivity.report.sigils.match',
-    pill: REPORT_PILLS.match,
+    tone: REPORT_PILLS.match,
     icon: 'check-circle',
   },
   '!': {
     labelKey: 'shared.transferActivity.report.sigils.error',
-    pill: REPORT_PILLS.error,
+    tone: REPORT_PILLS.error,
     icon: 'circle-exclamation',
   },
 };
@@ -85,7 +91,7 @@ export interface JobReportEntry {
   sigil: string | null;
   path: string;
   labelKey?: string;
-  pill?: string;
+  tone?: PillTone;
   icon?: string;
 }
 

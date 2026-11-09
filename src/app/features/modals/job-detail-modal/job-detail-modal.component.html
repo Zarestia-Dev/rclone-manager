@@ -5,7 +5,7 @@
   <p>
     {{ 'modals.jobDetail.title' | translate: { id: jobData().jobid } }}
     @if (jobData().dry_run) {
-      <span class="app-pill p-accent dry-run-pill">
+      <span appPill tone="accent" class="dry-run-pill">
         {{ 'detailShared.jobs.dryRun' | translate }}
       </span>
     }

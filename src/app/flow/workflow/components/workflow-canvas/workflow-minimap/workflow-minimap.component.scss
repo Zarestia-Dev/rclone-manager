@@ -1,7 +1,7 @@
 .workflow-minimap-card {
   position: relative;
   background: var(--card-bg-color);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-popover);
   overflow: hidden;
   cursor: crosshair;
@@ -24,37 +24,12 @@
   .mini-node {
     position: absolute;
     border-radius: 2px;
-    background: var(--dim-color);
+    background: var(--tone);
     box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.2);
     transition: transform 0.1s ease;
 
-    &.color-primary {
-      background: var(--primary-color);
-    }
-    &.color-accent {
-      background: var(--accent-color);
-    }
-    &.color-yellow {
-      background: var(--yellow);
-    }
-    &.color-orange {
-      background: var(--orange);
-    }
-    &.color-purple {
-      background: var(--purple);
-    }
-    &.color-warn {
-      background: var(--warn-color);
-    }
-    &.color-dim {
-      background: var(--dim-color);
-    }
-    &.color-cyan {
-      background: #00bcd4;
-    }
-
     &.selected {
-      outline: 1.5px solid #ffffff;
+      outline: 1.5px solid var(--accent-fg-color);
       box-shadow: 0 0 4px var(--accent-color);
       z-index: 2;
     }

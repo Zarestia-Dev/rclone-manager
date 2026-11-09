@@ -44,7 +44,7 @@
 
       <div class="manage-control-bar">
         <div class="bar-left">
-          <span class="app-pill pill-sm p-primary">
+          <span appPill tone="primary" size="xs">
             {{ selectedKeysCount() }} / {{ settingEntries().length }}
           </span>
           <button
@@ -129,10 +129,10 @@
                 <mat-expansion-panel [expanded]="cat.isExpanded" class="dull">
                   <mat-expansion-panel-header>
                     <mat-panel-title>
-                      <span class="app-pill pill-sm p-primary">{{ cat.category }}</span>
+                      <span appPill tone="primary" size="xs">{{ cat.category }}</span>
                     </mat-panel-title>
                     <mat-panel-description>
-                      <span class="count-badge" [class.has-keys]="cat.totalCount > 0">
+                      <span appPill size="xs" [tone]="cat.totalCount > 0 ? 'primary' : 'dim'">
                         @if (cat.totalCount > 0) {
                           {{
                             'templates.selectedCount'
@@ -198,7 +198,10 @@
                             </mat-checkbox>
                             <code class="kv-key truncate" [title]="entry.key">{{ entry.key }}</code>
                             <code
-                              class="app-pill pill-sm p-dim kv-val truncate"
+                              appPill
+                              tone="dim"
+                              size="xs"
+                              class="kv-val truncate"
                               [title]="entry.displayValue"
                             >
                               {{ entry.displayValue }}
@@ -312,7 +315,7 @@
               [title]="'templates.deleteTemplate' | translate"
               (click)="onDeleteUserTemplate(selectedTemplate()!.id)"
             >
-              <mat-icon svgIcon="trash" class="warn"></mat-icon>
+              <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
             </button>
           </div>
         </div>
@@ -348,10 +351,10 @@
                   <mat-expansion-panel [expanded]="cat.isExpanded" class="dull">
                     <mat-expansion-panel-header>
                       <mat-panel-title>
-                        <span class="app-pill pill-sm p-primary">{{ cat.category }}</span>
+                        <span appPill tone="primary" size="xs">{{ cat.category }}</span>
                       </mat-panel-title>
                       <mat-panel-description>
-                        <span class="count-badge" [class.has-keys]="cat.totalCount > 0">
+                        <span appPill size="xs" [tone]="cat.totalCount > 0 ? 'primary' : 'dim'">
                           @if (cat.totalCount > 0) {
                             {{
                               (cat.totalCount === 1 ? 'templates.keyCount' : 'templates.keysCount')
@@ -406,7 +409,10 @@
                                 entry.key
                               }}</code>
                               <code
-                                class="app-pill pill-sm p-dim kv-val truncate"
+                                appPill
+                                tone="dim"
+                                size="xs"
+                                class="kv-val truncate"
                                 [title]="entry.displayValue"
                               >
                                 {{ entry.displayValue }}
@@ -455,7 +461,7 @@
     <button
       type="button"
       matIconButton
-      class="warn"
+      data-tone="warn"
       [disabled]="!isManageDirty()"
       (click)="onReset()"
       [attr.title]="'common.reset' | translate"

@@ -3,12 +3,12 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-sm);
+  padding: var(--space-md);
   background: var(--window-bg-color);
   box-shadow: var(--box-shadow);
   border-radius: var(--card-border-radius);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 
   .stat-item {
     min-width: 0;
@@ -17,7 +17,7 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 4px;
+    gap: var(--space-xxs);
 
     .label {
       max-width: 100%;
@@ -43,14 +43,14 @@
 .queue-section,
 .cache-info-section,
 .advanced-config-section {
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
   background: var(--window-bg-color);
 
   .section-header {
     background: var(--hover-bg-color);
-    padding: 8px 16px;
+    padding: var(--space-xs) var(--space-md);
     border-bottom: 1px solid var(--border-color);
 
     &.clickable {
@@ -71,7 +71,7 @@
       font-size: 0.95rem;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-xs);
       font-weight: 500;
       opacity: 0.9;
 
@@ -94,7 +94,7 @@
       width: 100%;
 
       td.mat-mdc-cell {
-        padding: 0 8px;
+        padding: 0 var(--space-xs);
         border-bottom: 1px solid var(--hover-bg-color);
         font-size: 0.85rem;
       }
@@ -108,10 +108,6 @@
 
       .mat-column-size {
         min-width: 7.5rem;
-
-        .app-pill {
-          font-family: var(--font-mono);
-        }
       }
 
       td.mat-mdc-cell .status-text {
@@ -124,20 +120,20 @@
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: var(--space-xs);
         }
 
         .status-left {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: var(--space-xs);
           flex: 1 1 auto;
         }
 
         .status-right {
           display: flex;
           align-items: center;
-          padding-inline-start: 16px;
+          padding-inline-start: var(--space-md);
           justify-content: center;
           gap: 6px;
         }
@@ -148,12 +144,12 @@
 
 .cache-info-section {
   .cache-info-content {
-    padding: 16px;
+    padding: var(--space-md);
 
     .info-row {
       display: flex;
       gap: var(--space-xxs);
-      margin-bottom: 12px;
+      margin-bottom: var(--space-sm);
 
       .info-text {
         flex: 1;
@@ -163,7 +159,7 @@
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: var(--space-xs);
         }
 
         code {
@@ -171,10 +167,10 @@
           align-items: center;
           justify-content: space-between;
           background: var(--hover-bg-color);
-          padding: 4px 8px;
-          border-radius: 4px;
+          padding: var(--space-xxs) var(--space-xs);
+          border-radius: var(--radius-xxs);
           font-size: var(--font-size-md);
-          margin-top: 4px;
+          margin-top: var(--space-xxs);
           word-break: break-all;
         }
 
@@ -188,7 +184,7 @@
 
 .queue-actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-xxs);
 }
 
 .uploading-icon {
@@ -197,12 +193,12 @@
 }
 
 .delay-slider-container {
-  padding: 16px;
+  padding: var(--space-md);
 
   .slider-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
     font-weight: 500;
 
     mat-icon {
@@ -232,19 +228,19 @@
   .slider-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 }
 
 // Advanced Configuration Section
 .advanced-config-section {
   .advanced-config-content {
-    padding: 16px;
+    padding: var(--space-md);
     overflow: hidden;
   }
 
   .config-search {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-md);
 
     mat-form-field {
       width: 100%;
@@ -252,7 +248,7 @@
   }
 
   .config-group {
-    margin-bottom: 24px;
+    margin-bottom: var(--space-xl);
 
     &:last-child {
       margin-bottom: 0;
@@ -261,8 +257,8 @@
     .group-title {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 0 0 12px 0;
+      gap: var(--space-xs);
+      margin: 0 0 var(--space-sm) 0;
       font-size: 0.875rem;
       font-weight: 600;
       text-transform: uppercase;
@@ -288,8 +284,8 @@
       .config-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-        gap: 12px;
-        padding: 10px 12px;
+        gap: var(--space-sm);
+        padding: 10px var(--space-sm);
         transition: background-color 0.2s;
         background: var(--view-bg-color);
 

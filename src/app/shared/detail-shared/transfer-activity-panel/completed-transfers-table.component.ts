@@ -21,6 +21,7 @@ import {
   splitPath,
 } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-completed-transfers-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +34,7 @@ import {
     TranslatePipe,
     FormatFileSizePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
@@ -53,11 +55,7 @@ import {
                 </span>
               </div>
               <div class="card-info-right">
-                <span
-                  class="app-pill"
-                  [class]="transfer.badge.cssClass"
-                  [attr.title]="transfer.displayError"
-                >
+                <span appPill [tone]="transfer.badge.tone" [attr.title]="transfer.displayError">
                   <mat-icon [svgIcon]="transfer.badge.icon"></mat-icon>
                   {{ transfer.badge.text | translate }}
                 </span>
@@ -97,7 +95,7 @@ import {
                   <span>{{ transfer.relativeTime }}</span>
                 }
                 @if (transfer.duration) {
-                  <span class="app-pill pill-sm p-primary">{{ transfer.duration }}</span>
+                  <span appPill tone="primary" size="xs">{{ transfer.duration }}</span>
                 }
               </div>
             </div>

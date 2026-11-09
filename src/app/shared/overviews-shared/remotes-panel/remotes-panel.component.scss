@@ -14,7 +14,7 @@
 
   mat-panel-title {
     mat-icon.active-icon {
-      color: var(--mode-primary-color, var(--primary-color));
+      color: var(--tone);
     }
   }
 
@@ -68,6 +68,6 @@
 @media (max-width: 768px) {
   .remotes-panel .grid {
     gap: var(--space-sm);
-    padding: 2px 16px 16px;
+    padding: 2px var(--space-md) var(--space-md);
   }
 }

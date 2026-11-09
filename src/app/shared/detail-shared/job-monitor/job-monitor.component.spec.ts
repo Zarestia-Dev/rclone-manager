@@ -101,7 +101,7 @@ describe('JobMonitorComponent', () => {
     expect(component['statusPill']()?.textKey).toBe('shared.monitor.status.running');
     const failed = create(config({ status: 'Failed', running: false }))['componentInstance'];
     expect(failed['statusPill']()).toMatchObject({
-      cssClass: 'p-warn',
+      tone: 'warn',
       textKey: 'shared.monitor.status.failed',
     });
     expect(create(config({ status: undefined }))['componentInstance']['statusPill']()).toBeNull();

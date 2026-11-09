@@ -47,7 +47,7 @@
           }}
         </span>
         @if (share.isShared || share.isShortcut) {
-          <span class="app-pill p-dim pill-sm">
+          <span appPill tone="dim" size="xs">
             <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
             <span>{{
               (share.isShortcut ? 'nautilus.shared.shortcutBadge' : 'nautilus.shared.sharedBadge')
@@ -111,7 +111,7 @@
           <div class="trigger-left">
             <mat-icon svgIcon="tag"></mat-icon>
             <span>{{ 'fileBrowser.properties.metadata' | translate }}</span>
-            <span class="count-badge">{{ metadataEntries().length }}</span>
+            <span appPill size="xs" tone="dim">{{ metadataEntries().length }}</span>
           </div>
           <mat-icon svgIcon="chevron-right" class="trigger-chevron"></mat-icon>
         </button>
@@ -204,7 +204,8 @@
               <div class="hash-chips">
                 @for (hashType of uncalculatedHashes(); track hashType) {
                   <button
-                    class="app-pill interactive p-primary"
+                    appPill
+                    tone="primary"
                     [class.loading]="isHashLoading(hashType)"
                     (click)="!isHashLoading(hashType) && calculateHash(hashType)"
                   >
@@ -256,8 +257,10 @@
             <div class="hash-chips">
               @for (hashType of supportedHashes(); track hashType) {
                 <button
-                  class="app-pill interactive p-primary"
-                  [class.p-accent]="calculatingBulkHash() && bulkHashType() === hashType"
+                  appPill
+                  [tone]="
+                    calculatingBulkHash() && bulkHashType() === hashType ? 'accent' : 'primary'
+                  "
                   (click)="!calculatingBulkHash() && calculateBulkHash(hashType)"
                 >
                   @if (calculatingBulkHash() && bulkHashType() === hashType) {
@@ -318,7 +321,12 @@
                 }
               </mat-select>
             </mat-form-field>
-            <button matButton="filled" class="get-link-btn primary" (click)="getPublicLink()">
+            <button
+              matButton="filled"
+              class="get-link-btn"
+              data-tone="primary"
+              (click)="getPublicLink()"
+            >
               <mat-icon svgIcon="open-link"></mat-icon>
               {{ 'fileBrowser.properties.getLink' | translate }}
             </button>

@@ -166,7 +166,7 @@
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      padding: 4px 6px;
+      padding: var(--space-xxs) 6px;
       background: var(--card-bg-color);
       box-shadow: 0 0 0 1px var(--border-color);
       border-radius: 999px;

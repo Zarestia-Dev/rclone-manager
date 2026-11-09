@@ -65,7 +65,7 @@
   <footer>
     <button
       matButton="filled"
-      class="accent"
+      data-tone="accent"
       type="button"
       (click)="onCancel()"
       [attr.title]="'common.cancel' | translate"
@@ -75,7 +75,7 @@
     </button>
     <button
       matButton="filled"
-      class="primary"
+      data-tone="primary"
       type="submit"
       [disabled]="!form.valid"
       [attr.title]="data.createLabel || ('shared.inputModal.create' | translate)"

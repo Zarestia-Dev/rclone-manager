@@ -137,7 +137,7 @@
         <div class="workflow-empty-state-actions">
           <button
             matButton="filled"
-            class="primary"
+            data-tone="primary"
             (click)="createNewWorkflow()"
             [attr.title]="'flow.workflow.toolbar.newWorkflow' | translate"
           >
@@ -156,7 +156,8 @@
               @for (tpl of storageService.presetTemplates(); track tpl.id) {
                 <button
                   type="button"
-                  class="app-pill interactive {{ getTemplatePillClass(tpl.category) }}"
+                  appPill
+                  [tone]="getTemplateTone(tpl.category)"
                   (click)="loadTemplate(tpl)"
                   [attr.title]="
                     tpl.descriptionKey ? (tpl.descriptionKey | translate) : tpl.description

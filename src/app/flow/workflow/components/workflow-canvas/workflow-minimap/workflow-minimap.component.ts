@@ -83,7 +83,7 @@ export class WorkflowMinimapComponent {
         id: n.id,
         title: n.title,
         category: n.category,
-        colorClass: meta.cssClass,
+        tone: meta.tone,
         state: n.state || 'idle',
         x: (n.x - b.minX) * s,
         y: (n.y - b.minY) * s,

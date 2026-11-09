@@ -51,11 +51,11 @@
             {{ 'home.emptyState.description' | translate }}
           </p>
           <div class="no-remotes-actions">
-            <button matButton="filled" class="primary" (click)="openQuickAddRemoteModal()">
+            <button matButton="filled" data-tone="primary" (click)="openQuickAddRemoteModal()">
               <mat-icon svgIcon="plus"></mat-icon>
               {{ 'home.emptyState.addQuickRemote' | translate }}
             </button>
-            <button matButton="filled" class="accent" (click)="openRemoteConfigModal()">
+            <button matButton="filled" data-tone="accent" (click)="openRemoteConfigModal()">
               <mat-icon svgIcon="plus"></mat-icon>
               {{ 'home.emptyState.addDetailedRemote' | translate }}
             </button>

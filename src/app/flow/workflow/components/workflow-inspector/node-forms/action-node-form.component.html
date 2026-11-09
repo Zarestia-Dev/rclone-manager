@@ -38,7 +38,8 @@
       <span class="hint-text">{{ 'flow.workflow.inspector.noAlertActionsFound' | translate }}</span>
       <button
         type="button"
-        class="app-pill interactive primary-pill"
+        appPill
+        class="primary-pill"
         (click)="openAlertsModal()"
         [attr.title]="'flow.workflow.inspector.openAlertsModal' | translate"
       >
@@ -53,35 +54,19 @@
       'flow.workflow.inspector.notificationPresets' | translate
     }}</span>
     <div class="presets-row">
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('check_report')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('check_report')">
         <mat-icon svgIcon="shield"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetCheckReport' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('transfer_summary')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('transfer_summary')">
         <mat-icon svgIcon="sync"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetTransferSummary' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('failure_alert')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('failure_alert')">
         <mat-icon svgIcon="warning"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetFailureAlert' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('health_status')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('health_status')">
         <mat-icon svgIcon="circle-info"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetHealthStatus' | translate }}</span>
       </button>
@@ -128,7 +113,7 @@
       @for (tok of quickOutputTokens(); track tok) {
         <button
           type="button"
-          class="app-pill interactive"
+          appPill
           (click)="insertVariableToken(tok)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >
@@ -186,7 +171,7 @@
       @for (key of templateKeys(); track key) {
         <button
           type="button"
-          class="app-pill interactive"
+          appPill
           (click)="insertTemplateVariable(key)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >

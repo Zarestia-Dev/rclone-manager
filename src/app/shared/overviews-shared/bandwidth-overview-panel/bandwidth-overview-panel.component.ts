@@ -23,6 +23,7 @@ import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-bandwidth-overview-panel',
   standalone: true,
@@ -37,6 +38,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
     MatDividerModule,
     TranslatePipe,
     FormatRateValuePipe,
+    PillDirective,
   ],
   templateUrl: './bandwidth-overview-panel.component.html',
   styleUrls: ['./bandwidth-overview-panel.component.scss'],

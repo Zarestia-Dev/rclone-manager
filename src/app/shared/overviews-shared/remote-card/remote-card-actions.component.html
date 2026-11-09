@@ -8,8 +8,8 @@
             <button
               cdkMenuItem
               class="menu-item"
-              [class]="entry.cssClass"
-              [class.warn]="entry.isActive"
+              [attr.data-tone]="entry.isActive ? 'warn' : entry.tone"
+              data-variant="solid"
               [disabled]="entry.isBusy"
               (click)="onProfilePickerClick(entry.operation, entry.profile, $event)"
             >
@@ -18,7 +18,7 @@
               } @else {
                 <mat-icon
                   [svgIcon]="entry.isActive ? entry.stopIcon : entry.startIcon"
-                  style="color: white"
+                  style="color: var(--accent-fg-color)"
                 ></mat-icon>
               }
               <span>{{ entry.profile }}</span>
@@ -29,8 +29,7 @@
 
       <button
         matMiniFab
-        [class]="pickerGroup.cssClass"
-        [class.warn]="pickerGroup.isActive"
+        [attr.data-tone]="pickerGroup.isActive ? 'warn' : pickerGroup.tone"
         [attr.title]="pickerGroup.triggerTooltip"
         [cdkMenuTriggerFor]="profileMenu"
         [cdkMenuPosition]="[
@@ -57,7 +56,7 @@
         matMiniFab
         [attr.title]="button.tooltip"
         [disabled]="button.isDisabled"
-        [class]="button.cssClass || ''"
+        [attr.data-tone]="button.tone"
         (click)="onActionButtonClick({ id: button.id, event: $event })"
       >
         @if (button.isLoading) {
@@ -72,7 +71,7 @@
   @if (openableFolders().length === 1) {
     <button
       matMiniFab
-      [class]="openableFolders()[0].cssClass"
+      [attr.data-tone]="openableFolders()[0].tone"
       [attr.title]="openableFolders()[0].tooltip"
       [disabled]="isFolderOpening()"
       (click)="onOpenFolderClick(openableFolders()[0], $event)"
@@ -92,11 +91,12 @@
           <button
             cdkMenuItem
             class="menu-item"
-            [class]="folder.cssClass"
+            [attr.data-tone]="folder.tone"
+            data-variant="solid"
             [disabled]="folder.isOpening"
             (click)="onOpenFolderClick(folder, $event)"
           >
-            <mat-icon [svgIcon]="folder.icon" style="color: white"></mat-icon>
+            <mat-icon [svgIcon]="folder.icon" style="color: var(--accent-fg-color)"></mat-icon>
             <span>{{ folder.profile }} ({{ folder.shortName }})</span>
           </button>
         }
@@ -105,7 +105,7 @@
 
     <button
       matMiniFab
-      [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
+      [attr.data-tone]="folderBlossomStyle() ? null : openableFolders()[0].tone || 'primary'"
       [style]="folderBlossomStyle()"
       [attr.title]="'overviews.remoteCard.browse' | translate"
       [disabled]="isFolderOpening()"

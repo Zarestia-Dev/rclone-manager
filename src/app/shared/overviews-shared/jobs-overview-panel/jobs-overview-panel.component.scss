@@ -3,7 +3,6 @@
   width: 100%;
 }
 
-// Small pill size modifier for .app-pill
 // Main Panel Layout
 .job-grid {
   display: flex;
@@ -133,24 +132,9 @@
       font-size: 20px;
     }
 
-    &.type-primary {
-      background: rgba(var(--primary-color-rgb), 0.12);
-      color: var(--primary-color);
-    }
-
-    &.type-yellow {
-      background: rgba(var(--yellow-rgb), 0.14);
-      color: var(--yellow);
-    }
-
-    &.type-orange {
-      background: rgba(var(--orange-rgb), 0.14);
-      color: var(--orange);
-    }
-
-    &.type-accent {
-      background: rgba(var(--accent-color-rgb), 0.12);
-      color: var(--accent-color);
+    &[data-tone] {
+      background: rgba(var(--tone-rgb), 0.12);
+      color: var(--tone);
     }
   }
 
@@ -163,10 +147,6 @@
   }
 
   .job-title-row {
-    > .app-pill {
-      min-width: 0;
-      max-width: 100%;
-    }
     display: flex;
     align-items: center;
     gap: var(--space-xs);

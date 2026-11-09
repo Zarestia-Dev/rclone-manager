@@ -169,10 +169,6 @@ kbd {
     min-width: 0;
     color: var(--window-fg-color);
     font-weight: 600;
-
-    .app-pill {
-      flex-shrink: 0;
-    }
   }
 
   &-text {

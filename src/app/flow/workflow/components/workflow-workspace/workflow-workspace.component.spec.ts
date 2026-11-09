@@ -358,25 +358,25 @@ describe('WorkflowWorkspaceComponent', () => {
     expect(stateService.currentWorkflow()?.id).toBe('wf-test');
   });
 
-  describe('getTemplatePillClass', () => {
-    it('returns p-primary for backup category', () => {
-      expect(component.getTemplatePillClass('backup')).toBe('p-primary');
+  describe('getTemplateTone', () => {
+    it('returns primary for backup category', () => {
+      expect(component.getTemplateTone('backup')).toBe('primary');
     });
 
-    it('returns p-orange for automation category', () => {
-      expect(component.getTemplatePillClass('automation')).toBe('p-orange');
+    it('returns orange for automation category', () => {
+      expect(component.getTemplateTone('automation')).toBe('orange');
     });
 
-    it('returns p-accent for sync category', () => {
-      expect(component.getTemplatePillClass('sync')).toBe('p-accent');
+    it('returns accent for sync category', () => {
+      expect(component.getTemplateTone('sync')).toBe('accent');
     });
 
-    it('returns p-purple for utility category', () => {
-      expect(component.getTemplatePillClass('utility')).toBe('p-purple');
+    it('returns purple for utility category', () => {
+      expect(component.getTemplateTone('utility')).toBe('purple');
     });
 
-    it('returns p-accent for unknown categories as fallback', () => {
-      expect(component.getTemplatePillClass('custom')).toBe('p-accent');
+    it('returns accent for unknown categories as fallback', () => {
+      expect(component.getTemplateTone('custom')).toBe('accent');
     });
   });
 

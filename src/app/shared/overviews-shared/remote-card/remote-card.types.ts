@@ -1,8 +1,8 @@
-import { PrimaryActionType, OpenableFolder } from '@app/types';
+import { PrimaryActionType, OpenableFolder, PillTone, OPERATION_TONE } from '@app/types';
 
 export interface StatusIndicatorViewModel {
   op: PrimaryActionType;
-  meta: { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean };
+  meta: StatusIndicatorMeta;
   tooltip: string;
 }
 
@@ -25,7 +25,7 @@ export interface ProfileChipViewModel {
 export interface DetailedOperationViewModel {
   key: PrimaryActionType;
   operation: PrimaryActionType;
-  cssClass: string;
+  tone: PillTone;
   labelIcon: string;
   profiles: ProfileChipViewModel[];
 }
@@ -38,14 +38,14 @@ export interface ProfilePickerEntry {
   isBusy: boolean;
   startIcon: string;
   stopIcon: string;
-  cssClass: string;
+  tone: PillTone;
   tooltip: string;
 }
 
 /** Per-operation group of profile picker entries (one group per operation). */
 export interface ProfilePickerGroup {
   operation: PrimaryActionType;
-  cssClass: string;
+  tone: PillTone;
   /** Single-button trigger tooltip when only one profile exists. */
   triggerTooltip: string;
   /** Icon to show on the trigger button. */
@@ -86,28 +86,37 @@ export interface ProfileOpenInFilesEvent {
   event: Event;
 }
 
-export const STATUS_INDICATOR_META: Record<
-  PrimaryActionType,
-  { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean }
-> = {
-  mount: { icon: 'mount', pillClass: 'p-accent', ariaKey: 'detailShared.status.mounted' },
-  sync: { icon: 'refresh', pillClass: 'p-primary', ariaKey: 'detailShared.status.syncing' },
-  copy: { icon: 'copy', pillClass: 'p-yellow', ariaKey: 'detailShared.status.copying' },
-  move: { icon: 'move', pillClass: 'p-orange', ariaKey: 'detailShared.status.moving' },
-  bisync: { icon: 'right-left', pillClass: 'p-purple', ariaKey: 'detailShared.status.bisyncing' },
+export interface StatusIndicatorMeta {
+  icon: string;
+  tone: PillTone;
+  ariaKey: string;
+  animateContainer?: boolean;
+}
+
+const STATUS_INDICATORS: Record<PrimaryActionType, Omit<StatusIndicatorMeta, 'tone'>> = {
+  mount: { icon: 'mount', ariaKey: 'detailShared.status.mounted' },
+  sync: { icon: 'refresh', ariaKey: 'detailShared.status.syncing' },
+  copy: { icon: 'copy', ariaKey: 'detailShared.status.copying' },
+  move: { icon: 'move', ariaKey: 'detailShared.status.moving' },
+  bisync: { icon: 'right-left', ariaKey: 'detailShared.status.bisyncing' },
   serve: {
     icon: 'satellite-dish',
-    pillClass: 'p-accent',
     ariaKey: 'detailShared.status.serving',
     animateContainer: true,
   },
-  check: { icon: 'search', pillClass: 'p-accent', ariaKey: 'operations.checkActive' },
-  cryptcheck: { icon: 'shield', pillClass: 'p-accent', ariaKey: 'operations.cryptcheckActive' },
-  delete: { icon: 'trash', pillClass: 'p-warn', ariaKey: 'operations.deleteActive' },
-  copyurl: { icon: 'link', pillClass: 'p-accent', ariaKey: 'operations.copyurlActive' },
-  archivecreate: {
-    icon: 'compress',
-    pillClass: 'p-primary',
-    ariaKey: 'operations.archivecreateActive',
-  },
+  check: { icon: 'search', ariaKey: 'operations.checkActive' },
+  cryptcheck: { icon: 'shield', ariaKey: 'operations.cryptcheckActive' },
+  delete: { icon: 'trash', ariaKey: 'operations.deleteActive' },
+  copyurl: { icon: 'link', ariaKey: 'operations.copyurlActive' },
+  archivecreate: { icon: 'compress', ariaKey: 'operations.archivecreateActive' },
 };
+
+/** The status pill of each operation; its tone is the operation's own. */
+export const STATUS_INDICATOR_META = Object.freeze(
+  Object.fromEntries(
+    Object.entries(STATUS_INDICATORS).map(([op, meta]) => [
+      op,
+      { ...meta, tone: OPERATION_TONE[op] },
+    ])
+  )
+) as Readonly<Record<PrimaryActionType, StatusIndicatorMeta>>;

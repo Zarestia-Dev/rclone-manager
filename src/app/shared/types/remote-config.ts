@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
@@ -126,7 +127,7 @@ export const REMOTE_CONFIG_KEYS = Object.freeze({
 export interface UIOperationMetadata {
   label: string;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
   description?: string;
   typeLabel?: string;
   supportsVfs?: boolean;
@@ -140,7 +141,7 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
       {
         label: op.settingsLabel,
         icon: op.icon,
-        cssClass: op.cssClass,
+        tone: op.tone,
         description: op.settingsDescription,
         typeLabel: op.typeLabel,
         supportsVfs: op.supportsVfs,
@@ -151,25 +152,25 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
   vfs: {
     label: 'dashboard.appDetail.vfsOptions',
     icon: 'vfs',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   filter: {
     label: 'dashboard.appDetail.filterOptions',
     icon: 'filter',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   backend: {
     label: 'dashboard.appDetail.backendConfig',
     icon: 'server',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   runtimeRemote: {
     label: 'dashboard.appDetail.runtimeRemoteOptions',
     icon: 'gear',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
 });

@@ -15,7 +15,7 @@
       ></mat-icon>
       <span class="title-text">{{ 'flow.workflow.logs.title' | translate }}</span>
       @if (engineService.logs().length > 0) {
-        <span class="count-badge">{{ engineService.logs().length }}</span>
+        <span appPill size="xs" tone="dim">{{ engineService.logs().length }}</span>
       }
     </div>
 
@@ -24,8 +24,9 @@
       <div class="log-filter-chips">
         <button
           type="button"
-          class="app-pill interactive"
-          [class.is-selected]="activeFilter() === 'all'"
+          appPill
+          size="sm"
+          [selected]="activeFilter() === 'all'"
           (click)="setFilter('all')"
         >
           <span>{{ 'flow.workflow.logs.filterAll' | translate }}</span>
@@ -35,8 +36,10 @@
         @if (errorCount() > 0) {
           <button
             type="button"
-            class="app-pill interactive p-warn"
-            [class.is-selected]="activeFilter() === 'error'"
+            appPill
+            size="sm"
+            tone="warn"
+            [selected]="activeFilter() === 'error'"
             (click)="setFilter('error')"
           >
             <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -48,8 +51,10 @@
         @if (warnCount() > 0) {
           <button
             type="button"
-            class="app-pill interactive p-yellow"
-            [class.is-selected]="activeFilter() === 'warn'"
+            appPill
+            size="sm"
+            tone="yellow"
+            [selected]="activeFilter() === 'warn'"
             (click)="setFilter('warn')"
           >
             <mat-icon svgIcon="warning"></mat-icon>
@@ -61,8 +66,10 @@
         @if (successCount() > 0) {
           <button
             type="button"
-            class="app-pill interactive p-primary"
-            [class.is-selected]="activeFilter() === 'success'"
+            appPill
+            size="sm"
+            tone="primary"
+            [selected]="activeFilter() === 'success'"
             (click)="setFilter('success')"
           >
             <mat-icon svgIcon="check-circle"></mat-icon>

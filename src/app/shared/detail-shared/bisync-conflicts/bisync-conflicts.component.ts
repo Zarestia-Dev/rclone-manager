@@ -22,6 +22,7 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { splitPath, withMember } from '../transfer-activity-panel/activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 /** The files a finished bisync run could not reconcile, with a way to pick the version to keep. */
 @Component({
   selector: 'app-bisync-conflicts',
@@ -32,6 +33,7 @@ import { splitPath, withMember } from '../transfer-activity-panel/activity.utils
     MatCheckboxModule,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './bisync-conflicts.component.html',
 })

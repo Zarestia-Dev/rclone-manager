@@ -102,7 +102,7 @@ header {
       &.path {
         max-width: 60%;
         background: var(--sidebar-bg-color);
-        padding: 4px 6px;
+        padding: var(--space-xxs) 6px;
         border-radius: var(--radius-xxs);
         text-overflow: ellipsis;
         overflow: hidden;

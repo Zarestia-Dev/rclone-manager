@@ -37,7 +37,9 @@
   <div class="card-status-indicators" aria-hidden="true">
     @if (appConfig().cronEnabled && appConfig().cronExpression; as expr) {
       <div
-        class="app-pill p-primary"
+        appPill
+        size="sm"
+        tone="primary"
         [attr.title]="('flow.quickRun.badges.scheduled' | translate) + ': ' + expr"
       >
         <mat-icon svgIcon="clock"></mat-icon>
@@ -45,7 +47,9 @@
     }
     @if (appConfig().watchEnabled) {
       <div
-        class="app-pill p-accent"
+        appPill
+        size="sm"
+        tone="accent"
         [attr.title]="
           (appConfig().watchChangedOnly
             ? 'flow.quickRun.badges.watcherChangedOnly'
@@ -57,7 +61,12 @@
       </div>
     }
     @if (appConfig().autoStart) {
-      <div class="app-pill p-yellow" [attr.title]="'flow.quickRun.badges.autostart' | translate">
+      <div
+        appPill
+        size="sm"
+        tone="yellow"
+        [attr.title]="'flow.quickRun.badges.autostart' | translate"
+      >
         <mat-icon svgIcon="bolt"></mat-icon>
       </div>
     }
@@ -72,7 +81,7 @@
   <!-- Primary Start / Stop Action -->
   <button
     matMiniFab
-    [class]="isRunning() ? 'warn' : operationDef()?.cssClass || 'primary'"
+    [attr.data-tone]="isRunning() ? 'warn' : cardTone()"
     [disabled]="isActionInProgress() || isRemoteMissing()"
     [attr.title]="
       (isRemoteMissing()
@@ -105,7 +114,7 @@
   @if (openableFolders().length === 1) {
     <button
       matMiniFab
-      [class]="openableFolders()[0].cssClass || 'primary'"
+      [attr.data-tone]="openableFolders()[0].tone"
       [attr.title]="
         ('overviews.remoteCard.browse' | translate) +
         ' ' +
@@ -138,7 +147,8 @@
           <button
             cdkMenuItem
             class="menu-item"
-            [class]="folder.cssClass"
+            [attr.data-tone]="folder.tone"
+            data-variant="solid"
             [disabled]="isFolderOpening()"
             (click)="onOpenFolderClick(folder.path, $event)"
           >
@@ -158,7 +168,7 @@
 
     <button
       matMiniFab
-      [class]="openableFolders()[0].cssClass || 'primary'"
+      [attr.data-tone]="openableFolders()[0].tone"
       [attr.title]="'overviews.remoteCard.browse' | translate"
       [disabled]="isFolderOpening()"
       [cdkMenuTriggerFor]="folderMenu"

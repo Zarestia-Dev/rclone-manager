@@ -45,7 +45,7 @@
   >
     <mat-card-header class="automation-header">
       <div class="automation-info-section">
-        <div class="automation-icon-wrapper" [class]="'op-' + typeMeta().color">
+        <div class="automation-icon-wrapper" [attr.data-tone]="typeMeta().tone">
           <mat-icon [svgIcon]="typeMeta().icon"></mat-icon>
         </div>
         <div class="automation-title-section">
@@ -85,7 +85,7 @@
       </div>
 
       <div class="automation-header-end">
-        <span class="app-pill pill-sm {{ statusPill() }}">
+        <span appPill size="xs" [tone]="statusPill()">
           {{ 'automation.status.' + auto.status | translate }}
         </span>
         <ng-container *ngTemplateOutlet="actions" />
@@ -95,15 +95,15 @@
     <mat-card-footer class="automation-footer">
       <div class="automation-stats">
         <div class="stat-item" [attr.title]="'dashboard.generalDetail.successful' | translate">
-          <mat-icon svgIcon="check-circle" class="stat-icon primary"></mat-icon>
+          <mat-icon svgIcon="check-circle" class="stat-icon" data-tone="primary"></mat-icon>
           <span class="stat-value">{{ auto.successCount }}</span>
         </div>
         <div class="stat-item" [attr.title]="'dashboard.generalDetail.failedCount' | translate">
-          <mat-icon svgIcon="circle-exclamation" class="stat-icon warn"></mat-icon>
+          <mat-icon svgIcon="circle-exclamation" class="stat-icon" data-tone="warn"></mat-icon>
           <span class="stat-value">{{ auto.failureCount }}</span>
         </div>
         <div class="stat-item" [attr.title]="'dashboard.generalDetail.stoppedCount' | translate">
-          <mat-icon svgIcon="stop" class="stat-icon orange"></mat-icon>
+          <mat-icon svgIcon="stop" class="stat-icon" data-tone="orange"></mat-icon>
           <span class="stat-value">{{ auto.stoppedCount }}</span>
         </div>
         <div class="stat-item" [attr.title]="'dashboard.generalDetail.totalRuns' | translate">
@@ -126,13 +126,13 @@
   >
     <mat-card-header class="automation-header">
       <div class="automation-title-row">
-        <div class="automation-icon-wrapper" [class]="'op-' + typeMeta().color">
+        <div class="automation-icon-wrapper" [attr.data-tone]="typeMeta().tone">
           <mat-icon [svgIcon]="typeMeta().icon"></mat-icon>
         </div>
         <div class="title-text">
           <div class="title-heading-row">
             <h4 class="truncate">{{ auto.profileName }} · {{ auto.backendName }}</h4>
-            <span class="app-pill pill-sm {{ origin().badge }}">
+            <span appPill size="xs" [tone]="origin().tone">
               {{ origin().label | translate }}
             </span>
           </div>
@@ -142,7 +142,7 @@
             </span>
           }
         </div>
-        <span class="app-pill pill-sm {{ statusPill() }}">
+        <span appPill size="xs" [tone]="statusPill()">
           {{ 'automation.status.' + auto.status | translate }}
         </span>
       </div>

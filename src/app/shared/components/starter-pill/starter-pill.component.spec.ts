@@ -21,13 +21,13 @@ describe('StarterPillComponent', () => {
 
   it('names the profile of a profile job, without an icon', () => {
     const element = render({ kind: 'profile', name: 'Test 1' });
-    expect(element.querySelector('.app-pill')?.textContent?.trim()).toBe('Test 1');
+    expect(element.querySelector('[appPill]')?.textContent?.trim()).toBe('Test 1');
     expect(element.querySelector('mat-icon')).toBeNull();
   });
 
   it('names the Quick Run of a Quick Run job, marked with the Quick Run icon', () => {
     const element = render({ kind: 'quick_run', id: 'qr-1', name: 'Nightly' });
-    expect(element.querySelector('.app-pill')?.textContent?.trim()).toBe('Nightly');
+    expect(element.querySelector('[appPill]')?.textContent?.trim()).toBe('Nightly');
     expect(fixture.debugElement.query(By.directive(MatIcon)).componentInstance.svgIcon).toBe(
       'quick-run'
     );
@@ -40,7 +40,7 @@ describe('StarterPillComponent', () => {
       name: 'Nightly',
       workflow: { workflowId: 'wf', workflowName: 'Workflow', nodeId: 'n1', ancestors: [] },
     });
-    expect(element.querySelector('.app-pill')?.textContent?.trim()).toBe('Nightly');
+    expect(element.querySelector('[appPill]')?.textContent?.trim()).toBe('Nightly');
   });
 
   it('names the workflow of a workflow node, marked with the workflow icon', () => {
@@ -51,13 +51,13 @@ describe('StarterPillComponent', () => {
       nodeId: 'n1',
       ancestors: [],
     });
-    expect(element.querySelector('.app-pill')?.textContent?.trim()).toBe('Nightly backup');
+    expect(element.querySelector('[appPill]')?.textContent?.trim()).toBe('Nightly backup');
     expect(fixture.debugElement.query(By.directive(MatIcon)).componentInstance.svgIcon).toBe(
       'workflow'
     );
   });
 
   it('shows nothing for work nothing started', () => {
-    expect(render(undefined).querySelector('.app-pill')).toBeNull();
+    expect(render(undefined).querySelector('[appPill]')).toBeNull();
   });
 });

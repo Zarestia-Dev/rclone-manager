@@ -31,6 +31,7 @@ import {
   getRemoteFeatureLabelKey,
 } from 'src/app/services/remote/utils/provider-metadata.utils';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 export interface MetadataItem {
   Help?: string;
   Type?: string;
@@ -57,6 +58,7 @@ export interface MetadataGroup {
     MatProgressBarModule,
     FormatFileSizePipe,
     TranslatePipe,
+    PillDirective,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './remote-about-modal.component.html',

@@ -1,7 +1,7 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-md);
 }
 
 .form-field-full {
@@ -11,13 +11,13 @@
 .policy-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-xs);
 
   .policy-note {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 8px 10px;
+    gap: var(--space-xs);
+    padding: var(--space-xs) 10px;
     border-radius: var(--radius-xs);
     background: rgba(var(--accent-color-rgb), 0.08);
     border: 1px solid rgba(var(--accent-color-rgb), 0.18);
@@ -43,8 +43,8 @@
 .branches-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated-1);
   box-shadow: 0 0 0 1px var(--border-color);
@@ -180,11 +180,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: var(--space-xxs);
 }
 
 .target-mode-group {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-xxs);
 
   mat-button-toggle-group {
     width: 100%;
@@ -200,7 +200,7 @@
 .token-preview {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
   padding: 6px 10px;
   border-radius: var(--radius-xs);
   background: rgba(var(--accent-color-rgb), 0.08);

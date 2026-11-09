@@ -18,7 +18,7 @@ import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-import { JOB_STATUS, JobMonitorConfig, JobStatus } from '@app/types';
+import { JOB_STATUS, JobMonitorConfig, JobStatus, PillTone } from '@app/types';
 import { TransferActivityPanelComponent } from '../transfer-activity-panel/transfer-activity-panel.component';
 import {
   appendSpeedSample,
@@ -27,14 +27,15 @@ import {
   sparkline,
 } from '../../utils/job-monitor.util';
 
+import { PillDirective } from '../../directives/pill.directive';
 const SPARK_WIDTH = 240;
 const SPARK_HEIGHT = 34;
 
-const STATUS_PILLS: Readonly<Record<JobStatus, { cssClass: string; textKey: string }>> = {
-  [JOB_STATUS.Running]: { cssClass: 'p-accent', textKey: 'shared.monitor.status.running' },
-  [JOB_STATUS.Completed]: { cssClass: 'p-primary', textKey: 'shared.monitor.status.completed' },
-  [JOB_STATUS.Failed]: { cssClass: 'p-warn', textKey: 'shared.monitor.status.failed' },
-  [JOB_STATUS.Stopped]: { cssClass: 'p-orange', textKey: 'shared.monitor.status.stopped' },
+const STATUS_PILLS: Readonly<Record<JobStatus, { tone: PillTone; textKey: string }>> = {
+  [JOB_STATUS.Running]: { tone: 'accent', textKey: 'shared.monitor.status.running' },
+  [JOB_STATUS.Completed]: { tone: 'primary', textKey: 'shared.monitor.status.completed' },
+  [JOB_STATUS.Failed]: { tone: 'warn', textKey: 'shared.monitor.status.failed' },
+  [JOB_STATUS.Stopped]: { tone: 'orange', textKey: 'shared.monitor.status.stopped' },
 };
 
 /**
@@ -57,6 +58,7 @@ const STATUS_PILLS: Readonly<Record<JobStatus, { cssClass: string; textKey: stri
     TransferActivityPanelComponent,
     AlertBannerComponent,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './job-monitor.component.html',
   styleUrl: './job-monitor.component.scss',

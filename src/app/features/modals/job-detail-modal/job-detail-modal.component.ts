@@ -29,6 +29,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 /** The row that names what started a job; none for work nothing started. */
 function describeStarter(starter: Starter | undefined): { label: string; name: string } | null {
   switch (starter?.kind) {
@@ -58,6 +59,7 @@ function describeStarter(starter: Starter | undefined): { label: string; name: s
     PathDisplayComponent,
     AlertBannerComponent,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   providers: [FormatTimePipe],
   hostDirectives: [EscapeCloseDirective],

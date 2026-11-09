@@ -81,7 +81,7 @@
           >
             <mat-icon
               [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
-              [class.warn]="!isJobRunning()"
+              [attr.data-tone]="!isJobRunning() ? 'warn' : null"
             ></mat-icon>
           </button>
         }
@@ -136,9 +136,9 @@
           >
             <button
               type="button"
-              class="app-pill interactive p-dim"
-              [class.is-selected]="statusFilter() === null"
-              [attr.aria-pressed]="statusFilter() === null"
+              appPill
+              tone="dim"
+              [selected]="statusFilter() === null"
               (click)="statusFilter.set(null)"
             >
               {{ 'common.all' | translate }}:
@@ -147,10 +147,9 @@
             @for (option of statusOptions(); track option.status) {
               <button
                 type="button"
-                class="app-pill interactive"
-                [class]="option.badge.cssClass"
-                [class.is-selected]="statusFilter() === option.status"
-                [attr.aria-pressed]="statusFilter() === option.status"
+                appPill
+                [tone]="option.badge.tone"
+                [selected]="statusFilter() === option.status"
                 (click)="statusFilter.set(option.status)"
               >
                 {{ option.badge.text | translate }}:

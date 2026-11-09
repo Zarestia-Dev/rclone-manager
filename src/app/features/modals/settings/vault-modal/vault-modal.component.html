@@ -26,11 +26,7 @@
           <p class="description">{{ 'vault.description' | translate }}</p>
         </div>
         <div class="status-actions">
-          <span
-            class="app-pill"
-            [class.p-primary]="isVaultEnabled()"
-            [class.p-dim]="!isVaultEnabled()"
-          >
+          <span appPill [tone]="isVaultEnabled() ? 'primary' : 'dim'">
             {{
               (isVaultEnabled() ? 'vault.status.protected' : 'vault.status.unprotected') | translate
             }}
@@ -38,7 +34,7 @@
           @if (isVaultEnabled()) {
             <button
               matButton
-              class="primary"
+              data-tone="primary"
               type="button"
               (click)="lockNow()"
               [disabled]="isBusy()"
@@ -259,7 +255,7 @@
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-icon svgIcon="shield-xmark" class="warn"></mat-icon>
+              <mat-icon svgIcon="shield-xmark" data-tone="warn"></mat-icon>
               <span>{{ 'vault.disable.title' | translate }}</span>
             </mat-panel-title>
           </mat-expansion-panel-header>
@@ -296,7 +292,7 @@
 
             <button
               matButton="filled"
-              class="warn"
+              data-tone="warn"
               type="submit"
               [disabled]="isBusy() || disableForm.invalid"
             >

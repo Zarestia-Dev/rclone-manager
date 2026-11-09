@@ -47,6 +47,7 @@ import { RcJobCardComponent } from './parts/rc-job-card.component';
 import { RcOutputComponent } from '../../../../shared/components/rc-output/rc-output.component';
 import { RcSidebarComponent } from '../../../../shared/components/rc-sidebar/rc-sidebar.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 /** Entries kept in the scrollback; the oldest go first. */
 const MAX_ENTRIES = 100;
 /** Lines of recent history offered in the history panel. */
@@ -95,6 +96,7 @@ function isAsync(params: Record<string, unknown>): boolean {
     RcJobCardComponent,
     RcOutputComponent,
     RcSidebarComponent,
+    PillDirective,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './rc-console-modal.component.html',

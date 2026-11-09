@@ -27,9 +27,10 @@ import {
   JobInfo,
   JobMonitorConfig,
   JobReportKey,
-  OperationColor,
   OperationControlConfig,
   PathDisplayConfig,
+  PillTone,
+  OPERATION_TONE,
   PrimaryActionType,
   OperationTab,
   RemoteStatus,
@@ -47,7 +48,6 @@ import {
   REMOTE_CONFIG_KEYS,
   OPERATION_METADATA,
   ACTION_ANIMATION_CLASS,
-  OPERATION_COLOR_VAR,
   AppConfig,
   BisyncConfig,
   ProfileConfig,
@@ -100,6 +100,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-app-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,6 +118,7 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
     VfsControlPanelComponent,
     ServeCardComponent,
     TranslatePipe,
+    PillDirective,
   ],
   providers: [FormatTimePipe],
   templateUrl: './app-detail.component.html',
@@ -295,7 +297,7 @@ export class AppDetailComponent {
       OPERATION_METADATA[type] ?? {
         label: 'dashboard.appDetail.syncSettings',
         icon: 'refresh',
-        cssClass: 'primary',
+        tone: 'primary',
         supportsVfs: false,
         supportsProfiles: false,
       }
@@ -309,32 +311,29 @@ export class AppDetailComponent {
     return this.isOperationActive(this.currentOpType());
   });
 
-  readonly operationColor = computed<OperationColor>(
-    () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
-  );
-
-  readonly operationColorCssVar = computed(
-    () => OPERATION_COLOR_VAR[this.operationColor()] ?? OPERATION_COLOR_VAR.warn
-  );
+  /** The colour role of the selected operation; the root sets it as the tone scope. */
+  readonly operationColor = computed<PillTone>(() => this.currentOpMetadata()?.tone ?? 'primary');
 
   readonly iconAnimationClass = computed(() =>
     this.operationActiveState() ? (ACTION_ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
   );
 
-  // CSS class for the icon container — single operation state class or empty.
-  protected readonly iconContainerClass = computed((): string => {
-    if (this.mode() === 'quickRun') {
-      if (!this.isQuickRunRunning()) return '';
-      const op = this.currentOpType();
-      return op === 'check' || op === 'cryptcheck' ? 'check' : op;
-    }
+  /** The operation whose state the icon container shows: a running mount, serve or sync-type job. */
+  private readonly iconContainerOperation = computed((): string | null => {
+    if (this.mode() === 'quickRun') return this.isQuickRunRunning() ? this.currentOpType() : null;
     const remote = this.selectedRemote();
     if (remote.status.mount.active) return 'mount';
     if (remote.status.serve.active) return 'serve';
-    if (!this.isOperationsType() || !this.operationActiveState()) return '';
-    const op = this.selectedSyncOperation();
-    return op === 'check' || op === 'cryptcheck' ? 'check' : op;
+    if (!this.isOperationsType() || !this.operationActiveState()) return null;
+    return this.selectedSyncOperation();
   });
+
+  protected readonly iconContainerTone = computed((): PillTone | null => {
+    const op = this.iconContainerOperation();
+    return op ? (OPERATION_TONE[op] ?? null) : null;
+  });
+
+  protected readonly operationTone = OPERATION_TONE;
 
   // --- Derived: Sync Operations ---
   readonly primarySyncOps = computed<SyncOperationType[]>(() => {
@@ -571,6 +570,12 @@ export class AppDetailComponent {
 
   readonly isAutomationStopping = computed(() => {
     return this.matchingAutomation()?.status === 'stopping';
+  });
+
+  /** The tone of a disabled or stopping automation; null while it runs as usual. */
+  readonly automationStateTone = computed<PillTone | null>(() => {
+    if (this.isAutomationDisabled()) return 'dim';
+    return this.isAutomationStopping() ? 'orange' : null;
   });
 
   readonly isTogglingAutomation = signal<boolean>(false);
@@ -1166,7 +1171,7 @@ export class AppDetailComponent {
       operationType: type,
       isActive,
       isLoading,
-      cssClass: metadata.cssClass,
+      tone: metadata.tone,
       pathConfig,
       primaryButtonLabel: isLoading
         ? t(isMount ? 'dashboard.appDetail.mount' : 'dashboard.appDetail.starting', { op: opLabel })

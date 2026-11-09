@@ -19,6 +19,7 @@ import {
 } from '../../../../../shared/utils/rc/rc-job.util';
 import { RcOutputComponent } from '../../../../../shared/components/rc-output/rc-output.component';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 /** Milliseconds between two looks at a running job. */
 const POLL_MS = 1000;
 /** Failed looks in a row, with rclone not reached, before the job is given up on. */
@@ -30,7 +31,14 @@ const MAX_FAILED_LOOKS = 3;
  */
 @Component({
   selector: 'app-rc-job-card',
-  imports: [MatIconModule, TranslatePipe, FormatFileSizePipe, FormatEtaPipe, RcOutputComponent],
+  imports: [
+    MatIconModule,
+    TranslatePipe,
+    FormatFileSizePipe,
+    FormatEtaPipe,
+    RcOutputComponent,
+    PillDirective,
+  ],
   templateUrl: './rc-job-card.component.html',
   styleUrl: './rc-job-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

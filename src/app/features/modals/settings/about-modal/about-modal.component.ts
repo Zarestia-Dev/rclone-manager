@@ -40,6 +40,7 @@ import {
   isMobile,
 } from 'src/app/services/infrastructure/platform/api-client.service';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 // Configure renderer once at module level
 const renderer = new Renderer();
 renderer.link = ({ href, title, text }): string => {
@@ -65,6 +66,7 @@ renderer.link = ({ href, title, text }): string => {
     TranslatePipe,
     CopyToClipboardDirective,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],

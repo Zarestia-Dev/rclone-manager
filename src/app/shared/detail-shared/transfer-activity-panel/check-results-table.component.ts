@@ -28,6 +28,7 @@ import {
   withMember,
 } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-check-results-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +42,7 @@ import {
     MatCheckboxModule,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
@@ -87,7 +89,7 @@ import {
                 </span>
               </div>
               <div class="card-info-right">
-                <span class="app-pill" [class]="item.badge.cssClass">
+                <span appPill [tone]="item.badge.tone">
                   <mat-icon [svgIcon]="item.badge.icon"></mat-icon>
                   {{ item.badge.text | translate }}
                 </span>
@@ -113,8 +115,9 @@ import {
               <div class="card-footer-left">
                 @if (item.resolution; as resolution) {
                   <span
-                    class="app-pill pill-sm"
-                    [class]="resolution.cssClass"
+                    appPill
+                    size="xs"
+                    [tone]="resolution.tone"
                     [attr.title]="resolution.directionKey | translate"
                   >
                     <mat-icon [svgIcon]="resolution.icon"></mat-icon>
@@ -191,7 +194,7 @@ import {
               'shared.transferActivity.bulk.selected' | translate: { count: selectedItems().length }
             }}</strong>
             @if (selectedCounts().toDestination) {
-              <span class="app-pill pill-sm p-primary">
+              <span appPill tone="primary" size="xs">
                 <mat-icon svgIcon="right-arrow"></mat-icon>
                 {{
                   'shared.transferActivity.bulk.toDestination'
@@ -200,7 +203,7 @@ import {
               </span>
             }
             @if (selectedCounts().toSource) {
-              <span class="app-pill pill-sm p-accent">
+              <span appPill tone="accent" size="xs">
                 <mat-icon svgIcon="left-arrow"></mat-icon>
                 {{
                   'shared.transferActivity.bulk.toSource'
@@ -209,7 +212,7 @@ import {
               </span>
             }
             @if (selectedCounts().choose) {
-              <span class="app-pill pill-sm p-orange">
+              <span appPill tone="orange" size="xs">
                 <mat-icon svgIcon="right-left"></mat-icon>
                 {{
                   'shared.transferActivity.bulk.choose'

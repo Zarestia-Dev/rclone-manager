@@ -45,6 +45,7 @@ import { maskSecrets } from '../../../../shared/utils/rc/rc-output.util';
 import { paramsOf } from '../../../../shared/utils/rc/rc-schema.util';
 import { syncResponsiveSidebar } from '../../../../shared/utils/responsive.util';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 /** The dialog is wide enough for the sidebar beside the form from this width up. */
 const SIDEBAR_BREAKPOINT_PX = 768;
 
@@ -73,6 +74,7 @@ export interface RcEditorModalData {
     RcDocsComponent,
     RcOutputComponent,
     RcSidebarComponent,
+    PillDirective,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './rc-editor-modal.component.html',

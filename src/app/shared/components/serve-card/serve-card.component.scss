@@ -125,7 +125,7 @@
 .serve-footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-xxs);
   margin: 0 var(--space-md) var(--space-md);
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-elevated-1);

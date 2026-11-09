@@ -39,14 +39,13 @@
 
     <mat-sidenav-content class="modal-content">
       <div class="toolbar">
-        <span class="app-pill p-dim sm" [title]="'modals.rcConsole.backendHint' | translate">
+        <span appPill tone="dim" [title]="'modals.rcConsole.backendHint' | translate">
           {{ backendName() }}
         </span>
         <button
           type="button"
-          class="app-pill interactive sm"
-          [class.p-accent]="readOnly()"
-          [class.p-warn]="!readOnly()"
+          appPill
+          [tone]="readOnly() ? 'accent' : 'warn'"
           [title]="'modals.rcConsole.readOnlyHint' | translate"
           (click)="toggleReadOnly()"
         >
@@ -59,8 +58,8 @@
         </button>
         <button
           type="button"
-          class="app-pill interactive sm"
-          [class.p-accent]="maskOutput()"
+          appPill
+          [tone]="maskOutput() ? 'accent' : null"
           [title]="'modals.rcConsole.maskHint' | translate"
           (click)="toggleMask()"
         >
@@ -73,9 +72,8 @@
         </button>
         <div class="engine">
           <span
-            class="app-pill sm"
-            [class.p-dim]="engineActive()"
-            [class.p-warn]="!engineActive()"
+            appPill
+            [tone]="engineActive() ? 'dim' : 'warn'"
             [title]="'modals.rcConsole.engine.info' | translate"
           >
             @if (engineActive()) {
@@ -90,8 +88,8 @@
           @if (canRestartEngine()) {
             <button
               type="button"
-              class="app-pill interactive sm"
-              [class.p-warn]="restartArmed()"
+              appPill
+              [tone]="restartArmed() ? 'warn' : null"
               [disabled]="restartingEngine() || !enginePid()"
               [title]="'modals.rcConsole.engine.restartHint' | translate"
               (click)="restartEngine()"
@@ -124,7 +122,7 @@
                 <span class="quick-label">{{ 'modals.rcConsole.quickStart' | translate }}</span>
                 <div class="quick-chips">
                   @for (example of quickStart(); track example) {
-                    <button type="button" class="app-pill interactive" (click)="setLine(example)">
+                    <button type="button" appPill (click)="setLine(example)">
                       <code>{{ example }}</code>
                     </button>
                   }
@@ -156,11 +154,9 @@
                   <mat-icon svgIcon="spinner" class="spin"></mat-icon>
                 } @else if (entry.response; as response) {
                   @if (response.ok) {
-                    <span class="app-pill p-accent sm">{{
-                      'modals.rcConsole.statusOk' | translate
-                    }}</span>
+                    <span appPill tone="accent">{{ 'modals.rcConsole.statusOk' | translate }}</span>
                   } @else {
-                    <span class="app-pill p-warn sm">
+                    <span appPill tone="warn">
                       {{
                         response.status
                           ? ('modals.rcConsole.statusHttp' | translate: { status: response.status })
@@ -168,7 +164,7 @@
                       }}
                     </span>
                   }
-                  <span class="app-pill p-dim sm">{{ response.durationMs }}ms</span>
+                  <span appPill tone="dim">{{ response.durationMs }}ms</span>
                 }
                 @if (entry.kind === 'call') {
                   <span class="entry-actions">
@@ -234,11 +230,9 @@
             <div class="hint">
               <span class="hint-title truncate">{{ active.Title }}</span>
               @if (isDangerous(active.Path)) {
-                <span class="app-pill p-warn sm">{{
-                  'modals.rcConsole.dangerous' | translate
-                }}</span>
+                <span appPill tone="warn">{{ 'modals.rcConsole.dangerous' | translate }}</span>
               }
-              <button type="button" class="app-pill interactive sm" (click)="showHelp(active.Path)">
+              <button type="button" appPill (click)="showHelp(active.Path)">
                 <mat-icon svgIcon="circle-info"></mat-icon>
                 <span>{{ 'modals.rcConsole.showHelp' | translate }}</span>
               </button>
@@ -249,8 +243,8 @@
               @for (param of missingParams(); track param.name) {
                 <button
                   type="button"
-                  class="app-pill interactive sm"
-                  [class.p-accent]="param.required"
+                  appPill
+                  [tone]="param.required ? 'accent' : null"
                   [title]="param.description"
                   (click)="insertParam(param.name)"
                 >
@@ -273,7 +267,7 @@
             <mat-icon svgIcon="circle-info"></mat-icon>
             <span>{{ n.key | translate: n.params }}</span>
             @if (n.allowWrites) {
-              <button type="button" class="app-pill interactive p-warn sm" (click)="allowWrites()">
+              <button type="button" appPill tone="warn" (click)="allowWrites()">
                 {{ 'modals.rcConsole.allowWrites' | translate }}
               </button>
             }

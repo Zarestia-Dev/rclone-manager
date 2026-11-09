@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import type {
   GlobalStats,
   JobInfo,
@@ -8,9 +9,6 @@ import type {
 } from './jobs';
 import type { JobActionType, PrimaryActionType, RemoteAction } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
-
-// ── Shared color tokens used across operation UI ───────────────────────────
-export type OperationColor = 'primary' | 'accent' | 'yellow' | 'orange' | 'purple' | 'warn';
 
 // ── Settings Panel ──────────────────────────────────────────────────────────
 export interface SettingsSection {
@@ -62,7 +60,7 @@ export interface OperationControlConfig {
   isActive: boolean;
   isError?: boolean;
   isLoading: boolean;
-  cssClass: string;
+  tone: PillTone;
   pathConfig: PathDisplayConfig;
   primaryButtonLabel: string;
   primaryIcon: string;
@@ -145,15 +143,3 @@ export const ACTION_ANIMATION_CLASS = Object.freeze(
     OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [op.key, op.animationClass])
   )
 ) as Readonly<Record<PrimaryActionType, string>>;
-
-/**
- * Mapping of operation colors to their corresponding CSS variable names.
- */
-export const OPERATION_COLOR_VAR: Readonly<Record<OperationColor, string>> = Object.freeze({
-  primary: 'var(--primary-color)',
-  accent: 'var(--accent-color)',
-  yellow: 'var(--yellow)',
-  orange: 'var(--orange)',
-  purple: 'var(--purple)',
-  warn: 'var(--warn-color)',
-});

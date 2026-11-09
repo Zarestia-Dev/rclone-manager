@@ -46,8 +46,10 @@ import {
   DEFAULT_INSTALLATION_DATA,
   RCLONE_INSTALL_TAB_OPTIONS,
   ONBOARDING_CONFIG_TAB_OPTIONS,
+  PillTone,
 } from '@app/types';
 
+import { PillDirective } from '../../shared/directives/pill.directive';
 const MOBILE_BREAKPOINT = 600;
 const VIEWPORT_VERTICAL_OFFSET = 152;
 const MIN_VIEWPORT_HEIGHT = 200;
@@ -62,7 +64,7 @@ const EXISTING_BINARY_BUTTON_LABELS: Readonly<Record<BinaryStatus, string>> = Ob
 interface UiOption {
   value: MainView;
   icon: string;
-  colorClass: 'primary' | 'accent' | 'purple';
+  tone: PillTone;
   titleKey: string;
   descKey: string;
 }
@@ -85,6 +87,7 @@ interface PrimaryButton {
     PasswordManagerComponent,
     ProvisionProgressComponent,
     TranslatePipe,
+    PillDirective,
   ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
@@ -167,21 +170,21 @@ export class OnboardingComponent {
     {
       value: 'main_menu',
       icon: 'desktop',
-      colorClass: 'primary',
+      tone: 'primary',
       titleKey: 'onboarding.uiOptions.main_menu.title',
       descKey: 'onboarding.uiOptions.main_menu.description',
     },
     {
       value: 'nautilus',
       icon: 'folder-open',
-      colorClass: 'accent',
+      tone: 'accent',
       titleKey: 'onboarding.uiOptions.nautilus.title',
       descKey: 'onboarding.uiOptions.nautilus.description',
     },
     {
       value: 'flow',
       icon: 'bolt',
-      colorClass: 'purple',
+      tone: 'purple',
       titleKey: 'onboarding.uiOptions.flow.title',
       descKey: 'onboarding.uiOptions.flow.description',
     },

@@ -23,6 +23,7 @@ import { WorkflowStateService } from '../../../../../services/flow/workflow-stat
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { CronSummaryCardComponent } from './cron-summary-card.component';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-logic-node-form',
   imports: [
@@ -38,6 +39,7 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
     TranslatePipe,
     AlertBannerComponent,
     CronSummaryCardComponent,
+    PillDirective,
   ],
   templateUrl: './logic-node-form.component.html',
   styleUrls: ['../workflow-inspector.component.scss', './logic-node-form.component.scss'],

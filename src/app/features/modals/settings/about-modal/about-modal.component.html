@@ -183,7 +183,7 @@
                     (click)="navigateTo('debugging')"
                     [attr.title]="'modals.about.debugTools' | translate"
                   >
-                    <mat-icon svgIcon="bug" class="purple"></mat-icon>
+                    <mat-icon svgIcon="bug" data-tone="purple"></mat-icon>
                   </button>
                 </div>
               </div>
@@ -423,12 +423,12 @@
             @if (!isNativeMobile) {
               <div class="debug-actions-section">
                 @if (!isHeadless) {
-                  <button matButton="elevated" class="primary" (click)="openDevTools()">
+                  <button matButton="elevated" data-tone="primary" (click)="openDevTools()">
                     <mat-icon svgIcon="terminal"> </mat-icon>
                     <span>{{ 'modals.about.openDevTools' | translate }}</span>
                   </button>
                 }
-                <button matButton="elevated" class="warn" (click)="restartApp()">
+                <button matButton="elevated" data-tone="warn" (click)="restartApp()">
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <span>{{ 'modals.about.restartApp' | translate }}</span>
                 </button>
@@ -502,7 +502,7 @@
                           [svgIcon]="
                             backendService.activeBackend() === 'Local' ? 'skull' : 'power-off'
                           "
-                          class="orange"
+                          data-tone="orange"
                         ></mat-icon>
                       </button>
                     }
@@ -518,7 +518,7 @@
                       (click)="navigateTo('memory')"
                       [attr.title]="'modals.about.viewMemoryStats' | translate"
                     >
-                      <mat-icon svgIcon="memory" class="purple"></mat-icon>
+                      <mat-icon svgIcon="memory" data-tone="purple"></mat-icon>
                     </button>
                   </div>
                 }
@@ -537,7 +537,7 @@
                     @if (clearingFsCache()) {
                       <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     } @else {
-                      <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                      <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
                     }
                   </button>
                 </div>
@@ -692,9 +692,7 @@
               <div class="detail-row">
                 <div class="contributor-info">
                   <span class="detail-label">Hakan İSMAİL</span>
-                  <span class="app-pill p-primary">{{
-                    'modals.about.leadDeveloper' | translate
-                  }}</span>
+                  <span appPill tone="primary">{{ 'modals.about.leadDeveloper' | translate }}</span>
                 </div>
                 <a
                   class="contributor-link"
@@ -998,7 +996,7 @@
       </div>
     </div>
     <div class="update-buttons">
-      <button matButton="filled" class="accent" (click)="action()" [disabled]="restarting">
+      <button matButton="filled" data-tone="accent" (click)="action()" [disabled]="restarting">
         <mat-icon [svgIcon]="restarting ? 'spinner' : 'reset-wrench'"></mat-icon>
         <span>{{ 'modals.about.restartNow' | translate }}</span>
       </button>

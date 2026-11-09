@@ -32,6 +32,7 @@ import {
   NodeVariableField,
 } from '../../../utils/node-fields.util';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-action-node-form',
   imports: [
@@ -46,6 +47,7 @@ import {
     MatButtonModule,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './action-node-form.component.html',
   styleUrl: './action-node-form.component.scss',

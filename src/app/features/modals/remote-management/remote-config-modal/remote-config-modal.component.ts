@@ -52,6 +52,7 @@ import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-remote-config-modal',
   hostDirectives: [EscapeCloseDirective],
@@ -77,6 +78,7 @@ import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config
     ProfileSwitcherComponent,
     ConfigModalSidebarComponent,
     ConfigModalFooterComponent,
+    PillDirective,
   ],
 
   providers: [RemoteCreationOrchestrator, RemoteConfigStateService],

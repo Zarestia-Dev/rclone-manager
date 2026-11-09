@@ -64,7 +64,7 @@
             @for (suggestion of endpointSuggestions(); track suggestion.Path) {
               <button
                 type="button"
-                class="app-pill interactive"
+                appPill
                 [attr.title]="suggestion.Title"
                 (click)="pickEndpoint(suggestion.Path)"
               >
@@ -78,7 +78,7 @@
           <div class="endpoint-title">
             <span>{{ endpoint.Title }}</span>
             @if (activeDangerous()) {
-              <span class="app-pill p-warn sm">{{ 'modals.rcConsole.dangerous' | translate }}</span>
+              <span appPill tone="warn">{{ 'modals.rcConsole.dangerous' | translate }}</span>
             }
           </div>
           <app-rc-docs [help]="endpoint.Help" />
@@ -92,14 +92,15 @@
             <h4 class="section-title">{{ 'flow.workflow.inspector.rcParameters' | translate }}</h4>
             @if (jsonStatus().isTemplate) {
               <span
-                class="app-pill p-primary sm"
+                appPill
+                tone="primary"
                 [attr.title]="'flow.workflow.inspector.templateJson' | translate"
               >
                 <mat-icon svgIcon="workflow"></mat-icon>
                 <span>{{ 'flow.workflow.inspector.templateJson' | translate }}</span>
               </span>
             } @else if (rawParamsJson().trim() && !jsonStatus().valid) {
-              <span class="app-pill p-warn sm" [attr.title]="jsonStatus().error || ''">
+              <span appPill tone="warn" [attr.title]="jsonStatus().error || ''">
                 <mat-icon svgIcon="circle-info"></mat-icon>
                 <span>{{ 'flow.workflow.inspector.invalidJson' | translate }}</span>
               </span>
@@ -108,7 +109,8 @@
           <div class="panel-actions">
             <button
               type="button"
-              class="app-pill interactive p-accent sm"
+              appPill
+              tone="accent"
               [disabled]="isTesting() || !command().trim()"
               (click)="testRun()"
               [attr.title]="'flow.workflow.inspector.testRunRcHint' | translate"
@@ -121,7 +123,7 @@
             </button>
             <button
               type="button"
-              class="app-pill interactive sm"
+              appPill
               (click)="formatJson()"
               [attr.title]="'flow.workflow.inspector.formatJson' | translate"
             >
@@ -130,7 +132,7 @@
             @if (rawParamsJson().trim()) {
               <button
                 type="button"
-                class="app-pill interactive sm"
+                appPill
                 (click)="clearParams()"
                 [attr.title]="'flow.workflow.inspector.clearJson' | translate"
               >
@@ -145,8 +147,8 @@
             @for (param of endpointParams(); track param.name) {
               <button
                 type="button"
-                class="app-pill interactive sm"
-                [class.p-accent]="param.required"
+                appPill
+                [tone]="param.required ? 'accent' : null"
                 [attr.title]="param.description"
                 (click)="addParam(param.name)"
               >
@@ -212,7 +214,8 @@
 
               <button
                 type="button"
-                class="app-pill interactive p-accent"
+                appPill
+                tone="accent"
                 (click)="insertSelectedToken()"
                 [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
               >
@@ -232,7 +235,7 @@
           <mat-icon svgIcon="circle-info"></mat-icon>
           <span>{{ notice.key | translate: notice.params }}</span>
           @if (notice.allowWrites) {
-            <button type="button" class="app-pill interactive p-warn sm" (click)="allowWrites()">
+            <button type="button" appPill tone="warn" (click)="allowWrites()">
               {{ 'modals.rcConsole.allowWrites' | translate }}
             </button>
           }
@@ -244,11 +247,9 @@
           <div class="panel-head">
             <div class="panel-title">
               @if (result.ok) {
-                <span class="app-pill p-accent sm">{{
-                  'modals.rcConsole.statusOk' | translate
-                }}</span>
+                <span appPill tone="accent">{{ 'modals.rcConsole.statusOk' | translate }}</span>
               } @else {
-                <span class="app-pill p-warn sm">
+                <span appPill tone="warn">
                   {{
                     result.status
                       ? ('modals.rcConsole.statusHttp' | translate: { status: result.status })
@@ -256,12 +257,13 @@
                   }}
                 </span>
               }
-              <span class="app-pill p-dim sm">{{ result.durationMs }}ms</span>
+              <span appPill tone="dim">{{ result.durationMs }}ms</span>
             </div>
             @if (result.ok) {
               <button
                 type="button"
-                class="app-pill interactive p-primary sm"
+                appPill
+                tone="primary"
                 (click)="saveTestAsSample()"
                 [attr.title]="'flow.workflow.inspector.useAsSampleSchema' | translate"
               >
@@ -294,7 +296,7 @@
           <div class="panel-actions">
             <button
               type="button"
-              class="app-pill interactive sm"
+              appPill
               (click)="formatSampleOutputJson()"
               [attr.title]="'flow.workflow.inspector.formatJson' | translate"
             >
@@ -302,7 +304,7 @@
             </button>
             <button
               type="button"
-              class="app-pill interactive sm"
+              appPill
               (click)="sampleOutputJson.set('')"
               [attr.title]="'common.clear' | translate"
             >
@@ -331,7 +333,8 @@
             <div class="pill-row">
               @for (field of sampleOutputKeys(); track field.key) {
                 <span
-                  class="app-pill p-primary sm"
+                  appPill
+                  tone="primary"
                   [attr.title]="
                     field.labelKey
                       ? (field.labelKey | translate) + ' (' + field.key + ')'

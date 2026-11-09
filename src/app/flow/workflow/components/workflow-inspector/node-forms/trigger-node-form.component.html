@@ -29,16 +29,16 @@
   </mat-form-field>
 
   <div class="presets-row">
-    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(0)">
+    <button type="button" appPill (click)="applyAppStartPreset(0)">
       {{ 'flow.workflow.inspector.delay0s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(5)">
+    <button type="button" appPill (click)="applyAppStartPreset(5)">
       {{ 'flow.workflow.inspector.delayPreset5s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(15)">
+    <button type="button" appPill (click)="applyAppStartPreset(15)">
       {{ 'flow.workflow.inspector.delayPreset15s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(30)">
+    <button type="button" appPill (click)="applyAppStartPreset(30)">
       {{ 'flow.workflow.inspector.delayPreset30s' | translate }}
     </button>
   </div>
@@ -104,14 +104,10 @@
   </mat-form-field>
 
   <div class="presets-row">
-    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(2)">2s</button>
-    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(5)">5s</button>
-    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(10)">
-      10s
-    </button>
-    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(30)">
-      30s
-    </button>
+    <button type="button" appPill (click)="applyDebouncePreset(2)">2s</button>
+    <button type="button" appPill (click)="applyDebouncePreset(5)">5s</button>
+    <button type="button" appPill (click)="applyDebouncePreset(10)">10s</button>
+    <button type="button" appPill (click)="applyDebouncePreset(30)">30s</button>
   </div>
 }
 

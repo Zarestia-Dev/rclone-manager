@@ -35,7 +35,7 @@
                 (click)="cleanDuplicates()"
                 [attr.title]="'flow.workflow.cleanDuplicates' | translate"
               >
-                <mat-icon svgIcon="broom" class="orange"></mat-icon>
+                <mat-icon svgIcon="broom" data-tone="orange"></mat-icon>
               </button>
             }
           </div>
@@ -72,7 +72,7 @@
                   (click)="deleteWorkflow($event, wf.id)"
                   [attr.title]="'flow.workflow.actions.deleteWorkflow' | translate"
                 >
-                  <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                  <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
                 </button>
               </div>
             </div>
@@ -116,7 +116,9 @@
       <div class="toolbar-execution-group">
         <button
           type="button"
-          class="stop-workflow-btn warn"
+          class="stop-workflow-btn"
+          data-tone="warn"
+          data-variant="solid"
           (click)="stopWorkflow()"
           [attr.title]="'flow.workflow.toolbar.stop' | translate"
         >

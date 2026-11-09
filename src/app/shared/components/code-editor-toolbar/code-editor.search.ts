@@ -62,7 +62,7 @@ export function createSearchPanel(view: EditorView, translate: TranslateService)
     const el = doc.createElement('button');
     el.type = 'button';
     el.name = key;
-    el.className = glyph ? 'action-button' : 'app-pill interactive';
+    el.className = glyph ? 'action-button' : 'app-pill';
     if (glyph) el.textContent = glyph;
     label(el, key, !glyph);
     el.addEventListener('click', run);
@@ -142,8 +142,9 @@ export function createSearchPanel(view: EditorView, translate: TranslateService)
     replace.disabled = all.disabled = view.state.readOnly || disabled;
     for (const { key, el } of toggles) {
       el.setAttribute('aria-pressed', String(query[key]));
-      el.classList.toggle('is-selected', query[key]);
-      el.classList.toggle('p-accent', query[key]);
+      el.toggleAttribute('data-selected', query[key]);
+      if (query[key]) el.dataset['tone'] = 'accent';
+      else delete el.dataset['tone'];
     }
   };
   const commit = (): void => {

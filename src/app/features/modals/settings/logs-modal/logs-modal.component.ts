@@ -27,6 +27,7 @@ import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { CommandOutput, extractCommandOutput } from './log-output';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-logs-modal',
   standalone: true,
@@ -44,6 +45,7 @@ import { CommandOutput, extractCommandOutput } from './log-output';
     UpperCasePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],

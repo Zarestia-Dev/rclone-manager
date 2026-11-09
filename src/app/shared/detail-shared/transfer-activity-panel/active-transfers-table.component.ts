@@ -14,6 +14,7 @@ import {
 import { TransferOperationsService } from './transfer-operations.service';
 import { matchesActivitySearch, splitPath } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 interface ActiveRow extends TransferFile {
   isPreparing: boolean;
   uniqueId: string;
@@ -30,6 +31,7 @@ interface ActiveRow extends TransferFile {
     TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
+    PillDirective,
   ],
   template: `
     <div class="card-list-container">
@@ -46,7 +48,7 @@ interface ActiveRow extends TransferFile {
                 </span>
               </div>
               <div class="card-info-right">
-                <span class="app-pill p-accent">{{ checkLabel() | translate }}</span>
+                <span appPill tone="accent">{{ checkLabel() | translate }}</span>
               </div>
             </div>
           </div>

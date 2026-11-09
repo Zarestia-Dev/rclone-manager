@@ -120,7 +120,7 @@
                         <p class="toggle-desc">{{ 'banners.storage.subtitle' | translate }}</p>
                       </div>
                       @if (storageAccess.allFilesAccessGranted()) {
-                        <span class="app-pill p-primary">
+                        <span appPill tone="primary">
                           {{ 'onboarding.cards.androidAccess.allowed' | translate }}
                         </span>
                       } @else {
@@ -143,7 +143,7 @@
                         <p class="toggle-desc">{{ 'banners.battery.subtitle' | translate }}</p>
                       </div>
                       @if (keepAlive.isBatteryOptimizationIgnored()) {
-                        <span class="app-pill p-primary">
+                        <span appPill tone="primary">
                           {{ 'onboarding.cards.androidAccess.allowed' | translate }}
                         </span>
                       } @else {
@@ -173,7 +173,7 @@
                         role="radio"
                         [attr.aria-checked]="selectedMainUi() === option.value"
                       >
-                        <div class="option-icon-wrapper" [class]="option.colorClass">
+                        <div class="option-icon-wrapper" [attr.data-tone]="option.tone">
                           <mat-icon [svgIcon]="option.icon"></mat-icon>
                         </div>
                         <div class="option-body">
@@ -217,7 +217,7 @@
       @let btn = primaryButton();
       <button
         matButton="filled"
-        class="primary"
+        data-tone="primary"
         (click)="btn.action()"
         [disabled]="btn.disabled"
         [attr.title]="btn.titleKey ? (btn.titleKey | translate) : ''"

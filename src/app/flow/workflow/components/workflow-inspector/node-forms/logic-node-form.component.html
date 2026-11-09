@@ -17,7 +17,7 @@
 
     <div class="branches-grid">
       @for (port of node().outputs; track port.id; let idx = $index) {
-        <div class="app-pill" [class.removable]="idx >= 2">
+        <div appPill [class.removable]="idx >= 2">
           <span class="chip-status-dot"></span>
           <span class="chip-text">{{ port.label || port.name }}</span>
           @if (idx >= 2) {
@@ -96,7 +96,7 @@
 
     <div class="branches-grid">
       @for (port of node().inputs; track port.id; let idx = $index) {
-        <div class="app-pill" [class.removable]="idx >= 2">
+        <div appPill [class.removable]="idx >= 2">
           <span class="chip-status-dot"></span>
           <span class="chip-text">{{ port.label || port.name }}</span>
           @if (idx >= 2) {
@@ -168,19 +168,19 @@
   </mat-form-field>
 
   <div class="presets-row">
-    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(5)">
+    <button type="button" appPill (click)="applyDelayPreset(5)">
       {{ 'flow.workflow.inspector.delayPreset5s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(15)">
+    <button type="button" appPill (click)="applyDelayPreset(15)">
       {{ 'flow.workflow.inspector.delayPreset15s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(30)">
+    <button type="button" appPill (click)="applyDelayPreset(30)">
       {{ 'flow.workflow.inspector.delayPreset30s' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(60)">
+    <button type="button" appPill (click)="applyDelayPreset(60)">
       {{ 'flow.workflow.inspector.delayPreset1m' | translate }}
     </button>
-    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(300)">
+    <button type="button" appPill (click)="applyDelayPreset(300)">
       {{ 'flow.workflow.inspector.delayPreset5m' | translate }}
     </button>
   </div>
@@ -203,38 +203,22 @@
       'flow.workflow.inspector.conditionPresets' | translate
     }}</span>
     <div class="presets-row">
-      <button type="button" class="app-pill interactive" (click)="applyConditionPreset('has_diff')">
+      <button type="button" appPill (click)="applyConditionPreset('has_diff')">
         {{ 'flow.workflow.inspector.condPresetHasDiff' | translate }}
       </button>
-      <button type="button" class="app-pill interactive" (click)="applyConditionPreset('no_diff')">
+      <button type="button" appPill (click)="applyConditionPreset('no_diff')">
         {{ 'flow.workflow.inspector.condPresetNoDiff' | translate }}
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyConditionPreset('diff_count')"
-      >
+      <button type="button" appPill (click)="applyConditionPreset('diff_count')">
         {{ 'flow.workflow.inspector.condPresetDiffCount' | translate }}
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyConditionPreset('has_errors')"
-      >
+      <button type="button" appPill (click)="applyConditionPreset('has_errors')">
         {{ 'flow.workflow.inspector.condPresetHasErrors' | translate }}
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyConditionPreset('transferred')"
-      >
+      <button type="button" appPill (click)="applyConditionPreset('transferred')">
         {{ 'flow.workflow.inspector.condPresetTransferred' | translate }}
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyConditionPreset('script_success')"
-      >
+      <button type="button" appPill (click)="applyConditionPreset('script_success')">
         {{ 'flow.workflow.inspector.condPresetScriptSuccess' | translate }}
       </button>
     </div>

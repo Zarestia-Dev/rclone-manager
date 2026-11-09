@@ -17,6 +17,8 @@ import {
   StartJobEvent,
   StopJobEvent,
   OPERATION_META,
+  PillTone,
+  OPERATION_TONE,
   SYNC_TYPES,
   BROWSABLE_OPS,
   ALL_PRIMARY_ACTIONS,
@@ -24,7 +26,7 @@ import {
   OpenInFilesEvent,
   OpenableFolder,
   ACTION_ANIMATION_CLASS,
-  OPERATION_COLOR_VAR,
+  PILL_TONE_VAR,
   isOperationActionInProgress,
   isFolderOpeningAction,
 } from '@app/types';
@@ -40,10 +42,12 @@ import {
   ProfilePickerGroup,
   ActionButtonClickEvent,
   STATUS_INDICATOR_META,
+  StatusIndicatorMeta,
 } from './remote-card.types';
 import { RemoteCardActionsComponent } from './remote-card-actions.component';
 import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remote-card',
   standalone: true,
@@ -56,6 +60,7 @@ import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details
     TranslatePipe,
     RemoteCardActionsComponent,
     RemoteCardProfileDetailsComponent,
+    PillDirective,
   ],
   templateUrl: './remote-card.component.html',
   styleUrls: ['./remote-card.component.scss', '../../../styles/_shared-card.scss'],
@@ -67,6 +72,7 @@ import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details
     '[class.is-editing]': 'isEditingLayout()',
     '[class.is-hidden-layout]': 'isHidden() && isEditingLayout()',
     '[class]': 'remoteCardClasses()',
+    '[attr.data-tone]': 'cardTone()',
   },
 })
 export class RemoteCardComponent {
@@ -116,6 +122,16 @@ export class RemoteCardComponent {
           ? 'active'
           : 'inactive';
     }
+  });
+
+  /** The tone of the active operation (the latest of these wins); primary while idle. */
+  readonly cardTone = computed<PillTone>(() => {
+    const s = this.remote().status;
+    const active = (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'] as const).filter(
+      op => !!s[op]?.active
+    );
+    const latest = active.at(-1);
+    return latest ? OPERATION_TONE[latest] : 'primary';
   });
 
   readonly remoteCardClasses = computed(() => {
@@ -194,7 +210,7 @@ export class RemoteCardComponent {
             isOpening: this.isFolderOpeningFor(op, profile),
             isLocal: local,
             icon: local ? 'folder' : 'folder-open',
-            cssClass: OPERATION_META[op].cssClass,
+            tone: OPERATION_META[op].tone,
             tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${local ? 'Local' : 'Remote'} (${op}${profileSuffix})`,
           });
         }
@@ -207,14 +223,12 @@ export class RemoteCardComponent {
     const folders = this.openableFolders();
     if (folders.length <= 1) return null;
 
-    const uniqueClasses = [...new Set(folders.map(f => f.cssClass))];
+    const uniqueClasses = [...new Set(folders.map(f => f.tone))];
     if (uniqueClasses.length <= 1) return null;
 
-    const colors = uniqueClasses.map(
-      c => OPERATION_COLOR_VAR[c as keyof typeof OPERATION_COLOR_VAR] ?? 'var(--primary-color)'
-    );
+    const colors = uniqueClasses.map(tone => PILL_TONE_VAR[tone]);
     return {
-      color: 'white',
+      color: 'var(--accent-fg-color)',
       background: `linear-gradient(135deg, ${colors.join(', ')})`,
     };
   });
@@ -245,12 +259,12 @@ export class RemoteCardComponent {
         isBusy: this.isProfileActionInProgress(op, profile),
         startIcon: meta?.startIcon ?? 'play',
         stopIcon: op === 'mount' ? 'eject' : 'stop',
-        cssClass: meta?.cssClass ?? 'primary',
+        tone: meta?.tone ?? 'primary',
         tooltip: this.getProfileChipTooltip(op, profile),
       }));
       groups.push({
         operation: op,
-        cssClass: meta?.cssClass ?? 'primary',
+        tone: meta?.tone ?? 'primary',
         triggerTooltip: btn.tooltip,
         triggerIcon: btn.icon,
         isActive,
@@ -271,7 +285,7 @@ export class RemoteCardComponent {
     this.detailedOperations().map(operation => ({
       key: operation,
       operation,
-      cssClass: this.getOperationCssClass(operation),
+      tone: this.getOperationTone(operation),
       labelIcon: this.getOperationLabelIcon(operation),
       profiles: this.getConfiguredProfiles(operation).map<ProfileChipViewModel>(profile => ({
         name: profile,
@@ -315,7 +329,7 @@ export class RemoteCardComponent {
         : this.translate.instant(meta.startTooltip),
       isLoading,
       isDisabled: inProgress || hasNoProfiles,
-      cssClass: isActive ? 'warn' : meta.cssClass,
+      tone: isActive ? 'warn' : meta.tone,
     };
   }
 
@@ -461,16 +475,11 @@ export class RemoteCardComponent {
     return OPERATION_META[op]?.startIcon ?? 'circle';
   }
 
-  getOperationCssClass(op: PrimaryActionType): string {
-    return OPERATION_META[op]?.cssClass ?? 'primary';
+  getOperationTone(op: PrimaryActionType): PillTone {
+    return OPERATION_META[op]?.tone ?? 'primary';
   }
 
-  getStatusIndicatorMeta(op: PrimaryActionType): {
-    icon: string;
-    pillClass: string;
-    ariaKey: string;
-    animateContainer?: boolean;
-  } {
+  getStatusIndicatorMeta(op: PrimaryActionType): StatusIndicatorMeta {
     return STATUS_INDICATOR_META[op];
   }
 

@@ -59,7 +59,7 @@ describe('JobsPanelComponent job actions', () => {
     fixture.detectChanges();
 
     const pills = [...fixture.nativeElement.querySelectorAll('.card-row-item')].map(
-      (row: HTMLElement) => row.querySelector('app-starter-pill .app-pill')?.textContent?.trim()
+      (row: HTMLElement) => row.querySelector('app-starter-pill [appPill]')?.textContent?.trim()
     );
     expect(pills).toEqual(['Test 1', 'Nightly', undefined]);
   });

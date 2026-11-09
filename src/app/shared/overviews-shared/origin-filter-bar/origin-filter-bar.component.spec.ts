@@ -24,7 +24,7 @@ describe('OriginFilterBarComponent', () => {
   });
 
   it('should update selected filter on click', () => {
-    const buttons = fixture.nativeElement.querySelectorAll('button.app-pill');
+    const buttons = fixture.nativeElement.querySelectorAll('button[appPill]');
     expect(buttons.length).toBe(4);
 
     (buttons[1] as HTMLButtonElement).click();

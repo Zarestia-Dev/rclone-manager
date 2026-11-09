@@ -35,6 +35,7 @@ import {
   filterActivity,
 } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 export type ActivityTabId = 'conflicts' | 'report' | 'active' | 'recent';
 
 export interface ActivityTab {
@@ -55,6 +56,7 @@ export interface ActivityTab {
     JobReportComponent,
     BisyncConflictsComponent,
     SearchContainerComponent,
+    PillDirective,
   ],
   templateUrl: './transfer-activity-panel.component.html',
   styleUrl: './transfer-activity-panel.component.scss',

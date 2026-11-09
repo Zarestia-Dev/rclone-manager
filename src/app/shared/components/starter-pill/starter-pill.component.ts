@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatIconModule } from '@angular/material/icon';
 import { Starter } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 /** Names what started a job, mount or serve: its profile, Quick Run or workflow. */
 @Component({
   selector: 'app-starter-pill',
-  imports: [MatIconModule],
+  imports: [MatIconModule, PillDirective],
   templateUrl: './starter-pill.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -15,6 +15,7 @@ import {
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-serve-card',
   imports: [
@@ -24,6 +25,7 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
     MatButtonModule,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './serve-card.component.html',
   styleUrl: './serve-card.component.scss',

@@ -6,6 +6,7 @@ import {
   MODE_CONFIG,
   StopJobEvent,
   OpenInFilesEvent,
+  PillTone,
 } from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +34,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
   host: {
     class: 'app-overview',
     '[class]': 'mode()',
+    '[attr.data-tone]': 'tone()',
     'attr.animate.enter': 'fade-in-out-enter',
     'attr.animate.leave': 'fade-in-out-leave',
   },
@@ -44,6 +46,9 @@ export class AppOverviewComponent {
 
   // --- Inputs ---
   readonly mode = input<OperationTab>('mount');
+  protected readonly tone = computed<PillTone>(() =>
+    this.mode() === 'operations' ? 'primary' : 'accent'
+  );
 
   // --- Outputs ---
   readonly remoteSelected = output<Remote>();

@@ -53,7 +53,7 @@
           </div>
           <div class="card-info-right">
             @if (row.settledKeep) {
-              <span class="app-pill p-primary">
+              <span appPill tone="primary">
                 <mat-icon svgIcon="check-circle"></mat-icon>
                 {{
                   (row.settledKeep === 'path1'
@@ -82,7 +82,7 @@
 
         <div class="card-paths">
           <div class="path-segment">
-            <div class="app-pill p-dim path-endpoint src" role="group">
+            <div appPill tone="dim" class="path-endpoint src" role="group">
               <code class="truncate" [title]="row.conflict.path1Now">{{
                 row.conflict.path1Now
               }}</code>
@@ -90,7 +90,7 @@
           </div>
           <mat-icon svgIcon="right-left" class="arrow-icon"></mat-icon>
           <div class="path-segment">
-            <div class="app-pill p-dim path-endpoint dst" role="group">
+            <div appPill tone="dim" class="path-endpoint dst" role="group">
               <code class="truncate" [title]="row.conflict.path2Now">{{
                 row.conflict.path2Now
               }}</code>

@@ -42,7 +42,8 @@
           font-size: 20px;
         }
 
-        @include workflow-color-classes;
+        background: rgba(var(--tone-rgb), 0.15);
+        color: var(--tone);
       }
 
       .header-text {
@@ -56,28 +57,13 @@
           font-weight: 600;
           color: var(--window-fg-color);
         }
-
-        .node-type-label {
-          .app-pill {
-            min-height: 20px;
-            padding: 1px 6px;
-            font-size: 11px;
-            gap: 4px;
-
-            mat-icon {
-              width: 12px;
-              height: 12px;
-              font-size: 12px;
-            }
-          }
-        }
       }
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xxs);
     }
   }
 
@@ -98,13 +84,13 @@
 
   &.execution-status-section {
     .execution-status-card {
-      padding: 10px 12px;
+      padding: 10px var(--space-sm);
       border-radius: var(--radius-sm);
       background: var(--bg-elevated-1);
       box-shadow: 0 0 0 1px var(--border-color);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--space-xs);
 
       &.status-running {
         border-color: var(--accent-color);
@@ -131,7 +117,7 @@
 
   &.execution-output-section {
     .output-details-card {
-      padding: 8px 12px;
+      padding: var(--space-xs) var(--space-sm);
       border-radius: var(--radius-sm);
       background: var(--bg-elevated-1);
       box-shadow: 0 0 0 1px var(--border-color);
@@ -145,7 +131,7 @@
         gap: 6px;
         font-size: 11px;
         color: var(--window-fg-color);
-        padding: 4px 8px;
+        padding: var(--space-xxs) var(--space-xs);
         border-radius: var(--radius-xs);
         background: rgba(var(--accent-color-rgb), 0.08);
 
@@ -161,7 +147,7 @@
       .output-box {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: var(--space-xxs);
 
         .output-header {
           display: flex;
@@ -180,7 +166,7 @@
           font-family: var(--font-mono);
           font-size: 11px;
           background: rgba(0, 0, 0, 0.25);
-          padding: 6px 8px;
+          padding: 6px var(--space-xs);
           border-radius: var(--radius-xs);
           margin: 0;
           white-space: pre-wrap;
@@ -194,10 +180,6 @@
     .section-title {
       mat-icon {
         color: var(--accent-color);
-      }
-
-      .app-pill {
-        margin-left: auto;
       }
     }
   }
@@ -220,19 +202,19 @@
     }
 
     .live-service-card {
-      padding: 10px 12px;
+      padding: 10px var(--space-sm);
       border-radius: var(--radius-sm);
       background: rgba(var(--success-color-rgb), 0.06);
       border: 1px solid rgba(var(--success-color-rgb), 0.3);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--space-xs);
 
       .live-service-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: var(--space-xs);
 
         .live-service-meta {
           display: flex;
@@ -259,7 +241,7 @@
       .live-service-details {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: var(--space-xxs);
         font-size: 11px;
         color: var(--dim-color);
         border-top: 1px solid rgba(var(--success-color-rgb), 0.15);
@@ -267,13 +249,13 @@
 
         .detail-item {
           display: flex;
-          gap: 4px;
+          gap: var(--space-xxs);
         }
 
         .live-link {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: var(--space-xxs);
           color: var(--accent-color);
           text-decoration: none;
           font-weight: 500;
@@ -296,7 +278,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-xxs);
   }
 
   .section-title {
@@ -314,7 +296,7 @@
   .toggle-row {
     display: flex;
     align-items: center;
-    padding: 4px 0 8px 0;
+    padding: var(--space-xxs) 0 var(--space-xs) 0;
   }
 
   .code-font {
@@ -356,13 +338,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 4px;
-
-    .app-pill {
-      min-height: 24px;
-      padding: 2px 8px;
-      font-size: var(--font-size-xs);
-    }
+    margin-top: var(--space-xxs);
   }
 }
 
@@ -370,7 +346,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: var(--space-sm);
   background: var(--bg-elevated);
   box-shadow: 0 0 0 1px var(--border-color);
   border-radius: var(--radius-sm);
@@ -395,7 +371,7 @@
 
       &.remote-badge {
         align-self: flex-start;
-        padding: 3px 8px;
+        padding: 3px var(--space-xs);
         background: rgba(var(--accent-color-rgb), 0.12);
         border: 1px solid rgba(var(--accent-color-rgb), 0.25);
         border-radius: var(--radius-xs);
@@ -429,18 +405,10 @@
       &.path-val {
         word-break: break-all;
         background: var(--bg-elevated-1);
-        padding: 4px 8px;
+        padding: var(--space-xxs) var(--space-xs);
         border-radius: var(--radius-xs);
         box-shadow: 0 0 0 1px var(--border-color);
       }
-    }
-
-    .app-pill {
-      align-self: flex-start;
-      min-height: 20px;
-      padding: 1px 7px;
-      font-size: 10.5px;
-      font-weight: 600;
     }
 
     .empty-val {
@@ -457,9 +425,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-xs);
     font-weight: 600;
-    padding: 8px 16px;
+    padding: var(--space-xs) var(--space-md);
   }
 }
 
@@ -473,7 +441,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 8px;
+      padding: 6px var(--space-xs);
       background: var(--bg-elevated);
       box-shadow: 0 0 0 1px var(--border-color);
       border-radius: var(--radius-xs);
@@ -484,7 +452,7 @@
         font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
-        padding: 1px 4px;
+        padding: 1px var(--space-xxs);
         border-radius: 3px;
         background: rgba(var(--accent-color-rgb), 0.12);
         color: var(--accent-color);
@@ -551,8 +519,8 @@
   .empty-config-box {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 12px;
+    gap: var(--space-xxs);
+    padding: var(--space-sm);
     background: var(--bg-elevated-1);
     border: 1px dashed var(--border-color);
     border-radius: var(--radius-xs);
@@ -577,7 +545,7 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: var(--space-xs);
 
   .stat-card {
     display: flex;
@@ -619,13 +587,13 @@
   .workflow-actions-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-xs);
 
     .action-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: var(--space-xs);
       width: 100%;
 
       &.delete-btn {
@@ -641,7 +609,7 @@
 }
 
 .job-summary-card {
-  padding: 12px;
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated-1);
   box-shadow: 0 0 0 1px var(--border-color);
@@ -659,7 +627,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-xs);
 
     .job-meta-left {
       display: flex;
@@ -681,10 +649,10 @@
     .job-status-tag {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xxs);
       font-size: 11px;
       font-weight: 600;
-      padding: 2px 8px;
+      padding: 2px var(--space-xs);
       border-radius: 999px;
       background: var(--hover-bg-color);
       color: var(--dim-color);
@@ -756,7 +724,7 @@
       &.sub-row {
         font-size: 10px;
         padding-top: 2px;
-        border-top: 1px dashed rgba(var(--border-color-rgb), 0.4);
+        border-top: 1px dashed var(--border-color);
 
         .stat-errors {
           color: var(--destructive-bg-color);

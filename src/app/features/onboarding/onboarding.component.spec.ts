@@ -382,7 +382,7 @@ describe('OnboardingComponent', () => {
       keepAliveMock.isBatteryOptimizationIgnored.set(true);
       goToAccessCard();
       expect(fixture.nativeElement.querySelectorAll('.mount-toggle-card button').length).toBe(0);
-      expect(fixture.nativeElement.querySelectorAll('.mount-toggle-card .app-pill').length).toBe(2);
+      expect(fixture.nativeElement.querySelectorAll('.mount-toggle-card [appPill]').length).toBe(2);
     });
   });
 });

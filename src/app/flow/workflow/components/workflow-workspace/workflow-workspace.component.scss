@@ -93,12 +93,12 @@
 
     .palette-open-trigger {
       left: 14px;
-      padding: 0 12px 0 10px;
+      padding: 0 var(--space-sm) 0 10px;
     }
 
     .inspector-open-trigger {
       right: 14px;
-      padding: 0 10px 0 12px;
+      padding: 0 10px 0 var(--space-sm);
     }
 
     .canvas-host {
@@ -118,7 +118,7 @@
       display: inline-flex;
       align-items: center;
       gap: 14px;
-      padding: 6px 8px 6px 16px;
+      padding: 6px var(--space-xs) 6px var(--space-md);
       background: var(--card-bg-color);
       box-shadow: 0 0 0 1px var(--border-color);
       border-radius: 9999px;
@@ -133,7 +133,7 @@
       .unsaved-status-group {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--space-xs);
 
         .unsaved-indicator-dot {
           width: 8px;
@@ -165,7 +165,7 @@
           border-radius: 9999px;
           border: none;
           background: var(--primary-color);
-          color: #ffffff;
+          color: var(--accent-fg-color);
           font-size: var(--font-size-sm);
           font-weight: 600;
           font-family: inherit;
@@ -180,7 +180,7 @@
           }
 
           &:hover:not(:disabled) {
-            background: var(--gnome-green-5, color-mix(in srgb, var(--primary-color) 85%, #ffffff));
+            background: var(--gnome-green-5);
             box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.45);
           }
 

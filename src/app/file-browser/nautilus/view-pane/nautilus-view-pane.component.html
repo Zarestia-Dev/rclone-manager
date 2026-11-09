@@ -149,7 +149,7 @@
               <span class="truncate">{{ item.entry.Name }}</span>
               @let share = getShareInfo(item);
               @if (share.isShared || share.isShortcut) {
-                <span class="app-pill p-dim pill-sm" [attr.title]="share.tooltipKey | translate">
+                <span appPill tone="dim" size="xs" [attr.title]="share.tooltipKey | translate">
                   <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
                   <span>{{
                     (share.isShortcut
@@ -318,7 +318,7 @@
   } @else {
     <div class="entry-icon-wrapper" [class.list-view]="!sizeBinding">
       <mat-icon
-        [class.accent]="item.entry.IsDir"
+        [attr.data-tone]="item.entry.IsDir ? 'accent' : null"
         [class.list-view]="!sizeBinding"
         [style.width.px]="sizeBinding ? iconSize() : null"
         [style.height.px]="sizeBinding ? iconSize() : null"

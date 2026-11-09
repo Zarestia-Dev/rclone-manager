@@ -3,13 +3,13 @@ import { getProviderTier, getRemoteFeatureLabelKey } from './provider-metadata.u
 
 describe('provider metadata', () => {
   it.each([
-    ['Tier 1', 'p-primary'],
-    ['Tier 2', 'p-yellow'],
-    ['Tier 3', 'p-orange'],
-    ['Tier 4', 'p-warn'],
-    ['Tier 5', 'p-warn'],
-  ])('resolves %s to its shared presentation', (label, colorClass) => {
-    expect(getProviderTier(label)).toEqual({ label, colorClass });
+    ['Tier 1', 'primary'],
+    ['Tier 2', 'yellow'],
+    ['Tier 3', 'orange'],
+    ['Tier 4', 'warn'],
+    ['Tier 5', 'warn'],
+  ])('resolves %s to its shared presentation', (label, tone) => {
+    expect(getProviderTier(label)).toEqual({ label, tone });
   });
 
   it.each([

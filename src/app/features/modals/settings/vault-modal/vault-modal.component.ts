@@ -13,6 +13,7 @@ import { ValidatorRegistryService } from '../../../../services/ui/validation/val
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 interface TimeoutOption {
   value: number;
   labelKey: string;
@@ -31,6 +32,7 @@ interface TimeoutOption {
     MatExpansionModule,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './vault-modal.component.html',
   styleUrls: ['./vault-modal.component.scss', '../../../../styles/_shared-modal.scss'],

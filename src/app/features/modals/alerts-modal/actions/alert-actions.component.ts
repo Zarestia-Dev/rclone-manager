@@ -12,6 +12,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
 import { MatDialog } from '@angular/material/dialog';
 import { AlertActionEditorComponent } from './alert-action-editor/alert-action-editor.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-alert-actions',
   imports: [
@@ -21,6 +22,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
     MatSlideToggleModule,
     TranslatePipe,
     SearchContainerComponent,
+    PillDirective,
   ],
   template: `
     <div class="actions-container">
@@ -72,7 +74,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                 {{ 'alerts.action.kind' | translate }}
               </th>
               <td mat-cell *matCellDef="let action">
-                <span class="app-pill p-dim">
+                <span appPill tone="dim">
                   <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
                   {{ 'alerts.action.' + action.kind | translate }}
                 </span>

@@ -20,6 +20,7 @@ import {
   FileVersion,
 } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 /** One file the user is asked about. */
 export interface CompareEntry {
   /** The file as the user knows it, shown at the top. */
@@ -62,6 +63,7 @@ type ChecksumStatus = 'idle' | 'loading' | 'none' | 'failed' | 'done';
     TranslatePipe,
     FormatFileSizePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './check-compare-dialog.component.html',

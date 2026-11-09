@@ -3,7 +3,8 @@
   role="button"
   tabindex="0"
   [class.selected]="isSelected()"
-  [ngClass]="[statusClass(), 'color-' + nodeCssClass()]"
+  [attr.data-tone]="nodeTone()"
+  [ngClass]="statusClass()"
   (click)="onCardClick($event)"
   (keydown.enter)="onCardClick($event)"
   (keydown.space)="onCardClick($event)"
@@ -13,7 +14,7 @@
   <!-- Node Header -->
   <div class="node-header">
     <div class="node-category-wrapper">
-      <span class="app-pill" [ngClass]="nodePillClass()">
+      <span appPill size="xs" [tone]="nodeTone()">
         {{ 'flow.workflow.category.' + node().category | translate }}
       </span>
       @if (isLiveActive()) {
@@ -70,7 +71,7 @@
 
   <!-- Node Body: Icon + Title & Subtitle + Execution Feedback -->
   <div class="node-body">
-    <div class="node-icon-box" [ngClass]="'box-' + nodeCssClass()">
+    <div class="node-icon-box">
       <mat-icon [svgIcon]="nodeIcon()"></mat-icon>
     </div>
     <div class="node-text-content">

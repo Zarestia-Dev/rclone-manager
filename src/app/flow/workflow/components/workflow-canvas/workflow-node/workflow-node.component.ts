@@ -13,6 +13,7 @@ import { WorkflowStateService } from '../../../../../services/flow/workflow-stat
 import { ModalService } from '../../../../../services/ui/modal.service';
 import { JobInfo, isWorkflowNode } from '@app/types';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 export interface NodePortRow {
   inputPort?: WorkflowPort;
   outputPort?: WorkflowPort;
@@ -20,7 +21,7 @@ export interface NodePortRow {
 
 @Component({
   selector: 'app-workflow-node',
-  imports: [CommonModule, MatIconModule, TranslatePipe],
+  imports: [CommonModule, MatIconModule, TranslatePipe, PillDirective],
   templateUrl: './workflow-node.component.html',
   styleUrl: './workflow-node.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -90,8 +91,7 @@ export class WorkflowNodeComponent {
     }
     return this.styleMeta().icon;
   });
-  readonly nodePillClass = computed(() => this.styleMeta().pillClass);
-  readonly nodeCssClass = computed(() => this.styleMeta().cssClass);
+  readonly nodeTone = computed(() => this.styleMeta().tone);
 
   readonly isLiveMounted = computed(() => {
     const n = this.node();

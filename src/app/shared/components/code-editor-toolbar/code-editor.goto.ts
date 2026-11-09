@@ -49,7 +49,7 @@ function createGoToLinePanel(view: EditorView): Panel {
   input.value = String(view.state.doc.lineAt(view.state.selection.main.head).number);
   const submit = doc.createElement('button');
   submit.type = 'submit';
-  submit.className = 'app-pill interactive';
+  submit.className = 'app-pill';
   label.append(caption, input);
   dom.append(label, submit);
   const refresh = (): void => {

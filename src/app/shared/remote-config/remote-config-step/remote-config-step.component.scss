@@ -141,17 +141,6 @@ form,
   gap: var(--space-xs);
 }
 
-.empty-state-pills .app-pill {
-  white-space: normal;
-  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-
-  @for $i from 1 through 6 {
-    &:nth-child(#{$i}) {
-      animation-delay: #{$i * 45ms};
-    }
-  }
-}
-
 .reshuffle-btn:hover mat-icon {
   animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
@@ -175,20 +164,13 @@ form,
   font-size: var(--font-size-xs);
   color: var(--dim-color);
 
-  .count-badge {
-    margin: 0;
-    padding: 0;
-    background: transparent;
+  .count-value {
     font-size: var(--font-size-sm);
     font-weight: 700;
     animation: badgeIn var(--transition-cubic) both;
+    color: var(--tone);
 
-    &.primary {
-      color: var(--primary-color);
-    }
-
-    &.purple {
-      color: var(--purple);
+    &[data-tone="purple"] {
       animation-delay: 0.04s;
     }
   }
@@ -249,9 +231,8 @@ form,
   .anim-panel,
   .anim-icon-fade-a,
   .anim-icon-fade-b,
-  .empty-state-pills .app-pill,
-  .reshuffle-btn:hover mat-icon,
-  .fields-count .count-badge {
+  .empty-state-pills .reshuffle-btn:hover mat-icon,
+  .fields-count .count-value {
     animation: none;
   }
 }

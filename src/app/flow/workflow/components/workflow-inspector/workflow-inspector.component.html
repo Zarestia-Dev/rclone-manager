@@ -3,13 +3,13 @@
     <!-- Panel Header -->
     <div class="inspector-header">
       <div class="header-info">
-        <div class="header-icon-box" [ngClass]="'color-' + nodeCssClass()">
+        <div class="header-icon-box" [attr.data-tone]="nodeTone()">
           <mat-icon [svgIcon]="nodeIcon()" class="header-icon"></mat-icon>
         </div>
         <div class="header-text">
           <h3>{{ node.titleKey ? (node.titleKey | translate) : node.title }}</h3>
           <span class="node-type-label">
-            <span class="app-pill" [ngClass]="nodePillClass()">
+            <span appPill size="xs" [tone]="nodeTone()">
               {{ 'flow.workflow.category.' + node.category | translate }}
             </span>
           </span>
@@ -47,13 +47,13 @@
             <div class="execution-status-card" [ngClass]="'status-' + node.state">
               <div class="status-card-header">
                 <div
-                  class="app-pill"
-                  [ngClass]="
+                  appPill
+                  [tone]="
                     node.state === 'running'
-                      ? 'p-accent'
+                      ? 'accent'
                       : node.state === 'success'
-                        ? 'p-primary'
-                        : 'p-dim'
+                        ? 'primary'
+                        : 'dim'
                   "
                 >
                   @if (node.state === 'running') {
@@ -69,7 +69,7 @@
                 </div>
 
                 @if (node.lastDurationMs) {
-                  <span class="count-badge">{{ node.lastDurationMs }}ms</span>
+                  <span appPill size="xs" tone="dim">{{ node.lastDurationMs }}ms</span>
                 }
               </div>
             </div>
@@ -134,7 +134,7 @@
           <div class="section-title">
             <mat-icon svgIcon="jobs"></mat-icon>
             <span>{{ 'flow.workflow.inspector.jobDetailsTitle' | translate }}</span>
-            <span class="app-pill p-accent">#{{ job.jobid }}</span>
+            <span appPill tone="accent">#{{ job.jobid }}</span>
           </div>
 
           <div class="job-summary-card" [attr.data-status]="job.status">
@@ -142,7 +142,7 @@
               <div class="job-meta-left">
                 <span class="job-type-pill">{{ job.job_type | titlecase }}</span>
                 @if (job.dry_run) {
-                  <span class="app-pill p-accent dry-run-pill">
+                  <span appPill tone="accent" class="dry-run-pill">
                     {{ 'detailShared.jobs.dryRun' | translate }}
                   </span>
                 }
@@ -215,7 +215,8 @@
               </div>
               <button
                 type="button"
-                class="app-pill interactive p-warn"
+                appPill
+                tone="warn"
                 (click)="unmountActive()"
                 [attr.title]="'flow.workflow.inspector.unmountNow' | translate"
               >
@@ -251,7 +252,8 @@
               </div>
               <button
                 type="button"
-                class="app-pill interactive p-warn"
+                appPill
+                tone="warn"
                 (click)="stopActiveServe()"
                 [attr.title]="'flow.workflow.inspector.stopServeNow' | translate"
               >
@@ -363,7 +365,7 @@
               {{ 'flow.workflow.inspector.activeConfig' | translate }}
             </div>
             @if (activeConfigEntries().length > 0) {
-              <span class="count-badge">{{ activeConfigEntries().length }}</span>
+              <span appPill size="xs" tone="dim">{{ activeConfigEntries().length }}</span>
             }
           </div>
 
@@ -404,13 +406,13 @@
     <!-- Panel Header -->
     <div class="inspector-header">
       <div class="header-info">
-        <div class="header-icon-box color-accent">
+        <div class="header-icon-box" data-tone="accent">
           <mat-icon svgIcon="workflow" class="header-icon"></mat-icon>
         </div>
         <div class="header-text">
           <h3>{{ wf.name || ('flow.workflow.untitled' | translate) }}</h3>
           <span class="node-type-label">
-            <span class="app-pill p-accent">
+            <span appPill size="xs" tone="accent">
               <mat-icon svgIcon="workflow"></mat-icon>
               <span>{{ 'flow.workflow.details' | translate }}</span>
             </span>

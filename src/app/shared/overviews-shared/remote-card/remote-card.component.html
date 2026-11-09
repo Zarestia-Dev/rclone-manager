@@ -35,11 +35,10 @@
   <div class="card-status-indicators" aria-hidden="true">
     @for (vm of statusIndicatorViewModels(); track $index) {
       <div
-        [class]="
-          'app-pill ' +
-          vm.meta.pillClass +
-          (vm.meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[vm.op] : '')
-        "
+        appPill
+        size="sm"
+        [tone]="vm.meta.tone"
+        [class]="vm.meta.animateContainer ? ACTION_ANIMATION_CLASS[vm.op] : ''"
         [attr.title]="vm.tooltip"
       >
         <mat-icon

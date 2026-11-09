@@ -146,26 +146,6 @@
   }
 }
 
-@mixin workflow-color-classes {
-  @each $status,
-    $color
-      in (
-        "primary": primary-color,
-        "accent": accent-color,
-        "orange": orange,
-        "yellow": yellow,
-        "purple": purple,
-        "warn": warn-color,
-        "dim": dim-color
-      )
-  {
-    &.color-#{$status} {
-      background: rgba(var(--#{$color}-rgb), 0.15);
-      color: var(--#{$color});
-    }
-  }
-}
-
 // Drag & drop overview panel layout editor styles (Dashboard & QuickRun overviews)
 @mixin draggable-panel-layout-editor {
   .draggable-panel-wrapper {
@@ -185,8 +165,8 @@
     &.editing {
       border-color: rgba(var(--primary-color-rgb), 0.4);
       background-color: rgba(var(--primary-color-rgb), 0.03);
-      padding: 16px;
-      margin-bottom: 24px;
+      padding: var(--space-md);
+      margin-bottom: var(--space-xl);
 
       &:hover {
         border-color: var(--primary-color);
@@ -213,11 +193,11 @@
   .panel-edit-controls {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    margin-bottom: 12px;
+    gap: var(--space-sm);
+    padding: 10px var(--space-md);
+    margin-bottom: var(--space-sm);
     background: var(--view-bg-color);
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     box-shadow: var(--shadow-gnome);
     overflow: hidden;
     cursor: grab;
@@ -244,22 +224,22 @@
     }
 
     .card-layout-toggle {
-      margin-left: var(--space-2xs);
+      margin-left: var(--space-xxs);
     }
   }
 
   .custom-placeholder {
     background: rgba(var(--primary-color-rgb), 0.05);
     border: 2px dashed var(--primary-color);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     min-height: 80px;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-md);
     transition: transform var(--transition-cubic);
   }
 
   .cdk-drag-preview {
     box-sizing: border-box;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-gnome);
     background-color: var(--window-bg-color);
     padding: 0;
@@ -372,7 +352,7 @@
 
     ::ng-deep .mat-mdc-list-item {
       border-radius: var(--radius-sm);
-      margin-bottom: 4px;
+      margin-bottom: var(--space-xxs);
       max-height: 40px;
       transition: background-color 0.2s ease;
 
@@ -455,7 +435,7 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-md);
   align-items: start;
-  padding: 2px 24px 16px;
+  padding: 2px var(--space-xl) var(--space-md);
   max-height: 480px;
   overflow-y: auto;
   overflow-x: hidden;

@@ -22,22 +22,10 @@
       @for (vc of viewActionConfigs(); track vc.key) {
         <button
           type="button"
-          class="app-pill interactive"
-          [class.p-primary]="vc.isActive && (vc.key === 'sync' || vc.key === 'archivecreate')"
-          [class.p-accent]="
-            vc.isActive &&
-            (vc.key === 'serve' ||
-              vc.key === 'mount' ||
-              vc.key === 'check' ||
-              vc.key === 'copyurl' ||
-              vc.key === 'cryptcheck')
-          "
-          [class.p-yellow]="vc.isActive && vc.key === 'copy'"
-          [class.p-orange]="vc.isActive && vc.key === 'move'"
-          [class.p-purple]="vc.isActive && vc.key === 'bisync'"
-          [class.p-warn]="vc.isActive && vc.key === 'delete'"
+          appPill
+          [tone]="vc.isActive ? statusIndicatorMeta[vc.key].tone : null"
+          [selected]="vc.isActive"
           [disabled]="vc.isLoading || !vc.canInteract"
-          [attr.aria-pressed]="vc.isActive"
           [attr.aria-label]="vc.ariaLabel"
           [attr.title]="vc.tooltip | translate"
           (click)="onChipClick(vc)"
@@ -76,7 +64,7 @@
           <mat-icon svgIcon="quick-run"></mat-icon>
           <span>{{ 'flow.quickRun.title' | translate }}</span>
           @if (remoteQuickRuns().length > 0) {
-            <span class="count-badge">{{ remoteQuickRuns().length }}</span>
+            <span appPill size="xs" tone="dim">{{ remoteQuickRuns().length }}</span>
           }
         </mat-card-title>
         <button
@@ -116,7 +104,7 @@
             </p>
             <button
               matButton="filled"
-              class="primary"
+              data-tone="primary"
               (click)="onCreateQuickRunForRemote()"
               [attr.title]="
                 'flow.quickRun.overview.createForRemote'
@@ -144,7 +132,7 @@
         <mat-card-title>
           <mat-icon svgIcon="clock"></mat-icon>
           <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
-          <span class="count-badge"
+          <span appPill size="xs" tone="dim"
             >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
           >
         </mat-card-title>

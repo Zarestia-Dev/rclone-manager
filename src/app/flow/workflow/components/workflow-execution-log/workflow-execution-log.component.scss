@@ -25,7 +25,7 @@
     .log-title {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-xs);
       cursor: pointer;
       font-size: var(--font-size-sm);
       font-weight: 600;
@@ -42,23 +42,6 @@
       display: flex;
       align-items: center;
       gap: 6px;
-
-      .app-pill {
-        min-height: 24px;
-        padding: 2px 8px;
-        font-size: 11px;
-
-        mat-icon {
-          width: 12px;
-          height: 12px;
-          font-size: 12px;
-        }
-
-        .chip-count {
-          font-weight: 600;
-          opacity: 0.85;
-        }
-      }
     }
 
     .live-progress {
@@ -79,7 +62,7 @@
     .log-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xxs);
     }
   }
 
@@ -101,10 +84,10 @@
     .log-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-xs);
       color: var(--window-fg-color);
-      padding: 2px 4px;
-      border-radius: 4px;
+      padding: 2px var(--space-xxs);
+      border-radius: var(--radius-xxs);
       transition: background 0.15s ease;
 
       &.is-clickable {

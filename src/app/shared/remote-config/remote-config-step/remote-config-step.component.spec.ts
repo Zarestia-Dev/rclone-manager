@@ -357,7 +357,7 @@ describe('RemoteConfigStepComponent provider overview', () => {
     const button = requiredElement<HTMLButtonElement>('button[aria-label="Provider features"]');
     expect(button.closest('.fields-mode-header')).not.toBeNull();
     expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(element.querySelector('.fields-mode-header .app-pill')?.textContent?.trim()).toBe(
+    expect(element.querySelector('.fields-mode-header [appPill]')?.textContent?.trim()).toBe(
       'Tier 1'
     );
     expect(element.querySelector('.provider-overview')).toBeNull();
@@ -380,21 +380,21 @@ describe('RemoteConfigStepComponent provider overview', () => {
   it.each([undefined, null])('hides the controls when overview is %s', overview => {
     setOverview(overview);
     expect(infoButton()).toBeNull();
-    expect(element.querySelector('.fields-mode-header .app-pill')).toBeNull();
+    expect(element.querySelector('.fields-mode-header [appPill]')).toBeNull();
   });
 
   it.each([
-    ['Tier 1', 'p-primary'],
-    ['Tier 2', 'p-yellow'],
-    ['Tier 3', 'p-orange'],
-    ['Tier 4', 'p-warn'],
-    ['Tier 5', 'p-warn'],
+    ['Tier 1', 'primary'],
+    ['Tier 2', 'yellow'],
+    ['Tier 3', 'orange'],
+    ['Tier 4', 'warn'],
+    ['Tier 5', 'warn'],
   ])('places %s beside the field count with the %s theme colour', (tier, colour) => {
     setOverview({ Tier: tier });
-    const pill = requiredElement('.fields-mode-header > .app-pill');
+    const pill = requiredElement('.fields-mode-header > [appPill]');
     expect(pill.textContent?.trim()).toBe(tier);
-    expect(Array.from(pill.classList).filter(name => name.startsWith('p-'))).toEqual([colour]);
-    expect(element.querySelector('.mode-actions .app-pill')).toBeNull();
+    expect(pill.dataset['tone']).toBe(colour);
+    expect(element.querySelector('.mode-actions [appPill]')).toBeNull();
   });
 
   it('shows only selected provider capabilities and closes when the type changes', () => {
@@ -418,7 +418,7 @@ describe('RemoteConfigStepComponent provider overview', () => {
     setOverview({ Tier: 'Unknown', Features: null, Hashes: null });
     infoButton()?.click();
     fixture.detectChanges();
-    expect(element.querySelector('.fields-mode-header .app-pill')).toBeNull();
+    expect(element.querySelector('.fields-mode-header [appPill]')).toBeNull();
     const panel = requiredElement('.provider-overview');
     expect(panel.textContent).toContain('wizards.remoteConfig.providerOverview.noHashes');
     expect(panel.textContent).toContain('wizards.remoteConfig.providerOverview.noFeatures');

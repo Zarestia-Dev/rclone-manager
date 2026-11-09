@@ -18,6 +18,7 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 import { JOB_REPORT_KEYS, REPORT_PILLS, reportEntries } from '../../utils/job-report.util';
 import { splitPath } from '../transfer-activity-panel/activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 /** Rows of a report shown at once; a report can list every file of a large job. */
 export const REPORT_PAGE_SIZE = 200;
 
@@ -31,6 +32,7 @@ export const REPORT_PAGE_SIZE = 200;
     MatProgressBarModule,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './job-report.component.html',
   styleUrl: './job-report.component.scss',

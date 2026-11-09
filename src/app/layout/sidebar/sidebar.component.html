@@ -30,7 +30,7 @@
 <div class="content-area">
   @if (isLoading()) {
     <div class="loading-container">
-      <mat-icon svgIcon="spinner" class="primary"></mat-icon>
+      <mat-icon svgIcon="spinner" data-tone="primary"></mat-icon>
       <span>{{ loadingText() | translate }}</span>
     </div>
   } @else if (!hasAny()) {
@@ -70,43 +70,47 @@
               <div class="status-indicators">
                 @if (remote.status.mount) {
                   <div
-                    class="status-dot mount"
+                    class="status-dot"
+                    data-tone="accent"
                     [class.active]="mountCount > 0"
                     [attr.title]="statusService.getMountTooltip(remote)"
                     [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
                   >
                     <mat-icon svgIcon="mount"></mat-icon>
                     @if (mountCount > 1) {
-                      <span class="count-badge">{{ mountCount }}</span>
+                      <span appPill="solid" tone="accent" size="xs">{{ mountCount }}</span>
                     }
                   </div>
                 }
 
                 <div
-                  class="status-dot sync-operations"
+                  class="status-dot"
+                  [attr.data-tone]="activeSync ? operationTone[activeSync] : null"
                   [class.active]="syncCount > 0"
-                  [class.sync]="activeSync === 'sync'"
-                  [class.copy]="activeSync === 'copy'"
-                  [class.move]="activeSync === 'move'"
-                  [class.bisync]="activeSync === 'bisync'"
                   [attr.title]="statusService.getSyncOperationsTooltip(remote)"
                   [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
                 >
                   <mat-icon [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"></mat-icon>
                   @if (syncCount > 1) {
-                    <span class="count-badge">{{ syncCount }}</span>
+                    <span
+                      appPill="solid"
+                      [tone]="activeSync ? operationTone[activeSync] : 'primary'"
+                      size="xs"
+                      >{{ syncCount }}</span
+                    >
                   }
                 </div>
 
                 @if (remote.status.serve.active) {
                   <div
-                    class="status-dot serve active"
+                    class="status-dot active"
+                    data-tone="accent"
                     [attr.title]="statusService.getServeTooltip(remote)"
                     [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
                   >
                     <mat-icon svgIcon="satellite-dish"></mat-icon>
                     @if (serveCount > 1) {
-                      <span class="count-badge">{{ serveCount }}</span>
+                      <span appPill="solid" tone="accent" size="xs">{{ serveCount }}</span>
                     }
                   </div>
                 }
@@ -136,7 +140,9 @@
         <div class="flow-section-header" [class.active-section]="flowSubMode() === 'quick_run'">
           <mat-icon svgIcon="quick-run" class="section-icon"></mat-icon>
           <span class="section-title truncate">{{ 'flow.tabs.quickRun' | translate }}</span>
-          <span class="count-badge">{{ filteredQuickRuns().length }}</span>
+          <span appPill size="xs" [tone]="flowSubMode() === 'quick_run' ? 'accent' : 'dim'">{{
+            filteredQuickRuns().length
+          }}</span>
         </div>
         @for (qr of filteredQuickRuns(); track trackByQuickRunId($index, qr)) {
           @let running = isQuickRunRunning(qr.id);
@@ -202,7 +208,9 @@
         <div class="flow-section-header" [class.active-section]="flowSubMode() === 'builder'">
           <mat-icon svgIcon="workflow" class="section-icon"></mat-icon>
           <span class="section-title truncate">{{ 'flow.tabs.workflow' | translate }}</span>
-          <span class="count-badge">{{ filteredWorkflows().length }}</span>
+          <span appPill size="xs" [tone]="flowSubMode() === 'builder' ? 'accent' : 'dim'">{{
+            filteredWorkflows().length
+          }}</span>
         </div>
         @for (wf of filteredWorkflows(); track trackByWorkflowId($index, wf)) {
           @let running = isWorkflowRunning(wf.id);

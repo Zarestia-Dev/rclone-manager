@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import { PrimaryActionType } from './operations';
 import { Remote } from './remotes';
 import { OPERATION_REGISTRY } from './operation-registry';
@@ -290,7 +291,7 @@ export interface OperationMeta {
   stopIcon: string;
   startTooltip: string;
   stopTooltip: string;
-  cssClass: string;
+  tone: PillTone;
 }
 
 export const TITLE_MAP: Readonly<Record<AppTab, string>> = Object.freeze({
@@ -326,7 +327,7 @@ export const OPERATION_META = Object.freeze(
         stopIcon: op.stopIcon,
         startTooltip: op.startTooltip,
         stopTooltip: op.stopTooltip,
-        cssClass: op.cssClass,
+        tone: op.tone,
       },
     ])
   )
@@ -342,7 +343,7 @@ export interface OpenInFilesEvent {
 export interface OpenableFolder {
   operation: PrimaryActionType;
   profile: string;
-  cssClass: string;
+  tone: PillTone;
   tooltip: string;
   path: string;
   isLocal: boolean;

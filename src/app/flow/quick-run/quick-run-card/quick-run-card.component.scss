@@ -25,8 +25,8 @@
     .remote-link-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 4px;
+      gap: var(--space-xxs);
+      padding: 2px var(--space-xxs);
       border-radius: var(--radius-xs);
       font-size: var(--font-size-md);
       color: var(--dim-color);

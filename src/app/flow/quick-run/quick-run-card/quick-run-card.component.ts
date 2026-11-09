@@ -12,12 +12,14 @@ import {
   OPERATION_REGISTRY,
   QuickRun,
   isFolderOpeningAction,
+  PillTone,
 } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 const OPERATION_MAP = new Map(OPERATION_REGISTRY.map(op => [op.key, op]));
 
 export interface QuickRunOpenableFolder {
@@ -26,7 +28,7 @@ export interface QuickRunOpenableFolder {
   shortName: string;
   isLocal: boolean;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
 }
 
 /**
@@ -34,14 +36,21 @@ export interface QuickRunOpenableFolder {
  */
 @Component({
   selector: 'app-quick-run-card',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, CdkMenuModule, TranslatePipe],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    MatIconModule,
+    CdkMenuModule,
+    TranslatePipe,
+    PillDirective,
+  ],
   templateUrl: './quick-run-card.component.html',
   styleUrls: ['./quick-run-card.component.scss', '../../../styles/_shared-card.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.is-running]': 'isRunning()',
     '[class.selected]': 'selected()',
-    '[class]': 'cardOperationClass()',
+    '[attr.data-tone]': 'cardTone()',
     '(click)': 'onRowClick()',
   },
 })
@@ -98,7 +107,7 @@ export class QuickRunCardComponent {
 
   readonly icon = computed(() => this.operationDef()?.icon ?? 'operations');
   readonly actionLabel = computed(() => this.operationDef()?.actionLabel ?? 'Start');
-  readonly cardOperationClass = computed(() => `op-${this.quickRun().operationType}`);
+  readonly cardTone = computed<PillTone>(() => this.operationDef()?.tone ?? 'primary');
 
   /** Dynamic action button icon based on operation definition and active status. */
   readonly currentActionIcon = computed(() => {
@@ -115,7 +124,7 @@ export class QuickRunCardComponent {
   readonly openableFolders = computed<QuickRunOpenableFolder[]>(() => {
     const paths = getQuickRunPaths(this.quickRun().config);
     const folders: QuickRunOpenableFolder[] = [];
-    const opCssClass = this.operationDef()?.cssClass || 'primary';
+    const opCssClass = this.operationDef()?.tone || 'primary';
 
     // Source path(s)
     if (paths.source) {
@@ -129,7 +138,7 @@ export class QuickRunCardComponent {
             shortName: pathUtils.getFilename(src) || src,
             isLocal,
             icon: isLocal ? 'folder' : 'folder-open',
-            cssClass: opCssClass,
+            tone: opCssClass,
           });
         }
       }
@@ -149,7 +158,7 @@ export class QuickRunCardComponent {
         shortName: pathUtils.getFilename(dst) || dst,
         isLocal,
         icon: isLocal ? 'folder' : 'folder-open',
-        cssClass: opCssClass,
+        tone: opCssClass,
       });
     }
 

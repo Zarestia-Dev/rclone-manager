@@ -2,14 +2,13 @@
   @for (tab of tabs(); track tab.key) {
     <button
       type="button"
-      class="app-pill interactive"
-      [class]="pills[tab.key]"
-      [class.is-selected]="tab.key === activeReport()"
-      [attr.aria-pressed]="tab.key === activeReport()"
+      appPill
+      [tone]="pills[tab.key]"
+      [selected]="tab.key === activeReport()"
       (click)="select(tab.key)"
     >
       {{ 'shared.transferActivity.report.tabs.' + tab.key | translate }}
-      <span class="count-badge">{{ tab.count | number }}</span>
+      <span appPill size="xs" tone="dim">{{ tab.count | number }}</span>
     </button>
   }
 </div>
@@ -47,7 +46,7 @@
           </div>
           @if (row.icon; as icon) {
             <div class="card-info-right">
-              <span class="app-pill" [class]="row.pill">
+              <span appPill [tone]="row.tone">
                 <mat-icon [svgIcon]="icon"></mat-icon>
                 {{ row.labelKey | translate }}
               </span>
@@ -59,7 +58,7 @@
   </div>
   @if (hiddenCount() > 0) {
     <div class="infinite-scroll-loader">
-      <button type="button" class="app-pill interactive" (click)="showMore()">
+      <button type="button" appPill (click)="showMore()">
         {{ 'shared.transferActivity.report.showMore' | translate: { count: hiddenCount() } }}
       </button>
     </div>

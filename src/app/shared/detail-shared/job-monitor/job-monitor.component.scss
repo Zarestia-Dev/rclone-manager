@@ -33,7 +33,7 @@
   }
 
   .monitor-icon {
-    color: var(--primary-color);
+    color: var(--mat-sys-primary);
   }
 
   .job-id {
@@ -132,12 +132,8 @@
     }
   }
 
-  &.tone-warn .kpi-value {
-    color: var(--warn-color);
-  }
-
-  &.tone-orange .kpi-value {
-    color: var(--orange);
+  &[data-tone] .kpi-value {
+    color: var(--tone);
   }
 }
 
@@ -145,7 +141,7 @@
   display: block;
   width: 100%;
   height: calc(var(--space-xl) + var(--space-xxs));
-  color: var(--accent-color);
+  color: var(--mat-sys-primary);
 
   .spark-area {
     fill: currentColor;

@@ -1,4 +1,9 @@
-<div class="overview-container" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
+<div
+  class="overview-container"
+  data-tone="primary"
+  animate.enter="fade-in-out-enter"
+  animate.leave="fade-in-out-leave"
+>
   <!-- Top Header Banner -->
   <header class="overview-header-wrapper">
     <app-overview-header
@@ -47,7 +52,7 @@
                 <mat-slide-toggle
                   [checked]="panel.visible"
                   (change)="togglePanelVisibility(panel.id)"
-                  class="primary"
+                  data-tone="primary"
                 >
                 </mat-slide-toggle>
               </div>
@@ -69,15 +74,15 @@
                 >
                   <mat-expansion-panel-header>
                     <mat-panel-title>
-                      <mat-icon svgIcon="quick-run" class="primary" aria-hidden="true"></mat-icon>
+                      <mat-icon
+                        svgIcon="quick-run"
+                        data-tone="primary"
+                        aria-hidden="true"
+                      ></mat-icon>
                       <span>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</span>
                     </mat-panel-title>
                     <mat-panel-description>
-                      <span
-                        class="app-pill"
-                        [class.p-primary]="quickRuns().length > 0"
-                        [class.p-dim]="quickRuns().length === 0"
-                      >
+                      <span appPill [tone]="quickRuns().length > 0 ? 'primary' : 'dim'">
                         {{ quickRuns().length }}
                       </span>
                     </mat-panel-description>
@@ -87,9 +92,9 @@
                     <div class="remote-filters hide-scrollbar">
                       <button
                         type="button"
-                        class="app-pill interactive"
-                        [class.is-selected]="selectedRemoteFilter() === null"
-                        [class.p-primary]="selectedRemoteFilter() === null"
+                        appPill
+                        [selected]="selectedRemoteFilter() === null"
+                        [tone]="selectedRemoteFilter() === null ? 'primary' : null"
                         (click)="setRemoteFilter(null)"
                       >
                         <span>{{ 'common.all' | translate }} ({{ quickRuns().length }})</span>
@@ -97,12 +102,15 @@
                       @for (group of remoteGroups(); track group.remoteName) {
                         <button
                           type="button"
-                          class="app-pill interactive"
-                          [class.is-selected]="selectedRemoteFilter() === group.remoteName"
-                          [class.p-primary]="
-                            selectedRemoteFilter() === group.remoteName && !group.isMissing
+                          appPill
+                          [selected]="selectedRemoteFilter() === group.remoteName"
+                          [tone]="
+                            group.isMissing
+                              ? 'warn'
+                              : selectedRemoteFilter() === group.remoteName
+                                ? 'primary'
+                                : null
                           "
-                          [class.p-warn]="group.isMissing"
                           [attr.title]="
                             group.isMissing
                               ? ('flow.quickRun.badges.missingRemote' | translate)
@@ -144,7 +152,7 @@
                       <div class="empty-actions">
                         <button
                           matButton="filled"
-                          class="primary"
+                          data-tone="primary"
                           (click)="onCreateQuickRunForRemote(filterRemote)"
                           [attr.title]="
                             'flow.quickRun.overview.createForRemote'
@@ -173,7 +181,7 @@
                       <p>{{ 'flow.quickRun.overview.createFirst' | translate }}</p>
                       <button
                         matButton="filled"
-                        class="primary"
+                        data-tone="primary"
                         (click)="onCreateQuickRun()"
                         [attr.title]="'flow.quickRun.new' | translate"
                       >

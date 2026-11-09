@@ -14,6 +14,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-restore-preview-modal',
   imports: [
@@ -28,6 +29,7 @@ import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/ale
     UpperCasePipe,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],

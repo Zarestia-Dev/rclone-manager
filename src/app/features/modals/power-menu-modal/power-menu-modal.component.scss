@@ -1,3 +1,7 @@
+:host {
+  --tile-color: var(--dim-color);
+}
+
 // ── Active Operations Banner ──────────────────────────────────────────────────
 .active-ops-banner {
   display: flex;
@@ -62,11 +66,10 @@
   overflow: hidden;
 
   &:hover:not(:disabled) {
-    box-shadow: 0 4px 14px
-      color-mix(in srgb, var(--tile-color, var(--shadow-color)) 18%, transparent);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--tile-color) 18%, transparent);
 
     .icon-bubble {
-      background: color-mix(in srgb, var(--tile-color, var(--dim-color)) 20%, transparent);
+      background: color-mix(in srgb, var(--tile-color) 20%, transparent);
     }
   }
 
@@ -87,7 +90,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: color-mix(in srgb, var(--tile-color, var(--dim-color)) 12%, transparent);
+    background: color-mix(in srgb, var(--tile-color) 12%, transparent);
     color: var(--tile-color);
     transition: var(--transition-fast);
   }
@@ -129,7 +132,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--tile-color, var(--accent-color)) 15%, transparent);
+    background: color-mix(in srgb, var(--tile-color) 15%, transparent);
     color: var(--tile-color);
     animation: badge-pop 320ms var(--transition-cubic) both;
 
@@ -147,7 +150,7 @@
 
     .confirm-title {
       margin: 0;
-      font-size: var(--font-size-lg, 1.15rem);
+      font-size: var(--font-size-lg);
       font-weight: 700;
       color: var(--window-fg-color);
     }
@@ -174,7 +177,7 @@
 
     .confirm-btn {
       background-color: var(--tile-color) !important;
-      color: #ffffff !important;
+      color: var(--accent-fg-color) !important;
     }
   }
 }

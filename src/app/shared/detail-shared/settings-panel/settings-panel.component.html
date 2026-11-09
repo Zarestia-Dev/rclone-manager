@@ -12,7 +12,7 @@
     </mat-panel-title>
     <mat-panel-description>
       @if (hasMeaningfulSettings()) {
-        <span class="count-badge">{{
+        <span appPill size="xs" tone="dim">{{
           'detailShared.settings.metrics' | translate: { count: settingsEntriesCount() }
         }}</span>
       } @else {
@@ -43,21 +43,14 @@
           }
           <div class="settings-flow">
             @for (entry of group.entries; track entry.key) {
-              <div
-                class="app-pill p-dim"
-                [class.is-sensitive]="entry.isSensitive"
-                [attr.title]="entry.tooltip"
-              >
-                <code class="setting-key">
-                  @if (entry.isSensitive) {
-                    <mat-icon
-                      svgIcon="lock"
-                      class="sensitive-indicator"
-                      [attr.title]="'detailShared.settings.restricted' | translate"
-                    ></mat-icon>
-                  }
-                  {{ entry.key }}
-                </code>
+              <div appPill [tone]="entry.isSensitive ? 'warn' : 'dim'" [attr.title]="entry.tooltip">
+                @if (entry.isSensitive) {
+                  <mat-icon
+                    svgIcon="lock"
+                    [attr.title]="'detailShared.settings.restricted' | translate"
+                  ></mat-icon>
+                }
+                <code class="setting-key">{{ entry.key }}</code>
                 <strong>:</strong>
                 <code class="setting-value truncate">{{ entry.display }}</code>
               </div>

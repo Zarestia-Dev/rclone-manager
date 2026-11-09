@@ -1,13 +1,13 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .action-option-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
 
   mat-icon {
     width: 18px;
@@ -25,8 +25,8 @@
 .action-summary-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: var(--space-xxs);
+  padding: var(--space-xs) var(--space-sm);
   background: var(--bg-elevated);
   border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px var(--border-color);
@@ -34,7 +34,7 @@
   .summary-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
 
     mat-icon {
       width: var(--icon-size-sm);
@@ -76,8 +76,8 @@
 .output-vars-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--space-xs);
+  padding: 10px var(--space-sm);
   background: var(--bg-elevated-1);
   box-shadow: 0 0 0 1px var(--border-color);
   border-radius: var(--radius-sm);
@@ -100,7 +100,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 10px var(--space-sm);
   background: var(--bg-elevated);
   box-shadow: 0 0 0 1px var(--border-color);
   border-radius: var(--radius-xs);
@@ -143,8 +143,8 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   box-shadow: 0 0 0 1px var(--border-color);

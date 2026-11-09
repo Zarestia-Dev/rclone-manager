@@ -79,7 +79,7 @@ describe('AutomationCardComponent', () => {
       remoteName: '',
       args: { source: 'workflow', srcPaths: ['Nightly'], dstPaths: [] },
     });
-    expect(card()['typeMeta']()).toEqual({ icon: 'workflow', color: 'accent' });
+    expect(card()['typeMeta']()).toEqual({ icon: 'workflow', tone: 'accent' });
     expect(card()['typeLabelKey']()).toBeNull();
     expect(el.textContent).not.toContain('dashboard.generalDetail.destinationLabel');
     expect(el.textContent).not.toContain('dashboard.appDetail');

@@ -5,7 +5,7 @@
   <p>
     {{ labels.title | translate }}
     @if (position(); as position) {
-      <span class="app-pill pill-sm p-dim">
+      <span appPill tone="dim" size="xs">
         {{
           'shared.transferActivity.compare.position'
             | translate: { index: position.index, total: position.total }
@@ -60,7 +60,7 @@
                 {{ 'shared.transferActivity.compare.unknown' | translate }}
               }
               @if (comparison().larger === side.target) {
-                <span class="app-pill pill-sm p-accent">{{
+                <span appPill tone="accent" size="xs">{{
                   'shared.transferActivity.compare.larger' | translate
                 }}</span>
               }
@@ -73,7 +73,7 @@
                 {{ 'shared.transferActivity.compare.unknown' | translate }}
               }
               @if (comparison().newer === side.target) {
-                <span class="app-pill pill-sm p-primary">{{
+                <span appPill tone="primary" size="xs">{{
                   'shared.transferActivity.compare.newer' | translate
                 }}</span>
               }
@@ -103,7 +103,7 @@
       @switch (checksumStatus()) {
         @case ('done') {
           @if (checksumResult(); as result) {
-            <span class="app-pill" [class]="result.match ? 'p-primary' : 'p-orange'">
+            <span appPill [tone]="result.match ? 'primary' : 'orange'">
               <mat-icon [svgIcon]="result.match ? 'check-circle' : 'circle-exclamation'" />
               {{
                 (result.match
@@ -115,12 +115,12 @@
           }
         }
         @case ('none') {
-          <span class="app-pill p-dim">{{
+          <span appPill tone="dim">{{
             'shared.transferActivity.compare.checksum.none' | translate
           }}</span>
         }
         @case ('failed') {
-          <span class="app-pill p-warn" [title]="checksumError()">{{
+          <span appPill tone="warn" [title]="checksumError()">{{
             'shared.transferActivity.compare.checksum.failed' | translate
           }}</span>
         }

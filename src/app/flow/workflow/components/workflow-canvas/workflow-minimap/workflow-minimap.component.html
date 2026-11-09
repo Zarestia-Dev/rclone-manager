@@ -29,7 +29,8 @@
   @for (n of scaledNodes(); track n.id) {
     <div
       class="mini-node"
-      [ngClass]="['color-' + n.colorClass, 'status-' + n.state]"
+      [attr.data-tone]="n.tone"
+      [ngClass]="'status-' + n.state"
       [class.selected]="selectedNodeIds().has(n.id)"
       [style.left.px]="n.x"
       [style.top.px]="n.y"

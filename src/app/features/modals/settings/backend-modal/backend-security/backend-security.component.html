@@ -95,7 +95,7 @@
       <mat-expansion-panel (opened)="onPanelOpened()" [formGroup]="changePasswordForm">
         <mat-expansion-panel-header>
           <mat-panel-title>
-            <mat-icon svgIcon="refresh" class="purple"></mat-icon>
+            <mat-icon svgIcon="refresh" data-tone="purple"></mat-icon>
             <span>{{ 'modals.backend.security.changePassword' | translate }}</span>
           </mat-panel-title>
           <mat-panel-description>
@@ -185,7 +185,7 @@
       <mat-expansion-panel (opened)="onPanelOpened()">
         <mat-expansion-panel-header>
           <mat-panel-title>
-            <mat-icon svgIcon="shield-xmark" class="warn"></mat-icon>
+            <mat-icon svgIcon="shield-xmark" data-tone="warn"></mat-icon>
             <span>{{ 'modals.backend.security.removeEncryption' | translate }}</span>
           </mat-panel-title>
           <mat-panel-description>
@@ -225,7 +225,7 @@
           <button
             matButton="filled"
             type="button"
-            class="warn"
+            data-tone="warn"
             (click)="submitDecrypt()"
             [disabled]="encryptionLoading() || decryptPassword.invalid"
           >

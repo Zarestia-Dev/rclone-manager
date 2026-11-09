@@ -1,14 +1,4 @@
 // ── Color & Badge State Maps ───────────────────────────────────────────────
-$node-colors: (
-  "primary": primary-color,
-  "accent": accent-color,
-  "orange": orange,
-  "yellow": yellow,
-  "purple": purple,
-  "warn": warn-color,
-  "dim": dim-color,
-);
-
 $badge-states: (
   "running": accent-color,
   "success": primary-color,
@@ -57,12 +47,10 @@ $badge-states: (
     box-shadow: var(--shadow-popover);
   }
 
-  @each $name, $var in $node-colors {
-    &.color-#{$name}.selected {
-      box-shadow:
-        0 0 0 2px rgba(var(--#{$var}-rgb), 0.35),
-        var(--shadow-popover);
-    }
+  &[data-tone].selected {
+    box-shadow:
+      0 0 0 2px rgba(var(--tone-rgb), 0.35),
+      var(--shadow-popover);
   }
 
   // ── Execution States ─────────────────────────────────────────────────────
@@ -99,13 +87,6 @@ $badge-states: (
     .node-category-wrapper {
       display: flex;
       align-items: center;
-
-      .app-pill {
-        min-height: 20px;
-        padding: 2px var(--space-xs);
-        border-radius: var(--radius-xs);
-        font-size: var(--font-size-xs);
-      }
 
       .node-live-badge {
         display: inline-flex;
@@ -170,20 +151,13 @@ $badge-states: (
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      background: rgba(var(--accent-color-rgb), 0.12);
-      color: var(--accent-color);
+      background: rgba(var(--tone-rgb), 0.14);
+      color: var(--tone);
 
       mat-icon {
         width: 18px;
         height: 18px;
         font-size: 18px;
-      }
-
-      @each $name, $var in $node-colors {
-        &.box-#{$name} {
-          background: rgba(var(--#{$var}-rgb), 0.14);
-          color: var(--#{$var});
-        }
       }
     }
 
@@ -228,7 +202,7 @@ $badge-states: (
 
       &.has-job {
         cursor: pointer;
-        padding: 4px;
+        padding: var(--space-xxs);
         border-radius: var(--radius-xs);
         transition: var(--transition-fast);
 
@@ -263,7 +237,7 @@ $badge-states: (
       padding: 0 10px;
 
       &:not(:last-child) {
-        border-bottom: 1px dashed rgba(var(--border-color-rgb), 0.4);
+        border-bottom: 1px dashed var(--border-color);
       }
 
       .port-slot {

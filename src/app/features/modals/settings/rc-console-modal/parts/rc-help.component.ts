@@ -17,9 +17,10 @@ import {
 import { extractExamples, parseRcParams } from '../../../../../shared/utils/rc/rc-help.util';
 import { annotateParams } from '../../../../../shared/utils/rc/rc-schema.util';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-rc-help',
-  imports: [MatIconModule, TranslatePipe, RcDocsComponent],
+  imports: [MatIconModule, TranslatePipe, RcDocsComponent, PillDirective],
   templateUrl: './rc-help.component.html',
   styleUrl: './rc-help.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

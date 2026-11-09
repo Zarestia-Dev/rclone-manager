@@ -37,7 +37,7 @@
   .drag-handle {
     cursor: grab;
     color: var(--dim-color);
-    padding: 4px;
+    padding: var(--space-xxs);
     width: 20px;
     height: 20px;
     display: flex;

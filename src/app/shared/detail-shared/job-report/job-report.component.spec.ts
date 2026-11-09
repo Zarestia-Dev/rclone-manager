@@ -59,7 +59,7 @@ describe('JobReportComponent', () => {
     ]);
     expect(fixture.nativeElement.querySelectorAll('.card-row-item')).toHaveLength(3);
     // Each file's result is a labelled pill, not the bare sigil.
-    expect(fixture.nativeElement.querySelectorAll('.card-row-item .app-pill')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelectorAll('.card-row-item [appPill]')).toHaveLength(3);
     expect(fixture.nativeElement.querySelector('.file-dir')).not.toBeNull();
   });
 
@@ -78,7 +78,7 @@ describe('JobReportComponent', () => {
     component.select('missingOnDst');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.card-row-item')).toHaveLength(1);
-    expect(fixture.nativeElement.querySelector('.card-row-item .app-pill')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.card-row-item [appPill]')).toBeNull();
   });
 
   it('opens the first report when none lists a file', async () => {

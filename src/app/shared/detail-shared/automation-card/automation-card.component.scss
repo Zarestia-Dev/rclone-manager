@@ -8,12 +8,6 @@
 // ============================================================================
 
 .automation-card {
-  .automation-header .app-pill {
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
   background: var(--card-bg-color);
   border-radius: var(--card-border-radius);
   box-shadow: var(--box-shadow);
@@ -34,29 +28,10 @@
   border-radius: var(--radius-xs);
   flex-shrink: 0;
 
-  background-color: rgba(var(--op-rgb), var(--active-opacity));
+  background-color: rgba(var(--tone-rgb), var(--active-opacity));
 
   mat-icon {
-    color: rgb(var(--op-rgb));
-  }
-
-  &.op-primary {
-    --op-rgb: var(--primary-color-rgb);
-  }
-  &.op-accent {
-    --op-rgb: var(--accent-color-rgb);
-  }
-  &.op-yellow {
-    --op-rgb: var(--yellow-rgb);
-  }
-  &.op-orange {
-    --op-rgb: var(--orange-rgb);
-  }
-  &.op-purple {
-    --op-rgb: var(--purple-rgb);
-  }
-  &.op-warn {
-    --op-rgb: var(--warn-color-rgb);
+    color: var(--tone);
   }
 }
 
@@ -402,11 +377,6 @@
           font-size: var(--font-size-md);
           white-space: normal;
         }
-      }
-
-      > .app-pill {
-        grid-column: 1 / span 2;
-        justify-self: flex-start;
       }
     }
 

@@ -281,7 +281,7 @@
           }
           <button
             matButton="filled"
-            class="accent"
+            data-tone="accent"
             [disabled]="isOpeningNative()"
             (click)="openNativeFile()"
           >
@@ -305,7 +305,7 @@
             <p class="unsupported-subtext">{{ fileName() }}</p>
             <button
               matButton="outlined"
-              class="accent"
+              data-tone="accent"
               [disabled]="isOpeningNative()"
               (click)="openNativeFile()"
             >
@@ -424,7 +424,7 @@
         @if (isNativeOpenVisible()) {
           <button
             matButton="filled"
-            class="accent"
+            data-tone="accent"
             [disabled]="isOpeningNative()"
             (click)="openNativeFile()"
           >

@@ -42,6 +42,7 @@ import { ServesOverviewPanelComponent } from 'src/app/shared/overviews-shared/se
 import { AutomationsOverviewPanelComponent } from 'src/app/shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
 import { QuickRunCardComponent } from '../quick-run-card/quick-run-card.component';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 /**
  * Enriched overview for the Quick Run workspace in Flow.
  */
@@ -63,6 +64,7 @@ import { QuickRunCardComponent } from '../quick-run-card/quick-run-card.componen
     ServesOverviewPanelComponent,
     AutomationsOverviewPanelComponent,
     QuickRunCardComponent,
+    PillDirective,
   ],
   templateUrl: './quick-run-overview.component.html',
   styleUrl: './quick-run-overview.component.scss',

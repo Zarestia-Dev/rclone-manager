@@ -1,6 +1,7 @@
 import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
+import type { PillTone } from './pill';
 import { Starter } from './starter';
 
 export const JOB_STATUS = Object.freeze({
@@ -205,10 +206,10 @@ export type JobReportCounts = Partial<Record<JobReportKey, number>> & { conflict
 /** The reports rclone returned, as it returned them. */
 export type JobReport = Partial<Record<JobReportKey, string[]>> & { conflicts?: BisyncConflict[] };
 
-export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
-  completed: 'p-primary',
-  failed: 'p-warn',
-  stopped: 'p-orange',
+export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, PillTone>> = Object.freeze({
+  completed: 'primary',
+  failed: 'warn',
+  stopped: 'orange',
 });
 
 export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({

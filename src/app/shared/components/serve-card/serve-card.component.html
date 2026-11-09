@@ -13,9 +13,9 @@
           @if (showRemoteName()) {
             <span class="serve-remote-name truncate">{{ remoteName() }}</span>
           }
-          <span class="app-pill p-primary pill-sm">{{ serve().params.type | uppercase }}</span>
+          <span appPill tone="primary" size="xs">{{ serve().params.type | uppercase }}</span>
           @if (profile(); as name) {
-            <span class="app-pill p-accent pill-sm">{{ name }}</span>
+            <span appPill tone="accent" size="xs">{{ name }}</span>
           }
           <span
             class="origin-mini-badge"
@@ -47,7 +47,8 @@
     <!-- Stop button -->
     <button
       matIconButton
-      class="stop-btn warn"
+      class="stop-btn"
+      data-tone="warn"
       (click)="onStopServe(); $event.stopPropagation()"
       [attr.title]="'shared.serveCard.tooltips.stop' | translate"
     >

@@ -61,7 +61,7 @@ describe('RemoteCardActionsComponent', () => {
       operation: 'mount',
       profile: 'default',
       path: '/mnt/test',
-      cssClass: 'mounted',
+      tone: 'accent',
       tooltip: 'Open folder',
       isLocal: false,
       icon: 'folder',

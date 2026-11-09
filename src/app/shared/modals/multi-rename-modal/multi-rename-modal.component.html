@@ -261,12 +261,12 @@
 </main>
 
 <footer>
-  <button matButton="filled" class="accent" type="button" (click)="dismiss()">
+  <button matButton="filled" data-tone="accent" type="button" (click)="dismiss()">
     {{ 'common.cancel' | translate }}
   </button>
   <button
     matButton="filled"
-    class="primary"
+    data-tone="primary"
     type="button"
     [disabled]="hasErrors() || !hasChanges() || isSaving()"
     (click)="onConfirm()"

@@ -28,7 +28,9 @@
       <div class="summary-pill-group">
         @if (diffResult().totalAdded > 0) {
           <span
-            class="app-pill pill-sm p-primary"
+            appPill
+            tone="primary"
+            size="xs"
             [title]="'templates.addedCount' | translate: { count: diffResult().totalAdded }"
           >
             +{{ diffResult().totalAdded }}
@@ -37,7 +39,9 @@
         }
         @if (diffResult().totalModified > 0) {
           <span
-            class="app-pill pill-sm p-orange"
+            appPill
+            tone="orange"
+            size="xs"
             [title]="'templates.modifiedCount' | translate: { count: diffResult().totalModified }"
           >
             ~{{ diffResult().totalModified }}
@@ -46,7 +50,9 @@
         }
         @if (diffResult().totalUnchanged > 0) {
           <span
-            class="app-pill pill-sm p-dim"
+            appPill
+            tone="dim"
+            size="xs"
             [title]="'templates.unchangedCount' | translate: { count: diffResult().totalUnchanged }"
           >
             ={{ diffResult().totalUnchanged }}
@@ -98,7 +104,9 @@
   <section class="form-section">
     <div class="section-header">
       <span class="section-label">{{ 'templates.selectCategoriesToApply' | translate }}</span>
-      <span class="count-badge"> {{ filteredKeysCount() }} / {{ diffResult().totalCount }} </span>
+      <span appPill size="xs" tone="dim">
+        {{ filteredKeysCount() }} / {{ diffResult().totalCount }}
+      </span>
     </div>
 
     @if (diffResult().totalCount === 0) {
@@ -122,8 +130,8 @@
                   (click)="$event.stopPropagation()"
                 >
                 </mat-checkbox>
-                <span class="app-pill pill-sm p-primary">{{ cat }}</span>
-                <span class="count-badge">{{ diffResult().byCategory[cat]?.length }}</span>
+                <span appPill tone="primary" size="xs">{{ cat }}</span>
+                <span appPill size="xs" tone="dim">{{ diffResult().byCategory[cat]?.length }}</span>
               </button>
 
               @if (isCategorySelected(cat)) {
@@ -172,11 +180,11 @@
 
                       <div class="diff-status-wrapper">
                         @if (item.status === 'added') {
-                          <span class="app-pill pill-sm p-primary">+</span>
+                          <span appPill tone="primary" size="xs">+</span>
                         } @else if (item.status === 'modified') {
-                          <span class="app-pill pill-sm p-orange">~</span>
+                          <span appPill tone="orange" size="xs">~</span>
                         } @else {
-                          <span class="app-pill pill-sm p-dim">=</span>
+                          <span appPill tone="dim" size="xs">=</span>
                         }
                       </div>
                     </div>
@@ -198,7 +206,7 @@
   <button
     type="button"
     matButton="filled"
-    class="primary"
+    data-tone="primary"
     [disabled]="selectedCategories().size === 0 || filteredKeysCount() === 0"
     (click)="onApply()"
   >

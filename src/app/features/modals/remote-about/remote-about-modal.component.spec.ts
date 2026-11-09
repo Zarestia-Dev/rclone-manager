@@ -227,26 +227,26 @@ describe('RemoteAboutModalComponent', () => {
     fixture.detectChanges();
     const summary = (fixture.nativeElement as HTMLElement).querySelector('.provider-summary');
     expect(summary?.textContent).toContain('Google Drive');
-    expect(summary?.querySelector('.app-pill')?.textContent?.trim()).toBe('Tier 1');
-    expect(summary?.querySelector('.app-pill')?.classList.contains('p-primary')).toBe(true);
+    expect(summary?.querySelector('[appPill]')?.textContent?.trim()).toBe('Tier 1');
+    expect(summary?.querySelector<HTMLElement>('[appPill]')?.dataset['tone']).toBe('primary');
     expect(summary?.querySelector('a')?.getAttribute('href')).toBe('https://rclone.org/drive/');
     expect(summary?.querySelector('a')?.getAttribute('rel')).toBe('noopener noreferrer');
   });
 
   it.each([
-    ['Tier 1', 'p-primary'],
-    ['Tier 2', 'p-yellow'],
-    ['Tier 3', 'p-orange'],
-    ['Tier 4', 'p-warn'],
-    ['Tier 5', 'p-warn'],
+    ['Tier 1', 'primary'],
+    ['Tier 2', 'yellow'],
+    ['Tier 3', 'orange'],
+    ['Tier 4', 'warn'],
+    ['Tier 5', 'warn'],
   ])('renders %s in %s', async (tier, colour) => {
     await fixture.whenStable();
     component.provider.set({ name: 'drive', description: 'Drive', overview: { Tier: tier } });
     fixture.detectChanges();
     const pill = (fixture.nativeElement as HTMLElement).querySelector(
-      '.provider-summary .app-pill'
+      '.provider-summary [appPill]'
     );
-    expect(pill?.classList.contains(colour)).toBe(true);
+    expect((pill as HTMLElement | null)?.dataset['tone']).toBe(colour);
   });
 
   it.each([undefined, null, {}])(
@@ -262,7 +262,7 @@ describe('RemoteAboutModalComponent', () => {
       expect(component.providerTier()).toBeUndefined();
       expect(component.providerDocumentationUrl()).toBe('https://rclone.org/drive/');
       expect(
-        (fixture.nativeElement as HTMLElement).querySelector('.provider-summary .app-pill')
+        (fixture.nativeElement as HTMLElement).querySelector('.provider-summary [appPill]')
       ).toBeNull();
       expect(component.aboutInfo()).toEqual(mockFsInfo);
     }

@@ -16,6 +16,7 @@
 @use "animations";
 @use "app/styles/code-editor";
 @use "app/styles/activity-tables";
+@use "app/styles/pill";
 
 // ============================================================================
 // SECTION 1: GNOME COLOR PALETTE (Single Source of Truth)
@@ -104,21 +105,16 @@
 
   // Headerbar Colors
   --headerbar-bg-color: #ffffff;
-  --headerbar-fg-color: var(--window-fg-color);
-  --headerbar-shade-color: rgba(0, 0, 0, 0.12);
 
   // Sidebar Colors
   --sidebar-bg-color: #ebebed;
-  --sidebar-fg-color: var(--window-fg-color);
 
   // Card Colors
   --card-bg-color: #ffffff;
-  --card-fg-color: var(--window-fg-color);
   --card-shade-color: rgba(0, 0, 6, 0.07);
 
   // Popover/Menu Colors
   --popover-bg-color: #ffffff;
-  --popover-fg-color: var(--window-fg-color);
 
   // Accent Colors (Primary action color - Blue)
   --accent-bg-color: var(--gnome-blue-3);
@@ -127,7 +123,6 @@
 
   // Success Colors (Green)
   --success-bg-color: var(--gnome-green-4);
-  --success-fg-color: #ffffff;
   --success-color: var(--gnome-green-5);
 
   // Warning Colors (Yellow)
@@ -180,21 +175,16 @@
 
   // Headerbar Colors
   --headerbar-bg-color: #2e2e32;
-  --headerbar-fg-color: var(--window-fg-color);
-  --headerbar-shade-color: rgba(0, 0, 0, 0.9);
 
   // Sidebar Colors
   --sidebar-bg-color: #2e2e32;
-  --sidebar-fg-color: var(--window-fg-color);
 
   // Card Colors
   --card-bg-color: #282828;
-  --card-fg-color: var(--window-fg-color);
   --card-shade-color: rgba(0, 0, 6, 0.36);
 
   // Popover/Menu Colors
   --popover-bg-color: #36363a;
-  --popover-fg-color: var(--window-fg-color);
 
   // Accent Colors (lighter for dark mode)
   --accent-bg-color: var(--gnome-blue-3);
@@ -203,7 +193,6 @@
 
   // Success Colors
   --success-bg-color: var(--gnome-green-5);
-  --success-fg-color: #ffffff;
   --success-color: var(--gnome-green-1);
 
   // Warning Colors
@@ -495,14 +484,9 @@ $dark-theme: (
   --orange: var(--gnome-orange-3);
   --yellow: var(--gnome-yellow-3);
   --purple: var(--gnome-purple-3);
-  --red: var(--gnome-red-3);
 
   // Light color variants
   --light-green: var(--gnome-green-1);
-  --light-blue: var(--gnome-blue-1);
-  --light-orange: var(--gnome-orange-1);
-  --light-purple: var(--gnome-purple-1);
-  --light-yellow: var(--gnome-yellow-1);
 
   // RGB variants for semantic colors (for rgba() usage)
   --accent-color-rgb: 53, 132, 228;
@@ -511,11 +495,9 @@ $dark-theme: (
   --purple-rgb: 145, 65, 172;
   --orange-rgb: 255, 120, 0;
   --yellow-rgb: 246, 211, 45;
-  --red-rgb: 224, 27, 36;
 
   // UI composition variables (libadwaita style - outlines instead of shadows)
   --box-shadow: 0 0 0 1px var(--card-shade-color);
-  --shade-color: rgba(0, 0, 6, 0.07);
 
   // ===== DESIGN SYSTEM TOKENS =====
 
@@ -546,45 +528,28 @@ $dark-theme: (
   --app-border-radius: var(--radius-md);
   --icon-radius: var(--radius-md);
   --item-radius: var(--radius-sm);
-  --badge-radius: var(--radius-sm);
-  --status-radius: var(--radius-sm);
-  --usage-bar-radius: var(--radius-sm);
   --card-border-radius-large: var(--radius-md);
-  --divider-radius: 1px;
 
   // Spacing Aliases
   --title-bar-padding: var(--space-xs);
   --banner-padding: var(--space-sm);
   --item-padding: var(--space-md);
-  --container-padding: var(--space-xl);
   --header-gap: var(--space-md);
   --button-gap: var(--space-md);
   --panel-gap: var(--space-xl);
-  --container-gap: var(--space-2xl);
-  --modal-gap: var(--space-xl);
   --section-gap: var(--space-2xl);
-  --legend-gap: var(--space-xl);
 
   // Padding Aliases
   --panel-padding: var(--space-xl);
   --modal-padding: var(--space-2xl);
-  --content-padding: var(--space-2xl);
-  --step-padding: var(--space-md);
-  --button-padding: var(--space-md) 28px;
-  --panel-header-padding: var(--space-xl);
-  --panel-content-padding: var(--space-xl) var(--space-2xl) var(--space-2xl) var(--space-2xl);
-  --panel-actions-padding: var(--space-md) var(--space-xl);
 
   // Mobile Responsive
   --panel-padding-mobile: var(--space-md);
-  --modal-padding-mobile: var(--space-xl);
   --section-gap-mobile: var(--space-lg);
-  --legend-gap-mobile: var(--space-sm);
 
   // Layout Constants
   --titlebar-height: 40px;
   --sidebar-width: 250px;
-  --status-bar-height: 48px;
 
   // Global UI Variables
   --bg-elevated: color-mix(in srgb, var(--window-fg-color) 2%, transparent);
@@ -597,10 +562,8 @@ $dark-theme: (
   --ring-accent: inset 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
   --ring-warn: inset 0 0 0 1px var(--warn-color);
   --focus-ring-accent: inset 0 0 0 2px rgba(var(--accent-color-rgb), 0.4);
-  --focus-ring-warn: inset 0 0 0 2px rgba(var(--warn-color-rgb), 0.4);
 
   // Icon Size Scale (Grid-Perfect multiples of 24px)
-  --icon-size-xxs: 8px; // 1/3x
   --icon-size-xs: 12px; // 1/2x
   --icon-size-sm: 16px; // 2/3x
   --icon-size-md: 24px; // 1x (Standard. Not use for mat-icon)
@@ -614,6 +577,7 @@ $dark-theme: (
   --font-size-3xl: 2rem;
   --font-size-2xl: 1.5rem;
   --font-size-xl: 1.25rem;
+  --font-size-lg: 1.125rem;
   --font-size-base: 1rem;
   --font-size-md: 0.875rem;
   --font-size-sm: 0.75rem;
@@ -621,20 +585,13 @@ $dark-theme: (
   --font-size-xxs: 0.5rem;
 
   // Opacity Scale
-  --panel-hover-opacity: 0.1;
-  --background-opacity: 0.05;
-  --border-opacity: 0.05;
-  --hover-opacity: 0.03;
   --active-opacity: 0.1;
   --inactive-opacity: 0.02;
-  --legend-opacity: 0.2;
 
   // Transition Scale
   --transition-fast: all 0.2s ease;
   --transition-standard: all 0.3s ease;
-  --transition-slow: all 0.5s ease;
   --transition-cubic: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
   // Shadow Scale (authentic libadwaita - outline + subtle layered shadows)
   --shadow-gnome:
@@ -692,103 +649,26 @@ $dark-theme: (
       }
     }
   }
+}
 
-  // =============================================
-  // APP PILL SYSTEM
-  // =============================================
-  .app-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    transition: var(--transition-fast);
-    line-height: 1.2;
-    min-height: 28px;
-    box-sizing: border-box;
-
-    &.pill-sm {
-      min-height: 20px;
-      padding: 1px var(--space-xs);
-      font-size: var(--font-size-xs);
-
-      mat-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
-      }
-    }
-
-    &.interactive {
-      cursor: pointer;
-      border: none;
-      outline: none;
-      background: var(--selected-bg-color);
-      color: var(--dim-color);
-
-      &:hover {
-        background: var(--hover-bg-color);
-      }
-
-      &:active {
-        background: var(--active-bg-color);
-      }
-
-      // A selected pill reads at a glance: a stronger fill and an inner ring, as in GNOME. The ring
-      // is a shadow, not a border, so the pill keeps its size.
-      &.is-selected {
-        background: var(--active-bg-color);
-        color: var(--window-fg-color);
-        box-shadow: inset 0 0 0 1px currentColor;
-      }
-    }
-
-    mat-icon {
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-      font-size: var(--icon-size-sm);
-    }
-
-    span {
-      flex: 1;
-    }
-
-    @each $status,
-      $color
-        in (
-          "primary": primary-color,
-          "accent": accent-color,
-          "orange": orange,
-          "yellow": yellow,
-          "purple": purple,
-          "warn": warn-color,
-          "dim": dim-color
-        )
-    {
-      &.p-#{$status} {
-        background: rgba(var(--#{$color}-rgb), 0.15);
-        color: var(--#{$color});
-
-        &.interactive:hover {
-          background: rgba(var(--#{$color}-rgb), 0.22);
-        }
-
-        &.interactive.is-selected {
-          background: rgba(var(--#{$color}-rgb), 0.3);
-          color: var(--#{$color});
-          box-shadow: inset 0 0 0 1.5px currentColor;
-        }
-      }
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
+// ============================================================================
+// TONE SCOPE
+// ============================================================================
+// [data-tone] gives an element and everything inside it one colour role: an operation (bisync is
+// purple, serve is accent), a status, a pill. Read it with var(--tone) / var(--tone-rgb), text on
+// a solid fill with var(--tone-on). It also sets --mat-sys-primary, so Material controls inside
+// (progress bars, toggles, filled buttons) follow the role. Roles are the PillTone values in
+// src/app/shared/types/pill.ts; the operation registry decides which operation gets which.
+@each $tone, $color, $on in ("primary" "primary-color" "warning-fg-color"),
+  ("accent" "accent-color" "accent-fg-color"), ("orange" "orange" "warning-fg-color"),
+  ("yellow" "yellow" "warning-fg-color"), ("purple" "purple" "destructive-fg-color"),
+  ("warn" "warn-color" "destructive-fg-color"), ("dim" "dim-color" "window-bg-color")
+{
+  [data-tone="#{$tone}"] {
+    --tone: var(--#{$color});
+    --tone-rgb: var(--#{$color}-rgb);
+    --tone-on: var(--#{$on});
+    --mat-sys-primary: var(--tone);
   }
 }
 
@@ -935,28 +815,9 @@ mat-icon {
     display: block;
   }
 
-  &.warn {
-    color: var(--warn-color) !important;
-  }
-
-  &.primary {
-    color: var(--primary-color) !important;
-  }
-
-  &.accent {
-    color: var(--accent-color) !important;
-  }
-
-  &.orange {
-    color: var(--orange) !important;
-  }
-
-  &.purple {
-    color: var(--purple) !important;
-  }
-
-  &.yellow {
-    color: var(--yellow) !important;
+  // An icon in a tone: <mat-icon data-tone="warn">
+  &[data-tone] {
+    color: var(--tone) !important;
   }
 }
 
@@ -974,34 +835,17 @@ button {
   }
 
   &:not(:disabled):not([disabled]):not(.mat-mdc-button-disabled) {
-    &.primary {
-      color: white !important;
-      background: var(--primary-color) !important;
-    }
-
-    &.accent {
-      color: white !important;
-      background: var(--accent-color) !important;
-    }
-
-    &.warn {
-      color: white !important;
-      background: var(--warn-color) !important;
-    }
-
-    &.yellow {
-      color: white !important;
-      background: var(--yellow) !important;
-    }
-
-    &.purple {
-      color: white !important;
-      background: var(--purple) !important;
-    }
-
-    &.orange {
-      color: white !important;
-      background: var(--orange) !important;
+    // A tone on a Material button fills it: <button matButton="filled" data-tone="accent">. Any other
+    // button opts in with data-variant="solid" (a plain button's data-tone is only a tone scope).
+    &[data-tone]:is(
+        [matButton],
+        [matIconButton],
+        [matMiniFab],
+        [matFab],
+        [data-variant="solid"]
+      ):not(.app-pill) {
+      color: var(--accent-fg-color) !important;
+      background: var(--tone) !important;
     }
   }
 }
@@ -1244,20 +1088,6 @@ mat-accordion:not(.dull) {
   text-overflow: ellipsis;
 }
 
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-xs) !important;
-  font-weight: 500;
-  padding: 1px 6px;
-  border-radius: var(--radius-xxs);
-  background: var(--card-shade-color);
-  color: var(--dim-color);
-  margin-left: auto;
-  line-height: 1.2;
-}
-
 .origin-mini-badge {
   display: inline-flex;
   align-items: center;
@@ -1367,29 +1197,11 @@ mat-accordion:not(.dull) {
       animation: pulse 2s infinite;
     }
 
-    &.sync .menu-item-dot {
-      background-color: var(--primary-color);
-    }
-    &.copy .menu-item-dot {
-      background-color: var(--yellow);
-    }
-    &.move .menu-item-dot {
-      background-color: var(--orange);
-    }
-    &.bisync .menu-item-dot {
-      background-color: var(--purple);
-    }
-    &.check .menu-item-dot {
-      background-color: var(--accent-color);
-    }
-    &.delete .menu-item-dot {
-      background-color: var(--warn-color);
+    &[data-tone] .menu-item-dot {
+      background-color: var(--tone);
     }
     &.danger-item {
       color: var(--warn-color);
-    }
-    &.copyurl .menu-item-dot {
-      background-color: var(--accent-color);
     }
 
     &.space-between {

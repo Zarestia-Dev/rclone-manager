@@ -9,15 +9,11 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="satellite-dish" class="primary" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="satellite-dish" data-tone="primary" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.serves' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span
-        class="app-pill"
-        [class.p-primary]="servesList.length > 0"
-        [class.p-dim]="servesList.length === 0"
-      >
+      <span appPill [tone]="servesList.length > 0 ? 'primary' : 'dim'">
         {{
           servesList.length > 0
             ? ('generalOverview.serves.activeCount'

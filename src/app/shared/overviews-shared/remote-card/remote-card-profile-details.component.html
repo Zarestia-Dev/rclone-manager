@@ -14,7 +14,7 @@
   } @else {
     @for (opVm of detailedOperationViewModels(); track opVm.key) {
       @if (opVm.profiles.length > 0) {
-        <div class="profile-group" [ngClass]="opVm.cssClass">
+        <div class="profile-group" [attr.data-tone]="opVm.tone">
           <div class="profile-group-header">
             <span class="operation-label">
               <mat-icon class="operation-icon" [svgIcon]="opVm.labelIcon"></mat-icon>
@@ -26,10 +26,8 @@
             @for (profileVm of opVm.profiles; track profileVm.name) {
               <div class="profile-item" [class.can-open]="profileVm.canOpen">
                 <button
-                  class="app-pill interactive"
-                  [ngClass]="'p-' + opVm.cssClass"
-                  [class.p-warn]="profileVm.isActive"
-                  [class.p-dim]="profileVm.isBusy"
+                  appPill
+                  [tone]="profileVm.isBusy ? 'dim' : profileVm.isActive ? 'warn' : opVm.tone"
                   [disabled]="profileVm.isBusy"
                   [attr.title]="profileVm.chipTooltip"
                   (click)="onProfileChipClick(opVm.operation, profileVm.name, $event)"
