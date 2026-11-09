@@ -217,5 +217,6 @@ export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
   rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',
+  index: 'file-lines',
   upload: 'file-arrow-up',
 });

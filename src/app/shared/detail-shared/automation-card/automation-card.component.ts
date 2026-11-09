@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Automation, AutomationStatus, OPERATION_REGISTRY, PillTone } from '@app/types';
+import { Automation, AutomationStatus, getOperationDef, PillTone } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
@@ -13,7 +13,6 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 
 import { PillDirective } from '../../directives/pill.directive';
-const OPERATIONS = new Map(OPERATION_REGISTRY.map(op => [op.key, op]));
 
 const ORIGINS = {
   workflow: { label: 'flow.tabs.workflow', icon: 'workflow', tone: 'accent' },
@@ -77,7 +76,7 @@ export class AutomationCardComponent {
   protected readonly typeMeta = computed(() => {
     const type = this.automation().automationType;
     if (!type) return { icon: 'workflow', tone: 'accent' as PillTone };
-    const operation = OPERATIONS.get(type);
+    const operation = getOperationDef(type);
     return { icon: operation?.icon ?? 'quick-run', tone: operation?.tone ?? 'accent' };
   });
 

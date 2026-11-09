@@ -15,7 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 import {
-  OPERATION_REGISTRY,
+  getOperationDef,
   OPERATION_TONE,
   QuickRun,
   Remote,
@@ -167,7 +167,6 @@ export class SidebarComponent {
     return this.flowSubMode() === 'quick_run' && this.selectedQuickRunId() === id;
   }
 
-  private static readonly OPERATION_MAP = new Map(OPERATION_REGISTRY.map(def => [def.key, def]));
   private readonly cronTooltipCache = new Map<string, string>();
 
   isQuickRunRunning(id: string): boolean {
@@ -175,13 +174,11 @@ export class SidebarComponent {
   }
 
   getQuickRunIcon(qr: QuickRun): string {
-    return SidebarComponent.OPERATION_MAP.get(qr.operationType)?.icon ?? 'operations';
+    return getOperationDef(qr.operationType)?.icon ?? 'operations';
   }
 
   getQuickRunActionLabel(qr: QuickRun): string {
-    return (
-      SidebarComponent.OPERATION_MAP.get(qr.operationType)?.actionLabel ?? 'flow.tabs.quickRun'
-    );
+    return getOperationDef(qr.operationType)?.actionLabel ?? 'flow.tabs.quickRun';
   }
 
   hasCron(qr: QuickRun): boolean {

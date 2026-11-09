@@ -53,7 +53,7 @@ describe('AppDetailComponent', () => {
 
   let remoteFacadeMock: {
     selectedRemote: ReturnType<typeof signal<Remote | null>>;
-    isRemoteActive: ReturnType<typeof vi.fn>;
+    isRemoteMissing: ReturnType<typeof vi.fn>;
     activeInFlightActions: ReturnType<typeof signal<unknown[]>>;
     runningServes: ReturnType<typeof signal<unknown[]>>;
     mountedRemotes: ReturnType<typeof signal<unknown[]>>;
@@ -103,7 +103,7 @@ describe('AppDetailComponent', () => {
         type: 'drive',
         status: { mount: { active: false } },
       } as unknown as Remote),
-      isRemoteActive: vi.fn().mockReturnValue(true),
+      isRemoteMissing: vi.fn().mockReturnValue(false),
       activeInFlightActions: signal([]),
       runningServes: signal([]),
       mountedRemotes: signal([]),

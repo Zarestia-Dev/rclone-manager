@@ -280,6 +280,10 @@ export class ModalService extends TauriBaseService {
       import('../../shared/modals/archive-create-modal/archive-create-modal.component').then(
         m => m.ArchiveCreateModalComponent
       ),
+    'index-create': () =>
+      import('../../shared/modals/index-create-modal/index-create-modal.component').then(
+        m => m.IndexCreateModalComponent
+      ),
     'quick-run-editor': () =>
       import('../../flow/quick-run/quick-run-editor/quick-run-editor.component').then(
         m => m.QuickRunEditorComponent
@@ -783,6 +787,17 @@ export class ModalService extends TauriBaseService {
     return this.openModal('archive-create', {
       width: '450px',
       height: '600px',
+      disableClose: true,
+      data,
+    });
+  }
+
+  openIndexCreate<TResult = unknown>(data: { target: string }): DialogRefLike<TResult> {
+    return this.openModal('index-create', {
+      width: '520px',
+      maxWidth: '90vw',
+      height: '90vh',
+      maxHeight: '720px',
       disableClose: true,
       data,
     });

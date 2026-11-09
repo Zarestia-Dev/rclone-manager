@@ -1819,7 +1819,8 @@
         "check": "チェック",
         "upload": "アップロード",
         "archivecreate": "圧縮",
-        "archiveextract": "アーカイブを展開"
+        "archiveextract": "アーカイブを展開",
+        "index": "ディレクトリ一覧"
       }
     },
     "fileViewer": {
@@ -2846,6 +2847,66 @@
         "statsChanged": "{{count}} 件の名前変更",
         "statsUnchanged": "{{count}} 件の未変更",
         "statsConflicts": "{{count}} 件の競合"
+      },
+      "index": {
+        "title": "ディレクトリ一覧を生成",
+        "description": "{{target}} とその下のすべてのフォルダーに、静的ウェブサイトとして公開できる閲覧用の一覧を書き込みます。",
+        "overwriteWarning": "選択した一覧と同じ名前の既存ファイル（既定では index.html）は、由来を確認せずに上書きされます。手書きのインデックスを守るには、下でそのフォルダーを除外してください。",
+        "confirm": "生成",
+        "sections": {
+          "output": "一覧",
+          "folders": "フォルダー",
+          "appearance": "表示",
+          "advanced": "詳細設定"
+        },
+        "formats": {
+          "html": "HTML ページ (index.html)",
+          "json": "rclone lsjson 形式の JSON (index.json)",
+          "caddy": "Caddy file_server browse 形式の JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "配下で最も新しいファイル",
+          "dir": "フォルダー自身の日時",
+          "none": "日時なし"
+        },
+        "fields": {
+          "formats": {
+            "label": "一覧の形式",
+            "help": "各フォルダーに書き込む一覧です。"
+          },
+          "maxDepth": {
+            "label": "最大の深さ",
+            "help": "このフォルダーを 1 として、この階層数までの一覧だけを書き込みます。制限しない場合は -1 のままにします。"
+          },
+          "includePatterns": {
+            "label": "これらのフォルダーのみ",
+            "help": "パターン（例: /docs/**）に一致するフォルダーにだけ一覧を書き込みます。それ以外のフォルダーは変更されませんが、親フォルダーの一覧には表示されます。"
+          },
+          "excludePatterns": {
+            "label": "これらのフォルダーを除外",
+            "help": "パターン（例: /private/**）に一致するフォルダーでは何も書き込まず、削除もしません。独自のインデックスを持つフォルダーを守るために使います。"
+          },
+          "dirTime": {
+            "label": "フォルダーの日時",
+            "help": "フォルダーの横に表示する日時です。"
+          },
+          "noModTime": {
+            "label": "更新日時を隠す",
+            "help": "日時をまったく表示しません。オブジェクトごとに個別のリクエストが必要になる S3、Swift、Oracle で最も安価な方法です。"
+          },
+          "linkIndex": {
+            "label": "インデックスファイルへリンク",
+            "help": "フォルダーへのリンクを dir/ ではなく dir/index.html にします。インデックス文書を返さないホスト（通常の S3 URL、B2 の friendly URL）向けです。"
+          },
+          "useServerModTime": {
+            "label": "アップロード日時を使う",
+            "help": "更新日時の代わりにオブジェクトがアップロードされた日時を表示します。S3 でのオブジェクトごとのリクエストを避けられ、ウェブサーバーが Last-Modified として送る日時と同じです。"
+          },
+          "rewrite": {
+            "label": "変更のない一覧も書き直す",
+            "help": "変更がなくてもすべての一覧を書き込みます。たとえば新しいヘッダーやメタデータを適用するときに使います。"
+          }
+        }
       }
     },
     "errors": {
@@ -2868,7 +2929,9 @@
       "archiveCreateFailed": "圧縮に失敗しました: {{error}}",
       "externalDropFailed": "外部ファイルのドロップ処理に失敗しました。",
       "sendToFailed": "ファイルマネージャーメニューの更新に失敗しました: {{error}}",
-      "noRemoteSelected": "最初にリモートに移動してください。"
+      "noRemoteSelected": "最初にリモートに移動してください。",
+      "indexFailed": "ディレクトリ一覧を書き込めませんでした: {{error}}",
+      "indexUnsupported": "このバージョンの rclone はディレクトリ一覧を書き込めません。この機能を使うには rclone を更新してください。"
     },
     "contextMenu": {
       "open": "開く",
@@ -2913,7 +2976,8 @@
       "switchPane": "ペインを切り替え",
       "copyPublicLink": "公開リンクをコピー",
       "createFolderWithItems": "選択項目から新しいフォルダを作成...",
-      "renameMultiple": "一括名前変更..."
+      "renameMultiple": "一括名前変更...",
+      "generateIndex": "ディレクトリ一覧を生成"
     },
     "view": {
       "iconSize": "アイコンサイズ",
@@ -2939,7 +3003,8 @@
       "getPublicLinkStarted": "公開リンクを生成中...",
       "archiveCreateStarted": "圧縮を開始しました...",
       "sendToAdded": "'{{remote}}{{path}}' をファイルマネージャーメニューに追加しました",
-      "sendToRemoved": "'{{remote}}{{path}}' をファイルマネージャーメニューから削除しました"
+      "sendToRemoved": "'{{remote}}{{path}}' をファイルマネージャーメニューから削除しました",
+      "indexStarted": "ディレクトリ一覧を書き込んでいます..."
     },
     "androidShare": {
       "uploadHere": "{{count}} 個の共有ファイルをこのフォルダにアップロード",
@@ -3092,11 +3157,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "マウント",
-      "startOperations": "操作を開始",
-      "startServe": "公開サーバーを開始"
-    },
     "panelTitles": {
       "mountedRemotes": "マウント済みのリモート",
       "activeOperations": "実行中の操作",

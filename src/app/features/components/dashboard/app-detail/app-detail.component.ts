@@ -168,7 +168,7 @@ export class AppDetailComponent {
     if (this.mode() !== 'quickRun') return false;
     const qr = this.quickRun();
     if (!qr?.remoteName) return false;
-    return !this.remoteFacade.isRemoteActive(qr.remoteName);
+    return this.remoteFacade.isRemoteMissing(qr.remoteName);
   });
 
   onRecreateRemote(name: string): void {

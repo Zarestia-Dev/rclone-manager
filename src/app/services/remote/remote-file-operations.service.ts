@@ -175,6 +175,24 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
+  async generateIndex(
+    remote: string,
+    path: string,
+    opt: Record<string, unknown>,
+    useServerModTime: boolean,
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('generate_index', {
+      remote,
+      path,
+      opt,
+      useServerModTime,
+      origin: source,
+      group,
+    });
+  }
+
   async rename(
     remote: string,
     srcPath: string,

@@ -79,7 +79,6 @@ describe('SidebarComponent', () => {
       name: 'Quick Sync',
       remoteName: 'my-drive',
       operationType: 'sync',
-      status: 'idle',
       config: {
         rclone: { srcFs: 'local:', dstFs: 'drive:' },
         app: {

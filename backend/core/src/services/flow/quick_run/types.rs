@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::utils::types::remotes::OperationType;
+use crate::utils::types::remotes::{OperationType, dest_path, source_paths};
 
 /// A saved "quick run" record stored in `quick_runs` sub-settings.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -19,103 +19,103 @@ pub struct QuickRun {
 }
 
 impl QuickRun {
+    /// The app-level settings (scheduling, watching, tray); all of them are optional.
+    fn app(&self) -> Option<&Value> {
+        self.config.get("app")
+    }
+
     #[must_use]
     pub fn is_autostart(&self) -> bool {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("autoStart"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        self.app_flag("autoStart")
     }
 
     /// Seconds to wait after startup before auto-starting.
     #[must_use]
     pub fn autostart_delay_secs(&self) -> u64 {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("autoStartDelay"))
-            .and_then(Value::as_u64)
-            .unwrap_or(0)
+        self.app_number("autoStartDelay").unwrap_or(0)
     }
 
     #[must_use]
     pub fn is_cron_enabled(&self) -> bool {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("cronEnabled"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        self.app_flag("cronEnabled")
     }
 
     #[must_use]
     pub fn cron_expression(&self) -> Option<String> {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("cronExpression"))
-            .and_then(Value::as_str)
+        self.app()?
+            .get("cronExpression")?
+            .as_str()
             .map(String::from)
     }
 
     #[must_use]
     pub fn is_watch_enabled(&self) -> bool {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("watchEnabled"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        self.app_flag("watchEnabled")
+    }
+
+    /// Seconds to wait after a change before the watcher runs; `None` means the default.
+    #[must_use]
+    pub fn watch_delay(&self) -> Option<u64> {
+        self.app_number("watchDelay")
+    }
+
+    #[must_use]
+    pub fn watch_changed_only(&self) -> bool {
+        self.app_flag("watchChangedOnly")
     }
 
     #[cfg(any(feature = "tray", test))]
     #[must_use]
     pub fn is_show_on_tray(&self) -> bool {
-        self.config
-            .get("app")
-            .and_then(|a| a.get("showOnTray"))
+        self.app()
+            .and_then(|app| app.get("showOnTray"))
             .and_then(Value::as_bool)
             .unwrap_or(true)
     }
 
+    /// What the watcher observes: the paths set for watching, else the paths the run reads from.
     #[must_use]
     pub fn watch_paths(&self) -> Vec<String> {
-        let app = self.config.get("app");
-        let rclone = self.config.get("rclone");
-
-        let mut paths = Vec::new();
-
-        if let Some(arr) = app
-            .and_then(|a| a.get("watchPaths"))
+        let chosen: Vec<String> = self
+            .app()
+            .and_then(|app| app.get("watchPaths"))
             .and_then(Value::as_array)
-        {
-            for v in arr {
-                if let Some(s) = v.as_str()
-                    && !s.trim().is_empty()
-                {
-                    paths.push(s.to_string());
-                }
-            }
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .filter(|path| !path.trim().is_empty())
+            .map(String::from)
+            .collect();
+        if !chosen.is_empty() {
+            return chosen;
         }
+        self.config
+            .get("rclone")
+            .map(source_paths)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|path| !path.trim().is_empty())
+            .collect()
+    }
 
-        if paths.is_empty() {
-            if let Some(src) = rclone.and_then(|r| r.get("srcFs")).and_then(Value::as_str)
-                && !src.trim().is_empty()
-            {
-                paths.push(src.to_string());
-            }
-            if let Some(sources) = rclone
-                .and_then(|r| r.get("source"))
-                .and_then(Value::as_array)
-            {
-                for v in sources {
-                    if let Some(s) = v.as_str()
-                        && !s.trim().is_empty()
-                    {
-                        paths.push(s.to_string());
-                    }
-                }
-            }
-        }
+    /// Where the run writes to, for the automation that watches or schedules it.
+    #[must_use]
+    pub fn dest_path(&self) -> Option<String> {
+        self.config
+            .get("rclone")
+            .and_then(dest_path)
+            .filter(|path| !path.trim().is_empty())
+    }
 
-        paths
+    fn app_flag(&self, key: &str) -> bool {
+        self.app()
+            .and_then(|app| app.get(key))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    fn app_number(&self, key: &str) -> Option<u64> {
+        self.app()?.get(key)?.as_u64()
     }
 }
 
@@ -271,5 +271,77 @@ mod tests {
             qr_fallback.watch_paths(),
             vec!["/fallback/source/path".to_string()]
         );
+    }
+
+    fn with_config(config: Value) -> QuickRun {
+        QuickRun {
+            id: "qr".to_string(),
+            name: "Run".to_string(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: "drive:".to_string(),
+            config,
+        }
+    }
+
+    #[test]
+    fn test_quick_run_watch_settings_are_optional() {
+        let none = with_config(json!({}));
+        assert_eq!(none.watch_delay(), None);
+        assert!(!none.watch_changed_only());
+
+        let set = with_config(json!({"app": {"watchDelay": 7, "watchChangedOnly": true}}));
+        assert_eq!(set.watch_delay(), Some(7));
+        assert!(set.watch_changed_only());
+
+        let wrong_types =
+            with_config(json!({"app": {"watchDelay": "7", "watchChangedOnly": "yes"}}));
+        assert_eq!(wrong_types.watch_delay(), None);
+        assert!(!wrong_types.watch_changed_only());
+    }
+
+    #[test]
+    fn test_quick_run_watches_the_chosen_paths_first() {
+        let qr = with_config(json!({
+            "app": {"watchPaths": ["/chosen", "  ", ""]},
+            "rclone": {"srcFs": "/ignored"}
+        }));
+        assert_eq!(qr.watch_paths(), vec!["/chosen".to_string()]);
+    }
+
+    #[test]
+    fn test_quick_run_watches_the_paths_the_run_reads_from() {
+        // The same key wins as when the operation runs: `source` before `srcFs`.
+        let both = with_config(json!({"rclone": {"srcFs": "/a", "source": ["/b", "/c"]}}));
+        assert_eq!(both.watch_paths(), vec!["/b".to_string(), "/c".to_string()]);
+
+        let bisync = with_config(json!({"rclone": {"path1": "/left", "path2": "/right"}}));
+        assert_eq!(bisync.watch_paths(), vec!["/left".to_string()]);
+
+        let blank_watch =
+            with_config(json!({"app": {"watchPaths": [" "]}, "rclone": {"fs": "x:"}}));
+        assert_eq!(blank_watch.watch_paths(), vec!["x:".to_string()]);
+
+        assert!(with_config(json!({})).watch_paths().is_empty());
+        assert!(
+            with_config(json!({"rclone": {"srcFs": ""}}))
+                .watch_paths()
+                .is_empty()
+        );
+        assert!(
+            with_config(json!({"rclone": {"source": "  "}}))
+                .watch_paths()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_quick_run_dest_path_skips_blank_values() {
+        let dest = |rclone: Value| with_config(json!({ "rclone": rclone })).dest_path();
+
+        assert_eq!(dest(json!({"dstFs": "/out"})).as_deref(), Some("/out"));
+        assert_eq!(dest(json!({"mountPoint": "/mnt"})).as_deref(), Some("/mnt"));
+        assert_eq!(dest(json!({"dest": "  "})), None);
+        assert_eq!(with_config(json!({})).dest_path(), None);
     }
 }

@@ -1819,7 +1819,8 @@
         "check": "Comprobar",
         "upload": "Subir",
         "archivecreate": "Archivar",
-        "archiveextract": "Extraer archivo"
+        "archiveextract": "Extraer archivo",
+        "index": "Listados de directorio"
       }
     },
     "fileViewer": {
@@ -2846,6 +2847,66 @@
         "statsChanged": "{{count}} a renombrar",
         "statsUnchanged": "{{count}} sin cambios",
         "statsConflicts": "{{count}} conflicto(s)"
+      },
+      "index": {
+        "title": "Generar listados de directorio",
+        "description": "Escribe un listado navegable en {{target}} y en cada carpeta que contiene, para poder servirlo como sitio web estático.",
+        "overwriteWarning": "Los archivos existentes con el mismo nombre que los listados seleccionados (index.html por defecto) se sobrescriben sin comprobar su origen. Omite una carpeta abajo para proteger un índice escrito a mano.",
+        "confirm": "Generar",
+        "sections": {
+          "output": "Listados",
+          "folders": "Carpetas",
+          "appearance": "Apariencia",
+          "advanced": "Avanzado"
+        },
+        "formats": {
+          "html": "Página HTML (index.html)",
+          "json": "JSON como rclone lsjson (index.json)",
+          "caddy": "JSON como Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Archivo más reciente dentro",
+          "dir": "La fecha propia de la carpeta",
+          "none": "Sin fecha"
+        },
+        "fields": {
+          "formats": {
+            "label": "Formatos de listado",
+            "help": "Qué listados se escriben en cada carpeta."
+          },
+          "maxDepth": {
+            "label": "Profundidad máxima",
+            "help": "Solo escribe listados hasta este número de niveles, contando esta carpeta como 1. Deja -1 para no limitar."
+          },
+          "includePatterns": {
+            "label": "Solo estas carpetas",
+            "help": "Solo escribe listados en las carpetas que coinciden con un patrón, por ejemplo /docs/**. Las demás carpetas no se tocan, pero siguen apareciendo en el listado de su carpeta superior."
+          },
+          "excludePatterns": {
+            "label": "Omitir estas carpetas",
+            "help": "No escribe ni borra nada en las carpetas que coinciden con un patrón, por ejemplo /private/**. Úsalo para proteger una carpeta con su propio índice."
+          },
+          "dirTime": {
+            "label": "Fecha de carpeta",
+            "help": "La fecha que se muestra junto a una carpeta."
+          },
+          "noModTime": {
+            "label": "Ocultar fechas de modificación",
+            "help": "No muestra ninguna fecha. Es la opción más barata en S3, Swift y Oracle, donde cada objeto necesitaría su propia petición."
+          },
+          "linkIndex": {
+            "label": "Enlazar al archivo de índice",
+            "help": "Enlaza las carpetas como dir/index.html en lugar de dir/, para servidores que no sirven documentos de índice (URL simples de S3, URL amigables de B2)."
+          },
+          "useServerModTime": {
+            "label": "Usar la fecha de subida",
+            "help": "Muestra la fecha en que se subió un objeto en lugar de su fecha de modificación. Evita una petición por objeto en S3 y es la que el servidor web envía como Last-Modified."
+          },
+          "rewrite": {
+            "label": "Reescribir listados sin cambios",
+            "help": "Escribe todos los listados aunque no hayan cambiado, por ejemplo para aplicar nuevas cabeceras o metadatos."
+          }
+        }
       }
     },
     "errors": {
@@ -2868,7 +2929,9 @@
       "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
       "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
       "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}",
-      "noRemoteSelected": "Por favor, navega primero a un remoto."
+      "noRemoteSelected": "Por favor, navega primero a un remoto.",
+      "indexFailed": "No se pudieron escribir los listados de directorio: {{error}}",
+      "indexUnsupported": "Esta versión de rclone no puede escribir listados de directorio. Actualiza rclone para usar esta función."
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2913,7 +2976,8 @@
       "switchPane": "Cambiar de Panel",
       "copyPublicLink": "Copiar enlace público",
       "createFolderWithItems": "Nueva carpeta con selección...",
-      "renameMultiple": "Renombrar varios..."
+      "renameMultiple": "Renombrar varios...",
+      "generateIndex": "Generar listados de directorio"
     },
     "view": {
       "iconSize": "Tamaño del ícono",
@@ -2939,7 +3003,8 @@
       "getPublicLinkStarted": "Generando enlace público...",
       "archiveCreateStarted": "Creación de archivo iniciada...",
       "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
-      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"
+      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos",
+      "indexStarted": "Escribiendo listados de directorio..."
     },
     "androidShare": {
       "uploadHere": "Subir {{count}} archivo(s) compartido(s) a esta carpeta",
@@ -3092,11 +3157,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Montar",
-      "startOperations": "Iniciar operación",
-      "startServe": "Iniciar servicio"
-    },
     "panelTitles": {
       "mountedRemotes": "Remotos montados",
       "activeOperations": "Operaciones activas",

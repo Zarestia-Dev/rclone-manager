@@ -4,7 +4,19 @@ import {
   isOperationActionInProgress,
   isFolderOpeningAction,
   findInFlightAction,
+  NO_ACTIONS,
+  SYNC_TYPES,
 } from './operations';
+import { getOperationDef } from './operation-registry';
+import {
+  ALL_PANELS,
+  applyPanelLayout,
+  defaultPanels,
+  isActiveOnTab,
+  operationsOfTab,
+  panelLayoutOf,
+} from './ui';
+import { createDefaultRemoteStatus, RemoteStatus } from './remotes';
 
 describe('Operation Action Helpers', () => {
   describe('isOperationActionInProgress', () => {
@@ -95,6 +107,123 @@ describe('Operation Action Helpers', () => {
       expect(found).toBeDefined();
       expect(found?.type).toBe('stop');
       expect(found?.operationType).toBe('sync');
+    });
+  });
+
+  describe('NO_ACTIONS', () => {
+    it('is one frozen empty list, so computeds reading it keep a stable reference', () => {
+      expect(NO_ACTIONS).toEqual([]);
+      expect(Object.isFrozen(NO_ACTIONS)).toBe(true);
+      expect(isOperationActionInProgress(NO_ACTIONS, 'sync')).toBe(false);
+    });
+  });
+
+  describe('getOperationDef', () => {
+    it('finds an operation by key and knows nothing about other keys', () => {
+      expect(getOperationDef('sync')?.key).toBe('sync');
+      expect(getOperationDef('not-an-operation')).toBeUndefined();
+    });
+  });
+
+  describe('operationsOfTab / isActiveOnTab', () => {
+    const running = (op: keyof Omit<RemoteStatus, 'diskUsage'>): { status: RemoteStatus } => {
+      const status = createDefaultRemoteStatus();
+      status[op].active = true;
+      return { status };
+    };
+
+    it('maps each tab to the operations it is about', () => {
+      expect(operationsOfTab('mount')).toEqual(['mount']);
+      expect(operationsOfTab('serve')).toEqual(['serve']);
+      expect(operationsOfTab('operations')).toBe(SYNC_TYPES);
+      expect(operationsOfTab('general')).toEqual(
+        expect.arrayContaining(['mount', 'sync', 'serve'])
+      );
+    });
+
+    it('is idle when nothing runs', () => {
+      const idle = { status: createDefaultRemoteStatus() };
+      for (const tab of ['mount', 'operations', 'serve', 'general'] as const) {
+        expect(isActiveOnTab(idle, tab)).toBe(false);
+      }
+    });
+
+    it.each(['sync', 'copy', 'move', 'bisync', 'check', 'cryptcheck', 'delete'] as const)(
+      'counts a running %s on the operations tab and the general tab only',
+      op => {
+        expect(isActiveOnTab(running(op), 'operations')).toBe(true);
+        expect(isActiveOnTab(running(op), 'general')).toBe(true);
+        expect(isActiveOnTab(running(op), 'mount')).toBe(false);
+        expect(isActiveOnTab(running(op), 'serve')).toBe(false);
+      }
+    );
+
+    it('keeps a mount on the mount tab and a serve on the serve tab', () => {
+      expect(isActiveOnTab(running('mount'), 'mount')).toBe(true);
+      expect(isActiveOnTab(running('mount'), 'operations')).toBe(false);
+      expect(isActiveOnTab(running('serve'), 'serve')).toBe(true);
+      expect(isActiveOnTab(running('serve'), 'operations')).toBe(false);
+    });
+  });
+
+  describe('panel layout', () => {
+    const ids = (panels: { id: string }[]): string[] => panels.map(p => p.id);
+
+    it('starts from the built-in order with the default visibility', () => {
+      const panels = defaultPanels(ALL_PANELS);
+
+      expect(ids(panels)).toEqual(ALL_PANELS.map(p => p.id));
+      expect(panels.every(p => p.visible === true)).toBe(true);
+    });
+
+    it.each([null, undefined, [], { order: [], hidden: ['jobs'] }, { hidden: ['jobs'] }])(
+      'gives the defaults for the empty layout %j',
+      saved => {
+        expect(applyPanelLayout(ALL_PANELS, saved)).toEqual(defaultPanels(ALL_PANELS));
+      }
+    );
+
+    it('applies the saved order and hidden panels', () => {
+      const panels = applyPanelLayout(ALL_PANELS, {
+        order: ['jobs', 'remotes'],
+        hidden: ['remotes'],
+      });
+
+      expect(ids(panels).slice(0, 2)).toEqual(['jobs', 'remotes']);
+      expect(panels.find(p => p.id === 'jobs')?.visible).toBe(true);
+      expect(panels.find(p => p.id === 'remotes')?.visible).toBe(false);
+    });
+
+    it('appends panels the layout has not seen with their default visibility', () => {
+      const panels = applyPanelLayout(ALL_PANELS, { order: ['jobs'], hidden: [] });
+
+      expect(ids(panels)).toEqual([
+        'jobs',
+        ...ALL_PANELS.map(p => p.id).filter(id => id !== 'jobs'),
+      ]);
+      expect(panels.slice(1).every(p => p.visible)).toBe(true);
+    });
+
+    it('drops saved panels that no longer exist', () => {
+      const panels = applyPanelLayout(ALL_PANELS, { order: ['gone', 'jobs'], hidden: ['gone'] });
+
+      expect(ids(panels)).not.toContain('gone');
+      expect(ids(panels)[0]).toBe('jobs');
+    });
+
+    it('reads the older layout that was just a list of ids', () => {
+      const panels = applyPanelLayout(ALL_PANELS, ['system', 'jobs']);
+
+      expect(ids(panels).slice(0, 2)).toEqual(['system', 'jobs']);
+      expect(panels.every(p => p.visible)).toBe(true);
+    });
+
+    it('saves exactly what applying it restores', () => {
+      const panels = applyPanelLayout(ALL_PANELS, { order: ['system', 'jobs'], hidden: ['jobs'] });
+      const saved = panelLayoutOf(panels);
+
+      expect(saved.hidden).toEqual(['jobs']);
+      expect(applyPanelLayout(ALL_PANELS, saved)).toEqual(panels);
     });
   });
 });

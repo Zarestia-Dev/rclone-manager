@@ -1,0 +1,59 @@
+@let list = folders();
+@if (list.length === 1) {
+  @let folder = list[0];
+  @let name = folder.labelKey ? (folder.labelKey | translate) : folder.label;
+  <button
+    matMiniFab
+    [attr.data-tone]="folder.tone"
+    [attr.title]="
+      ('overviews.remoteCard.browse' | translate) + ': ' + name + ' (' + folder.detail + ')'
+    "
+    [disabled]="folder.isOpening"
+    (click)="choose(folder, $event)"
+  >
+    @if (folder.isOpening) {
+      <mat-icon svgIcon="spinner"></mat-icon>
+    } @else {
+      <mat-icon [svgIcon]="folder.icon"></mat-icon>
+    }
+  </button>
+} @else if (list.length > 1) {
+  <ng-template #folderMenu>
+    <div cdkMenu class="material-context-menu has-caret">
+      @for (folder of list; track folder.key) {
+        @let name = folder.labelKey ? (folder.labelKey | translate) : folder.label;
+        <button
+          cdkMenuItem
+          class="menu-item"
+          [attr.data-tone]="folder.tone"
+          data-variant="solid"
+          [disabled]="folder.isOpening"
+          (click)="choose(folder, $event)"
+        >
+          <mat-icon [svgIcon]="folder.icon"></mat-icon>
+          <span>{{ name }} ({{ folder.detail }})</span>
+        </button>
+      }
+    </div>
+  </ng-template>
+
+  <button
+    matMiniFab
+    [attr.data-tone]="blossomStyle() ? null : list[0].tone"
+    [style]="blossomStyle()"
+    [attr.title]="'overviews.remoteCard.browse' | translate"
+    [disabled]="isOpening()"
+    [cdkMenuTriggerFor]="folderMenu"
+    [cdkMenuPosition]="menuPosition"
+    (click)="$event.stopPropagation()"
+  >
+    @if (isOpening()) {
+      <mat-icon svgIcon="spinner"></mat-icon>
+    } @else {
+      <mat-icon svgIcon="folder"></mat-icon>
+    }
+    <span appPill="solid" size="xs" tone="accent" class="folder-badge" aria-hidden="true">
+      {{ list.length }}
+    </span>
+  </button>
+}

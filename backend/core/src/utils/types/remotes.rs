@@ -9,6 +9,39 @@ use tokio::sync::RwLock;
 pub const SOURCE_KEYS: &[&str] = &["source", "srcFs", "path1", "fs", "url"];
 pub const DEST_KEYS: &[&str] = &["dest", "dstFs", "path2", "mountPoint"];
 
+/// The non-empty paths stored under `key` of an rclone config: one string, or a list of them.
+#[must_use]
+pub fn paths_at(rclone: &Value, key: &str) -> Vec<String> {
+    match rclone.get(key) {
+        Some(Value::String(path)) if !path.is_empty() => vec![path.clone()],
+        Some(Value::Array(paths)) => paths
+            .iter()
+            .filter_map(|path| path.as_str())
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => vec![],
+    }
+}
+
+/// The paths an operation reads from: those under the first of [`SOURCE_KEYS`] that holds any.
+#[must_use]
+pub fn source_paths(rclone: &Value) -> Vec<String> {
+    SOURCE_KEYS
+        .iter()
+        .map(|key| paths_at(rclone, key))
+        .find(|paths| !paths.is_empty())
+        .unwrap_or_default()
+}
+
+/// The path an operation writes to: the first one under the first of [`DEST_KEYS`] that holds any.
+#[must_use]
+pub fn dest_path(rclone: &Value) -> Option<String> {
+    DEST_KEYS
+        .iter()
+        .find_map(|key| paths_at(rclone, key).into_iter().next())
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MountedRemote {
     pub fs: String,
@@ -673,5 +706,41 @@ mod tests {
         assert!(settings.get_configs(OperationType::Sync).is_some());
         assert_eq!(settings.get_configs(OperationType::Sync).unwrap().len(), 1);
         assert!(settings.get_configs(OperationType::Copy).is_none());
+    }
+
+    #[test]
+    fn paths_are_read_from_a_string_or_a_list_and_blanks_are_dropped() {
+        let rclone = serde_json::json!({
+            "one": "/a",
+            "many": ["/b", "", 7, "/c"],
+            "empty": "",
+            "none": [],
+            "wrong": 7
+        });
+        assert_eq!(paths_at(&rclone, "one"), vec!["/a"]);
+        assert_eq!(paths_at(&rclone, "many"), vec!["/b", "/c"]);
+        for key in ["empty", "none", "wrong", "missing"] {
+            assert!(paths_at(&rclone, key).is_empty(), "{key}");
+        }
+        assert!(paths_at(&serde_json::json!("not an object"), "one").is_empty());
+    }
+
+    #[test]
+    fn the_source_is_the_first_key_that_holds_any_path() {
+        let rclone = serde_json::json!({"source": [], "srcFs": "/src", "path1": "/left"});
+        assert_eq!(source_paths(&rclone), vec!["/src"]);
+
+        let url = serde_json::json!({"url": ["https://a", "https://b"]});
+        assert_eq!(source_paths(&url), vec!["https://a", "https://b"]);
+
+        assert!(source_paths(&serde_json::json!({"dstFs": "/only-dest"})).is_empty());
+    }
+
+    #[test]
+    fn the_destination_is_the_first_path_of_the_first_key_that_holds_any() {
+        let rclone =
+            serde_json::json!({"dest": "", "dstFs": ["/one", "/two"], "mountPoint": "/mnt"});
+        assert_eq!(dest_path(&rclone).as_deref(), Some("/one"));
+        assert_eq!(dest_path(&serde_json::json!({"srcFs": "/src"})), None);
     }
 }

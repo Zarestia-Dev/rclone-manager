@@ -18,7 +18,7 @@ use crate::{
             automation::{Automation, AutomationArgs, AutomationStatus, DEFAULT_WATCH_DELAY},
             events::AUTOMATIONS_CACHE_CHANGED,
             origin::Origin,
-            remotes::{DEST_KEYS, OperationType, ProfileConfig, RemoteSettings, SOURCE_KEYS},
+            remotes::{OperationType, ProfileConfig, RemoteSettings},
         },
     },
 };
@@ -525,15 +525,6 @@ fn create_automation_struct(
     ))
 }
 
-/// The first non-empty text found under one of `keys` in a quick run's `rclone` settings.
-fn first_text(rclone: Option<&Value>, keys: &[&str]) -> Option<String> {
-    let settings = rclone?.as_object()?;
-    keys.iter()
-        .filter_map(|key| settings.get(*key)?.as_str())
-        .find(|text| !text.trim().is_empty())
-        .map(str::to_string)
-}
-
 fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option<Automation> {
     let cron_enabled = qr.is_cron_enabled();
     let watch_enabled = qr.is_watch_enabled();
@@ -547,30 +538,19 @@ fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option
         None
     };
 
-    let rclone = qr.config.get("rclone");
     let mut src_paths = qr.watch_paths();
-    if src_paths.is_empty() {
-        src_paths.extend(first_text(rclone, SOURCE_KEYS));
-    }
     if src_paths.is_empty() {
         src_paths.push(qr.remote_name.clone());
     }
-    let dst_paths: Vec<String> = first_text(rclone, DEST_KEYS).into_iter().collect();
+    let dst_paths: Vec<String> = qr.dest_path().into_iter().collect();
 
     let args = AutomationArgs {
         source: Origin::QuickRun,
         src_paths,
         dst_paths,
     };
-    let app = qr.config.get("app");
-    let watch_delay = app
-        .and_then(|a| a.get("watchDelay"))
-        .and_then(Value::as_u64)
-        .unwrap_or(DEFAULT_WATCH_DELAY);
-    let watch_changed_only = app
-        .and_then(|a| a.get("watchChangedOnly"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+    let watch_delay = qr.watch_delay().unwrap_or(DEFAULT_WATCH_DELAY);
+    let watch_changed_only = qr.watch_changed_only();
     Some(scheduled(
         Automation::new(
             qr.id.clone(),

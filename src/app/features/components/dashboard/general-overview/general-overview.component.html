@@ -83,8 +83,6 @@
                   [isEditingLayout]="isEditingLayout()"
                   [mode]="'general'"
                   [displayMode]="cardDisplayMode()"
-                  [primaryActionLabel]="'actions.mount' | translate"
-                  [activeIcon]="'mount'"
                   [expanded]="panelOpenStates()['remotes']"
                   (expandedChange)="setPanelOpenState('remotes', $event)"
                   (remoteSelected)="selectRemote.emit($event)"

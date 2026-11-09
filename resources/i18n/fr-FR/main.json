@@ -1819,7 +1819,8 @@
         "check": "Vérifier",
         "upload": "Téléverser",
         "archivecreate": "Archiver",
-        "archiveextract": "Extraire l'archive"
+        "archiveextract": "Extraire l'archive",
+        "index": "Listes de répertoire"
       }
     },
     "fileViewer": {
@@ -2846,6 +2847,66 @@
         "statsChanged": "{{count}} à renommer",
         "statsUnchanged": "{{count}} inchangé(s)",
         "statsConflicts": "{{count}} conflit(s)"
+      },
+      "index": {
+        "title": "Générer des listes de répertoire",
+        "description": "Écrit une liste navigable dans {{target}} et dans chaque dossier qu'il contient, pour pouvoir la servir comme site web statique.",
+        "overwriteWarning": "Les fichiers existants portant le même nom que les listes choisies (index.html par défaut) sont écrasés sans vérifier leur origine. Ignorez un dossier ci-dessous pour protéger un index écrit à la main.",
+        "confirm": "Générer",
+        "sections": {
+          "output": "Listes",
+          "folders": "Dossiers",
+          "appearance": "Apparence",
+          "advanced": "Avancé"
+        },
+        "formats": {
+          "html": "Page HTML (index.html)",
+          "json": "JSON comme rclone lsjson (index.json)",
+          "caddy": "JSON comme Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Fichier le plus récent à l'intérieur",
+          "dir": "La date propre du dossier",
+          "none": "Aucune date"
+        },
+        "fields": {
+          "formats": {
+            "label": "Formats de liste",
+            "help": "Les listes écrites dans chaque dossier."
+          },
+          "maxDepth": {
+            "label": "Profondeur maximale",
+            "help": "N'écrit des listes que jusqu'à ce nombre de niveaux, ce dossier comptant pour 1. Gardez -1 pour ne pas limiter."
+          },
+          "includePatterns": {
+            "label": "Seulement ces dossiers",
+            "help": "N'écrit des listes que dans les dossiers correspondant à un motif, par exemple /docs/**. Les autres dossiers ne sont pas modifiés mais apparaissent toujours dans la liste de leur parent."
+          },
+          "excludePatterns": {
+            "label": "Ignorer ces dossiers",
+            "help": "N'écrit ni ne supprime rien dans les dossiers correspondant à un motif, par exemple /private/**. Utile pour protéger un dossier qui a son propre index."
+          },
+          "dirTime": {
+            "label": "Date du dossier",
+            "help": "La date affichée à côté d'un dossier."
+          },
+          "noModTime": {
+            "label": "Masquer les dates de modification",
+            "help": "N'affiche aucune date. C'est l'option la moins coûteuse sur S3, Swift et Oracle, où chaque objet demanderait sinon sa propre requête."
+          },
+          "linkIndex": {
+            "label": "Lier au fichier d'index",
+            "help": "Lie les dossiers en dir/index.html au lieu de dir/, pour les hébergeurs qui ne servent pas de documents d'index (URL S3 simples, URL conviviales B2)."
+          },
+          "useServerModTime": {
+            "label": "Utiliser la date d'envoi",
+            "help": "Affiche la date d'envoi d'un objet au lieu de sa date de modification. Évite une requête par objet sur S3 et correspond à ce que le serveur web envoie en Last-Modified."
+          },
+          "rewrite": {
+            "label": "Réécrire les listes inchangées",
+            "help": "Écrit toutes les listes même si elles n'ont pas changé, par exemple pour appliquer de nouveaux en-têtes ou métadonnées."
+          }
+        }
       }
     },
     "errors": {
@@ -2868,7 +2929,9 @@
       "archiveCreateFailed": "Impossible de créer l'archive : {{error}}",
       "externalDropFailed": "Échec du traitement du dépôt de fichier externe.",
       "sendToFailed": "Échec de la mise à jour du menu du gestionnaire de fichiers : {{error}}",
-      "noRemoteSelected": "Veuillez d’abord naviguer vers un espace distant."
+      "noRemoteSelected": "Veuillez d’abord naviguer vers un espace distant.",
+      "indexFailed": "Impossible d'écrire les listes de répertoire : {{error}}",
+      "indexUnsupported": "Cette version de rclone ne sait pas écrire de listes de répertoire. Mettez rclone à jour pour utiliser cette fonction."
     },
     "contextMenu": {
       "open": "Ouvrir",
@@ -2913,7 +2976,8 @@
       "switchPane": "Basculer le volet",
       "copyPublicLink": "Copier le lien public",
       "createFolderWithItems": "Nouveau dossier avec la sélection...",
-      "renameMultiple": "Renommer plusieurs..."
+      "renameMultiple": "Renommer plusieurs...",
+      "generateIndex": "Générer des listes de répertoire"
     },
     "view": {
       "iconSize": "Taille de l’icône",
@@ -2939,7 +3003,8 @@
       "getPublicLinkStarted": "Génération du lien public...",
       "archiveCreateStarted": "Création de l'archive démarrée...",
       "sendToAdded": "'{{remote}}{{path}}' ajouté au menu du gestionnaire de fichiers",
-      "sendToRemoved": "'{{remote}}{{path}}' retiré du menu du gestionnaire de fichiers"
+      "sendToRemoved": "'{{remote}}{{path}}' retiré du menu du gestionnaire de fichiers",
+      "indexStarted": "Écriture des listes de répertoire..."
     },
     "androidShare": {
       "uploadHere": "Téléverser {{count}} fichier(s) partagé(s) dans ce dossier",
@@ -3092,11 +3157,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Montage",
-      "startOperations": "Démarrer l'opération",
-      "startServe": "Démarrer le service de partage"
-    },
     "panelTitles": {
       "mountedRemotes": "Dépôts distants montés",
       "activeOperations": "Opérations actives",

@@ -40,26 +40,32 @@ pub async fn create_quick_run(
 ) -> Result<QuickRun, String> {
     info!("Creating quick run: {}", quick_run.name);
     let manager = app.state::<AppSettingsManager>();
-    let id = quick_run
-        .id
-        .clone()
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-
-    let record = QuickRun {
-        id: id.clone(),
-        name: quick_run.name,
-        description: quick_run.description,
-        operation_type: quick_run.operation_type,
-        remote_name: quick_run.remote_name,
-        config: quick_run.config,
-    };
+    let record = new_record(quick_run);
 
     save_quick_run(&manager, &record)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_quick_run(&record.id);
-    }
-    crate::services::automation::commands::sync_flow_automations(&app).await?;
+    quick_run_changed(&app, &record.id).await?;
     Ok(record)
+}
+
+/// A new record always gets a fresh id: an id sent with a create must not overwrite an
+/// existing quick run (that is what `update_quick_run` is for).
+fn new_record(input: QuickRunInput) -> QuickRun {
+    QuickRun {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: input.name,
+        description: input.description,
+        operation_type: input.operation_type,
+        remote_name: input.remote_name,
+        config: input.config,
+    }
+}
+
+/// Drops the cached snapshot of a quick run and re-reads the automations after it changed.
+async fn quick_run_changed(app: &AppHandle, id: &str) -> Result<(), String> {
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_quick_run(id);
+    }
+    crate::services::automation::commands::sync_flow_automations(app).await
 }
 
 /// Update an existing quick run record.
@@ -86,10 +92,7 @@ pub async fn update_quick_run(
     existing.config = quick_run.config;
 
     save_quick_run(&manager, &existing)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_quick_run(&existing.id);
-    }
-    crate::services::automation::commands::sync_flow_automations(&app).await?;
+    quick_run_changed(&app, &existing.id).await?;
     Ok(existing)
 }
 
@@ -98,11 +101,7 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     info!("Deleting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_quick_run_by_id(&manager, &quick_run_id)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_quick_run(&quick_run_id);
-    }
-    crate::services::automation::commands::sync_flow_automations(&app).await?;
-    Ok(())
+    quick_run_changed(&app, &quick_run_id).await
 }
 
 /// Start execution of a quick run.
@@ -139,11 +138,28 @@ pub(crate) async fn start_quick_run_snapshot(
     let origin = Origin::of_work(None, Some(&starter));
     let execute_id = execute_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let start_time = chrono::Utc::now();
-    let empty_settings = json!({"name": qr.remote_name.trim_end_matches(':')});
+    // The parsers read the owning remote's name from here; a quick run has no other settings.
+    let owner_settings = json!({"name": qr.remote_name.trim_end_matches(':')});
+    // What every kind of run reports; each branch adds the handle of what it started.
+    let started = OperationExecutionResult {
+        execute_id: execute_id.clone(),
+        origin,
+        operation_type: qr.operation_type,
+        remote_name: qr.remote_name.clone(),
+        starter: Some(starter.clone()),
+        success: true,
+        status: JobStatus::Running,
+        error: None,
+        start_time,
+        job_id: None,
+        serve_id: None,
+        serve_addr: None,
+        mount_point: None,
+    };
 
     if qr.operation_type == OperationType::Mount {
         let mut mount_params =
-            MountParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
+            MountParams::from_config(qr.remote_name.clone(), &qr.config, &owner_settings)?;
         let mount_point = mount_params.mount_point.clone();
         mount_params.backend = Some(backend.clone());
         mount_params.starter = Some(starter.clone());
@@ -152,25 +168,14 @@ pub(crate) async fn start_quick_run_snapshot(
         mount_remote(app.clone(), mount_params).await?;
 
         return Ok(OperationExecutionResult {
-            execute_id,
-            origin,
-            operation_type: OperationType::Mount,
-            remote_name: qr.remote_name,
-            starter: Some(starter),
-            success: true,
-            status: JobStatus::Running,
-            error: None,
-            start_time,
-            job_id: None,
-            serve_id: None,
-            serve_addr: None,
             mount_point: Some(mount_point),
+            ..started
         });
     }
 
     if qr.operation_type == OperationType::Serve {
         let mut serve_params =
-            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
+            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &owner_settings)?;
         serve_params.backend = Some(backend.clone());
         serve_params.starter = Some(starter.clone());
         serve_params.execute_id = Some(execute_id.clone());
@@ -178,23 +183,13 @@ pub(crate) async fn start_quick_run_snapshot(
         let serve_res = start_serve(app.clone(), serve_params).await?;
 
         return Ok(OperationExecutionResult {
-            execute_id,
-            origin,
-            operation_type: OperationType::Serve,
-            remote_name: qr.remote_name,
-            starter: Some(starter),
-            success: true,
-            status: JobStatus::Running,
-            error: None,
-            start_time,
-            job_id: None,
             serve_id: Some(serve_res.id),
             serve_addr: Some(serve_res.addr),
-            mount_point: None,
+            ..started
         });
     }
 
-    let common = parse_common_config(&qr.config, &empty_settings)?;
+    let common = parse_common_config(&qr.config, &owner_settings)?;
 
     let dry_run = lookup_dry_run(
         &common.rclone_config,
@@ -240,19 +235,8 @@ pub(crate) async fn start_quick_run_snapshot(
         .map_err(|e| format!("Invalid job ID returned by backend: {e}"))?;
 
     Ok(OperationExecutionResult {
-        execute_id,
-        origin,
-        operation_type: qr.operation_type,
-        remote_name: qr.remote_name,
-        starter: Some(starter),
-        success: true,
-        status: JobStatus::Running,
-        error: None,
-        start_time,
         job_id: Some(job_id),
-        serve_id: None,
-        serve_addr: None,
-        mount_point: None,
+        ..started
     })
 }
 
@@ -387,11 +371,18 @@ pub fn delete_quick_runs_for_remote(
     let clean_remote_name = remote_name.trim_end_matches(':');
 
     for (id, val) in values {
-        if let Ok(qr) = serde_json::from_value::<QuickRun>(val)
-            && qr.remote_name.trim_end_matches(':') == clean_remote_name
-            && sub.delete(&id).is_ok()
-        {
-            deleted_ids.push(id);
+        let Ok(qr) = serde_json::from_value::<QuickRun>(val) else {
+            continue;
+        };
+        if qr.remote_name.trim_end_matches(':') != clean_remote_name {
+            continue;
+        }
+        // The caller must still refresh what did get deleted, so a failure is logged, not returned.
+        match sub.delete(&id) {
+            Ok(()) => deleted_ids.push(id),
+            Err(error) => {
+                warn!("Could not delete quick run '{id}' of remote '{remote_name}': {error}")
+            }
         }
     }
 
@@ -441,6 +432,59 @@ mod tests {
     }
 
     #[test]
+    fn create_never_reuses_an_id_sent_by_the_client() {
+        let input = QuickRunInput {
+            id: Some("existing".into()),
+            name: "Copy".into(),
+            description: Some("d".into()),
+            operation_type: OperationType::Copy,
+            remote_name: "drive:".into(),
+            config: json!({"app": {}, "rclone": {}}),
+        };
+
+        let first = new_record(input.clone());
+        let second = new_record(input);
+
+        assert_ne!(first.id, "existing");
+        assert_ne!(first.id, second.id);
+        assert_eq!(first.name, "Copy");
+        assert_eq!(first.description.as_deref(), Some("d"));
+        assert_eq!(first.operation_type, OperationType::Copy);
+        assert_eq!(first.remote_name, "drive:");
+    }
+
+    #[test]
+    fn deleting_a_remote_removes_only_its_quick_runs_with_or_without_the_colon() {
+        let (_temp_dir, manager) = test_manager();
+        let make = |id: &str, remote: &str| QuickRun {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: remote.to_string(),
+            config: json!({"app": {}, "rclone": {}}),
+        };
+        for qr in [
+            make("with-colon", "drive:"),
+            make("without-colon", "drive"),
+            make("other", "other:"),
+        ] {
+            save_quick_run(&manager, &qr).unwrap();
+        }
+
+        let mut deleted = delete_quick_runs_for_remote(&manager, "drive").unwrap();
+        deleted.sort();
+
+        assert_eq!(deleted, vec!["with-colon", "without-colon"]);
+        let left: Vec<_> = get_all_quick_runs(&manager)
+            .unwrap()
+            .into_iter()
+            .map(|qr| qr.id)
+            .collect();
+        assert_eq!(left, vec!["other"]);
+    }
+
+    #[test]
     fn test_quick_run_crud_helpers() {
         let (_temp_dir, manager) = test_manager();
 
@@ -477,7 +521,7 @@ mod tests {
 
     #[test]
     fn test_quick_run_config_isolation() {
-        let empty_settings = json!({});
+        let owner_settings = json!({});
         let qr_config = json!({
             "app": {
                 "autoStart": false,
@@ -492,7 +536,7 @@ mod tests {
         });
 
         let common =
-            parse_common_config(&qr_config, &empty_settings).expect("Failed to parse config");
+            parse_common_config(&qr_config, &owner_settings).expect("Failed to parse config");
         assert_eq!(common.source, vec!["remote:bucket/source"]);
         assert_eq!(common.dest, "/local/target");
         assert!(common.vfs_options.is_none());
@@ -502,7 +546,7 @@ mod tests {
 
     #[test]
     fn test_quick_run_with_cli_flags() {
-        let empty_settings = json!({});
+        let owner_settings = json!({});
         let qr_config = json!({
             "app": {},
             "rclone": {
@@ -515,7 +559,7 @@ mod tests {
         });
 
         let common =
-            parse_common_config(&qr_config, &empty_settings).expect("Failed to parse config");
+            parse_common_config(&qr_config, &owner_settings).expect("Failed to parse config");
         assert_eq!(common.source, vec!["remote:bucket/source"]);
         assert_eq!(common.dest, "/local/target");
         assert_eq!(

@@ -242,6 +242,15 @@ export class NautilusActionsService {
     if (changed) this._refresh(remote, path);
   }
 
+  async openIndex(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
+    if (!remote) return;
+
+    const changed = await this.fileOps.openIndexDialog(remote, path);
+    if (changed) this._refresh(remote, path);
+  }
+
   async openArchiveCreate(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
     const path = this.tabSvc.activePath();

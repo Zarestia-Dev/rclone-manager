@@ -1819,7 +1819,8 @@
         "check": "Kontrol Et",
         "upload": "Yükle",
         "archivecreate": "Arşivle",
-        "archiveextract": "Arşivi Çıkart"
+        "archiveextract": "Arşivi Çıkart",
+        "index": "Dizin Listeleri"
       }
     },
     "fileViewer": {
@@ -2887,6 +2888,66 @@
         "statsChanged": "{{count}} adlandırılacak",
         "statsUnchanged": "{{count}} değişmeyecek",
         "statsConflicts": "{{count}} çakışma"
+      },
+      "index": {
+        "title": "Dizin Listeleri Oluştur",
+        "description": "{{target}} ve altındaki her klasöre, statik web sitesi olarak sunulabilecek göz atılabilir bir liste yazar.",
+        "overwriteWarning": "Seçilen listelerle aynı adı taşıyan mevcut dosyalar (varsayılan olarak index.html), nereden geldiklerine bakılmadan üzerine yazılır. Elle yazılmış bir index'i korumak için aşağıdan ilgili klasörü atlayın.",
+        "confirm": "Oluştur",
+        "sections": {
+          "output": "Listeler",
+          "folders": "Klasörler",
+          "appearance": "Görünüm",
+          "advanced": "Gelişmiş"
+        },
+        "formats": {
+          "html": "HTML sayfası (index.html)",
+          "json": "rclone lsjson biçiminde JSON (index.json)",
+          "caddy": "Caddy file_server browse biçiminde JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Altındaki en yeni dosya",
+          "dir": "Klasörün kendi zamanı",
+          "none": "Zaman yok"
+        },
+        "fields": {
+          "formats": {
+            "label": "Liste biçimleri",
+            "help": "Her klasöre hangi listelerin yazılacağı."
+          },
+          "maxDepth": {
+            "label": "En fazla derinlik",
+            "help": "Listeleri yalnızca bu kadar klasör seviyesine yazar; bu klasör 1 sayılır. Sınırsız için -1 bırakın."
+          },
+          "includePatterns": {
+            "label": "Yalnızca bu klasörler",
+            "help": "Listeleri yalnızca bir desenle eşleşen klasörlere yazar, örneğin /docs/**. Diğer klasörlere dokunulmaz ama üst klasörün listesinde yine görünürler."
+          },
+          "excludePatterns": {
+            "label": "Bu klasörleri atla",
+            "help": "Bir desenle eşleşen klasörlerde hiçbir şey yazılmaz veya silinmez, örneğin /private/**. Kendi index'i olan bir klasörü korumak için kullanın."
+          },
+          "dirTime": {
+            "label": "Klasör zamanı",
+            "help": "Klasörün yanında gösterilen zaman."
+          },
+          "noModTime": {
+            "label": "Değiştirilme zamanlarını gizle",
+            "help": "Hiç zaman göstermez. S3, Swift ve Oracle'da her nesne için ayrı istek gerektiğinden en ucuz seçenektir."
+          },
+          "linkIndex": {
+            "label": "Index dosyasına bağla",
+            "help": "Klasör bağlantılarını dir/ yerine dir/index.html olarak yazar; index belgesi sunmayan sunucular için (düz S3 URL'leri, B2 friendly URL'leri)."
+          },
+          "useServerModTime": {
+            "label": "Yükleme zamanını kullan",
+            "help": "Değiştirilme zamanı yerine nesnenin yüklendiği zamanı gösterir. S3'te nesne başına isteği önler ve web sunucusunun Last-Modified olarak gönderdiği zamandır."
+          },
+          "rewrite": {
+            "label": "Değişmeyen listeleri yeniden yaz",
+            "help": "Değişmemiş olsa bile her listeyi yazar; örneğin yeni başlık veya meta veri uygulamak için."
+          }
+        }
       }
     },
     "errors": {
@@ -2909,7 +2970,9 @@
       "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}",
       "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
       "sendToFailed": "Dosya yöneticisi sağ tık menüsü güncellenemedi: {{error}}",
-      "noRemoteSelected": "Lütfen önce bir uzak depoya gidin."
+      "noRemoteSelected": "Lütfen önce bir uzak depoya gidin.",
+      "indexFailed": "Dizin listeleri yazılamadı: {{error}}",
+      "indexUnsupported": "Bu rclone sürümü dizin listesi yazamıyor. Bu özelliği kullanmak için rclone'u güncelleyin."
     },
     "contextMenu": {
       "open": "Aç",
@@ -2954,7 +3017,8 @@
       "switchPane": "Panele Geç",
       "copyPublicLink": "Ortak Bağlantıyı Kopyala",
       "createFolderWithItems": "Seçilenlerle Yeni Klasör...",
-      "renameMultiple": "Çoklu Yeniden Adlandır..."
+      "renameMultiple": "Çoklu Yeniden Adlandır...",
+      "generateIndex": "Dizin listeleri oluştur"
     },
     "view": {
       "iconSize": "Simge Boyutu",
@@ -2980,7 +3044,8 @@
       "getPublicLinkStarted": "Ortak bağlantı oluşturuluyor...",
       "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
       "sendToAdded": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsüne eklendi",
-      "sendToRemoved": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsünden kaldırıldı"
+      "sendToRemoved": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsünden kaldırıldı",
+      "indexStarted": "Dizin listeleri yazılıyor..."
     },
     "androidShare": {
       "uploadHere": "{{count}} paylaşılan dosyayı bu klasöre yükle",
@@ -3133,11 +3198,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Bağla",
-      "startOperations": "İşlemi Başlat",
-      "startServe": "Sunumu Başlat"
-    },
     "panelTitles": {
       "mountedRemotes": "Bağlı Uzak Bağlantılar",
       "activeOperations": "Aktif İşlemler",

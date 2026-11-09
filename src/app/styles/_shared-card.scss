@@ -1,4 +1,5 @@
 @use "card-actions";
+@use "card-action-mixins" as mixins;
 
 :host {
   position: relative;
@@ -14,13 +15,7 @@
   // The card carries data-tone: the colour of its active operation (tone scope, custom-theme.scss).
 
   // Active border ring and icon container highlight
-  &.mounted,
-  &.serving,
-  &.syncing,
-  &.copying,
-  &.moving,
-  &.bisyncing,
-  &.is-running {
+  &.is-active {
     box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.2);
 
     .card-info .icon-container {
@@ -30,13 +25,6 @@
       .card-type-icon {
         color: var(--tone);
       }
-    }
-  }
-
-  &.inactive-remote .card-info .icon-container {
-    background: var(--bg-elevated-4);
-    .card-type-icon {
-      color: rgba(var(--window-fg-color-rgb), 0.5);
     }
   }
 }
@@ -124,24 +112,7 @@
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 
 .folder-badge {
-  position: absolute;
-  top: var(--space-xxs);
-  right: calc(var(--space-md) * -1);
-  min-width: 16px;
-  height: 16px;
-  border-radius: var(--radius-xs);
-  background: var(--accent-color);
-  color: var(--accent-fg-color);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
+  @include mixins.count-badge;
 }
 
 // ── Responsive Breakpoints ───────────────────────────────────────────────────

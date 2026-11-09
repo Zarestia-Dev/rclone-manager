@@ -77,14 +77,6 @@ export interface ArchiveCreateData {
         flex-direction: column;
         gap: var(--space-md);
       }
-
-      .setting-card {
-        ::ng-deep .setting-item {
-          box-shadow: none !important;
-          background: transparent !important;
-          padding: 0 !important;
-        }
-      }
     `,
   ],
   styleUrl: '../../../styles/_shared-modal.scss',

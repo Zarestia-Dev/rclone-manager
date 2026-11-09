@@ -271,6 +271,14 @@
           <span class="item-label">{{ 'nautilus.modals.copyUrl.title' | translate }}...</span>
         </button>
 
+        @if (!isPickerMode()) {
+          <button class="menu-item" cdkMenuItem (click)="actions.openIndex()">
+            <span class="item-label"
+              >{{ 'nautilus.contextMenu.generateIndex' | translate }}...</span
+            >
+          </button>
+        }
+
         <mat-divider></mat-divider>
 
         @if (fileOps.hasClipboard()) {

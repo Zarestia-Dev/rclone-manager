@@ -335,3 +335,12 @@ export const OPERATION_REGISTRY = [
 export const OPERATION_TONE: Readonly<Record<string, PillTone>> = Object.freeze(
   Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.tone]))
 );
+
+const OPERATION_BY_KEY: ReadonlyMap<string, OperationDefinition> = new Map(
+  OPERATION_REGISTRY.map(op => [op.key, op])
+);
+
+/** The registry entry of an operation key; `undefined` for a key the registry does not know. */
+export function getOperationDef(key: string): OperationDefinition | undefined {
+  return OPERATION_BY_KEY.get(key);
+}

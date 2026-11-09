@@ -130,8 +130,7 @@
                       @for (qr of filteredQuickRuns(); track qr.id) {
                         <app-quick-run-card
                           [quickRun]="qr"
-                          [isRunning]="isRunning(qr.id)"
-                          (selectedChange)="onSelectQuickRunById($event)"
+                          (selectRun)="onSelectQuickRunById($event)"
                           (startRun)="onStartQuickRun($event)"
                           (stopRun)="onStopQuickRun($event)"
                           (editRun)="onEditQuickRun($event)"

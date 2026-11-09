@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
+import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExplorerRoot } from '@app/types';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { FileSystemService } from '../operations/file-system.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { RcConsoleService } from '../infrastructure/system/rc-console.service';
 import { ModalService } from './modal.service';
 import { NotificationService } from './notification.service';
 
@@ -17,20 +19,30 @@ describe('Nautilus shared upload operations', () => {
   const makeDirectory = vi.fn();
   const uploadWebFilesBatch = vi.fn();
   const uploadLocalDropPaths = vi.fn();
-  const notifications = { showError: vi.fn(), showWarning: vi.fn(), showSuccess: vi.fn() };
+  const generateIndex = vi.fn();
+  const loadCommands = vi.fn();
+  const openIndexCreate = vi.fn();
+  const notifications = {
+    showError: vi.fn(),
+    showWarning: vi.fn(),
+    showSuccess: vi.fn(),
+    showInfo: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     makeDirectory.mockResolvedValue(undefined);
     uploadWebFilesBatch.mockResolvedValue({ successCount: 1, failedPaths: [] });
     uploadLocalDropPaths.mockResolvedValue('42');
+    generateIndex.mockResolvedValue(undefined);
+    loadCommands.mockResolvedValue([{ Path: 'operations/index' }]);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     TestBed.configureTestingModule({
       providers: [
         NautilusFileOperationsService,
         {
           provide: RemoteFileOperationsService,
-          useValue: { makeDirectory, uploadWebFilesBatch, uploadLocalDropPaths },
+          useValue: { makeDirectory, uploadWebFilesBatch, uploadLocalDropPaths, generateIndex },
         },
         {
           provide: PathService,
@@ -46,7 +58,8 @@ describe('Nautilus shared upload operations', () => {
             selectFolder: vi.fn().mockResolvedValue('/tmp/folder'),
           },
         },
-        { provide: ModalService, useValue: {} },
+        { provide: ModalService, useValue: { openIndexCreate } },
+        { provide: RcConsoleService, useValue: { loadCommands } },
         { provide: NotificationService, useValue: notifications },
         { provide: TranslateService, useValue: { instant: (key: string): string => key } },
       ],
@@ -125,5 +138,78 @@ describe('Nautilus shared upload operations', () => {
     expect(notifications.showError).toHaveBeenCalledExactlyOnceWith(
       'nautilus.errors.externalDropFailed'
     );
+  });
+
+  describe('openIndexDialog', () => {
+    const request = { opt: { output: ['index.html=html'], maxDepth: -1 }, useServerModTime: true };
+
+    it('writes the listings of the current folder with what the dialog returned', async () => {
+      openIndexCreate.mockReturnValue({ afterClosed: () => of(request) });
+
+      expect(await service.openIndexDialog(remote, 'site')).toBe(true);
+
+      expect(openIndexCreate).toHaveBeenCalledExactlyOnceWith({ target: 'drive:/site' });
+      expect(generateIndex).toHaveBeenCalledExactlyOnceWith(
+        'drive:',
+        'site',
+        request.opt,
+        true,
+        'filemanager'
+      );
+      expect(notifications.showInfo).toHaveBeenCalledWith('nautilus.notifications.indexStarted');
+    });
+
+    it('does nothing when the dialog is dismissed', async () => {
+      openIndexCreate.mockReturnValue({ afterClosed: () => of(undefined) });
+
+      expect(await service.openIndexDialog(remote, 'site')).toBe(false);
+
+      expect(generateIndex).not.toHaveBeenCalled();
+    });
+
+    it('says so, without asking anything, when rclone has no operations/index', async () => {
+      loadCommands.mockResolvedValue([{ Path: 'operations/list' }]);
+
+      expect(await service.openIndexDialog(remote, 'site')).toBe(false);
+
+      expect(loadCommands).toHaveBeenLastCalledWith(true);
+
+      expect(openIndexCreate).not.toHaveBeenCalled();
+      expect(notifications.showError).toHaveBeenCalledExactlyOnceWith(
+        'nautilus.errors.indexUnsupported'
+      );
+    });
+
+    it('asks again when the cached command list is from an rclone that was updated since', async () => {
+      loadCommands
+        .mockResolvedValueOnce([{ Path: 'operations/list' }])
+        .mockResolvedValueOnce([{ Path: 'operations/index' }]);
+      openIndexCreate.mockReturnValue({ afterClosed: () => of(request) });
+
+      expect(await service.openIndexDialog(remote, 'site')).toBe(true);
+
+      expect(loadCommands.mock.calls).toEqual([[], [true]]);
+      expect(notifications.showError).not.toHaveBeenCalled();
+    });
+
+    it('lets rclone answer when its command list cannot be read', async () => {
+      loadCommands.mockResolvedValue([]);
+      openIndexCreate.mockReturnValue({ afterClosed: () => of(request) });
+
+      expect(await service.openIndexDialog(remote, '')).toBe(true);
+
+      expect(generateIndex).toHaveBeenCalledOnce();
+    });
+
+    it('reports a failed run once and keeps the listing view as it was', async () => {
+      openIndexCreate.mockReturnValue({ afterClosed: () => of(request) });
+      generateIndex.mockRejectedValueOnce(new Error('denied'));
+
+      expect(await service.openIndexDialog(remote, 'site')).toBe(false);
+
+      expect(notifications.showError).toHaveBeenCalledExactlyOnceWith(
+        'nautilus.errors.indexFailed'
+      );
+    });
   });
 });

@@ -617,25 +617,7 @@ pub(crate) fn parse_profile_config(
     let rclone = interpolate_value(&profile.rclone);
     let rclone_config = flatten_rclone_config(&rclone);
 
-    let get_paths = |key: &str| -> Vec<String> {
-        match rclone_config.get(key) {
-            Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
-            Some(Value::Array(arr)) => arr
-                .iter()
-                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
-                .filter(|s| !s.is_empty())
-                .collect(),
-            _ => vec![],
-        }
-    };
-
-    let source = crate::utils::types::remotes::SOURCE_KEYS
-        .iter()
-        .find_map(|&key| {
-            let paths = get_paths(key);
-            if paths.is_empty() { None } else { Some(paths) }
-        })
-        .unwrap_or_default();
+    let source = crate::utils::types::remotes::source_paths(&rclone_config);
 
     if source.is_empty() {
         return Err(
@@ -643,10 +625,7 @@ pub(crate) fn parse_profile_config(
         );
     }
 
-    let dest = crate::utils::types::remotes::DEST_KEYS
-        .iter()
-        .find_map(|&key| get_paths(key).into_iter().next())
-        .unwrap_or_default();
+    let dest = crate::utils::types::remotes::dest_path(&rclone_config).unwrap_or_default();
 
     Ok(CommonConfigParams {
         source,

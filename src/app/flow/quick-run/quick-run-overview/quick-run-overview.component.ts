@@ -18,7 +18,10 @@ import {
   QuickRun,
   DashboardPanel,
   ALL_QUICK_RUN_PANELS,
-  PanelConfig,
+  SavedPanelLayout,
+  applyPanelLayout,
+  defaultPanels,
+  panelLayoutOf,
   ServeListItem,
   Automation,
   OpenInFilesEvent,
@@ -114,7 +117,7 @@ export class QuickRunOverviewComponent {
     }
 
     for (const [name, count] of countMap.entries()) {
-      const isMissing = name !== 'local' && !this.remoteFacade.isRemoteActive(name);
+      const isMissing = name !== 'local' && this.remoteFacade.isRemoteMissing(name);
       result.push({
         remoteName: name,
         count,
@@ -143,9 +146,7 @@ export class QuickRunOverviewComponent {
     })
   );
 
-  readonly dashboardPanels = signal<DashboardPanel[]>(
-    ALL_QUICK_RUN_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
-  );
+  readonly dashboardPanels = signal<DashboardPanel[]>(defaultPanels(ALL_QUICK_RUN_PANELS));
 
   readonly displayPanels = computed(() =>
     this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
@@ -190,10 +191,6 @@ export class QuickRunOverviewComponent {
     this.quickRunService.openEditor(qr);
   }
 
-  isRunning(id: string): boolean {
-    return this.runningIds().has(id);
-  }
-
   // --- Layout management ---
   toggleEditLayout(): void {
     this.uiStateService.toggleLayoutEdit({
@@ -208,7 +205,7 @@ export class QuickRunOverviewComponent {
       order: [],
       hidden: [],
     });
-    this.dashboardPanels.set(ALL_QUICK_RUN_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+    this.dashboardPanels.set(defaultPanels(ALL_QUICK_RUN_PANELS));
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
@@ -235,11 +232,11 @@ export class QuickRunOverviewComponent {
   }
 
   private persistLayout(): void {
-    const order = this.dashboardPanels().map(p => p.id);
-    const hidden = this.dashboardPanels()
-      .filter(p => !p.visible)
-      .map(p => p.id);
-    void this.appSettingsService.saveSetting('runtime', 'quick_run_layout', { order, hidden });
+    void this.appSettingsService.saveSetting(
+      'runtime',
+      'quick_run_layout',
+      panelLayoutOf(this.dashboardPanels())
+    );
   }
 
   // --- Smart Item Navigation Handlers ---
@@ -279,37 +276,10 @@ export class QuickRunOverviewComponent {
 
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const savedLayout = await this.appSettingsService.getSettingValue<
-        | {
-            order: string[];
-            hidden: string[];
-          }
-        | string[]
-      >('runtime.quick_run_layout');
-
-      if (savedLayout) {
-        const order: string[] = Array.isArray(savedLayout)
-          ? savedLayout
-          : (savedLayout.order ?? []);
-        const hiddenIds = new Set<string>(
-          Array.isArray(savedLayout) ? [] : (savedLayout.hidden ?? [])
-        );
-
-        if (order.length > 0) {
-          const ordered = order
-            .map(id => ALL_QUICK_RUN_PANELS.find(p => p.id === id))
-            .filter((p): p is PanelConfig => !!p)
-            .map(p => ({ ...p, visible: !hiddenIds.has(p.id) }));
-
-          const seenIds = new Set(order);
-          const appended = ALL_QUICK_RUN_PANELS.filter(p => !seenIds.has(p.id)).map(p => ({
-            ...p,
-            visible: p.defaultVisible,
-          }));
-
-          this.dashboardPanels.set([...ordered, ...appended]);
-        }
-      }
+      const saved = await this.appSettingsService.getSettingValue<SavedPanelLayout>(
+        'runtime.quick_run_layout'
+      );
+      this.dashboardPanels.set(applyPanelLayout(ALL_QUICK_RUN_PANELS, saved));
     } catch {
       console.debug('Failed to load Quick Run layout settings, using defaults');
     }

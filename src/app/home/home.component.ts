@@ -19,7 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import {
   OperationTab,
@@ -39,7 +39,6 @@ import { AppDetailComponent } from '../features/components/dashboard/app-detail/
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
@@ -76,10 +75,8 @@ export class HomeComponent {
   private readonly uiStateService = inject(UiStateService);
   private readonly notificationService = inject(NotificationService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
-  private readonly appSettingsService = inject(AppSettingsService);
   private readonly backendService = inject(BackendService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
-  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeBackend = this.backendService.activeBackend;
@@ -268,27 +265,7 @@ export class HomeComponent {
   }
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
-    if (!remoteName) return;
-
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('home.resetRemote.title'),
-      this.translate.instant('home.resetRemote.message', { name: remoteName }),
-      'common.yes',
-      'common.no',
-      { icon: 'rotate-right', color: 'warn' }
-    );
-    if (!confirmed) return;
-
-    try {
-      // Backend 'delete_remote_settings' deletes settings, unschedules automations,
-      // and emits REMOTE_SETTINGS_CHANGED & AUTOMATIONS_CACHE_CHANGED.
-      // RemoteFacadeService and AutomationService listen to these events and update reactively.
-      // AppSettingsService.resetRemoteSettings also handles the success toast notification.
-      await this.appSettingsService.resetRemoteSettings(remoteName);
-    } catch (error) {
-      console.error('Reset settings failed:', error);
-      this.notificationService.showError(error);
-    }
+    await this.remoteFacadeService.resetSettings(remoteName);
   }
 
   // --- Modals ---

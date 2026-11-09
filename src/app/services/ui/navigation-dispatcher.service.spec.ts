@@ -44,7 +44,6 @@ describe('NavigationDispatcherService', () => {
     operationType: 'sync',
     sourcePaths: ['/local'],
     destinationPaths: ['test-remote:/backup'],
-    status: 'idle',
     createdAt: '2026-01-01',
   } as unknown as QuickRun;
 

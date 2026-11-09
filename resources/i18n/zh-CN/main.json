@@ -1819,7 +1819,8 @@
         "check": "检查",
         "upload": "上传",
         "archivecreate": "归档",
-        "archiveextract": "解压归档"
+        "archiveextract": "解压归档",
+        "index": "目录列表"
       }
     },
     "fileViewer": {
@@ -2846,6 +2847,66 @@
         "statsChanged": "{{count}} 个待重命名",
         "statsUnchanged": "{{count}} 个未更改",
         "statsConflicts": "{{count}} 个冲突"
+      },
+      "index": {
+        "title": "生成目录列表",
+        "description": "在 {{target}} 及其下的每个文件夹中写入可浏览的列表，以便作为静态网站提供。",
+        "overwriteWarning": "与所选列表同名的现有文件（默认为 index.html）会被直接覆盖，不会检查其来源。如需保护手写的索引，请在下方跳过对应文件夹。",
+        "confirm": "生成",
+        "sections": {
+          "output": "列表",
+          "folders": "文件夹",
+          "appearance": "外观",
+          "advanced": "高级"
+        },
+        "formats": {
+          "html": "HTML 页面 (index.html)",
+          "json": "rclone lsjson 格式的 JSON (index.json)",
+          "caddy": "Caddy file_server browse 格式的 JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "其中最新的文件",
+          "dir": "文件夹自身的时间",
+          "none": "不显示时间"
+        },
+        "fields": {
+          "formats": {
+            "label": "列表格式",
+            "help": "在每个文件夹中写入哪些列表。"
+          },
+          "maxDepth": {
+            "label": "最大深度",
+            "help": "只写入到该层数的列表，当前文件夹算第 1 层。保持 -1 表示不限制。"
+          },
+          "includePatterns": {
+            "label": "仅这些文件夹",
+            "help": "只在匹配模式（例如 /docs/**）的文件夹中写入列表。其他文件夹不会被改动，但仍会显示在其上级文件夹的列表中。"
+          },
+          "excludePatterns": {
+            "label": "跳过这些文件夹",
+            "help": "在匹配模式（例如 /private/**）的文件夹中不写入也不删除任何内容。用于保护带有自己索引的文件夹。"
+          },
+          "dirTime": {
+            "label": "文件夹时间",
+            "help": "显示在文件夹旁边的时间。"
+          },
+          "noModTime": {
+            "label": "隐藏修改时间",
+            "help": "完全不显示时间。在 S3、Swift 和 Oracle 上这是最省的选项，否则每个对象都需要单独请求。"
+          },
+          "linkIndex": {
+            "label": "链接到索引文件",
+            "help": "将文件夹链接写为 dir/index.html 而不是 dir/，适用于不提供索引文档的主机（普通 S3 URL、B2 友好 URL）。"
+          },
+          "useServerModTime": {
+            "label": "使用上传时间",
+            "help": "显示对象的上传时间而不是修改时间。这样可避免在 S3 上对每个对象发起请求，也与网页服务器发送的 Last-Modified 一致。"
+          },
+          "rewrite": {
+            "label": "重写未更改的列表",
+            "help": "即使未更改也写入所有列表，例如为了应用新的标头或元数据。"
+          }
+        }
       }
     },
     "errors": {
@@ -2868,7 +2929,9 @@
       "archiveCreateFailed": "创建归档失败: {{error}}",
       "externalDropFailed": "处理外部文件拖放失败。",
       "sendToFailed": "更新文件管理器右键菜单失败：{{error}}",
-      "noRemoteSelected": "请先导航至一个远程存储。"
+      "noRemoteSelected": "请先导航至一个远程存储。",
+      "indexFailed": "写入目录列表失败：{{error}}",
+      "indexUnsupported": "此版本的 rclone 无法写入目录列表。请更新 rclone 以使用此功能。"
     },
     "contextMenu": {
       "open": "打开",
@@ -2913,7 +2976,8 @@
       "switchPane": "切换窗格",
       "copyPublicLink": "复制公共链接",
       "createFolderWithItems": "用所选项目新建文件夹...",
-      "renameMultiple": "批量重命名..."
+      "renameMultiple": "批量重命名...",
+      "generateIndex": "生成目录列表"
     },
     "view": {
       "iconSize": "图标大小",
@@ -2939,7 +3003,8 @@
       "getPublicLinkStarted": "正在生成公共链接...",
       "archiveCreateStarted": "已开始创建归档操作...",
       "sendToAdded": "已将“{{remote}}{{path}}”添加至文件管理器右键菜单",
-      "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除"
+      "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除",
+      "indexStarted": "正在写入目录列表..."
     },
     "androidShare": {
       "uploadHere": "将 {{count}} 个共享文件上传至此文件夹",
@@ -3092,11 +3157,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "挂载",
-      "startOperations": "开始操作",
-      "startServe": "启动服务"
-    },
     "panelTitles": {
       "mountedRemotes": "已挂载远程存储",
       "activeOperations": "活动操作",

@@ -4,6 +4,7 @@ import {
   PrimaryActionType,
   Remote,
   MODE_CONFIG,
+  isActiveOnTab,
   StopJobEvent,
   OpenInFilesEvent,
   PillTone,
@@ -78,7 +79,6 @@ export class AppOverviewComponent {
   readonly activeCount = computed(() => this.activeRemotes().length);
   readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
-  readonly primaryActionLabel = computed(() => this.modeConfig().label);
   readonly activeIcon = computed(() => this.modeConfig().icon);
   readonly activeTitle = computed(() => this.modeConfig().activeTitle);
   readonly inactiveTitle = computed(() => this.modeConfig().inactiveTitle);
@@ -116,18 +116,6 @@ export class AppOverviewComponent {
   // --- Private helpers ---
 
   private isActive(remote: Remote): boolean {
-    switch (this.mode()) {
-      case 'mount':
-        return remote.status.mount.active;
-      case 'operations':
-        return (
-          remote.status.sync.active ||
-          remote.status.copy.active ||
-          remote.status.move.active ||
-          remote.status.bisync.active
-        );
-      case 'serve':
-        return remote.status.serve.active;
-    }
+    return isActiveOnTab(remote, this.mode());
   }
 }

@@ -1,0 +1,28 @@
+// The look of a card's round action button and of the count bubble on top of it.
+// Mixins only: a component that @use's this adds no CSS of its own.
+
+@mixin action-fab {
+  transition: var(--transition-fast);
+
+  mat-icon {
+    font-size: var(--icon-size-sm);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+  }
+
+  &:hover {
+    transform: scale(var(--action-btn-scale-hover));
+  }
+  &:disabled {
+    transform: scale(var(--action-btn-scale-disabled));
+  }
+}
+
+// Position of the `appPill` count on the corner of an action button.
+@mixin count-badge {
+  position: absolute;
+  top: var(--space-xxs);
+  right: calc(var(--space-md) * -1);
+  pointer-events: none;
+  z-index: 2;
+}

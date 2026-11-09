@@ -35,6 +35,7 @@ const TRANSFERRED_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   sync: 'fileBrowser.operations.details.syncedFiles',
   bisync: 'fileBrowser.operations.details.syncedFiles',
   upload: 'fileBrowser.operations.details.uploadedFiles',
+  index: 'fileBrowser.operations.details.uploadedFiles',
 });
 
 /**

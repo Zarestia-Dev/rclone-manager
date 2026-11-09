@@ -1819,7 +1819,8 @@
         "check": "Check",
         "upload": "Upload",
         "archivecreate": "Archive",
-        "archiveextract": "Extract Archive"
+        "archiveextract": "Extract Archive",
+        "index": "Directory Listings"
       }
     },
     "fileViewer": {
@@ -2887,6 +2888,66 @@
         "statsChanged": "{{count}} to rename",
         "statsUnchanged": "{{count}} unchanged",
         "statsConflicts": "{{count}} conflict(s)"
+      },
+      "index": {
+        "title": "Generate Directory Listings",
+        "description": "Writes a browsable listing into {{target}} and every folder below it, so it can be served as a static website.",
+        "overwriteWarning": "Existing files with the same names as the selected listings (index.html by default) are overwritten without checking where they came from. Skip a folder below to protect a hand-written index.",
+        "confirm": "Generate",
+        "sections": {
+          "output": "Listings",
+          "folders": "Folders",
+          "appearance": "Appearance",
+          "advanced": "Advanced"
+        },
+        "formats": {
+          "html": "HTML page (index.html)",
+          "json": "JSON as rclone lsjson (index.json)",
+          "caddy": "JSON as Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Newest file below",
+          "dir": "The folder's own time",
+          "none": "No time"
+        },
+        "fields": {
+          "formats": {
+            "label": "Listing formats",
+            "help": "Which listings are written in every folder."
+          },
+          "maxDepth": {
+            "label": "Maximum depth",
+            "help": "Only write listings this many folder levels deep, counting this folder as 1. Keep -1 for no limit."
+          },
+          "includePatterns": {
+            "label": "Only these folders",
+            "help": "Only write listings in folders matching a pattern, for example /docs/**. Other folders are left alone but still appear in their parent's listing."
+          },
+          "excludePatterns": {
+            "label": "Skip these folders",
+            "help": "Write and delete nothing in folders matching a pattern, for example /private/**. Use it to protect a folder that has its own index."
+          },
+          "dirTime": {
+            "label": "Folder time",
+            "help": "The time shown next to a folder."
+          },
+          "noModTime": {
+            "label": "Hide modification times",
+            "help": "Show no times at all. This is the cheapest option on S3, Swift and Oracle, where every object otherwise needs its own request."
+          },
+          "linkIndex": {
+            "label": "Link to the index file",
+            "help": "Link folders as dir/index.html instead of dir/, for hosts that do not serve index documents (plain S3 URLs, B2 friendly URLs)."
+          },
+          "useServerModTime": {
+            "label": "Use upload time",
+            "help": "Show the time an object was uploaded instead of its modification time. This avoids a request per object on S3 and is what the web server sends as Last-Modified."
+          },
+          "rewrite": {
+            "label": "Rewrite unchanged listings",
+            "help": "Write every listing even if it has not changed, for example to apply new headers or metadata."
+          }
+        }
       }
     },
     "errors": {
@@ -2909,7 +2970,9 @@
       "archiveCreateFailed": "Failed to create archive: {{error}}",
       "externalDropFailed": "Failed to process external file drop.",
       "sendToFailed": "Failed to update File Manager menu: {{error}}",
-      "noRemoteSelected": "Please navigate to a remote first."
+      "noRemoteSelected": "Please navigate to a remote first.",
+      "indexFailed": "Failed to write directory listings: {{error}}",
+      "indexUnsupported": "This rclone version cannot write directory listings. Update rclone to use this feature."
     },
     "contextMenu": {
       "open": "Open",
@@ -2954,7 +3017,8 @@
       "switchPane": "Switch Pane",
       "copyPublicLink": "Copy Public Link",
       "createFolderWithItems": "New Folder with Selection...",
-      "renameMultiple": "Rename Multiple..."
+      "renameMultiple": "Rename Multiple...",
+      "generateIndex": "Generate directory listings"
     },
     "view": {
       "iconSize": "Icon Size",
@@ -2980,7 +3044,8 @@
       "getPublicLinkStarted": "Generating public link...",
       "archiveCreateStarted": "Archive creation started...",
       "sendToAdded": "Added '{{remote}}{{path}}' to File Manager menu",
-      "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu"
+      "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu",
+      "indexStarted": "Writing directory listings..."
     },
     "androidShare": {
       "uploadHere": "Upload {{count}} shared file(s) to this folder",
@@ -3133,11 +3198,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Mount",
-      "startOperations": "Start Operation",
-      "startServe": "Start Serve"
-    },
     "panelTitles": {
       "mountedRemotes": "Mounted Remotes",
       "activeOperations": "Active Operations",

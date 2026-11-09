@@ -4,44 +4,46 @@ import { MatIconModule } from '@angular/material/icon';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { OpenableFolder, PrimaryActionType, QuickActionButton } from '@app/types';
-import {
-  ActionButtonClickEvent,
-  OpenFolderClickEvent,
-  ProfilePickerClickEvent,
-  ProfilePickerGroup,
-} from './remote-card.types';
+import { FolderBrowseButtonComponent } from '../../components/folder-browse-button/folder-browse-button.component';
+import { PillDirective } from '../../directives/pill.directive';
+import { ProfilePickerGroup, ProfileTarget } from './remote-card.types';
 
 @Component({
   selector: 'app-remote-card-actions',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
+  imports: [
+    MatIconModule,
+    MatButtonModule,
+    CdkMenuModule,
+    TranslatePipe,
+    PillDirective,
+    FolderBrowseButtonComponent,
+  ],
   templateUrl: './remote-card-actions.component.html',
-  styleUrls: ['../../../styles/_shared-card.scss'],
+  styleUrls: ['./remote-card-actions.component.scss', '../../../styles/_shared-card.scss'],
   host: {
     style: 'display: contents',
   },
 })
 export class RemoteCardActionsComponent {
   readonly actionButtons = input<QuickActionButton[]>([]);
-  readonly profilePickerGroupByOp = input<Record<string, ProfilePickerGroup>>({});
+  /** Profile menus by operation; an operation without one starts or stops directly. */
+  readonly profilePickers = input<Record<string, ProfilePickerGroup>>({});
   readonly openableFolders = input<OpenableFolder[]>([]);
-  readonly folderBlossomStyle = input<Record<string, string> | null>(null);
-  readonly isFolderOpening = input<boolean>(false);
 
-  readonly actionClick = output<ActionButtonClickEvent>();
-  readonly profilePickerClick = output<ProfilePickerClickEvent>();
-  readonly openFolderClick = output<OpenFolderClickEvent>();
+  readonly actionClick = output<PrimaryActionType>();
+  readonly profilePick = output<ProfileTarget>();
+  readonly openFolder = output<OpenableFolder>();
 
-  onActionButtonClick(action: ActionButtonClickEvent): void {
-    this.actionClick.emit(action);
+  protected onAction(id: string, event: Event): void {
+    event.stopPropagation();
+    this.actionClick.emit(id as PrimaryActionType);
   }
 
-  onProfilePickerClick(operation: PrimaryActionType, profile: string, event: Event): void {
-    this.profilePickerClick.emit({ operation, profile, event });
-  }
-
-  onOpenFolderClick(folder: OpenableFolder, event: Event): void {
-    this.openFolderClick.emit({ folder, event });
+  protected onPick(operation: PrimaryActionType, profile: string, event: Event): void {
+    event.stopPropagation();
+    this.profilePick.emit({ operation, profile });
+    (event.currentTarget as HTMLElement | null)?.blur();
   }
 }

@@ -10,7 +10,6 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { QuickRun, Remote, ExportType } from '@app/types';
 
 describe('QuickRunWorkspaceComponent', () => {
@@ -44,6 +43,7 @@ describe('QuickRunWorkspaceComponent', () => {
     emptyTrash: vi.fn().mockResolvedValue(true),
     cloneRemote: vi.fn().mockResolvedValue(undefined),
     deleteRemote: vi.fn().mockResolvedValue(undefined),
+    resetSettings: vi.fn().mockResolvedValue(undefined),
   };
 
   const isTrayAvailableSignal = signal<boolean>(true);
@@ -72,10 +72,6 @@ describe('QuickRunWorkspaceComponent', () => {
     showError: vi.fn(),
   };
 
-  const mockAppSettingsService = {
-    resetRemoteSettings: vi.fn().mockResolvedValue(undefined),
-  };
-
   const mockRemote: Remote = {
     name: 'gdrive',
     type: 'drive',
@@ -98,7 +94,6 @@ describe('QuickRunWorkspaceComponent', () => {
         { provide: UiStateService, useValue: mockUiStateService },
         { provide: ModalService, useValue: mockModalService },
         { provide: NotificationService, useValue: mockNotificationService },
-        { provide: AppSettingsService, useValue: mockAppSettingsService },
       ],
     })
       .overrideComponent(QuickRunWorkspaceComponent, {
@@ -160,17 +155,9 @@ describe('QuickRunWorkspaceComponent', () => {
       });
     });
 
-    it('should reset remote settings after user confirmation', async () => {
-      mockNotificationService.confirmModal.mockResolvedValue(true);
+    it('should hand the settings reset (with its confirmation) to the facade', async () => {
       await component.resetRemoteSettings('gdrive');
-      expect(mockNotificationService.confirmModal).toHaveBeenCalled();
-      expect(mockAppSettingsService.resetRemoteSettings).toHaveBeenCalledWith('gdrive');
-    });
-
-    it('should not reset remote settings if user cancels confirmation', async () => {
-      mockNotificationService.confirmModal.mockResolvedValue(false);
-      await component.resetRemoteSettings('gdrive');
-      expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
+      expect(mockRemoteFacade.resetSettings).toHaveBeenCalledWith('gdrive');
     });
 
     it('should delete remote and reset selected remote if it matches', async () => {
@@ -209,6 +196,36 @@ describe('QuickRunWorkspaceComponent', () => {
           }),
         })
       );
+    });
+
+    it('lists a quick run in the tray unless its config says otherwise', () => {
+      const withApp = (app?: Record<string, unknown>): QuickRun =>
+        ({ id: 'q', config: app ? { app } : {} }) as unknown as QuickRun;
+
+      expect(component.isShowOnTray(withApp())).toBe(true);
+      expect(component.isShowOnTray(withApp({}))).toBe(true);
+      expect(component.isShowOnTray(withApp({ showOnTray: false }))).toBe(false);
+    });
+
+    it('keeps every other field of the quick run when toggling the tray flag', async () => {
+      const qr = {
+        id: 'qr-2',
+        name: 'Photos',
+        description: 'd',
+        operationType: 'copy',
+        remoteName: 'gdrive',
+        config: { app: { cronEnabled: true }, rclone: { srcFs: '/a' } },
+      } as unknown as QuickRun;
+
+      await component.toggleShowOnTray(qr, false);
+
+      expect(mockQuickRunService.save).toHaveBeenCalledWith({
+        ...qr,
+        config: {
+          app: { cronEnabled: true, showOnTray: false },
+          rclone: { srcFs: '/a' },
+        },
+      });
     });
   });
 });

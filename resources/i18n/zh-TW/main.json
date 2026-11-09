@@ -1819,7 +1819,8 @@
         "check": "檢查",
         "upload": "上傳",
         "archivecreate": "封存",
-        "archiveextract": "解壓縮封存"
+        "archiveextract": "解壓縮封存",
+        "index": "目錄清單"
       }
     },
     "fileViewer": {
@@ -2887,6 +2888,66 @@
         "statsChanged": "{{count}} 個待重新命名",
         "statsUnchanged": "{{count}} 個未變更",
         "statsConflicts": "{{count}} 個衝突"
+      },
+      "index": {
+        "title": "產生目錄清單",
+        "description": "在 {{target}} 及其下的每個資料夾中寫入可瀏覽的清單，以便作為靜態網站提供。",
+        "overwriteWarning": "與所選清單同名的現有檔案（預設為 index.html）會被直接覆寫，不會檢查其來源。若要保護手寫的索引，請在下方略過對應的資料夾。",
+        "confirm": "產生",
+        "sections": {
+          "output": "清單",
+          "folders": "資料夾",
+          "appearance": "外觀",
+          "advanced": "進階"
+        },
+        "formats": {
+          "html": "HTML 頁面 (index.html)",
+          "json": "rclone lsjson 格式的 JSON (index.json)",
+          "caddy": "Caddy file_server browse 格式的 JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "其中最新的檔案",
+          "dir": "資料夾本身的時間",
+          "none": "不顯示時間"
+        },
+        "fields": {
+          "formats": {
+            "label": "清單格式",
+            "help": "在每個資料夾中寫入哪些清單。"
+          },
+          "maxDepth": {
+            "label": "最大深度",
+            "help": "只寫入到此層數的清單，目前資料夾算第 1 層。保持 -1 表示不限制。"
+          },
+          "includePatterns": {
+            "label": "僅這些資料夾",
+            "help": "只在符合模式（例如 /docs/**）的資料夾中寫入清單。其他資料夾不會被更動，但仍會顯示在其上層資料夾的清單中。"
+          },
+          "excludePatterns": {
+            "label": "略過這些資料夾",
+            "help": "在符合模式（例如 /private/**）的資料夾中不寫入也不刪除任何內容。用於保護有自己索引的資料夾。"
+          },
+          "dirTime": {
+            "label": "資料夾時間",
+            "help": "顯示在資料夾旁的時間。"
+          },
+          "noModTime": {
+            "label": "隱藏修改時間",
+            "help": "完全不顯示時間。在 S3、Swift 和 Oracle 上這是最省的選項，否則每個物件都需要單獨請求。"
+          },
+          "linkIndex": {
+            "label": "連結到索引檔案",
+            "help": "將資料夾連結寫為 dir/index.html 而非 dir/，適用於不提供索引文件的主機（一般 S3 URL、B2 友善 URL）。"
+          },
+          "useServerModTime": {
+            "label": "使用上傳時間",
+            "help": "顯示物件的上傳時間而非修改時間。這樣可避免在 S3 上對每個物件發出請求，也與網頁伺服器送出的 Last-Modified 相同。"
+          },
+          "rewrite": {
+            "label": "重寫未變更的清單",
+            "help": "即使未變更也寫入所有清單，例如為了套用新的標頭或中繼資料。"
+          }
+        }
       }
     },
     "errors": {
@@ -2909,7 +2970,9 @@
       "archiveCreateFailed": "建立封存失敗: {{error}}",
       "externalDropFailed": "處理外部檔案拖放失敗。",
       "sendToFailed": "更新檔案瀏覽器右鍵選單失敗：{{error}}",
-      "noRemoteSelected": "請先導航至一個遠端連線。"
+      "noRemoteSelected": "請先導航至一個遠端連線。",
+      "indexFailed": "寫入目錄清單失敗：{{error}}",
+      "indexUnsupported": "此版本的 rclone 無法寫入目錄清單。請更新 rclone 以使用此功能。"
     },
     "contextMenu": {
       "open": "開啟",
@@ -2954,7 +3017,8 @@
       "switchPane": "切換窗格",
       "copyPublicLink": "複製公共連結",
       "createFolderWithItems": "用所選專案新增資料夾...",
-      "renameMultiple": "批次重新命名..."
+      "renameMultiple": "批次重新命名...",
+      "generateIndex": "產生目錄清單"
     },
     "view": {
       "iconSize": "圖示大小",
@@ -2980,7 +3044,8 @@
       "getPublicLinkStarted": "正在生成公共連結...",
       "archiveCreateStarted": "已開始建立封存操作...",
       "sendToAdded": "已將“{{remote}}{{path}}”新增至檔案瀏覽器右鍵選單",
-      "sendToRemoved": "已將“{{remote}}{{path}}”從檔案瀏覽器右鍵選單移除"
+      "sendToRemoved": "已將“{{remote}}{{path}}”從檔案瀏覽器右鍵選單移除",
+      "indexStarted": "正在寫入目錄清單..."
     },
     "androidShare": {
       "uploadHere": "將 {{count}} 個共享檔案上傳至此資料夾",
@@ -3133,11 +3198,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "掛載",
-      "startOperations": "開始操作",
-      "startServe": "啟動服務"
-    },
     "panelTitles": {
       "mountedRemotes": "已掛載遠端連線",
       "activeOperations": "活動操作",

@@ -1,0 +1,17 @@
+@use "../../../styles/card-action-mixins" as mixins;
+
+:host {
+  display: contents;
+}
+
+button[matMiniFab] {
+  @include mixins.action-fab;
+}
+
+.folder-badge {
+  @include mixins.count-badge;
+}
+
+.menu-item mat-icon {
+  color: var(--tone-on);
+}

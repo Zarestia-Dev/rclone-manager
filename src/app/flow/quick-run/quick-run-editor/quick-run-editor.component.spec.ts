@@ -228,32 +228,33 @@ describe('QuickRunEditorComponent', () => {
     fixture.detectChanges();
   });
 
-  it.each([{ runtimeRemote: { region: 'eu' } }, { remotes: { 'test-remote': { region: 'eu' } } }])(
-    'reads runtime options from saved configuration %j',
-    async config => {
-      component.form.patchValue({ remoteName: 'test-remote' });
-      vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields).mockResolvedValue([
-        {
-          Name: 'region',
-          FieldName: 'region',
-          Type: 'string',
-          Help: '',
-          Default: '',
-          DefaultStr: '',
-        },
-      ]);
-      const editor = component as unknown as {
-        seedRcloneConfig: Record<string, unknown>;
-        seedRemoteName: string;
-        loadRuntimeRemoteFields(type: string): Promise<void>;
-      };
-      editor.seedRcloneConfig = config;
-      editor.seedRemoteName = 'test-remote';
-      await editor.loadRuntimeRemoteFields('drive');
-      await fixture.whenStable();
-      expect(component.runtimeRemoteForm().get('region')?.value).toBe('eu');
-    }
-  );
+  it.each([
+    { runtimeRemote: { region: 'eu' } },
+    { runtimeRemote: { 'test-remote': { region: 'eu' } } },
+    { remotes: { 'test-remote': { region: 'eu' } } },
+  ])('reads runtime options from saved configuration %j', async config => {
+    component.form.patchValue({ remoteName: 'test-remote' });
+    vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields).mockResolvedValue([
+      {
+        Name: 'region',
+        FieldName: 'region',
+        Type: 'string',
+        Help: '',
+        Default: '',
+        DefaultStr: '',
+      },
+    ]);
+    const editor = component as unknown as {
+      seedRcloneConfig: Record<string, unknown>;
+      seedRemoteName: string;
+      loadRuntimeRemoteFields(type: string): Promise<void>;
+    };
+    editor.seedRcloneConfig = config;
+    editor.seedRemoteName = 'test-remote';
+    await editor.loadRuntimeRemoteFields('drive');
+    await fixture.whenStable();
+    expect(component.runtimeRemoteForm().get('region')?.value).toBe('eu');
+  });
 
   it('writes runtime options under the owning remote for backend resolution', () => {
     component.form.patchValue({ name: 'Photos', remoteName: 'test-remote' });
@@ -589,5 +590,82 @@ describe('QuickRunEditorComponent', () => {
     await (component as unknown as { fieldsReady: Promise<void> }).fieldsReady;
     expect(component.isLoadingFlags()).toBe(false);
     expect(component.flagLoadFailed()).toBe(false);
+  });
+
+  describe('obscured values', () => {
+    const option = (group: string): FormControl => {
+      const options = component.form.get(`${group}Config.options`) as FormGroup;
+      const control = new FormControl('');
+      options.setControl('pass', control);
+      return control;
+    };
+
+    it('writes into the options of the active operation tab and marks the control edited', () => {
+      const control = option('sync');
+      component.activeTab.set('sync');
+
+      component.applyObscuredValue('pass', 'secret');
+
+      expect(control.value).toBe('secret');
+      expect(control.dirty).toBe(true);
+      expect(control.touched).toBe(true);
+    });
+
+    it('writes into the runtime remote form on the runtime tab', () => {
+      const control = new FormControl('');
+      component.runtimeRemoteForm.set(
+        new FormGroup({ type: new FormControl('s3'), pass: control })
+      );
+      component.activeTab.set('runtimeRemote');
+
+      component.applyObscuredValue('pass', 'secret');
+
+      expect(control.value).toBe('secret');
+      expect(control.dirty).toBe(true);
+    });
+
+    it('ignores a key the active tab does not have', () => {
+      const control = option('sync');
+      component.activeTab.set('sync');
+
+      component.applyObscuredValue('missing', 'secret');
+
+      expect(control.value).toBe('');
+      expect(control.dirty).toBe(false);
+    });
+  });
+
+  it('labels an operation by its type label, then its action label, then its key', () => {
+    expect(component.getOperationLabel('sync')).toBe('dashboard.appDetail.sync');
+    expect(component.getOperationLabel('not-an-operation')).toBe('not-an-operation');
+  });
+
+  it('offers the current option values of every applicable section for templates', () => {
+    const values = component.currentValues();
+
+    expect(Object.keys(values).sort()).toEqual([...component.applicableCategories()].sort());
+  });
+
+  it('stores options of the other sections only when they hold a value', () => {
+    component.form.patchValue({ name: 'Photos', remoteName: 'test-remote' });
+    const filter = component.form.get('filterConfig.options') as FormGroup;
+    filter.setControl('exclude', new FormControl('*.tmp'));
+    component.dynamicFlagFields.set({
+      filter: [
+        {
+          Name: 'exclude',
+          FieldName: 'exclude',
+          Type: 'string',
+          Help: '',
+          Default: '',
+          DefaultStr: '',
+        },
+      ],
+    });
+
+    const saved = (component as unknown as { buildInput(): QuickRunInput }).buildInput();
+
+    expect(saved.config.rclone['filter']).toEqual({ exclude: '*.tmp' });
+    expect(saved.config.rclone['backend']).toBeUndefined();
   });
 });

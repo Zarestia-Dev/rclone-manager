@@ -1819,7 +1819,8 @@
         "check": "Verificar",
         "upload": "Enviar",
         "archivecreate": "Compactar",
-        "archiveextract": "Extrair arquivo"
+        "archiveextract": "Extrair arquivo",
+        "index": "Listagens de diretório"
       }
     },
     "fileViewer": {
@@ -2846,6 +2847,66 @@
         "statsChanged": "{{count}} para renomear",
         "statsUnchanged": "{{count}} inalterados",
         "statsConflicts": "{{count}} conflito(s)"
+      },
+      "index": {
+        "title": "Gerar listagens de diretório",
+        "description": "Grava uma listagem navegável em {{target}} e em cada pasta dentro dele, para servi-la como site estático.",
+        "overwriteWarning": "Arquivos existentes com o mesmo nome das listagens selecionadas (index.html por padrão) são sobrescritos sem verificar a origem. Ignore uma pasta abaixo para proteger um índice escrito à mão.",
+        "confirm": "Gerar",
+        "sections": {
+          "output": "Listagens",
+          "folders": "Pastas",
+          "appearance": "Aparência",
+          "advanced": "Avançado"
+        },
+        "formats": {
+          "html": "Página HTML (index.html)",
+          "json": "JSON como rclone lsjson (index.json)",
+          "caddy": "JSON como Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Arquivo mais recente dentro",
+          "dir": "A data própria da pasta",
+          "none": "Sem data"
+        },
+        "fields": {
+          "formats": {
+            "label": "Formatos de listagem",
+            "help": "Quais listagens são gravadas em cada pasta."
+          },
+          "maxDepth": {
+            "label": "Profundidade máxima",
+            "help": "Grava listagens somente até este número de níveis, contando esta pasta como 1. Mantenha -1 para não limitar."
+          },
+          "includePatterns": {
+            "label": "Somente estas pastas",
+            "help": "Grava listagens apenas nas pastas que correspondem a um padrão, por exemplo /docs/**. As outras pastas não são alteradas, mas continuam aparecendo na listagem da pasta pai."
+          },
+          "excludePatterns": {
+            "label": "Ignorar estas pastas",
+            "help": "Não grava nem apaga nada nas pastas que correspondem a um padrão, por exemplo /private/**. Use para proteger uma pasta que tem seu próprio índice."
+          },
+          "dirTime": {
+            "label": "Data da pasta",
+            "help": "A data exibida ao lado de uma pasta."
+          },
+          "noModTime": {
+            "label": "Ocultar datas de modificação",
+            "help": "Não mostra nenhuma data. É a opção mais barata em S3, Swift e Oracle, onde cada objeto precisaria de uma requisição própria."
+          },
+          "linkIndex": {
+            "label": "Vincular ao arquivo de índice",
+            "help": "Vincula as pastas como dir/index.html em vez de dir/, para hospedagens que não servem documentos de índice (URLs simples do S3, URLs amigáveis do B2)."
+          },
+          "useServerModTime": {
+            "label": "Usar a data de envio",
+            "help": "Mostra a data em que o objeto foi enviado em vez da data de modificação. Evita uma requisição por objeto no S3 e é o que o servidor web envia como Last-Modified."
+          },
+          "rewrite": {
+            "label": "Regravar listagens sem alterações",
+            "help": "Grava todas as listagens mesmo que não tenham mudado, por exemplo para aplicar novos cabeçalhos ou metadados."
+          }
+        }
       }
     },
     "errors": {
@@ -2868,7 +2929,9 @@
       "archiveCreateFailed": "Falha ao criar arquivo: {{error}}",
       "externalDropFailed": "Falha ao processar arquivo externo de exclusão.",
       "sendToFailed": "Falha ao atualizar o menu do Gerenciador de Arquivos: {{error}}",
-      "noRemoteSelected": "Por favor, navegue até um remoto primeiro."
+      "noRemoteSelected": "Por favor, navegue até um remoto primeiro.",
+      "indexFailed": "Falha ao gravar as listagens de diretório: {{error}}",
+      "indexUnsupported": "Esta versão do rclone não consegue gravar listagens de diretório. Atualize o rclone para usar este recurso."
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2913,7 +2976,8 @@
       "switchPane": "Alternar Painel",
       "copyPublicLink": "Copiar Link Público",
       "createFolderWithItems": "Nova pasta com seleção...",
-      "renameMultiple": "Renomear Múltiplos..."
+      "renameMultiple": "Renomear Múltiplos...",
+      "generateIndex": "Gerar listagens de diretório"
     },
     "view": {
       "iconSize": "Tamanho do Ícone",
@@ -2939,7 +3003,8 @@
       "getPublicLinkStarted": "Gerando link público...",
       "archiveCreateStarted": "A criação do arquivo começou...",
       "sendToAdded": "Adicionado '{{remote}}{{path}}' ao menu do Gerenciador de Arquivos",
-      "sendToRemoved": "Removido '{{remote}}{{path}}' do menu do Gerenciador de Arquivos"
+      "sendToRemoved": "Removido '{{remote}}{{path}}' do menu do Gerenciador de Arquivos",
+      "indexStarted": "Gravando listagens de diretório..."
     },
     "androidShare": {
       "uploadHere": "Enviar {{count}} arquivo(s) compartilhado(s) para esta pasta",
@@ -3092,11 +3157,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Montar",
-      "startOperations": "Iniciar Operação",
-      "startServe": "Comece a Servir"
-    },
     "panelTitles": {
       "mountedRemotes": "Controles Montados",
       "activeOperations": "Operações Ativas",

@@ -1,3 +1,5 @@
+@use "card-action-mixins" as mixins;
+
 .quick-actions {
   display: flex;
   gap: var(--space-xs);
@@ -7,19 +9,6 @@
   padding: var(--space-xs) var(--space-md) var(--space-md);
 
   button[matMiniFab] {
-    transition: var(--transition-fast);
-
-    mat-icon {
-      font-size: var(--icon-size-sm);
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-    }
-
-    &:hover {
-      transform: scale(var(--action-btn-scale-hover));
-    }
-    &:disabled {
-      transform: scale(var(--action-btn-scale-disabled));
-    }
+    @include mixins.action-fab;
   }
 }

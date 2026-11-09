@@ -83,9 +83,7 @@
             @for (qr of remoteQuickRuns(); track qr.id) {
               <app-quick-run-card
                 [quickRun]="qr"
-                [isRunning]="isQuickRunRunning(qr.id)"
-                variant="overview"
-                (selectedChange)="onSelectQuickRunById($event)"
+                (selectRun)="onSelectQuickRunById($event)"
                 (startRun)="onStartQuickRun($event)"
                 (stopRun)="onStopQuickRun($event)"
                 (editRun)="onEditQuickRun($event)"

@@ -131,7 +131,6 @@ export interface InstallationTabOption {
 }
 
 // ── Remote card display ─────────────────────────────────────────────────────
-export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 export type CardDisplayMode = 'compact' | 'detailed';
 
 /**

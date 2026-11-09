@@ -36,6 +36,8 @@ import {
   PROFILE_ICONS,
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
+  getOperationDef,
+  isShownOnTray,
   WorkflowNode,
 } from '@app/types';
 import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
@@ -65,7 +67,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
-import { syncResponsiveSidebar } from 'src/app/shared/utils';
+import { getRuntimeRemoteProfiles, syncResponsiveSidebar } from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   mapConfigToFormProfile,
@@ -221,7 +223,7 @@ export class QuickRunEditorComponent implements OnInit {
   });
   readonly operations: readonly OperationDefinition[] = OPERATION_REGISTRY.filter(
     op => op.isPrimary
-  ) as readonly OperationDefinition[];
+  );
 
   /** Dynamic flag fields per FlagType (operation + vfs + filter + backend). */
   readonly dynamicFlagFields = signal<Record<string, RcConfigOption[]>>({});
@@ -255,6 +257,39 @@ export class QuickRunEditorComponent implements OnInit {
       return tabs;
     }
   );
+
+  private readonly formVersion = signal(0);
+
+  readonly applicableCategories = computed(() => getConfigCategories(this.currentOpType()));
+
+  readonly isActiveTabInvalid = computed(() => {
+    this.formVersion();
+    const tab = this.activeTab();
+    return tab === 'runtimeRemote'
+      ? this.runtimeRemoteForm().invalid
+      : this.getOpFormGroup(tab).invalid;
+  });
+
+  readonly isSubmitDisabled = computed(() => {
+    this.formVersion();
+    if (
+      this.isSaving() ||
+      this.isLoadingFlags() ||
+      this.isLoadingServeFields() ||
+      this.isLoadingRuntimeRemoteFields() ||
+      this.flagLoadFailed() ||
+      this.runtimeLoadFailed() ||
+      !this.selectedRemoteType() ||
+      this.runtimeRemoteIdentity() !== this.currentRemoteName()
+    )
+      return true;
+    return (
+      this.form.controls['name'].invalid ||
+      this.form.controls['remoteName'].invalid ||
+      this.applicableCategories().some(type => this.getOpFormGroup(type).invalid) ||
+      [...this.runtimeDrafts.values()].some(draft => draft.form.invalid)
+    );
+  });
 
   constructor() {
     syncResponsiveSidebar(
@@ -395,14 +430,9 @@ export class QuickRunEditorComponent implements OnInit {
             Record<string, Record<string, unknown>> | undefined;
           const legacy = this.seedRcloneConfig?.['runtimeRemote'] as
             Record<string, unknown> | undefined;
-          const legacyScoped = legacy?.[remote];
           const seed =
             scoped?.[remote] ??
-            (legacyScoped && typeof legacyScoped === 'object'
-              ? (legacyScoped as Record<string, unknown>)
-              : remote === this.seedRemoteName
-                ? legacy
-                : undefined);
+            (legacy && getRuntimeRemoteProfiles(legacy, this.seedRemoteName)[remote]);
           reconcileDynamicControls(group, fields, { required: false });
           if (seed) patchConfigOptions(group, seed);
         }
@@ -415,7 +445,7 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   private populateFormFromSeed(seed?: QuickRunConfig): void {
-    this.showOnTray = seed?.app?.showOnTray ?? true;
+    this.showOnTray = isShownOnTray(seed);
     if (!seed || !seed.rclone) return;
     const rawRclone = seed.rclone as Record<string, unknown>;
     this.seedRcloneConfig = rawRclone;
@@ -514,9 +544,7 @@ export class QuickRunEditorComponent implements OnInit {
 
   selectTab(tabKey: FlagType | 'runtimeRemote'): void {
     this.activeTab.set(tabKey);
-    if (this.sidebarMode() === 'over') {
-      this.isSidebarOpen.set(false);
-    }
+    this.closeSidebarIfOver();
   }
 
   selectOperation(opKey: PrimaryActionType | string): void {
@@ -532,35 +560,6 @@ export class QuickRunEditorComponent implements OnInit {
     this.closed.emit();
     this.dialogRef?.close();
   }
-
-  readonly isActiveTabInvalid = computed(() => {
-    this.formVersion();
-    const tab = this.activeTab();
-    return tab === 'runtimeRemote'
-      ? this.runtimeRemoteForm().invalid
-      : this.getOpFormGroup(tab).invalid;
-  });
-
-  readonly isSubmitDisabled = computed(() => {
-    this.formVersion();
-    if (
-      this.isSaving() ||
-      this.isLoadingFlags() ||
-      this.isLoadingServeFields() ||
-      this.isLoadingRuntimeRemoteFields() ||
-      this.flagLoadFailed() ||
-      this.runtimeLoadFailed() ||
-      !this.selectedRemoteType() ||
-      this.runtimeRemoteIdentity() !== this.currentRemoteName()
-    )
-      return true;
-    return (
-      this.form.controls['name'].invalid ||
-      this.form.controls['remoteName'].invalid ||
-      this.applicableCategories().some(type => this.getOpFormGroup(type).invalid) ||
-      [...this.runtimeDrafts.values()].some(draft => draft.form.invalid)
-    );
-  });
 
   async submit(): Promise<void> {
     if (this.isSubmitDisabled()) {
@@ -622,24 +621,13 @@ export class QuickRunEditorComponent implements OnInit {
 
   applyObscuredValue(key: string, value: string): void {
     const tab = this.activeTab();
-    if (tab === 'runtimeRemote') {
-      const ctrl = this.runtimeRemoteForm().get(key);
-      if (ctrl) {
-        ctrl.setValue(value);
-        ctrl.markAsDirty();
-        ctrl.markAsTouched();
-      }
-    } else {
-      const groupKey = `${tab}Config`;
-      const configGroup = this.form.get(groupKey) as FormGroup | null;
-      const optsGroup = configGroup?.get('options') as FormGroup | null;
-      const ctrl = optsGroup?.get(key);
-      if (ctrl) {
-        ctrl.setValue(value);
-        ctrl.markAsDirty();
-        ctrl.markAsTouched();
-      }
-    }
+    const scope =
+      tab === 'runtimeRemote' ? this.runtimeRemoteForm() : this.form.get(`${tab}Config.options`);
+    const control = scope?.get(key);
+    if (!control) return;
+    control.setValue(value);
+    control.markAsDirty();
+    control.markAsTouched();
   }
 
   async onCliImportApply(event: {
@@ -724,7 +712,6 @@ export class QuickRunEditorComponent implements OnInit {
 
     const rawValue = inner.getRawValue() as Record<string, unknown>;
 
-    const fields = this.dynamicFlagFields();
     const mapped = mapFormToConfigProfile(opType, rawValue, {
       remoteName,
       cleanData: (options, definitions) => this.valueMapper.cleanData(options, definitions),
@@ -739,24 +726,14 @@ export class QuickRunEditorComponent implements OnInit {
     );
 
     for (const flagType of sharedTypes) {
-      const groupKey = `${flagType}Config`;
-      const configGroup = this.form.get(groupKey) as FormGroup | null;
-      if (!configGroup) continue;
-
-      const optsGroup = configGroup.get('options') as FormGroup | null;
-      if (!optsGroup) continue;
-
-      const optsValue = optsGroup.getRawValue() as Record<string, unknown>;
-      const typeFields = fields[flagType as FlagType] ?? [];
-      const cleaned = this.valueMapper.cleanData(optsValue, typeFields);
-      if (Object.keys(cleaned).length > 0) {
-        rclone[flagType] = cleaned;
-      }
+      const cleaned = this.cleanOptions(flagType);
+      if (Object.keys(cleaned).length > 0) rclone[flagType] = cleaned;
     }
 
     const remotes = {
       ...((this.seedRcloneConfig?.['remotes'] as Record<string, unknown> | undefined) ?? {}),
     };
+    // The visible form is the source of truth for the current remote; drafts cover the others.
     const currentRaw = this.runtimeRemoteForm().getRawValue() as Record<string, unknown>;
     delete currentRaw['type'];
     const currentCleaned = this.valueMapper.cleanData(currentRaw, this.runtimeRemoteFields());
@@ -784,7 +761,7 @@ export class QuickRunEditorComponent implements OnInit {
   // ── Template helpers ─────────────────────────────────────────────────────
 
   getOperationLabel(opKey: string): string {
-    const def = this.operations.find(o => o.key === opKey);
+    const def = getOperationDef(opKey);
     return def?.typeLabel ?? def?.actionLabel ?? opKey;
   }
 
@@ -795,28 +772,14 @@ export class QuickRunEditorComponent implements OnInit {
     return this.dynamicFlagFields()[type] ?? [];
   }
 
-  private readonly formVersion = signal(0);
+  readonly currentValues = (): Partial<Record<TemplateCategory, Record<string, unknown>>> =>
+    Object.fromEntries(this.applicableCategories().map(type => [type, this.cleanOptions(type)]));
 
-  readonly applicableCategories = computed(() => getConfigCategories(this.currentOpType()));
-
-  readonly currentValues = (): Partial<Record<TemplateCategory, Record<string, unknown>>> => {
-    const fields = this.dynamicFlagFields();
-    const applicable = new Set(this.applicableCategories());
-
-    const getCleanOptions = (flagType: string): Record<string, unknown> => {
-      const opts = this.getOpFormGroup(flagType).get('options')?.getRawValue() ?? {};
-      const typeFields =
-        flagType === 'serve' ? this.dynamicServeFields() : (fields[flagType as FlagType] ?? []);
-      return this.valueMapper.cleanData(opts, typeFields);
-    };
-
-    const res: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
-    for (const cat of applicable) {
-      res[cat] = getCleanOptions(cat);
-    }
-
-    return res;
-  };
+  /** The options of one flag section as the backend expects them: typed, without empty values. */
+  private cleanOptions(type: string): Record<string, unknown> {
+    const raw = this.form.get(`${type}Config.options`)?.getRawValue() ?? {};
+    return this.valueMapper.cleanData(raw, this.getFlagFields(type));
+  }
 
   async onApplyTemplate(event: ApplyTemplateEvent): Promise<void> {
     const operation = this.currentOpType();

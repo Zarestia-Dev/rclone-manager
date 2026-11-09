@@ -124,6 +124,11 @@ export class RemoteFacadeService {
     return !!this.findRemoteState(name);
   }
 
+  /** A named remote that is not in the loaded catalogue; never true while it is still loading. */
+  isRemoteMissing(name?: string | null): boolean {
+    return !!name && !this.loading() && !this.isRemoteActive(name);
+  }
+
   private findRemoteState(name?: string | null): RemoteState | undefined {
     const clean = name?.replace(/:$/, '');
     return clean && this.activeNames().has(clean) ? this.remoteStates.get(clean) : undefined;
@@ -459,6 +464,27 @@ export class RemoteFacadeService {
         })
       );
       return false;
+    }
+  }
+
+  /** Asks for confirmation, then deletes the saved settings (profiles, automations) of a remote. */
+  async resetSettings(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('home.resetRemote.title'),
+      this.translate.instant('home.resetRemote.message', { name: remoteName }),
+      'common.yes',
+      'common.no',
+      { icon: 'rotate-right', color: 'warn' }
+    );
+    if (!confirmed) return;
+    try {
+      // The backend unschedules the automations and emits the change events this facade and the
+      // automation store listen to; AppSettingsService shows the success toast.
+      await this.appSettingsService.resetRemoteSettings(remoteName);
+    } catch (error) {
+      console.error('Reset settings failed:', error);
+      this.notificationService.showError(error);
     }
   }
 

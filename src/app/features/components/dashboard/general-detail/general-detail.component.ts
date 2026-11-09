@@ -116,10 +116,6 @@ export class GeneralDetailComponent {
     this.quickRunService.quickRuns().filter(qr => qr.remoteName === this.selectedRemote().name)
   );
 
-  isQuickRunRunning(id: string): boolean {
-    return this.quickRunService.runningIds().has(id);
-  }
-
   onSelectQuickRunById(id: string): void {
     const qr = this.remoteQuickRuns().find(q => q.id === id);
     if (qr) {

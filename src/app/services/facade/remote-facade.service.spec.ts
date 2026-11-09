@@ -52,6 +52,7 @@ describe('RemoteFacadeService', () => {
     options: ReturnType<typeof vi.fn>;
     saveSetting: ReturnType<typeof vi.fn>;
     saveRemoteSettings: ReturnType<typeof vi.fn>;
+    resetRemoteSettings: ReturnType<typeof vi.fn>;
   };
   let mockStatusService: {
     refreshStatus: ReturnType<typeof vi.fn>;
@@ -80,6 +81,7 @@ describe('RemoteFacadeService', () => {
       options: vi.fn().mockReturnValue(null),
       saveSetting: vi.fn().mockResolvedValue(undefined),
       saveRemoteSettings: vi.fn().mockResolvedValue(undefined),
+      resetRemoteSettings: vi.fn().mockResolvedValue(undefined),
     };
 
     mockStatusService = {
@@ -384,6 +386,22 @@ describe('RemoteFacadeService', () => {
     expect(service.loading()).toBe(false);
   });
 
+  it('never reports a remote as missing while the catalogue is still loading', async () => {
+    let resolveConfigs!: (value: Record<string, unknown>) => void;
+    mockRemoteService.getAllRemoteConfigs.mockReturnValue(
+      new Promise<Record<string, unknown>>(r => {
+        resolveConfigs = r;
+      })
+    );
+    const loading = service.loadRemotes();
+    expect(service.loading()).toBe(true);
+    expect(service.isRemoteMissing('late')).toBe(false);
+
+    resolveConfigs({ other: { type: 's3' } });
+    await loading;
+    expect(service.isRemoteMissing('late')).toBe(true);
+  });
+
   it('finishes list loading while unrelated status refresh is still pending', async () => {
     await service.refreshAll();
     let finish!: () => void;
@@ -480,6 +498,9 @@ describe('RemoteFacadeService', () => {
     expect(service.getRemote('b')?.name).toBe('b');
     expect(mockRemoteService.getFeaturesSignal).toHaveBeenCalledTimes(1);
     expect(service.isRemoteActive('a:')).toBe(true);
+    expect(service.isRemoteMissing('a:')).toBe(false);
+    expect(service.isRemoteMissing('gone')).toBe(true);
+    expect(service.isRemoteMissing(null)).toBe(false);
     expect(service.getRemote(null)).toBeUndefined();
     expect(service.getRemote('missing')).toBeUndefined();
     expect(service.orderedVisibleRemotes().map(r => r.name)).toEqual(['b']);
@@ -698,6 +719,47 @@ describe('RemoteFacadeService', () => {
     confirm(true);
     expect(await cleanup).toBe(false);
     expect(TestBed.inject(RemoteFileOperationsService).cleanup).not.toHaveBeenCalled();
+  });
+
+  describe('resetSettings', () => {
+    const confirm = (): ReturnType<typeof vi.fn> =>
+      vi.mocked(TestBed.inject(NotificationService).confirmModal) as ReturnType<typeof vi.fn>;
+
+    it('resets the saved settings of the remote after the user confirms', async () => {
+      confirm().mockResolvedValueOnce(true);
+
+      await service.resetSettings('drive');
+
+      expect(confirm()).toHaveBeenCalledTimes(1);
+      expect(mockAppSettingsService.resetRemoteSettings).toHaveBeenCalledWith('drive');
+    });
+
+    it('keeps the settings when the user cancels', async () => {
+      confirm().mockResolvedValueOnce(false);
+
+      await service.resetSettings('drive');
+
+      expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('does not even ask for an empty remote name', async () => {
+      await service.resetSettings('');
+
+      expect(confirm()).not.toHaveBeenCalled();
+      expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('reports a failed reset instead of throwing', async () => {
+      const error = new Error('disk full');
+      confirm().mockResolvedValueOnce(true);
+      mockAppSettingsService.resetRemoteSettings.mockRejectedValueOnce(error);
+      const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await expect(service.resetSettings('drive')).resolves.toBeUndefined();
+
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledWith(error);
+      log.mockRestore();
+    });
   });
 
   it('opens the requested profile using the canonical nested rclone fields', async () => {
