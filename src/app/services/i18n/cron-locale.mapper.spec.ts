@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { computed } from '@angular/core';
+import { describe, expect, it, vi } from 'vitest';
 import {
   formatCronHumanReadable,
   getCronstrueLocale,
@@ -58,5 +59,11 @@ describe('cron-locale.mapper', () => {
       await expect(ensureCronLocaleLoaded('tr')).resolves.toBeUndefined();
       await expect(ensureCronLocaleLoaded('es')).resolves.toBeUndefined();
     });
+  });
+
+  it('recomputes a description that was shown in English before its locale finished loading', async () => {
+    const description = computed(() => formatCronHumanReadable('0 0 * * *', 'ja-JP'));
+    const english = description();
+    await vi.waitFor(() => expect(description()).not.toBe(english));
   });
 });

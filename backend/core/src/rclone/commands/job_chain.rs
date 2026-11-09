@@ -363,21 +363,15 @@ mod tests {
         use crate::rclone::state::automations::AutomationsCache;
         let cache = daemon.app.state::<AutomationsCache>();
         let args = crate::utils::types::automation::AutomationArgs {
-            params: crate::utils::types::remotes::ProfileParams {
-                remote_name: "drive:".into(),
-                profile_name: "archive".into(),
-                backend_name: None,
-                source: Some(crate::utils::types::origin::Origin::Automation),
-                no_cache: None,
-                scoped_targets: None,
-                execute_id: None,
-            },
+            source: crate::utils::types::origin::Origin::Automation,
             src_paths: vec!["drive:".into()],
             dst_paths: vec!["/out".into()],
         };
         let automation = crate::utils::types::automation::Automation::new(
             "chain".into(),
-            crate::utils::types::remotes::OperationType::Archivecreate,
+            Some(crate::utils::types::remotes::OperationType::Archivecreate),
+            "drive:".into(),
+            "archive".into(),
             args,
             &daemon.backend.name,
         );

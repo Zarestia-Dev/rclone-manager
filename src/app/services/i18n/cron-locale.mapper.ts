@@ -1,6 +1,9 @@
+import { signal } from '@angular/core';
 import { toString as cronstrue } from 'cronstrue';
 
 const loadedLocales = new Set<string>(['en']);
+/** Moves when a locale finishes loading, so descriptions already shown in English are recomputed. */
+const loadedVersion = signal(0);
 
 /**
  * Dynamically loads the required locale for cronstrue on demand.
@@ -65,8 +68,10 @@ export function formatCronHumanReadable(cron: string, lang: string | null | unde
   if (!cron) return '';
   try {
     const locale = getCronstrueLocale(lang ?? 'en-US');
+    loadedVersion();
     if (!loadedLocales.has(locale)) {
-      void ensureCronLocaleLoaded(locale);
+      // The version moves after the import, never while a computed is still evaluating.
+      void ensureCronLocaleLoaded(locale).then(() => loadedVersion.update(version => version + 1));
     }
     return cronstrue(cron, { locale: loadedLocales.has(locale) ? locale : 'en' });
   } catch {

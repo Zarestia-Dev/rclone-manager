@@ -214,7 +214,9 @@ macro_rules! MASTER_COMMAND_LIST {
             // AUTOMATIONS
             (get_automations, $crate::rclone::state::automations::get_automations, []);
             (toggle_automation, $crate::services::automation::commands::toggle_automation, [automation_id: String]);
-            (validate_cron, $crate::services::automation::commands::validate_cron, [cron_expression: String], [no_app]);
+            (run_automation, $crate::services::automation::commands::run_automation, [automation_id: String]);
+            (stop_automation, $crate::services::automation::commands::stop_automation, [automation_id: String]);
+            (validate_cron,$crate::services::automation::commands::validate_cron, [cron_expression: String], [no_app]);
 
             // QUICK RUNS (FLOW WORKSPACE)
             (list_quick_runs, $crate::services::flow::quick_run::commands::list_quick_runs, []);

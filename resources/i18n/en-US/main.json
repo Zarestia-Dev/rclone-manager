@@ -144,6 +144,10 @@
       "disable": "Disable automation",
       "stopping": "Automation is stopping..."
     },
+    "actions": {
+      "run": "Run now",
+      "stop": "Stop current run"
+    },
     "nextRun": {
       "disabled": "Automation is disabled",
       "stopping": "Disabling after current run",
@@ -156,6 +160,7 @@
       "realtime": "Real-time Monitoring",
       "debounce": "Debounce Delay",
       "watcherActive": "Watcher Active",
+      "watchedFolder": "Watched folder",
       "seconds": "seconds",
       "realtimeSchedule": "Real-time File Watcher",
       "changedOnlyShort": "Subdirectories Only",
@@ -1507,6 +1512,8 @@
       "yourSchedule": "Your Schedule",
       "nextRun": "Next run:",
       "timezoneNote": "Times are in your local timezone (UTC{{timezone}}) and automatically converted to UTC for scheduling.",
+      "cronValidationFailed": "Could not validate the schedule",
+      "cronInvalid": "Invalid cron expression",
       "tabSimple": "Simple",
       "tabAdvanced": "Advanced",
       "days": {
@@ -1563,23 +1570,6 @@
       "aria": {
         "clear": "Clear",
         "cronFor": "Cron expression for {{name}}"
-      },
-      "relativeTime": {
-        "inPast": "in the past ({{date}})",
-        "lessThanMinute": "in less than a minute",
-        "in": "in {{time}}",
-        "days": {
-          "one": "1 day",
-          "other": "{{count}} days"
-        },
-        "hours": {
-          "one": "1 hour",
-          "other": "{{count}} hours"
-        },
-        "minutes": {
-          "one": "1 minute",
-          "other": "{{count}} minutes"
-        }
       },
       "cronPlaceholder": "Enter a cron expression (e.g. 0 0 * * *)"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Cron Expression:",
       "nextRunLabel": "Next Run:",
       "lastRunLabel": "Last Run:",
-      "createdLabel": "Created:",
       "statistics": "Statistics",
       "successful": "Successful",
       "failedCount": "Failed",
@@ -3072,7 +3061,6 @@
       "save": "Save Layout",
       "reset": "Reset Layout",
       "resetSuccess": "Layout reset to default",
-      "toggleAutomationFailed": "Failed to toggle automation",
       "showDetailed": "Show Detailed Cards",
       "showCompact": "Show Compact Cards"
     },
@@ -3390,6 +3378,9 @@
       "startFailed": "Failed to start automation engine: {{error}}",
       "stopFailed": "Failed to stop automation engine: {{error}}",
       "invalidCron": "Invalid cron expression: {{error}}",
+      "cronRequired": "A cron expression is required",
+      "cronFieldCount": "A cron expression has 5 fields: minute, hour, day, month and weekday",
+      "configChanged": "Task configuration changed while it was being prepared. Try again.",
       "automationNotFound": "Automation not found",
       "watcherPending": "Watching waits for folders that do not exist yet: {{paths}}",
       "noLocalPaths": "No local paths to watch",

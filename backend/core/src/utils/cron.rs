@@ -7,15 +7,17 @@ pub fn validate_enabled_cron(enabled: bool, expression: Option<&str>) -> Result<
     if !enabled {
         return Ok(());
     }
-    let expression = expression.filter(|value| !value.trim().is_empty()).ok_or_else(|| crate::localized_error!("backendErrors.automation.invalidCron", "error" => "Cron expression is required"))?;
+    let expression = expression
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| crate::localized_error!("backendErrors.automation.cronRequired"))?;
     validate_cron_expression(expression)
 }
 
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
     if cron_expr.split_whitespace().count() == 6 {
-        return Err(
-            crate::localized_error!("backendErrors.automation.invalidCron", "error" => "unexpected number of fields"),
-        );
+        return Err(crate::localized_error!(
+            "backendErrors.automation.cronFieldCount"
+        ));
     }
     croner::parser::CronParser::new().parse(cron_expr).map_err(
         |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),

@@ -117,4 +117,35 @@ describe('GeneralDetailComponent controls', () => {
     expect(buttons[0].hasAttribute('aria-current')).toBe(false);
     expect(buttons[1].getAttribute('aria-current')).toBe('true');
   });
+
+  it('lists workflows on every remote and narrows the card with the origin chips', async (): Promise<void> => {
+    const original = automations();
+    automations.set([
+      ...original,
+      { id: 'wf', remoteName: 'Workflow', profileName: 'Nightly', args: { source: 'workflow' } },
+      { id: 'other', remoteName: 'elsewhere', profileName: 'Other' },
+    ] as unknown as typeof original);
+    const component = fixture.componentInstance;
+    const ids = (): string[] => component.remoteAutomations().map(a => a.id);
+
+    expect(ids()).toEqual(['first', 'second', 'wf']);
+
+    component.currentAutomationCardIndex.set(2);
+    component.automationOriginFilter.set('workflow');
+    fixture.detectChanges();
+    expect(ids()).toEqual(['wf']);
+    expect(component.currentAutomationCardIndex()).toBe(0);
+
+    component.automationOriginFilter.set('dashboard');
+    expect(ids()).toEqual(['first', 'second']);
+
+    // A chip with no match keeps the card and its chips, so the user can pick another one.
+    component.automationOriginFilter.set('quickrun');
+    fixture.detectChanges();
+    expect(ids()).toEqual([]);
+    expect(component.hasAutomations()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.automations-card .empty-state')).not.toBeNull();
+
+    automations.set(original);
+  });
 });

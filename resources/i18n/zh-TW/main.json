@@ -144,6 +144,10 @@
       "disable": "禁用自動化",
       "stopping": "自動化正在停止..."
     },
+    "actions": {
+      "run": "立即執行",
+      "stop": "停止目前執行"
+    },
     "nextRun": {
       "disabled": "自動化已禁用",
       "stopping": "當前執行結束後禁用",
@@ -156,6 +160,7 @@
       "realtime": "實時監控",
       "debounce": "防抖延遲",
       "watcherActive": "監控器處於活動狀態",
+      "watchedFolder": "監看資料夾",
       "seconds": "秒",
       "realtimeSchedule": "實時檔案監控",
       "changedOnlyShort": "僅子目錄",
@@ -1507,6 +1512,8 @@
       "yourSchedule": "你的計劃",
       "nextRun": "下次執行：",
       "timezoneNote": "時間為本機時區（UTC{{timezone}}），計劃任務會自動轉換為 UTC 時間",
+      "cronValidationFailed": "無法驗證排程",
+      "cronInvalid": "cron 運算式無效",
       "tabSimple": "簡易",
       "tabAdvanced": "進階",
       "days": {
@@ -1563,23 +1570,6 @@
       "aria": {
         "clear": "清除",
         "cronFor": "{{name}} 的 cron 運算式"
-      },
-      "relativeTime": {
-        "inPast": "已過去（{{date}}）",
-        "lessThanMinute": "不到1分鐘後",
-        "in": "{{time}} 後",
-        "days": {
-          "one": "1 天",
-          "other": "{{count}} 天"
-        },
-        "hours": {
-          "one": "1 小時",
-          "other": "{{count}} 小時"
-        },
-        "minutes": {
-          "one": "1 分鐘",
-          "other": "{{count}} 分鐘"
-        }
       },
       "cronPlaceholder": "輸入 cron 運算式（例如 0 0 * * *）"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Cron 運算式：",
       "nextRunLabel": "下次執行：",
       "lastRunLabel": "上次執行：",
-      "createdLabel": "建立時間：",
       "statistics": "統計",
       "successful": "成功",
       "failedCount": "失敗",
@@ -3072,7 +3061,6 @@
       "save": "儲存佈局",
       "reset": "重設佈局",
       "resetSuccess": "佈局已恢復預設",
-      "toggleAutomationFailed": "切換自動化狀態失敗",
       "showDetailed": "顯示詳細卡片",
       "showCompact": "顯示緊湊卡片"
     },
@@ -3390,6 +3378,9 @@
       "startFailed": "啟動自動化引擎失敗：{{error}}",
       "stopFailed": "停止自動化引擎失敗：{{error}}",
       "invalidCron": "Cron 運算式無效：{{error}}",
+      "cronRequired": "需要 cron 運算式",
+      "cronFieldCount": "cron 運算式包含 5 個欄位：分、時、日、月、星期",
+      "configChanged": "任務設定在準備期間已變更，請重試。",
       "automationNotFound": "未找到自動化",
       "watcherPending": "監看正在等待尚不存在的資料夾：{{paths}}",
       "noLocalPaths": "沒有可監看的本機路徑",

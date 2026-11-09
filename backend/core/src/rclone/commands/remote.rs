@@ -12,8 +12,8 @@ use crate::rclone::commands::job::stop_job_on_backend;
 use crate::rclone::commands::mount::unmount_remote_on_backend;
 use crate::rclone::commands::serve::stop_serve_on_backend;
 use crate::rclone::endpoints::config;
+use crate::services::automation::commands::sync_flow_automations;
 use crate::services::flow::quick_run::commands::delete_quick_runs_for_remote;
-use crate::services::flow::quick_run::commands::sync_quick_run_automations;
 use crate::services::settings::AppSettingsManager;
 use crate::services::settings::remote::manager::delete_remote_settings_on_backend;
 use crate::utils::logging::log::log_operation;
@@ -479,7 +479,7 @@ pub async fn delete_remote(
                     runtime.invalidate_quick_run(&id);
                 }
             }
-            sync_quick_run_automations(&app).await
+            sync_flow_automations(&app).await
         }
         Err(error) => Err(error),
     };

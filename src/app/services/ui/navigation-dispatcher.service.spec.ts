@@ -190,7 +190,7 @@ describe('NavigationDispatcherService', () => {
         args: {
           source: 'workflow',
           srcPaths: ['Nightly Sync'],
-          dstPaths: ['Workflow Engine'],
+          dstPaths: [],
           remoteName: 'Workflow',
           profileName: 'Nightly Sync',
         },
@@ -203,11 +203,13 @@ describe('NavigationDispatcherService', () => {
       expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
-    it('should navigate to flow quick run when automation has quickrun profile', (): void => {
+    it('should open the Quick Run by id, not the remote it works on', (): void => {
       const automation = {
-        id: 'auto-2',
+        id: 'qr-1',
         automationType: 'sync',
-        profileName: 'Sync Drive',
+        remoteName: 'test-remote',
+        profileName: 'Renamed Since',
+        args: { source: 'quickrun', srcPaths: [], dstPaths: [] },
         status: 'enabled',
         backendName: 'Local',
         createdAt: '2026-01-01',

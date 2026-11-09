@@ -150,6 +150,8 @@
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
+        <app-origin-filter-bar [(selected)]="automationOriginFilter"></app-origin-filter-bar>
+
         @if (remoteAutomations().length > 1) {
           <div class="carousel-indicators">
             @for (automation of remoteAutomations(); track automation.id) {
@@ -176,9 +178,12 @@
           <app-automation-card
             [automation]="automation"
             variant="detailed"
-            (toggled)="toggleAutomation($event)"
             (openInFiles)="onOpenAutomationInFiles($event)"
           ></app-automation-card>
+        } @else {
+          <div class="empty-state" role="status">
+            <span>{{ 'generalOverview.automations.noScheduled' | translate }}</span>
+          </div>
         }
 
         @if (remoteAutomations().length > 1) {

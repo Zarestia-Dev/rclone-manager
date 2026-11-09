@@ -10,6 +10,7 @@ use crate::{
     },
     services::{
         automation::{
+            commands::load_flow_automations,
             engine::AutomationScheduler,
             runtime::{RuntimeTasks, WorkflowSnapshot},
         },
@@ -125,28 +126,16 @@ pub(super) async fn initialize_automations(
     info!("📋 Loading automations from remote configs...");
 
     let backend_name = backend.name.clone();
-    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?;
-    let workflows = crate::services::flow::workflow::commands::get_all_workflows(&manager)?;
-
     let result = cache_state
         .load_from_remote_configs(&all_settings, &backend_name)
         .await?;
-
     info!("📅 Loaded {} remote automation(s)", result.added.len());
-
-    // ── Quick Run Automations ───────────────────────────────────────────────
-    info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
-
-    cache_state
-        .load_from_quick_runs(&quick_runs, &backend_name)
-        .await?;
-
-    // ── Workflow Automations ───────────────────────────────────────────────
-    info!("🌀 Syncing {} Workflow(s)...", workflows.len());
-
-    cache_state
-        .load_from_workflows(&workflows, &backend_name)
-        .await?;
+    let (quick_runs, workflows) = load_flow_automations(&app_handle, &backend_name).await?;
+    info!(
+        "🚀 Synced {} Quick Run(s) and {} Workflow(s)",
+        quick_runs.len(),
+        workflows.len()
+    );
 
     let autostarts = AutostartTasks::prepare(
         backend,

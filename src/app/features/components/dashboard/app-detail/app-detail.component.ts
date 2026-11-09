@@ -87,9 +87,8 @@ import { AutomationService } from 'src/app/services/operations/automation.servic
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
-import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
-import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import {
   ItemOrderVisibilityModalComponent,
   ItemOrderVisibilityResult,
@@ -522,15 +521,7 @@ export class AppDetailComponent {
     const cronExpression = automation?.cronExpression;
     if (!cronExpression) return null;
 
-    let humanReadable = 'Invalid schedule';
-    try {
-      humanReadable = cronstrue(cronExpression, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
-      });
-    } catch {
-      console.warn(`Invalid cron expression: ${cronExpression}`);
-    }
-
+    const humanReadable = formatCronHumanReadable(cronExpression, this.translate.getCurrentLang());
     return { profileName: automation.profileName, cronExpression, humanReadable };
   });
 
@@ -539,8 +530,8 @@ export class AppDetailComponent {
     if (!automation?.watchEnabled) return null;
     return {
       profileName: automation.profileName,
-      watchDelay: automation.watchDelay ?? 5,
-      watchChangedOnly: automation.watchChangedOnly ?? false,
+      watchDelay: automation.watchDelay,
+      watchChangedOnly: automation.watchChangedOnly,
     };
   });
 
@@ -594,11 +585,7 @@ export class AppDetailComponent {
       return this.translate.instant('automation.nextRun.stopping');
     }
     if (auto?.nextRun) {
-      try {
-        return new Date(auto.nextRun).toLocaleString();
-      } catch {
-        return auto.nextRun;
-      }
+      return new Date(auto.nextRun).toLocaleString();
     }
     return null;
   });
@@ -610,8 +597,8 @@ export class AppDetailComponent {
     this.isTogglingAutomation.set(true);
     try {
       await this.automationService.toggleAutomation(auto.id);
-    } catch (error) {
-      console.error('Failed to toggle automation:', error);
+    } catch {
+      // The service already reported the failure.
     } finally {
       this.isTogglingAutomation.set(false);
     }

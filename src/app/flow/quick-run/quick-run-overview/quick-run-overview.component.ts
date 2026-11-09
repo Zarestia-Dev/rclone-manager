@@ -27,7 +27,6 @@ import {
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { AutomationService } from 'src/app/services/operations/automation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
@@ -75,7 +74,6 @@ export class QuickRunOverviewComponent {
   private readonly localStorage = inject(LocalStorageService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly translate = inject(TranslateService);
-  private readonly automationService = inject(AutomationService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
   private readonly pathService = inject(PathService);
   private readonly uiStateService = inject(UiStateService);
@@ -255,24 +253,11 @@ export class QuickRunOverviewComponent {
   }
 
   handleAutomationClick(automation: Automation): void {
-    const remoteName =
-      automation.remoteName ||
-      automation.args?.remoteName ||
-      this.quickRuns().find(
-        q => q.id === automation.profileName || q.name === automation.profileName
-      )?.remoteName;
-
-    if (remoteName) {
-      this.openRemoteDetail.emit(remoteName);
-    }
-  }
-
-  async toggleAutomation(automationId: string): Promise<void> {
-    try {
-      await this.automationService.toggleAutomation(automationId);
-    } catch (error) {
-      console.error('Failed to toggle automation:', error);
-      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleAutomationFailed'));
+    // A workflow has no remote to show; it opens in the workflow builder.
+    if (automation.args?.source === 'workflow') {
+      this.navigationDispatcher.navigateToAutomation(automation);
+    } else if (automation.remoteName) {
+      this.openRemoteDetail.emit(automation.remoteName);
     }
   }
 

@@ -280,6 +280,8 @@
     class="timezone-banner"
     severity="dim"
     icon="globe"
-    [description]="'wizards.appOperation.timezoneNote' | translate: { timezone: userTimezone }"
+    [description]="
+      'wizards.appOperation.timezoneNote' | translate: { timezone: scheduleTimezone() }
+    "
   />
 }

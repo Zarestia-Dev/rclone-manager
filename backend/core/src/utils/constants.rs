@@ -61,12 +61,8 @@ pub const CACHE_UPDATED: &str = "cache_updated";
 
 /// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after a bulk update.
 pub const AUTOMATIONS_BULK_UPDATE: &str = "bulk_update";
-/// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after a single add.
-pub const AUTOMATION_ADDED: &str = "automation_added";
-/// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after a single update.
+/// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after a single change.
 pub const AUTOMATION_UPDATED: &str = "automation_updated";
-/// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after a single remove.
-pub const AUTOMATION_REMOVED: &str = "automation_removed";
 /// Payload sent with `AUTOMATIONS_CACHE_CHANGED` after removing all
 /// automations for a specific remote.
 pub const AUTOMATIONS_REMOTE_REMOVED: &str = "remote_automations_removed";

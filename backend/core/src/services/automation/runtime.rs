@@ -368,13 +368,13 @@ pub(crate) async fn refresh_with_definitions(
             )
     }) {
         let captured = async {
-            match automation.args.params.source {
-                Some(Origin::QuickRun) => {
+            match automation.args.source {
+                Origin::QuickRun => {
                     if let Some(qr) = presets.get(&automation.id) {
                         tasks.quick_runs.insert(qr.id.clone(), qr.clone());
                     }
                 }
-                Some(Origin::Workflow) => {
+                Origin::Workflow => {
                     if let Some(wf) = workflows.get(&automation.id) {
                         tasks.workflows.insert(
                             wf.id.clone(),
@@ -383,11 +383,14 @@ pub(crate) async fn refresh_with_definitions(
                     }
                 }
                 _ => {
+                    let operation = automation.automation_type.ok_or_else(|| {
+                        crate::localized_error!("backendErrors.automation.automationNotFound")
+                    })?;
                     let snapshot = capture_profile_settings(
                         app,
                         &automation.remote_name,
                         &automation.profile_name,
-                        automation.automation_type,
+                        operation,
                         Some(&backend.name),
                     )
                     .await?;
@@ -421,9 +424,9 @@ pub(crate) async fn refresh_with_definitions(
     }
     let mut current = runtime.tasks.write();
     if current.revision != revision {
-        return Err(
-            crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Task configuration changed during snapshot preparation"),
-        );
+        return Err(crate::localized_error!(
+            "backendErrors.automation.configChanged"
+        ));
     }
     tasks.revision = revision.wrapping_add(1);
     *current = tasks;

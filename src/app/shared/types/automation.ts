@@ -18,15 +18,10 @@ export type AutomationStatus = 'enabled' | 'disabled' | 'running' | 'failed' | '
 export interface AutomationArgs {
   /** All source paths from the profile. */
   srcPaths: string[];
-  /** All destination paths from the profile. */
+  /** All destination paths from the profile; none for a workflow. */
   dstPaths: string[];
-  /** Core parameters for the profile operation */
-  remoteName: string;
-  profileName: string;
-  /** Origin of the operation */
-  source?: Origin;
-  /** Whether to use cache */
-  noCache?: boolean;
+  /** What defined the automation: a remote profile, a Quick Run or a workflow. */
+  source: Origin;
 }
 
 /**
@@ -36,17 +31,17 @@ export interface Automation {
   /** Unique identifier for the automation */
   id: string;
 
-  /** Type of rclone operation */
-  automationType: AutomationType;
+  /** Type of rclone operation; null for a workflow, which is no single operation. */
+  automationType: AutomationType | null;
 
-  /** Remote name this automation is associated with */
+  /** Remote name this automation is associated with; empty for a workflow. */
   remoteName: string;
 
   /** Profile name within the remote */
   profileName: string;
 
   /** Cron expression (e.g., "0 0 * * *" for daily at midnight) */
-  cronExpression?: string;
+  cronExpression: string | null;
 
   /** Current status */
   status: AutomationStatus;
@@ -57,20 +52,17 @@ export interface Automation {
   /** Automation arguments (source, destination, options, etc.) */
   args: AutomationArgs;
 
-  /** When the automation was created */
-  createdAt: string;
-
   /** Last time the automation ran */
-  lastRun?: string;
+  lastRun: string | null;
 
   /** Next scheduled run time */
-  nextRun?: string;
+  nextRun: string | null;
 
   /** Last error message if automation failed */
-  lastError?: string;
+  lastError: string | null;
 
   /** Current job ID if automation is running */
-  currentJobId?: string;
+  currentJobId: string | null;
 
   /** Total number of times this automation has run */
   runCount: number;
@@ -85,13 +77,13 @@ export interface Automation {
   stoppedCount: number;
 
   /** Enable real-time filesystem monitoring */
-  watchEnabled?: boolean;
+  watchEnabled: boolean;
 
   /** Delay in seconds to debounce file changes before running the sync */
-  watchDelay?: number;
+  watchDelay: number;
 
   /** Only synchronize directories containing changed files when triggered by file watcher */
-  watchChangedOnly?: boolean;
+  watchChangedOnly: boolean;
 }
 
 /**
@@ -101,5 +93,6 @@ export interface CronValidationResponse {
   isValid: boolean;
   errorMessage?: string;
   nextRun?: string;
-  humanReadable?: string;
+  /** UTC offset schedules fire in (the machine running the app), e.g. `+03:00`. */
+  utcOffset?: string;
 }

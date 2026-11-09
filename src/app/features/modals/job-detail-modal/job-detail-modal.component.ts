@@ -166,6 +166,7 @@ export class JobDetailModalComponent {
 
   /** What went wrong, for the operations that have no monitor to show it. */
   readonly lastError = computed(() => {
+    if (this.showStatistics()) return null;
     const error = this.jobData().stats?.lastError || this.jobData().error;
     return error ? this.backendTranslation.translateBackendMessage(error) || null : null;
   });

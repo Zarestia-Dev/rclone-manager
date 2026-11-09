@@ -13,6 +13,7 @@ describe('AutomationService cache', () => {
   let service: AutomationService;
   let changed: Subject<string>;
   let invoke: ReturnType<typeof vi.fn>;
+  let showError: ReturnType<typeof vi.fn>;
 
   const automation: Automation = {
     id: 'automation-旅行',
@@ -21,8 +22,15 @@ describe('AutomationService cache', () => {
     profileName: 'custom',
     status: 'enabled',
     backendName: 'Local',
-    args: { srcPaths: [], dstPaths: [], remoteName: 'Arşiv & photos', profileName: 'custom' },
-    createdAt: '2026-10-23T00:00:00Z',
+    args: { source: 'automation', srcPaths: [], dstPaths: [] },
+    cronExpression: null,
+    lastRun: null,
+    nextRun: null,
+    lastError: null,
+    currentJobId: null,
+    watchEnabled: false,
+    watchDelay: 5,
+    watchChangedOnly: false,
     runCount: 0,
     successCount: 0,
     failureCount: 0,
@@ -32,12 +40,16 @@ describe('AutomationService cache', () => {
   beforeEach(async () => {
     changed = new Subject();
     invoke = vi.fn().mockResolvedValue([automation]);
+    showError = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
         { provide: ApiClientService, useValue: { invoke } },
-        { provide: BackendTranslationService, useValue: {} },
-        { provide: NotificationService, useValue: {} },
+        {
+          provide: BackendTranslationService,
+          useValue: { translateBackendMessage: (message: unknown): string => String(message) },
+        },
+        { provide: NotificationService, useValue: { showError } },
         {
           provide: EventListenersService,
           useValue: { listenToAutomationsCacheChanged: (): Subject<string> => changed },
@@ -86,11 +98,20 @@ describe('AutomationService cache', () => {
     expect(log).toHaveBeenCalledWith('Failed to refresh automations:', error);
   });
 
-  it('propagates toggle failures without changing cached scheduling state', async () => {
-    const error = new Error('schedule rejected');
-    invoke.mockRejectedValueOnce(error);
-    await expect(service.toggleAutomation(automation.id)).rejects.toBe(error);
-    expect(service.automations()).toEqual([automation]);
+  it('reports toggle, run and stop failures once, without changing the cache', async () => {
+    for (const [call, command] of [
+      [(): Promise<unknown> => service.toggleAutomation(automation.id), 'toggle_automation'],
+      [(): Promise<unknown> => service.runAutomation(automation.id), 'run_automation'],
+      [(): Promise<unknown> => service.stopAutomation(automation.id), 'stop_automation'],
+    ] as const) {
+      showError.mockClear();
+      const error = new Error('schedule rejected');
+      invoke.mockRejectedValueOnce(error);
+      await expect(call()).rejects.toBe(error);
+      expect(invoke).toHaveBeenLastCalledWith(command, { automationId: automation.id });
+      expect(showError).toHaveBeenCalledTimes(1);
+      expect(service.automations()).toEqual([automation]);
+    }
   });
 
   it('returns invalid cron results as data for the form to display', async () => {

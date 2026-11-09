@@ -10,7 +10,7 @@ use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify
 use crate::utils::cron::get_next_run;
 use crate::utils::types::automation::{Automation, AutomationStatus};
 use crate::utils::types::origin::Origin;
-use crate::utils::types::remotes::OperationType;
+use crate::utils::types::remotes::{OperationType, ProfileParams};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use tokio::sync::RwLock;
@@ -115,10 +115,7 @@ impl AutomationScheduler {
         let app_handle = runtime.app.clone();
 
         let automation_id = automation.id.clone();
-        let automation_name = format!(
-            "{}: {}-{}",
-            automation.backend_name, automation.remote_name, automation.profile_name
-        );
+        let automation_name = automation.log_name();
         let automation_type = automation.automation_type;
         let cron_expr_5_field = automation
             .cron_expression
@@ -145,10 +142,11 @@ impl AutomationScheduler {
                         "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
 
-                    if let Err(e) = execute_automation(&automation_id, &app_handle, None).await {
-                        error!("Automation execution failed {automation_id}: {e}");
-                    } else {
-                        info!("Automation execution completed: {automation_id}");
+                    match execute_automation(&automation_id, &app_handle, None).await {
+                        Err(e) => error!("Automation execution failed {automation_id}: {e}"),
+                        Ok(true) => info!("Automation execution completed: {automation_id}"),
+                        // Skipped tick: no run will move the next time forward.
+                        Ok(false) => advance_next_run(&app_handle, &automation_id).await,
                     }
                 })
             }))
@@ -161,8 +159,10 @@ impl AutomationScheduler {
             |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
         )?;
 
-        let automation_name = automation.log_name();
-        info!("Scheduled '{automation_name}' ({cron_expr_6_field}) — job ID: {job_id}");
+        info!(
+            "Scheduled '{}' ({cron_expr_6_field}) — job ID: {job_id}",
+            automation.log_name()
+        );
 
         Ok(job_id)
     }
@@ -335,10 +335,13 @@ pub async fn execute_automation(
         return Ok(false);
     }
 
-    // A serve quick run starts a serve, not a job, so there is no job to collide with.
-    if let Some(job_type) = automation.automation_type.as_job_type() {
-        let remote_name = &automation.args.params.remote_name;
-        let profile = Some(automation.args.params.profile_name.as_str());
+    // A serve quick run starts a serve and a workflow is no single operation: no job to collide with.
+    if let Some(job_type) = automation
+        .automation_type
+        .and_then(OperationType::as_job_type)
+    {
+        let remote_name = &automation.remote_name;
+        let profile = Some(automation.profile_name.as_str());
         let activity = backend_manager
             .job_cache_for(&backend.name)
             .job_activity(remote_name, &job_type, profile)
@@ -375,22 +378,23 @@ pub async fn execute_automation(
     }
     let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
 
-    notify(
-        app_handle,
-        NotificationEvent::Automation(AutomationStage::Started {
-            backend: automation.backend_name.clone(),
-            remote: automation.remote_name.clone(),
-            profile: automation.profile_name.clone(),
-            automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
-        }),
-    );
+    // A workflow has no operation type and announces its own start.
+    if let Some(automation_type) = automation.automation_type {
+        notify(
+            app_handle,
+            NotificationEvent::Automation(AutomationStage::Started {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type,
+            }),
+        );
+    }
 
-    let execution = match automation.args.params.source {
-        Some(Origin::QuickRun) => {
-            run_quick_run(app_handle, &backend, &automation, &execution_id).await
-        }
-        Some(Origin::Workflow) => {
+    let execution = match automation.args.source {
+        Origin::QuickRun => run_quick_run(app_handle, &backend, &automation, &execution_id).await,
+        Origin::Workflow => {
             let watched = watch.is_some();
             run_workflow(
                 app_handle,
@@ -494,10 +498,11 @@ async fn run_profile(
     watch: Option<&WatchTrigger>,
     selection: &mut Option<tokio::sync::MutexGuard<'_, ()>>,
 ) -> Result<AutomationExecutionOutcome, String> {
-    let transfer_type = automation.automation_type;
-    let mut params = automation.args.params.clone();
-    params.source = Some(Origin::Automation);
-    params.scoped_targets = match watch {
+    // Only a remote profile reaches here, and it always has an operation type.
+    let transfer_type = automation
+        .automation_type
+        .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
+    let scoped_targets = match watch {
         Some(trigger)
             if automation.watch_changed_only && transfer_type != OperationType::Bisync =>
         {
@@ -516,8 +521,15 @@ async fn run_profile(
         }
         _ => None,
     };
-    params.backend_name = Some(automation.backend_name.clone());
-    params.execute_id = Some(execution_id.to_owned());
+    let params = ProfileParams {
+        remote_name: automation.remote_name.clone(),
+        profile_name: automation.profile_name.clone(),
+        backend_name: Some(automation.backend_name.clone()),
+        source: Some(Origin::Automation),
+        no_cache: None,
+        scoped_targets,
+        execute_id: Some(execution_id.to_owned()),
+    };
 
     let settings = app.state::<AppSettingsManager>();
     let mut resolved = if settings.is_locked() {
@@ -598,13 +610,17 @@ pub(crate) async fn finish_job_execution(
     else {
         return;
     };
+    // A workflow reports its own result.
+    let Some(automation_type) = automation.automation_type else {
+        return;
+    };
     let event = if outcome.success {
         AutomationStage::Completed {
             backend: automation.backend_name.clone(),
             remote: automation.remote_name.clone(),
             profile: automation.profile_name.clone(),
             automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
+            automation_type,
         }
     } else if outcome.stopped {
         AutomationStage::Stopped {
@@ -612,7 +628,7 @@ pub(crate) async fn finish_job_execution(
             remote: automation.remote_name.clone(),
             profile: automation.profile_name.clone(),
             automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
+            automation_type,
         }
     } else {
         AutomationStage::Failed {
@@ -620,11 +636,26 @@ pub(crate) async fn finish_job_execution(
             remote: automation.remote_name.clone(),
             profile: automation.profile_name.clone(),
             automation_name: automation.display_name(),
-            automation_type: automation.automation_type,
+            automation_type,
             error: outcome.error_msg.clone().unwrap_or_default(),
         }
     };
     notify(app, NotificationEvent::Automation(event));
+}
+
+/// Moves the shown next run past a cron tick that started nothing.
+async fn advance_next_run(app: &AppHandle, automation_id: &str) {
+    let _ = app
+        .state::<AutomationsCache>()
+        .update_automation(automation_id, |automation| {
+            if !matches!(
+                automation.status,
+                AutomationStatus::Disabled | AutomationStatus::Stopping
+            ) {
+                automation.next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+            }
+        })
+        .await;
 }
 
 fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>> {

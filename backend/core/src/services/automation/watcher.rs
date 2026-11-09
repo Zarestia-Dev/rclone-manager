@@ -27,7 +27,7 @@ type PendingRoots = Arc<parking_lot::Mutex<Vec<String>>>;
 #[derive(Clone, PartialEq)]
 struct WatchConfig {
     args: AutomationArgs,
-    operation: OperationType,
+    operation: Option<OperationType>,
     delay: u64,
     changed_only: bool,
     patterns: Vec<String>,
@@ -58,14 +58,15 @@ impl WatcherManager {
 
     pub async fn sync_watchers(&self, app: AppHandle) -> Result<(), String> {
         let backend = app.state::<BackendManager>().get_active().await;
-        let mut sessions = self.sessions.write().await;
         if !backend.is_local {
-            sessions.clear();
+            self.sessions.write().await.clear();
             return Ok(());
         }
-        let automations = app.state::<AutomationsCache>().get_all_automations().await;
-        let active: HashSet<_> = automations
-            .iter()
+        let automations: Vec<Automation> = app
+            .state::<AutomationsCache>()
+            .get_all_automations()
+            .await
+            .into_iter()
             .filter(|a| {
                 a.belongs_to_backend(&backend.name)
                     && a.watch_enabled
@@ -74,17 +75,27 @@ impl WatcherManager {
                         AutomationStatus::Disabled | AutomationStatus::Stopping
                     )
             })
-            .map(|a| a.id.clone())
             .collect();
-        sessions.retain(|id, _| active.contains(id));
+        let mut patterns = workflow_patterns(&app, &automations).await?;
+        let mut sessions = self.sessions.write().await;
+        sessions.retain(|id, _| automations.iter().any(|a| &a.id == id));
         let mut errors = Vec::new();
-        for automation in automations.iter().filter(|a| active.contains(&a.id)) {
+        for automation in &automations {
+            // A workflow that cannot be read must not stop the others from being watched.
+            let globs = match patterns.remove(&automation.id) {
+                Some(Err(error)) => {
+                    errors.push(error);
+                    continue;
+                }
+                Some(Ok(globs)) => globs,
+                None => Vec::new(),
+            };
             let config = WatchConfig {
                 args: automation.args.clone(),
                 operation: automation.automation_type,
                 delay: automation.watch_delay,
                 changed_only: automation.watch_changed_only,
-                patterns: workflow_patterns(&app, automation)?,
+                patterns: globs,
             };
             if sessions
                 .get(&automation.id)
@@ -137,25 +148,46 @@ impl Default for WatcherManager {
     }
 }
 
-/// The glob patterns a workflow trigger filters changed paths with.
-fn workflow_patterns(app: &AppHandle, automation: &Automation) -> Result<Vec<String>, String> {
-    if automation.args.params.source != Some(Origin::Workflow) {
-        return Ok(Vec::new());
+/// The glob patterns each watched workflow's trigger filters changed paths with, read in one
+/// pass away from the runtime threads.
+async fn workflow_patterns(
+    app: &AppHandle,
+    automations: &[Automation],
+) -> Result<HashMap<String, Result<Vec<String>, String>>, String> {
+    let ids: Vec<String> = automations
+        .iter()
+        .filter(|a| a.args.source == Origin::Workflow)
+        .map(|a| a.id.clone())
+        .collect();
+    if ids.is_empty() {
+        return Ok(HashMap::new());
     }
-    let manager = app.state::<AppSettingsManager>();
-    let workflow =
-        crate::services::flow::workflow::commands::get_workflow_by_id(&manager, &automation.id)?;
-    Ok(workflow
-        .and_then(|workflow| workflow.watcher_glob_pattern())
-        .map(|patterns| {
-            patterns
-                .split(',')
-                .map(str::trim)
-                .filter(|pattern| !pattern.is_empty())
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default())
+    let app = app.clone();
+    crate::utils::spawn_blocking(move || {
+        let manager = app.state::<AppSettingsManager>();
+        ids.into_iter()
+            .map(|id| {
+                let patterns =
+                    crate::services::flow::workflow::commands::get_workflow_by_id(&manager, &id)
+                        .map(|workflow| {
+                            workflow
+                                .and_then(|workflow| workflow.watcher_glob_pattern())
+                                .map(|patterns| {
+                                    patterns
+                                        .split(',')
+                                        .map(str::trim)
+                                        .filter(|pattern| !pattern.is_empty())
+                                        .map(str::to_string)
+                                        .collect()
+                                })
+                                .unwrap_or_default()
+                        });
+                (id, patterns)
+            })
+            .collect()
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 fn start_watch_session(
@@ -362,14 +394,20 @@ async fn settle_run(
     let Some(task) = in_flight.take() else {
         return;
     };
-    let result = task.await;
-    if matches!(result, Ok(Ok(true))) {
-        changes.submitted.clear();
-        return;
-    }
-    changes.retry();
-    if let Ok(Err(error)) = result {
-        log::error!("Watcher {id}: {error}");
+    match task
+        .await
+        .map_err(|error| error.to_string())
+        .and_then(|run| run)
+    {
+        Ok(true) => changes.submitted.clear(),
+        // Skipped (busy, another backend, ...): the changes still wait for a run.
+        Ok(false) => changes.retry(),
+        // The failure is recorded on the automation. Starting again for the same changes
+        // would only repeat it, until a new file event brings new changes.
+        Err(error) => {
+            log::error!("Watcher {id}: {error}");
+            changes.submitted.clear();
+        }
     }
 }
 
@@ -583,7 +621,7 @@ fn local_paths(automation: &Automation) -> Vec<String> {
         .cloned()
         .collect();
 
-    if automation.automation_type == OperationType::Bisync {
+    if automation.automation_type == Some(OperationType::Bisync) {
         paths.extend(
             automation
                 .args
@@ -613,7 +651,10 @@ async fn is_busy_or_cooling_down(automation: &Automation, app: &AppHandle) -> bo
         return true;
     }
     // A serve quick run starts a serve, not a job.
-    let Some(job_type) = automation.automation_type.as_job_type() else {
+    let Some(job_type) = automation
+        .automation_type
+        .and_then(OperationType::as_job_type)
+    else {
         return false;
     };
     let Some(backend_manager) = app.try_state::<BackendManager>() else {
@@ -622,9 +663,9 @@ async fn is_busy_or_cooling_down(automation: &Automation, app: &AppHandle) -> bo
     let activity = backend_manager
         .job_cache_for(&automation.backend_name)
         .job_activity(
-            &automation.args.params.remote_name,
+            &automation.remote_name,
             &job_type,
-            Some(automation.args.params.profile_name.as_str()),
+            Some(automation.profile_name.as_str()),
         )
         .await;
     activity.running || activity.last_finished.is_some_and(cooling_down)
@@ -941,19 +982,18 @@ mod tests {
         let app = AppHandle::default();
         app.manage(BackendManager::new());
         let args = AutomationArgs {
-            params: crate::utils::types::remotes::ProfileParams {
-                remote_name: "drive:".into(),
-                profile_name: "serve".into(),
-                backend_name: None,
-                source: Some(Origin::QuickRun),
-                no_cache: None,
-                scoped_targets: None,
-                execute_id: None,
-            },
+            source: Origin::QuickRun,
             src_paths: vec!["/tmp".into()],
             dst_paths: Vec::new(),
         };
-        let mut automation = Automation::new("qr".into(), OperationType::Serve, args, "Local");
+        let mut automation = Automation::new(
+            "qr".into(),
+            Some(OperationType::Serve),
+            "drive:".into(),
+            "serve".into(),
+            args,
+            "Local",
+        );
         assert!(!is_busy_or_cooling_down(&automation, &app).await);
         // The automation's own state still counts.
         automation.status = AutomationStatus::Running;
@@ -961,5 +1001,26 @@ mod tests {
         automation.status = AutomationStatus::Enabled;
         automation.last_run = Some(Utc::now());
         assert!(is_busy_or_cooling_down(&automation, &app).await);
+    }
+
+    #[tokio::test]
+    async fn only_a_skipped_run_keeps_its_changes_queued() {
+        for (outcome, requeued) in [
+            (Ok(true), false),
+            (Ok(false), true),
+            (Err("start failed".to_string()), false),
+        ] {
+            let mut changes = Changes::new(&["/src".to_string()]);
+            changes.add([PathBuf::from("/src/a")]);
+            changes.submit();
+            let mut in_flight = Some(crate::utils::spawn(async move { outcome }));
+            while !in_flight.as_ref().is_some_and(|task| task.is_finished()) {
+                tokio::task::yield_now().await;
+            }
+            settle_run(&mut in_flight, &mut changes, "watched").await;
+            assert!(in_flight.is_none());
+            assert_eq!(!changes.waiting.is_empty(), requeued);
+            assert!(changes.submitted.is_empty() || requeued);
+        }
     }
 }

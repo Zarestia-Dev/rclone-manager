@@ -36,6 +36,8 @@ import {
 import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
 import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import { matchesOriginFilter } from '../../../../shared/utils/automation-origin.util';
+import { OriginFilterBarComponent } from '../../../../shared/overviews-shared/origin-filter-bar/origin-filter-bar.component';
 import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
@@ -66,6 +68,7 @@ import { QuickRun } from '@app/types';
     JobsPanelComponent,
     TranslatePipe,
     AutomationCardComponent,
+    OriginFilterBarComponent,
     QuickRunCardComponent,
   ],
   templateUrl: './general-detail.component.html',
@@ -153,14 +156,23 @@ export class GeneralDetailComponent {
   readonly jobs = computed(() =>
     this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
   );
-  readonly remoteAutomations = computed(() => {
-    const allAutomations = this.allAutomations();
+  /** This remote's automations, plus workflows: a workflow has no remote, so it is listed on every one. */
+  private readonly scopedAutomations = computed(() => {
     const remote = this.selectedRemote();
     if (!remote) return [];
-    return allAutomations.filter(automation => automation.remoteName === remote.name);
+    return this.allAutomations().filter(
+      automation => automation.remoteName === remote.name || automation.args?.source === 'workflow'
+    );
   });
 
-  readonly hasAutomations = computed(() => this.remoteAutomations().length > 0);
+  readonly automationOriginFilter = signal('all');
+
+  readonly remoteAutomations = computed(() => {
+    const filter = this.automationOriginFilter();
+    return this.scopedAutomations().filter(automation => matchesOriginFilter(automation, filter));
+  });
+
+  readonly hasAutomations = computed(() => this.scopedAutomations().length > 0);
 
   readonly currentAutomation = computed(
     () => this.remoteAutomations()[this.currentAutomationCardIndex()] ?? null
@@ -226,6 +238,7 @@ export class GeneralDetailComponent {
   constructor() {
     effect(() => {
       this.selectedRemoteName();
+      this.automationOriginFilter();
       untracked(() => this.currentAutomationCardIndex.set(0));
     });
   }
@@ -311,14 +324,6 @@ export class GeneralDetailComponent {
   }
 
   // --- Automation Helpers ---
-
-  async toggleAutomation(automationId: string): Promise<void> {
-    try {
-      await this.automationService.toggleAutomation(automationId);
-    } catch (error) {
-      console.error('Error toggling automation:', error);
-    }
-  }
 
   onOpenAutomationInFiles(path: string): void {
     const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);

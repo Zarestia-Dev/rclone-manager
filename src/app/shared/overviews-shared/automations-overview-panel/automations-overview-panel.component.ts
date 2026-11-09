@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Automation, Origin } from '@app/types';
 import { AutomationCardComponent } from '../../detail-shared/automation-card/automation-card.component';
 import { AutomationService } from '../../../services/operations/automation.service';
+import { matchesOriginFilter } from '../../utils/automation-origin.util';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 @Component({
@@ -40,7 +41,6 @@ export class AutomationsOverviewPanelComponent {
   readonly showFilterChips = input<boolean>(false);
 
   readonly automationClick = output<Automation>();
-  readonly toggleAutomation = output<string>();
   readonly openInFiles = output<string>();
 
   private readonly automationService = inject(AutomationService);
@@ -59,19 +59,8 @@ export class AutomationsOverviewPanelComponent {
   });
 
   readonly allAutomations = computed(() => {
-    const all = this.rawAutomations();
     const filter = this.selectedOriginFilter();
-    if (filter === 'all') return all;
-    if (filter === 'workflow') {
-      return all.filter(t => t.args?.source === 'workflow');
-    }
-    if (filter === 'quickrun') {
-      return all.filter(t => t.args?.source === 'quickrun');
-    }
-    if (filter === 'dashboard' || filter === 'automation') {
-      return all.filter(t => t.args?.source !== 'quickrun' && t.args?.source !== 'workflow');
-    }
-    return all.filter(t => t.args?.source === filter);
+    return this.rawAutomations().filter(automation => matchesOriginFilter(automation, filter));
   });
 
   readonly totalCount = computed(() => this.allAutomations().length);
@@ -81,10 +70,6 @@ export class AutomationsOverviewPanelComponent {
 
   onAutomationCardClick(automation: Automation): void {
     this.automationClick.emit(automation);
-  }
-
-  onToggleAutomation(automationId: string): void {
-    this.toggleAutomation.emit(automationId);
   }
 
   onOpenInFiles(path: string): void {

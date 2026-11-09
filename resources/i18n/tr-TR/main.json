@@ -144,6 +144,10 @@
       "disable": "Otomasyonu devre dışı bırak",
       "stopping": "Otomasyon durduruluyor..."
     },
+    "actions": {
+      "run": "Şimdi çalıştır",
+      "stop": "Çalışan görevi durdur"
+    },
     "nextRun": {
       "disabled": "Otomasyon devre dışı",
       "stopping": "Mevcut çalışmadan sonra devre dışı",
@@ -156,6 +160,7 @@
       "realtime": "Gerçek Zamanlı İzleme",
       "debounce": "Geciktirme Süresi",
       "watcherActive": "İzleyici Etkin",
+      "watchedFolder": "İzlenen klasör",
       "seconds": "saniye",
       "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici",
       "changedOnlyShort": "Yalnızca Alt Dizinler",
@@ -1504,6 +1509,8 @@
       "yourSchedule": "Zamanlamanız",
       "nextRun": "Sonraki çalışma:",
       "timezoneNote": "Zamanlar yerel saat diliminizdedir (UTC{{timezone}}) ve zamanlama için otomatik olarak UTC'ye dönüştürülür.",
+      "cronValidationFailed": "Zamanlama doğrulanamadı",
+      "cronInvalid": "Geçersiz cron ifadesi",
       "tabSimple": "Basit",
       "tabAdvanced": "Gelişmiş",
       "days": {
@@ -1560,23 +1567,6 @@
       "aria": {
         "clear": "Temizle",
         "cronFor": "{{name}} için cron ifadesi"
-      },
-      "relativeTime": {
-        "inPast": "geçmişte ({{date}})",
-        "lessThanMinute": "bir dakikadan kısa sürede",
-        "in": "{{time}} içinde",
-        "days": {
-          "one": "1 gün",
-          "other": "{{count}} gün"
-        },
-        "hours": {
-          "one": "1 saat",
-          "other": "{{count}} saat"
-        },
-        "minutes": {
-          "one": "1 dakika",
-          "other": "{{count}} dakika"
-        }
       },
       "cronPlaceholder": "Bir cron ifadesi girin (ör. 0 0 * * *)"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Cron İfadesi:",
       "nextRunLabel": "Sonraki Çalışma:",
       "lastRunLabel": "Son Çalışma:",
-      "createdLabel": "Oluşturulma:",
       "statistics": "İstatistikler",
       "successful": "Başarılı",
       "failedCount": "Başarısız",
@@ -3072,7 +3061,6 @@
       "save": "Düzeni Kaydet",
       "reset": "Düzeni Sıfırla",
       "resetSuccess": "Düzen varsayılana sıfırlandı",
-      "toggleAutomationFailed": "Otomasyon değiştirilemedi",
       "showDetailed": "Ayrıntılı Kartları Göster",
       "showCompact": "Kompakt Kartları Göster"
     },
@@ -3390,6 +3378,9 @@
       "startFailed": "Otomasyon motoru çalıştırılamadı: {{error}}",
       "stopFailed": "Otomasyon motoru durdurulamadı: {{error}}",
       "invalidCron": "Geçersiz cron ifadesi: {{error}}",
+      "cronRequired": "Cron ifadesi gereklidir",
+      "cronFieldCount": "Cron ifadesi 5 alandan oluşur: dakika, saat, gün, ay ve haftanın günü",
+      "configChanged": "Görev yapılandırması hazırlanırken değişti. Lütfen tekrar deneyin.",
       "automationNotFound": "Otomasyon bulunamadı",
       "watcherPending": "İzleme henüz var olmayan klasörleri bekliyor: {{paths}}",
       "noLocalPaths": "İzlenecek yerel yol yok",

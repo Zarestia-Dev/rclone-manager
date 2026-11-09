@@ -17,7 +17,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 'drive:',
       automationType: 'sync',
       status: 'enabled',
-      args: { source: 'workflow' },
+      args: { source: 'workflow', srcPaths: [], dstPaths: [] },
     },
     {
       id: 'auto-2',
@@ -25,7 +25,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 's3:',
       automationType: 'backup',
       status: 'enabled',
-      args: { source: 'quickrun' },
+      args: { source: 'quickrun', srcPaths: [], dstPaths: [] },
     },
     {
       id: 'auto-3',
@@ -33,7 +33,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 'dropbox:',
       automationType: 'copy',
       status: 'disabled',
-      args: {},
+      args: { srcPaths: [], dstPaths: [] },
     },
   ] as unknown as Automation[];
 

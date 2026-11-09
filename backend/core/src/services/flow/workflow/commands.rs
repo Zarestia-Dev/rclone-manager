@@ -171,7 +171,7 @@ async fn refresh_after_change(app: &AppHandle, workflow_id: &str) -> Result<(), 
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_workflow(workflow_id);
     }
-    sync_workflow_automations(app).await
+    crate::services::automation::commands::sync_flow_automations(app).await
 }
 
 /// Finds a unique workflow name by appending sequential numbers if a collision occurs with existing names.
@@ -263,31 +263,6 @@ pub fn delete_workflow_by_id(manager: &AppSettingsManager, id: &str) -> Result<(
 
     sub.delete(id)
         .map_err(|e| crate::localized_error!("backendErrors.workflow.deleteFailed", "error" => e))
-}
-
-pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
-    use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
-    use crate::services::automation::engine::apply_and_sync_automations;
-    use crate::services::settings::AppSettingsManager;
-
-    let manager = app.state::<AppSettingsManager>();
-    let cache = app.state::<AutomationsCache>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
-
-    let revision = app
-        .state::<crate::services::automation::runtime::RuntimeTasks>()
-        .revision();
-    let workflows = get_all_workflows(&manager)?;
-    cache.load_from_workflows(&workflows, &backend_name).await?;
-    crate::services::automation::runtime::refresh_with_definitions(
-        app,
-        Some(revision),
-        None,
-        Some(workflows),
-    )
-    .await?;
-    apply_and_sync_automations(app).await
 }
 
 #[cfg(test)]

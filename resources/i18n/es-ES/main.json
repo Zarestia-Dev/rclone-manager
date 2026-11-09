@@ -144,6 +144,10 @@
       "disable": "Deshabilitar automatización",
       "stopping": "La automatización se está deteniendo..."
     },
+    "actions": {
+      "run": "Ejecutar ahora",
+      "stop": "Detener la ejecución actual"
+    },
     "nextRun": {
       "disabled": "La automatización está deshabilitada",
       "stopping": "Deshabilitando después de la ejecución actual",
@@ -156,6 +160,7 @@
       "realtime": "Monitoreo en tiempo real",
       "debounce": "Retardo de rebote",
       "watcherActive": "Observador activo",
+      "watchedFolder": "Carpeta vigilada",
       "seconds": "segundos",
       "realtimeSchedule": "Observador de archivos en tiempo real",
       "changedOnlyShort": "Solo subdirectorios",
@@ -1504,6 +1509,8 @@
       "yourSchedule": "Su programación",
       "nextRun": "Próxima ejecución:",
       "timezoneNote": "Las horas están en su zona horaria local (UTC{{timezone}}) y se convierten automáticamente a UTC para la programación.",
+      "cronValidationFailed": "No se pudo validar la programación",
+      "cronInvalid": "Expresión cron no válida",
       "tabSimple": "Simple",
       "tabAdvanced": "Avanzado",
       "days": {
@@ -1560,23 +1567,6 @@
       "aria": {
         "clear": "Borrar",
         "cronFor": "Expresión Cron para {{name}}"
-      },
-      "relativeTime": {
-        "inPast": "en el pasado ({{date}})",
-        "lessThanMinute": "en menos de un minuto",
-        "in": "en {{time}}",
-        "days": {
-          "one": "1 día",
-          "other": "{{count}} días"
-        },
-        "hours": {
-          "one": "1 hora",
-          "other": "{{count}} horas"
-        },
-        "minutes": {
-          "one": "1 minuto",
-          "other": "{{count}} minutos"
-        }
       },
       "cronPlaceholder": "Introduzca una expresión cron (ej. 0 0 * * *)"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Expresión Cron:",
       "nextRunLabel": "Próxima ejecución:",
       "lastRunLabel": "Última ejecución:",
-      "createdLabel": "Creado:",
       "statistics": "Estadísticas",
       "successful": "Exitoso",
       "failedCount": "Fallido",
@@ -3031,7 +3020,6 @@
       "save": "Guardar diseño",
       "reset": "Restablecer diseño",
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
-      "toggleAutomationFailed": "Error al alternar automatización",
       "showDetailed": "Mostrar tarjetas detalladas",
       "showCompact": "Mostrar tarjetas compactas"
     },
@@ -3349,6 +3337,9 @@
       "startFailed": "Error al iniciar el motor de automatización: {{error}}",
       "stopFailed": "Error al detener el motor de automatización: {{error}}",
       "invalidCron": "Expresión cron inválida: {{error}}",
+      "cronRequired": "Se requiere una expresión cron",
+      "cronFieldCount": "Una expresión cron tiene 5 campos: minuto, hora, día, mes y día de la semana",
+      "configChanged": "La configuración de la tarea cambió mientras se preparaba. Inténtalo de nuevo.",
       "automationNotFound": "Automatización no encontrada",
       "watcherPending": "La vigilancia espera carpetas que aún no existen: {{paths}}",
       "noLocalPaths": "No hay rutas locales que vigilar",

@@ -144,6 +144,10 @@
       "disable": "自動化を無効化",
       "stopping": "自動化を停止しています..."
     },
+    "actions": {
+      "run": "今すぐ実行",
+      "stop": "実行中の処理を停止"
+    },
     "nextRun": {
       "disabled": "自動化は無効です",
       "stopping": "現在の実行完了後に無効化します",
@@ -156,6 +160,7 @@
       "realtime": "リアルタイム監視",
       "debounce": "デバウンス遅延",
       "watcherActive": "監視中",
+      "watchedFolder": "監視フォルダー",
       "seconds": "秒",
       "realtimeSchedule": "リアルタイムファイル監視",
       "changedOnlyShort": "サブディレクトリのみ",
@@ -1504,6 +1509,8 @@
       "yourSchedule": "設定されたスケジュール",
       "nextRun": "次回実行:",
       "timezoneNote": "時刻は使用しているローカルタイムゾーン (UTC{{timezone}}) で表示され、スケジュールのために自動的にUTCへ変換されます。",
+      "cronValidationFailed": "スケジュールを検証できませんでした",
+      "cronInvalid": "cron 式が無効です",
       "tabSimple": "簡易",
       "tabAdvanced": "高度",
       "days": {
@@ -1560,23 +1567,6 @@
       "aria": {
         "clear": "クリア",
         "cronFor": "{{name}} のCron式"
-      },
-      "relativeTime": {
-        "inPast": "過去の日時です ({{date}})",
-        "lessThanMinute": "1分未満",
-        "in": "{{time}}後",
-        "days": {
-          "one": "1 日",
-          "other": "{{count}} 日"
-        },
-        "hours": {
-          "one": "1 時間",
-          "other": "{{count}} 時間"
-        },
-        "minutes": {
-          "one": "1 分",
-          "other": "{{count}} 分"
-        }
       },
       "cronPlaceholder": "Cron式を入力してください (例: 0 0 * * *)"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Cron式:",
       "nextRunLabel": "次回実行:",
       "lastRunLabel": "前回実行:",
-      "createdLabel": "作成日時:",
       "statistics": "統計情報",
       "successful": "成功",
       "failedCount": "失敗",
@@ -3031,7 +3020,6 @@
       "save": "レイアウトを保存",
       "reset": "レイアウトをリセット",
       "resetSuccess": "レイアウトをデフォルトにリセットしました",
-      "toggleAutomationFailed": "自動化の切り替えに失敗しました",
       "showDetailed": "詳細カードを表示",
       "showCompact": "コンパクトカードを表示"
     },
@@ -3349,6 +3337,9 @@
       "startFailed": "自動化エンジンの開始に失敗しました: {{error}}",
       "stopFailed": "自動化エンジンの停止に失敗しました: {{error}}",
       "invalidCron": "無効なCron式です: {{error}}",
+      "cronRequired": "cron 式が必要です",
+      "cronFieldCount": "cron 式は 5 つのフィールド（分・時・日・月・曜日）で指定します",
+      "configChanged": "準備中にタスクの設定が変更されました。もう一度お試しください。",
       "automationNotFound": "自動化が見つかりません",
       "watcherPending": "まだ存在しないフォルダーを待機しています: {{paths}}",
       "noLocalPaths": "監視するローカルパスがありません",

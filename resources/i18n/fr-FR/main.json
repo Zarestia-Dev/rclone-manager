@@ -144,6 +144,10 @@
       "disable": "Désactiver l'automatisation",
       "stopping": "L'automatisation est en cours d'arrêt..."
     },
+    "actions": {
+      "run": "Exécuter maintenant",
+      "stop": "Arrêter l'exécution en cours"
+    },
     "nextRun": {
       "disabled": "L'automatisation est désactivée",
       "stopping": "Désactiver après l'exécution en cours",
@@ -156,6 +160,7 @@
       "realtime": "Surveillance en temps réel",
       "debounce": "Délai de débordement",
       "watcherActive": "Surveillance active",
+      "watchedFolder": "Dossier surveillé",
       "seconds": "secondes",
       "realtimeSchedule": "Surveillance de fichiers en temps réel",
       "changedOnlyShort": "Sous-dossiers uniquement",
@@ -1504,6 +1509,8 @@
       "yourSchedule": "Votre planning",
       "nextRun": "Prochaine exécution :",
       "timezoneNote": "Les horaires sont dans votre fuseau horaire local (UTC{{timezone}}) et convertis automatiquement en UTC pour la planification.",
+      "cronValidationFailed": "Impossible de valider la planification",
+      "cronInvalid": "Expression cron invalide",
       "tabSimple": "Simple",
       "tabAdvanced": "Avancé",
       "days": {
@@ -1560,23 +1567,6 @@
       "aria": {
         "clear": "Effacer",
         "cronFor": "Expression cron pour {{name}}"
-      },
-      "relativeTime": {
-        "inPast": "dans le passé ({{date}})",
-        "lessThanMinute": "dans moins d’une minute",
-        "in": "dans {{time}}",
-        "days": {
-          "one": "1 jour",
-          "other": "{{count}} jour"
-        },
-        "hours": {
-          "one": "1 heure",
-          "other": "{{count}} heures"
-        },
-        "minutes": {
-          "one": "1 minute",
-          "other": "{{count}} minutes"
-        }
       },
       "cronPlaceholder": "Entrez une expression cron (ex. 0 0 * * *)"
     },
@@ -1964,7 +1954,6 @@
       "cronExpression": "Expression cron :",
       "nextRunLabel": "Prochaine exécution :",
       "lastRunLabel": "Dernière exécution :",
-      "createdLabel": "Créé :",
       "statistics": "Statistiques",
       "successful": "Succès",
       "failedCount": "Échec",
@@ -3031,7 +3020,6 @@
       "save": "Enregistrer La Mise En Page",
       "reset": "Réinitialiser la mise en page",
       "resetSuccess": "Remise en page par défaut",
-      "toggleAutomationFailed": "Échec de l'activation de l'automatisation",
       "showDetailed": "Afficher les cartes détaillées",
       "showCompact": "Afficher les cartes Compact"
     },
@@ -3349,6 +3337,9 @@
       "startFailed": "Impossible de démarrer le moteur d’automatisation : {{error}}",
       "stopFailed": "Échec de l'arrêt du moteur d'automatisation : {{error}}",
       "invalidCron": "Expression cron invalide : {{error}}",
+      "cronRequired": "Une expression cron est requise",
+      "cronFieldCount": "Une expression cron comporte 5 champs : minute, heure, jour, mois et jour de la semaine",
+      "configChanged": "La configuration de la tâche a changé pendant sa préparation. Réessayez.",
       "automationNotFound": "Automatisation non trouvée",
       "watcherPending": "La surveillance attend des dossiers qui n'existent pas encore : {{paths}}",
       "noLocalPaths": "Aucun chemin local à surveiller",

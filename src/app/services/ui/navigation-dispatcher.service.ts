@@ -59,15 +59,14 @@ export class NavigationDispatcherService {
       return;
     }
 
-    const remoteName = automation.remoteName || automation.args?.remoteName;
-    if (remoteName && remoteName !== 'Workflow') {
-      this.navigateToRemote(remoteName, 'operations');
+    if (automation.args?.source === 'quickrun') {
+      const qr = this.findQuickRun(automation.id);
+      if (qr) this.navigateToQuickRun(qr.id);
       return;
     }
 
-    const qr = this.findQuickRun(automation.profileName);
-    if (qr) {
-      this.navigateToQuickRun(qr.id);
+    if (automation.remoteName) {
+      this.navigateToRemote(automation.remoteName, 'operations');
     }
   }
 

@@ -58,7 +58,7 @@ pub async fn create_quick_run(
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_quick_run(&record.id);
     }
-    sync_quick_run_automations(&app).await?;
+    crate::services::automation::commands::sync_flow_automations(&app).await?;
     Ok(record)
 }
 
@@ -89,7 +89,7 @@ pub async fn update_quick_run(
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_quick_run(&existing.id);
     }
-    sync_quick_run_automations(&app).await?;
+    crate::services::automation::commands::sync_flow_automations(&app).await?;
     Ok(existing)
 }
 
@@ -101,35 +101,8 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
         runtime.invalidate_quick_run(&quick_run_id);
     }
-    sync_quick_run_automations(&app).await?;
+    crate::services::automation::commands::sync_flow_automations(&app).await?;
     Ok(())
-}
-
-pub async fn sync_quick_run_automations(app: &AppHandle) -> Result<(), String> {
-    use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
-    use crate::services::automation::engine::apply_and_sync_automations;
-    use crate::services::settings::AppSettingsManager;
-
-    let manager = app.state::<AppSettingsManager>();
-    let cache = app.state::<AutomationsCache>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
-
-    let revision = app
-        .state::<crate::services::automation::runtime::RuntimeTasks>()
-        .revision();
-    let quick_runs = get_all_quick_runs(&manager)?;
-    cache
-        .load_from_quick_runs(&quick_runs, &backend_name)
-        .await?;
-    crate::services::automation::runtime::refresh_with_definitions(
-        app,
-        Some(revision),
-        Some(quick_runs),
-        None,
-    )
-    .await?;
-    apply_and_sync_automations(app).await
 }
 
 /// Start execution of a quick run.

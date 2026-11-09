@@ -34,7 +34,6 @@ import { SystemOverviewPanelComponent } from '../../../../shared/overviews-share
 import { JobsOverviewPanelComponent } from '../../../../shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
 import { ServesOverviewPanelComponent } from '../../../../shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
 import { AutomationsOverviewPanelComponent } from '../../../../shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
-import { AutomationService } from 'src/app/services/operations/automation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -67,7 +66,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 })
 export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
-  private readonly automationService = inject(AutomationService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly translate = inject(TranslateService);
   private readonly localStorage = inject(LocalStorageService);
@@ -186,15 +184,6 @@ export class GeneralOverviewComponent {
   handleServeCardClick(serve: ServeListItem): void {
     this.navigationDispatcher.navigateToServe(serve);
     setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
-  }
-
-  async toggleAutomation(automationId: string): Promise<void> {
-    try {
-      await this.automationService.toggleAutomation(automationId);
-    } catch (error) {
-      console.error('Failed to toggle automation:', error);
-      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleAutomationFailed'));
-    }
   }
 
   onAutomationClick(automation: Automation): void {

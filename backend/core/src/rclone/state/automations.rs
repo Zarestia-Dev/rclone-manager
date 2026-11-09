@@ -12,18 +12,13 @@ use crate::{
         flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
     },
     utils::{
-        constants::{
-            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_BULK_UPDATE,
-            AUTOMATIONS_REMOTE_REMOVED,
-        },
+        constants::{AUTOMATION_UPDATED, AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED},
         cron::get_next_run,
         types::{
             automation::{Automation, AutomationArgs, AutomationStatus, DEFAULT_WATCH_DELAY},
             events::AUTOMATIONS_CACHE_CHANGED,
             origin::Origin,
-            remotes::{
-                DEST_KEYS, OperationType, ProfileConfig, ProfileParams, RemoteSettings, SOURCE_KEYS,
-            },
+            remotes::{DEST_KEYS, OperationType, ProfileConfig, RemoteSettings, SOURCE_KEYS},
         },
     },
 };
@@ -111,10 +106,8 @@ impl AutomationsCache {
             .iter()
             .filter_map(|qr| create_automation_from_quick_run(backend_name, qr))
             .collect();
-        self.sync_automations(automations, |t| {
-            t.args.params.source == Some(Origin::QuickRun)
-        })
-        .await
+        self.sync_automations(automations, |t| t.args.source == Origin::QuickRun)
+            .await
     }
 
     /// Load automations from Workflows, preserving existing automation states.
@@ -127,10 +120,8 @@ impl AutomationsCache {
             .iter()
             .filter_map(|wf| create_automation_from_workflow(backend_name, wf))
             .collect();
-        self.sync_automations(automations, |t| {
-            t.args.params.source == Some(Origin::Workflow)
-        })
-        .await
+        self.sync_automations(automations, |t| t.args.source == Origin::Workflow)
+            .await
     }
 
     /// Makes the automations within `in_scope` match `new_automations` under one lock, keeping
@@ -179,6 +170,7 @@ impl AutomationsCache {
         Ok(result)
     }
 
+    #[cfg(test)]
     pub async fn add_automation(&self, automation: Automation) -> Result<Automation, String> {
         let automation_id = automation.id.clone();
         let mut automations = self.automations.write().await;
@@ -192,7 +184,7 @@ impl AutomationsCache {
 
         automations.insert(automation_id, automation.clone());
         drop(automations);
-        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         Ok(automation)
     }
 
@@ -285,13 +277,14 @@ impl AutomationsCache {
 
     /// Remove an automation from the cache and return it. The caller is responsible
     /// for unscheduling its job by automation ID.
+    #[cfg(test)]
     pub async fn remove_automation(&self, automation_id: &str) -> Result<Automation, String> {
         let mut automations = self.automations.write().await;
         let automation = automations.remove(automation_id).ok_or_else(|| {
             crate::localized_error!("backendErrors.automation.automationNotFound")
         })?;
         drop(automations);
-        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         Ok(automation)
     }
 
@@ -379,17 +372,11 @@ impl AutomationsCache {
                 true
             }
         });
+        drop(automations);
+        if !removed.is_empty() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
         removed
-    }
-
-    pub async fn get_automations_for_backend(&self, backend_name: &str) -> Vec<Automation> {
-        self.automations
-            .read()
-            .await
-            .values()
-            .filter(|t| !t.is_global() && t.backend_name == backend_name)
-            .cloned()
-            .collect()
     }
 }
 
@@ -508,15 +495,7 @@ fn create_automation_struct(
     }
 
     let args = AutomationArgs {
-        params: ProfileParams {
-            remote_name: remote_name.to_string(),
-            profile_name: profile_name.to_string(),
-            backend_name: Some(backend_name.to_string()),
-            source: Some(Origin::Automation),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        },
+        source: Origin::Automation,
         src_paths,
         dst_paths,
     };
@@ -529,7 +508,14 @@ fn create_automation_struct(
     let changed_only = *automation_type != OperationType::Bisync
         && profile.app.watch_changed_only.unwrap_or(false);
     Some(scheduled(
-        Automation::new(id, *automation_type, args, backend_name),
+        Automation::new(
+            id,
+            Some(*automation_type),
+            remote_name.to_string(),
+            profile_name.to_string(),
+            args,
+            backend_name,
+        ),
         cron,
         (
             watch_enabled,
@@ -572,15 +558,7 @@ fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option
     let dst_paths: Vec<String> = first_text(rclone, DEST_KEYS).into_iter().collect();
 
     let args = AutomationArgs {
-        params: ProfileParams {
-            remote_name: qr.remote_name.clone(),
-            profile_name: qr.name.clone(),
-            backend_name: None,
-            source: Some(Origin::QuickRun),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        },
+        source: Origin::QuickRun,
         src_paths,
         dst_paths,
     };
@@ -594,7 +572,14 @@ fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option
         .and_then(Value::as_bool)
         .unwrap_or(false);
     Some(scheduled(
-        Automation::new(qr.id.clone(), qr.operation_type, args, backend_name),
+        Automation::new(
+            qr.id.clone(),
+            Some(qr.operation_type),
+            qr.remote_name.clone(),
+            qr.name.clone(),
+            args,
+            backend_name,
+        ),
         cron,
         (watch_enabled, watch_delay, watch_changed_only),
     ))
@@ -616,27 +601,22 @@ fn create_automation_from_workflow(
     } else {
         None
     };
-    let src_paths = if watch_enabled {
-        wf.watcher_paths()
-    } else {
-        vec![wf.name.clone()]
-    };
-    // A workflow has no remote and no destination; the automation model needs both filled in.
+    // A workflow is no single operation and has no remote or destination. Its only paths are
+    // the folders it watches: a schedule-only workflow has none.
     let args = AutomationArgs {
-        params: ProfileParams {
-            remote_name: "Workflow".to_string(),
-            profile_name: wf.name.clone(),
-            backend_name: None,
-            source: Some(Origin::Workflow),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        },
-        src_paths,
-        dst_paths: vec!["Workflow Engine".to_string()],
+        source: Origin::Workflow,
+        src_paths: wf.watcher_paths(),
+        dst_paths: Vec::new(),
     };
     Some(scheduled(
-        Automation::new(wf.id.clone(), OperationType::Sync, args, backend_name),
+        Automation::new(
+            wf.id.clone(),
+            None,
+            String::new(),
+            wf.name.clone(),
+            args,
+            backend_name,
+        ),
         cron,
         (watch_enabled, wf.watcher_debounce_seconds(), false),
     ))
@@ -728,7 +708,7 @@ mod tests {
             automation.remote_name = remote.into();
             automation.backend_name = backend.into();
             if global {
-                automation.args.params.source = Some(crate::utils::types::origin::Origin::QuickRun);
+                automation.args.source = crate::utils::types::origin::Origin::QuickRun;
             }
             cache.add_automation(automation).await.unwrap();
         }
@@ -993,7 +973,7 @@ mod tests {
         let automations = collect_automations_from_remote("b", "r", &settings);
         assert_eq!(automations.len(), 1);
         assert_eq!(automations[0].profile_name, "Cleanup");
-        assert_eq!(automations[0].automation_type, OperationType::Delete);
+        assert_eq!(automations[0].automation_type, Some(OperationType::Delete));
         assert_eq!(automations[0].args.src_paths, vec!["r:trash", "r:old"]);
         assert!(automations[0].args.dst_paths.is_empty());
     }
@@ -1009,7 +989,7 @@ mod tests {
             let automation =
                 create_automation_struct("b", "r", "cleanup", &OperationType::Delete, &cfg.build())
                     .expect("source-only Delete profiles must be schedulable");
-            assert_eq!(automation.automation_type, OperationType::Delete);
+            assert_eq!(automation.automation_type, Some(OperationType::Delete));
             assert_eq!(automation.args.src_paths, normalize_paths(Some(&source)));
             assert!(automation.args.dst_paths.is_empty());
         }
@@ -1076,13 +1056,13 @@ mod tests {
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
         assert_eq!(automation.cron_expression.as_deref(), Some("*/5 * * * *"));
-        assert_eq!(automation.automation_type, OperationType::Copy);
+        assert_eq!(automation.automation_type, Some(OperationType::Copy));
         assert!(automation.current_job_id.is_none());
 
         assert_eq!(automation.args.src_paths, vec!["/src".to_string()]);
         assert_eq!(automation.args.dst_paths, vec!["/dst".to_string()]);
-        assert_eq!(automation.args.params.remote_name, "remote");
-        assert_eq!(automation.args.params.profile_name, "daily");
+        assert_eq!(automation.remote_name, "remote");
+        assert_eq!(automation.profile_name, "daily");
     }
 
     #[test]
@@ -1210,26 +1190,17 @@ mod tests {
     fn base_automation() -> Automation {
         Automation {
             id: "b:r-sync-p".to_string(),
-            automation_type: OperationType::Sync,
+            automation_type: Some(OperationType::Sync),
             remote_name: "r".to_string(),
             profile_name: "p".to_string(),
             cron_expression: Some("* * * * *".to_string()),
             status: AutomationStatus::Enabled,
             args: AutomationArgs {
-                params: ProfileParams {
-                    remote_name: "r".to_string(),
-                    profile_name: "p".to_string(),
-                    backend_name: None,
-                    source: None,
-                    no_cache: None,
-                    scoped_targets: None,
-                    execute_id: None,
-                },
+                source: Origin::Automation,
                 src_paths: vec![],
                 dst_paths: vec![],
             },
             backend_name: "b".to_string(),
-            created_at: chrono::Utc::now(),
             last_run: None,
             next_run: None,
             last_error: None,
@@ -1285,7 +1256,7 @@ mod tests {
     async fn concurrent_triggers_grant_exactly_one_execution_and_keep_its_backend() {
         let cache = make_cache();
         let mut automation = base_automation();
-        automation.args.params.source = Some(crate::utils::types::origin::Origin::QuickRun);
+        automation.args.source = crate::utils::types::origin::Origin::QuickRun;
         let id = automation.id.clone();
         cache.add_automation(automation).await.unwrap();
         let (a, b) = tokio::join!(
@@ -1600,28 +1571,6 @@ mod tests {
         assert!(with_removal.has_changes());
     }
 
-    // get_automations_for_backend / prefix filtering
-
-    #[tokio::test]
-    async fn test_get_automations_for_backend_filters_correctly() {
-        let cache = make_cache();
-
-        let mut t1 = base_automation();
-        t1.id = "backend_a:remote-sync-p".to_string();
-        t1.backend_name = "backend_a".to_string();
-
-        let mut t2 = base_automation();
-        t2.id = "backend_b:remote-sync-p".to_string();
-        t2.backend_name = "backend_b".to_string();
-
-        cache.add_automation(t1).await.unwrap();
-        cache.add_automation(t2).await.unwrap();
-
-        let a_automations = cache.get_automations_for_backend("backend_a").await;
-        assert_eq!(a_automations.len(), 1);
-        assert_eq!(a_automations[0].backend_name, "backend_a");
-    }
-
     #[tokio::test]
     async fn deleting_global_definitions_after_switch_removes_their_automations() {
         let cache = make_cache();
@@ -1632,7 +1581,7 @@ mod tests {
             let mut automation = base_automation();
             automation.id = id.to_string();
             automation.backend_name = "A".to_string();
-            automation.args.params.source = Some(source);
+            automation.args.source = source;
             cache.add_automation(automation).await.unwrap();
         }
         assert!(cache.clear_backend_automations("A").await.is_empty());
@@ -1696,14 +1645,14 @@ mod tests {
             .iter()
             .find(|a| a.profile_name == "watcher_profile")
             .expect("watcher automation found");
-        assert_eq!(watcher.automation_type, OperationType::Sync);
+        assert_eq!(watcher.automation_type, Some(OperationType::Sync));
         assert!(watcher.watch_enabled);
 
         let scheduled = automations
             .iter()
             .find(|a| a.profile_name == "scheduled_profile")
             .expect("scheduled automation found");
-        assert_eq!(scheduled.automation_type, OperationType::Copy);
+        assert_eq!(scheduled.automation_type, Some(OperationType::Copy));
         assert_eq!(scheduled.cron_expression.as_deref(), Some("0 12 * * *"));
     }
 
@@ -1757,8 +1706,15 @@ mod tests {
         assert_eq!(a1.cron_expression.as_deref(), Some("0 3 * * *"));
         assert!(!a1.watch_enabled);
         assert_eq!(
-            a1.args.params.source,
-            Some(crate::utils::types::origin::Origin::Workflow)
+            a1.args.source,
+            crate::utils::types::origin::Origin::Workflow
+        );
+        assert!(a1.args.src_paths.is_empty() && a1.args.dst_paths.is_empty());
+        // A workflow is no single operation and has no remote.
+        assert!(a1.automation_type.is_none() && a1.remote_name.is_empty());
+        assert_eq!(
+            serde_json::to_value(&a1).unwrap()["automationType"],
+            serde_json::Value::Null
         );
 
         let auto2 = create_automation_from_workflow("local", &wf_without_cron);
@@ -1916,12 +1872,14 @@ mod tests {
         let automation = base_automation();
         let created = Automation::new(
             "id".into(),
-            OperationType::Sync,
+            Some(OperationType::Sync),
+            automation.remote_name.clone(),
+            automation.profile_name.clone(),
             automation.args.clone(),
             "backend",
         );
-        assert_eq!(created.remote_name, automation.args.params.remote_name);
-        assert_eq!(created.profile_name, automation.args.params.profile_name);
+        assert_eq!(created.remote_name, "r");
+        assert_eq!(created.profile_name, "p");
         assert_eq!(created.backend_name, "backend");
         assert_eq!(created.status, AutomationStatus::Enabled);
         assert!(created.cron_expression.is_none() && !created.watch_enabled);

@@ -23,8 +23,19 @@ export class AutomationService extends TauriBaseService {
     void this.refreshAutomations();
   }
 
+  /** Failures are reported through a notification, so callers need not. */
   async toggleAutomation(automationId: string): Promise<Automation> {
-    return this.invokeCommand<Automation>('toggle_automation', { automationId });
+    return this.invokeWithNotification<Automation>('toggle_automation', { automationId });
+  }
+
+  /** Starts the automation now. The backend reports why it cannot run; the notification shows it. */
+  runAutomation(automationId: string): Promise<void> {
+    return this.invokeWithNotification<void>('run_automation', { automationId });
+  }
+
+  /** Stops the run in progress. */
+  stopAutomation(automationId: string): Promise<void> {
+    return this.invokeWithNotification<void>('stop_automation', { automationId });
   }
 
   async validateCron(cronExpression: string): Promise<CronValidationResponse> {
