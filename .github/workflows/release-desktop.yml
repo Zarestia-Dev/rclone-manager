@@ -75,20 +75,6 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev patchelf xdg-utils
 
-      # The released CLI (2.12.4) cannot bundle an RPM for a SemVer pre-release such as
-      # 0.3.6-beta.1; the fix (tauri-apps/tauri#16336) is on dev and not released yet.
-      # TODO: once a tauri-cli newer than 2.12.4 is released (it contains a200fae13), delete this
-      # step and the `tauriScript` input of tauri-apps/tauri-action below.
-      - name: install tauri-cli with the RPM pre-release fix (Linux)
-        if: startsWith(matrix.platform, 'ubuntu')
-        run: |
-          cargo install tauri-cli \
-            --git https://github.com/tauri-apps/tauri \
-            --rev a200fae133970fc85a50c2ba30ac184769278d17 \
-            --locked \
-            --force
-          echo "tauri-cli version: $(cargo tauri --version)"
-
       - name: install frontend dependencies
         run: npm ci
 
@@ -105,8 +91,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: backend/desktop
-          # TODO: remove with the tauri-cli install step above (see its TODO).
-          tauriScript: ${{ startsWith(matrix.platform, 'ubuntu') && 'cargo tauri' || '' }}
           uploadUpdaterSignatures: false
           tagName: v__VERSION__
           releaseName: "RClone Manager v__VERSION__"

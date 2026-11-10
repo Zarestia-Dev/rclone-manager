@@ -4891,7 +4891,6 @@ dependencies = [
 [[package]]
 name = "rcman"
 version = "0.2.7"
-source = "git+https://github.com/Zarestia-Dev/rcman?rev=6500b99d6043a42244ed23b4e3716df6743a1004#6500b99d6043a42244ed23b4e3716df6743a1004"
 dependencies = [
  "aes-gcm",
  "android-native-keyring-store",
@@ -4924,7 +4923,6 @@ dependencies = [
 [[package]]
 name = "rcman-derive"
 version = "0.2.7"
-source = "git+https://github.com/Zarestia-Dev/rcman?rev=6500b99d6043a42244ed23b4e3716df6743a1004#6500b99d6043a42244ed23b4e3716df6743a1004"
 dependencies = [
  "proc-macro2",
  "quote",
