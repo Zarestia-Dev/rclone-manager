@@ -32,7 +32,12 @@ pub(crate) fn start(_app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     ))]
     {
         use tauri_plugin_deep_link::DeepLinkExt;
-        _app.deep_link().register_all()?;
+        // Best effort: registering the URL scheme runs the host's update-desktop-database and
+        // xdg-mime, which can fail (e.g. the AppImage's bundled glib shadows the host's, #342).
+        // Deep links are optional, so a failure must not stop the app from starting.
+        if let Err(error) = _app.deep_link().register_all() {
+            log::warn!("Could not register the deep-link scheme: {error}");
+        }
     }
 
     Ok(())
