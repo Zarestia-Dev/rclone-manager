@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Tray Missing After Session Start on KDE Plasma (Linux)**: When started by the desktop's autostart before the compositor was ready, the app crashed in GTK initialization (exit status 101) and never showed its tray icon. It now waits, for up to 60 seconds, for the Wayland or X display socket before starting; `--help`, `--version` and invalid arguments never wait, and neither does a session with no local socket to wait for, such as a remote `DISPLAY`. Thanks to [@nvandamme](https://github.com/nvandamme) for finding the cause and the fix! PR [#341](https://github.com/Zarestia-Dev/rclone-manager/pull/341)
 - **DEB and RPM In-App Updates (Linux)**: Installations from the `.deb` or `.rpm` package update in the app again, through the system password prompt (pkexec, zenity or kdialog); 0.3.4 had treated them as externally managed. AUR packages, which repackage the `.deb`, stay with the AUR. DEB and RPM installs are only offered newer versions, since `rpm` refuses downgrades.
 - **rclone Engine After a Failed Update**: When swapping in a downloaded rclone failed, the engine stayed stopped; the original binary now starts again. A failed check before the swap no longer reports a running engine as stopped.
 - **Remote rclone Updates**: Updating a remote backend's rclone no longer leaves "Restart to apply" showing, which also blocked later checks until the app restarted.
