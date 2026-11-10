@@ -365,6 +365,7 @@ mod tests {
             OperationType::Cryptcheck.as_job_type(),
             Some(JobType::CryptCheck)
         );
+        assert_eq!(OperationType::Index.as_job_type(), Some(JobType::Index));
     }
 
     #[test]

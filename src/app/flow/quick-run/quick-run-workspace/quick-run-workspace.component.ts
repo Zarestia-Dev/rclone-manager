@@ -168,6 +168,10 @@ export class QuickRunWorkspaceComponent {
     await this.remoteFacade.emptyTrash(remote);
   }
 
+  async generateIndex(remote: Remote): Promise<void> {
+    await this.remoteFacade.generateRemoteIndex(remote);
+  }
+
   async cloneRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
     const remote = this.remoteFacade.getRemote(remoteName);

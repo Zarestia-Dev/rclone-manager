@@ -1386,5 +1386,41 @@
   "dest_after": {
     "title": "İşlem Sonrası Hedef",
     "help": "İşlemden sonra hedefte bulunan tüm dosyaları raporla."
+  },
+  "index_output": {
+    "title": "Liste biçimleri",
+    "help": "Her klasöre hangi listelerin yazılacağı."
+  },
+  "index_max_depth": {
+    "title": "En fazla derinlik",
+    "help": "Listeleri yalnızca bu kadar klasör seviyesine yazar; bu klasör 1 sayılır. Sınırsız için -1 bırakın."
+  },
+  "index_include_rule": {
+    "title": "Yalnızca bu klasörler",
+    "help": "Listeleri yalnızca bir desenle eşleşen klasörlere yazar, örneğin /docs/**. Diğer klasörlere dokunulmaz ama üst klasörün listesinde yine görünürler."
+  },
+  "index_exclude_rule": {
+    "title": "Bu klasörleri atla",
+    "help": "Bir desenle eşleşen klasörlerde hiçbir şey yazılmaz veya silinmez, örneğin /private/**. Kendi index'i olan bir klasörü korumak için kullanın."
+  },
+  "index_dir_time": {
+    "title": "Klasör zamanı",
+    "help": "Klasörün yanında gösterilen zaman."
+  },
+  "index_no_mod_time": {
+    "title": "Değiştirilme zamanlarını gizle",
+    "help": "Hiç zaman göstermez. S3, Swift ve Oracle'da her nesne için ayrı istek gerektiğinden en ucuz seçenektir."
+  },
+  "index_link_index": {
+    "title": "Index dosyasına bağla",
+    "help": "Klasör bağlantılarını dir/ yerine dir/index.html olarak yazar; index belgesi sunmayan sunucular için (düz S3 URL'leri, B2 friendly URL'leri)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Yükleme zamanını kullan",
+    "help": "Değiştirilme zamanı yerine nesnenin yüklendiği zamanı gösterir. S3'te nesne başına isteği önler ve web sunucusunun Last-Modified olarak gönderdiği zamandır."
+  },
+  "index_rewrite": {
+    "title": "Değişmeyen listeleri yeniden yaz",
+    "help": "Değişmemiş olsa bile her listeyi yazar; örneğin yeni başlık veya meta veri uygulamak için."
   }
 }

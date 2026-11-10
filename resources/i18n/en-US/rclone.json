@@ -1386,5 +1386,41 @@
   "dest_after": {
     "title": "Destination After",
     "help": "Report all files that exist on the destination after the operation."
+  },
+  "index_output": {
+    "title": "Listing formats",
+    "help": "Which listings are written in every folder."
+  },
+  "index_max_depth": {
+    "title": "Maximum depth",
+    "help": "Only write listings this many folder levels deep, counting this folder as 1. Keep -1 for no limit."
+  },
+  "index_include_rule": {
+    "title": "Only these folders",
+    "help": "Only write listings in folders matching a pattern, for example /docs/**. Other folders are left alone but still appear in their parent's listing."
+  },
+  "index_exclude_rule": {
+    "title": "Skip these folders",
+    "help": "Write and delete nothing in folders matching a pattern, for example /private/**. Use it to protect a folder that has its own index."
+  },
+  "index_dir_time": {
+    "title": "Folder time",
+    "help": "The time shown next to a folder."
+  },
+  "index_no_mod_time": {
+    "title": "Hide modification times",
+    "help": "Show no times at all. This is the cheapest option on S3, Swift and Oracle, where every object otherwise needs its own request."
+  },
+  "index_link_index": {
+    "title": "Link to the index file",
+    "help": "Link folders as dir/index.html instead of dir/, for hosts that do not serve index documents (plain S3 URLs, B2 friendly URLs)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Use upload time",
+    "help": "Show the time an object was uploaded instead of its modification time. This avoids a request per object on S3 and is what the web server sends as Last-Modified."
+  },
+  "index_rewrite": {
+    "title": "Rewrite unchanged listings",
+    "help": "Write every listing even if it has not changed, for example to apply new headers or metadata."
   }
 }

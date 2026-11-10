@@ -115,7 +115,9 @@
     "toggleCopyurl": "URL Kopyalamayı Hızlı Eylem Olarak Değiştir",
     "toggleArchivecreate": "Arşivi Hızlı Eylem Olarak Değiştir",
     "successStart": "{{remote}} ({{profile}}) için {{type}} başarıyla başlatıldı",
-    "failedStart": "{{remote}} için {{type}} başlatılamadı: {{error}}"
+    "failedStart": "{{remote}} için {{type}} başlatılamadı: {{error}}",
+    "indexActive": "Dizin Listeleri Etkin",
+    "toggleIndex": "Dizin Listelerini Hızlı Eylem Olarak Değiştir"
   },
   "serve": {
     "noActive": "Aktif sunum yok",
@@ -182,7 +184,8 @@
     "cryptcheck": "Şifreli Denetim",
     "serve": "Sun",
     "start": "Başlat",
-    "stop": "Durdur"
+    "stop": "Durdur",
+    "index": "Dizin Listeleri"
   },
   "sidebar": {
     "toggleSidebar": "Kenar Çubuğunu Aç/Kapat",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "Simülasyon etkin - hiçbir değişiklik yapılmayacak",
       "resync": "Yeniden Senkronize Et",
       "resyncActive": "Yeniden senkronizasyon etkin - tam yeniden senkronizasyon gerçekleştiriliyor",
-      "remoteSettings": "Uzak Bağlantı Ayarları"
+      "remoteSettings": "Uzak Bağlantı Ayarları",
+      "indexSettings": "Dizin Listeleri Ayarları",
+      "index": "Dizin Listeleri",
+      "indexDesc": "Statik web siteleri için klasörlere göz atılabilir listeler yazar"
     },
     "generalDetail": {
       "automations": "Otomasyonlar",
@@ -2531,7 +2537,8 @@
         "filter": "Filtreleme",
         "vfs": "VFS",
         "backend": "Arka Uç",
-        "runtimeRemote": "Çalışma Zamanı"
+        "runtimeRemote": "Çalışma Zamanı",
+        "index": "Dizin Listeleri"
       },
       "advancedProfiles": {
         "title": "Gelişmiş Profiller",
@@ -2909,44 +2916,6 @@
           "newest": "Altındaki en yeni dosya",
           "dir": "Klasörün kendi zamanı",
           "none": "Zaman yok"
-        },
-        "fields": {
-          "formats": {
-            "label": "Liste biçimleri",
-            "help": "Her klasöre hangi listelerin yazılacağı."
-          },
-          "maxDepth": {
-            "label": "En fazla derinlik",
-            "help": "Listeleri yalnızca bu kadar klasör seviyesine yazar; bu klasör 1 sayılır. Sınırsız için -1 bırakın."
-          },
-          "includePatterns": {
-            "label": "Yalnızca bu klasörler",
-            "help": "Listeleri yalnızca bir desenle eşleşen klasörlere yazar, örneğin /docs/**. Diğer klasörlere dokunulmaz ama üst klasörün listesinde yine görünürler."
-          },
-          "excludePatterns": {
-            "label": "Bu klasörleri atla",
-            "help": "Bir desenle eşleşen klasörlerde hiçbir şey yazılmaz veya silinmez, örneğin /private/**. Kendi index'i olan bir klasörü korumak için kullanın."
-          },
-          "dirTime": {
-            "label": "Klasör zamanı",
-            "help": "Klasörün yanında gösterilen zaman."
-          },
-          "noModTime": {
-            "label": "Değiştirilme zamanlarını gizle",
-            "help": "Hiç zaman göstermez. S3, Swift ve Oracle'da her nesne için ayrı istek gerektiğinden en ucuz seçenektir."
-          },
-          "linkIndex": {
-            "label": "Index dosyasına bağla",
-            "help": "Klasör bağlantılarını dir/ yerine dir/index.html olarak yazar; index belgesi sunmayan sunucular için (düz S3 URL'leri, B2 friendly URL'leri)."
-          },
-          "useServerModTime": {
-            "label": "Yükleme zamanını kullan",
-            "help": "Değiştirilme zamanı yerine nesnenin yüklendiği zamanı gösterir. S3'te nesne başına isteği önler ve web sunucusunun Last-Modified olarak gönderdiği zamandır."
-          },
-          "rewrite": {
-            "label": "Değişmeyen listeleri yeniden yaz",
-            "help": "Değişmemiş olsa bile her listeyi yazar; örneğin yeni başlık veya meta veri uygulamak için."
-          }
         }
       }
     },
@@ -2971,8 +2940,7 @@
       "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
       "sendToFailed": "Dosya yöneticisi sağ tık menüsü güncellenemedi: {{error}}",
       "noRemoteSelected": "Lütfen önce bir uzak depoya gidin.",
-      "indexFailed": "Dizin listeleri yazılamadı: {{error}}",
-      "indexUnsupported": "Bu rclone sürümü dizin listesi yazamıyor. Bu özelliği kullanmak için rclone'u güncelleyin."
+      "indexFailed": "Dizin listeleri yazılamadı: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
@@ -3616,7 +3584,9 @@
         "startArchivecreate": "Arşivlemeyi Başlat",
         "stopArchivecreate": "Arşivlemeyi Durdur",
         "startServe": "Sunucuyu Başlat",
-        "stopServe": "Sunucuyu Durdur"
+        "stopServe": "Sunucuyu Durdur",
+        "startIndex": "Dizin Listeleri Oluştur",
+        "stopIndex": "Dizin Listelerini Durdur"
       },
       "browse": "Dosyalara Gözat",
       "emptyState": {
@@ -3660,7 +3630,8 @@
     "tooltipMount": "1 Bağlama",
     "tooltipMounts": "{{count}} Bağlama",
     "tooltipServe": "1 Sunucu",
-    "tooltipServes": "{{count}} Sunucu"
+    "tooltipServes": "{{count}} Sunucu",
+    "indexCount": "Dizin Listeleri [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Aktif işlemler devam ediyor: {{details}}",

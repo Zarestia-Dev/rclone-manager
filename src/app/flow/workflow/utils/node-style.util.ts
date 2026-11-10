@@ -54,12 +54,6 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
     titleKey: 'flow.workflow.nodes.cleanup',
     descriptionKey: 'flow.workflow.nodes.cleanupDesc',
   },
-  cryptcheck: {
-    icon: 'shield',
-    tone: 'accent',
-    titleKey: 'flow.workflow.nodes.cryptcheck',
-    descriptionKey: 'flow.workflow.nodes.cryptcheckDesc',
-  },
   exec_script: {
     icon: 'terminal',
     tone: 'purple',
@@ -198,18 +192,9 @@ export function getNotificationIcon(kind?: string): string {
   }
 }
 
+/** Every operation node, plus the nodes that are not operations. */
 const NODES_WITH_DETAILED_CONFIG = new Set<string>([
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-  'check',
-  'delete',
-  'copyurl',
-  'archivecreate',
-  'cryptcheck',
-  'mount',
-  'serve',
+  ...OPERATION_REGISTRY.map(op => op.key),
   'cron',
   'schedule_wait',
   'rc_command',

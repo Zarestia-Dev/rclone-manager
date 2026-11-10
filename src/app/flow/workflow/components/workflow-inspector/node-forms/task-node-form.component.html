@@ -37,7 +37,7 @@
     </div>
 
     <!-- Destination / Mount Point / Serve Address -->
-    @if (node().type !== 'delete') {
+    @if (hasDestination()) {
       <div class="summary-prop-row">
         <span class="prop-label">{{
           (node().type === 'mount'

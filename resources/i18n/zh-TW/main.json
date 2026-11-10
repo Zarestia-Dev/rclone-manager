@@ -115,7 +115,9 @@
     "toggleCopyurl": "切換複製 URL 為快捷操作",
     "toggleArchivecreate": "切換封存為快捷操作",
     "successStart": "成功為 {{remote}} ({{profile}}) 啟動了 {{type}}",
-    "failedStart": "無法為 {{remote}} 啟動 {{type}}：{{error}}"
+    "failedStart": "無法為 {{remote}} 啟動 {{type}}：{{error}}",
+    "indexActive": "目錄清單進行中",
+    "toggleIndex": "切換目錄清單為快捷操作"
   },
   "serve": {
     "noActive": "無正在執行的服務",
@@ -182,7 +184,8 @@
     "cryptcheck": "加密檢查",
     "serve": "提供服務 (Serve)",
     "start": "啟動",
-    "stop": "停止"
+    "stop": "停止",
+    "index": "目錄清單"
   },
   "sidebar": {
     "toggleSidebar": "切換側邊欄",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "模擬執行已啟用 — 不會進行任何更改",
       "resync": "重新同步",
       "resyncActive": "重新同步已啟用 — 正在執行完整重新同步",
-      "remoteSettings": "遠端設定"
+      "remoteSettings": "遠端設定",
+      "indexSettings": "目錄清單設定",
+      "index": "目錄清單",
+      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站"
     },
     "generalDetail": {
       "automations": "自動化",
@@ -2531,7 +2537,8 @@
         "filter": "過濾",
         "vfs": "VFS",
         "backend": "後端",
-        "runtimeRemote": "執行時遠端"
+        "runtimeRemote": "執行時遠端",
+        "index": "目錄清單"
       },
       "advancedProfiles": {
         "title": "進階設定檔案",
@@ -2909,44 +2916,6 @@
           "newest": "其中最新的檔案",
           "dir": "資料夾本身的時間",
           "none": "不顯示時間"
-        },
-        "fields": {
-          "formats": {
-            "label": "清單格式",
-            "help": "在每個資料夾中寫入哪些清單。"
-          },
-          "maxDepth": {
-            "label": "最大深度",
-            "help": "只寫入到此層數的清單，目前資料夾算第 1 層。保持 -1 表示不限制。"
-          },
-          "includePatterns": {
-            "label": "僅這些資料夾",
-            "help": "只在符合模式（例如 /docs/**）的資料夾中寫入清單。其他資料夾不會被更動，但仍會顯示在其上層資料夾的清單中。"
-          },
-          "excludePatterns": {
-            "label": "略過這些資料夾",
-            "help": "在符合模式（例如 /private/**）的資料夾中不寫入也不刪除任何內容。用於保護有自己索引的資料夾。"
-          },
-          "dirTime": {
-            "label": "資料夾時間",
-            "help": "顯示在資料夾旁的時間。"
-          },
-          "noModTime": {
-            "label": "隱藏修改時間",
-            "help": "完全不顯示時間。在 S3、Swift 和 Oracle 上這是最省的選項，否則每個物件都需要單獨請求。"
-          },
-          "linkIndex": {
-            "label": "連結到索引檔案",
-            "help": "將資料夾連結寫為 dir/index.html 而非 dir/，適用於不提供索引文件的主機（一般 S3 URL、B2 友善 URL）。"
-          },
-          "useServerModTime": {
-            "label": "使用上傳時間",
-            "help": "顯示物件的上傳時間而非修改時間。這樣可避免在 S3 上對每個物件發出請求，也與網頁伺服器送出的 Last-Modified 相同。"
-          },
-          "rewrite": {
-            "label": "重寫未變更的清單",
-            "help": "即使未變更也寫入所有清單，例如為了套用新的標頭或中繼資料。"
-          }
         }
       }
     },
@@ -2971,8 +2940,7 @@
       "externalDropFailed": "處理外部檔案拖放失敗。",
       "sendToFailed": "更新檔案瀏覽器右鍵選單失敗：{{error}}",
       "noRemoteSelected": "請先導航至一個遠端連線。",
-      "indexFailed": "寫入目錄清單失敗：{{error}}",
-      "indexUnsupported": "此版本的 rclone 無法寫入目錄清單。請更新 rclone 以使用此功能。"
+      "indexFailed": "寫入目錄清單失敗：{{error}}"
     },
     "contextMenu": {
       "open": "開啟",
@@ -3616,7 +3584,9 @@
         "startArchivecreate": "開始封存",
         "stopArchivecreate": "停止封存",
         "startServe": "啟動服務",
-        "stopServe": "停止服務"
+        "stopServe": "停止服務",
+        "startIndex": "開始產生目錄清單",
+        "stopIndex": "停止產生目錄清單"
       },
       "browse": "瀏覽檔案",
       "emptyState": {
@@ -3660,7 +3630,8 @@
     "tooltipMounts": "{{count}} 個掛載",
     "tooltipServe": "1 個服務",
     "tooltipServes": "{{count}} 個服務",
-    "workflowsCount": "工作流程 [{{active}}/{{total}}]"
+    "workflowsCount": "工作流程 [{{active}}/{{total}}]",
+    "indexCount": "目錄清單 [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "正在執行活動操作：{{details}}",

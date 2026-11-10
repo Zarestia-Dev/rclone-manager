@@ -11,7 +11,8 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
+import { firstValueFrom, merge } from 'rxjs';
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { VaultService } from '../security/vault.service';
 import { areJobListsEqual, JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
@@ -28,10 +29,12 @@ import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
 import { NotificationService } from '../ui/notification.service';
+import { ModalService } from '../ui/modal.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import { retargetProfilesRemote } from '../remote/utils/profile-mapper.utils';
 import {
+  ConfigValue,
   Remote,
   JobActionType,
   RemoteSettings,
@@ -87,6 +90,7 @@ export class RemoteFacadeService {
   private readonly pathService = inject(PathService);
   private readonly statusService = inject(RcloneStatusService);
   private readonly notificationService = inject(NotificationService);
+  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
 
   private readonly vault = inject(VaultService);
@@ -448,11 +452,7 @@ export class RemoteFacadeService {
     if (!confirmed || scope.signal.aborted) return false;
 
     try {
-      const isLocal = remote.isLocal ?? false;
-      const normalized = isLocal
-        ? remote.name
-        : this.pathService.normalizeRemoteForRclone(remote.name);
-      await this.remoteOpsService.cleanup(normalized, undefined, origin);
+      await this.remoteOpsService.cleanup(this.rootOf(remote), undefined, origin);
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.trashEmptied')
       );
@@ -465,6 +465,48 @@ export class RemoteFacadeService {
       );
       return false;
     }
+  }
+
+  /** The root rclone knows a remote by: a local path as it is, a remote with its colon. */
+  private rootOf(remote: { name: string; isLocal?: boolean }): string {
+    return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
+  }
+
+  /**
+   * Asks how to list `path` of `root` (a local path, or a remote with its colon) and writes the
+   * listings. Returns true once they are written.
+   */
+  async generateIndex(root: string, path: string, origin: Origin): Promise<boolean> {
+    const scope = this.scope;
+    const ref = this.modalService.openIndexCreate<Record<string, ConfigValue>>({
+      target: pathUtils.joinPath(root, path),
+    });
+    const options = await firstValueFrom(ref.afterClosed());
+    // The backend that was shown when the dialog opened is not the one to write to anymore.
+    if (!options || scope.signal.aborted) return false;
+
+    try {
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.indexStarted')
+      );
+      await this.remoteOpsService.generateIndex(root, path, options, origin);
+      return true;
+    } catch (e) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.indexFailed', {
+          error: (e as Error).message || String(e),
+        })
+      );
+      return false;
+    }
+  }
+
+  /** The same for the whole of a remote. */
+  generateRemoteIndex(
+    remote: { name: string; isLocal?: boolean },
+    origin: Origin = 'dashboard'
+  ): Promise<boolean> {
+    return this.generateIndex(this.rootOf(remote), '', origin);
   }
 
   /** Asks for confirmation, then deletes the saved settings (profiles, automations) of a remote. */

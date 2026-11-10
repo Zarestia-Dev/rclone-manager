@@ -115,7 +115,9 @@
     "toggleCopyurl": "切换复制 URL 为快捷操作",
     "toggleArchivecreate": "切换归档为快捷操作",
     "successStart": "成功为 {{remote}} ({{profile}}) 启动了 {{type}}",
-    "failedStart": "无法为 {{remote}} 启动 {{type}}：{{error}}"
+    "failedStart": "无法为 {{remote}} 启动 {{type}}：{{error}}",
+    "indexActive": "目录列表进行中",
+    "toggleIndex": "切换目录列表为快捷操作"
   },
   "serve": {
     "noActive": "无正在运行的服务",
@@ -182,7 +184,8 @@
     "cryptcheck": "加密检查",
     "serve": "服务",
     "start": "启动",
-    "stop": "停止"
+    "stop": "停止",
+    "index": "目录列表"
   },
   "sidebar": {
     "toggleSidebar": "切换侧边栏",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "模拟运行已激活 — 不会进行任何更改",
       "resync": "重新同步",
       "resyncActive": "重新同步已激活 — 正在执行完整重新同步",
-      "remoteSettings": "远程设置"
+      "remoteSettings": "远程设置",
+      "indexSettings": "目录列表设置",
+      "index": "目录列表",
+      "indexDesc": "在文件夹中写入可浏览的列表，用于静态网站"
     },
     "generalDetail": {
       "automations": "自动化",
@@ -2490,7 +2496,8 @@
         "filter": "过滤",
         "vfs": "VFS",
         "backend": "后端",
-        "runtimeRemote": "运行时远程"
+        "runtimeRemote": "运行时远程",
+        "index": "目录列表"
       },
       "advancedProfiles": {
         "title": "高级配置文件",
@@ -2868,44 +2875,6 @@
           "newest": "其中最新的文件",
           "dir": "文件夹自身的时间",
           "none": "不显示时间"
-        },
-        "fields": {
-          "formats": {
-            "label": "列表格式",
-            "help": "在每个文件夹中写入哪些列表。"
-          },
-          "maxDepth": {
-            "label": "最大深度",
-            "help": "只写入到该层数的列表，当前文件夹算第 1 层。保持 -1 表示不限制。"
-          },
-          "includePatterns": {
-            "label": "仅这些文件夹",
-            "help": "只在匹配模式（例如 /docs/**）的文件夹中写入列表。其他文件夹不会被改动，但仍会显示在其上级文件夹的列表中。"
-          },
-          "excludePatterns": {
-            "label": "跳过这些文件夹",
-            "help": "在匹配模式（例如 /private/**）的文件夹中不写入也不删除任何内容。用于保护带有自己索引的文件夹。"
-          },
-          "dirTime": {
-            "label": "文件夹时间",
-            "help": "显示在文件夹旁边的时间。"
-          },
-          "noModTime": {
-            "label": "隐藏修改时间",
-            "help": "完全不显示时间。在 S3、Swift 和 Oracle 上这是最省的选项，否则每个对象都需要单独请求。"
-          },
-          "linkIndex": {
-            "label": "链接到索引文件",
-            "help": "将文件夹链接写为 dir/index.html 而不是 dir/，适用于不提供索引文档的主机（普通 S3 URL、B2 友好 URL）。"
-          },
-          "useServerModTime": {
-            "label": "使用上传时间",
-            "help": "显示对象的上传时间而不是修改时间。这样可避免在 S3 上对每个对象发起请求，也与网页服务器发送的 Last-Modified 一致。"
-          },
-          "rewrite": {
-            "label": "重写未更改的列表",
-            "help": "即使未更改也写入所有列表，例如为了应用新的标头或元数据。"
-          }
         }
       }
     },
@@ -2930,8 +2899,7 @@
       "externalDropFailed": "处理外部文件拖放失败。",
       "sendToFailed": "更新文件管理器右键菜单失败：{{error}}",
       "noRemoteSelected": "请先导航至一个远程存储。",
-      "indexFailed": "写入目录列表失败：{{error}}",
-      "indexUnsupported": "此版本的 rclone 无法写入目录列表。请更新 rclone 以使用此功能。"
+      "indexFailed": "写入目录列表失败：{{error}}"
     },
     "contextMenu": {
       "open": "打开",
@@ -3575,7 +3543,9 @@
         "startArchivecreate": "开始归档",
         "stopArchivecreate": "停止归档",
         "startServe": "启动服务",
-        "stopServe": "停止服务"
+        "stopServe": "停止服务",
+        "startIndex": "开始生成目录列表",
+        "stopIndex": "停止生成目录列表"
       },
       "browse": "浏览文件",
       "emptyState": {
@@ -3619,7 +3589,8 @@
     "tooltipMounts": "{{count}} 个挂载",
     "tooltipServe": "1 个服务",
     "tooltipServes": "{{count}} 个服务",
-    "workflowsCount": "工作流 [{{active}}/{{total}}]"
+    "workflowsCount": "工作流 [{{active}}/{{total}}]",
+    "indexCount": "目录列表 [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "正在运行活动操作：{{details}}",

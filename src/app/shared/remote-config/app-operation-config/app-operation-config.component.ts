@@ -32,15 +32,14 @@ import {
   EditTarget,
   FileBrowserItem,
   FilePickerSelection,
-  CORE_COMMAND_OPS,
-  WATCH_SUPPORTED_OPS,
   CORE_SYNC_OPS,
-  MULTI_SOURCE_OPS,
-  FILE_SOURCE_OPS,
   type PathGroup,
   type PathInspectionStatus,
   type DefaultPathOp,
   type PillTone,
+  isSourceOnlyOperation,
+  operationHas,
+  type OperationFlag,
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -194,7 +193,7 @@ export class OperationConfigComponent {
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
-  readonly isCoreCommandOp = computed(() => this.isOperationInList(CORE_COMMAND_OPS));
+  readonly isCoreCommandOp = computed(() => this.hasFlag('coreCommand'));
   readonly otherRemotes = computed(() =>
     this.existingRemotes().filter(r => r !== this.currentRemoteName())
   );
@@ -203,7 +202,7 @@ export class OperationConfigComponent {
   private readonly pathVersion = signal(0);
 
   readonly isWatchSupported = computed(
-    () => this.backendService.isLocalBackend() && this.isOperationInList(WATCH_SUPPORTED_OPS)
+    () => this.backendService.isLocalBackend() && this.hasFlag('watchable')
   );
 
   readonly sourceItems = computed(() => {
@@ -311,7 +310,8 @@ export class OperationConfigComponent {
   );
   readonly showDestPath = computed(
     () =>
-      !['serve', 'delete'].includes(this.operationType() as string) &&
+      this.operationType() !== 'serve' &&
+      !isSourceOnlyOperation(this.operationType() as string) &&
       !(this.isMount() && this.isLocalMobileSafMount()) &&
       this.matchesSearch(
         ['dest', 'destination', 'path', 'output', 'target'],
@@ -319,8 +319,8 @@ export class OperationConfigComponent {
       )
   );
 
-  readonly canAddSource = computed(() => this.isOperationInList(MULTI_SOURCE_OPS));
-  readonly supportsFileSource = computed(() => this.isOperationInList(FILE_SOURCE_OPS));
+  readonly canAddSource = computed(() => this.hasFlag('multiSource'));
+  readonly supportsFileSource = computed(() => this.hasFlag('fileSource'));
 
   isItemPickerDisabled(item: PathItem): boolean {
     if (!this.isNewRemote()) return false;
@@ -572,6 +572,10 @@ export class OperationConfigComponent {
 
   private isOperationInList(list: readonly string[]): boolean {
     return list.includes(this.operationType() as string);
+  }
+
+  private hasFlag(flag: OperationFlag): boolean {
+    return operationHas(this.operationType() as string, flag);
   }
 
   private getPathItems(group: PathDirection): PathItem[] {

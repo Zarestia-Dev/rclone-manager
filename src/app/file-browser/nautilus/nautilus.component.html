@@ -37,6 +37,7 @@
       (sidenavAction)="onSidebarSidenavAction($event)"
       (requestAbout)="actions.openAboutModal($event)"
       (requestCleanup)="actions.confirmAndCleanup($event)"
+      (requestIndex)="actions.openIndex($event, '')"
       (remoteOpenedInNewTab)="tabSvc.createTab($event, '')"
       (remoteOpenedInNewWindow)="nautilusService.openStandaloneWindow($event.name, '')"
       (bookmarkOpenedInNewTab)="actions.openBookmarkInNewTab($event)"

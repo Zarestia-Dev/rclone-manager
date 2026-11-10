@@ -34,6 +34,7 @@ export const OPERATION_PATH_MAPPINGS: Partial<Record<SharedProfileType, PathMapp
   cryptcheck: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
   bisync: { sourceKey: 'path1', destKey: 'path2' },
   delete: { sourceKey: 'srcFs', isSourceArray: true },
+  index: { sourceKey: 'srcFs', isSourceArray: true },
   copyurl: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
 };
 

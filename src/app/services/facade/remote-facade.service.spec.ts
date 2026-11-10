@@ -3,7 +3,7 @@ import { ApiClientService } from '../infrastructure/platform/api-client.service'
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal, computed, WritableSignal } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, from, of } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
 import { RemoteFeatures, VaultStatePayload, JobInfo } from '@app/types';
 import { VaultService } from '../security/vault.service';
@@ -138,6 +138,7 @@ describe('RemoteFacadeService', () => {
           useValue: {
             getDiskUsage: vi.fn().mockResolvedValue({ total: 1000, used: 200, free: 800 }),
             cleanup: vi.fn().mockResolvedValue(undefined),
+            generateIndex: vi.fn().mockResolvedValue(undefined),
           },
         },
         { provide: AppSettingsService, useValue: mockAppSettingsService },
@@ -222,7 +223,7 @@ describe('RemoteFacadeService', () => {
         },
         {
           provide: ModalService,
-          useValue: {},
+          useValue: { openIndexCreate: vi.fn() },
         },
       ],
     });
@@ -719,6 +720,84 @@ describe('RemoteFacadeService', () => {
     confirm(true);
     expect(await cleanup).toBe(false);
     expect(TestBed.inject(RemoteFileOperationsService).cleanup).not.toHaveBeenCalled();
+  });
+
+  describe('generateIndex', () => {
+    const options = { output: ['index.html=html'], maxDepth: 2 };
+    const dialog = (result: unknown): void => {
+      vi.mocked(TestBed.inject(ModalService).openIndexCreate).mockReturnValue({
+        afterClosed: () => of(result),
+      } as never);
+    };
+    const writeIndex = (): ReturnType<typeof vi.fn> =>
+      vi.mocked(TestBed.inject(RemoteFileOperationsService).generateIndex) as ReturnType<
+        typeof vi.fn
+      >;
+
+    it('writes the listings of the folder with what the dialog returned', async () => {
+      dialog(options);
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(true);
+
+      expect(TestBed.inject(ModalService).openIndexCreate).toHaveBeenCalledWith({
+        target: 'drive:/site',
+      });
+      expect(writeIndex()).toHaveBeenCalledExactlyOnceWith(
+        'drive:',
+        'site',
+        options,
+        'filemanager'
+      );
+      expect(TestBed.inject(NotificationService).showInfo).toHaveBeenCalledWith(
+        'nautilus.notifications.indexStarted'
+      );
+    });
+
+    it('does nothing when the dialog is dismissed', async () => {
+      dialog(undefined);
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(false);
+
+      expect(writeIndex()).not.toHaveBeenCalled();
+    });
+
+    it('does not write to a different backend after the dialog was opened', async () => {
+      let close!: (value: unknown) => void;
+      vi.mocked(TestBed.inject(ModalService).openIndexCreate).mockReturnValue({
+        afterClosed: () => from(new Promise(resolve => (close = resolve))),
+      } as never);
+
+      const run = service.generateIndex('drive:', 'site', 'filemanager');
+      backendSwitched$.next();
+      close(options);
+
+      expect(await run).toBe(false);
+      expect(writeIndex()).not.toHaveBeenCalled();
+    });
+
+    it('reports a failed run once', async () => {
+      dialog(options);
+      writeIndex().mockRejectedValueOnce(new Error('denied'));
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(false);
+
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledExactlyOnceWith(
+        'nautilus.errors.indexFailed'
+      );
+    });
+
+    it('lists a whole remote under its colon and a local folder as it is', async () => {
+      dialog(options);
+
+      await service.generateRemoteIndex({ name: 'drive' });
+      await service.generateRemoteIndex({ name: '/home/me/site', isLocal: true }, 'filemanager');
+
+      expect(writeIndex().mock.calls.map(call => call.slice(0, 2))).toEqual([
+        ['drive:', ''],
+        ['/home/me/site', ''],
+      ]);
+      expect(writeIndex().mock.calls.map(call => call[3])).toEqual(['dashboard', 'filemanager']);
+    });
   });
 
   describe('resetSettings', () => {

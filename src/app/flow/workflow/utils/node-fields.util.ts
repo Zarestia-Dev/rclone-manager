@@ -85,6 +85,7 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
       return [...getNodeFieldsForType('bisync'), ...createTokenFields(['reportCounts', 'reports'])];
     case 'bisync':
     case 'delete':
+    case 'index':
     case 'copyurl':
     case 'archivecreate':
       return createTokenFields([

@@ -115,7 +115,9 @@
     "toggleCopyurl": "Alternar Copiar URL como acción rápida",
     "toggleArchivecreate": "Alternar Archivo como acción rápida",
     "successStart": "Se inició correctamente {{type}} para {{remote}} ({{profile}})",
-    "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}"
+    "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}",
+    "indexActive": "Listados de directorio activos",
+    "toggleIndex": "Alternar Listados de directorio como acción rápida"
   },
   "serve": {
     "noActive": "Sin servicios activos",
@@ -182,7 +184,8 @@
     "cryptcheck": "Verificación cifrada",
     "serve": "Servir",
     "start": "Iniciar",
-    "stop": "Detener"
+    "stop": "Detener",
+    "index": "Listados de directorio"
   },
   "sidebar": {
     "toggleSidebar": "Alternar barra lateral",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "Simulacro activo: no se realizarán cambios",
       "resync": "Resincronizar",
       "resyncActive": "Resincronización activa: realizando resincronización completa",
-      "remoteSettings": "Ajustes de remoto"
+      "remoteSettings": "Ajustes de remoto",
+      "indexSettings": "Ajustes de listados de directorio",
+      "index": "Listados de directorio",
+      "indexDesc": "Escribe listados navegables en las carpetas para sitios web estáticos"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -2490,7 +2496,8 @@
         "filter": "Filtrar",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Remoto en tiempo de ejecución"
+        "runtimeRemote": "Remoto en tiempo de ejecución",
+        "index": "Listados de directorio"
       },
       "advancedProfiles": {
         "title": "Perfiles avanzados",
@@ -2868,44 +2875,6 @@
           "newest": "Archivo más reciente dentro",
           "dir": "La fecha propia de la carpeta",
           "none": "Sin fecha"
-        },
-        "fields": {
-          "formats": {
-            "label": "Formatos de listado",
-            "help": "Qué listados se escriben en cada carpeta."
-          },
-          "maxDepth": {
-            "label": "Profundidad máxima",
-            "help": "Solo escribe listados hasta este número de niveles, contando esta carpeta como 1. Deja -1 para no limitar."
-          },
-          "includePatterns": {
-            "label": "Solo estas carpetas",
-            "help": "Solo escribe listados en las carpetas que coinciden con un patrón, por ejemplo /docs/**. Las demás carpetas no se tocan, pero siguen apareciendo en el listado de su carpeta superior."
-          },
-          "excludePatterns": {
-            "label": "Omitir estas carpetas",
-            "help": "No escribe ni borra nada en las carpetas que coinciden con un patrón, por ejemplo /private/**. Úsalo para proteger una carpeta con su propio índice."
-          },
-          "dirTime": {
-            "label": "Fecha de carpeta",
-            "help": "La fecha que se muestra junto a una carpeta."
-          },
-          "noModTime": {
-            "label": "Ocultar fechas de modificación",
-            "help": "No muestra ninguna fecha. Es la opción más barata en S3, Swift y Oracle, donde cada objeto necesitaría su propia petición."
-          },
-          "linkIndex": {
-            "label": "Enlazar al archivo de índice",
-            "help": "Enlaza las carpetas como dir/index.html en lugar de dir/, para servidores que no sirven documentos de índice (URL simples de S3, URL amigables de B2)."
-          },
-          "useServerModTime": {
-            "label": "Usar la fecha de subida",
-            "help": "Muestra la fecha en que se subió un objeto en lugar de su fecha de modificación. Evita una petición por objeto en S3 y es la que el servidor web envía como Last-Modified."
-          },
-          "rewrite": {
-            "label": "Reescribir listados sin cambios",
-            "help": "Escribe todos los listados aunque no hayan cambiado, por ejemplo para aplicar nuevas cabeceras o metadatos."
-          }
         }
       }
     },
@@ -2930,8 +2899,7 @@
       "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
       "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}",
       "noRemoteSelected": "Por favor, navega primero a un remoto.",
-      "indexFailed": "No se pudieron escribir los listados de directorio: {{error}}",
-      "indexUnsupported": "Esta versión de rclone no puede escribir listados de directorio. Actualiza rclone para usar esta función."
+      "indexFailed": "No se pudieron escribir los listados de directorio: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -3575,7 +3543,9 @@
         "startArchivecreate": "Iniciar archivo",
         "stopArchivecreate": "Detener archivo",
         "startServe": "Iniciar servicio",
-        "stopServe": "Detener servicio"
+        "stopServe": "Detener servicio",
+        "startIndex": "Generar listados de directorio",
+        "stopIndex": "Detener listados de directorio"
       },
       "browse": "Explorar archivos",
       "emptyState": {
@@ -3619,7 +3589,8 @@
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
     "tooltipServes": "{{count}} Servicios",
-    "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]"
+    "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]",
+    "indexCount": "Listados de directorio [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Operaciones activas en curso: {{details}}",

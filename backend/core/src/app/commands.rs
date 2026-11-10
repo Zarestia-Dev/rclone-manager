@@ -113,6 +113,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (generate_index, $crate::rclone::commands::index::generate_index, [remote: String, path: String, options: serde_json::Value, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
 
             // ARCHIVE OPERATIONS

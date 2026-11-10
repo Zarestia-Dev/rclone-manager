@@ -15,6 +15,18 @@ export interface OperationDefinition {
   readonly hasLinkedProfiles: boolean;
   /** Is it a flag type with dedicated flag definitions? */
   readonly isFlagType: boolean;
+  /** Works on its sources alone, without a destination (delete, index). */
+  readonly sourceOnly?: boolean;
+  /** A folder watcher can start it (local backend only). */
+  readonly watchable?: boolean;
+  /** A profile can list several sources. */
+  readonly multiSource?: boolean;
+  /** A source can be a single file as well as a folder. */
+  readonly fileSource?: boolean;
+  /** It runs with a backend profile, which supplies its `DryRun` and similar settings. */
+  readonly backendProfile?: boolean;
+  /** It runs through its own rclone command instead of the sync family's form. */
+  readonly coreCommand?: boolean;
 
   // ── Visual metadata ───────────────────────────────────────
   readonly icon: string;
@@ -86,6 +98,9 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'refresh',
     apiLabel: 'Sync',
     tone: 'primary',
@@ -111,6 +126,10 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
     icon: 'copy',
     apiLabel: 'Copy',
     tone: 'yellow',
@@ -136,6 +155,10 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
     icon: 'move',
     apiLabel: 'Move',
     tone: 'orange',
@@ -161,6 +184,7 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
     icon: 'right-left',
     apiLabel: 'Bisync',
     tone: 'purple',
@@ -211,6 +235,9 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'search',
     apiLabel: 'Check',
     tone: 'accent',
@@ -236,6 +263,10 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
+    sourceOnly: true,
     icon: 'trash',
     apiLabel: 'Delete',
     tone: 'warn',
@@ -261,6 +292,8 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'link',
     apiLabel: 'Copyurl',
     tone: 'accent',
@@ -286,6 +319,9 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    fileSource: true,
+    backendProfile: true,
+    coreCommand: true,
     icon: 'compress',
     apiLabel: 'Archivecreate',
     tone: 'primary',
@@ -311,6 +347,8 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    coreCommand: true,
     icon: 'shield',
     apiLabel: 'Cryptcheck',
     tone: 'accent',
@@ -329,6 +367,35 @@ export const OPERATION_REGISTRY = [
     supportsProfiles: true,
     configKey: 'cryptcheckConfigs',
   },
+  {
+    key: 'index',
+    isSyncType: true,
+    isPrimary: true,
+    isBrowsable: false,
+    hasLinkedProfiles: true,
+    isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
+    sourceOnly: true,
+    icon: 'file-lines',
+    apiLabel: 'Index',
+    tone: 'orange',
+    animationClass: 'animate-breathing',
+    actionLabel: 'actions.index',
+    activeTooltip: 'operations.indexActive',
+    inactiveTooltip: 'operations.toggleIndex',
+    startIcon: 'file-lines',
+    stopIcon: 'stop',
+    startTooltip: 'overviews.remoteCard.actions.startIndex',
+    stopTooltip: 'overviews.remoteCard.actions.stopIndex',
+    settingsLabel: 'dashboard.appDetail.indexSettings',
+    settingsDescription: 'dashboard.appDetail.indexDesc',
+    typeLabel: 'dashboard.appDetail.index',
+    supportsVfs: false,
+    supportsProfiles: true,
+    configKey: 'indexConfigs',
+  },
 ] as const satisfies readonly OperationDefinition[];
 
 /** Colour role per operation key; the one place that says bisync is purple and serve is accent. */
@@ -339,6 +406,20 @@ export const OPERATION_TONE: Readonly<Record<string, PillTone>> = Object.freeze(
 const OPERATION_BY_KEY: ReadonlyMap<string, OperationDefinition> = new Map(
   OPERATION_REGISTRY.map(op => [op.key, op])
 );
+
+/** The yes/no capabilities of an operation, as the registry entries set them. */
+export type OperationFlag =
+  'sourceOnly' | 'watchable' | 'multiSource' | 'fileSource' | 'backendProfile' | 'coreCommand';
+
+/** Whether the registry entry of `key` sets `flag`; false for a key it does not know. */
+export function operationHas(key: string, flag: OperationFlag): boolean {
+  return getOperationDef(key)?.[flag] === true;
+}
+
+/** Whether an operation works on its sources alone: delete and index have no destination. */
+export function isSourceOnlyOperation(key: string): boolean {
+  return operationHas(key, 'sourceOnly');
+}
 
 /** The registry entry of an operation key; `undefined` for a key the registry does not know. */
 export function getOperationDef(key: string): OperationDefinition | undefined {

@@ -89,6 +89,7 @@ const STATUS_ARIA_KEYS: Record<PrimaryActionType, string> = {
   delete: 'operations.deleteActive',
   copyurl: 'operations.copyurlActive',
   archivecreate: 'operations.archivecreateActive',
+  index: 'operations.indexActive',
 };
 
 /** Where the status pill differs from the operation itself: serving shows a spinning dish. */

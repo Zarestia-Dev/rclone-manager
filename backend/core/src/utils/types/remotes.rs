@@ -262,6 +262,8 @@ pub enum OperationType {
     Archivecreate,
     #[serde(alias = "Cryptcheck")]
     Cryptcheck,
+    #[serde(alias = "Index")]
+    Index,
 }
 
 impl OperationType {
@@ -279,6 +281,7 @@ impl OperationType {
             Self::Copyurl => "copyurlConfigs",
             Self::Archivecreate => "archivecreateConfigs",
             Self::Cryptcheck => "cryptcheckConfigs",
+            Self::Index => "indexConfigs",
         }
     }
 
@@ -295,6 +298,7 @@ impl OperationType {
             Self::Copyurl => Some(JobType::CopyUrl),
             Self::Archivecreate => Some(JobType::ArchiveCreate),
             Self::Cryptcheck => Some(JobType::CryptCheck),
+            Self::Index => Some(JobType::Index),
             Self::Serve => None,
         }
     }
@@ -311,40 +315,20 @@ impl OperationType {
             Self::Copyurl => Some(crate::rclone::endpoints::operations::COPYURL),
             Self::Cryptcheck => Some(crate::rclone::endpoints::operations::CRYPTCHECK),
             Self::Archivecreate => Some(crate::rclone::endpoints::operations::ARCHIVE),
-            _ => None,
+            Self::Index => Some(crate::rclone::endpoints::operations::INDEX),
+            Self::Mount | Self::Serve => None,
         }
     }
 
-    /// Checks if this is a directory/file transfer operation.
-    pub fn is_transfer(self) -> bool {
-        matches!(
-            self,
-            Self::Sync
-                | Self::Copy
-                | Self::Move
-                | Self::Bisync
-                | Self::Check
-                | Self::Delete
-                | Self::Copyurl
-                | Self::Archivecreate
-                | Self::Cryptcheck
-        )
+    /// Whether the operation needs a destination. Delete and Index work on their sources alone.
+    pub fn takes_destination(self) -> bool {
+        !matches!(self, Self::Delete | Self::Index)
     }
 
-    /// Checks if this operation supports cron/filesystem-watcher automation.
-    pub fn is_automation(self) -> bool {
-        matches!(
-            self,
-            Self::Sync
-                | Self::Copy
-                | Self::Move
-                | Self::Bisync
-                | Self::Check
-                | Self::Delete
-                | Self::Copyurl
-                | Self::Archivecreate
-                | Self::Cryptcheck
-        )
+    /// Whether the operation runs as an rclone job (everything but mount and serve). These are
+    /// also the operations a schedule or a folder watcher can start.
+    pub fn is_transfer(self) -> bool {
+        !matches!(self, Self::Mount | Self::Serve)
     }
 
     /// Return the string representation.
@@ -361,6 +345,7 @@ impl OperationType {
             Self::Copyurl => "copyurl",
             Self::Archivecreate => "archivecreate",
             Self::Cryptcheck => "cryptcheck",
+            Self::Index => "index",
         }
     }
 
@@ -377,6 +362,7 @@ impl OperationType {
         Self::Copyurl,
         Self::Archivecreate,
         Self::Cryptcheck,
+        Self::Index,
     ];
 }
 
@@ -384,20 +370,11 @@ impl std::str::FromStr for OperationType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "mount" => Ok(Self::Mount),
-            "sync" => Ok(Self::Sync),
-            "copy" => Ok(Self::Copy),
-            "move" => Ok(Self::Move),
-            "bisync" => Ok(Self::Bisync),
-            "serve" => Ok(Self::Serve),
-            "check" => Ok(Self::Check),
-            "delete" => Ok(Self::Delete),
-            "copyurl" => Ok(Self::Copyurl),
-            "archivecreate" => Ok(Self::Archivecreate),
-            "cryptcheck" => Ok(Self::Cryptcheck),
-            _ => Err(()),
-        }
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|op| op.as_str() == s)
+            .ok_or(())
     }
 }
 
@@ -415,6 +392,7 @@ impl std::fmt::Display for OperationType {
             Self::Copyurl => write!(f, "Copyurl"),
             Self::Archivecreate => write!(f, "Archivecreate"),
             Self::Cryptcheck => write!(f, "Cryptcheck"),
+            Self::Index => write!(f, "Index"),
         }
     }
 }
@@ -478,6 +456,8 @@ pub struct RemoteSettings {
     pub archivecreate_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cryptcheck_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub index_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter_configs: Option<std::collections::HashMap<String, serde_json::Value>>,
@@ -544,6 +524,7 @@ impl RemoteSettings {
             OperationType::Copyurl => self.copyurl_configs.as_ref(),
             OperationType::Archivecreate => self.archivecreate_configs.as_ref(),
             OperationType::Cryptcheck => self.cryptcheck_configs.as_ref(),
+            OperationType::Index => self.index_configs.as_ref(),
         }
     }
 }
@@ -665,6 +646,15 @@ mod tests {
         let empty_profile = ProfileConfig::default();
         assert_eq!(empty_profile.source_str(), None);
         assert_eq!(empty_profile.dest_str(), None);
+    }
+
+    #[test]
+    fn only_delete_and_index_work_without_a_destination() {
+        let without: Vec<_> = OperationType::ALL
+            .iter()
+            .filter(|op| !op.takes_destination())
+            .collect();
+        assert_eq!(without, [&OperationType::Delete, &OperationType::Index]);
     }
 
     #[test]

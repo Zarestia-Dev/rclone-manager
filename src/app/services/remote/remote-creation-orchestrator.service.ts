@@ -9,6 +9,7 @@ import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
   SYNC_TYPES,
+  isSourceOnlyOperation,
 } from '@app/types';
 import { AuthStateService } from '../security/auth-state.service';
 import { RemoteManagementService } from './remote-management.service';
@@ -260,7 +261,7 @@ export class RemoteCreationOrchestrator {
           path => typeof path === 'string' && path.length > 0
         );
         const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
-        if (appCfg.autoStart && hasSource && (jobType === 'delete' || hasDest)) {
+        if (appCfg.autoStart && hasSource && (isSourceOnlyOperation(jobType) || hasDest)) {
           void this.jobManagementService
             .startProfileBatch(BATCH_OP_LABELS[jobType], {
               remoteName,

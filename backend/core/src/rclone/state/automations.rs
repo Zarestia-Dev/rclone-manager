@@ -389,7 +389,7 @@ fn collect_automations_from_remote(
     for op_type in OperationType::ALL
         .iter()
         .copied()
-        .filter(|op| op.is_automation())
+        .filter(|op| op.is_transfer())
     {
         let Some(profiles) = remote_settings.get_configs(op_type) else {
             continue;
@@ -471,7 +471,7 @@ fn create_automation_struct(
 
     // Validate path counts based on automation type
     match automation_type {
-        OperationType::Delete => {}
+        _ if !automation_type.takes_destination() => {}
         OperationType::Bisync => {
             if src_paths.len() != 1 || dst_paths.len() != 1 {
                 return None;

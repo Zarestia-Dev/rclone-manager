@@ -115,7 +115,9 @@
     "toggleCopyurl": "Alternar Cópia da URL como Ação Rápida",
     "toggleArchivecreate": "Alternar Arquivo como Ação Rápida",
     "successStart": "Iniciou com sucesso {{type}} para {{remote}} ({{profile}})",
-    "failedStart": "Falha ao iniciar {{type}} para {{remote}}: {{error}}}"
+    "failedStart": "Falha ao iniciar {{type}} para {{remote}}: {{error}}}",
+    "indexActive": "Listagens de Diretório Ativas",
+    "toggleIndex": "Alternar Listagens de Diretório como Ação Rápida"
   },
   "serve": {
     "noActive": "Sem servidos ativos",
@@ -182,7 +184,8 @@
     "cryptcheck": "Verificação Criptografada",
     "serve": "Servir",
     "start": "Começar",
-    "stop": "Parar"
+    "stop": "Parar",
+    "index": "Listagens de diretório"
   },
   "sidebar": {
     "toggleSidebar": "Alternar barra lateral",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "Tentativa em modo de simulação (dry-run) está ativa – não serão feitas alterações",
       "resync": "Resincronizar",
       "resyncActive": "O Resync está ativo - realizando uma re-sincronização completa",
-      "remoteSettings": "Configurações do remoto"
+      "remoteSettings": "Configurações do remoto",
+      "indexSettings": "Configurações de Listagens de Diretório",
+      "index": "Listagens de diretório",
+      "indexDesc": "Grava listagens navegáveis nas pastas para sites estáticos"
     },
     "generalDetail": {
       "automations": "Automações",
@@ -2490,7 +2496,8 @@
         "filter": "Filtro",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Tempo de Execução do Remoto"
+        "runtimeRemote": "Tempo de Execução do Remoto",
+        "index": "Listagens de diretório"
       },
       "advancedProfiles": {
         "title": "Perfis Avançados",
@@ -2868,44 +2875,6 @@
           "newest": "Arquivo mais recente dentro",
           "dir": "A data própria da pasta",
           "none": "Sem data"
-        },
-        "fields": {
-          "formats": {
-            "label": "Formatos de listagem",
-            "help": "Quais listagens são gravadas em cada pasta."
-          },
-          "maxDepth": {
-            "label": "Profundidade máxima",
-            "help": "Grava listagens somente até este número de níveis, contando esta pasta como 1. Mantenha -1 para não limitar."
-          },
-          "includePatterns": {
-            "label": "Somente estas pastas",
-            "help": "Grava listagens apenas nas pastas que correspondem a um padrão, por exemplo /docs/**. As outras pastas não são alteradas, mas continuam aparecendo na listagem da pasta pai."
-          },
-          "excludePatterns": {
-            "label": "Ignorar estas pastas",
-            "help": "Não grava nem apaga nada nas pastas que correspondem a um padrão, por exemplo /private/**. Use para proteger uma pasta que tem seu próprio índice."
-          },
-          "dirTime": {
-            "label": "Data da pasta",
-            "help": "A data exibida ao lado de uma pasta."
-          },
-          "noModTime": {
-            "label": "Ocultar datas de modificação",
-            "help": "Não mostra nenhuma data. É a opção mais barata em S3, Swift e Oracle, onde cada objeto precisaria de uma requisição própria."
-          },
-          "linkIndex": {
-            "label": "Vincular ao arquivo de índice",
-            "help": "Vincula as pastas como dir/index.html em vez de dir/, para hospedagens que não servem documentos de índice (URLs simples do S3, URLs amigáveis do B2)."
-          },
-          "useServerModTime": {
-            "label": "Usar a data de envio",
-            "help": "Mostra a data em que o objeto foi enviado em vez da data de modificação. Evita uma requisição por objeto no S3 e é o que o servidor web envia como Last-Modified."
-          },
-          "rewrite": {
-            "label": "Regravar listagens sem alterações",
-            "help": "Grava todas as listagens mesmo que não tenham mudado, por exemplo para aplicar novos cabeçalhos ou metadados."
-          }
         }
       }
     },
@@ -2930,8 +2899,7 @@
       "externalDropFailed": "Falha ao processar arquivo externo de exclusão.",
       "sendToFailed": "Falha ao atualizar o menu do Gerenciador de Arquivos: {{error}}",
       "noRemoteSelected": "Por favor, navegue até um remoto primeiro.",
-      "indexFailed": "Falha ao gravar as listagens de diretório: {{error}}",
-      "indexUnsupported": "Esta versão do rclone não consegue gravar listagens de diretório. Atualize o rclone para usar este recurso."
+      "indexFailed": "Falha ao gravar as listagens de diretório: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -3575,7 +3543,9 @@
         "startArchivecreate": "Iniciar Arquivo",
         "stopArchivecreate": "Pare de Arquivar",
         "startServe": "Começar a servir",
-        "stopServe": "Pare de Servir"
+        "stopServe": "Pare de Servir",
+        "startIndex": "Gerar Listagens de Diretório",
+        "stopIndex": "Parar Listagens de Diretório"
       },
       "browse": "Navegar pelos Arquivos",
       "emptyState": {
@@ -3619,7 +3589,8 @@
     "tooltipMounts": "{{count}} Montagens",
     "tooltipServe": "1 Serviço",
     "tooltipServes": "{{count}} Serviços",
-    "workflowsCount": "Fluxos de Trabalho [{{active}}/{{total}}]"
+    "workflowsCount": "Fluxos de Trabalho [{{active}}/{{total}}]",
+    "indexCount": "Listagens de diretório [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Operações ativas em andamento: {{details}}",

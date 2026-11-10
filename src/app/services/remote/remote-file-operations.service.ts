@@ -11,6 +11,7 @@ import {
   FsDeleteItem,
   ArchiveListResponse,
   RenameItem,
+  ConfigValue,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
@@ -175,19 +176,18 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
+  /** `options` are the index options by rclone's names, as a profile keeps them. */
   async generateIndex(
     remote: string,
     path: string,
-    opt: Record<string, unknown>,
-    useServerModTime: boolean,
+    options: Record<string, ConfigValue>,
     source?: Origin,
     group?: string
   ): Promise<void> {
     return this.invokeCommand<void>('generate_index', {
       remote,
       path,
-      opt,
-      useServerModTime,
+      options,
       origin: source,
       group,
     });

@@ -147,7 +147,10 @@ describe('hasDetailedConfig', () => {
     expect(hasDetailedConfig('copy')).toBe(true);
     expect(hasDetailedConfig('archivecreate')).toBe(true);
     expect(hasDetailedConfig('cryptcheck')).toBe(true);
+    expect(hasDetailedConfig('index')).toBe(true);
     expect(hasDetailedConfig('mount')).toBe(true);
+    expect(hasDetailedConfig('serve')).toBe(true);
+    expect(hasDetailedConfig('rc_command')).toBe(true);
     expect(hasDetailedConfig('cron')).toBe(true);
     expect(hasDetailedConfig('schedule_wait')).toBe(true);
     expect(hasDetailedConfig('cleanup')).toBe(false);

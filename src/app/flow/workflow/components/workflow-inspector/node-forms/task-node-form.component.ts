@@ -10,7 +10,7 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../../types/workflow.types';
-import { QuickRun } from '@app/types';
+import { QuickRun, isSourceOnlyOperation } from '@app/types';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { SUPPORTED_ARCHIVE_FORMATS } from '../../../../../services/remote/flag-definitions';
 import { hasDetailedConfig } from '../../../utils/node-style.util';
@@ -53,6 +53,9 @@ export class TaskNodeFormComponent {
   readonly inspectorDest = input<string>('');
   readonly inspectorServeType = input<string>('http');
   readonly inspectorServeAddr = input<string>('');
+
+  /** Delete and index have a source and no destination. */
+  readonly hasDestination = computed(() => !isSourceOnlyOperation(this.node().type));
 
   readonly openDetailed = output<void>();
   readonly remoteChange = output<string>();

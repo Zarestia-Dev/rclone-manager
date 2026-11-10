@@ -1,7 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { INTERACTIVE_REMOTES, createMinimalEntry } from './remote-config';
+import { INTERACTIVE_REMOTES, PROFILE_ICONS, createMinimalEntry } from './remote-config';
 
 describe('Remote Config Types', () => {
+  describe('PROFILE_ICONS', () => {
+    it('takes the icon of every operation from the registry', () => {
+      expect(PROFILE_ICONS).toEqual({
+        mount: 'mount',
+        sync: 'refresh',
+        copy: 'copy',
+        move: 'move',
+        bisync: 'right-left',
+        serve: 'serve',
+        check: 'search',
+        delete: 'trash',
+        copyurl: 'link',
+        archivecreate: 'compress',
+        cryptcheck: 'shield',
+        index: 'file-lines',
+        vfs: 'vfs',
+        filter: 'filter',
+        backend: 'database',
+        runtimeRemote: 'gear',
+      });
+    });
+  });
+
   describe('INTERACTIVE_REMOTES', () => {
     const expectedTypes = [
       'jottacloud',

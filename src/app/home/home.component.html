@@ -178,6 +178,9 @@
       <button class="menu-item" cdkMenuItem (click)="openRemoteAbout(activeRemote)">
         <span>{{ 'home.options.aboutRemote' | translate }}</span>
       </button>
+      <button class="menu-item" cdkMenuItem (click)="generateIndex(activeRemote)">
+        <span>{{ 'nautilus.contextMenu.generateIndex' | translate }}...</span>
+      </button>
       @if (hasCleanUpFeature(activeRemote)) {
         <button class="menu-item danger-item" cdkMenuItem (click)="emptyTrash(activeRemote)">
           <span>{{ 'home.options.emptyTrash' | translate }}</span>

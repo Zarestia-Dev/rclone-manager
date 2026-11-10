@@ -115,7 +115,9 @@
     "toggleCopyurl": "Toggle Copy URL as Quick Action",
     "toggleArchivecreate": "Toggle Archive as Quick Action",
     "successStart": "Successfully started {{type}} for {{remote}} ({{profile}})",
-    "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}"
+    "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}",
+    "indexActive": "Directory Listings Active",
+    "toggleIndex": "Toggle Directory Listings as Quick Action"
   },
   "serve": {
     "noActive": "No active serves",
@@ -182,7 +184,8 @@
     "cryptcheck": "Cryptcheck",
     "serve": "Serve",
     "start": "Start",
-    "stop": "Stop"
+    "stop": "Stop",
+    "index": "Directory Listings"
   },
   "sidebar": {
     "toggleSidebar": "Toggle Sidebar",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "Dry run is active - no changes will be made",
       "resync": "Resync",
       "resyncActive": "Resync is active - performing full resynchronization",
-      "remoteSettings": "Remote Settings"
+      "remoteSettings": "Remote Settings",
+      "indexSettings": "Directory Listings Settings",
+      "index": "Directory Listings",
+      "indexDesc": "Write browsable listings into folders for static websites"
     },
     "generalDetail": {
       "automations": "Automations",
@@ -2531,7 +2537,8 @@
         "filter": "Filter",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Runtime Remote"
+        "runtimeRemote": "Runtime Remote",
+        "index": "Directory Listings"
       },
       "advancedProfiles": {
         "title": "Advanced Profiles",
@@ -2909,44 +2916,6 @@
           "newest": "Newest file below",
           "dir": "The folder's own time",
           "none": "No time"
-        },
-        "fields": {
-          "formats": {
-            "label": "Listing formats",
-            "help": "Which listings are written in every folder."
-          },
-          "maxDepth": {
-            "label": "Maximum depth",
-            "help": "Only write listings this many folder levels deep, counting this folder as 1. Keep -1 for no limit."
-          },
-          "includePatterns": {
-            "label": "Only these folders",
-            "help": "Only write listings in folders matching a pattern, for example /docs/**. Other folders are left alone but still appear in their parent's listing."
-          },
-          "excludePatterns": {
-            "label": "Skip these folders",
-            "help": "Write and delete nothing in folders matching a pattern, for example /private/**. Use it to protect a folder that has its own index."
-          },
-          "dirTime": {
-            "label": "Folder time",
-            "help": "The time shown next to a folder."
-          },
-          "noModTime": {
-            "label": "Hide modification times",
-            "help": "Show no times at all. This is the cheapest option on S3, Swift and Oracle, where every object otherwise needs its own request."
-          },
-          "linkIndex": {
-            "label": "Link to the index file",
-            "help": "Link folders as dir/index.html instead of dir/, for hosts that do not serve index documents (plain S3 URLs, B2 friendly URLs)."
-          },
-          "useServerModTime": {
-            "label": "Use upload time",
-            "help": "Show the time an object was uploaded instead of its modification time. This avoids a request per object on S3 and is what the web server sends as Last-Modified."
-          },
-          "rewrite": {
-            "label": "Rewrite unchanged listings",
-            "help": "Write every listing even if it has not changed, for example to apply new headers or metadata."
-          }
         }
       }
     },
@@ -2971,8 +2940,7 @@
       "externalDropFailed": "Failed to process external file drop.",
       "sendToFailed": "Failed to update File Manager menu: {{error}}",
       "noRemoteSelected": "Please navigate to a remote first.",
-      "indexFailed": "Failed to write directory listings: {{error}}",
-      "indexUnsupported": "This rclone version cannot write directory listings. Update rclone to use this feature."
+      "indexFailed": "Failed to write directory listings: {{error}}"
     },
     "contextMenu": {
       "open": "Open",
@@ -3616,7 +3584,9 @@
         "startArchivecreate": "Start Archive",
         "stopArchivecreate": "Stop Archive",
         "startServe": "Start Serve",
-        "stopServe": "Stop Serve"
+        "stopServe": "Stop Serve",
+        "startIndex": "Generate Directory Listings",
+        "stopIndex": "Stop Directory Listings"
       },
       "browse": "Browse Files",
       "emptyState": {
@@ -3660,7 +3630,8 @@
     "tooltipMount": "1 Mount",
     "tooltipMounts": "{{count}} Mounts",
     "tooltipServe": "1 Serve",
-    "tooltipServes": "{{count}} Serves"
+    "tooltipServes": "{{count}} Serves",
+    "indexCount": "Directory Listings [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Active operations running: {{details}}",

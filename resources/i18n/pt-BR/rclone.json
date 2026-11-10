@@ -1386,5 +1386,41 @@
   "dest_after": {
     "title": "Destino depois",
     "help": "Relatar todos os arquivos que existem no destino após a operação."
+  },
+  "index_output": {
+    "title": "Formatos de listagem",
+    "help": "Quais listagens são gravadas em cada pasta."
+  },
+  "index_max_depth": {
+    "title": "Profundidade máxima",
+    "help": "Grava listagens somente até este número de níveis, contando esta pasta como 1. Mantenha -1 para não limitar."
+  },
+  "index_include_rule": {
+    "title": "Somente estas pastas",
+    "help": "Grava listagens apenas nas pastas que correspondem a um padrão, por exemplo /docs/**. As outras pastas não são alteradas, mas continuam aparecendo na listagem da pasta pai."
+  },
+  "index_exclude_rule": {
+    "title": "Ignorar estas pastas",
+    "help": "Não grava nem apaga nada nas pastas que correspondem a um padrão, por exemplo /private/**. Use para proteger uma pasta que tem seu próprio índice."
+  },
+  "index_dir_time": {
+    "title": "Data da pasta",
+    "help": "A data exibida ao lado de uma pasta."
+  },
+  "index_no_mod_time": {
+    "title": "Ocultar datas de modificação",
+    "help": "Não mostra nenhuma data. É a opção mais barata em S3, Swift e Oracle, onde cada objeto precisaria de uma requisição própria."
+  },
+  "index_link_index": {
+    "title": "Vincular ao arquivo de índice",
+    "help": "Vincula as pastas como dir/index.html em vez de dir/, para hospedagens que não servem documentos de índice (URLs simples do S3, URLs amigáveis do B2)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Usar a data de envio",
+    "help": "Mostra a data em que o objeto foi enviado em vez da data de modificação. Evita uma requisição por objeto no S3 e é o que o servidor web envia como Last-Modified."
+  },
+  "index_rewrite": {
+    "title": "Regravar listagens sem alterações",
+    "help": "Grava todas as listagens mesmo que não tenham mudado, por exemplo para aplicar novos cabeçalhos ou metadados."
   }
 }

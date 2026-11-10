@@ -58,14 +58,16 @@ import {
   SYNC_TYPES,
   STANDARD_MODAL_SIZE,
   MODE_DEFAULTS,
-  BACKEND_PROFILE_SUPPORTED_OPS,
   QuickRun,
   Remote,
   createDefaultRemoteFeatures,
+  createDefaultRemoteStatus,
   findInFlightAction,
   Automation,
   RepairSheetType,
   profileOf,
+  isSourceOnlyOperation,
+  operationHas,
 } from '@app/types';
 import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
 import { MatDialog } from '@angular/material/dialog';
@@ -224,20 +226,7 @@ export class AppDetailComponent {
         name: remoteName || 'Remote',
         type: 'alias',
         config: { name: remoteName || 'Remote', type: 'alias' },
-        status: {
-          diskUsage: {},
-          mount: { active: false },
-          sync: { active: false },
-          copy: { active: false },
-          bisync: { active: false },
-          move: { active: false },
-          check: { active: false },
-          delete: { active: false },
-          copyurl: { active: false },
-          archivecreate: { active: false },
-          cryptcheck: { active: false },
-          serve: { active: false, count: 0, serves: [] },
-        },
+        status: createDefaultRemoteStatus(),
         features: createDefaultRemoteFeatures(),
         primaryActions: [],
         syncActions: [],
@@ -905,7 +894,7 @@ export class AppDetailComponent {
       return;
     }
 
-    if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
+    if (operationHas(opType, 'backendProfile')) {
       const profiles = this.getProfileConfigMap<ProfileConfig>(opType) ?? {};
       const cfg = profiles[profile];
       const backendProfileName = cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME;
@@ -1051,7 +1040,7 @@ export class AppDetailComponent {
         (bCfg as Record<string, unknown> | undefined)?.['DryRun']
       );
     }
-    if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
+    if (operationHas(opType, 'backendProfile')) {
       const backendProfileName = this.currentAppConfig()?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
@@ -1164,7 +1153,7 @@ export class AppDetailComponent {
             actionInProgress: (actionType as RemoteAction) ?? undefined,
             hasSource: !!resolvedSource,
             hasDestination: !!resolvedDest,
-            hideDestination: type === 'delete',
+            hideDestination: isSourceOnlyOperation(type),
           };
 
     return {

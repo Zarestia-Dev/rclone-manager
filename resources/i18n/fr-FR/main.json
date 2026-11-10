@@ -115,7 +115,9 @@
     "toggleCopyurl": "Basculer la copie d'URL comme action rapide",
     "toggleArchivecreate": "Basculer l'archivage comme action rapide",
     "successStart": "A démarré avec succès {{type}} pour {{remote}} ({{profile}})",
-    "failedStart": "Échec du démarrage de {{type}} pour {{remote}}: {{error}}"
+    "failedStart": "Échec du démarrage de {{type}} pour {{remote}}: {{error}}",
+    "indexActive": "Listes de répertoire actives",
+    "toggleIndex": "Basculer les listes de répertoire comme action rapide"
   },
   "serve": {
     "noActive": "Aucun service de partage actif",
@@ -182,7 +184,8 @@
     "cryptcheck": "Vérification chiffrée",
     "serve": "Service de partage",
     "start": "Démarrer",
-    "stop": "Arrêter"
+    "stop": "Arrêter",
+    "index": "Listes de répertoire"
   },
   "sidebar": {
     "toggleSidebar": "Basculer la barre latérale",
@@ -1946,7 +1949,10 @@
       "dryRunActive": "La simulation est active - aucun changement ne sera effectué",
       "resync": "Resynchroniser",
       "resyncActive": "Resynchronisation active - synchronisation complète en cours",
-      "remoteSettings": "Paramètres du distant"
+      "remoteSettings": "Paramètres du distant",
+      "indexSettings": "Paramètres des listes de répertoire",
+      "index": "Listes de répertoire",
+      "indexDesc": "Écrit des listes navigables dans les dossiers, pour les sites web statiques"
     },
     "generalDetail": {
       "automations": "Automatisations",
@@ -2490,7 +2496,8 @@
         "filter": "Filtre",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Exécution du dépôt distant"
+        "runtimeRemote": "Exécution du dépôt distant",
+        "index": "Listes de répertoire"
       },
       "advancedProfiles": {
         "title": "Profils avancés",
@@ -2868,44 +2875,6 @@
           "newest": "Fichier le plus récent à l'intérieur",
           "dir": "La date propre du dossier",
           "none": "Aucune date"
-        },
-        "fields": {
-          "formats": {
-            "label": "Formats de liste",
-            "help": "Les listes écrites dans chaque dossier."
-          },
-          "maxDepth": {
-            "label": "Profondeur maximale",
-            "help": "N'écrit des listes que jusqu'à ce nombre de niveaux, ce dossier comptant pour 1. Gardez -1 pour ne pas limiter."
-          },
-          "includePatterns": {
-            "label": "Seulement ces dossiers",
-            "help": "N'écrit des listes que dans les dossiers correspondant à un motif, par exemple /docs/**. Les autres dossiers ne sont pas modifiés mais apparaissent toujours dans la liste de leur parent."
-          },
-          "excludePatterns": {
-            "label": "Ignorer ces dossiers",
-            "help": "N'écrit ni ne supprime rien dans les dossiers correspondant à un motif, par exemple /private/**. Utile pour protéger un dossier qui a son propre index."
-          },
-          "dirTime": {
-            "label": "Date du dossier",
-            "help": "La date affichée à côté d'un dossier."
-          },
-          "noModTime": {
-            "label": "Masquer les dates de modification",
-            "help": "N'affiche aucune date. C'est l'option la moins coûteuse sur S3, Swift et Oracle, où chaque objet demanderait sinon sa propre requête."
-          },
-          "linkIndex": {
-            "label": "Lier au fichier d'index",
-            "help": "Lie les dossiers en dir/index.html au lieu de dir/, pour les hébergeurs qui ne servent pas de documents d'index (URL S3 simples, URL conviviales B2)."
-          },
-          "useServerModTime": {
-            "label": "Utiliser la date d'envoi",
-            "help": "Affiche la date d'envoi d'un objet au lieu de sa date de modification. Évite une requête par objet sur S3 et correspond à ce que le serveur web envoie en Last-Modified."
-          },
-          "rewrite": {
-            "label": "Réécrire les listes inchangées",
-            "help": "Écrit toutes les listes même si elles n'ont pas changé, par exemple pour appliquer de nouveaux en-têtes ou métadonnées."
-          }
         }
       }
     },
@@ -2930,8 +2899,7 @@
       "externalDropFailed": "Échec du traitement du dépôt de fichier externe.",
       "sendToFailed": "Échec de la mise à jour du menu du gestionnaire de fichiers : {{error}}",
       "noRemoteSelected": "Veuillez d’abord naviguer vers un espace distant.",
-      "indexFailed": "Impossible d'écrire les listes de répertoire : {{error}}",
-      "indexUnsupported": "Cette version de rclone ne sait pas écrire de listes de répertoire. Mettez rclone à jour pour utiliser cette fonction."
+      "indexFailed": "Impossible d'écrire les listes de répertoire : {{error}}"
     },
     "contextMenu": {
       "open": "Ouvrir",
@@ -3575,7 +3543,9 @@
         "startArchivecreate": "Démarrer l'archivage",
         "stopArchivecreate": "Arrêter l'archivage",
         "startServe": "Démarrer le service de partage",
-        "stopServe": "Arrêter le service de partage"
+        "stopServe": "Arrêter le service de partage",
+        "startIndex": "Générer les listes de répertoire",
+        "stopIndex": "Arrêter les listes de répertoire"
       },
       "browse": "Explorer les fichiers",
       "emptyState": {
@@ -3619,7 +3589,8 @@
     "tooltipMounts": "{{count}} Montages",
     "tooltipServe": "1 Partage",
     "tooltipServes": "{{count}} Service de partage",
-    "workflowsCount": "Flux de travail [{{active}}/{{total}}]"
+    "workflowsCount": "Flux de travail [{{active}}/{{total}}]",
+    "indexCount": "Listes de répertoire [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Opérations actives en cours : {{details}}",

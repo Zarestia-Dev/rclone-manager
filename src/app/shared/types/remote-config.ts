@@ -27,17 +27,7 @@ export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
 );
 
 export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
-  mount: 'hard-drive',
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  serve: 'satellite-dish',
-  check: 'search',
-  delete: 'trash',
-  copyurl: 'download',
-  archivecreate: 'compress',
-  cryptcheck: 'shield',
+  ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
   vfs: 'vfs',
   filter: 'filter',
   backend: 'database',
@@ -108,6 +98,7 @@ export interface RemoteConfigKeysRecord {
   copyurl: 'copyurlConfigs';
   archivecreate: 'archivecreateConfigs';
   cryptcheck: 'cryptcheckConfigs';
+  index: 'indexConfigs';
   filter: 'filterConfigs';
   vfs: 'vfsConfigs';
   backend: 'backendConfigs';
@@ -379,6 +370,24 @@ export interface CryptcheckConfig {
   };
 }
 
+export interface IndexConfig {
+  app: AppConfig;
+  rclone: {
+    /** The folders that get listings. */
+    srcFs?: string | string[];
+    output?: string[];
+    maxDepth?: number;
+    IncludeRule?: string[];
+    ExcludeRule?: string[];
+    dirTime?: string;
+    noModTime?: boolean;
+    linkIndex?: boolean;
+    UseServerModTime?: boolean;
+    rewrite?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
+}
+
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
   [remoteName: string]: unknown;
@@ -394,6 +403,7 @@ export interface RemoteConfigSections {
   copyurlConfigs?: Record<string, CopyurlConfig>;
   archivecreateConfigs?: Record<string, ArchivecreateConfig>;
   cryptcheckConfigs?: Record<string, CryptcheckConfig>;
+  indexConfigs?: Record<string, IndexConfig>;
 
   filterConfigs?: Record<string, FilterConfig>;
   backendConfigs?: Record<string, BackendConfig>;

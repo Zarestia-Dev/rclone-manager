@@ -3,6 +3,7 @@ pub mod backend;
 pub mod bisync_conflict;
 pub mod common;
 pub mod filesystem;
+pub mod index;
 pub mod job;
 pub mod job_chain;
 pub mod job_parser;

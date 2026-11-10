@@ -10,8 +10,6 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
-import { RcConsoleService } from 'src/app/services/infrastructure/system/rc-console.service';
-import { INDEX_RC_COMMAND, IndexRequest } from 'src/app/shared/utils/index-options.util';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -35,7 +33,6 @@ export class NautilusFileOperationsService {
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly fileSystem = inject(FileSystemService);
-  private readonly rcConsole = inject(RcConsoleService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
@@ -661,57 +658,6 @@ export class NautilusFileOperationsService {
       );
       return false;
     }
-  }
-
-  /**
-   * Asks how to list `currentPath` and writes the listings. Returns true once they are written.
-   * rclone before `operations/index` is told so up front; when its command list cannot be read
-   * the request is sent anyway and rclone answers.
-   */
-  async openIndexDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
-    if (!(await this.engineHasIndex())) {
-      this.notifications.showError(this.translate.instant('nautilus.errors.indexUnsupported'));
-      return false;
-    }
-
-    const normalizedRemote = this.pathService.normalizeExplorerRoot(remote);
-    const ref = this.modalService.openIndexCreate<IndexRequest>({
-      target: pathUtils.joinPath(normalizedRemote, currentPath),
-    });
-    const request = await firstValueFrom(ref.afterClosed());
-    if (!request) return false;
-
-    try {
-      this.notifications.showInfo(this.translate.instant('nautilus.notifications.indexStarted'));
-      await this.remoteOps.generateIndex(
-        normalizedRemote,
-        currentPath,
-        request.opt,
-        request.useServerModTime,
-        'filemanager'
-      );
-      return true;
-    } catch (e) {
-      this.notifications.showError(
-        this.translate.instant('nautilus.errors.indexFailed', {
-          error: (e as Error).message || String(e),
-        })
-      );
-      return false;
-    }
-  }
-
-  /**
-   * False only when rclone's command list was read and has no `operations/index`. The list is
-   * cached, so a negative answer is asked again once: rclone may have been updated since.
-   */
-  private async engineHasIndex(): Promise<boolean> {
-    const hasIndex = (commands: { Path: string }[]): boolean =>
-      commands.length === 0 || commands.some(c => c.Path === INDEX_RC_COMMAND);
-    return (
-      hasIndex(await this.rcConsole.loadCommands()) ||
-      hasIndex(await this.rcConsole.loadCommands(true))
-    );
   }
 
   async openArchiveCreateDialog(

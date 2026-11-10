@@ -1386,5 +1386,41 @@
   "dest_after": {
     "title": "操作後的目標",
     "help": "回報操作後目標中存在的所有檔案。"
+  },
+  "index_output": {
+    "title": "清單格式",
+    "help": "在每個資料夾中寫入哪些清單。"
+  },
+  "index_max_depth": {
+    "title": "最大深度",
+    "help": "只寫入到此層數的清單，目前資料夾算第 1 層。保持 -1 表示不限制。"
+  },
+  "index_include_rule": {
+    "title": "僅這些資料夾",
+    "help": "只在符合模式（例如 /docs/**）的資料夾中寫入清單。其他資料夾不會被更動，但仍會顯示在其上層資料夾的清單中。"
+  },
+  "index_exclude_rule": {
+    "title": "略過這些資料夾",
+    "help": "在符合模式（例如 /private/**）的資料夾中不寫入也不刪除任何內容。用於保護有自己索引的資料夾。"
+  },
+  "index_dir_time": {
+    "title": "資料夾時間",
+    "help": "顯示在資料夾旁的時間。"
+  },
+  "index_no_mod_time": {
+    "title": "隱藏修改時間",
+    "help": "完全不顯示時間。在 S3、Swift 和 Oracle 上這是最省的選項，否則每個物件都需要單獨請求。"
+  },
+  "index_link_index": {
+    "title": "連結到索引檔案",
+    "help": "將資料夾連結寫為 dir/index.html 而非 dir/，適用於不提供索引文件的主機（一般 S3 URL、B2 友善 URL）。"
+  },
+  "index_use_server_mod_time": {
+    "title": "使用上傳時間",
+    "help": "顯示物件的上傳時間而非修改時間。這樣可避免在 S3 上對每個物件發出請求，也與網頁伺服器送出的 Last-Modified 相同。"
+  },
+  "index_rewrite": {
+    "title": "重寫未變更的清單",
+    "help": "即使未變更也寫入所有清單，例如為了套用新的標頭或中繼資料。"
   }
 }

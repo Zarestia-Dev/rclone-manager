@@ -251,6 +251,10 @@ export class HomeComponent {
     await this.remoteFacadeService.emptyTrash(remote, 'dashboard');
   }
 
+  async generateIndex(remote: Remote): Promise<void> {
+    await this.remoteFacadeService.generateRemoteIndex(remote);
+  }
+
   // --- Settings ---
 
   getRemoteSettingValue(

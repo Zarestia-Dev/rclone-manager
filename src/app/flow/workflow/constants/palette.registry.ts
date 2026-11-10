@@ -1,4 +1,4 @@
-import { OPERATION_REGISTRY, OperationDefinition } from '@app/types';
+import { OPERATION_REGISTRY, OperationDefinition, isSourceOnlyOperation } from '@app/types';
 import { NodePaletteItem, WorkflowNodeCategory, WorkflowPort } from '../types/workflow.types';
 import { getNodeStyleMeta } from '../utils/node-style.util';
 
@@ -94,7 +94,7 @@ function getOperationDefaultConfig(opKey: string): Record<string, unknown> {
     defaultRclone['mountPoint'] = '';
   } else if (opKey === 'serve') {
     defaultRclone['fs'] = '';
-  } else if (opKey === 'delete') {
+  } else if (isSourceOnlyOperation(opKey)) {
     defaultRclone['srcFs'] = '';
   } else if (opKey === 'copyurl') {
     defaultRclone['url'] = '';

@@ -365,6 +365,7 @@ fn count_label_key(op: OperationType) -> &'static str {
         OperationType::Copyurl => "tray.copyurlCount",
         OperationType::Archivecreate => "tray.archivecreateCount",
         OperationType::Cryptcheck => "tray.cryptcheckCount",
+        OperationType::Index => "tray.indexCount",
     }
 }
 

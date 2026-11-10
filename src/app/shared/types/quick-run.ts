@@ -93,8 +93,9 @@ export function isShownOnTray(config: Partial<QuickRunConfig> | null | undefined
  *
  * - For mount: returns `mountPoint` (no destination concept).
  * - For bisync: returns `path1` (source) and `path2` (destination).
- * - For sync/copy/move/check/cryptcheck/delete/copyurl/archivecreate:
+ * - For sync/copy/move/check/cryptcheck/copyurl/archivecreate:
  *   returns `srcFs` (source) and `dstFs` (destination).
+ * - For delete and index: returns `srcFs` (source) only.
  * - For serve: returns `fs` (source) only.
  */
 export function getQuickRunPaths(config: ConfigWithSubConfigs): {

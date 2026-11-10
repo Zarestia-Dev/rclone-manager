@@ -12,6 +12,7 @@ use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::starter::Starter;
 
 use super::common::{ResolvedProfile, backend_os, is_directory, parse_fs, split_file_path};
+use super::index::{move_index_options, narrow_to_changes};
 use super::job::{JobMetadata, SubmitJobOptions};
 use super::job_chain::{ChainJob, ChainMode, run_chain};
 
@@ -162,6 +163,11 @@ impl GenericTransferParams {
                     builder.as_map_mut().remove("fullPath");
                 }
                 builder.insert("_path", operations::ARCHIVE);
+            }
+            OperationType::Index => {
+                builder.insert("fs", self.source.clone());
+                builder.insert("_path", operations::INDEX);
+                move_index_options(builder.as_map_mut(), &self.source);
             }
             OperationType::Cryptcheck => {
                 // The form names these options as operations/check does; cryptcheck takes
@@ -426,7 +432,7 @@ pub async fn submit_transfer_batch(
     {
         return Err(invalid_option("source"));
     }
-    if transfer_type != OperationType::Delete
+    if transfer_type.takes_destination()
         && target_pairs.iter().any(|(_, dest)| dest.trim().is_empty())
     {
         return Err(invalid_option("destination"));
@@ -460,10 +466,10 @@ pub async fn submit_transfer_batch(
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Validate that Sync, Bisync, and Check do not contain files
+    // Validate that Sync, Bisync, Check and Index do not contain files
     if matches!(
         transfer_type,
-        OperationType::Sync | OperationType::Bisync | OperationType::Check
+        OperationType::Sync | OperationType::Bisync | OperationType::Check | OperationType::Index
     ) {
         for ((source, _), is_dir) in target_pairs.iter().zip(&dir_results) {
             if !*is_dir {
@@ -581,15 +587,23 @@ pub(crate) async fn start_resolved_profile_batch(
     params: ProfileParams,
 ) -> Result<String, String> {
     let backend = resolved.backend;
-    let common = resolved.params;
+    let mut common = resolved.params;
+
+    let mut scoped = params.scoped_targets.filter(|t| !t.is_empty());
+    // An index run keeps the whole folder as its source and tells rclone what changed in it.
+    if transfer_type == OperationType::Index
+        && let Some(targets) = scoped.take()
+    {
+        narrow_to_changes(&mut common.source, &mut common.rclone_config, targets);
+    }
 
     let (target_pairs, is_scoped) = if transfer_type != OperationType::Bisync
-        && let Some(scoped) = params.scoped_targets.filter(|t| !t.is_empty())
+        && let Some(scoped) = scoped
     {
         (scoped, true)
     } else {
         let dest = common.dest.clone();
-        if dest.is_empty() && transfer_type != OperationType::Delete {
+        if dest.is_empty() && transfer_type.takes_destination() {
             return Err(crate::localized_error!(
                 "backendErrors.operations.destinationMissing"
             ));

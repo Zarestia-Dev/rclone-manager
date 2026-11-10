@@ -5,9 +5,16 @@ import {
   isFolderOpeningAction,
   findInFlightAction,
   NO_ACTIONS,
+  NON_JOB_OPS,
   SYNC_TYPES,
 } from './operations';
-import { getOperationDef } from './operation-registry';
+import {
+  OPERATION_REGISTRY,
+  OperationFlag,
+  getOperationDef,
+  isSourceOnlyOperation,
+  operationHas,
+} from './operation-registry';
 import {
   ALL_PANELS,
   applyPanelLayout,
@@ -123,6 +130,54 @@ describe('Operation Action Helpers', () => {
       expect(getOperationDef('sync')?.key).toBe('sync');
       expect(getOperationDef('not-an-operation')).toBeUndefined();
     });
+  });
+
+  describe('isSourceOnlyOperation', () => {
+    it('is true for the operations that have no destination, and for no other', () => {
+      const sourceOnly = OPERATION_REGISTRY.map(op => op.key).filter(isSourceOnlyOperation);
+
+      expect(sourceOnly).toEqual(['delete', 'index']);
+      expect(isSourceOnlyOperation('not-an-operation')).toBe(false);
+    });
+  });
+
+  describe('operationHas', () => {
+    const withFlag = (flag: OperationFlag): string[] =>
+      OPERATION_REGISTRY.map(op => op.key).filter(key => operationHas(key, flag));
+
+    it('sets each flag on the operations that support it', () => {
+      expect(withFlag('watchable')).toEqual(['sync', 'copy', 'move', 'bisync', 'check', 'index']);
+      expect(withFlag('multiSource')).toEqual([
+        'sync',
+        'copy',
+        'move',
+        'check',
+        'delete',
+        'copyurl',
+        'cryptcheck',
+        'index',
+      ]);
+      expect(withFlag('fileSource')).toEqual(['copy', 'move', 'delete', 'archivecreate']);
+      expect(withFlag('backendProfile')).toEqual([
+        'sync',
+        'copy',
+        'move',
+        'check',
+        'delete',
+        'copyurl',
+        'archivecreate',
+        'index',
+      ]);
+      expect(withFlag('coreCommand')).toEqual(['archivecreate', 'cryptcheck']);
+    });
+
+    it('is false for a key the registry does not know', () => {
+      expect(operationHas('not-an-operation', 'watchable')).toBe(false);
+    });
+  });
+
+  it('NON_JOB_OPS are mount and serve', () => {
+    expect([...NON_JOB_OPS]).toEqual(['mount', 'serve']);
   });
 
   describe('operationsOfTab / isActiveOnTab', () => {

@@ -30,6 +30,7 @@ pub enum JobType {
     Delete,
     Rename,
     Rmdirs,
+    Index,
     Upload,
     ArchiveCreate,
     ArchiveExtract,
@@ -54,43 +55,12 @@ impl fmt::Display for JobType {
 }
 
 impl JobType {
-    #[must_use]
-    pub fn is_meta(&self) -> bool {
-        matches!(
-            self,
-            JobType::List
-                | JobType::Stat
-                | JobType::Info
-                | JobType::About
-                | JobType::Size
-                | JobType::Hash
-                | JobType::Mkdir
-                | JobType::Cleanup
-                | JobType::Delete
-                | JobType::Rename
-                | JobType::Rmdirs
-                | JobType::Upload
-                | JobType::ArchiveCreate
-                | JobType::ArchiveExtract
-                | JobType::ArchiveList
-        )
-    }
-
+    /// Whether a change of this job can alter the tray: the jobs that profiles start.
     #[must_use]
     pub fn is_tray_relevant(&self) -> bool {
-        matches!(
-            self,
-            JobType::Sync
-                | JobType::Copy
-                | JobType::Move
-                | JobType::Bisync
-                | JobType::Check
-                | JobType::Mount
-                | JobType::CryptCheck
-                | JobType::Delete
-                | JobType::CopyUrl
-                | JobType::ArchiveCreate
-        )
+        crate::utils::types::remotes::OperationType::ALL
+            .iter()
+            .any(|op| op.as_job_type().as_ref() == Some(self))
     }
 }
 
@@ -229,13 +199,6 @@ pub struct JobInfo {
     pub report_counts: Option<BTreeMap<String, usize>>,
 }
 
-impl JobInfo {
-    #[must_use]
-    pub fn is_meta(&self) -> bool {
-        self.job_type.is_meta()
-    }
-}
-
 // State Management
 
 #[derive(Debug)]
@@ -276,6 +239,35 @@ impl JobInfo {
             parent_job_id: None,
             report: None,
             report_counts: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JobType;
+
+    #[test]
+    fn only_the_jobs_a_profile_starts_refresh_the_tray() {
+        for job in [
+            JobType::Sync,
+            JobType::Mount,
+            JobType::Delete,
+            JobType::CryptCheck,
+            JobType::CopyUrl,
+            JobType::ArchiveCreate,
+            JobType::Index,
+        ] {
+            assert!(job.is_tray_relevant(), "{job:?}");
+        }
+        for job in [
+            JobType::List,
+            JobType::Upload,
+            JobType::Rename,
+            JobType::Rmdirs,
+            JobType::ArchiveExtract,
+        ] {
+            assert!(!job.is_tray_relevant(), "{job:?}");
         }
     }
 }

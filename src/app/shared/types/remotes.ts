@@ -1,6 +1,6 @@
 import { Origin } from './origin';
 import { Starter } from './starter';
-import { PrimaryActionType } from './operations';
+import { ALL_PRIMARY_ACTIONS, PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
 // ── Remote configuration ────────────────────────────────────────────────────
@@ -97,20 +97,11 @@ export interface RemoteServeState {
   profileBrowsePaths?: Record<string, string[]>;
 }
 
-export interface RemoteStatus {
-  diskUsage: DiskUsage;
-  mount: RemoteOperationState;
-  sync: RemoteOperationState;
-  copy: RemoteOperationState;
-  bisync: RemoteOperationState;
-  move: RemoteOperationState;
-  check: RemoteOperationState;
-  delete: RemoteOperationState;
-  copyurl: RemoteOperationState;
-  archivecreate: RemoteOperationState;
-  cryptcheck: RemoteOperationState;
-  serve: RemoteServeState;
-}
+/** The live state of a remote: one entry per operation of the registry, and serve with its list. */
+export type RemoteStatus = { diskUsage: DiskUsage } & Record<
+  Exclude<PrimaryActionType, 'serve'>,
+  RemoteOperationState
+> & { serve: RemoteServeState };
 
 export interface RemoteFeatures {
   IsLocal: boolean;
@@ -140,16 +131,9 @@ export function createDefaultRemoteOperationState(): RemoteOperationState {
 export function createDefaultRemoteStatus(): RemoteStatus {
   return {
     diskUsage: {},
-    mount: createDefaultRemoteOperationState(),
-    sync: createDefaultRemoteOperationState(),
-    copy: createDefaultRemoteOperationState(),
-    bisync: createDefaultRemoteOperationState(),
-    move: createDefaultRemoteOperationState(),
-    check: createDefaultRemoteOperationState(),
-    delete: createDefaultRemoteOperationState(),
-    copyurl: createDefaultRemoteOperationState(),
-    archivecreate: createDefaultRemoteOperationState(),
-    cryptcheck: createDefaultRemoteOperationState(),
+    ...(Object.fromEntries(
+      ALL_PRIMARY_ACTIONS.map(op => [op, createDefaultRemoteOperationState()])
+    ) as Record<Exclude<PrimaryActionType, 'serve'>, RemoteOperationState>),
     serve: { active: false, count: 0, serves: [] },
   };
 }
