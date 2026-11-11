@@ -2071,6 +2071,7 @@
       "downloadPage": "İndirme Sayfası",
       "managedBuildNotice": "Bu yapı uygulamanın güncelleme yöneticisi tarafından güncellenemez. Lütfen güncellemeleri manuel olarak yükleyin.",
       "openFlathub": "Flathub'u Aç",
+      "openSnapcraft": "Snapcraft'ı Aç",
       "loadInfoFailed": "Rclone bilgisi yüklenemedi.",
       "license": "Lisans",
       "licenseText1": "Bu uygulama, özgür ve açık kaynaklı bir yazılımdır ve",

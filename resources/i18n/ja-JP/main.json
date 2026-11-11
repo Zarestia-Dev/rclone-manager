@@ -2030,6 +2030,7 @@
       "downloadPage": "ダウンロードページ",
       "managedBuildNotice": "このビルドはアプリの自動更新機能でアップデートできません。手動でインストールしてください。",
       "openFlathub": "Flathub を開く",
+      "openSnapcraft": "Snapcraft を開く",
       "loadInfoFailed": "Rclone情報の読み込みに失敗しました。",
       "license": "ライセンス",
       "licenseText1": "本アプリケーションは、以下のライセンスの下で配布されるオープンソースソフトウェアです:",

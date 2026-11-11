@@ -39,9 +39,9 @@ package managers, including AUR packages repackaged from upstream DEBs. The host
 identifies portable/server/native execution separately from Cargo feature
 unification. Permissions are checked again before download and apply.
 
-`RCLONE_MANAGER_INSTALLATION_TYPE=docker|container|flatpak|aur|pacman|deb|rpm`
+`RCLONE_MANAGER_INSTALLATION_TYPE=docker|container|flatpak|snap|aur|pacman|deb|rpm`
 declares external ownership. Docker and Podman containers are recognized without it
-(`/.dockerenv`, `/run/.containerenv`); on other container runtimes set `container`. `RCLONE_MANAGER_DISABLE_UPDATES=1` (or `true`)
+(`/.dockerenv`, `/run/.containerenv`); Snaps are recognized automatically via `$SNAP`; on other container runtimes set `container`. `RCLONE_MANAGER_DISABLE_UPDATES=1` (or `true`)
 disables in-app installation while preserving release checks. Neither setting
 grants privileges.
 

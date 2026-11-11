@@ -17,10 +17,16 @@ pub fn deployment_type() -> Option<String> {
     std::env::var("RCLONE_MANAGER_INSTALLATION_TYPE")
         .ok()
         .or_else(|| {
-            ["/.dockerenv", "/run/.containerenv"]
+            if std::env::var_os("SNAP").is_some() {
+                Some("snap".to_owned())
+            } else if ["/.dockerenv", "/run/.containerenv"]
                 .iter()
                 .any(|marker| std::path::Path::new(marker).exists())
-                .then(|| "container".to_owned())
+            {
+                Some("container".to_owned())
+            } else {
+                None
+            }
         })
 }
 
@@ -33,13 +39,12 @@ fn installation_type(
         Some("flatpak")
     } else if portable {
         Some("portable")
-    } else if deployment.is_some_and(|value| {
-        matches!(
-            value.trim().to_ascii_lowercase().as_str(),
-            "docker" | "container"
-        )
-    }) {
-        Some("container")
+    } else if let Some(dep) = deployment {
+        match dep.trim().to_ascii_lowercase().as_str() {
+            "docker" | "container" => Some("container"),
+            "snap" => Some("snap"),
+            _ => None,
+        }
     } else {
         None
     }
@@ -67,6 +72,11 @@ mod installation_tests {
         assert_eq!(
             installation_type(false, false, Some("CONTAINER")),
             Some("container")
+        );
+        assert_eq!(installation_type(false, false, Some("snap")), Some("snap"));
+        assert_eq!(
+            installation_type(false, false, Some(" SNAP ")),
+            Some("snap")
         );
         for value in [
             None,

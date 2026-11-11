@@ -495,6 +495,17 @@ export class AboutModalComponent implements OnInit {
               },
             ],
           };
+        case 'snap':
+          return {
+            command: 'sudo snap refresh rclone-manager',
+            links: [
+              {
+                label: 'modals.about.openSnapcraft',
+                url: 'https://snapcraft.io/rclone-manager',
+                primary: true,
+              },
+            ],
+          };
         case 'portable':
           return {
             command: undefined,
@@ -622,6 +633,7 @@ export class AboutModalComponent implements OnInit {
       deb: 'DEB',
       rpm: 'RPM',
       flatpak: 'Flatpak',
+      snap: 'Snap',
       portable: 'Portable',
       container: 'Docker',
     };

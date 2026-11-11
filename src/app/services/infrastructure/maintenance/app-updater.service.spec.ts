@@ -362,6 +362,14 @@ describe('AppUpdaterService state restoration', () => {
     await service.initialize();
     expect(service.buildType()).toBe('pacman');
     expect(service.canAutoInstall()).toBe(false);
+
+    info = {
+      ...available,
+      installation: { installation: 'snap', method: 'unavailable', canInstall: false },
+    };
+    changed.next({ target: 'app' });
+    await Promise.resolve();
+    expect(service.buildType()).toBe('snap');
   });
 
   it('discards a staged APK and allows changing channel after backend confirmation', async () => {

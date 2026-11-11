@@ -2071,6 +2071,7 @@
       "downloadPage": "Download Page",
       "managedBuildNotice": "This build cannot be updated by the app updater. Please install updates manually.",
       "openFlathub": "Open Flathub",
+      "openSnapcraft": "Open Snapcraft",
       "loadInfoFailed": "Failed to load rclone info.",
       "license": "License",
       "licenseText1": "This application is free and open source software distributed under the",

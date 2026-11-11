@@ -25,6 +25,7 @@ pub enum InstallationKind {
     Deb,
     Rpm,
     Flatpak,
+    Snap,
     Container,
     Unknown,
 }
@@ -72,12 +73,14 @@ fn select_kind(
     package: Option<InstallationKind>,
     appimage: bool,
     flatpak: bool,
+    snap: bool,
     portable: bool,
 ) -> InstallationKind {
     let deployment = deployment.unwrap_or_default().trim().to_ascii_lowercase();
     match deployment.as_str() {
         "docker" | "container" => return InstallationKind::Container,
         "flatpak" => return InstallationKind::Flatpak,
+        "snap" => return InstallationKind::Snap,
         "aur" | "pacman" => return InstallationKind::Pacman,
         "deb" => return InstallationKind::Deb,
         "rpm" => return InstallationKind::Rpm,
@@ -85,6 +88,9 @@ fn select_kind(
     }
     if flatpak {
         return InstallationKind::Flatpak;
+    }
+    if snap {
+        return InstallationKind::Snap;
     }
     if let Some(package) = package {
         return package;
@@ -115,6 +121,7 @@ fn detect_policy(method: UpdateMethod, portable: bool) -> UpdatePolicy {
         executable.as_deref().and_then(package_owner),
         std::env::var_os("APPIMAGE").is_some(),
         cfg!(feature = "flatpak") || std::path::Path::new("/.flatpak-info").exists(),
+        std::env::var_os("SNAP").is_some(),
         portable,
     );
     let method_matches = matches!(
@@ -290,7 +297,7 @@ mod tests {
         ] {
             for method in [UpdateMethod::Tauri, UpdateMethod::Binary] {
                 assert_eq!(
-                    select_kind(method, None, Some(kind), false, false, true),
+                    select_kind(method, None, Some(kind), false, false, false, true),
                     kind
                 );
             }
@@ -303,15 +310,32 @@ mod tests {
             (" Docker ", InstallationKind::Container),
             ("AUR", InstallationKind::Pacman),
             ("flatpak", InstallationKind::Flatpak),
+            ("snap", InstallationKind::Snap),
         ] {
             assert_eq!(
-                select_kind(UpdateMethod::Binary, Some(hint), None, false, false, true),
+                select_kind(
+                    UpdateMethod::Binary,
+                    Some(hint),
+                    None,
+                    false,
+                    false,
+                    false,
+                    true
+                ),
                 kind
             );
         }
         for hint in [None, Some(""), Some("native"), Some("unknown")] {
             assert_eq!(
-                select_kind(UpdateMethod::Unavailable, hint, None, false, false, false),
+                select_kind(
+                    UpdateMethod::Unavailable,
+                    hint,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false
+                ),
                 InstallationKind::Unknown
             );
         }
@@ -320,24 +344,36 @@ mod tests {
     #[test]
     fn hosts_and_packaging_are_independent() {
         assert_eq!(
-            select_kind(UpdateMethod::Binary, None, None, false, false, true),
+            select_kind(UpdateMethod::Binary, None, None, false, false, false, true),
             InstallationKind::Portable
         );
         assert_eq!(
-            select_kind(UpdateMethod::Binary, None, None, false, false, false),
+            select_kind(UpdateMethod::Binary, None, None, false, false, false, false),
             InstallationKind::Server
         );
         assert_eq!(
-            select_kind(UpdateMethod::Android, None, None, false, false, false),
+            select_kind(
+                UpdateMethod::Android,
+                None,
+                None,
+                false,
+                false,
+                false,
+                false
+            ),
             InstallationKind::Android
         );
         assert_eq!(
-            select_kind(UpdateMethod::Tauri, None, None, true, false, false),
+            select_kind(UpdateMethod::Tauri, None, None, true, false, false, false),
             InstallationKind::Appimage
         );
         assert_eq!(
-            select_kind(UpdateMethod::Binary, None, None, false, true, false),
+            select_kind(UpdateMethod::Binary, None, None, false, true, false, false),
             InstallationKind::Flatpak
+        );
+        assert_eq!(
+            select_kind(UpdateMethod::Binary, None, None, false, false, true, false),
+            InstallationKind::Snap
         );
     }
 

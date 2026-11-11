@@ -58,7 +58,8 @@ export class AppUpdaterService extends TauriBaseService {
   });
   public readonly buildType = computed(() => {
     const kind = this.installationPolicy()?.installation;
-    return kind && ['portable', 'flatpak', 'container', 'pacman', 'deb', 'rpm'].includes(kind)
+    return kind &&
+      ['portable', 'flatpak', 'snap', 'container', 'pacman', 'deb', 'rpm'].includes(kind)
       ? kind
       : null;
   });

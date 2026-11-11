@@ -2030,6 +2030,7 @@
       "downloadPage": "下载页面",
       "managedBuildNotice": "此构建无法通过应用程序更新程序更新。请手动安装更新。",
       "openFlathub": "打开 Flathub",
+      "openSnapcraft": "打开 Snapcraft",
       "loadInfoFailed": "加载 Rclone 信息失败",
       "license": "许可证",
       "licenseText1": "本应用是自由开源软件，基于",

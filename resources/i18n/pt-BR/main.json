@@ -2030,6 +2030,7 @@
       "downloadPage": "Página de Download",
       "managedBuildNotice": "Esta compilação não pode ser atualizada pelo atualizador de aplicativos. Por favor instale as atualizações manualmente.",
       "openFlathub": "Abrir Flathub",
+      "openSnapcraft": "Abrir Snapcraft",
       "loadInfoFailed": "Falha ao carregar informações do Rclone.",
       "license": "Licença",
       "licenseText1": "Esta aplicação é software livre e de código aberto distribuído sob a licença",
