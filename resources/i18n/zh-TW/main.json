@@ -3372,6 +3372,7 @@
     },
     "backend": {
       "nameEmpty": "後端名稱不能為空",
+      "invalidName": "後端名稱不能以點開頭，不能以點或空格結尾，不能包含 / \\ : < > \" | ? *，也不能是 CON 等保留名稱",
       "cannotAddLocal": "無法新增名為 'Local' 的後端",
       "cannotRemoveLocal": "無法移除本機後端",
       "cannotRemoveActive": "無法移除當前活動後端",

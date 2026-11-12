@@ -3372,6 +3372,7 @@
     },
     "backend": {
       "nameEmpty": "Arka uç adı boş olamaz",
+      "invalidName": "Arka uç adı nokta ile başlayamaz, nokta veya boşlukla bitemez, / \\ : < > \" | ? * içeremez ve CON gibi ayrılmış bir ad olamaz",
       "cannotAddLocal": "'Local' adında bir arka uç eklenemez",
       "cannotRemoveLocal": "Local arka ucu kaldırılamaz",
       "cannotRemoveActive": "Aktif arka uç kaldırılamaz",

@@ -3331,6 +3331,7 @@
     },
     "backend": {
       "nameEmpty": "后端名称不能为空",
+      "invalidName": "后端名称不能以点开头，不能以点或空格结尾，不能包含 / \\ : < > \" | ? *，也不能是 CON 等保留名称",
       "cannotAddLocal": "无法添加名为 'Local' 的后端",
       "cannotRemoveLocal": "无法移除本地后端",
       "cannotRemoveActive": "无法移除当前活动后端",

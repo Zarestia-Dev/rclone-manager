@@ -19,11 +19,8 @@ fn update_local_config_password(
         .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
     connections
-        .set_field(
-            LOCAL_BACKEND_NAME,
-            "config_password",
-            &password.unwrap_or_default(),
-        )
+        // `None` writes the schema default (`null`), which removes the credential.
+        .set_field(LOCAL_BACKEND_NAME, "config_password", &password)
         .map_err(|e| format!("Failed to update Local config password: {e}"))
 }
 
@@ -469,4 +466,35 @@ pub async fn change_config_password(
 
     info!("Configuration password changed successfully");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clearing_the_local_config_password_removes_its_credential() {
+        let directory = tempfile::tempdir().unwrap();
+        let manager: AppSettingsManager =
+            rcman::SettingsManager::builder("config-password-test", "1")
+                .with_config_dir(directory.path())
+                .with_schema::<crate::services::settings::schema::AppSettings>()
+                .with_credential_config(rcman::CredentialConfig::Custom(std::sync::Arc::new(
+                    rcman::MemoryBackend::new(),
+                )))
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile("connections")
+                        .with_schema::<crate::rclone::backend::types::Backend>(),
+                )
+                .build()
+                .unwrap();
+        let key = format!("sub.connections.{LOCAL_BACKEND_NAME}.config_password");
+
+        update_local_config_password(&manager, Some("secret")).unwrap();
+        let credentials = manager.credentials().unwrap();
+        assert!(credentials.get(&key).unwrap().is_some());
+
+        update_local_config_password(&manager, None).unwrap();
+        assert_eq!(credentials.get(&key).unwrap(), None);
+    }
 }

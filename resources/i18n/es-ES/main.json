@@ -3331,6 +3331,7 @@
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
+      "invalidName": "El nombre del backend no puede empezar por un punto, terminar en punto o espacio, contener / \\ : < > \" | ? * ni ser un nombre reservado como CON",
       "cannotAddLocal": "No se puede agregar un backend llamado 'Local'",
       "cannotRemoveLocal": "No se puede eliminar el backend Local",
       "cannotRemoveActive": "No se puede eliminar el backend activo",

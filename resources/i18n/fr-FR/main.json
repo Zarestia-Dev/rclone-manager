@@ -3331,6 +3331,7 @@
     },
     "backend": {
       "nameEmpty": "Nom du dépôt distant ne peut pas être vide",
+      "invalidName": "Le nom du backend ne peut pas commencer par un point, se terminer par un point ou une espace, contenir / \\ : < > \" | ? * ni être un nom réservé comme CON",
       "cannotAddLocal": "Impossible d'ajouter un backend nommé 'Local'",
       "cannotRemoveLocal": "Impossible de supprimer le backend Local",
       "cannotRemoveActive": "Impossible de supprimer le backend actif",

@@ -87,7 +87,7 @@ pub async fn reset_setting(
 
 /// Reset all settings to defaults
 pub async fn reset_settings(app: AppHandle) -> Result<(), String> {
-    blocking(&app, |manager| manager.reset_all())
+    let changes = blocking(&app, |manager| manager.reset_all())
         .await?
         .map_err(
             |e| crate::localized_error!("backendErrors.settings.resetAllFailed", "error" => e),
@@ -100,12 +100,22 @@ pub async fn reset_settings(app: AppHandle) -> Result<(), String> {
         crate::utils::types::events::SettingsChangeEvent {
             category: "*".to_string(),
             key: "*".to_string(),
-            value: serde_json::Value::Null,
+            value: reset_changes_payload(changes),
         },
     );
 
     info!("All settings have been reset to default.");
     Ok(())
+}
+
+/// The settings a reset changed, as `{"category.key": new value}`, so backend listeners
+/// can apply them the way they apply a single saved setting.
+fn reset_changes_payload(changes: Vec<rcman::SettingChange>) -> serde_json::Value {
+    changes
+        .into_iter()
+        .map(|change| (change.key, change.new))
+        .collect::<serde_json::Map<_, _>>()
+        .into()
 }
 
 /// Mirror the saved language into the public cache the locked screen reads.
@@ -125,5 +135,42 @@ async fn sync_interface_language(app: &AppHandle) {
     .await;
     if let Err(error) = synced {
         log::warn!("Could not refresh public language cache: {error}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn change(key: &str, old: serde_json::Value, new: serde_json::Value) -> rcman::SettingChange {
+        rcman::SettingChange {
+            key: key.to_string(),
+            old,
+            new,
+        }
+    }
+
+    #[test]
+    fn reset_payload_maps_each_changed_key_to_its_new_value() {
+        let payload = reset_changes_payload(vec![
+            change("general.tray_enabled", json!(false), json!(true)),
+            change("developer.log_level", json!("debug"), json!("info")),
+            change("core.bandwidth_limit", json!("10M & 旅行"), json!("")),
+            change("core.rclone_additional_flags", json!(["-v"]), json!([])),
+        ]);
+        assert_eq!(
+            payload,
+            json!({
+                "general.tray_enabled": true,
+                "developer.log_level": "info",
+                "core.bandwidth_limit": "",
+                "core.rclone_additional_flags": [],
+            })
+        );
+    }
+
+    #[test]
+    fn reset_payload_is_an_empty_object_when_nothing_changed() {
+        assert_eq!(reset_changes_payload(Vec::new()), json!({}));
     }
 }

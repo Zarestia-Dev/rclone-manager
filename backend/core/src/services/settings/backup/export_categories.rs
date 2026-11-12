@@ -17,14 +17,6 @@ pub struct ExportCategoryResponse {
     pub description: Option<String>,
 }
 
-/// The snake_case name rcman serializes, which the frontend's `ExportCategory` type expects.
-fn category_type_name(category_type: rcman::backup::ExportCategoryType) -> String {
-    serde_json::to_value(category_type)
-        .ok()
-        .and_then(|name| name.as_str().map(str::to_owned))
-        .unwrap_or_default()
-}
-
 /// Get available export categories from rcman
 pub async fn get_export_categories(app: AppHandle) -> Result<Vec<ExportCategoryResponse>, String> {
     let manager = app.state::<AppSettingsManager>();
@@ -34,7 +26,7 @@ pub async fn get_export_categories(app: AppHandle) -> Result<Vec<ExportCategoryR
         .map(|cat| ExportCategoryResponse {
             id: cat.id,
             name: cat.name,
-            category_type: category_type_name(cat.category_type),
+            category_type: cat.category_type.as_str().to_string(),
             optional: cat.optional,
             description: cat.description,
         })
@@ -44,16 +36,12 @@ pub async fn get_export_categories(app: AppHandle) -> Result<Vec<ExportCategoryR
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rcman::backup::ExportCategoryType;
 
     #[test]
     fn category_types_match_the_names_the_frontend_expects() {
-        assert_eq!(category_type_name(ExportCategoryType::Settings), "settings");
-        assert_eq!(
-            category_type_name(ExportCategoryType::SubSettings),
-            "sub_settings"
-        );
-        assert_eq!(category_type_name(ExportCategoryType::External), "external");
+        assert_eq!(ExportCategoryType::Settings.as_str(), "settings");
+        assert_eq!(ExportCategoryType::SubSettings.as_str(), "sub_settings");
+        assert_eq!(ExportCategoryType::External.as_str(), "external");
     }
 }

@@ -51,6 +51,10 @@ pub const REMOTE_SETTINGS_CHANGED: &str = "remote_settings_changed";
 /// Emitted when global system settings (notifications, autostart, theme, bandwidth, etc.) change.
 /// - Emitted by: `services::settings::operations::core`
 /// - Handled by: `services::event_listener` (applies setting to OS/engine), `AppSettingsService`
+///
+/// `category` and `key` of `"*"` mean "reload everything". After a reset all, `value` is
+/// `{"category.key": new value}` for every setting the reset changed, which the backend
+/// listener applies; the other `"*"` emitters (vault unlock, system refresh) send `null`.
 pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";
 
 /// Emitted when the active bandwidth limit is changed.
