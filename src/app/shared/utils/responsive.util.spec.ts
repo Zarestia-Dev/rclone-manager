@@ -1,6 +1,6 @@
 import { DestroyRef, signal } from '@angular/core';
 import { MatDrawerMode } from '@angular/material/sidenav';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncResponsiveSidebar } from './responsive.util';
 
 describe('syncResponsiveSidebar', () => {
@@ -44,6 +44,8 @@ describe('syncResponsiveSidebar', () => {
 
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue(mockMql));
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('should initialize to side mode when media query matches desktop', () => {
     currentMatches = true;

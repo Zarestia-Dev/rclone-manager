@@ -26,9 +26,9 @@ describe('WindowService', () => {
   let sseEventSubject: Subject<unknown>;
 
   beforeEach(() => {
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -37,8 +37,8 @@ describe('WindowService', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      })),
-    });
+      }))
+    );
 
     themeSettingSubject = new Subject();
     sseEventSubject = new Subject();
@@ -88,6 +88,7 @@ describe('WindowService', () => {
 
   afterEach(() => {
     document.documentElement.removeAttribute('class');
+    vi.unstubAllGlobals();
   });
 
   it.each(['android', 'ios'] as const)('does not call desktop window APIs on %s', async os => {

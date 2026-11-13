@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { JobReportKey, OperationControlConfig, PrimaryActionType } from '@app/types';
@@ -37,16 +37,20 @@ describe('OperationControlComponent file reports', () => {
     return fixture.nativeElement as HTMLElement;
   };
 
+  afterEach(() => vi.unstubAllGlobals());
+
   beforeEach(() => {
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      })),
-    });
+      }))
+    );
     TestBed.configureTestingModule({
       imports: [OperationControlComponent],
       providers: [

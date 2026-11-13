@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -73,10 +73,12 @@ describe('JobDetailModalComponent', () => {
     },
   };
 
+  afterEach(() => vi.unstubAllGlobals());
+
   beforeEach(async () => {
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -85,8 +87,8 @@ describe('JobDetailModalComponent', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      })),
-    });
+      }))
+    );
 
     dialogRefSpy = { close: vi.fn() };
     jobManagementSpy = {
