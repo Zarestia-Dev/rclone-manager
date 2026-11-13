@@ -22,6 +22,25 @@ pub struct BridgeEvent {
 pub struct FrontendEvent {
     pub event: Arc<BridgeEvent>,
     pub revision: u64,
+    /// JSON text of `event`, built by the first client that needs it and shared by the rest.
+    json: Arc<OnceLock<Option<String>>>,
+}
+
+impl FrontendEvent {
+    pub fn new(event: Arc<BridgeEvent>, revision: u64) -> Self {
+        Self {
+            event,
+            revision,
+            json: Arc::default(),
+        }
+    }
+
+    /// The wire form of the event, serialized once however many clients receive it.
+    pub fn json(&self) -> Option<&str> {
+        self.json
+            .get_or_init(|| serde_json::to_string(&*self.event).ok())
+            .as_deref()
+    }
 }
 
 static GLOBAL_EVENT_BRIDGE: OnceLock<Arc<EventBridge>> = OnceLock::new();
@@ -36,7 +55,7 @@ pub struct EventBridge {
     tx: broadcast::Sender<Arc<BridgeEvent>>,
     frontend_tx: broadcast::Sender<FrontendEvent>,
     access: parking_lot::RwLock<Option<Arc<crate::services::settings::access::VaultAccess>>>,
-    sink: Option<Arc<dyn EventSink>>,
+    sink: OnceLock<Arc<dyn EventSink>>,
 }
 
 impl EventBridge {
@@ -48,8 +67,14 @@ impl EventBridge {
             tx,
             frontend_tx,
             access: parking_lot::RwLock::new(None),
-            sink,
+            sink: sink.map(OnceLock::from).unwrap_or_default(),
         }
+    }
+
+    /// Attaches the host delivery adapter once it exists, for a bridge created without one.
+    /// A bridge keeps its first adapter.
+    pub fn set_sink(&self, sink: Arc<dyn EventSink>) {
+        let _ = self.sink.set(sink);
     }
 
     pub fn set_frontend_access(&self, access: Arc<crate::services::settings::access::VaultAccess>) {
@@ -86,12 +111,9 @@ impl EventBridge {
         // Backend consumers always receive events, including while the UI is locked.
         let _ = self.tx.send(bridge_event.clone());
         let deliver = |revision| {
-            let frontend = FrontendEvent {
-                event: bridge_event.clone(),
-                revision,
-            };
+            let frontend = FrontendEvent::new(bridge_event.clone(), revision);
             let _ = self.frontend_tx.send(frontend.clone());
-            if let Some(sink) = &self.sink {
+            if let Some(sink) = self.sink.get() {
                 sink.emit(&frontend);
             }
         };
@@ -153,6 +175,49 @@ mod tests {
             assert_eq!(broadcast.payload, payload);
             assert_eq!(sink.0.lock().last(), Some(&*broadcast));
         }
+    }
+
+    #[test]
+    fn clones_of_a_frontend_event_share_one_serialization() {
+        let event = FrontendEvent::new(
+            Arc::new(BridgeEvent {
+                event: "changed".into(),
+                payload: json!({"path": "özel/a b.txt"}),
+            }),
+            3,
+        );
+        let clone = event.clone();
+        let first = event.json().unwrap();
+        assert_eq!(
+            serde_json::from_str::<BridgeEvent>(first).unwrap(),
+            *event.event
+        );
+        assert!(std::ptr::eq(first, clone.json().unwrap()));
+        assert!(!first.contains("revision"));
+    }
+
+    #[test]
+    fn a_sink_attached_later_only_receives_later_events() {
+        let sink = Arc::new(RecordingSink::default());
+        let bridge = EventBridge::new(4, None);
+        bridge.emit("before", ());
+        bridge.set_sink(sink.clone());
+        bridge.emit("after", ());
+        assert_eq!(sink.0.lock().len(), 1);
+        assert_eq!(sink.0.lock()[0].event, "after");
+    }
+
+    #[test]
+    fn a_bridge_keeps_its_first_sink() {
+        let (first, second) = (
+            Arc::new(RecordingSink::default()),
+            Arc::new(RecordingSink::default()),
+        );
+        let bridge = EventBridge::new(4, Some(first.clone()));
+        bridge.set_sink(second.clone());
+        bridge.emit("event", ());
+        assert_eq!(first.0.lock().len(), 1);
+        assert!(second.0.lock().is_empty());
     }
 
     #[test]

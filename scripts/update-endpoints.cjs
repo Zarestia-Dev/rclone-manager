@@ -21,14 +21,7 @@ const { spawnSync } = require('child_process');
 const DEFAULT_RCLONE_URL = 'http://127.0.0.1:5572';
 const PROJECT_ROOT = path.dirname(__dirname);
 const DEFAULT_INPUT = path.join(PROJECT_ROOT, 'upload', 'rc.json');
-const DEFAULT_OUTPUT = path.join(
-  PROJECT_ROOT,
-  'backend',
-  'core',
-  'src',
-  'rclone',
-  'endpoints.rs'
-);
+const DEFAULT_OUTPUT = path.join(PROJECT_ROOT, 'backend', 'core', 'src', 'rclone', 'endpoints.rs');
 
 // Module display order — keeps the file stable across rclone versions.
 const MODULE_ORDER = [
@@ -568,6 +561,52 @@ function parseArgs(argv) {
   return opts;
 }
 
+// The RC console keeps three lists of what rclone's API does. rclone publishes none of it, so
+// they are written by hand, and a sync is when they can fall behind.
+const RC_UTIL_DIR = path.join(PROJECT_ROOT, 'src', 'app', 'shared', 'utils', 'rc');
+
+function readRcConsoleLists(dir = RC_UTIL_DIR) {
+  const quoted = text => [...text.matchAll(/'([^']+)'/g)].map(m => m[1]);
+  const consoleSrc = fs.readFileSync(path.join(dir, 'rc-console.util.ts'), 'utf8');
+  const schemaSrc = fs.readFileSync(path.join(dir, 'rc-schema.util.ts'), 'utf8');
+  const set = name =>
+    quoted(new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]`).exec(consoleSrc)[1]);
+
+  const required = {};
+  for (const m of schemaSrc.matchAll(/^ {2}'([^']+)': \[([^\]]*)\],/gm))
+    required[m[1]] = quoted(m[2]);
+  return { readOnly: set('READ_ONLY_COMMANDS'), dangerous: set('DANGEROUS_COMMANDS'), required };
+}
+
+/** What in the console's lists no longer matches rclone, and the calls that are new to review. */
+function findRcConsoleDrift(commands, newPaths, lists) {
+  const byPath = new Map(commands.map(c => [c.Path, c]));
+  const problems = [];
+
+  const named = [
+    ['READ_ONLY_COMMANDS', lists.readOnly],
+    ['DANGEROUS_COMMANDS', lists.dangerous],
+    ['REQUIRED_PARAMS', Object.keys(lists.required)],
+  ];
+  for (const [list, paths] of named) {
+    for (const p of paths) {
+      if (!byPath.has(p)) problems.push(`${list}: ${p} is not in this rclone`);
+    }
+  }
+  for (const [p, names] of Object.entries(lists.required)) {
+    const help = byPath.get(p)?.Help ?? '';
+    for (const name of names) {
+      if (!new RegExp(`^- ${name}\\s*[-:]`, 'm').test(help)) {
+        problems.push(`REQUIRED_PARAMS: ${p} does not list "${name}" in its help`);
+      }
+    }
+  }
+  for (const p of newPaths) {
+    problems.push(`new call ${p}: is it read-only or dangerous, and does it require parameters?`);
+  }
+  return problems;
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2));
 
@@ -596,6 +635,7 @@ function main() {
   // 3. Merge source commands with existing definitions
   const mergedMap = new Map();
   let newlyCommentedCount = 0;
+  const newPaths = [];
   let updatedDocsCount = 0;
 
   for (const srcCmd of sourceCommands) {
@@ -620,6 +660,7 @@ function main() {
         isCommented: true,
       });
       newlyCommentedCount++;
+      newPaths.push(srcCmd.Path);
     }
   }
 
@@ -689,7 +730,17 @@ function main() {
       `  - ${name}: ${modCmds.length} endpoints (${modActive} active, ${modCommented} commented)`
     );
   }
+
+  const drift = findRcConsoleDrift(sourceCommands, newPaths, readRcConsoleLists());
+  if (drift.length > 0) {
+    console.warn(
+      `\nRC console lists to review (src/app/shared/utils/rc/rc-console.util.ts, rc-schema.util.ts):`
+    );
+    for (const problem of drift) console.warn(`  - ${problem}`);
+  }
 }
+
+module.exports = { readRcConsoleLists, findRcConsoleDrift };
 
 if (require.main === module) {
   main();

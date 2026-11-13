@@ -115,7 +115,9 @@
     "toggleCopyurl": "Toggle Copy URL as Quick Action",
     "toggleArchivecreate": "Toggle Archive as Quick Action",
     "successStart": "Successfully started {{type}} for {{remote}} ({{profile}})",
-    "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}"
+    "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}",
+    "indexActive": "Directory Listings Active",
+    "toggleIndex": "Toggle Directory Listings as Quick Action"
   },
   "serve": {
     "noActive": "No active serves",
@@ -144,6 +146,10 @@
       "disable": "Disable automation",
       "stopping": "Automation is stopping..."
     },
+    "actions": {
+      "run": "Run now",
+      "stop": "Stop current run"
+    },
     "nextRun": {
       "disabled": "Automation is disabled",
       "stopping": "Disabling after current run",
@@ -156,6 +162,7 @@
       "realtime": "Real-time Monitoring",
       "debounce": "Debounce Delay",
       "watcherActive": "Watcher Active",
+      "watchedFolder": "Watched folder",
       "seconds": "seconds",
       "realtimeSchedule": "Real-time File Watcher",
       "changedOnlyShort": "Subdirectories Only",
@@ -177,7 +184,8 @@
     "cryptcheck": "Cryptcheck",
     "serve": "Serve",
     "start": "Start",
-    "stop": "Stop"
+    "stop": "Stop",
+    "index": "Directory Listings"
   },
   "sidebar": {
     "toggleSidebar": "Toggle Sidebar",
@@ -196,10 +204,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "Job Information",
-      "type": "Job Type",
-      "id": "Job ID",
-      "status": "Job Status",
       "started": "Started",
       "finished": "Finished",
       "duration": "Duration"
@@ -221,10 +225,6 @@
       "moving": "Moving",
       "copying": "Copying",
       "serving": "Serving"
-    },
-    "stats": {
-      "emptyTitle": "No statistics available",
-      "emptyMessage": "Statistics will be shown when an operation is running"
     },
     "pathDisplay": {
       "source": "Source",
@@ -268,8 +268,7 @@
     "skipped": "Rclone version {{version}} skipped",
     "restored": "Rclone version {{version}} restored",
     "autoCheckEnabled": "Rclone auto-check updates enabled",
-    "autoCheckDisabled": "Rclone auto-check updates disabled",
-    "manualRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
+    "autoCheckDisabled": "Rclone auto-check updates disabled"
   },
   "alerts": {
     "title": "Alerts & Notifications",
@@ -316,7 +315,7 @@
       "startup": "Startup",
       "update": "Update",
       "internal": "Internal",
-      "flow": "Flow Workspace",
+      "workflow": "Workflow",
       "quickrun": "Quick Run"
     },
     "rule": {
@@ -471,7 +470,7 @@
       },
       "start_on_startup": {
         "label": "Start on Startup",
-        "description": "Automatically start the app when the system starts."
+        "description": "Automatically start the app when the system starts. A locked vault stays locked until you open the app."
       },
       "notifications": {
         "label": "Enable Notifications",
@@ -491,12 +490,11 @@
       },
       "keep_alive": {
         "label": "Run in Background",
-        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed.",
-        "notification": {
-          "jobs": "Active jobs: {{count}}",
-          "mounts": "Mounts: {{count}}",
-          "serves": "Serves: {{count}}"
-        }
+        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."
+      },
+      "start_on_boot": {
+        "label": "Start on Boot",
+        "description": "Start RClone Manager in the background when the phone boots, to run auto-start profiles and schedules. Some manufacturers (Xiaomi, Huawei, Oppo, …) also require allowing autostart for this app in the system settings. A locked vault stays locked until you open the app."
       }
     },
     "core": {
@@ -719,6 +717,7 @@
       "preferences": "Preferences",
       "advanced": "Advanced Settings",
       "flags": "Rclone Flags",
+      "rcConsole": "RC Console",
       "vault": "Vault",
       "fileBrowser": "File Browser",
       "flowWorkspace": "Flow Workspace",
@@ -747,6 +746,11 @@
         "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your Rclone experience.",
         "skipMountTitle": "I won't use mount",
         "skipMountDesc": "Skip installing mount drivers if you do not plan to mount drives."
+      },
+      "androidAccess": {
+        "title": "Android Permissions",
+        "content": "Both are optional and can be allowed later. They let RClone Manager browse local folders and keep transfers and schedules running while the screen is off.",
+        "allowed": "Allowed"
       },
       "selectConfig": {
         "title": "Select Rclone Config",
@@ -800,7 +804,8 @@
       "installPlugin": "Install Plugin",
       "installingPlugin": "Installing...",
       "unlock": "Unlock",
-      "getStarted": "Get Started"
+      "getStarted": "Get Started",
+      "skip": "Skip"
     },
     "validation": {
       "completeInstallation": "Please complete the installation options above",
@@ -886,11 +891,20 @@
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
-        "recent": "Recent ({{count}})"
+        "recent": "Recent ({{count}})",
+        "report": "File Report",
+        "conflicts": "Conflicts ({{count}})"
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred"
+        "transferred": "transferred",
+        "file": "File",
+        "direction": "Direction",
+        "took": "Took",
+        "when": "When",
+        "progress": "Progress",
+        "speed": "Speed",
+        "eta": "ETA"
       },
       "status": {
         "failed": "Failed",
@@ -909,10 +923,6 @@
       "actions": {
         "resolveToDst": "Copy to Destination",
         "resolveToSrc": "Copy to Source",
-        "resolveOverwrite": "Resolve File Mismatch",
-        "resolveOverwriteTitle": "Resolve File Mismatch",
-        "resolveOverwriteMessage": "The file '{{name}}' exists on both source and destination but differs. Do you want to overwrite the file on destination with the source file?",
-        "overwriteDst": "Overwrite Destination",
         "copyUrl": "Copy URL",
         "download": "Download File",
         "successSync": "File sync operation started successfully",
@@ -920,7 +930,8 @@
         "successCopyUrl": "Download URL copied to clipboard",
         "failCopyUrl": "Failed to generate download URL",
         "successDownload": "File downloaded successfully",
-        "failDownload": "Failed to download file"
+        "failDownload": "Failed to download file",
+        "resolveChoose": "Choose which version to keep"
       },
       "messages": {
         "resolveStarted": "File mismatch resolution started",
@@ -948,9 +959,95 @@
       },
       "titleDelete": "Delete Activity",
       "titleActivity": "Activity",
-      "loadMore": "Show more"
+      "loadMore": "Show more",
+      "report": {
+        "tabs": {
+          "combined": "Combined",
+          "missingOnDst": "Missing on destination",
+          "differ": "Differ",
+          "missingOnSrc": "Missing on source",
+          "match": "Match",
+          "error": "Errors",
+          "destAfter": "Destination after"
+        },
+        "sigils": {
+          "missingOnDst": "Missing on destination",
+          "missingOnSrc": "Missing on source",
+          "differ": "Differs",
+          "match": "Matches",
+          "error": "Error"
+        },
+        "empty": "No files in this report.",
+        "loadFailed": "Could not load the report.",
+        "showMore": "Show {{count}} more"
+      },
+      "direction": {
+        "toDestination": "New on source: copy to destination",
+        "toSource": "Only on destination: copy to source",
+        "choose": "Differs on both sides: you choose the winner",
+        "labelToDestination": "To destination",
+        "labelToSource": "To source",
+        "labelChoose": "Choose winner"
+      },
+      "bulk": {
+        "title": "Selected differences",
+        "selectAll": "Select all {{count}} open differences",
+        "selected": "{{count}} selected",
+        "toDestination": "{{count}} to destination",
+        "toSource": "{{count}} to source",
+        "choose": "{{count}} need a decision",
+        "clear": "Clear",
+        "applyOneWay": "Copy {{count}} files",
+        "review": "Review {{count}} conflicts…",
+        "started": "Started copying {{count}} files",
+        "partial": "Started {{started}} copies, {{failed}} failed"
+      },
+      "compare": {
+        "title": "File changed on both sides",
+        "position": "{{index}} of {{total}}",
+        "source": "Source",
+        "destination": "Destination",
+        "modified": "Modified",
+        "unknown": "Unknown",
+        "larger": "Larger",
+        "newer": "Newer",
+        "missing": "This file no longer exists here.",
+        "loadFailed": "Could not read the file: {{error}}",
+        "which": "Which version should win?",
+        "keepSource": "Keep the source version",
+        "keepDestination": "Keep the destination version",
+        "overwrites": "{{path}} will be overwritten. It can only be recovered if that remote keeps old versions.",
+        "recreates": "{{path}} will be created from the version you keep.",
+        "hint": "Choose a version. Nothing changes until you apply.",
+        "skip": "Skip this file",
+        "apply": "Apply",
+        "applyNext": "Apply and next",
+        "checksum": {
+          "verify": "Compare checksums",
+          "match": "{{type}} checksums are identical",
+          "differ": "{{type}} checksums differ",
+          "none": "These remotes share no checksum type",
+          "failed": "Could not read the checksums"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Keep the Path1 version",
+        "keepPath2": "Keep the Path2 version",
+        "titleBisync": "File changed on both paths",
+        "discards": "The other version ({{path}}) will be discarded, along with its copies on both paths. It can only be recovered if the remotes keep old versions."
+      },
+      "export": {
+        "copy": "Copy as CSV",
+        "copied": "{{count}} rows copied as CSV"
+      },
+      "conflicts": {
+        "empty": "No conflicts in this run.",
+        "loadFailed": "Could not load the conflicts.",
+        "resolved": "Resolved {{name}}",
+        "keptPath1": "Path1 version kept",
+        "keptPath2": "Path2 version kept"
+      }
     },
-
     "inputModal": {
       "name": "Name",
       "required": "{{field}} is required",
@@ -1156,6 +1253,38 @@
     "validation": {
       "required": "This field is required.",
       "min": "Value must be at least {{val}}."
+    },
+    "monitor": {
+      "status": {
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped"
+      },
+      "kpi": {
+        "progress": "Progress",
+        "speed": "Speed",
+        "avgSpeed": "Average speed",
+        "eta": "ETA",
+        "took": "Took",
+        "files": "Files",
+        "checks": "Checks",
+        "errors": "Errors",
+        "avg": "avg",
+        "peak": "peak",
+        "total": "total",
+        "left": "left",
+        "speedHistory": "Transfer speed over time",
+        "checked": "Checked",
+        "compared": "Compared",
+        "matched": "Matched",
+        "differences": "Differences",
+        "unreadable": "Unreadable",
+        "onlyOnSource": "only on source",
+        "onlyOnDestination": "only on destination",
+        "differ": "differ",
+        "deleted": "Deleted"
+      }
     }
   },
   "wizards": {
@@ -1386,6 +1515,8 @@
       "yourSchedule": "Your Schedule",
       "nextRun": "Next run:",
       "timezoneNote": "Times are in your local timezone (UTC{{timezone}}) and automatically converted to UTC for scheduling.",
+      "cronValidationFailed": "Could not validate the schedule",
+      "cronInvalid": "Invalid cron expression",
       "tabSimple": "Simple",
       "tabAdvanced": "Advanced",
       "days": {
@@ -1442,23 +1573,6 @@
       "aria": {
         "clear": "Clear",
         "cronFor": "Cron expression for {{name}}"
-      },
-      "relativeTime": {
-        "inPast": "in the past ({{date}})",
-        "lessThanMinute": "in less than a minute",
-        "in": "in {{time}}",
-        "days": {
-          "one": "1 day",
-          "other": "{{count}} days"
-        },
-        "hours": {
-          "one": "1 hour",
-          "other": "{{count}} hours"
-        },
-        "minutes": {
-          "one": "1 minute",
-          "other": "{{count}} minutes"
-        }
       },
       "cronPlaceholder": "Enter a cron expression (e.g. 0 0 * * *)"
     },
@@ -1517,8 +1631,9 @@
         "description": "Complete rclone.conf file"
       },
       "remoteConfigs": {
-        "title": "Remote Configurations"
+        "title": "Remote Settings"
       },
+      "noRemoteDefinitions": "This backup has no rclone.conf, so the remotes themselves will not be restored. Only their app settings (mounts, autostart, options) are. Add the remotes again, or restore from a password-protected backup.",
       "profiles": {
         "title": "Profiles"
       },
@@ -1540,13 +1655,7 @@
       "restoreAction": "Restore Backup",
       "errors": {
         "passwordRequired": "Password is required",
-        "passwordEmpty": "Password cannot be empty or whitespace",
-        "wrongPassword": "Incorrect password. Please try again.",
-        "integrityFailed": "Backup file is corrupted or has been tampered with.",
-        "verificationFailed": "File verification failed. The backup may be corrupted.",
-        "requiresPassword": "This backup requires a password to decrypt.",
-        "decryptFailed": "Failed to decrypt backup. Check your password.",
-        "generic": "An error occurred during restore: {{error}}"
+        "passwordEmpty": "Password cannot be empty or whitespace"
       }
     },
     "launchRestoreFailed": "Failed to launch restore flow",
@@ -1558,7 +1667,7 @@
   "updates": {
     "discardDownload": "Discard download",
     "cancelFailed": "Failed to cancel the update download.",
-    "installSuccess": "Update installed. Please restart the app.",
+    "downloadComplete": "Update downloaded and ready to install.",
     "checkFailed": "Failed to check for updates: {{error}}",
     "installFailed": "Failed to install update: {{error}}",
     "restartFailed": "Failed to restart application: {{error}}",
@@ -1713,7 +1822,8 @@
         "check": "Check",
         "upload": "Upload",
         "archivecreate": "Archive",
-        "archiveextract": "Extract Archive"
+        "archiveextract": "Extract Archive",
+        "index": "Directory Listings"
       }
     },
     "fileViewer": {
@@ -1839,7 +1949,10 @@
       "dryRunActive": "Dry run is active - no changes will be made",
       "resync": "Resync",
       "resyncActive": "Resync is active - performing full resynchronization",
-      "remoteSettings": "Remote Settings"
+      "remoteSettings": "Remote Settings",
+      "indexSettings": "Directory Listings Settings",
+      "index": "Directory Listings",
+      "indexDesc": "Write browsable listings into folders for static websites"
     },
     "generalDetail": {
       "automations": "Automations",
@@ -1848,7 +1961,6 @@
       "cronExpression": "Cron Expression:",
       "nextRunLabel": "Next Run:",
       "lastRunLabel": "Last Run:",
-      "createdLabel": "Created:",
       "statistics": "Statistics",
       "successful": "Successful",
       "failedCount": "Failed",
@@ -1878,6 +1990,7 @@
       "showShortcuts": "Show Keyboard Shortcuts",
       "openPreferences": "Open Preferences",
       "openFlags": "Open Rclone Flags",
+      "openRcConsole": "Open RC Console",
       "openVault": "Open Vault",
       "forceCheck": "Force Check Mounts",
       "forceCheckServes": "Force Check Served Remotes",
@@ -1975,25 +2088,24 @@
       "title": "Job Details #{{id}}",
       "sections": {
         "overview": "Job Information",
-        "statistics": "Statistics",
         "paths": "Paths",
         "errors": "Errors",
-        "profile": "Profile",
+        "execution": "Execution",
         "serverSideFlags": "Server-side & Flags"
       },
       "fields": {
         "type": "Job Type",
         "profile": "Profile",
+        "quickRun": "Quick Run",
+        "workflow": "Workflow",
         "status": "Job Status",
         "started": "Started",
         "finished": "Finished",
         "duration": "Duration",
-        "speed": "Speed",
-        "eta": "ETA",
         "files": "Files",
-        "checks": "Checks",
         "deleted": "Deleted",
         "renamed": "Renamed",
+        "updatedDirs": "Updated Dirs",
         "listed": "Listed",
         "errorsCount": "Errors",
         "remoteSource": "Remote Source",
@@ -2005,9 +2117,7 @@
         "serverSideCopies": "Server-side Copies",
         "serverSideMoves": "Server-side Moves",
         "retryError": "Retry Error",
-        "fatalError": "Fatal Error",
-        "speedAvg": "Average Speed",
-        "transferred": "Transferred"
+        "fatalError": "Fatal Error"
       }
     },
     "about": {
@@ -2021,10 +2131,10 @@
       "wiki": "Wiki Page",
       "reportIssues": "Report Issues",
       "rcloneWebsite": "Rclone Website",
-      "readyToRestart": "Restart Required",
-      "restartDescription": "An update has been installed. Please restart the application to apply the changes.",
-      "rcloneRestartRequired": "Rclone Restart Required",
-      "rcloneRestartDescription": "An Rclone update has been installed. Please restart the engine to apply the changes.",
+      "readyToRestart": "Update Ready",
+      "restartDescription": "The update has been downloaded. Restart the application to install it.",
+      "rcloneRestartRequired": "Rclone Update Ready",
+      "rcloneRestartDescription": "The Rclone update has been downloaded. Restart the engine to install it.",
       "restartNow": "Restart Now",
       "updateAvailable": "Update Available",
       "version": "Version",
@@ -2116,7 +2226,8 @@
       "clear": "Clear",
       "cacheCleared": "Cache cleared successfully",
       "cacheClearFailed": "Failed to clear cache",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Last checked: {{time}}"
     },
     "logs": {
       "fetchError": "Failed to fetch application logs.",
@@ -2198,7 +2309,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
-      "noPasswordHint": "Without a password, rclone.conf and saved secrets are left out of the backup. Credentials typed directly into Quick Runs or workflows are exported as they are.",
+      "noPasswordHint": "Without a password, rclone.conf and saved secrets are left out, so your remotes cannot be recreated on another machine. Credentials typed directly into Quick Runs or workflows are exported as they are.",
+      "remoteNeedsPassword": "A single remote can only be exported with a password, because its rclone configuration is included in encrypted backups only.",
       "vaultWarningTitle": "Configuration Vault is Open",
       "vaultWarningDesc": "Exported backups do not inherit vault encryption. Use the encryption option below to protect sensitive credentials and configurations with a password.",
       "exportNow": "Export Now",
@@ -2425,7 +2537,8 @@
         "filter": "Filter",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Runtime Remote"
+        "runtimeRemote": "Runtime Remote",
+        "index": "Directory Listings"
       },
       "advancedProfiles": {
         "title": "Advanced Profiles",
@@ -2546,6 +2659,102 @@
         "RulesOpt": "Rule options",
         "MetricsAuth": "Metrics authentication",
         "MetricsHTTP": "Metrics HTTP settings"
+      }
+    },
+    "rcConsole": {
+      "title": "RC Console",
+      "suggestions": "Suggestions",
+      "clear": "Clear console",
+      "emptyTitle": "rclone RC Console",
+      "emptyHint": "Run any rclone remote-control call. Start typing for suggestions, or type help for the syntax.",
+      "placeholder": "rc command, e.g. core/version",
+      "run": "Run",
+      "statusOk": "OK",
+      "statusError": "Error",
+      "statusHttp": "HTTP {{status}}",
+      "truncated": "Output truncated, copy for the full text",
+      "dangerous": "Dangerous",
+      "confirmDanger": "{{command}} can delete data or change the state of rclone. Press Enter again to run it, Esc to cancel.",
+      "suggestionsUnavailable": "Suggestions are unavailable: the command list could not be read from rclone.",
+      "helpText": "Run any rclone remote-control (rc) call.\n\n  core/version\n  operations/list fs=drive: remote=Photos\n  operations/list --json '{\"fs\":\"drive:\"}'\n  core/command -a ls -a drive: -o max-depth=1\n\nkey=value pairs are sent as strings, like \"rclone rc\" does.\n-o name=value fills \"opt\", -a value fills \"arg\", --json takes a JSON object.\nAdd _async=true to run the call as a job, _group=name to set a stats group.\n\nTab completes a command, ↑/↓ browse the history, Ctrl+L or \"clear\" empties the console.\nhelp <command> opens the documentation of a call, and the API list on the left browses all of them.",
+      "errors": {
+        "empty": "Type a command first.",
+        "unclosedQuote": "A quote is not closed. A backslash before a quote escapes it, so end a quoted path with two backslashes (C:\\dir\\\\).",
+        "missingEquals": "Expected key=value, got '{{token}}'.",
+        "missingValue": "{{flag}} needs a value.",
+        "badJson": "Invalid JSON: {{error}}",
+        "jsonNotObject": "The JSON parameters must be an object."
+      },
+      "backendHint": "The backend that receives these calls",
+      "readOnly": "Read-only",
+      "readWrite": "Read/write",
+      "readOnlyHint": "Read-only mode only lets calls that read through. Click to switch.",
+      "masked": "Secrets masked",
+      "unmasked": "Secrets shown",
+      "maskHint": "Hide passwords and tokens in the output, in copies and in the lines shown",
+      "readOnlyBlocked": "Read-only mode is on, so {{command}} was not run.",
+      "allowWrites": "Allow writes",
+      "engine": {
+        "restart": "Restart engine",
+        "restartConfirm": "Click again to restart",
+        "restartHint": "Stops rclone and the app starts it again from the same path, so a new build is picked up. Running jobs and mounts end.",
+        "restarting": "rclone was stopped. The app is starting it again.",
+        "failed": "Could not stop the rclone process",
+        "noProcess": "No rclone process to stop",
+        "info": "rclone version and process ID",
+        "notRunning": "Engine not running"
+      },
+      "showHelp": "Show help",
+      "edit": "Edit and run again",
+      "copyRcLine": "rclone rc command",
+      "snippetSecret": "This line sets a secret, so it was not saved.",
+      "history": "History and saved lines",
+      "save": "Save this line",
+      "historyEmpty": "Nothing yet. The lines you run appear here.",
+      "output": {
+        "pretty": "Pretty",
+        "raw": "Raw",
+        "table": "Table",
+        "lines": "{{count}} lines",
+        "showMore": "Show {{count}} more lines",
+        "showMoreRows": "Show {{count}} more rows",
+        "collapse": "Collapse",
+        "rowsOmitted": "{{count}} more rows are not shown"
+      },
+      "tree": {
+        "title": "API",
+        "filter": "Filter calls",
+        "empty": "No calls match."
+      },
+      "help": {
+        "parameters": "Parameters",
+        "optional": "optional",
+        "use": "Use",
+        "noParameters": "The help of this call lists no parameters.",
+        "examples": "Examples",
+        "insert": "Insert",
+        "run": "Run",
+        "fullDocs": "Full documentation",
+        "required": "required",
+        "requiredMissing": "{{count}} required still empty"
+      },
+      "job": {
+        "waiting": "Waiting for job {{id}}…",
+        "running": "Job {{id}} running",
+        "done": "Job {{id}} finished",
+        "failed": "Job {{id}} failed",
+        "lost": "Job not found",
+        "stop": "Stop",
+        "transfers": "{{done}} / {{total}} transfers",
+        "checks": "{{count}} checks",
+        "errors": "{{count}} errors"
+      },
+      "quickStart": "Try one of these",
+      "hints": {
+        "complete": "complete",
+        "history": "history",
+        "newLine": "new line",
+        "clear": "clear"
       }
     }
   },
@@ -2686,6 +2895,28 @@
         "statsChanged": "{{count}} to rename",
         "statsUnchanged": "{{count}} unchanged",
         "statsConflicts": "{{count}} conflict(s)"
+      },
+      "index": {
+        "title": "Generate Directory Listings",
+        "description": "Writes a browsable listing into {{target}} and every folder below it, so it can be served as a static website.",
+        "overwriteWarning": "Existing files with the same names as the selected listings (index.html by default) are overwritten without checking where they came from. Skip a folder below to protect a hand-written index.",
+        "confirm": "Generate",
+        "sections": {
+          "output": "Listings",
+          "folders": "Folders",
+          "appearance": "Appearance",
+          "advanced": "Advanced"
+        },
+        "formats": {
+          "html": "HTML page (index.html)",
+          "json": "JSON as rclone lsjson (index.json)",
+          "caddy": "JSON as Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Newest file below",
+          "dir": "The folder's own time",
+          "none": "No time"
+        }
       }
     },
     "errors": {
@@ -2708,7 +2939,8 @@
       "archiveCreateFailed": "Failed to create archive: {{error}}",
       "externalDropFailed": "Failed to process external file drop.",
       "sendToFailed": "Failed to update File Manager menu: {{error}}",
-      "noRemoteSelected": "Please navigate to a remote first."
+      "noRemoteSelected": "Please navigate to a remote first.",
+      "indexFailed": "Failed to write directory listings: {{error}}"
     },
     "contextMenu": {
       "open": "Open",
@@ -2753,7 +2985,8 @@
       "switchPane": "Switch Pane",
       "copyPublicLink": "Copy Public Link",
       "createFolderWithItems": "New Folder with Selection...",
-      "renameMultiple": "Rename Multiple..."
+      "renameMultiple": "Rename Multiple...",
+      "generateIndex": "Generate directory listings"
     },
     "view": {
       "iconSize": "Icon Size",
@@ -2779,7 +3012,8 @@
       "getPublicLinkStarted": "Generating public link...",
       "archiveCreateStarted": "Archive creation started...",
       "sendToAdded": "Added '{{remote}}{{path}}' to File Manager menu",
-      "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu"
+      "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu",
+      "indexStarted": "Writing directory listings..."
     },
     "androidShare": {
       "uploadHere": "Upload {{count}} shared file(s) to this folder",
@@ -2808,6 +3042,7 @@
       "aboutRemote": "About Remote",
       "emptyTrash": "Empty Trash",
       "viewLogs": "View Logs",
+      "inRcConsole": "Inspect in RC Console",
       "cloneRemote": "Clone Remote",
       "exportConfig": "Export Configuration",
       "resetSettings": "Reset Settings",
@@ -2859,7 +3094,6 @@
       "save": "Save Layout",
       "reset": "Reset Layout",
       "resetSuccess": "Layout reset to default",
-      "toggleAutomationFailed": "Failed to toggle automation",
       "showDetailed": "Show Detailed Cards",
       "showCompact": "Show Compact Cards"
     },
@@ -2911,6 +3145,7 @@
       "errors": "Errors:",
       "deletes": "Deletes:",
       "renames": "Renames:",
+      "updatedDirs": "Updated Dirs:",
       "serverCopies": "Server Copies:",
       "serverMoves": "Server Moves:",
       "lastError": "Last Error:",
@@ -2931,11 +3166,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Mount",
-      "startOperations": "Start Operation",
-      "startServe": "Start Serve"
-    },
     "panelTitles": {
       "mountedRemotes": "Mounted Remotes",
       "activeOperations": "Active Operations",
@@ -2964,6 +3194,10 @@
       "validationSelfLoop": "Node cannot connect to itself (self-loop): {{id}}",
       "validationCycle": "Graph contains cyclic dependencies (workflows must be DAGs)",
       "validationDisconnected": "Node '{{title}}' is disconnected from the workflow",
+      "validationMissingPort": "A wire is attached to a port that node '{{title}}' does not have: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' reads the output of '{{node}}', which is not in the workflow",
+      "validationTokenNotUpstream": "'{{title}}' reads the output of '{{node}}', which does not lead into it, so the value may be empty",
+      "validationPrevWithoutInput": "'{{title}}' reads the output of the previous node, but nothing is connected to it",
       "cancelled": "Execution cancelled",
       "jobUntracked": "Job {{id}} is no longer tracked; its result is unknown",
       "jobStopped": "Job {{id}} was stopped",
@@ -3018,7 +3252,16 @@
       "reportAndMore": "... and {{count}} more",
       "reportStatusErrors": "Completed with {{count}} error(s)",
       "reportStatusMatched": "All {{count}} file(s) matched identically (0 differences).",
-      "reportStatus": "Status"
+      "reportStatus": "Status",
+      "missingWorkflowId": "Missing workflow ID for update",
+      "workflowNotFound": "Workflow '{{id}}' not found",
+      "saveFailed": "Failed to save workflow: {{error}}",
+      "deleteFailed": "Failed to delete workflow: {{error}}",
+      "copyName": "{{name}} (Copy)"
+    },
+    "rcConsole": {
+      "emptyCommand": "No RC command was given.",
+      "transportFailed": "Could not reach rclone: {{error}}"
     },
     "mount": {
       "pointEmpty": "Mount point cannot be empty",
@@ -3031,10 +3274,18 @@
       "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
       "driveLetterInUse": "Selected drive letter is already in use by the system.",
       "permissionDenied": "Permission denied while attempting to mount.",
-      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again."
+      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again.",
+      "profileNotMounted": "Profile '{{profile}}' is not mounted on {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
+      "configIncomplete": "Configuration incomplete for profile '{{profile}}'",
+      "singleSourceOnly": "{{operation}} supports only a single source path",
+      "directoriesOnly": "{{operation}} supports only directories, not files: {{source}}",
+      "sourcePathInvalid": "Could not read the source path: {{path}}",
+      "destinationPathInvalid": "Could not read the destination path: {{path}}",
+      "filePathsInvalid": "Could not read source '{{source}}' or destination '{{destination}}' as a file path. Use the format 'remote:path/to/file' or a local path.",
+      "unsupportedOperation": "The operation {{operation}} cannot run as a transfer",
+      "destinationMissing": "No destination specified"
     },
     "serve": {
       "parseFailed": "Failed to parse response: {{error}}",
@@ -3043,7 +3294,8 @@
       "privilegedPort": "Ports below 1024 require administrator privileges. Please choose a port numbered 1024 or higher.",
       "tlsError": "Failed to load or parse SSL/TLS certificate.",
       "startFailed": "Failed to start serve: {{error}}",
-      "stopFailed": "Failed to stop serve: {{error}}"
+      "stopFailed": "Failed to stop serve: {{error}}",
+      "profileNotRunning": "No running serve found for profile '{{profile}}' on {{remote}}"
     },
     "request": {
       "failed": "Request failed: {{error}}"
@@ -3058,6 +3310,12 @@
       "fileLocked": "The file is currently locked or in use by another process.",
       "readOnly": "The target file system is read-only or write-protected.",
       "ioError": "IO error: {{error}}"
+    },
+    "upload": {
+      "legacyBatch": "This upload was started by an outdated page. Reload the application and try again.",
+      "noFiles": "The upload contains no files.",
+      "invalidPath": "The upload contains an invalid file or folder path.",
+      "invalidModifiedTime": "The upload contains an invalid modification time."
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",
@@ -3084,7 +3342,17 @@
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
       "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
       "backupFailed": "Failed to backup current rclone binary: {{error}}",
-      "rcAuthFailed": "Rclone remote control authentication failed: {{error}}"
+      "rcAuthFailed": "Rclone remote control authentication failed: {{error}}",
+      "remoteAuthRejected": "Remote backend {{name}} at {{address}} rejected the RC API credentials (HTTP 401)",
+      "remoteUnreachable": "Remote backend {{name}} at {{address}} is unreachable",
+      "portHeldByStaleProcess": "Port {{port}} is still held by an rclone process that could not be stopped (it may belong to another user, or be dead but still holding the socket). Stop it manually or change the backend port in settings.",
+      "portInUse": "Port {{port}} is already in use by another process or application",
+      "portBindFailed": "Port {{port}} could not be bound (address already in use)",
+      "exitedDuringStartup": "The rclone process exited during startup. Check the rclone log.",
+      "startupTimeout": "Timed out waiting for the rclone API to become ready ({{seconds}}s)",
+      "librcloneInitFailed": "librclone failed to initialize: {{error}}",
+      "encryptionCheckFailed": "Failed to check whether the configuration is encrypted: {{error}}",
+      "configLoadFailed": "Failed to load the rclone config file: {{error}}"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",
@@ -3102,10 +3370,13 @@
       "restoreFailed": "Backup restore failed: {{error}}",
       "exportFailed": "Backup export failed: {{error}}",
       "refreshFailed": "Failed to refresh system after backup restore: {{error}}",
-      "restoreIncomplete": "Backup restore was incomplete: {{error}}"
+      "restoreIncomplete": "Backup restore was incomplete: {{error}}",
+      "wrongPassword": "Incorrect password. Please try again.",
+      "passwordRequired": "This backup requires a password to decrypt."
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
+      "invalidName": "Backend name cannot start with a dot, end with a dot or space, contain / \\ : < > \" | ? * or be a reserved name such as CON",
       "cannotAddLocal": "Cannot add a backend named 'Local'",
       "cannotRemoveLocal": "Cannot remove the Local backend",
       "cannotRemoveActive": "Cannot remove the active backend",
@@ -3120,7 +3391,11 @@
       "notFound": "JobInfo not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
       "executionFailed": "Job execution failed: {{error}}",
-      "corruptedTransfer": "File corrupted during transfer or checksum verification failed."
+      "corruptedTransfer": "File corrupted during transfer or checksum verification failed.",
+      "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}",
+      "stopped": "Job stopped",
+      "failed": "Job failed",
+      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable."
     },
     "cache": {
       "fetchConfigFailed": "Failed to fetch remotes config",
@@ -3136,7 +3411,18 @@
       "startFailed": "Failed to start automation engine: {{error}}",
       "stopFailed": "Failed to stop automation engine: {{error}}",
       "invalidCron": "Invalid cron expression: {{error}}",
-      "automationNotFound": "Automation not found"
+      "cronRequired": "A cron expression is required",
+      "cronFieldCount": "A cron expression has 5 fields: minute, hour, day, month and weekday",
+      "configChanged": "Task configuration changed while it was being prepared. Try again.",
+      "automationNotFound": "Automation not found",
+      "watcherPending": "Watching waits for folders that do not exist yet: {{paths}}",
+      "noLocalPaths": "No local paths to watch",
+      "alreadyExists": "Automation with ID {{id}} already exists",
+      "noCronExpression": "Automation has no cron expression",
+      "schedulerNotInitialized": "The scheduler is not initialized",
+      "profileNotFound": "{{operation}} profile '{{profile}}' for '{{remote}}' was not found",
+      "workflowNotFound": "Workflow '{{id}}' was not found",
+      "quickRunNotFound": "Quick run '{{id}}' was not found"
     },
     "system": {
       "unlockFailed": "Unlock failed: {{error}}"
@@ -3150,13 +3436,11 @@
     },
     "updater": {
       "noPending": "There is no pending update",
-      "invalidUrl": "Invalid URL: {{error}}",
       "github": "GitHub API error: {{error}}",
       "githubRateLimit": "GitHub API rate limit exceeded. Please try again later.",
       "updateFailed": "Update failed: {{error}}",
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",
-      "restartFailed": "Restart failed: {{error}}",
       "notWritable": "Update path is not writable",
       "rollback": {
         "exited": "The updated application exited before it confirmed startup (code {{code}}).",
@@ -3171,24 +3455,54 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "Installing this package needs an administrator password prompt (pkexec, zenity or kdialog), but none was found.",
+      "verificationFailed": "The update could not be verified: its signature, checksum or metadata does not match.",
+      "insecureDownload": "The update download was not served over HTTPS.",
+      "downloadTooLarge": "The update download is larger than expected.",
+      "missingAsset": "The release has no update file named {{name}}.",
+      "unexpectedAsset": "The release lists an unexpected or duplicate update file.",
+      "argumentsTooLong": "The launch arguments are too long to keep across an update.",
+      "startupPending": "The previous update is still confirming that it started. Try again in a few seconds.",
+      "versionMustIncrease": "A follow-up update must have a newer version.",
+      "invalidBundle": "The portable app is not a complete macOS app bundle.",
+      "missingBackup": "The backup of the current version is missing.",
+      "invalidStagingDirectory": "The update staging folder is invalid.",
+      "helperFailed": "The update helper could not start ({{error}}), and restarting the application failed: {{restart}}",
+      "processUnavailable": "The updated application's process could not be supervised.",
+      "ownedByAnotherUser": "The application file belongs to another user."
     },
     "settings": {
       "loadFailed": "Failed to load settings: {{error}}",
       "saveFailed": "Failed to save setting: {{error}}",
       "resetFailed": "Failed to reset setting: {{error}}",
       "resetAllFailed": "Failed to reset all settings: {{error}}",
-      "subSettingsFailed": "Failed to get sub-settings: {{error}}",
-      "deleteFailed": "Failed to delete remote settings: {{error}}"
+      "deleteFailed": "Failed to delete remote settings: {{error}}",
+      "taskFailed": "Settings task failed: {{error}}",
+      "deleteEntryFailed": "Failed to delete setting entry: {{error}}",
+      "managerInitFailed": "Failed to create the settings manager: {{error}}"
     },
     "vault": {
       "passwordEmpty": "Vault password cannot be empty",
       "notEnabled": "Vault is not enabled",
       "invalidPassword": "Incorrect vault master password",
-      "operationFailed": "Vault operation failed: {{error}}"
+      "operationFailed": "Vault operation failed: {{error}}",
+      "operationInProgress": "Another vault operation is in progress",
+      "workflowsActive": "Wait for running workflows to finish before enabling the vault"
+    },
+    "notification": {
+      "toastFailed": "Could not show the system notification: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "That version no longer exists: {{path}}. Run bisync again to see the current conflicts.",
+      "stepFailed": "Could not update {{path}}: {{error}}"
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Backup created at: {{path}}",
+      "restored": "Settings restored successfully ({{count}} items restored)"
+    },
     "mount": {
       "unmounted": "Successfully unmounted {{mountPoint}}",
       "allUnmounted": "All remotes unmounted successfully"
@@ -3207,7 +3521,8 @@
     },
     "rclone": {
       "updated": "Rclone updated successfully ({{channel}} channel)",
-      "mountPluginInstalled": "Mount plugin installed successfully"
+      "mountPluginInstalled": "Mount plugin installed successfully",
+      "remoteRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
     },
     "job": {
       "stopped": "Job stopped successfully",
@@ -3274,7 +3589,9 @@
         "startArchivecreate": "Start Archive",
         "stopArchivecreate": "Stop Archive",
         "startServe": "Start Serve",
-        "stopServe": "Stop Serve"
+        "stopServe": "Stop Serve",
+        "startIndex": "Generate Directory Listings",
+        "stopIndex": "Stop Directory Listings"
       },
       "browse": "Browse Files",
       "emptyState": {
@@ -3318,7 +3635,8 @@
     "tooltipMount": "1 Mount",
     "tooltipMounts": "{{count}} Mounts",
     "tooltipServe": "1 Serve",
-    "tooltipServes": "{{count}} Serves"
+    "tooltipServes": "{{count}} Serves",
+    "indexCount": "Directory Listings [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Active operations running: {{details}}",
@@ -3343,6 +3661,7 @@
       "automationFailed": "{{type}} Automation Error",
       "automationStopped": "{{type}} Automation Stopped",
       "allJobsStopped": "All Jobs Stopped",
+      "automationUnavailable": "Automation Unavailable",
       "allServesStopped": "All Servers Stopped",
       "allUnmounted": "All Remotes Disconnected",
       "updateFound": "New Version Available",
@@ -3386,6 +3705,7 @@
       "serveFailed": "Failed to start serve for {{remote}} on {{backend}}: {{error}}",
       "serveStopped": "Stopped serve for {{remote}} on {{backend}}.",
       "allJobsStopped": "Successfully terminated all active jobs.",
+      "automationUnavailable": "Schedules and file watchers could not be started: {{error}}",
       "allServesStopped": "Successfully closed all active servers.",
       "allUnmounted": "Successfully disconnected all remote mounts.",
       "automationStarted": "Automation {{type}} '{{automation}}' is running on {{backend}}.",
@@ -3641,6 +3961,8 @@
       "savedWorkflows": "Saved Workflows",
       "presetRecipes": "Preset Recipes",
       "unsavedChanges": "Unsaved changes",
+      "discardConfirm": "The workflow on the canvas has unsaved changes. Discard them?",
+      "discard": "Discard",
       "saving": "Saving...",
       "categories": {
         "all": "All"
@@ -3677,7 +3999,7 @@
         "resetZoom": "Reset Zoom",
         "fitToView": "Fit to Screen",
         "snapToGrid": "Snap to Grid",
-        "toggleLog": "Toggle Execution Log",
+        "showRun": "Show last run",
         "toggleInspector": "Toggle Inspector",
         "dryRun": "Dry Run",
         "dryRunTooltip": "Simulate workflow execution without modifying files or executing real commands"
@@ -3692,6 +4014,8 @@
       },
       "inspector": {
         "general": "General Settings",
+        "checks": "Checks",
+        "warningsCount": "Warnings ({{count}})",
         "parameters": "Parameters & Options",
         "nodeTitle": "Node Title",
         "nodeSubtitle": "Subtitle / Description",
@@ -3707,12 +4031,8 @@
         "destinationPath": "Destination Path (dstFs)",
         "mountPoint": "Mount Point",
         "rcEndpoint": "RC Endpoint",
+        "rcOffline": "The list of calls could not be read from rclone, so only the common ones are shown.",
         "rcParameters": "RC Parameters (JSON)",
-        "rcPresets": "Preset Endpoints",
-        "presetCategoryAll": "All",
-        "presetCategoryVfs": "VFS",
-        "presetCategoryOps": "Storage",
-        "presetCategoryCore": "Core",
         "insertVariable": "Insert Node Output Variable",
         "insertTokenBtn": "Insert Token",
         "formatJson": "Format JSON",
@@ -3833,18 +4153,19 @@
         "transfers": "Transfers",
         "errors": "Errors",
         "testRun": "Test Run",
+        "testNeedsPlainJson": "Test run needs plain JSON. Replace the {{ }} variables with real values first.",
         "testRunRcHint": "Test this RC command with current parameters",
-        "testSuccess": "Test Succeeded",
-        "testFailed": "Test Failed",
         "useAsSampleSchema": "Save as Output Schema",
         "sampleOutputSchema": "Sample Output Schema",
-        "sampleOutputSchemaDesc": "JSON response schema to expose dynamic token fields in downstream cards",
+        "sampleOutputSchemaDesc": "Filled from a successful test run, or paste a reply. Its fields become variables in later steps.",
         "sampleOutputPlaceholder": "Paste sample JSON response here...",
         "availableOutputKeys": "Discovered Variable Keys",
         "upstreamOutputs": "Upstream Outputs & Variables",
         "nodeOutput": "Node Execution Output",
         "checkReport": "Check Difference Report",
         "rawOutputJson": "Output Data (JSON)",
+        "tabResult": "Result",
+        "tabSettings": "Settings",
         "conditionPresets": "Quick Condition Presets",
         "condPresetHasDiff": "Has Differences",
         "condPresetNoDiff": "No Differences",
@@ -3863,7 +4184,17 @@
         "opEndsWith": "Ends With",
         "opArrayNotEmpty": "Array Has Items",
         "opArrayIsEmpty": "Array Is Empty",
-        "preview": "Message Preview"
+        "preview": "Message Preview",
+        "presets": {
+          "checkReportTitle": "Difference Detected (Check Audit)",
+          "checkReportMsg": "Differences found between source and destination:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Transfer Completed Successfully",
+          "transferSummaryMsg": "Transfer finished:\nTransferred: {{prev.bytesFormatted}}\nFiles: {{prev.transfers}}\nSpeed: {{prev.speedFormatted}}\nErrors: {{prev.errors}}",
+          "failureAlertTitle": "Workflow Step Failed",
+          "failureAlertMsg": "Execution failed on node.\n\nError details:\n{{prev.error}}",
+          "healthStatusTitle": "Workflow Execution Report",
+          "healthStatusMsg": "Workflow step finished with status: {{prev.status}}.\nTransferred: {{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "Mounted",
@@ -3874,7 +4205,8 @@
         "success": "Completed",
         "failed": "Failed",
         "skipped": "Skipped",
-        "idle": "Idle"
+        "idle": "Idle",
+        "queued": "Waiting"
       },
       "ports": {
         "in": "In",
@@ -3893,7 +4225,9 @@
         "branch2": "Branch 2",
         "in1": "In 1",
         "in2": "In 2",
-        "done": "Done"
+        "done": "Done",
+        "inN": "In {{n}}",
+        "branchN": "Branch {{n}}"
       },
       "nodes": {
         "manualTrigger": "Manual Trigger",
@@ -3937,29 +4271,26 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "sync": "Sync",
+        "copy": "Copy",
+        "check": "Check",
+        "mount": "Mount"
       },
-      "logs": {
-        "stepRunning": "Step \"{{title}}\" is executing...",
-        "stepCompleted": "Step \"{{title}}\" completed in {{duration}}ms",
-        "stepFailed": "Step \"{{title}}\" failed: {{error}}",
-        "stepSkipped": "Step \"{{title}}\" skipped (branch not taken)",
-        "unknownError": "Unknown error",
-        "cancelRequested": "Workflow execution cancellation requested",
-        "startExecution": "Starting execution of workflow \"{{name}}\"",
-        "startSimulation": "Starting simulation (dry run) of workflow \"{{name}}\"",
-        "executionError": "Workflow execution error: {{error}}",
+      "run": {
+        "title": "Last run",
+        "copy": "Copy summary",
+        "openStep": "Open step",
+        "empty": "No run yet. Run the workflow to see its steps here.",
         "running": "Running...",
-        "title": "Execution Log",
-        "copy": "Copy Logs",
-        "clear": "Clear Logs",
-        "jumpToNode": "Click to focus node on canvas",
-        "empty": "No execution logs yet. Run a workflow to view step output.",
-        "copied": "Logs copied to clipboard",
-        "filterAll": "All",
-        "filterErrors": "Errors",
-        "filterWarnings": "Warnings",
-        "filterSuccess": "Success"
+        "executionError": "Workflow execution error: {{error}}",
+        "state": {
+          "started": "Starting",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        }
       },
       "tokens": {
         "prevNode": "Previous Node",
@@ -4000,7 +4331,9 @@
           "resumedAt": "Resumed At",
           "command": "Command",
           "result": "Command Result",
-          "json": "Formatted JSON"
+          "json": "Formatted JSON",
+          "reports": "File Reports",
+          "reportCounts": "File Report Counts"
         }
       },
       "details": "Workflow Details",
@@ -4009,8 +4342,6 @@
       "descriptionPlaceholder": "Describe the purpose of this workflow...",
       "showInTray": "Show in system tray",
       "deleteConfirm": "Are you sure you want to delete this workflow?",
-      "cleanDuplicates": "Clean Duplicates",
-      "cleanDuplicatesConfirm": "Are you sure you want to remove duplicate workflows?",
       "stats": {
         "title": "Overview",
         "nodes": "Total Nodes",
@@ -4021,37 +4352,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Smart Drift Check & Conditional Sync",
-          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details."
+          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "No Drift Detected",
+              "message": "Source and destination are already identical. Sync was skipped."
+            },
+            "node-notify-sync-done": {
+              "title": "Sync Completed",
+              "message": "Drift resolved: {{prev.bytesFormatted}} transferred ({{prev.transfers}} files)."
+            },
+            "node-notify-check-failed": {
+              "title": "Drift Check Failed",
+              "message": "The check could not finish, so nothing was synced:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Data Integrity Audit & Drift Report",
-          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist."
+          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Integrity Verified",
+              "message": "All files match destination. No discrepancies found."
+            },
+            "node-notify-drift": {
+              "title": "Integrity Audit Alert"
+            },
+            "node-notify-audit-failed": {
+              "title": "Integrity Audit Failed",
+              "message": "The audit could not finish:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Safe Sync with Failure Alert",
-          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure."
+          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Sync Succeeded",
+              "message": "Transferred: {{prev.bytesFormatted}} (Speed: {{prev.speedFormatted}}). All files up to date."
+            },
+            "node-notify-fail": {
+              "title": "Sync Failed",
+              "message": "Backup encountered an error:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Daily Backup & Notification",
-          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure."
+          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Backup Complete",
+              "message": "Daily sync completed: {{prev.bytesFormatted}} transferred (Speed: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Backup Failed",
+              "message": "Daily backup encountered an error:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Folder Watcher & Auto Upload",
-          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage."
+          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Auto Upload Finished",
+              "message": "Auto upload completed: {{prev.bytesFormatted}} transferred ({{prev.transfers}} files)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Multi-Cloud Parallel Mirror",
-          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion."
+          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Mirror Complete",
+              "message": "All parallel cloud sync operations finished."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "Mount on Demand & Notify",
-          "description": "Mounts a remote storage path and notifies desktop when drive is ready."
+          "description": "Mounts a remote storage path and notifies desktop when drive is ready.",
+          "nodes": {
+            "node-notify": {
+              "title": "Drive Mounted",
+              "message": "Your remote storage is mounted and ready to use."
+            }
+          }
         },
         "manualTrigger": "Manual",
         "manualTriggerDesc": "Triggered manually on demand",
         "vfsRefresh": {
           "name": "VFS Cache Refresh Automation",
-          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop."
+          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS Cache Refreshed",
+              "message": "Directory cache reload finished successfully.\nCommand: {{prev.command}}\nStatus: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS Refresh Failed",
+              "message": "RC command failed:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {
@@ -4061,7 +4467,8 @@
       "emptyState": {
         "title": "Welcome to Workflow Builder",
         "subtitle": "Create a new workflow or choose a template to automate your rclone operations."
-      }
+      },
+      "copyName": "{{name}} (Copy)"
     },
     "shortcuts": {
       "title": "Flow Keyboard Shortcuts"

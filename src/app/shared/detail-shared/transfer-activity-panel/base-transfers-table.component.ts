@@ -3,7 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CompletedTransfer, JOB_STATUS, TransferStatus } from '@app/types';
 import { relativeTimeLabel } from '../../utils/relative-time.util';
-import { ActivityRow, effectiveTransferStatus, matchesActivitySearch } from './activity.utils';
+import { ActivityRow, filterActivity } from './activity.utils';
 
 @Directive()
 export abstract class BaseTransfersTableComponent {
@@ -37,15 +37,9 @@ export abstract class BaseTransfersTableComponent {
     initialValue: null,
   });
 
-  protected readonly filteredTransfers = computed(() => {
-    const search = this.searchTerm().toLowerCase().trim();
-    const status = this.statusFilter();
-    if (!search && !status) return this.transfers();
-    return this.transfers().filter(
-      item =>
-        (!status || effectiveTransferStatus(item) === status) && matchesActivitySearch(item, search)
-    );
-  });
+  protected readonly filteredTransfers = computed(() =>
+    filterActivity(this.transfers(), this.searchTerm(), this.statusFilter())
+  );
 
   /** Enrich only the visible window, rather than every history entry on each poll. */
   protected readonly visibleTransfers = computed(() =>

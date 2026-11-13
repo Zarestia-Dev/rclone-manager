@@ -1,0 +1,113 @@
+:host {
+  position: absolute;
+  left: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 15;
+  width: 340px;
+  max-width: calc(100% - 2 * var(--space-md));
+  max-height: min(50%, 420px);
+  display: flex;
+  box-sizing: border-box;
+
+  // The shell supplies the measured clearance of the bottom navigation, as for the minimap.
+  @media (max-width: 599.98px) {
+    left: var(--space-sm);
+    max-width: calc(100% - 2 * var(--space-sm));
+    bottom: calc(var(--workspace-navigation-clearance) + var(--space-sm));
+  }
+}
+
+.run-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--card-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--box-shadow);
+}
+
+.run-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+
+  mat-icon {
+    flex: none;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+  }
+
+  .run-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
+}
+
+.run-head,
+.run-counts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.run-started {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+}
+
+// The only part that grows with the workflow: it scrolls, the rest of the card stays in view.
+.run-steps {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.run-step {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated-1);
+  color: var(--window-fg-color);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+}
+
+.step-icon {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--tone);
+}
+
+.step-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+}
+
+.step-error {
+  flex-basis: 100%;
+  padding-left: calc(var(--icon-size-sm) + var(--space-xs));
+  font-size: var(--font-size-xs);
+  color: var(--warn-color);
+}

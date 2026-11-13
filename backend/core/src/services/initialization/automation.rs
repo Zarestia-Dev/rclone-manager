@@ -1,5 +1,6 @@
 use crate::context::AppHandle;
 use log::info;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
@@ -9,12 +10,14 @@ use crate::{
     },
     services::{
         automation::{
+            commands::load_flow_automations,
             engine::AutomationScheduler,
             runtime::{RuntimeTasks, WorkflowSnapshot},
         },
         flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
         settings::AppSettingsManager,
     },
+    utils::types::remotes::RemoteSettings,
 };
 
 enum AutostartTask {
@@ -22,16 +25,22 @@ enum AutostartTask {
     Workflow(Arc<WorkflowSnapshot>),
 }
 
+/// The backend and the remote profiles read for one startup, so the profile auto-starts
+/// need no second read of the settings.
+pub(super) type RemoteSnapshot = (Backend, HashMap<String, RemoteSettings>);
+
 /// Pending executions own their inputs so a vault lock after dispatch does not
 /// force them to read settings again. Dropping a failed startup drops this plan.
 pub(super) struct AutostartTasks {
     backend: Backend,
+    remotes: HashMap<String, RemoteSettings>,
     tasks: Vec<AutostartTask>,
 }
 
 impl AutostartTasks {
     fn prepare(
         backend: Backend,
+        remotes: HashMap<String, RemoteSettings>,
         manager: &AppSettingsManager,
         quick_runs: &[QuickRun],
         workflows: &[WorkflowDefinition],
@@ -47,10 +56,15 @@ impl AutostartTasks {
                 WorkflowSnapshot::capture(manager, workflow.clone())?,
             )));
         }
-        Ok(Self { backend, tasks })
+        Ok(Self {
+            backend,
+            remotes,
+            tasks,
+        })
     }
 
-    pub(super) fn start(self, app: &AppHandle) {
+    /// Launches the Quick Runs and Workflows and hands back what was read for the profiles.
+    pub(super) fn start(self, app: &AppHandle) -> RemoteSnapshot {
         for task in self.tasks {
             let backend = self.backend.clone();
             let delay = match &task {
@@ -66,7 +80,7 @@ impl AutostartTasks {
                         info!("Auto-starting Quick Run: {id}");
                         if let Err(error) =
                             crate::services::flow::quick_run::commands::start_quick_run_snapshot(
-                                app, backend, quick_run, None, None, None,
+                                app, backend, quick_run, None, None,
                             )
                             .await
                         {
@@ -78,7 +92,11 @@ impl AutostartTasks {
                         info!("Auto-starting Workflow: {id}");
                         if let Err(error) =
                             crate::services::flow::workflow::engine::execute_workflow_snapshot(
-                                app, backend, workflow, false,
+                                app,
+                                backend,
+                                workflow,
+                                false,
+                                crate::services::flow::workflow::engine::RunTrigger::AppStart,
                             )
                             .await
                         {
@@ -88,6 +106,7 @@ impl AutostartTasks {
                 }
             });
         }
+        (self.backend, self.remotes)
     }
 }
 
@@ -107,30 +126,24 @@ pub(super) async fn initialize_automations(
     info!("📋 Loading automations from remote configs...");
 
     let backend_name = backend.name.clone();
-    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)?;
-    let workflows = crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?;
-
     let result = cache_state
         .load_from_remote_configs(&all_settings, &backend_name)
         .await?;
-
     info!("📅 Loaded {} remote automation(s)", result.added.len());
+    let (quick_runs, workflows) = load_flow_automations(&app_handle, &backend_name).await?;
+    info!(
+        "🚀 Synced {} Quick Run(s) and {} Workflow(s)",
+        quick_runs.len(),
+        workflows.len()
+    );
 
-    // ── Quick Run Automations ───────────────────────────────────────────────
-    info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
-
-    cache_state
-        .load_from_quick_runs(&quick_runs, &backend_name)
-        .await?;
-
-    // ── Workflow Automations ───────────────────────────────────────────────
-    info!("🌀 Syncing {} Workflow(s)...", workflows.len());
-
-    cache_state
-        .load_from_workflows(&workflows, &backend_name)
-        .await?;
-
-    let autostarts = AutostartTasks::prepare(backend, manager.inner(), &quick_runs, &workflows)?;
+    let autostarts = AutostartTasks::prepare(
+        backend,
+        all_settings,
+        manager.inner(),
+        &quick_runs,
+        &workflows,
+    )?;
     crate::services::automation::runtime::refresh_with_definitions(
         &app_handle,
         Some(revision),
@@ -196,6 +209,7 @@ mod tests {
         };
         let plan = AutostartTasks::prepare(
             Backend::new_local("Local"),
+            HashMap::new(),
             manager.inner(),
             &[preset, quick_run("manual", false)],
             &[workflow, WorkflowDefinition::default()],
@@ -210,6 +224,20 @@ mod tests {
         assert_eq!(snapshot.definition.id, "workflow");
         assert_eq!(snapshot.quick_runs["startup"].name, "startup");
         assert!(!snapshot.quick_runs.contains_key("manual"));
+    }
+
+    #[test]
+    fn starting_the_tasks_hands_back_the_remote_profiles_that_were_read() {
+        let plan = AutostartTasks {
+            backend: Backend::new_local("Local"),
+            remotes: HashMap::from([("drive".to_string(), RemoteSettings::default())]),
+            tasks: Vec::new(),
+        };
+
+        let (backend, remotes) = plan.start(&AppHandle::default());
+
+        assert_eq!(backend.name, "Local");
+        assert!(remotes.contains_key("drive"));
     }
 
     #[tokio::test]
@@ -230,20 +258,10 @@ mod tests {
         store.set(&preset.id, &preset).unwrap();
         let first = initialize_automations(app.clone()).await.unwrap();
         app.state::<AutomationScheduler>().start().await.unwrap();
-        let cache = app.state::<AutomationsCache>();
-        let first_job = cache
-            .get_automation(&preset.id)
-            .await
-            .unwrap()
-            .scheduler_job_id
-            .unwrap();
+        let scheduler = app.state::<AutomationScheduler>();
+        let first_job = scheduler.scheduled_job(&preset.id).await.unwrap();
         let second = initialize_automations(app.clone()).await.unwrap();
-        let second_job = cache
-            .get_automation(&preset.id)
-            .await
-            .unwrap()
-            .scheduler_job_id
-            .unwrap();
+        let second_job = scheduler.scheduled_job(&preset.id).await.unwrap();
         assert_eq!(first_job, second_job);
         assert_eq!(first.tasks.len(), 1);
         assert_eq!(second.tasks.len(), 1);

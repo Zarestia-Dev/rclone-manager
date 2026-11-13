@@ -7,6 +7,7 @@ import { FlowContainerComponent } from './flow-container.component';
 import { FlowSubMode } from '@app/types';
 import { QuickRunService } from '../services/flow/quick-run.service';
 import { WorkflowStateService } from '../services/flow/workflow-state.service';
+import { WorkflowStorageService } from '../services/flow/workflow-storage.service';
 import { UiStateService } from '../services/ui/state/ui-state.service';
 import { LocalStorageService } from '../services/ui/state/local-storage.service';
 import { ModalService } from '../services/ui/modal.service';
@@ -26,9 +27,10 @@ describe('FlowContainerComponent', () => {
   let mockWorkflowState: {
     isWorkspaceDrawerOpen: typeof isWorkspaceDrawerOpenSignal;
     isMobileFocusMode: typeof isMobileFocusModeSignal;
-    createNewWorkflow: ReturnType<typeof vi.fn>;
     resetMobileUiState: ReturnType<typeof vi.fn>;
   };
+
+  let mockWorkflowStorage: { createAndOpenWorkflow: ReturnType<typeof vi.fn> };
 
   let mockQuickRunService: {
     selected: ReturnType<typeof vi.fn>;
@@ -59,6 +61,7 @@ describe('FlowContainerComponent', () => {
         provideTranslateService(),
         { provide: LocalStorageService, useValue: mockLocalStorage },
         { provide: WorkflowStateService, useValue: mockWorkflowState },
+        { provide: WorkflowStorageService, useValue: mockWorkflowStorage },
         { provide: QuickRunService, useValue: mockQuickRunService },
         { provide: UiStateService, useValue: mockUiStateService },
         { provide: ModalService, useValue: mockModalService },
@@ -95,9 +98,10 @@ describe('FlowContainerComponent', () => {
     mockWorkflowState = {
       isWorkspaceDrawerOpen: isWorkspaceDrawerOpenSignal,
       isMobileFocusMode: isMobileFocusModeSignal,
-      createNewWorkflow: vi.fn(),
       resetMobileUiState: vi.fn(),
     };
+
+    mockWorkflowStorage = { createAndOpenWorkflow: vi.fn() };
 
     mockQuickRunService = {
       selected: vi.fn().mockReturnValue(null),
@@ -181,7 +185,7 @@ describe('FlowContainerComponent', () => {
 
     component.setSidebarOpen(true);
     component.newWorkflow();
-    expect(mockWorkflowState.createNewWorkflow).toHaveBeenCalled();
+    expect(mockWorkflowStorage.createAndOpenWorkflow).toHaveBeenCalled();
     expect(component.isSidebarOpen()).toBe(false);
 
     component.setSidebarOpen(true);

@@ -5,7 +5,7 @@
         <div class="setting-title">
           <span>
             {{
-              opt.Name
+              opt.TranslationKey || opt.Name
                 | rcloneOptionTranslate
                   : 'title'
                   : opt.FieldName || opt.Name
@@ -25,7 +25,7 @@
         <p
           class="help-text"
           [innerHTML]="
-            opt.Name
+            opt.TranslationKey || opt.Name
               | rcloneOptionTranslate: 'help' : opt.Help : provider() : currentLang()
               | linebreaks
           "

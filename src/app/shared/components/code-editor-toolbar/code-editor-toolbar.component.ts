@@ -14,6 +14,7 @@ import {
   PersistentMenuItemDirective,
 } from '../../directives/persistent-menu-item.directive';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-code-editor-toolbar',
   imports: [
@@ -24,6 +25,7 @@ import {
     TranslatePipe,
     PersistentMenuItemDirective,
     PersistentMenuCheckboxDirective,
+    PillDirective,
   ],
   templateUrl: './code-editor-toolbar.component.html',
   styleUrl: './code-editor-toolbar.component.scss',

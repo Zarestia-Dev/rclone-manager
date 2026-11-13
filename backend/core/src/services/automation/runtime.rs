@@ -37,14 +37,13 @@ struct ProfileSnapshot {
     pub backend: Backend,
     profile: ProfileConfig,
     options: Value,
-    name: String,
 }
 
 impl ProfileSnapshot {
     fn resolve(&self) -> Result<ResolvedProfile, String> {
         Ok(ResolvedProfile {
             backend: self.backend.clone(),
-            params: parse_profile_config(&self.profile, &self.options, Some(self.name.clone()))?,
+            params: parse_profile_config(&self.profile, &self.options)?,
         })
     }
 }
@@ -66,9 +65,11 @@ async fn capture_profile_settings(
         .and_then(|profiles| profiles.get(profile_name))
         .cloned()
         .ok_or_else(|| {
-            format!(
-                "{} profile '{profile_name}' for '{remote_name}' not found",
-                operation.config_key()
+            crate::localized_error!(
+                "backendErrors.automation.profileNotFound",
+                "operation" => operation.config_key(),
+                "profile" => profile_name,
+                "remote" => remote_name
             )
         })?;
     let mut options = json!({"name": remote_name});
@@ -106,8 +107,17 @@ async fn capture_profile_settings(
         backend,
         profile,
         options,
-        name: profile_name.to_owned(),
     })
+}
+
+/// The Quick Run IDs the quick-run nodes of a workflow name.
+fn quick_run_ids(definition: &WorkflowDefinition) -> impl Iterator<Item = &str> {
+    definition
+        .nodes
+        .iter()
+        .filter(|node| node.kind() == NodeKind::QuickRun)
+        .filter_map(|node| node.config.get("quickRunId").and_then(Value::as_str))
+        .map(str::trim)
 }
 
 /// Dependencies belong to this execution, including nodes after a timer/wait.
@@ -126,12 +136,9 @@ impl WorkflowSnapshot {
         // Quick Runs belong to the selected backend, which can change while the
         // workflow runs, so the ones it names are read now rather than per node.
         let mut presets = HashMap::new();
-        for node in &definition.nodes {
-            if node.kind() == NodeKind::QuickRun
-                && let Some(id) = node.config.get("quickRunId").and_then(Value::as_str)
-                && !id.contains("{{")
-                && !presets.contains_key(id.trim())
-                && let Some(preset) = get_quick_run(manager, id.trim())?
+        for id in quick_run_ids(&definition).filter(|id| !id.contains("{{")) {
+            if !presets.contains_key(id)
+                && let Some(preset) = get_quick_run(manager, id)?
             {
                 presets.insert(preset.id.clone(), preset);
             }
@@ -144,15 +151,10 @@ impl WorkflowSnapshot {
     }
 
     fn from_presets(definition: WorkflowDefinition, presets: &HashMap<String, QuickRun>) -> Self {
-        let mut quick_runs = HashMap::new();
-        for node in &definition.nodes {
-            if node.kind() == NodeKind::QuickRun
-                && let Some(id) = node.config.get("quickRunId").and_then(Value::as_str)
-                && let Some(preset) = presets.get(id.trim())
-            {
-                quick_runs.insert(preset.id.clone(), preset.clone());
-            }
-        }
+        let quick_runs = quick_run_ids(&definition)
+            .filter_map(|id| presets.get(id))
+            .map(|preset| (preset.id.clone(), preset.clone()))
+            .collect();
         let targets: HashSet<_> = definition
             .nodes
             .iter()
@@ -343,11 +345,11 @@ pub(crate) async fn refresh_with_definitions(
         .await;
     let workflows = match workflows {
         Some(workflows) => workflows,
-        None => crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?,
+        None => crate::services::flow::workflow::commands::get_all_workflows(&manager)?,
     };
     let quick_runs = match quick_runs {
         Some(quick_runs) => quick_runs,
-        None => crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)?,
+        None => crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?,
     };
     let workflows: HashMap<_, _> = workflows
         .into_iter()
@@ -366,13 +368,13 @@ pub(crate) async fn refresh_with_definitions(
             )
     }) {
         let captured = async {
-            match automation.args.params.source {
-                Some(Origin::QuickRun) => {
+            match automation.args.source {
+                Origin::QuickRun => {
                     if let Some(qr) = presets.get(&automation.id) {
                         tasks.quick_runs.insert(qr.id.clone(), qr.clone());
                     }
                 }
-                Some(Origin::Flow) => {
+                Origin::Workflow => {
                     if let Some(wf) = workflows.get(&automation.id) {
                         tasks.workflows.insert(
                             wf.id.clone(),
@@ -381,11 +383,14 @@ pub(crate) async fn refresh_with_definitions(
                     }
                 }
                 _ => {
+                    let operation = automation.automation_type.ok_or_else(|| {
+                        crate::localized_error!("backendErrors.automation.automationNotFound")
+                    })?;
                     let snapshot = capture_profile_settings(
                         app,
                         &automation.remote_name,
                         &automation.profile_name,
-                        automation.automation_type,
+                        operation,
                         Some(&backend.name),
                     )
                     .await?;
@@ -419,9 +424,9 @@ pub(crate) async fn refresh_with_definitions(
     }
     let mut current = runtime.tasks.write();
     if current.revision != revision {
-        return Err(
-            crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Task configuration changed during snapshot preparation"),
-        );
+        return Err(crate::localized_error!(
+            "backendErrors.automation.configChanged"
+        ));
     }
     tasks.revision = revision.wrapping_add(1);
     *current = tasks;
@@ -444,8 +449,9 @@ fn capture_workflow(
     manager: &AppSettingsManager,
     id: &str,
 ) -> Result<Arc<WorkflowSnapshot>, String> {
-    let definition =
-        get_workflow_by_id(manager, id)?.ok_or_else(|| format!("Workflow '{id}' not found"))?;
+    let definition = get_workflow_by_id(manager, id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.automation.workflowNotFound", "id" => id),
+    )?;
     Ok(Arc::new(WorkflowSnapshot::capture(manager, definition)?))
 }
 
@@ -465,8 +471,11 @@ pub fn workflow(app: &AppHandle, id: &str) -> Result<Arc<WorkflowSnapshot>, Stri
 pub fn quick_run(app: &AppHandle, id: &str) -> Result<QuickRun, String> {
     let manager = app.state::<AppSettingsManager>();
     if !manager.is_locked() {
-        let captured = get_quick_run(&manager, id)
-            .and_then(|qr| qr.ok_or_else(|| format!("Quick run '{id}' not found")));
+        let captured = get_quick_run(&manager, id).and_then(|qr| {
+            qr.ok_or_else(
+                || crate::localized_error!("backendErrors.automation.quickRunNotFound", "id" => id),
+            )
+        });
         if captured.is_ok() || !manager.is_locked() {
             return captured;
         }

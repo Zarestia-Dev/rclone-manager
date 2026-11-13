@@ -1,4 +1,5 @@
-import { PrimaryActionType } from './operations';
+import type { PillTone } from './pill';
+import { ALL_PRIMARY_ACTIONS, PrimaryActionType, SYNC_TYPES } from './operations';
 import { Remote } from './remotes';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Entry, RcConfigOption } from './remote-config';
@@ -15,7 +16,6 @@ export interface TabItem<T = string> {
 }
 
 export interface ModeConfig {
-  label: string;
   icon: string;
   activeTitle: string;
   inactiveTitle: string;
@@ -23,19 +23,16 @@ export interface ModeConfig {
 
 export const MODE_CONFIG: Readonly<Record<OperationTab, ModeConfig>> = Object.freeze({
   mount: {
-    label: 'appOverview.labels.mount',
     icon: 'mount',
     activeTitle: 'appOverview.panelTitles.mountedRemotes',
     inactiveTitle: 'appOverview.panelTitles.unmountedRemotes',
   },
   operations: {
-    label: 'appOverview.labels.startOperations',
     icon: 'operations',
     activeTitle: 'appOverview.panelTitles.activeOperations',
     inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
   },
   serve: {
-    label: 'appOverview.labels.startServe',
     icon: 'satellite-dish',
     activeTitle: 'appOverview.panelTitles.activeServes',
     inactiveTitle: 'appOverview.panelTitles.availableRemotes',
@@ -146,6 +143,47 @@ export interface DashboardPanel extends PanelConfig {
   visible: boolean;
 }
 
+/** What an overview stores of its panel layout; older versions stored just the order. */
+export type SavedPanelLayout = { order?: string[]; hidden?: string[] } | string[];
+
+/** The panels of an overview in their built-in order and visibility. */
+export function defaultPanels(all: readonly PanelConfig[]): DashboardPanel[] {
+  return all.map(p => ({ ...p, visible: p.defaultVisible }));
+}
+
+/**
+ * The saved order and visibility applied to the known panels. Saved ids that no longer exist
+ * are dropped, panels the layout has not seen yet are appended with their default visibility,
+ * and an empty or missing layout gives the defaults.
+ */
+export function applyPanelLayout(
+  all: readonly PanelConfig[],
+  saved: SavedPanelLayout | null | undefined
+): DashboardPanel[] {
+  const order = (Array.isArray(saved) ? saved : saved?.order) ?? [];
+  if (order.length === 0) return defaultPanels(all);
+
+  const hidden = new Set(Array.isArray(saved) ? [] : (saved?.hidden ?? []));
+  const known = new Map(all.map(p => [p.id as string, p]));
+  const ordered = order.flatMap(id => {
+    const panel = known.get(id);
+    return panel ? [{ ...panel, visible: !hidden.has(id) }] : [];
+  });
+  const seen = new Set(order);
+  return [...ordered, ...defaultPanels(all.filter(p => !seen.has(p.id)))];
+}
+
+/** The part of the panels worth saving: their order and which of them are hidden. */
+export function panelLayoutOf(panels: readonly DashboardPanel[]): {
+  order: string[];
+  hidden: string[];
+} {
+  return {
+    order: panels.map(p => p.id),
+    hidden: panels.filter(p => !p.visible).map(p => p.id),
+  };
+}
+
 export interface BandwidthDetailItem {
   labelKey: string;
   bytesPerSec: number | undefined;
@@ -240,6 +278,7 @@ export interface BackupContentsInfo {
   settings: boolean;
   backendConfig: boolean;
   rcloneConfig: boolean;
+  remoteDefinitions: boolean;
   remoteCount?: number;
   remoteNames?: string[];
   profiles?: string[];
@@ -289,7 +328,7 @@ export interface OperationMeta {
   stopIcon: string;
   startTooltip: string;
   stopTooltip: string;
-  cssClass: string;
+  tone: PillTone;
 }
 
 export const TITLE_MAP: Readonly<Record<AppTab, string>> = Object.freeze({
@@ -316,6 +355,25 @@ export const MODE_DEFAULTS: Readonly<Record<AppTab, PrimaryActionType[]>> = Obje
   serve: ['serve'],
 });
 
+/** The operations whose activity an overview tab is about; the general tab shows them all. */
+export function operationsOfTab(tab: AppTab): readonly PrimaryActionType[] {
+  switch (tab) {
+    case 'mount':
+      return ['mount'];
+    case 'operations':
+      return SYNC_TYPES;
+    case 'serve':
+      return ['serve'];
+    default:
+      return ALL_PRIMARY_ACTIONS;
+  }
+}
+
+/** Whether a remote is running something this tab is about. */
+export function isActiveOnTab(remote: Pick<Remote, 'status'>, tab: AppTab): boolean {
+  return operationsOfTab(tab).some(op => remote.status[op].active);
+}
+
 export const OPERATION_META = Object.freeze(
   Object.fromEntries(
     OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [
@@ -325,7 +383,7 @@ export const OPERATION_META = Object.freeze(
         stopIcon: op.stopIcon,
         startTooltip: op.startTooltip,
         stopTooltip: op.stopTooltip,
-        cssClass: op.cssClass,
+        tone: op.tone,
       },
     ])
   )
@@ -338,16 +396,24 @@ export interface OpenInFilesEvent {
   operationType?: PrimaryActionType;
 }
 
-export interface OpenableFolder {
+/** A folder a card button can open in the file browser. */
+export interface BrowseTarget {
+  /** Stable identity, used to track the menu entries. */
+  key: string;
+  path: string;
+  icon: string;
+  tone: PillTone;
+  /** i18n key of the label; `label` is shown as is when there is none. */
+  labelKey?: string;
+  label?: string;
+  /** Short folder name, shown in brackets after the label. */
+  detail: string;
+  isOpening: boolean;
+}
+
+export interface OpenableFolder extends BrowseTarget {
   operation: PrimaryActionType;
   profile: string;
-  cssClass: string;
-  tooltip: string;
-  path: string;
-  isLocal: boolean;
-  icon: string;
-  shortName?: string;
-  isOpening?: boolean;
 }
 
 export type OnboardingCardKey =
@@ -355,6 +421,7 @@ export type OnboardingCardKey =
   | 'features'
   | 'installRclone'
   | 'installPlugin'
+  | 'androidAccess'
   | 'selectConfig'
   | 'passwordRequired'
   | 'selectMainUi'

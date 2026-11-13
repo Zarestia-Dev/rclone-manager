@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use crate::services::flow::workflow::engine::cancel::{CancelToken, sleep_unless_cancelled};
 use crate::services::flow::workflow::types::{
-    NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowEdge, WorkflowNode,
+    NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowEdge, WorkflowNode, config_u64,
     parse_delay_seconds,
 };
 
@@ -41,6 +41,15 @@ pub(crate) fn handle_stop_node(config: &Value) -> Result<NodeExecutionOutput, St
     }
 }
 
+/// Whether the result a node left counts as a success: only a result that says
+/// `success: false` (a failed step) does not.
+fn branch_succeeded(result: &Value) -> bool {
+    result
+        .get("success")
+        .and_then(Value::as_bool)
+        .unwrap_or(true)
+}
+
 /// Evaluates a 'join' node, synchronizing parallel branches according to the configured joinMode.
 pub(crate) fn handle_join_node(
     node: &WorkflowNode,
@@ -66,24 +75,31 @@ pub(crate) fn handle_join_node(
     for edge in &incoming_edges {
         let port_id = &edge.target_port_id;
         let src_id = &edge.source_node_id;
-        if let Some(src_res) = results.get(src_id) {
-            successful_count += 1;
-            branches_summary.insert(
-                port_id.clone(),
-                json!({
-                    "sourceNodeId": src_id,
-                    "success": true,
-                    "output": src_res
-                }),
-            );
-        } else {
-            branches_summary.insert(
-                port_id.clone(),
-                json!({
-                    "sourceNodeId": src_id,
-                    "success": false
-                }),
-            );
+        // A failed node leaves a result too, so a result alone does not mean success.
+        match results
+            .get(src_id)
+            .filter(|result| branch_succeeded(result))
+        {
+            Some(src_res) => {
+                successful_count += 1;
+                branches_summary.insert(
+                    port_id.clone(),
+                    json!({
+                        "sourceNodeId": src_id,
+                        "success": true,
+                        "output": src_res
+                    }),
+                );
+            }
+            None => {
+                branches_summary.insert(
+                    port_id.clone(),
+                    json!({
+                        "sourceNodeId": src_id,
+                        "success": false
+                    }),
+                );
+            }
         }
     }
 
@@ -120,6 +136,25 @@ pub(crate) fn handle_join_node(
     })))
 }
 
+/// Compares two numbers written as text. `None` when either is not a number, so a
+/// comparison with text never holds instead of reading the text as zero.
+fn compare_numbers(left: &str, right: &str) -> Option<std::cmp::Ordering> {
+    let left: f64 = left.trim().parse().ok()?;
+    let right: f64 = right.trim().parse().ok()?;
+    left.partial_cmp(&right)
+}
+
+/// Whether text holds no list items: an empty JSON array, or nothing / `0` / `false`.
+fn is_empty_list(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        return serde_json::from_str::<Value>(trimmed)
+            .map(|value| value.as_array().is_none_or(Vec::is_empty))
+            .unwrap_or(trimmed.len() <= 2);
+    }
+    trimmed.is_empty() || trimmed == "0" || trimmed == "false"
+}
+
 /// Evaluates a binary or unary condition comparing left and right values.
 fn evaluate_condition(operator: &str, left: &str, right: &str) -> Result<bool, String> {
     Ok(match operator {
@@ -131,46 +166,14 @@ fn evaluate_condition(operator: &str, left: &str, right: &str) -> Result<bool, S
         "ends_with" => left.ends_with(right),
         "truthy" => !left.trim().is_empty() && left != "0" && left != "false",
         "is_empty" => left.trim().is_empty(),
-        "greater_than" => {
-            let l: f64 = left.trim().parse().unwrap_or(0.0);
-            let r: f64 = right.trim().parse().unwrap_or(0.0);
-            l > r
-        }
+        "greater_than" => compare_numbers(left, right).is_some_and(|order| order.is_gt()),
         "greater_or_equal" | "gte" => {
-            let l: f64 = left.trim().parse().unwrap_or(0.0);
-            let r: f64 = right.trim().parse().unwrap_or(0.0);
-            l >= r
+            compare_numbers(left, right).is_some_and(|order| order.is_ge())
         }
-        "less_than" => {
-            let l: f64 = left.trim().parse().unwrap_or(0.0);
-            let r: f64 = right.trim().parse().unwrap_or(0.0);
-            l < r
-        }
-        "less_or_equal" | "lte" => {
-            let l: f64 = left.trim().parse().unwrap_or(0.0);
-            let r: f64 = right.trim().parse().unwrap_or(0.0);
-            l <= r
-        }
-        "array_not_empty" => {
-            let trimmed = left.trim();
-            if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                serde_json::from_str::<Value>(trimmed)
-                    .map(|v| v.as_array().map(|a| !a.is_empty()).unwrap_or(false))
-                    .unwrap_or(!trimmed.is_empty())
-            } else {
-                !trimmed.is_empty() && trimmed != "0" && trimmed != "false"
-            }
-        }
-        "array_is_empty" => {
-            let trimmed = left.trim();
-            if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                serde_json::from_str::<Value>(trimmed)
-                    .map(|v| v.as_array().map(|a| a.is_empty()).unwrap_or(true))
-                    .unwrap_or(trimmed.len() <= 2)
-            } else {
-                trimmed.is_empty() || trimmed == "[]"
-            }
-        }
+        "less_than" => compare_numbers(left, right).is_some_and(|order| order.is_lt()),
+        "less_or_equal" | "lte" => compare_numbers(left, right).is_some_and(|order| order.is_le()),
+        "array_not_empty" => !is_empty_list(left),
+        "array_is_empty" => is_empty_list(left),
         unknown => {
             return Err(crate::localized_error!(
                 "backendErrors.workflow.unknownOperator",
@@ -188,27 +191,28 @@ async fn condition_holds(operator: &str, left: &str, right: &str) -> Result<bool
     evaluate_condition(operator, left, right)
 }
 
-/// Resolves the delay duration in seconds from the node configuration,
-/// using the `delaySeconds` key in integer, float, or string representations.
-fn resolve_delay_seconds(config: &Value) -> u64 {
-    let parse_u64 = |val: Option<&Value>| -> Option<u64> {
-        val.and_then(Value::as_u64)
-            .or_else(|| val.and_then(Value::as_f64).map(|f| f.max(0.0) as u64))
-            .or_else(|| {
-                val.and_then(Value::as_str)
-                    .and_then(|s| s.parse::<u64>().ok())
-            })
-    };
-
-    parse_u64(config.get("delaySeconds")).unwrap_or(5)
+/// Seconds a 'delay' node waits; 5 when `delaySeconds` is unset.
+fn delay_seconds(config: &Value) -> u64 {
+    config_u64(config, "delaySeconds").unwrap_or(5)
 }
 
-/// Executes a 'delay' node by pausing execution for the resolved duration.
+/// Executes a 'delay' node by pausing execution for the configured `delaySeconds`
+/// (5 when unset). A simulation does not wait.
 pub(crate) async fn execute_delay_node(
     config: &Value,
     cancel: &CancelToken,
+    dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
-    let seconds = resolve_delay_seconds(config);
+    let seconds = delay_seconds(config);
+
+    if dry_run {
+        info!("Workflow dry_run enabled; simulating a {seconds}s delay");
+        return Ok(NodeExecutionOutput::new(json!({
+            "simulated": true,
+            "dryRun": true,
+            "waitedSeconds": 0
+        })));
+    }
 
     if seconds > 0 && !sleep_unless_cancelled(cancel, Duration::from_secs(seconds)).await {
         return Err(crate::localized_error!("backendErrors.workflow.cancelled"));
@@ -219,12 +223,12 @@ pub(crate) async fn execute_delay_node(
     ))
 }
 
-/// Executes a 'schedule_wait' logic node.
-/// Pauses workflow execution until the next occurrence of the configured cron schedule.
-/// Respects dry_run simulation, process cancellation, and emits execution metrics.
 /// Longest sleep between wall-clock checks of a schedule wait.
 const SCHEDULE_RECHECK: Duration = Duration::from_secs(30);
 
+/// Executes a 'schedule_wait' logic node.
+/// Pauses workflow execution until the next occurrence of the configured cron schedule.
+/// Respects dry_run simulation, process cancellation, and emits execution metrics.
 pub(crate) async fn execute_schedule_wait_node(
     config: &Value,
     cancel: &CancelToken,
@@ -237,7 +241,7 @@ pub(crate) async fn execute_schedule_wait_node(
         .filter(|s| !s.is_empty())
         .unwrap_or("0 2 * * *");
 
-    let next_run = crate::services::automation::engine::get_next_run(cron_expr).map_err(|e| {
+    let next_run = crate::utils::cron::get_next_run(cron_expr).map_err(|e| {
         crate::localized_error!(
             "backendErrors.workflow.invalidSchedule",
             "cron" => cron_expr,
@@ -323,10 +327,7 @@ pub(crate) fn trigger_output(kind: NodeKind, config: &Value) -> NodeExecutionOut
                 .get("globPattern")
                 .and_then(Value::as_str)
                 .unwrap_or_default(),
-            "debounceSeconds": config
-                .get("debounceSeconds")
-                .and_then(Value::as_u64)
-                .unwrap_or(5),
+            "debounceSeconds": config_u64(config, "debounceSeconds").unwrap_or(5),
             "timestamp": timestamp
         }),
         NodeKind::JobEvent => json!({
@@ -345,6 +346,11 @@ pub(crate) fn trigger_output(kind: NodeKind, config: &Value) -> NodeExecutionOut
     })
 }
 
+/// Whether the whole value is one `{{...}}` reference the run left as it was.
+fn is_unresolved_reference(value: &str) -> bool {
+    value.starts_with("{{") && value.ends_with("}}") && value.matches("{{").count() == 1
+}
+
 /// Evaluates a 'condition' node and picks the `true` or `false` branch.
 pub(crate) async fn condition_node(config: &Value) -> Result<NodeExecutionOutput, String> {
     let operator = config
@@ -361,10 +367,10 @@ pub(crate) async fn condition_node(config: &Value) -> Result<NodeExecutionOutput
         .unwrap_or("");
 
     // A reference that could not be resolved reads as empty.
-    if left.starts_with("{{") && left.ends_with("}}") {
+    if is_unresolved_reference(left) {
         left = "";
     }
-    if right.starts_with("{{") && right.ends_with("}}") {
+    if is_unresolved_reference(right) {
         right = "";
     }
 
@@ -590,8 +596,12 @@ mod tests {
         );
 
         let mut results = HashMap::new();
-        // Only node-a succeeded; node-b failed and is not in results
+        // node-a succeeded; node-b failed, and a failed node leaves its result behind too
         results.insert("node-a".to_string(), json!({ "transferred": 10 }));
+        results.insert(
+            "node-b".to_string(),
+            json!({ "success": false, "status": "failed", "error": "boom" }),
+        );
 
         let config = json!({ "joinMode": "all_success" });
         let err = handle_join_node(&node, &workflow, &config, &results)
@@ -647,26 +657,99 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_delay_seconds() {
+    fn delay_seconds_accept_numbers_floats_and_numeric_strings() {
         // Defaults to 5 seconds if config is empty or missing 'delaySeconds' key
-        assert_eq!(resolve_delay_seconds(&json!({})), 5);
+        assert_eq!(delay_seconds(&json!({})), 5);
 
         // Numeric delaySeconds
-        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 10 })), 10);
-        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 0 })), 0);
+        assert_eq!(delay_seconds(&json!({ "delaySeconds": 10 })), 10);
+        assert_eq!(delay_seconds(&json!({ "delaySeconds": 0 })), 0);
 
         // String delaySeconds
-        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": "15" })), 15);
+        assert_eq!(delay_seconds(&json!({ "delaySeconds": "15" })), 15);
 
         // Float delaySeconds
-        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 20.0 })), 20);
+        assert_eq!(delay_seconds(&json!({ "delaySeconds": 20.0 })), 20);
+    }
+
+    #[test]
+    fn a_join_does_not_count_a_failed_branch_as_successful() {
+        let node = create_test_join_node("node-join", json!({ "joinMode": "any_success" }));
+        let workflow = create_test_join_workflow(
+            node.clone(),
+            vec![
+                create_test_join_edge("e1", "node-a", "in1"),
+                create_test_join_edge("e2", "node-b", "in2"),
+            ],
+        );
+        let mut results = HashMap::new();
+        results.insert("node-a".to_string(), json!({ "success": false }));
+        results.insert("node-b".to_string(), json!({ "success": false }));
+
+        let err = handle_join_node(
+            &node,
+            &workflow,
+            &json!({ "joinMode": "any_success" }),
+            &results,
+        )
+        .expect_err("no branch succeeded");
+        assert!(err.contains("backendErrors.workflow.joinNoneSucceeded"));
+
+        // A result without a `success` flag is a success.
+        results.insert("node-a".to_string(), json!({ "transferred": 1 }));
+        let out = handle_join_node(
+            &node,
+            &workflow,
+            &json!({ "joinMode": "any_success" }),
+            &results,
+        )
+        .unwrap();
+        assert_eq!(out.value["successfulBranches"], 1);
+    }
+
+    #[tokio::test]
+    async fn a_simulated_delay_does_not_wait() {
+        let cancel = CancelToken::new();
+        let started = std::time::Instant::now();
+        let output = execute_delay_node(&json!({ "delaySeconds": 3600 }), &cancel, true)
+            .await
+            .unwrap();
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert_eq!(output.value["simulated"], true);
+        assert_eq!(output.value["waitedSeconds"], 0);
+    }
+
+    #[test]
+    fn numeric_comparisons_never_hold_for_text() {
+        assert!(!evaluate_condition("greater_than", "abc", "-1").unwrap());
+        assert!(!evaluate_condition("less_than", "5", "abc").unwrap());
+        assert!(evaluate_condition("greater_or_equal", " 5 ", "5").unwrap());
+        assert!(evaluate_condition("lte", "4", "5").unwrap());
+    }
+
+    #[test]
+    fn only_a_single_untouched_reference_reads_as_unresolved() {
+        assert!(is_unresolved_reference("{{nodes.a.out}}"));
+        assert!(!is_unresolved_reference("{{a}} and {{b}}"));
+        assert!(!is_unresolved_reference("plain"));
+    }
+
+    #[test]
+    fn list_checks_are_complements() {
+        for text in ["", "[]", "0", "false", "[\"a\"]", "x"] {
+            assert_ne!(
+                evaluate_condition("array_is_empty", text, "").unwrap(),
+                evaluate_condition("array_not_empty", text, "").unwrap(),
+                "{text}"
+            );
+        }
     }
 
     #[tokio::test]
     async fn test_execute_delay_node_zero_seconds() {
         let cancel = CancelToken::new();
         let config = json!({ "delaySeconds": 0 });
-        let result = execute_delay_node(&config, &cancel).await;
+        let result = execute_delay_node(&config, &cancel, false).await;
         let output = result.expect("Zero delay should succeed immediately");
         assert_eq!(
             output.value.get("waitedSeconds").and_then(Value::as_u64),
@@ -679,7 +762,7 @@ mod tests {
         let cancel = CancelToken::new();
         cancel.cancel();
         let config = json!({ "seconds": 10 });
-        let result = execute_delay_node(&config, &cancel).await;
+        let result = execute_delay_node(&config, &cancel, false).await;
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -797,7 +880,11 @@ mod tests {
         let cancelled = CancelToken::new();
         cancelled.cancel();
         let config = json!({"delaySeconds": u64::MAX});
-        assert!(execute_delay_node(&config, &cancelled).await.is_err());
+        assert!(
+            execute_delay_node(&config, &cancelled, false)
+                .await
+                .is_err()
+        );
         assert!(
             handle_app_start_node(&config, &cancelled, false)
                 .await

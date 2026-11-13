@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::serve;
-use crate::rclone::state::watcher::refresh_serves_quietly;
+use crate::rclone::state::remote_refresh::refresh_serves_quietly;
 use crate::services::paths::AppPaths;
 use crate::utils::app::notification::NotificationEvent;
 use crate::utils::app::notification::ServeStage;
@@ -15,6 +15,7 @@ use crate::utils::logging::log::log_operation;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
+use crate::utils::types::starter::{self, Starter};
 
 use super::common::{CommonConfigParams, OperationContext, parse_common_config, redact_value};
 
@@ -30,13 +31,10 @@ pub struct ServeParams {
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
+    pub starter: Option<Starter>,
     pub serve_type: String,
     pub origin: Option<crate::utils::types::origin::Origin>,
-    pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
-    pub workflow_id: Option<String>,
-    pub node_id: Option<String>,
 }
 
 impl ServeParams {
@@ -70,13 +68,10 @@ impl ServeParams {
             filter_options: common.filter_options,
             vfs_options: common.vfs_options,
             runtime_remote_options: common.runtime_remote_options,
-            profile: common.profile,
+            starter: None,
             serve_type,
             origin: None,
-            quick_run_id: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
         }
     }
 
@@ -128,6 +123,7 @@ pub async fn start_serve(
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
 
     let serve_type = &params.serve_type;
+    let profile = starter::profile_name(params.starter.as_ref()).map(str::to_string);
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
@@ -194,7 +190,7 @@ pub async fn start_serve(
                 NotificationEvent::Serve(ServeStage::Failed {
                     backend: backend_name_for_err.clone(),
                     remote: params.remote_name.clone(),
-                    profile: params.profile.clone(),
+                    profile: profile.clone(),
                     protocol: serve_type.clone(),
                     error: mapped_error.clone(),
                 }),
@@ -231,19 +227,16 @@ pub async fn start_serve(
         Some(response_json),
     );
 
-    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
+    // Pre-seed metadata so the reconciliation attaches the starter atomically
     backend_manager
         .remote_cache_for(&backend.name)
         .preseed_serve_metadata(crate::utils::types::remotes::ServeInstance {
             id: serve_id,
             addr: addr.clone(),
             params: payload,
-            profile: params.profile.clone(),
-            quick_run_id: params.quick_run_id.clone(),
+            starter: params.starter.clone(),
             origin: params.origin.clone(),
             execute_id: params.execute_id.clone(),
-            workflow_id: params.workflow_id.clone(),
-            node_id: params.node_id.clone(),
         })
         .await;
     refresh_serves_quietly(&app, &backend).await;
@@ -258,7 +251,7 @@ pub async fn start_serve(
         NotificationEvent::Serve(ServeStage::Started {
             backend: backend_name,
             remote: params.remote_name.clone(),
-            profile: params.profile.clone(),
+            profile,
             protocol: addr.clone(), // Or extracted protocol
         }),
     );
@@ -299,7 +292,10 @@ pub(crate) async fn stop_serve_on_backend(
         .remote_cache_for(&backend.name)
         .get_serve_by_id(&server_id)
         .await;
-    let profile = serve_info.as_ref().and_then(|s| s.profile.clone());
+    let profile = serve_info
+        .as_ref()
+        .and_then(|s| starter::profile_name(s.starter.as_ref()))
+        .map(str::to_string);
     let protocol = serve_info
         .as_ref()
         .and_then(|s| s.params.get("type").and_then(|v| v.as_str()))
@@ -365,6 +361,30 @@ pub(crate) async fn stop_serve_on_backend(
     Ok(crate::localized_success!("backendSuccess.serve.stopSuccess", "serverId" => &server_id))
 }
 
+/// Stop the serve that `profile_name` started on `remote_name`.
+///
+/// Profile names repeat across remotes, so the remote is part of the lookup.
+pub async fn stop_serve_profile(
+    app: AppHandle,
+    remote_name: String,
+    profile_name: String,
+) -> Result<String, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    let serve = app
+        .state::<BackendManager>()
+        .remote_cache_for(&backend.name)
+        .find_serve_by_profile(&remote_name, &profile_name)
+        .await
+        .ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.serve.profileNotRunning",
+                "remote" => remote_name,
+                "profile" => profile_name
+            )
+        })?;
+    stop_serve_on_backend(app, backend, serve.id, remote_name).await
+}
+
 /// Stop all serves on the backend selected when the command starts.
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
@@ -411,11 +431,10 @@ pub async fn start_serve_profile(
 
     // Ensure profile is set from the function parameter, not the config object
     serve_params.backend = Some(resolved.backend);
-    serve_params.profile = Some(params.profile_name.clone());
+    serve_params.starter = Some(Starter::profile(params.profile_name.clone()));
     serve_params.origin = params
         .source
         .or(Some(crate::utils::types::origin::Origin::Dashboard));
-    serve_params.quick_run_id = None;
     serve_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
 
     start_serve(app, serve_params).await
@@ -514,12 +533,9 @@ mod tests {
                 ("CacheMode".to_string(), json!("off")),
             ])),
             runtime_remote_options: None,
-            profile: Some("serve_profile".to_string()),
+            starter: Some(Starter::profile("serve_profile")),
             origin: None,
-            quick_run_id: None,
             execute_id: None,
-            workflow_id: None,
-            node_id: None,
             serve_type: "webdav".to_string(),
         };
 

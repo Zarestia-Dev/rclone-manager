@@ -15,9 +15,29 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { DownloadService } from 'src/app/services/operations/download.service';
-import { ActivityActionItem, ActivityTarget, isDeleteActivity } from './activity.utils';
+import {
+  ActivityActionItem,
+  ActivityTarget,
+  CheckDirection,
+  CompareSide,
+  FileVersion,
+  isDeleteActivity,
+} from './activity.utils';
 
 type ActivityFileAction = 'link' | 'download' | 'delete';
+
+/** Both sides of a compared file, `null` where the file does not exist. */
+export interface FileVersions {
+  src: FileVersion | null;
+  dst: FileVersion | null;
+}
+
+export interface ChecksumComparison {
+  hashType: string;
+  src: string;
+  dst: string;
+  match: boolean;
+}
 
 @Injectable()
 export class TransferOperationsService {
@@ -90,6 +110,54 @@ export class TransferOperationsService {
       undefined,
       item.jobid
     );
+  }
+
+  /** Copies the file the check found to the other side. */
+  resolveCheck(item: CompletedTransfer, direction: CheckDirection): Promise<string> {
+    return this.copyFile(item, direction === 'toSource');
+  }
+
+  private async getVersion(fs: string | undefined, name: string): Promise<FileVersion | null> {
+    if (!fs) return null;
+    const { item } = await this.remoteOps.getStat(fs, name, { filesOnly: true }, 'dashboard');
+    if (!item) return null;
+    return { size: item.Size, modTime: item.ModTime || null };
+  }
+
+  /** What each side holds right now, read from the remotes. */
+  async getVersionsAt(src: CompareSide, dst: CompareSide): Promise<FileVersions> {
+    const [srcVersion, dstVersion] = await Promise.all([
+      this.getVersion(src.fs, src.path),
+      this.getVersion(dst.fs, dst.path),
+    ]);
+    return { src: srcVersion, dst: dstVersion };
+  }
+
+  /**
+   * Hashes the file on both sides with the first hash type both remotes support.
+   * Returns `null` when the remotes share none.
+   */
+  async compareChecksumsAt(
+    srcSide: CompareSide,
+    dstSide: CompareSide
+  ): Promise<ChecksumComparison | null> {
+    if (!srcSide.fs || !dstSide.fs) return null;
+    const [srcInfo, dstInfo] = await Promise.all([
+      this.remoteOps.getFsInfo(srcSide.fs, 'dashboard'),
+      this.remoteOps.getFsInfo(dstSide.fs, 'dashboard'),
+    ]);
+    const shared = srcInfo.Hashes?.find(type => dstInfo.Hashes?.includes(type));
+    if (!shared) return null;
+    const [src, dst] = await Promise.all([
+      this.remoteOps.getHashsumFile(srcSide.fs, srcSide.path, shared, 'dashboard'),
+      this.remoteOps.getHashsumFile(dstSide.fs, dstSide.path, shared, 'dashboard'),
+    ]);
+    return {
+      hashType: shared,
+      src: src.hash,
+      dst: dst.hash,
+      match: !!src.hash && src.hash === dst.hash,
+    };
   }
 
   private beginAction(key: string, action: ActivityFileAction): boolean {

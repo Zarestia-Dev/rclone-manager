@@ -5,10 +5,16 @@ import {
   BatchApiLabel,
   JobInfo,
   JobActionType,
+  JobReport,
   JobStatsUpdatedEvent,
   JOB_STATUS,
   Origin,
   isProfileScoped,
+  profileOf,
+  quickRunIdOf,
+  sameStarter,
+  isWorkflowNode,
+  workflowIdOf,
 } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -122,7 +128,7 @@ export class JobManagementService extends TauriBaseService {
     return this.activeJobs().filter(job => {
       if (job.parent_job_id != null) return false;
       const matchRemote = job.remote_name === remoteName;
-      return profile ? matchRemote && job.profile === profile : matchRemote;
+      return profile ? matchRemote && profileOf(job) === profile : matchRemote;
     });
   }
 
@@ -138,7 +144,7 @@ export class JobManagementService extends TauriBaseService {
         job.remote_name === remoteName &&
         job.parent_job_id == null &&
         (!operationType || job.job_type === operationType) &&
-        (!profile || job.profile === profile),
+        (!profile || profileOf(job) === profile),
       true
     );
   }
@@ -161,13 +167,13 @@ export class JobManagementService extends TauriBaseService {
   ): JobInfo | null {
     const direct = findLatestJob(
       this._jobs(),
-      job => job.parent_job_id == null && job.workflow_id === workflowId && job.node_id === nodeId,
+      job => job.parent_job_id == null && isWorkflowNode(job, workflowId, nodeId),
       true
     );
     if (direct || !quickRunId) return direct;
     return findLatestJob(
       this._jobs(),
-      job => job.parent_job_id == null && !job.workflow_id && job.quick_run_id === quickRunId,
+      job => job.parent_job_id == null && !workflowIdOf(job) && quickRunIdOf(job) === quickRunId,
       true
     );
   }
@@ -175,7 +181,7 @@ export class JobManagementService extends TauriBaseService {
   getLatestJobForQuickRun(quickRunId: string): JobInfo | null {
     return findLatestJob(
       this._jobs(),
-      job => job.parent_job_id == null && job.quick_run_id === quickRunId,
+      job => job.parent_job_id == null && quickRunIdOf(job) === quickRunId,
       true
     );
   }
@@ -261,6 +267,11 @@ export class JobManagementService extends TauriBaseService {
     );
   }
 
+  /** The file reports a finished sync, copy or move kept; `null` when it kept none. */
+  async getJobReport(jobid: number): Promise<JobReport | null> {
+    return this.invokeCommand<JobReport | null>('get_job_report', { jobid });
+  }
+
   async deleteJob(jobid: number): Promise<void> {
     await this.invokeWithNotification(
       'delete_job',
@@ -320,12 +331,9 @@ export function areJobListsEqual(prev: JobInfo[], next: JobInfo[]): boolean {
       p.jobid !== n.jobid ||
       p.status !== n.status ||
       p.job_type !== n.job_type ||
-      p.profile !== n.profile ||
+      !sameStarter(p.starter, n.starter) ||
       p.parent_job_id !== n.parent_job_id ||
       p.origin !== n.origin ||
-      p.quick_run_id !== n.quick_run_id ||
-      p.workflow_id !== n.workflow_id ||
-      p.node_id !== n.node_id ||
       p.execute_id !== n.execute_id ||
       p.backend_name !== n.backend_name ||
       p.start_time !== n.start_time ||

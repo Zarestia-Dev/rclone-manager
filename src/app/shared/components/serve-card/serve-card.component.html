@@ -13,14 +13,14 @@
           @if (showRemoteName()) {
             <span class="serve-remote-name truncate">{{ remoteName() }}</span>
           }
-          <span class="app-pill p-primary pill-sm">{{ serve().params.type | uppercase }}</span>
-          @if (serve().profile) {
-            <span class="app-pill p-accent pill-sm">{{ serve().profile }}</span>
+          <span appPill tone="primary" size="xs">{{ serve().params.type | uppercase }}</span>
+          @if (profile(); as name) {
+            <span appPill tone="accent" size="xs">{{ name }}</span>
           }
           <span
             class="origin-mini-badge"
             [class.quickrun]="isQuickRun()"
-            [class.flow]="isFlow()"
+            [class.workflow]="isWorkflow()"
             [attr.title]="originLabel()"
           >
             <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
@@ -47,7 +47,8 @@
     <!-- Stop button -->
     <button
       matIconButton
-      class="stop-btn warn"
+      class="stop-btn"
+      data-tone="warn"
       (click)="onStopServe(); $event.stopPropagation()"
       [attr.title]="'shared.serveCard.tooltips.stop' | translate"
     >

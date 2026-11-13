@@ -35,6 +35,8 @@ import { CronValidationResponse } from '@app/types';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 type PresetKey =
   'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
@@ -101,6 +103,7 @@ export class CronInputComponent {
 
   private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly destroyRef = inject(DestroyRef);
 
   private isUpdatingForms = false;
@@ -148,7 +151,17 @@ export class CronInputComponent {
     return this.formatNextRun(this.validationResponse()?.nextRun ?? null);
   });
 
-  readonly userTimezone = this.getUserTimezoneFormatted();
+  private readonly deviceTimezone = this.getUserTimezoneFormatted();
+
+  /**
+   * Schedules fire in the zone of the machine running the app. That is this device, unless the
+   * UI is opened through the web server: then only the server's UTC offset is known.
+   */
+  readonly scheduleTimezone = computed(() => {
+    if (!isHeadlessMode()) return this.deviceTimezone;
+    const offset = this.validationResponse()?.utcOffset;
+    return offset ? `UTC${offset}` : '';
+  });
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
   readonly presetOptions = PRESET_OPTIONS;
   readonly monthOptions = MONTH_OPTIONS;
@@ -187,8 +200,8 @@ export class CronInputComponent {
                 expression,
                 result: {
                   isValid: false,
-                  errorMessage: 'Validation request failed',
-                } as CronValidationResponse,
+                  errorMessage: 'wizards.appOperation.cronValidationFailed',
+                },
               });
             })
           )
@@ -360,7 +373,11 @@ export class CronInputComponent {
   private applyValidationResult(expression: string, result: CronValidationResponse): void {
     this.validationResponse.set(result);
     this.validationError.set(
-      result.isValid ? '' : result.errorMessage || 'Invalid cron expression'
+      result.isValid
+        ? ''
+        : this.backendTranslation.translateBackendMessage(
+            result.errorMessage || 'wizards.appOperation.cronInvalid'
+          )
     );
     this.cronControl.setErrors(result.isValid ? null : { invalidCron: true });
     this.cronChange.emit(expression);
@@ -375,86 +392,22 @@ export class CronInputComponent {
 
   formatNextRun(dateString: string | null): string {
     if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return dateString;
-
-      const delta = (date.getTime() - Date.now()) / 1000;
-      if (delta < 0) {
-        return this.translate.instant('wizards.appOperation.relativeTime.inPast', {
-          date: date.toLocaleString(),
-        });
-      }
-
-      return (
-        this.translate.instant('wizards.appOperation.relativeTime.in', {
-          time: this.formatRelativeTime(delta),
-        }) + ` (${date.toLocaleString()})`
-      );
-    } catch {
-      return dateString;
-    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return `${this.relativeTime(date)} (${date.toLocaleString()})`;
   }
 
-  private formatRelativeTime(seconds: number): string {
-    if (seconds < 60)
-      return this.translate.instant('wizards.appOperation.relativeTime.lessThanMinute');
-
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-
-    const t = (key: string, count: number): string => this.translate.instant(key, { count });
-
-    const parts: string[] = [];
-    if (d > 0) {
-      parts.push(
-        t(
-          d === 1
-            ? 'wizards.appOperation.relativeTime.days.one'
-            : 'wizards.appOperation.relativeTime.days.other',
-          d
-        )
-      );
-      if (h > 0) {
-        parts.push(
-          t(
-            h === 1
-              ? 'wizards.appOperation.relativeTime.hours.one'
-              : 'wizards.appOperation.relativeTime.hours.other',
-            h
-          )
-        );
-      }
-    } else if (h > 0) {
-      parts.push(
-        t(
-          h === 1
-            ? 'wizards.appOperation.relativeTime.hours.one'
-            : 'wizards.appOperation.relativeTime.hours.other',
-          h
-        )
-      );
-      if (m > 0) {
-        parts.push(
-          t(
-            m === 1
-              ? 'wizards.appOperation.relativeTime.minutes.one'
-              : 'wizards.appOperation.relativeTime.minutes.other',
-            m
-          )
-        );
-      }
-    } else {
-      parts.push(
-        t(
-          m === 1
-            ? 'wizards.appOperation.relativeTime.minutes.one'
-            : 'wizards.appOperation.relativeTime.minutes.other',
-          m
-        )
-      );
-    }
-    return parts.join(', ');
+  /** "in 3 hours" / "2 days ago", in the language of the app, in the largest fitting unit. */
+  private relativeTime(date: Date): string {
+    const minutes = Math.round((date.getTime() - Date.now()) / 60000);
+    const [unit, value]: [Intl.RelativeTimeFormatUnit, number] =
+      Math.abs(minutes) < 60
+        ? ['minute', minutes]
+        : Math.abs(minutes) < 2880
+          ? ['hour', Math.round(minutes / 60)]
+          : ['day', Math.round(minutes / 1440)];
+    return new Intl.RelativeTimeFormat(this.translate.currentLang() ?? undefined, {
+      numeric: 'auto',
+    }).format(value, unit);
   }
 }

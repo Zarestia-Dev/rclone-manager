@@ -1,5 +1,5 @@
 //! Workflow output references and recursive configuration interpolation.
-use super::types::WorkflowDefinition;
+use super::types::{WorkflowDefinition, WorkflowNode};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -70,6 +70,84 @@ fn resolve_nested_json_path(root: &Value, field_path: &str) -> Option<String> {
     })
 }
 
+/// Whether a token names the node before the current one: `prev` or `previous`, with or without a path.
+fn is_previous_token(token: &str) -> bool {
+    token == "prev"
+        || token == "previous"
+        || token.starts_with("prev.")
+        || token.starts_with("previous.")
+}
+
+/// Splits `nodes.<id>.<path>`, `steps.<id>.<path>` or `nodes["Title"].<path>` into the
+/// node it names (an id or a title) and the path inside its output.
+fn split_node_token(token: &str) -> Option<(&str, &str)> {
+    let raw_path = token
+        .strip_prefix("nodes.")
+        .or_else(|| token.strip_prefix("steps."))
+        .or_else(|| token.strip_prefix("nodes["))
+        .or_else(|| token.strip_prefix("steps["))?;
+
+    if token.starts_with("nodes[") || token.starts_with("steps[") {
+        let close_bracket = raw_path.find(']')?;
+        let name = raw_path[..close_bracket].trim().trim_matches(['\'', '"']);
+        let remaining = raw_path[close_bracket + 1..].trim_start_matches('.');
+        Some((name, remaining))
+    } else {
+        let mut parts = raw_path.splitn(2, '.');
+        let name = parts.next()?;
+        Some((name, parts.next().unwrap_or("")))
+    }
+}
+
+/// The node a token's identifier names: by id, else by title (ignoring case and spaces).
+pub(crate) fn find_node<'a>(
+    workflow: &'a WorkflowDefinition,
+    identifier: &str,
+) -> Option<&'a WorkflowNode> {
+    workflow
+        .nodes
+        .iter()
+        .find(|n| n.id == identifier || eq_ignoring_spaces(&n.title, identifier))
+}
+
+/// Where a `{{…}}` token in a node's settings reads from.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum TokenSource<'a> {
+    /// `{{prev…}}`: the node before this one.
+    Previous,
+    /// `{{nodes.<id or title>…}}`: that node.
+    Node(&'a str),
+}
+
+/// Every node output the settings read through a token, in order. Tokens of other
+/// kinds (`{{profile}}` in an alert text) are not outputs and are not listed.
+pub(crate) fn token_sources(config: &Value) -> Vec<TokenSource<'_>> {
+    fn collect<'a>(value: &'a Value, found: &mut Vec<TokenSource<'a>>) {
+        match value {
+            Value::String(text) => {
+                let mut rest = text.as_str();
+                while let Some(start) = rest.find("{{") {
+                    let after = &rest[start + 2..];
+                    let Some(end) = after.find("}}") else { break };
+                    let token = after[..end].trim();
+                    if is_previous_token(token) {
+                        found.push(TokenSource::Previous);
+                    } else if let Some((node, _)) = split_node_token(token) {
+                        found.push(TokenSource::Node(node));
+                    }
+                    rest = &after[end + 2..];
+                }
+            }
+            Value::Object(map) => map.values().for_each(|v| collect(v, found)),
+            Value::Array(items) => items.iter().for_each(|v| collect(v, found)),
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    collect(config, &mut found);
+    found
+}
+
 /// Resolves token values like `{{prev.<path>}}`, `{{nodes.<id>.<path>}}`,
 /// `{{nodes["Title"].<path>}}`, or `{{steps.<id>.<path>}}`.
 fn resolve_token_value(
@@ -81,11 +159,7 @@ fn resolve_token_value(
     let trimmed = token.trim();
 
     // 1. Handle `prev.<path>` or `previous.<path>`
-    if trimmed == "prev"
-        || trimmed == "previous"
-        || trimmed.starts_with("prev.")
-        || trimmed.starts_with("previous.")
-    {
+    if is_previous_token(trimmed) {
         let field_path = trimmed
             .strip_prefix("prev.")
             .or_else(|| trimmed.strip_prefix("previous."))
@@ -106,24 +180,7 @@ fn resolve_token_value(
     }
 
     // 2. Handle `nodes.<id/title>.<path>` or `steps.<id/title>.<path>`
-    let raw_path = trimmed
-        .strip_prefix("nodes.")
-        .or_else(|| trimmed.strip_prefix("steps."))
-        .or_else(|| trimmed.strip_prefix("nodes["))
-        .or_else(|| trimmed.strip_prefix("steps["))?;
-
-    let (node_identifier, field_path) =
-        if trimmed.starts_with("nodes[") || trimmed.starts_with("steps[") {
-            let close_bracket = raw_path.find(']')?;
-            let name = raw_path[..close_bracket].trim().trim_matches(['\'', '"']);
-            let remaining = raw_path[close_bracket + 1..].trim_start_matches('.');
-            (name, remaining)
-        } else {
-            let mut parts = raw_path.splitn(2, '.');
-            let name = parts.next()?;
-            let field = parts.next().unwrap_or("");
-            (name, field)
-        };
+    let (node_identifier, field_path) = split_node_token(trimmed)?;
 
     // Try direct ID lookup first
     if let Some(node_val) = results.get(node_identifier) {
@@ -131,17 +188,10 @@ fn resolve_token_value(
     }
 
     // Fall back to title lookup if workflow definition is present
-    if let Some(wf) = workflow {
-        let matched_node = wf
-            .nodes
-            .iter()
-            .find(|n| n.id == node_identifier || eq_ignoring_spaces(&n.title, node_identifier));
-
-        if let Some(node) = matched_node
-            && let Some(node_val) = results.get(&node.id)
-        {
-            return resolve_nested_json_path(node_val, field_path);
-        }
+    if let Some(node) = workflow.and_then(|wf| find_node(wf, node_identifier))
+        && let Some(node_val) = results.get(&node.id)
+    {
+        return resolve_nested_json_path(node_val, field_path);
     }
 
     None
@@ -401,5 +451,29 @@ mod tests {
         );
         assert_eq!(resolved["list"][1], 7);
         assert_eq!(resolved["list"][2], true);
+    }
+
+    #[test]
+    fn token_sources_lists_every_output_a_setting_reads_and_nothing_else() {
+        let config = json!({
+            "message": "{{prev.status}} and {{ nodes.a.x }} {{profile}} {{nodes[\"My Node\"].y}}",
+            "nested": { "list": ["{{steps.b.z}}", "no token", "{{ previous }}"] },
+            "number": 3,
+            "broken": "{{nodes.c.x"
+        });
+
+        let mut found = token_sources(&config);
+        found.sort_by_key(|s| format!("{s:?}"));
+
+        assert_eq!(
+            found,
+            vec![
+                TokenSource::Node("My Node"),
+                TokenSource::Node("a"),
+                TokenSource::Node("b"),
+                TokenSource::Previous,
+                TokenSource::Previous,
+            ]
+        );
     }
 }

@@ -58,37 +58,35 @@ fn non_empty(value: &Option<String>) -> Option<&str> {
     value.as_deref().filter(|value| !value.is_empty())
 }
 
+/// Two settings only make sense together: reject exactly one of them.
+fn require_pair(
+    first: bool,
+    second: bool,
+    missing_first: &str,
+    missing_second: &str,
+) -> Result<(), String> {
+    match (first, second) {
+        (true, false) => Err(missing_second.into()),
+        (false, true) => Err(missing_first.into()),
+        _ => Ok(()),
+    }
+}
+
 impl HttpArgs {
     pub fn validate(&self) -> Result<(), String> {
-        // Auth validation: both user and pass must be present or both absent.
         // Empty values (e.g. Compose `${UNSET_VAR}`) count as absent.
-        match (non_empty(&self.user), non_empty(&self.pass)) {
-            (Some(_), None) => {
-                return Err(
-                    "Password is required when username is set (--pass or RCLONE_MANAGER_PASS)"
-                        .into(),
-                );
-            }
-            (None, Some(_)) => {
-                return Err(
-                    "Username is required when password is set (--user or RCLONE_MANAGER_USER)"
-                        .into(),
-                );
-            }
-            _ => {}
-        }
-
-        // TLS validation: both cert and key must be present or both absent
-        match (&self.tls_cert, &self.tls_key) {
-            (Some(_), None) => {
-                return Err("TLS key is required when certificate is set (--tls-key or RCLONE_MANAGER_TLS_KEY)".into());
-            }
-            (None, Some(_)) => {
-                return Err("TLS certificate is required when key is set (--tls-cert or RCLONE_MANAGER_TLS_CERT)".into());
-            }
-            _ => {}
-        }
-        Ok(())
+        require_pair(
+            non_empty(&self.user).is_some(),
+            non_empty(&self.pass).is_some(),
+            "Username is required when password is set (--user or RCLONE_MANAGER_USER)",
+            "Password is required when username is set (--pass or RCLONE_MANAGER_PASS)",
+        )?;
+        require_pair(
+            self.tls_cert.is_some(),
+            self.tls_key.is_some(),
+            "TLS certificate is required when key is set (--tls-cert or RCLONE_MANAGER_TLS_CERT)",
+            "TLS key is required when certificate is set (--tls-key or RCLONE_MANAGER_TLS_KEY)",
+        )
     }
 
     /// Browser URL for this listener, using loopback for wildcard bind addresses.
@@ -104,6 +102,11 @@ impl HttpArgs {
             (Some(u), Some(p)) => Some((u.to_owned(), p.to_owned())),
             _ => None,
         }
+    }
+
+    /// The certificate and key, when HTTPS is configured.
+    pub fn tls_paths(&self) -> Option<(&PathBuf, &PathBuf)> {
+        self.tls_cert.as_ref().zip(self.tls_key.as_ref())
     }
 }
 
@@ -188,6 +191,16 @@ mod tests {
             args.headless.auth_credentials(),
             Some(("name".into(), "secret".into()))
         );
+    }
+
+    #[test]
+    fn tls_paths_need_both_files() {
+        let mut args = CliArgs::try_parse_from(["server"]).unwrap();
+        assert!(args.headless.tls_paths().is_none());
+        args.headless.tls_cert = Some("certificate.pem".into());
+        assert!(args.headless.tls_paths().is_none());
+        args.headless.tls_key = Some("key.pem".into());
+        assert!(args.headless.tls_paths().is_some());
     }
 
     #[test]

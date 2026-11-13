@@ -308,7 +308,7 @@ pub async fn get_operation_flags(app: AppHandle, operation: String) -> Result<Ve
             ))
         }
         // These operations have only static/frontend-defined flags
-        "delete" | "copyurl" | "archivecreate" | "cryptcheck" => Ok(vec![]),
+        "delete" | "copyurl" | "archivecreate" | "cryptcheck" | "index" => Ok(vec![]),
 
         _ => Err(format!("Unknown operation type for flags: {operation}")),
     }

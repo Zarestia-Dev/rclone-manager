@@ -114,6 +114,11 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     if params.name.is_empty() {
         return Err(crate::localized_error!("backendErrors.backend.nameEmpty"));
     }
+    // Each backend gets settings profiles named after it, so the name must be
+    // a valid profile name on every OS (its backups can move between them).
+    if rcman::validate_new_profile_name(&params.name).is_err() {
+        return Err(crate::localized_error!("backendErrors.backend.invalidName"));
+    }
     if Backend::is_local_name(&params.name) {
         return Err(crate::localized_error!(
             "backendErrors.backend.cannotAddLocal"
@@ -274,7 +279,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         || existing.config_password != backend.config_password;
 
     backend_manager
-        .update(settings_manager.inner(), &params.name, backend.clone())
+        .update(&params.name, backend.clone())
         .await?;
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
@@ -316,20 +321,17 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     delete_backend_from_settings(settings_manager.inner(), &name)?;
 
-    let automations = automations_cache.get_automations_for_backend(&name).await;
-    if !automations.is_empty() {
+    let removed = automations_cache.clear_backend_automations(&name).await;
+    if !removed.is_empty() {
         info!(
             "Cleaning up {} automations for backend '{name}'",
-            automations.len()
+            removed.len()
         );
-        for automation in automations {
-            if let Some(job_id_str) = &automation.scheduler_job_id
-                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
-            {
-                let _ = scheduler.unschedule_automation(job_id).await;
+        for automation in removed {
+            if let Err(error) = scheduler.unschedule_automation(&automation.id).await {
+                warn!("Failed to unschedule '{}': {error}", automation.log_name());
             }
         }
-        automations_cache.clear_backend_automations(&name).await;
     }
 
     info!("Backend '{name}' removed");
@@ -457,15 +459,10 @@ fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> 
     }
 
     let mut value = serde_json::to_value(&backend_to_save).map_err(|e| e.to_string())?;
-    // rcman preserves omitted secrets. Write their schema defaults explicitly
-    // when the connection no longer has a password so stored credentials clear.
-    value["password"] = serde_json::json!(backend_to_save.password.as_deref().unwrap_or_default());
-    value["config_password"] = serde_json::json!(
-        backend_to_save
-            .config_password
-            .as_deref()
-            .unwrap_or_default()
-    );
+    // rcman preserves omitted secrets. Write them explicitly, so a missing
+    // password is its schema default (`null`) and the stored credential clears.
+    value["password"] = serde_json::json!(backend_to_save.password);
+    value["config_password"] = serde_json::json!(backend_to_save.config_password);
     connections
         .set(&backend.name, &value)
         .map_err(|e| e.to_string())?;
@@ -843,6 +840,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn names_that_cannot_be_a_profile_on_every_os_are_rejected() {
+        for name in ["C:NAS", "a/b", "NAS.", "CON"] {
+            let params: AddBackendParams = serde_json::from_value(serde_json::json!({
+                "name": name, "host": "localhost", "port": 51900, "isLocal": false,
+            }))
+            .unwrap();
+            let error = add_backend(AppHandle::default(), params).await.unwrap_err();
+            assert!(
+                error.contains("backendErrors.backend.invalidName"),
+                "{name}: {error}"
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn switching_to_a_remote_records_its_version_os_and_config_path() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -957,8 +969,7 @@ mod tests {
         let mut saved = manager.get("NAS").await.unwrap();
         saved.username = Some("admin".into());
         saved.password = Some("secret".into());
-        let settings = app.state::<AppSettingsManager>();
-        manager.update(&settings, "NAS", saved).await.unwrap();
+        manager.update("NAS", saved).await.unwrap();
         let test = |username: Option<&str>| {
             test_backend_connection_details(
                 app.clone(),

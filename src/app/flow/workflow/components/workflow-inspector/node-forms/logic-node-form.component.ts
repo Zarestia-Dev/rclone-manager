@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, computed, inject, input, output } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,19 +10,45 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { toString as cronstrue } from 'cronstrue';
-import { getCronstrueLocale } from '../../../../../services/i18n/cron-locale.mapper';
+import { describeCron } from '../../../../../services/i18n/cron-locale.mapper';
 import { WorkflowNode } from '../../../types/workflow.types';
 import {
   getAvailableUpstreamNodes,
   getNodeFields,
-  getNodeFieldsForType,
+  getPreviousNodeFields,
   NodeVariableField,
 } from '../../../utils/node-fields.util';
 import { AlertBannerComponent } from '../../../../../shared/components/alert-banner/alert-banner.component';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { CronSummaryCardComponent } from './cron-summary-card.component';
+
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
+
+type ConditionPreset =
+  'has_diff' | 'no_diff' | 'diff_count' | 'has_errors' | 'transferred' | 'script_success';
+
+/** What each quick condition checks on the previous node's output. */
+const CONDITION_PRESETS: Record<
+  ConditionPreset,
+  { field: string; operator: string; rightValue: string }
+> = {
+  has_diff: { field: 'hasDifferences', operator: 'equals', rightValue: 'true' },
+  no_diff: { field: 'hasDifferences', operator: 'equals', rightValue: 'false' },
+  diff_count: { field: 'differCount', operator: 'greater_than', rightValue: '0' },
+  has_errors: { field: 'errors', operator: 'greater_than', rightValue: '0' },
+  transferred: { field: 'bytes', operator: 'greater_than', rightValue: '0' },
+  script_success: { field: 'exitCode', operator: 'equals', rightValue: '0' },
+};
+
+/** The settings that make a condition read `field` of a node (`prev` is the node before it). */
+function leftOperand(nodeId: string, field: string): Record<string, string> {
+  return {
+    leftNodeId: nodeId,
+    leftField: field,
+    leftValue: nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`,
+  };
+}
 
 @Component({
   selector: 'app-logic-node-form',
@@ -38,6 +65,7 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
     TranslatePipe,
     AlertBannerComponent,
     CronSummaryCardComponent,
+    PillDirective,
   ],
   templateUrl: './logic-node-form.component.html',
   styleUrls: ['../workflow-inspector.component.scss', './logic-node-form.component.scss'],
@@ -45,34 +73,25 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
 })
 export class LogicNodeFormComponent {
   private readonly stateService = inject(WorkflowStateService);
-  private readonly fileSystemService = inject(FileSystemService, { optional: true });
+  private readonly fileSystemService = inject(FileSystemService);
   private readonly translate = inject(TranslateService);
 
   readonly node = input.required<WorkflowNode>();
   readonly nodeConfig = input.required<Record<string, unknown>>();
   readonly openDetailed = output<void>();
 
-  readonly cronScheduleInfo = computed(() => {
+  private readonly langChange = toSignal(this.translate.onLangChange);
+  private readonly cron = computed(() => {
+    this.langChange();
     const expr = String(this.nodeConfig()['cronExpression'] || '').trim();
-    if (!expr) {
-      return { text: '', isInvalid: false };
-    }
-    try {
-      const text = cronstrue(expr, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
-        throwExceptionOnParseError: true,
-      });
-      return { text, isInvalid: false };
-    } catch {
-      return {
-        text: this.translate.instant('flow.workflow.inspector.invalidCron'),
-        isInvalid: true,
-      };
-    }
+    return describeCron(expr, this.translate.getCurrentLang());
   });
-
-  readonly isCronInvalid = computed(() => this.cronScheduleInfo().isInvalid);
-  readonly cronHumanReadable = computed(() => this.cronScheduleInfo().text);
+  readonly isCronInvalid = computed(() => this.cron().isInvalid);
+  readonly cronHumanReadable = computed(() =>
+    this.cron().isInvalid
+      ? this.translate.instant('flow.workflow.inspector.invalidCron')
+      : this.cron().text
+  );
 
   readonly delaySecondsValue = computed(() => {
     const val = this.nodeConfig()['delaySeconds'];
@@ -100,7 +119,7 @@ export class LogicNodeFormComponent {
   });
 
   readonly availableUpstreamNodes = computed<WorkflowNode[]>(() => {
-    return getAvailableUpstreamNodes(this.stateService.currentWorkflow()?.nodes, this.node().id);
+    return getAvailableUpstreamNodes(this.stateService.currentWorkflow(), this.node().id);
   });
 
   readonly conditionLeftValueMode = computed<'node' | 'custom'>(() => {
@@ -137,16 +156,8 @@ export class LogicNodeFormComponent {
 
   readonly availableNodeFields = computed<NodeVariableField[]>(() => {
     const targetId = this.conditionTargetNodeId();
-    const wf = this.stateService.currentWorkflow();
     if (targetId === 'prev') {
-      const incomingEdge = wf?.edges?.find(e => e.targetNodeId === this.node().id);
-      const upstreamNode = incomingEdge
-        ? wf?.nodes?.find(n => n.id === incomingEdge.sourceNodeId)
-        : undefined;
-      if (upstreamNode) {
-        return getNodeFields(upstreamNode);
-      }
-      return getNodeFieldsForType('prev');
+      return getPreviousNodeFields(this.stateService.currentWorkflow(), this.node().id);
     }
     const targetNode = this.availableUpstreamNodes().find(n => n.id === targetId);
     return targetNode ? getNodeFields(targetNode) : [];
@@ -170,45 +181,33 @@ export class LogicNodeFormComponent {
   });
 
   readonly configChange = output<{ key: string; value: unknown }>();
+  /** Several settings changed together: one undo step. */
+  readonly configPatch = output<Record<string, unknown>>();
 
   setConditionLeftValueMode(mode: 'node' | 'custom'): void {
-    this.configChange.emit({ key: 'leftMode', value: mode });
-    if (mode === 'node') {
-      const nodes = this.availableUpstreamNodes();
-      if (nodes.length > 0) {
-        const nodeId = this.conditionTargetNodeId() || nodes[0].id;
-        const fields = this.availableNodeFields();
-        const field = this.conditionTargetField() || fields[0]?.key || 'status';
-        const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
-        this.configChange.emit({ key: 'leftNodeId', value: nodeId });
-        this.configChange.emit({ key: 'leftField', value: field });
-        this.configChange.emit({ key: 'leftValue', value: leftValue });
-      }
+    if (mode === 'custom') {
+      this.configChange.emit({ key: 'leftMode', value: mode });
+      return;
     }
+    // `prev` is always on offer, so there is always a node to read from.
+    this.configPatch.emit({
+      leftMode: mode,
+      ...leftOperand(this.conditionTargetNodeId(), this.conditionTargetField()),
+    });
   }
 
   onConditionTargetNodeChange(nodeId: string): void {
-    this.configChange.emit({ key: 'leftNodeId', value: nodeId });
-    let field: string;
-    if (nodeId === 'prev') {
-      field = 'hasDifferences';
-    } else {
-      const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
-      const fields = targetNode ? getNodeFields(targetNode) : [];
-      field = fields[0]?.key || 'status';
-    }
-    const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
-    this.configChange.emit({ key: 'leftField', value: field });
-    this.configChange.emit({ key: 'leftValue', value: leftValue });
+    const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
+    const field =
+      nodeId === 'prev'
+        ? 'hasDifferences'
+        : (targetNode && getNodeFields(targetNode)[0]?.key) || 'status';
+    this.configPatch.emit(leftOperand(nodeId, field));
   }
 
   onConditionTargetFieldChange(field: string, targetNodeId?: string): void {
-    this.configChange.emit({ key: 'leftField', value: field });
     const nodeId = targetNodeId || this.conditionTargetNodeId();
-    if (nodeId) {
-      const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
-      this.configChange.emit({ key: 'leftValue', value: leftValue });
-    }
+    this.configPatch.emit(nodeId ? leftOperand(nodeId, field) : { leftField: field });
   }
 
   onFieldChange(key: string, value: unknown): void {
@@ -216,7 +215,6 @@ export class LogicNodeFormComponent {
   }
 
   async browseConditionFilePath(): Promise<void> {
-    if (!this.fileSystemService) return;
     try {
       const path = await this.fileSystemService.selectFile();
       if (path) {
@@ -227,56 +225,14 @@ export class LogicNodeFormComponent {
     }
   }
 
-  applyDelayPreset(seconds: number): void {
-    this.onFieldChange('delaySeconds', seconds);
-  }
-
-  applyConditionPreset(
-    preset: 'has_diff' | 'no_diff' | 'diff_count' | 'has_errors' | 'transferred' | 'script_success'
-  ): void {
-    let field = 'hasDifferences';
-    let operator = 'equals';
-    let rightValue = 'true';
-
-    switch (preset) {
-      case 'has_diff':
-        field = 'hasDifferences';
-        operator = 'equals';
-        rightValue = 'true';
-        break;
-      case 'no_diff':
-        field = 'hasDifferences';
-        operator = 'equals';
-        rightValue = 'false';
-        break;
-      case 'diff_count':
-        field = 'differCount';
-        operator = 'greater_than';
-        rightValue = '0';
-        break;
-      case 'has_errors':
-        field = 'errors';
-        operator = 'greater_than';
-        rightValue = '0';
-        break;
-      case 'transferred':
-        field = 'bytes';
-        operator = 'greater_than';
-        rightValue = '0';
-        break;
-      case 'script_success':
-        field = 'exitCode';
-        operator = 'equals';
-        rightValue = '0';
-        break;
-    }
-
-    this.configChange.emit({ key: 'leftMode', value: 'node' });
-    this.configChange.emit({ key: 'leftNodeId', value: 'prev' });
-    this.configChange.emit({ key: 'leftField', value: field });
-    this.configChange.emit({ key: 'leftValue', value: `{{prev.${field}}}` });
-    this.configChange.emit({ key: 'operator', value: operator });
-    this.configChange.emit({ key: 'rightValue', value: rightValue });
+  applyConditionPreset(preset: ConditionPreset): void {
+    const { field, operator, rightValue } = CONDITION_PRESETS[preset];
+    this.configPatch.emit({
+      leftMode: 'node',
+      ...leftOperand('prev', field),
+      operator,
+      rightValue,
+    });
   }
 
   addInputBranch(): void {
@@ -287,21 +243,11 @@ export class LogicNodeFormComponent {
     this.stateService.removeJoinInputPort(this.node().id, portId);
   }
 
-  canRemoveBranch(): boolean {
-    const inputs = this.node().inputs || [];
-    return inputs.length > 2;
-  }
-
   addOutputBranch(): void {
     this.stateService.addForkOutputPort(this.node().id);
   }
 
   removeOutputBranch(portId?: string): void {
     this.stateService.removeForkOutputPort(this.node().id, portId);
-  }
-
-  canRemoveOutputBranch(): boolean {
-    const outputs = this.node().outputs || [];
-    return outputs.length > 2;
   }
 }

@@ -10,7 +10,8 @@ Each patch is written in `package main` in a separate `.go` file. Each patch fil
 - `*_patch_test.go`: Unit tests for the patches.
 - `go.mod`: Module definition pointing to local `rclone` source for testing.
 
-`media_read_patch.go` registers `operations/readfile` and `operations/cancelread`.
+`media_read_patch.go` replaces `operations/getfile` with a version that also accepts an
+optional `readToken` (plain calls behave like upstream) and registers `operations/cancelread`.
 Rust supplies a unique `readToken` for each bounded read. Dropping the read future
 cancels its Go context, including when cancellation races with the FFI call starting.
 Reads also have a 30-second deadline. Patch changes trigger rebuilding librclone;

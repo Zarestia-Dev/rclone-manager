@@ -45,6 +45,7 @@ import {
   ConfigValue,
 } from '@app/types';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 interface OptionViewModel {
   value: unknown;
   label: string;
@@ -86,6 +87,7 @@ interface SettingViewModel {
     TranslatePipe,
     NgTemplateOutlet,
     NumberInputComponent,
+    PillDirective,
   ],
   templateUrl: './preferences-modal.component.html',
   styleUrls: [

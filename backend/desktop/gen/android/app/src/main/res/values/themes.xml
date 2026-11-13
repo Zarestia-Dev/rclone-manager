@@ -4,4 +4,11 @@
         <!-- Customize your theme here. -->
         <item name="android:windowLightStatusBar">true</item>
     </style>
+
+    <!-- Shows only a dialog over whatever is on screen. -->
+    <style name="Theme.rclone_manager.Dialog" parent="Theme.rclone_manager">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

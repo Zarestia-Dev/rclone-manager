@@ -1,5 +1,6 @@
 use crate::utils::types::jobs::{JobStatus, JobType};
 use crate::utils::types::origin::Origin;
+use crate::utils::types::starter::Starter;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,22 +9,49 @@ use tokio::sync::RwLock;
 pub const SOURCE_KEYS: &[&str] = &["source", "srcFs", "path1", "fs", "url"];
 pub const DEST_KEYS: &[&str] = &["dest", "dstFs", "path2", "mountPoint"];
 
+/// The non-empty paths stored under `key` of an rclone config: one string, or a list of them.
+#[must_use]
+pub fn paths_at(rclone: &Value, key: &str) -> Vec<String> {
+    match rclone.get(key) {
+        Some(Value::String(path)) if !path.is_empty() => vec![path.clone()],
+        Some(Value::Array(paths)) => paths
+            .iter()
+            .filter_map(|path| path.as_str())
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => vec![],
+    }
+}
+
+/// The paths an operation reads from: those under the first of [`SOURCE_KEYS`] that holds any.
+#[must_use]
+pub fn source_paths(rclone: &Value) -> Vec<String> {
+    SOURCE_KEYS
+        .iter()
+        .map(|key| paths_at(rclone, key))
+        .find(|paths| !paths.is_empty())
+        .unwrap_or_default()
+}
+
+/// The path an operation writes to: the first one under the first of [`DEST_KEYS`] that holds any.
+#[must_use]
+pub fn dest_path(rclone: &Value) -> Option<String> {
+    DEST_KEYS
+        .iter()
+        .find_map(|key| paths_at(rclone, key).into_iter().next())
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
+    pub starter: Option<Starter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
 }
 
 impl MountedRemote {
@@ -32,12 +60,9 @@ impl MountedRemote {
         Self {
             fs: fs.into(),
             mount_point: mount_point.into(),
-            profile: None,
-            quick_run_id: None,
+            starter: None,
             execute_id: None,
             origin: None,
-            workflow_id: None,
-            node_id: None,
         }
     }
 }
@@ -47,18 +72,12 @@ pub struct ServeInstance {
     pub id: String,
     pub addr: String,
     pub params: Value,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
+    pub starter: Option<Starter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
 }
 
 impl ServeInstance {
@@ -68,12 +87,9 @@ impl ServeInstance {
             id: id.into(),
             addr: addr.into(),
             params,
-            profile: None,
-            quick_run_id: None,
+            starter: None,
             execute_id: None,
             origin: None,
-            workflow_id: None,
-            node_id: None,
         }
     }
 }
@@ -87,9 +103,7 @@ pub struct OperationExecutionResult {
     pub operation_type: OperationType,
     pub remote_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
+    pub starter: Option<Starter>,
     pub success: bool,
     pub status: JobStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -248,6 +262,8 @@ pub enum OperationType {
     Archivecreate,
     #[serde(alias = "Cryptcheck")]
     Cryptcheck,
+    #[serde(alias = "Index")]
+    Index,
 }
 
 impl OperationType {
@@ -265,6 +281,7 @@ impl OperationType {
             Self::Copyurl => "copyurlConfigs",
             Self::Archivecreate => "archivecreateConfigs",
             Self::Cryptcheck => "cryptcheckConfigs",
+            Self::Index => "indexConfigs",
         }
     }
 
@@ -281,6 +298,7 @@ impl OperationType {
             Self::Copyurl => Some(JobType::CopyUrl),
             Self::Archivecreate => Some(JobType::ArchiveCreate),
             Self::Cryptcheck => Some(JobType::CryptCheck),
+            Self::Index => Some(JobType::Index),
             Self::Serve => None,
         }
     }
@@ -297,40 +315,20 @@ impl OperationType {
             Self::Copyurl => Some(crate::rclone::endpoints::operations::COPYURL),
             Self::Cryptcheck => Some(crate::rclone::endpoints::operations::CRYPTCHECK),
             Self::Archivecreate => Some(crate::rclone::endpoints::operations::ARCHIVE),
-            _ => None,
+            Self::Index => Some(crate::rclone::endpoints::operations::INDEX),
+            Self::Mount | Self::Serve => None,
         }
     }
 
-    /// Checks if this is a directory/file transfer operation.
-    pub fn is_transfer(self) -> bool {
-        matches!(
-            self,
-            Self::Sync
-                | Self::Copy
-                | Self::Move
-                | Self::Bisync
-                | Self::Check
-                | Self::Delete
-                | Self::Copyurl
-                | Self::Archivecreate
-                | Self::Cryptcheck
-        )
+    /// Whether the operation needs a destination. Delete and Index work on their sources alone.
+    pub fn takes_destination(self) -> bool {
+        !matches!(self, Self::Delete | Self::Index)
     }
 
-    /// Checks if this operation supports cron/filesystem-watcher automation.
-    pub fn is_automation(self) -> bool {
-        matches!(
-            self,
-            Self::Sync
-                | Self::Copy
-                | Self::Move
-                | Self::Bisync
-                | Self::Check
-                | Self::Delete
-                | Self::Copyurl
-                | Self::Archivecreate
-                | Self::Cryptcheck
-        )
+    /// Whether the operation runs as an rclone job (everything but mount and serve). These are
+    /// also the operations a schedule or a folder watcher can start.
+    pub fn is_transfer(self) -> bool {
+        !matches!(self, Self::Mount | Self::Serve)
     }
 
     /// Return the string representation.
@@ -347,6 +345,7 @@ impl OperationType {
             Self::Copyurl => "copyurl",
             Self::Archivecreate => "archivecreate",
             Self::Cryptcheck => "cryptcheck",
+            Self::Index => "index",
         }
     }
 
@@ -363,6 +362,7 @@ impl OperationType {
         Self::Copyurl,
         Self::Archivecreate,
         Self::Cryptcheck,
+        Self::Index,
     ];
 }
 
@@ -370,20 +370,11 @@ impl std::str::FromStr for OperationType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "mount" => Ok(Self::Mount),
-            "sync" => Ok(Self::Sync),
-            "copy" => Ok(Self::Copy),
-            "move" => Ok(Self::Move),
-            "bisync" => Ok(Self::Bisync),
-            "serve" => Ok(Self::Serve),
-            "check" => Ok(Self::Check),
-            "delete" => Ok(Self::Delete),
-            "copyurl" => Ok(Self::Copyurl),
-            "archivecreate" => Ok(Self::Archivecreate),
-            "cryptcheck" => Ok(Self::Cryptcheck),
-            _ => Err(()),
-        }
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|op| op.as_str() == s)
+            .ok_or(())
     }
 }
 
@@ -401,6 +392,7 @@ impl std::fmt::Display for OperationType {
             Self::Copyurl => write!(f, "Copyurl"),
             Self::Archivecreate => write!(f, "Archivecreate"),
             Self::Cryptcheck => write!(f, "Cryptcheck"),
+            Self::Index => write!(f, "Index"),
         }
     }
 }
@@ -464,6 +456,8 @@ pub struct RemoteSettings {
     pub archivecreate_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cryptcheck_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub index_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter_configs: Option<std::collections::HashMap<String, serde_json::Value>>,
@@ -530,6 +524,7 @@ impl RemoteSettings {
             OperationType::Copyurl => self.copyurl_configs.as_ref(),
             OperationType::Archivecreate => self.archivecreate_configs.as_ref(),
             OperationType::Cryptcheck => self.cryptcheck_configs.as_ref(),
+            OperationType::Index => self.index_configs.as_ref(),
         }
     }
 }
@@ -654,6 +649,15 @@ mod tests {
     }
 
     #[test]
+    fn only_delete_and_index_work_without_a_destination() {
+        let without: Vec<_> = OperationType::ALL
+            .iter()
+            .filter(|op| !op.takes_destination())
+            .collect();
+        assert_eq!(without, [&OperationType::Delete, &OperationType::Index]);
+    }
+
+    #[test]
     fn test_operation_config_keys_resolve_the_stored_profiles() {
         let settings: RemoteSettings = serde_json::from_value(json!({
             "syncConfigs": { "Arşiv & 旅行": { "rclone": { "srcFs": "drive:folder" } } },
@@ -692,5 +696,41 @@ mod tests {
         assert!(settings.get_configs(OperationType::Sync).is_some());
         assert_eq!(settings.get_configs(OperationType::Sync).unwrap().len(), 1);
         assert!(settings.get_configs(OperationType::Copy).is_none());
+    }
+
+    #[test]
+    fn paths_are_read_from_a_string_or_a_list_and_blanks_are_dropped() {
+        let rclone = serde_json::json!({
+            "one": "/a",
+            "many": ["/b", "", 7, "/c"],
+            "empty": "",
+            "none": [],
+            "wrong": 7
+        });
+        assert_eq!(paths_at(&rclone, "one"), vec!["/a"]);
+        assert_eq!(paths_at(&rclone, "many"), vec!["/b", "/c"]);
+        for key in ["empty", "none", "wrong", "missing"] {
+            assert!(paths_at(&rclone, key).is_empty(), "{key}");
+        }
+        assert!(paths_at(&serde_json::json!("not an object"), "one").is_empty());
+    }
+
+    #[test]
+    fn the_source_is_the_first_key_that_holds_any_path() {
+        let rclone = serde_json::json!({"source": [], "srcFs": "/src", "path1": "/left"});
+        assert_eq!(source_paths(&rclone), vec!["/src"]);
+
+        let url = serde_json::json!({"url": ["https://a", "https://b"]});
+        assert_eq!(source_paths(&url), vec!["https://a", "https://b"]);
+
+        assert!(source_paths(&serde_json::json!({"dstFs": "/only-dest"})).is_empty());
+    }
+
+    #[test]
+    fn the_destination_is_the_first_path_of_the_first_key_that_holds_any() {
+        let rclone =
+            serde_json::json!({"dest": "", "dstFs": ["/one", "/two"], "mountPoint": "/mnt"});
+        assert_eq!(dest_path(&rclone).as_deref(), Some("/one"));
+        assert_eq!(dest_path(&serde_json::json!({"srcFs": "/src"})), None);
     }
 }

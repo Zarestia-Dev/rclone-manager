@@ -4,6 +4,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 
+import { JobInfo } from '@app/types';
 import { AppDetailComponent } from './app-detail.component';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -27,13 +28,18 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   backendName: 'Local',
   status: 'enabled',
   args: {
-    remoteName: 'test-remote',
-    profileName: 'Default',
     source: 'automation',
     srcPaths: ['/src'],
     dstPaths: ['/dst'],
   },
-  createdAt: '2026-01-01T00:00:00Z',
+  cronExpression: null,
+  lastRun: null,
+  nextRun: null,
+  lastError: null,
+  currentJobId: null,
+  watchEnabled: false,
+  watchDelay: 5,
+  watchChangedOnly: false,
   runCount: 0,
   successCount: 0,
   failureCount: 0,
@@ -47,7 +53,7 @@ describe('AppDetailComponent', () => {
 
   let remoteFacadeMock: {
     selectedRemote: ReturnType<typeof signal<Remote | null>>;
-    isRemoteActive: ReturnType<typeof vi.fn>;
+    isRemoteMissing: ReturnType<typeof vi.fn>;
     activeInFlightActions: ReturnType<typeof signal<unknown[]>>;
     runningServes: ReturnType<typeof signal<unknown[]>>;
     mountedRemotes: ReturnType<typeof signal<unknown[]>>;
@@ -67,6 +73,7 @@ describe('AppDetailComponent', () => {
   let quickRunServiceMock: {
     runningIds: ReturnType<typeof signal<Set<string>>>;
     openEditor: ReturnType<typeof vi.fn>;
+    save: ReturnType<typeof vi.fn>;
   };
 
   let automationServiceMock: {
@@ -96,7 +103,7 @@ describe('AppDetailComponent', () => {
         type: 'drive',
         status: { mount: { active: false } },
       } as unknown as Remote),
-      isRemoteActive: vi.fn().mockReturnValue(true),
+      isRemoteMissing: vi.fn().mockReturnValue(false),
       activeInFlightActions: signal([]),
       runningServes: signal([]),
       mountedRemotes: signal([]),
@@ -116,6 +123,7 @@ describe('AppDetailComponent', () => {
     quickRunServiceMock = {
       runningIds: signal(new Set<string>()),
       openEditor: vi.fn(),
+      save: vi.fn().mockResolvedValue(undefined),
     };
 
     automationServiceMock = {
@@ -149,7 +157,7 @@ describe('AppDetailComponent', () => {
         { provide: BackendService, useValue: { activeBackend } },
         { provide: AppSettingsService, useValue: appSettingsServiceMock },
         { provide: SystemHealthService, useValue: systemHealthMock },
-        { provide: ModalService, useValue: { openRemoteConfig: vi.fn() } },
+        { provide: ModalService, useValue: { openRemoteConfig: vi.fn(), openJobDetail: vi.fn() } },
         {
           provide: LocalStorageService,
           useValue: {
@@ -243,6 +251,17 @@ describe('AppDetailComponent', () => {
     });
   });
 
+  it('opens the detail of the job on show, and nothing when there is none', () => {
+    const modal = TestBed.inject(ModalService);
+    component.onOpenJobDetail();
+    expect(modal.openJobDetail).not.toHaveBeenCalled();
+
+    const job = { jobid: 9, group: 'job/9' } as JobInfo;
+    vi.spyOn(component, 'activeGroupJob').mockReturnValue(job);
+    component.onOpenJobDetail();
+    expect(modal.openJobDetail).toHaveBeenCalledWith(job);
+  });
+
   it('reads and toggles dry run in Default when the backend profile reference is omitted', async () => {
     fixture.componentRef.setInput('mainOperationType', 'sync');
     fixture.componentRef.setInput('remoteSettings', {
@@ -253,6 +272,94 @@ describe('AppDetailComponent', () => {
     await component.toggleDryRun();
     expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenCalledWith('test-remote', {
       backendConfigs: { Default: { dry_run: false, transfers: 8 } },
+    });
+  });
+
+  describe('file report', () => {
+    const profile = (rclone: Record<string, unknown>): void => {
+      fixture.componentRef.setInput('mainOperationType', 'sync');
+      fixture.componentRef.setInput('remoteSettings', {
+        syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', ...rclone } } },
+      });
+    };
+
+    it('is on when the profile asks for any report', () => {
+      profile({});
+      expect(component.isFileReport()).toBe(false);
+      profile({ differ: true });
+      expect(component.isFileReport()).toBe(true);
+    });
+
+    it('turns the combined report on for the profile and keeps its other options', async () => {
+      profile({ createEmptySrcDirs: true });
+      await component.toggleFileReport();
+      expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenCalledWith('test-remote', {
+        syncConfigs: {
+          Default: {
+            app: {},
+            rclone: { srcFs: 'test-remote:', createEmptySrcDirs: true, combined: true },
+          },
+        },
+      });
+    });
+
+    it('turns every report off for the profile', async () => {
+      profile({ combined: true, differ: true, match: true });
+      await component.toggleFileReport();
+      expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenCalledWith('test-remote', {
+        syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:' } } },
+      });
+    });
+
+    it('lists the reports the profile asks for, in the order the report view uses', () => {
+      profile({ differ: true, combined: true, match: false, destAfter: true });
+      expect(component.activeReports()).toEqual(['combined', 'differ', 'destAfter']);
+    });
+
+    it('turns a single report on or off without touching the others', async () => {
+      profile({ combined: true });
+      await component.toggleReport('differ');
+      expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenLastCalledWith('test-remote', {
+        syncConfigs: {
+          Default: { app: {}, rclone: { srcFs: 'test-remote:', combined: true, differ: true } },
+        },
+      });
+
+      profile({ combined: true, differ: true });
+      await component.toggleReport('differ');
+      expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenLastCalledWith('test-remote', {
+        syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', combined: true } } },
+      });
+    });
+
+    it('is not offered for operations that keep no report', async () => {
+      fixture.componentRef.setInput('mainOperationType', 'bisync');
+      fixture.componentRef.setInput('remoteSettings', {
+        bisyncConfigs: { Default: { app: {}, rclone: { combined: true } } },
+      });
+      expect(component.isFileReport()).toBe(false);
+      await component.toggleFileReport();
+      expect(remoteFacadeMock.updateRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('is saved on the Quick Run in Quick Run mode', async () => {
+      const quickRun = {
+        id: 'qr-1',
+        name: 'Run',
+        remoteName: 'test-remote',
+        operationType: 'sync',
+        config: { app: {}, rclone: { srcFs: 'a:', dstFs: 'b:' } },
+      };
+      fixture.componentRef.setInput('mode', 'quickRun');
+      fixture.componentRef.setInput('quickRun', quickRun);
+      fixture.componentRef.setInput('mainOperationType', 'sync');
+      expect(component.isFileReport()).toBe(false);
+      await component.toggleFileReport();
+      expect(quickRunServiceMock.save).toHaveBeenCalledWith({
+        ...quickRun,
+        config: { app: {}, rclone: { srcFs: 'a:', dstFs: 'b:', combined: true } },
+      });
+      expect(remoteFacadeMock.updateRemoteSettings).not.toHaveBeenCalled();
     });
   });
 
@@ -326,7 +433,7 @@ describe('AppDetailComponent', () => {
         automation({ automationType: 'copy' }),
         automation({ profileName: 'default' }),
         automation({ args: { ...managed.args, source: 'quickrun' } }),
-        automation({ args: { ...managed.args, source: 'flow' } }),
+        automation({ args: { ...managed.args, source: 'workflow' } }),
         managed,
       ]);
       expect(component.matchingAutomation()).toBe(managed);

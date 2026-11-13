@@ -100,7 +100,7 @@ where
     crate::utils::spawn(async move {
         let state = app.state::<crate::utils::types::state::RcloneState>();
         let _operation = state.vault_operation_lock.try_lock().map_err(|_| {
-            crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Another vault operation is in progress")
+            crate::localized_error!("backendErrors.vault.operationInProgress")
         })?;
         if !allow_locked && access::is_locked(&app) {
             return Err(access::locked_error());
@@ -114,11 +114,7 @@ async fn update_manager(
     app: &AppHandle,
     operation: impl FnOnce(&AppSettingsManager) -> rcman::Result<()> + Send + 'static,
 ) -> Result<(), String> {
-    let app = app.clone();
-    crate::utils::spawn_blocking(move || operation(app.state::<AppSettingsManager>().inner()))
-        .await
-        .map_err(|error| crate::localized_error!("backendErrors.vault.operationFailed", "error" => error.to_string()))?
-        .map_err(vault_error)
+    super::blocking(app, operation).await?.map_err(vault_error)
 }
 
 pub async fn get_vault_info(app: AppHandle) -> Result<VaultInfoResponse, String> {
@@ -215,25 +211,35 @@ pub async fn enable_vault(
     require_password(&password)?;
     run_vault_operation(app, false, move |app| async move {
         if crate::services::flow::workflow::engine::has_active_workflows() {
-            return Err(crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Wait for running workflows to finish before enabling the vault"));
+            return Err(crate::localized_error!(
+                "backendErrors.vault.workflowsActive"
+            ));
         }
         update_manager(&app, move |manager| {
             manager.enable_vault(&password)?;
             if let Some(seconds) = timeout_secs {
-                manager.set_vault_lock_timeout((seconds > 0).then(|| std::time::Duration::from_secs(seconds)))?;
+                manager.set_vault_lock_timeout(
+                    (seconds > 0).then(|| std::time::Duration::from_secs(seconds)),
+                )?;
             }
             Ok(())
-        }).await?;
+        })
+        .await?;
         let manager = app.state::<AppSettingsManager>();
-        let language = manager.get::<String>("general.language").map_err(vault_error)?;
+        let language = manager
+            .get::<String>("general.language")
+            .map_err(vault_error)?;
         let access = app.state::<Arc<VaultAccess>>();
         access.set_language(&language, true);
         crate::services::automation::runtime::refresh(&app).await?;
-        if manager.is_locked() { return Err(access::locked_error()); }
+        if manager.is_locked() {
+            return Err(access::locked_error());
+        }
         access.unlock();
         emit_vault_state(&app, "enabled");
         Ok(())
-    }).await
+    })
+    .await
 }
 
 pub async fn disable_vault(app: AppHandle, password: String) -> Result<(), String> {

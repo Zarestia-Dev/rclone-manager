@@ -1,6 +1,6 @@
-<div class="remote-details" [style.--mat-sys-primary]="operationColorCssVar()">
+<div class="remote-details" [attr.data-tone]="operationColor()">
   <header class="detail-header">
-    <div class="icon-container" [class]="iconContainerClass()">
+    <div class="icon-container" [attr.data-tone]="iconContainerTone()">
       <mat-icon
         [svgIcon]="
           mode() === 'quickRun'
@@ -49,7 +49,7 @@
       <div class="actions">
         <button
           matButton="filled"
-          class="primary"
+          data-tone="primary"
           (click)="onRecreateRemote(quickRun()?.remoteName || '')"
           [attr.title]="
             'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
@@ -84,7 +84,7 @@
       <div class="actions">
         <button
           matButton="filled"
-          class="accent"
+          data-tone="accent"
           (click)="onInstallMountPlugin()"
           [attr.title]="'banners.mountPlugin.install' | translate"
         >
@@ -104,7 +104,7 @@
             <button
               type="button"
               class="operation-toggle"
-              [class]="opType"
+              [attr.data-tone]="operationTone[opType]"
               [class.is-selected]="selectedSyncOperation() === opType"
               [attr.aria-pressed]="selectedSyncOperation() === opType"
               [class.is-running]="operation.isActive"
@@ -121,7 +121,7 @@
           class="operation-toggle more-toggle"
           [class.is-selected]="isMoreSelected()"
           [class.is-running]="isAnyMoreRunning()"
-          [class]="isMoreSelected() ? selectedSyncOperation() : ''"
+          [attr.data-tone]="isMoreSelected() ? operationTone[selectedSyncOperation()] : 'accent'"
           [cdkMenuTriggerFor]="moreMenu"
           [attr.title]="moreButtonTooltip()"
         >
@@ -136,7 +136,7 @@
               @if (operation) {
                 <button
                   class="menu-item"
-                  [class]="opType"
+                  [attr.data-tone]="operationTone[opType]"
                   [class.is-running]="operation.isActive"
                   (click)="onSyncOpSelect(opType)"
                   cdkMenuItem
@@ -173,7 +173,7 @@
               <span class="profile-selector-label">{{
                 'dashboard.appDetail.selectedProfile' | translate
               }}</span>
-              <span class="count-badge">{{
+              <span appPill size="xs" [tone]="operationColor()">{{
                 'dashboard.appDetail.profilesCount'
                   | translate: { count: enrichedProfiles().length }
               }}</span>
@@ -182,11 +182,9 @@
             <div class="profile-pills">
               @for (profile of enrichedProfiles(); track profile.name) {
                 <button
-                  class="app-pill interactive"
-                  [class.is-selected]="selectedProfile() === profile.name"
-                  [attr.aria-pressed]="selectedProfile() === profile.name"
-                  [class.p-primary]="profile.status === 'running'"
-                  [class.p-orange]="profile.status === 'scheduled'"
+                  appPill
+                  [selected]="selectedProfile() === profile.name"
+                  [tone]="profile.status === 'running' ? operationColor() : null"
                   (click)="onProfileSelect(profile.name)"
                 >
                   @if (profile.status === 'running') {
@@ -205,7 +203,7 @@
                 </button>
               }
               <button
-                class="app-pill interactive"
+                appPill
                 (click)="onAddProfile()"
                 [attr.title]="'dashboard.appDetail.addProfile' | translate"
               >
@@ -220,8 +218,11 @@
             [config]="opConfig"
             [dryRun]="isDryRun()"
             [resync]="isResync()"
+            [reports]="activeReports()"
             (toggleDryRun)="toggleDryRun()"
             (toggleResync)="toggleResync()"
+            (toggleFileReport)="toggleFileReport()"
+            (toggleReport)="toggleReport($event)"
             (startJob)="
               startJob.emit({
                 type: $event,
@@ -246,10 +247,8 @@
             @if (selectedCronSchedule(); as schedule) {
               <button
                 type="button"
-                class="app-pill interactive"
-                [class.p-accent]="!isAutomationDisabled() && !isAutomationStopping()"
-                [class.p-orange]="isAutomationStopping()"
-                [class.p-dim]="isAutomationDisabled()"
+                appPill
+                [tone]="automationStateTone() ?? operationColor()"
                 [class.disabled-automation]="isAutomationDisabled()"
                 [disabled]="isAutomationStopping() || isTogglingAutomation()"
                 (click)="onToggleAutomation($event)"
@@ -292,10 +291,8 @@
             @if (selectedWatcher(); as watcher) {
               <button
                 type="button"
-                class="app-pill interactive"
-                [class.p-purple]="!isAutomationDisabled() && !isAutomationStopping()"
-                [class.p-orange]="isAutomationStopping()"
-                [class.p-dim]="isAutomationDisabled()"
+                appPill
+                [tone]="automationStateTone() ?? operationColor()"
                 [class.disabled-automation]="isAutomationDisabled()"
                 [disabled]="isAutomationStopping() || isTogglingAutomation()"
                 (click)="onToggleAutomation($event)"
@@ -337,7 +334,7 @@
             }
 
             @if (isAutoStartEnabled()) {
-              <div class="app-pill p-yellow" [title]="'flow.quickRun.badges.autostart' | translate">
+              <div appPill tone="yellow" [title]="'flow.quickRun.badges.autostart' | translate">
                 <mat-icon svgIcon="bolt"></mat-icon>
                 <span>{{ 'flow.quickRun.badges.autostart' | translate }}</span>
               </div>
@@ -346,17 +343,13 @@
         }
 
         @if (isOperationsType()) {
-          <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
-
-          <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
-
-          <app-transfer-activity-panel
-            [config]="transferActivityConfig()"
-            [isJobRunning]="operationActiveState()"
+          <app-job-monitor
+            [config]="jobMonitorConfig()"
+            [canOpenDetail]="!!activeGroupJob()"
             (resetStats)="onResetStats()"
             (deleteJob)="onDeleteJob()"
-            class="activity-panel"
-          ></app-transfer-activity-panel>
+            (openDetail)="onOpenJobDetail()"
+          ></app-job-monitor>
         }
 
         @if (currentOpType() === 'serve' && filteredRunningServes().length > 0) {
@@ -371,7 +364,7 @@
                       type: 'serve',
                       remoteName: selectedRemote().name,
                       serveId: serve.id,
-                      profileName: serve.profile || '',
+                      profileName: profileOf(serve) || '',
                     })
                   "
                 ></app-serve-card>

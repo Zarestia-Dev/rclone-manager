@@ -13,6 +13,7 @@ import {
   OpenInFilesEvent,
 } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remotes-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +23,7 @@ import {
     MatButtonModule,
     DragDropModule,
     RemoteCardComponent,
+    PillDirective,
   ],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
@@ -43,8 +45,6 @@ export class RemotesPanelComponent {
   readonly isEditingLayout = input(false);
   readonly mode = input<AppTab>('general');
   readonly displayMode = input<CardDisplayMode>('compact');
-  readonly primaryActionLabel = input('Start');
-  readonly activeIcon = input('check-circle');
 
   remoteSelected = output<Remote>();
   openInFiles = output<OpenInFilesEvent>();

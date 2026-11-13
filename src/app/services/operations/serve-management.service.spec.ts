@@ -26,19 +26,19 @@ describe('ServeManagementService', () => {
     {
       id: 'http-1',
       addr: '127.0.0.1:8080',
-      profile: 'Default',
+      starter: { kind: 'profile', name: 'Default' },
       params: { fs: 'Dropbox:/photos', type: 'http' },
     },
     {
       id: 'webdav-1',
       addr: '127.0.0.1:8081',
-      profile: 'Backup',
+      starter: { kind: 'profile', name: 'Backup' },
       params: { fs: 'Drive:/backup', type: 'webdav' },
     },
     {
       id: 'http-2',
       addr: '127.0.0.1:8082',
-      profile: 'Media',
+      starter: { kind: 'profile', name: 'Media' },
       params: { fs: 'Dropbox:/media', type: 'http' },
     },
   ];

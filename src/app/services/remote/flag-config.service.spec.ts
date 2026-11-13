@@ -125,6 +125,26 @@ describe('FlagConfigService cache scope', () => {
     ).toEqual(['http']);
     expect(sharedServe?.Examples).toBe(beforeServe);
   });
+  it('gives serve options that differ per server type their own translation key', async () => {
+    const key = { Name: 'key', FieldName: 'key', Help: 'x', Type: 'string', DefaultStr: '' };
+    invoke.mockResolvedValue([key]);
+    const sftp = await service.loadServeFlagFields('sftp');
+    const http = await service.loadServeFlagFields('http');
+    expect(sftp.find(option => option.Name === 'key')?.TranslationKey).toBe('sftp_key');
+    expect(http.find(option => option.Name === 'key')?.TranslationKey).toBeUndefined();
+    expect(key).not.toHaveProperty('TranslationKey');
+  });
+
+  it('keeps bisync options that collide with global flags under their own translation key', () => {
+    const bisync = staticFlagDefinitions['bisync'];
+    expect(bisync.find(option => option.Name === 'maxDelete')?.TranslationKey).toBe(
+      'bisync_max_delete'
+    );
+    expect(bisync.find(option => option.Name === 'noCleanup')?.TranslationKey).toBe(
+      'bisync_no_cleanup'
+    );
+  });
+
   it('loads a focused section without fetching unrelated mount or serve metadata', async () => {
     await Promise.all([service.loadConfigFields(['sync']), service.loadConfigFields(['sync'])]);
     expect(invoke).toHaveBeenCalledExactlyOnceWith('get_operation_flags', { operation: 'sync' });

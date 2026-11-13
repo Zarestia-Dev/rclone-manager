@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_JOB_STATS, JobInfo } from '@app/types';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -17,7 +17,7 @@ describe('JobsPanelComponent job actions', () => {
     execute_id: 'first',
     job_type: 'sync',
     remote_name: 'drive',
-    profile: 'daily',
+    starter: { kind: 'profile', name: 'daily' },
     source: 'drive:',
     destination: 'backup:',
     start_time: '2026-09-02T10:00:00Z',
@@ -42,6 +42,28 @@ describe('JobsPanelComponent job actions', () => {
     fixture.detectChanges();
   });
 
+  it('names what started each job: its profile or its Quick Run', () => {
+    const jobsWith = (starter: JobInfo['starter'], jobid: number): JobInfo => ({
+      ...first,
+      jobid,
+      execute_id: `exec-${jobid}`,
+      starter,
+    });
+    fixture.componentRef.setInput('config', {
+      jobs: [
+        jobsWith({ kind: 'profile', name: 'Test 1' }, 1),
+        jobsWith({ kind: 'quick_run', id: 'qr-1', name: 'Nightly' }, 2),
+        jobsWith(undefined, 3),
+      ],
+    });
+    fixture.detectChanges();
+
+    const pills = [...fixture.nativeElement.querySelectorAll('.card-row-item')].map(
+      (row: HTMLElement) => row.querySelector('app-starter-pill [appPill]')?.textContent?.trim()
+    );
+    expect(pills).toEqual(['Test 1', 'Nightly', undefined]);
+  });
+
   it('stops only the clicked job, even when another execution uses the same profile', async () => {
     const buttons: NodeListOf<HTMLButtonElement> =
       fixture.nativeElement.querySelectorAll('.action-button');
@@ -62,6 +84,19 @@ describe('JobsPanelComponent job actions', () => {
     } finally {
       log.mockRestore();
     }
+  });
+
+  it('shows a localized backend error as text, not as its raw JSON', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', { backendErrors: { job: { lost: 'Rclone lost this job' } } });
+    translate.use('en');
+    const lost = '{"key":"backendErrors.job.lost","params":{}}';
+    fixture.componentRef.setInput('config', {
+      jobs: [{ ...first, status: 'Failed', error: lost }],
+    });
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.has-error')?.getAttribute('title');
+    expect(title).toBe('Rclone lost this job');
   });
 
   it('keeps deleting a finished job separate from stopping a running job', () => {

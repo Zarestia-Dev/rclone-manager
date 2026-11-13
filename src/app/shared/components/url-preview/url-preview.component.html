@@ -76,18 +76,18 @@
       <div class="preview-top-row">
         <div class="badges-group">
           @if (protocolLabel()) {
-            <span class="app-pill" [class.p-primary]="isHttps()" [class.p-accent]="!isHttps()">
+            <span appPill [tone]="isHttps() ? 'primary' : 'accent'">
               <mat-icon [svgIcon]="protocolIcon()"></mat-icon>
               <span>{{ protocolLabel() }}</span>
             </span>
           }
           @if (hostname()) {
-            <span class="app-pill p-dim" [attr.title]="'shared.urlPreview.host' | translate">
+            <span appPill tone="dim" [attr.title]="'shared.urlPreview.host' | translate">
               <span class="truncate">{{ hostname() }}</span>
             </span>
           }
           @if (extension()) {
-            <span class="app-pill p-accent font-mono">.{{ extension() }}</span>
+            <span appPill tone="accent" class="font-mono">.{{ extension() }}</span>
           }
         </div>
       </div>

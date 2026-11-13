@@ -81,7 +81,8 @@
             <div class="suggestion-chips">
               @for (suggestion of searchSuggestions(); track suggestion) {
                 <button
-                  class="app-pill interactive p-primary"
+                  appPill
+                  tone="primary"
                   (click)="onSearchTextChange(suggestion)"
                   [attr.aria-label]="
                     'modals.preferences.aria.searchFor' | translate: { suggestion: suggestion }
@@ -111,7 +112,7 @@
           <div class="actions">
             <button
               matButton="elevated"
-              class="warn"
+              data-tone="warn"
               (click)="resetSettings()"
               [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
             >
@@ -127,7 +128,7 @@
       <div class="pending-changes-section">
         <div class="pending-changes-header">
           <div class="header-info">
-            <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
+            <mat-icon svgIcon="circle-exclamation" data-tone="warn"></mat-icon>
             <div class="header-text">
               <h3>{{ 'modals.preferences.readyToRestartHeader' | translate }}</h3>
               <p>{{ 'modals.preferences.readyToRestartDesc' | translate }}</p>
@@ -139,17 +140,11 @@
             <div class="pending-change-item">
               <div class="change-info">
                 <strong>{{ change.displayName | translate }}</strong>
-                <span class="app-pill p-primary">{{
-                  getCategoryDisplayName(change.category)
-                }}</span>
+                <span appPill tone="primary">{{ getCategoryDisplayName(change.category) }}</span>
               </div>
               <div class="change-value">
                 @if (change.value === true || change.value === false) {
-                  <span
-                    class="app-pill p-primary"
-                    [class.p-primary]="change.value"
-                    [class.p-warn]="!change.value"
-                  >
+                  <span appPill [tone]="change.value ? 'primary' : 'warn'">
                     {{
                       change.value
                         ? ('modals.preferences.enabled' | translate)
@@ -157,7 +152,7 @@
                     }}
                   </span>
                 } @else if (isArray(change.value)) {
-                  <span class="app-pill p-accent">
+                  <span appPill tone="accent">
                     {{ asArray(change.value).length }}
                     {{ 'modals.preferences.items' | translate }}
                   </span>
@@ -179,7 +174,7 @@
           </button>
           <button
             matButton="elevated"
-            class="warn"
+            data-tone="warn"
             (click)="savePendingChanges()"
             [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
           >
@@ -221,7 +216,7 @@
       <div class="setting-title">
         <span>{{ setting.label }}</span>
         @if (showCategory) {
-          <small class="app-pill p-primary">{{ setting.categoryDisplayName }}</small>
+          <small appPill tone="primary">{{ setting.categoryDisplayName }}</small>
         }
       </div>
       @if (setting.description) {

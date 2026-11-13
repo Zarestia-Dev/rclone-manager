@@ -1,5 +1,10 @@
 use crate::context::AppHandle;
 use crate::services::alerts::template::TemplateContext;
+use std::fmt::Display;
+
+fn toast_failed(error: impl Display) -> String {
+    rclone_manager_core::localized_error!("backendErrors.notification.toastFailed", "error" => error)
+}
 
 pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
     let title = ctx.title.clone();
@@ -12,10 +17,10 @@ pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
                 .body(&body)
                 .show()
                 .map(|_| ())
-                .map_err(|e| format!("OS toast failed: {e}"))
+                .map_err(toast_failed)
         })
         .join()
-        .map_err(|_| "OS toast thread panicked".to_string())?
+        .map_err(|_| toast_failed("the notification thread panicked"))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -29,6 +34,6 @@ pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
             .icon("ic_notification")
             .auto_cancel()
             .show()
-            .map_err(|e| format!("OS toast failed: {e}"))
+            .map_err(toast_failed)
     }
 }

@@ -7,12 +7,15 @@ import {
   DownloadStatus,
   BackendUpdateStatus,
   DownloadStateStatus,
+  RolledBackUpdate,
+  UpdaterSnapshot,
 } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import { UpdateSettingsManager } from './update-settings-manager';
+import { UpdateSettingsManager, isUpdateInFlight } from './update-settings-manager';
 
-const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
+/** Shown before any download starts: an empty bar, never a failure. */
+const NO_DOWNLOAD: DownloadStatus = {
   downloadedBytes: 0,
   totalBytes: 0,
   percentage: 0,
@@ -38,8 +41,13 @@ export class AppUpdaterService extends TauriBaseService {
   private readonly _isCancelling = signal<boolean>(false);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _policy = signal<UpdatePolicy | null>(null);
-  private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
+  private readonly _downloadStatus = signal<DownloadStatus>(NO_DOWNLOAD);
   private readonly _isChecking = signal<boolean>(false);
+  /** A check this viewer did not start: scheduled, or from another window. */
+  private readonly _backendChecking = signal<boolean>(false);
+  private readonly _lastCheckedAt = signal<string | null>(null);
+  private readonly _checkError = signal<string>('');
+  private readonly _rolledBack = signal<RolledBackUpdate[]>([]);
 
   public readonly isCancelling = this._isCancelling.asReadonly();
   private readonly installationPolicy = computed(
@@ -50,6 +58,10 @@ export class AppUpdaterService extends TauriBaseService {
     const reason = this.installationPolicy()?.reason;
     return reason ? this.backendTranslation.translateBackendMessage(reason) : '';
   });
+  /** A command that updates an externally managed installation, built by the backend. */
+  public readonly installationCommand = computed(() => this.installationPolicy()?.command ?? '');
+  /** The AUR package that owns this installation. */
+  public readonly installationPackage = computed(() => this.installationPolicy()?.package ?? '');
   public readonly installationFailure = computed(() => {
     const status = this._downloadStatus().state;
     return status.status === DownloadStateStatus.Failed
@@ -62,7 +74,13 @@ export class AppUpdaterService extends TauriBaseService {
       ? kind
       : null;
   });
-  public readonly isChecking = this._isChecking.asReadonly();
+  public readonly isChecking = computed(() => this._isChecking() || this._backendChecking());
+  /** When the last check finished, also on schedule; survives reloads. */
+  public readonly lastCheckedAt = this._lastCheckedAt.asReadonly();
+  /** Why the last check failed, translated. */
+  public readonly checkError = this._checkError.asReadonly();
+  /** Updates the supervisor rolled back in this session. */
+  public readonly rolledBack = this._rolledBack.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
 
   public readonly updateAvailable = computed(() =>
@@ -96,7 +114,6 @@ export class AppUpdaterService extends TauriBaseService {
 
     try {
       this._isChecking.set(true);
-      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       const result = await this.invokeCommand<UpdateInfo | null>('fetch_update', {
         channel: this.settings.updateChannel(),
@@ -106,7 +123,7 @@ export class AppUpdaterService extends TauriBaseService {
         return null;
       }
 
-      this.processUpdateResult(result, { silent: false });
+      this.processUpdateResult(result, true);
       return result;
     } catch (error) {
       console.error('Failed to check for updates:', error);
@@ -122,27 +139,19 @@ export class AppUpdaterService extends TauriBaseService {
     }
   }
 
-  private processUpdateResult(result: UpdateInfo | null, options: { silent: boolean }): void {
-    if (
-      !result ||
-      (!result.updateAvailable &&
-        result.status !== BackendUpdateStatus.Downloading &&
-        result.status !== BackendUpdateStatus.Installing &&
-        result.status !== BackendUpdateStatus.ReadyToRestart)
-    ) {
+  private processUpdateResult(result: UpdateInfo | null, announce: boolean): void {
+    if (!result || (!result.updateAvailable && !isUpdateInFlight(result.status))) {
       this._updateState.set(null);
     } else {
       this._updateState.set(result);
     }
-    this._downloadStatus.set(result?.download ?? DEFAULT_DOWNLOAD_STATUS);
+    this._downloadStatus.set(result?.download ?? NO_DOWNLOAD);
 
     if (
       result &&
       result.updateAvailable &&
-      !options.silent &&
-      result.status !== BackendUpdateStatus.Downloading &&
-      result.status !== BackendUpdateStatus.Installing &&
-      result.status !== BackendUpdateStatus.ReadyToRestart &&
+      announce &&
+      !isUpdateInFlight(result.status) &&
       !this.settings.isVersionSkipped(result.version)
     ) {
       this.notificationService.showInfo(
@@ -169,7 +178,7 @@ export class AppUpdaterService extends TauriBaseService {
     try {
       ++this._latestCheckId;
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
-      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
+      this._downloadStatus.set(NO_DOWNLOAD);
 
       await this.invokeWithNotification('install_update', undefined, {
         errorKey: 'updates.installFailed',
@@ -236,7 +245,7 @@ export class AppUpdaterService extends TauriBaseService {
     if (this.updateInProgress() || this.readyToRestart() || this.isChecking()) return;
     await this.settings.setChannel(channel);
     this._updateState.set(null);
-    this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
+    this._downloadStatus.set(NO_DOWNLOAD);
     this.notificationService.showInfo(
       this.translate.instant('updates.channelChanged', { channel })
     );
@@ -250,10 +259,16 @@ export class AppUpdaterService extends TauriBaseService {
   private async syncUpdateStatus(): Promise<UpdateInfo | null> {
     const request = ++this._latestCheckId;
     try {
-      const info = await this.invokeCommand<UpdateInfo | null>('get_app_update_info');
+      const snapshot = await this.invokeCommand<UpdaterSnapshot>('get_app_update_info');
       if (request !== this._latestCheckId) return this._updateState();
-      this.processUpdateResult(info, { silent: true });
-      return info;
+      this.processUpdateResult(snapshot.update ?? null, false);
+      this._backendChecking.set(snapshot.checking);
+      this._lastCheckedAt.set(snapshot.lastCheckedAt ?? null);
+      this._checkError.set(
+        snapshot.error ? this.backendTranslation.translateBackendMessage(snapshot.error) : ''
+      );
+      this._rolledBack.set(snapshot.rolledBack ?? []);
+      return snapshot.update ?? null;
     } catch (error) {
       console.error('Failed to sync app update status:', error);
       return this._updateState();
@@ -303,7 +318,7 @@ export class AppUpdaterService extends TauriBaseService {
         if (current?.version === metadata.version) return;
 
         ++this._latestCheckId;
-        this.processUpdateResult(metadata, { silent: false });
+        this.processUpdateResult(metadata, true);
       });
 
     this.eventListenersService
@@ -323,7 +338,9 @@ export class AppUpdaterService extends TauriBaseService {
                 this.translate.instant('updates.installFailed')
             );
           } else {
-            this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
+            this.notificationService.showSuccess(
+              this.translate.instant('updates.downloadComplete')
+            );
           }
           void this.syncUpdateStatus();
         }

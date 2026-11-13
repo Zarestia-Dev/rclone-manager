@@ -56,7 +56,7 @@
 .mode-logo {
   width: var(--icon-size-xl);
   height: var(--icon-size-xl);
-  color: var(--mode-primary-color, var(--primary-color));
+  color: var(--tone);
   transition: color 0.3s ease;
   will-change: color;
 }

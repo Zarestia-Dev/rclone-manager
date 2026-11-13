@@ -2,13 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { CompletedTransfer, ResolveState } from '@app/types';
 import {
   activityBadge,
+  activityCsv,
   activityError,
   activityStatusBadge,
   canResolveCheck,
   canCopyFailedTransfer,
+  checkResolution,
+  checkRowId,
+  compareVersions,
+  displayPath,
   effectiveTransferStatus,
+  FileVersion,
   isDeleteActivity,
   matchesActivitySearch,
+  resolutionCounts,
+  splitPath,
 } from './activity.utils';
 
 const transfer: CompletedTransfer = {
@@ -147,5 +155,146 @@ describe('activity filtering and actions', () => {
     expect(isDeleteActivity({ what: 'checking' }, 'delete')).toBe(false);
     expect(isDeleteActivity({}, 'delete')).toBe(true);
     expect(isDeleteActivity({}, 'sync')).toBe(false);
+  });
+});
+
+describe('check resolution', () => {
+  const at = (
+    status: CompletedTransfer['status'],
+    extra: Partial<CompletedTransfer> = {}
+  ): CompletedTransfer => ({
+    ...transfer,
+    status,
+    ...extra,
+  });
+  const done: ResolveState = {
+    status: 'Completed',
+    percentage: 100,
+    isPreparing: false,
+    bytes: 1,
+    size: 1,
+    speed: 0,
+    eta: 0,
+  };
+
+  it('names the direction each kind of difference calls for', () => {
+    expect(checkResolution(at('missing_dst'))).toBe('toDestination');
+    expect(checkResolution(at('missing_src'))).toBe('toSource');
+    expect(checkResolution(at('partial'))).toBe('choose');
+  });
+
+  it('offers nothing for matches, failures, repaired files or rows without both roots', () => {
+    expect(checkResolution(at('checked'))).toBeNull();
+    expect(checkResolution(at('failed'))).toBeNull();
+    expect(checkResolution(at('partial', { resolveState: done }))).toBeNull();
+    expect(checkResolution(at('missing_dst', { srcFs: '' }))).toBeNull();
+    expect(checkResolution(at('missing_dst', { dstFs: undefined }))).toBeNull();
+  });
+
+  it('counts a mixed list by direction', () => {
+    expect(
+      resolutionCounts([
+        at('missing_dst'),
+        at('missing_dst'),
+        at('missing_src'),
+        at('partial'),
+        at('checked'),
+      ])
+    ).toEqual({ toDestination: 2, toSource: 1, choose: 1 });
+    expect(resolutionCounts([])).toEqual({ toDestination: 0, toSource: 0, choose: 0 });
+  });
+
+  it('keeps row ids apart per job, pair and file', () => {
+    expect(checkRowId(transfer)).toBe(checkRowId({ ...transfer }));
+    expect(checkRowId(transfer)).not.toBe(checkRowId({ ...transfer, jobid: 8 }));
+    expect(checkRowId(transfer)).not.toBe(checkRowId({ ...transfer, dstFs: 'other:archive' }));
+    expect(checkRowId(transfer)).not.toBe(checkRowId({ ...transfer, name: 'other.txt' }));
+  });
+});
+
+describe('compareVersions', () => {
+  const version = (size: number, modTime: string | null): FileVersion => ({ size, modTime });
+
+  it('tags the later and the larger side', () => {
+    expect(
+      compareVersions(version(10, '2026-11-07T10:00:00Z'), version(20, '2026-11-03T10:00:00Z'))
+    ).toEqual({ newer: 'src', larger: 'dst' });
+    expect(
+      compareVersions(version(30, '2026-01-01T00:00:00Z'), version(5, '2026-02-01T00:00:00Z'))
+    ).toEqual({ newer: 'dst', larger: 'src' });
+  });
+
+  it('tags nothing that is equal or unknown', () => {
+    expect(
+      compareVersions(version(5, '2026-01-01T00:00:00Z'), version(5, '2026-01-01T00:00:00Z'))
+    ).toEqual({ newer: null, larger: null });
+    expect(compareVersions(version(-1, null), version(7, 'not a date'))).toEqual({
+      newer: null,
+      larger: null,
+    });
+    expect(compareVersions(null, version(7, null))).toEqual({ newer: null, larger: null });
+    expect(compareVersions(null, null)).toEqual({ newer: null, larger: null });
+  });
+});
+
+describe('displayPath', () => {
+  it('joins a side root and a file name without doubling separators', () => {
+    expect(displayPath('drive:photos', 'a/b.txt')).toBe('drive:photos/a/b.txt');
+    expect(displayPath('drive:', 'b.txt')).toBe('drive:b.txt');
+    expect(displayPath('/home/me/', 'b.txt')).toBe('/home/me/b.txt');
+    expect(displayPath('C:\\data\\', 'b.txt')).toBe('C:\\data\\b.txt');
+    expect(displayPath('drive:photos', '')).toBe('drive:photos');
+  });
+});
+
+describe('splitPath', () => {
+  it('keeps the folders and the name apart', () => {
+    expect(splitPath('2025/Trip/IMG_1.CR3')).toEqual({ dir: '2025/Trip/', base: 'IMG_1.CR3' });
+    expect(splitPath('notes.txt')).toEqual({ dir: '', base: 'notes.txt' });
+    expect(splitPath('folder/')).toEqual({ dir: 'folder/', base: '' });
+    expect(splitPath('')).toEqual({ dir: '', base: '' });
+  });
+});
+
+describe('activityCsv', () => {
+  it('writes a header and one line per file', () => {
+    const csv = activityCsv([
+      {
+        ...transfer,
+        name: 'a.txt',
+        status: 'completed',
+        size: 10,
+        bytes: 10,
+        error: '',
+        srcFs: 'drive:',
+        dstFs: '/backup',
+        completedAt: '2026-11-08',
+      },
+    ]);
+    expect(csv).toBe(
+      'name,status,source,destination,size,bytes,completed,error\na.txt,completed,drive:,/backup,10,10,2026-11-08,'
+    );
+  });
+
+  it('quotes commas, quotes and line breaks so a cell stays one cell', () => {
+    const csv = activityCsv([
+      {
+        ...transfer,
+        name: 'a, "b".txt',
+        status: 'failed',
+        srcFs: undefined,
+        dstFs: undefined,
+        size: 10,
+        bytes: 10,
+        error: 'line1\nline2',
+      },
+    ]);
+    expect(csv.split('\n').slice(1).join('\n')).toBe(
+      '"a, ""b"".txt",failed,,,10,10,,"line1\nline2"'
+    );
+  });
+
+  it('is only a header for no rows', () => {
+    expect(activityCsv([])).toBe('name,status,source,destination,size,bytes,completed,error');
   });
 });

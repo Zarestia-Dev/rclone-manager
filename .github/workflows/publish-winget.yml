@@ -3,10 +3,11 @@ name: 'Publish to WinGet'
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release tag (e.g. v0.3.2). Leave empty to use the latest release.'
+      dry_run:
+        description: 'Show the release tag and installers that would be submitted, without submitting to WinGet'
         required: false
-        type: string
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -19,26 +20,17 @@ jobs:
       - name: Resolve version
         id: resolve
         shell: pwsh
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          $inputVersion = "$env:INPUT_VERSION".Trim()
-          if ($inputVersion) {
-            if ($inputVersion.StartsWith('v')) {
-              $tag = $inputVersion
-            } else {
-              $tag = "v$inputVersion"
-            }
-          } else {
-            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
-            $tag = $release.tag_name
-          }
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
+          $tag = $release.tag_name
           Write-Host "Resolved release tag: $tag"
+          $release.assets.name | Where-Object { $_ -match '\.msi$' } | ForEach-Object { Write-Host "Installer: $_" }
           echo "TAG=$tag" >> $env:GITHUB_OUTPUT
           # winget-releaser only strips the 'v' when `version` is empty, so strip it here
           echo "VERSION=$($tag -replace '^v')" >> $env:GITHUB_OUTPUT
 
       - name: Submit to WinGet
+        if: ${{ !inputs.dry_run }}
         # Pinned: this action receives WINGET_PAT. v2 at the time of pinning.
         uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54
         with:

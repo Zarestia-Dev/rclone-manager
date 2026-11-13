@@ -3,7 +3,7 @@ use log::{debug, error};
 
 use crate::{
     rclone::backend::BackendManager,
-    services::initialization::apply_settings::apply_core_settings,
+    services::initialization::apply_settings::apply_engine_settings,
     utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
 };
 
@@ -13,7 +13,7 @@ pub async fn run_post_start_setup(app: &AppHandle) {
 
     match settings_result {
         Ok(settings) => {
-            apply_core_settings(app, &settings).await;
+            apply_engine_settings(app, &settings).await;
             refresh_caches_and_tray(app).await;
 
             crate::services::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready);

@@ -27,7 +27,7 @@
                 (click)="state.duplicateProfile(flagType(), profile.name); $event.stopPropagation()"
                 [attr.title]="'modals.remoteConfig.profile.duplicate' | translate"
               >
-                <mat-icon svgIcon="copy" class="accent"></mat-icon>
+                <mat-icon svgIcon="copy" data-tone="accent"></mat-icon>
               </button>
             </div>
           </mat-option>
@@ -57,7 +57,7 @@
         <span class="action-tooltip-anchor" [attr.title]="deleteReasonFor(selProfile)">
           <button
             matIconButton
-            class="warn"
+            data-tone="warn"
             (click)="state.deleteProfile(flagType(), selProfile)"
             [disabled]="deleteDisabledFor(selProfile)"
             [attr.title]="'modals.remoteConfig.profile.delete' | translate"
@@ -92,14 +92,14 @@
         (click)="state.saveProfile(flagType())"
         [attr.title]="'modals.remoteConfig.profile.save' | translate"
       >
-        <mat-icon svgIcon="check-circle" class="primary"></mat-icon>
+        <mat-icon svgIcon="check-circle" data-tone="primary"></mat-icon>
       </button>
       <button
         matIconButton
         (click)="state.cancelProfileEdit(flagType())"
         [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
       >
-        <mat-icon svgIcon="circle-xmark" class="warn"></mat-icon>
+        <mat-icon svgIcon="circle-xmark" data-tone="warn"></mat-icon>
       </button>
     </div>
   }

@@ -13,6 +13,14 @@ use std::sync::LazyLock;
 pub const OWNER: &str = "Zarestia-Dev";
 pub const REPO: &str = "rclone-manager";
 
+/// Fail a connection that stops sending, never one that is merely slow: there is
+/// no total deadline, so large downloads finish on slow links.
+pub fn detect_stalls(builder: reqwest::ClientBuilder) -> reqwest::ClientBuilder {
+    builder
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .read_timeout(std::time::Duration::from_secs(120))
+}
+
 static GITHUB_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     let mut headers = HeaderMap::new();
 
@@ -30,7 +38,7 @@ static GITHUB_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         HeaderValue::from_static("application/vnd.github.v3+json"),
     );
 
-    reqwest::Client::builder()
+    detect_stalls(reqwest::Client::builder())
         .default_headers(headers)
         .build()
         .expect("Failed to build shared reqwest client")
@@ -49,7 +57,7 @@ pub enum Error {
     },
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct Asset {
     pub name: String,
     pub browser_download_url: String,
@@ -57,7 +65,7 @@ pub struct Asset {
     pub api_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct Release {
     pub tag_name: String,
     pub prerelease: bool,
@@ -97,11 +105,54 @@ async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response
 
 /// Fetches the 100 most recent releases of a repository (a single page).
 pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error> {
-    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
+    fetch_releases(&format!(
+        "https://api.github.com/repos/{owner}/{repo}/releases?per_page=100"
+    ))
+    .await
+}
 
-    let response = GITHUB_CLIENT.get(&url).send().await?;
-    let releases: Vec<Release> = parse_response(response).await?.json().await?;
+/// The last release list per URL with its ETag. Every update check asks for the
+/// same list; GitHub answers a matching `If-None-Match` with 304, which neither
+/// resends the list nor counts against the rate limit.
+static RELEASES: std::sync::Mutex<Vec<(String, String, Vec<Release>)>> =
+    std::sync::Mutex::new(Vec::new());
 
+async fn fetch_releases(url: &str) -> Result<Vec<Release>, Error> {
+    use reqwest::header::{ETAG, IF_NONE_MATCH};
+    let cached_etag = RELEASES.lock().ok().and_then(|cache| {
+        cache
+            .iter()
+            .find(|(cached, _, _)| cached == url)
+            .map(|(_, etag, _)| etag.clone())
+    });
+    let mut request = GITHUB_CLIENT.get(url);
+    if let Some(etag) = &cached_etag {
+        request = request.header(IF_NONE_MATCH, etag);
+    }
+    let response = request.send().await?;
+    if response.status() == reqwest::StatusCode::NOT_MODIFIED
+        && let Some(releases) = RELEASES.lock().ok().and_then(|cache| {
+            cache
+                .iter()
+                .find(|(cached, _, _)| cached == url)
+                .map(|(_, _, releases)| releases.clone())
+        })
+    {
+        return Ok(releases);
+    }
+    let response = parse_response(response).await?;
+    let etag = response
+        .headers()
+        .get(ETAG)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let releases: Vec<Release> = response.json().await?;
+    if let Some(etag) = etag
+        && let Ok(mut cache) = RELEASES.lock()
+    {
+        cache.retain(|(cached, _, _)| cached != url);
+        cache.push((url.to_owned(), etag, releases.clone()));
+    }
     Ok(releases)
 }
 
@@ -143,6 +194,34 @@ pub async fn get_raw_file_content(
 #[cfg(test)]
 mod tests {
     use super::Asset;
+
+    #[tokio::test]
+    async fn an_unchanged_release_list_is_revalidated_with_its_etag() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/releases", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for response in [
+                "HTTP/1.1 200 OK\r\nETag: \"v1\"\r\nContent-Type: application/json\r\nContent-Length: 83\r\nConnection: close\r\n\r\n[{\"tag_name\":\"v1.2.3\",\"prerelease\":false,\"draft\":false,\"assets\":[],\"html_url\":\"x\"}]",
+                "HTTP/1.1 304 Not Modified\r\nETag: \"v1\"\r\nConnection: close\r\n\r\n",
+            ] {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = vec![0; 4096];
+                let read = socket.read(&mut request).await.unwrap();
+                requests.push(String::from_utf8_lossy(&request[..read]).to_lowercase());
+                socket.write_all(response.as_bytes()).await.unwrap();
+            }
+            requests
+        });
+        let first = super::fetch_releases(&url).await.unwrap();
+        let second = super::fetch_releases(&url).await.unwrap();
+        assert_eq!(first[0].tag_name, "v1.2.3");
+        assert_eq!(second[0].tag_name, "v1.2.3");
+        let requests = server.await.unwrap();
+        assert!(!requests[0].contains("if-none-match"));
+        assert!(requests[1].contains("if-none-match: \"v1\""));
+    }
 
     #[test]
     fn assets_retain_api_urls_used_by_tauri_and_accept_legacy_fixtures() {

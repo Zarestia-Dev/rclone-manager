@@ -1,8 +1,7 @@
 import * as pathUtils from 'src/app/shared/utils/path.utils';
-import { NgClass, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import { Component, computed, input, inject, output, ChangeDetectionStrategy } from '@angular/core';
-import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AppTab,
@@ -12,19 +11,21 @@ import {
   RemoteStatus,
   RemoteOperationState,
   RemoteServeState,
-  RemoteCardVariant,
   CardDisplayMode,
   StartJobEvent,
   StopJobEvent,
   OPERATION_META,
+  PillTone,
+  OPERATION_TONE,
   SYNC_TYPES,
   BROWSABLE_OPS,
   ALL_PRIMARY_ACTIONS,
   MODE_DEFAULTS,
+  NO_ACTIONS,
+  operationsOfTab,
   OpenInFilesEvent,
   OpenableFolder,
   ACTION_ANIMATION_CLASS,
-  OPERATION_COLOR_VAR,
   isOperationActionInProgress,
   isFolderOpeningAction,
 } from '@app/types';
@@ -38,24 +39,25 @@ import {
   DetailedOperationViewModel,
   ProfilePickerEntry,
   ProfilePickerGroup,
-  ActionButtonClickEvent,
+  ProfilePathTarget,
+  ProfileTarget,
   STATUS_INDICATOR_META,
 } from './remote-card.types';
 import { RemoteCardActionsComponent } from './remote-card-actions.component';
 import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remote-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
     TitleCasePipe,
     MatIconModule,
-    MatButtonModule,
     TranslatePipe,
     RemoteCardActionsComponent,
     RemoteCardProfileDetailsComponent,
+    PillDirective,
   ],
   templateUrl: './remote-card.component.html',
   styleUrls: ['./remote-card.component.scss', '../../../styles/_shared-card.scss'],
@@ -66,12 +68,12 @@ import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details
     '(keydown)': 'onRemoteKeyDown($event)',
     '[class.is-editing]': 'isEditingLayout()',
     '[class.is-hidden-layout]': 'isHidden() && isEditingLayout()',
-    '[class]': 'remoteCardClasses()',
+    '[class.is-active]': 'isActive()',
+    '[attr.data-tone]': 'cardTone()',
   },
 })
 export class RemoteCardComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
-  private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
   readonly pathService = inject(PathService);
   readonly ACTION_ANIMATION_CLASS = ACTION_ANIMATION_CLASS;
@@ -79,13 +81,10 @@ export class RemoteCardComponent {
   readonly remote = input.required<Remote>();
   readonly mode = input<AppTab>('general');
   readonly displayMode = input<CardDisplayMode>('compact');
-  readonly primaryActionLabel = input('Start');
-  readonly activeIcon = input('check-circle');
   readonly primaryActions = input<PrimaryActionType[]>([]);
   readonly syncActions = input<PrimaryActionType[]>([]);
   readonly maxGeneralButtons = input(3);
   readonly maxSyncButtons = input(3);
-  readonly maxMountButtons = input(1);
 
   // Layout-edit inputs — set by the parent panel
   readonly isEditingLayout = input(false);
@@ -97,39 +96,21 @@ export class RemoteCardComponent {
   readonly stopJob = output<StopJobEvent>();
   readonly toggleHidden = output<string>();
 
-  readonly actionStates = computed(
-    () => this.remoteFacade.actionInProgress()[this.remote().name] ?? []
+  private readonly actionStates = computed(
+    () => this.remoteFacade.actionInProgress()[this.remote().name] ?? NO_ACTIONS
   );
 
-  private readonly anySyncActive = computed(() => SYNC_TYPES.some(op => this.isOpActive(op)));
+  private readonly activeTabOperations = computed(() =>
+    operationsOfTab(this.mode()).filter(op => this.isOpActive(op))
+  );
 
-  readonly cardVariant = computed<RemoteCardVariant>(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return this.isOpActive('mount') ? 'active' : 'inactive';
-      case 'operations':
-        return this.anySyncActive() ? 'active' : 'inactive';
-      case 'serve':
-        return this.isOpActive('serve') ? 'active' : 'inactive';
-      default:
-        return this.isOpActive('mount') || this.anySyncActive() || this.isOpActive('serve')
-          ? 'active'
-          : 'inactive';
-    }
-  });
+  /** Whether anything this tab shows is running; drives the card ring and icon. */
+  readonly isActive = computed(() => this.activeTabOperations().length > 0);
 
-  readonly remoteCardClasses = computed(() => {
-    const s = this.remote().status;
-    return {
-      'remote-card': true,
-      [`${this.cardVariant()}-remote`]: true,
-      mounted: !!s.mount.active,
-      syncing: !!s.sync.active,
-      copying: !!s.copy.active,
-      moving: !!s.move.active,
-      bisyncing: !!s.bisync.active,
-      serving: !!s.serve.active,
-    };
+  /** The colour of the last running operation of this tab (registry order); primary while idle. */
+  readonly cardTone = computed<PillTone>(() => {
+    const op = this.activeTabOperations().at(-1);
+    return op ? OPERATION_TONE[op] : 'primary';
   });
 
   readonly actionButtons = computed<QuickActionButton[]>(() => {
@@ -140,31 +121,48 @@ export class RemoteCardComponent {
         return this.buildButtons(['mount']);
       case 'operations':
         return this.buildButtons(this.primaryActionsFor(this.maxSyncButtons(), false));
-      case 'serve': {
-        const btn = this.buildOpButton('serve');
-        return btn ? [btn] : [];
-      }
+      case 'serve':
+        return this.buildButtons(['serve']);
       default:
         return [];
     }
   });
 
-  readonly visibleStatusIndicators = computed<PrimaryActionType[]>(() => {
-    const activeOps = ALL_PRIMARY_ACTIONS.filter(op => this.isOpActive(op));
-    const displayedActionButtonIds = this.actionButtons().map(btn => btn.id as PrimaryActionType);
-    return activeOps.filter(op => !displayedActionButtonIds.includes(op));
+  readonly statusIndicatorViewModels = computed<StatusIndicatorViewModel[]>(() => {
+    const shown = new Set(this.actionButtons().map(btn => btn.id));
+    return ALL_PRIMARY_ACTIONS.filter(op => this.isOpActive(op) && !shown.has(op)).map(op => ({
+      op,
+      meta: STATUS_INDICATOR_META[op],
+      profiles: Object.keys(this.getActiveProfiles(op) ?? {}).join(', '),
+    }));
   });
 
-  readonly detailedOperations = computed<PrimaryActionType[]>(() => {
-    const candidates = this.candidatesForDetailedMode();
-    return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);
-  });
+  readonly detailedOperations = computed<PrimaryActionType[]>(() =>
+    this.candidatesForDetailedMode().filter(op => this.getConfiguredProfiles(op).length > 0)
+  );
 
-  readonly isFolderOpening = computed<boolean>(() => isFolderOpeningAction(this.actionStates()));
-
-  isFolderOpeningFor(op: PrimaryActionType, profile: string): boolean {
-    return isFolderOpeningAction(this.actionStates(), op, profile);
-  }
+  readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
+    this.detailedOperations().map(operation => ({
+      operation,
+      tone: OPERATION_META[operation].tone,
+      labelIcon: OPERATION_META[operation].startIcon,
+      profiles: this.getConfiguredProfiles(operation).map<ProfileChipViewModel>(profile => {
+        const isActive = this.isProfileActive(operation, profile);
+        const openPaths = this.getProfileOpenPaths(operation, profile);
+        return {
+          name: profile,
+          isBusy: this.isProfileActionInProgress(operation, profile),
+          isActive,
+          isOpening: isFolderOpeningAction(this.actionStates(), operation, profile),
+          tooltipKey: this.tooltipKey(operation, isActive),
+          openPaths: openPaths.map<ProfilePathViewModel>(path => ({
+            path,
+            icon: this.pathService.isLocalPath(path) ? 'folder' : 'folder-open',
+          })),
+        };
+      }),
+    }))
+  );
 
   readonly openableFolders = computed<OpenableFolder[]>(() => {
     const currentMode = this.mode();
@@ -179,23 +177,19 @@ export class RemoteCardComponent {
 
     const folders: OpenableFolder[] = [];
     for (const op of relevantOps) {
-      if (!this.isOpActive(op)) continue;
-      const activeProfiles = this.getActiveProfiles(op);
-      if (!activeProfiles) continue;
-      for (const profile of Object.keys(activeProfiles)) {
+      for (const profile of Object.keys(this.getActiveProfiles(op) ?? {})) {
+        const isOpening = isFolderOpeningAction(this.actionStates(), op, profile);
         for (const path of this.getProfileOpenPaths(op, profile)) {
-          const local = this.pathService.isLocalPath(path);
-          const profileSuffix = ` · ${profile}`;
           folders.push({
+            key: `${op}:${profile}:${path}`,
             operation: op,
             profile,
             path,
-            shortName: pathUtils.getFilename(path) || '/',
-            isOpening: this.isFolderOpeningFor(op, profile),
-            isLocal: local,
-            icon: local ? 'folder' : 'folder-open',
-            cssClass: OPERATION_META[op].cssClass,
-            tooltip: `${this.translate.instant('overviews.remoteCard.browse')} ${local ? 'Local' : 'Remote'} (${op}${profileSuffix})`,
+            label: profile,
+            detail: pathUtils.getFilename(path) || '/',
+            isOpening,
+            icon: this.pathService.isLocalPath(path) ? 'folder' : 'folder-open',
+            tone: OPERATION_META[op].tone,
           });
         }
       }
@@ -203,127 +197,65 @@ export class RemoteCardComponent {
     return folders;
   });
 
-  readonly folderBlossomStyle = computed(() => {
-    const folders = this.openableFolders();
-    if (folders.length <= 1) return null;
-
-    const uniqueClasses = [...new Set(folders.map(f => f.cssClass))];
-    if (uniqueClasses.length <= 1) return null;
-
-    const colors = uniqueClasses.map(
-      c => OPERATION_COLOR_VAR[c as keyof typeof OPERATION_COLOR_VAR] ?? 'var(--primary-color)'
-    );
-    return {
-      color: 'white',
-      background: `linear-gradient(135deg, ${colors.join(', ')})`,
-    };
-  });
-
-  readonly statusIndicatorViewModels = computed<StatusIndicatorViewModel[]>(() =>
-    this.visibleStatusIndicators().map(op => ({
-      op,
-      meta: this.getStatusIndicatorMeta(op),
-      tooltip: this.getProfileTooltip(op),
-    }))
-  );
-
-  readonly profilePickerGroups = computed<ProfilePickerGroup[]>(() => {
-    if (this.displayMode() !== 'compact') return [];
-    const buttons = this.actionButtons();
-    const groups: ProfilePickerGroup[] = [];
-    for (const btn of buttons) {
+  /** One picker per operation that has several profiles to choose from (compact cards only). */
+  readonly profilePickers = computed<Record<string, ProfilePickerGroup>>(() => {
+    const pickers: Record<string, ProfilePickerGroup> = {};
+    if (this.displayMode() !== 'compact') return pickers;
+    for (const btn of this.actionButtons()) {
       const op = btn.id as PrimaryActionType;
       const configured = this.getConfiguredProfiles(op);
-      if (configured.length === 0) continue;
+      if (configured.length < 2) continue;
       const meta = OPERATION_META[op];
-      const isActive = this.isOpActive(op);
-      const isBusy = isOperationActionInProgress(this.actionStates(), op);
-      const entries: ProfilePickerEntry[] = configured.map(profile => ({
+      pickers[op] = {
         operation: op,
-        profile,
-        isActive: this.isProfileActive(op, profile),
-        isBusy: this.isProfileActionInProgress(op, profile),
-        startIcon: meta?.startIcon ?? 'play',
-        stopIcon: op === 'mount' ? 'eject' : 'stop',
-        cssClass: meta?.cssClass ?? 'primary',
-        tooltip: this.getProfileChipTooltip(op, profile),
-      }));
-      groups.push({
-        operation: op,
-        cssClass: meta?.cssClass ?? 'primary',
-        triggerTooltip: btn.tooltip,
+        tone: meta.tone,
+        triggerTooltipKey: this.tooltipKey(op, this.isOpActive(op)),
         triggerIcon: btn.icon,
-        isActive,
-        isBusy,
-        entries,
-      });
-    }
-    return groups;
-  });
-
-  readonly profilePickerGroupByOp = computed<Record<string, ProfilePickerGroup>>(() => {
-    const map: Record<string, ProfilePickerGroup> = {};
-    for (const g of this.profilePickerGroups()) map[g.operation] = g;
-    return map;
-  });
-
-  readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
-    this.detailedOperations().map(operation => ({
-      key: operation,
-      operation,
-      cssClass: this.getOperationCssClass(operation),
-      labelIcon: this.getOperationLabelIcon(operation),
-      profiles: this.getConfiguredProfiles(operation).map<ProfileChipViewModel>(profile => ({
-        name: profile,
-        isBusy: this.isProfileActionInProgress(operation, profile),
-        canOpen: this.canOpenProfilePath(operation, profile),
-        isActive: this.isProfileActive(operation, profile),
-        isOpening: this.isFolderOpeningFor(operation, profile),
-        chipTooltip: this.getProfileChipTooltip(operation, profile),
-        openPaths: this.getProfileOpenPaths(operation, profile).map<ProfilePathViewModel>(path => ({
-          path,
-          isLocal: this.pathService.isLocalPath(path),
-          tooltip: this.getProfileOpenTooltip(profile, path),
+        isActive: this.isOpActive(op),
+        isBusy: isOperationActionInProgress(this.actionStates(), op),
+        entries: configured.map<ProfilePickerEntry>(profile => ({
+          operation: op,
+          profile,
+          isActive: this.isProfileActive(op, profile),
+          isBusy: this.isProfileActionInProgress(op, profile),
+          startIcon: meta.startIcon,
+          stopIcon: op === 'mount' ? 'eject' : 'stop',
+          tone: meta.tone,
         })),
-      })),
-    }))
-  );
+      };
+    }
+    return pickers;
+  });
 
   // ── Button builders ────────────────────────────────────────────────────────
 
   private buildButtons(actions: PrimaryActionType[]): QuickActionButton[] {
-    return actions.map(type => this.buildOpButton(type)).filter((b): b is QuickActionButton => !!b);
+    return actions.map(type => this.buildOpButton(type));
   }
 
-  private buildOpButton(type: PrimaryActionType, startOnly = false): QuickActionButton | null {
+  private buildOpButton(type: PrimaryActionType): QuickActionButton {
     const meta = OPERATION_META[type];
-    if (!meta) return null;
-
     const inProgress = isOperationActionInProgress(this.actionStates(), type);
-    const isActive = !startOnly && this.isOpActive(type);
-    const isLoading = startOnly ? this.actionStates().some(a => a.type === type) : inProgress;
-
-    const configuredCount = this.getConfiguredProfiles(type).length;
-    const hasNoProfiles = configuredCount === 0;
-
-    const activeProfile = this.getFirstActiveProfile(type);
+    const isActive = this.isOpActive(type);
     return {
       id: type,
       icon: isActive ? meta.stopIcon : meta.startIcon,
-      tooltip: isActive
-        ? `${this.translate.instant(meta.stopTooltip)} (${activeProfile})`
-        : this.translate.instant(meta.startTooltip),
-      isLoading,
-      isDisabled: inProgress || hasNoProfiles,
-      cssClass: isActive ? 'warn' : meta.cssClass,
+      tooltipKey: this.tooltipKey(type, isActive),
+      tooltipProfile: isActive ? this.getFirstActiveProfile(type) : undefined,
+      isLoading: inProgress,
+      isDisabled: inProgress || this.getConfiguredProfiles(type).length === 0,
+      tone: isActive ? 'warn' : meta.tone,
     };
+  }
+
+  private tooltipKey(op: PrimaryActionType, active: boolean): string {
+    return active ? OPERATION_META[op].stopTooltip : OPERATION_META[op].startTooltip;
   }
 
   private primaryActionsFor(limit: number, includeMount = true): PrimaryActionType[] {
     const isOps = this.mode() === 'operations';
     const actionsSource = isOps ? this.syncActions() : this.primaryActions();
-    const hasActions = actionsSource && actionsSource.length > 0;
-    let source = hasActions ? actionsSource : (MODE_DEFAULTS[this.mode()] as PrimaryActionType[]);
+    let source = actionsSource.length > 0 ? actionsSource : MODE_DEFAULTS[this.mode()];
 
     if (isOps) {
       source = source.filter(a => (SYNC_TYPES as PrimaryActionType[]).includes(a));
@@ -367,77 +299,45 @@ export class RemoteCardComponent {
     this.toggleHidden.emit(this.remote().name);
   }
 
-  onActionButtonClick(action: ActionButtonClickEvent): void {
-    action.event.stopPropagation();
-    const type = action.id as PrimaryActionType;
-    if (!OPERATION_META[type]) return;
-    const remoteName = this.remote().name;
-
+  /** The card button of an operation: stops it when running, starts its only profile otherwise. */
+  onActionButtonClick(type: PrimaryActionType): void {
     if (this.isOpActive(type)) {
       const profileName = this.getFirstActiveProfile(type);
-      if (profileName) {
-        this.stopJob.emit({ type, remoteName, profileName });
-      }
+      if (profileName) this.stopJob.emit({ type, remoteName: this.remote().name, profileName });
       return;
     }
 
     const configured = this.getConfiguredProfiles(type);
-    if (configured.length === 1) {
-      this.startJob.emit({ type, remoteName, profileName: configured[0] });
-    }
+    if (configured.length === 1) this.onProfileToggle({ operation: type, profile: configured[0] });
   }
 
-  onProfilePickerClick(operation: PrimaryActionType, profile: string, event: Event): void {
-    event.stopPropagation();
-    const remoteName = this.remote().name;
-    if (this.isProfileActive(operation, profile)) {
-      this.stopJob.emit({ type: operation, remoteName, profileName: profile });
-    } else {
-      this.startJob.emit({ type: operation, remoteName, profileName: profile });
-    }
-    (event.currentTarget as HTMLElement)?.blur();
+  /** Starts a profile that is idle, stops one that is running. */
+  onProfileToggle({ operation, profile }: ProfileTarget): void {
+    const event = { type: operation, remoteName: this.remote().name, profileName: profile };
+    if (this.isProfileActive(operation, profile)) this.stopJob.emit(event);
+    else this.startJob.emit(event);
   }
 
-  onProfileOpenInFiles(
-    operationType: PrimaryActionType,
-    profileName: string,
-    path: string,
-    event: Event
-  ): void {
-    event.stopPropagation();
+  onProfileOpenInFiles({ operation, profile, path }: ProfilePathTarget): void {
     this.openInFiles.emit({
       remoteName: this.remote().name,
       path,
-      profileName,
-      operationType,
+      profileName: profile,
+      operationType: operation,
     });
   }
 
-  onOpenFolderClick(folder: OpenableFolder, event: Event): void {
-    event.stopPropagation();
-    this.openInFiles.emit({
-      remoteName: this.remote().name,
+  onOpenFolder(folder: OpenableFolder): void {
+    this.onProfileOpenInFiles({
+      operation: folder.operation,
+      profile: folder.profile,
       path: folder.path,
-      profileName: folder.profile,
-      operationType: folder.operation,
     });
-    (event.currentTarget as HTMLElement)?.blur();
   }
 
-  onProfileChipClick(operationType: PrimaryActionType, profileName: string, event: Event): void {
-    event.stopPropagation();
-    if (this.isProfileActionInProgress(operationType, profileName)) return;
-    const remoteName = this.remote().name;
-    if (this.isProfileActive(operationType, profileName)) {
-      this.stopJob.emit({ type: operationType, remoteName, profileName });
-    } else {
-      this.startJob.emit({ type: operationType, remoteName, profileName });
-    }
-  }
+  // ── Operation state helpers ────────────────────────────────────────────────
 
-  // ── Profile chip helpers ───────────────────────────────────────────────────
-
-  isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
+  private isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
     const configured = this.getConfiguredProfiles(op);
     return isOperationActionInProgress(
       this.actionStates(),
@@ -446,42 +346,12 @@ export class RemoteCardComponent {
     );
   }
 
-  getProfileChipTooltip(op: PrimaryActionType, profile: string): string {
-    const key = this.isProfileActive(op, profile)
-      ? OPERATION_META[op].stopTooltip
-      : OPERATION_META[op].startTooltip;
-    return `${this.translate.instant(key)} (${profile})`;
-  }
-
-  getProfileOpenTooltip(profileName: string, path: string): string {
-    return `${this.translate.instant('overviews.remoteCard.browse')} ${this.pathService.isLocalPath(path) ? 'Local' : 'Remote'} (${profileName})`;
-  }
-
-  getOperationLabelIcon(op: PrimaryActionType): string {
-    return OPERATION_META[op]?.startIcon ?? 'circle';
-  }
-
-  getOperationCssClass(op: PrimaryActionType): string {
-    return OPERATION_META[op]?.cssClass ?? 'primary';
-  }
-
-  getStatusIndicatorMeta(op: PrimaryActionType): {
-    icon: string;
-    pillClass: string;
-    ariaKey: string;
-    animateContainer?: boolean;
-  } {
-    return STATUS_INDICATOR_META[op];
-  }
-
-  // ── Operation state helpers ────────────────────────────────────────────────
-
   private opStatus(op: PrimaryActionType): RemoteOperationState | RemoteServeState {
     return this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as
       RemoteOperationState | RemoteServeState;
   }
 
-  isOpActive(op: PrimaryActionType): boolean {
+  private isOpActive(op: PrimaryActionType): boolean {
     return !!this.opStatus(op)?.active;
   }
 
@@ -489,33 +359,20 @@ export class RemoteCardComponent {
     return this.opStatus(op)?.activeProfiles;
   }
 
-  getFirstActiveProfile(op: PrimaryActionType): string {
+  private getFirstActiveProfile(op: PrimaryActionType): string {
     const profiles = this.getActiveProfiles(op);
     return profiles ? (Object.keys(profiles)[0] ?? '') : '';
   }
 
-  getProfileTooltip(op: PrimaryActionType): string {
-    const names = Object.keys(this.getActiveProfiles(op) ?? {});
-    if (names.length === 0) return op;
-    if (names.length === 1) return `${op} (${names[0]})`;
-    return `${op} (${names.join(', ')})`;
-  }
-
-  // ── Configured profiles helpers (detailed variant) ─────────────────────────
-
-  getConfiguredProfiles(op: PrimaryActionType): string[] {
+  private getConfiguredProfiles(op: PrimaryActionType): string[] {
     return this.opStatus(op)?.configuredProfiles ?? [];
   }
 
-  isProfileActive(op: PrimaryActionType, profile: string): boolean {
+  private isProfileActive(op: PrimaryActionType, profile: string): boolean {
     return profile in (this.getActiveProfiles(op) ?? {});
   }
 
-  canOpenProfilePath(op: PrimaryActionType, profile: string): boolean {
-    return this.getProfileOpenPaths(op, profile).length > 0;
-  }
-
-  getProfileOpenPaths(op: PrimaryActionType, profile: string): string[] {
+  private getProfileOpenPaths(op: PrimaryActionType, profile: string): string[] {
     if (op === 'serve') return [];
 
     const paths: string[] = [];

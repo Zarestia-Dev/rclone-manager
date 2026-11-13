@@ -31,7 +31,7 @@ fn stage(root: &Path, target: &Path, mode: &str, version: &str, next: &Path) -> 
         write_private(&directory.join(name), bytes).unwrap();
     }
     let plan = StagedUpdate {
-        kind: "portable".into(),
+        kind: ArtifactKind::Portable,
         target: target.to_owned(),
         args: vec![
             mode.into(),
@@ -103,7 +103,7 @@ fn helper_fixture() {
     };
     let directory = PathBuf::from(directory);
     let _lock = stage_lock(&directory).unwrap();
-    let plan = read_plan(&directory, None, "portable").unwrap();
+    let plan = read_plan(&directory, None, ArtifactKind::Portable).unwrap();
     crate::utils::logging::log::init_helper_logging(plan.log_directory.as_deref()).unwrap();
     // Production entry points always pass PUBLIC_KEY. Only this test process
     // trusts the disposable fixture key; no runtime key override is exposed.
@@ -169,7 +169,7 @@ fn production_key_rejects_the_process_fixture_before_replacement() {
     let root = tempfile::tempdir().unwrap();
     let target = original(root.path());
     let directory = stage(root.path(), &target, "ready", "99.0.0", root.path());
-    assert!(read_manifest(&directory, "portable", PUBLIC_KEY).is_err());
+    assert!(read_manifest(&directory, ArtifactKind::Portable, PUBLIC_KEY).is_err());
     assert_eq!(std::fs::read(&target).unwrap(), ORIGINAL);
 }
 

@@ -1,15 +1,60 @@
-.detail-panel {
+.activity {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  .panel-content {
-    padding: 0;
-    overflow: hidden;
+  min-width: 0;
+}
+
+// Tabs on the left, tools on the right; on a narrow panel the tools drop to a row of their own.
+.activity-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-sm);
+  padding-inline: var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.activity-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.activity-tab {
+  flex-shrink: 0;
+  padding: var(--space-sm);
+  border: none;
+  background: none;
+  color: var(--dim-color);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:hover {
+    color: var(--window-fg-color);
   }
 
+  &.is-selected {
+    color: var(--window-fg-color);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--accent-color);
+  }
+}
+
+.activity-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--space-xxs);
+  margin-inline-start: auto;
+  padding-block: var(--space-xxs);
+
   .search-open {
-    background: var(--selected-bg-color) !important;
-    color: var(--mat-sys-primary) !important;
+    background: var(--selected-bg-color);
+    color: var(--accent-color);
   }
 }
 
@@ -18,4 +63,15 @@
   flex-wrap: wrap;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-md);
+}
+
+@container job-monitor (max-width: 37.5rem) {
+  .activity-tabs {
+    flex-basis: 100%;
+  }
+
+  .activity-actions {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
 }

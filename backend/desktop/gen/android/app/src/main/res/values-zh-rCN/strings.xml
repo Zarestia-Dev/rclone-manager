@@ -14,4 +14,10 @@
     <string name="shortcut_file_manager_long">打开文件管理器</string>
     <string name="shortcut_open_remote">打开 %1$s</string>
     <string name="saf_folder_load_failed">无法加载此文件夹。请检查网络连接后重试。</string>
+    <string name="action_quit">退出</string>
+    <string name="action_stop_jobs">停止任务</string>
+    <string name="action_cancel">取消</string>
+    <string name="quit_confirm_title">退出 RClone Manager？</string>
+    <string name="quit_confirm_message">正在运行的传输、挂载和服务器将被停止。</string>
+    <string name="alerts_channel_name">通知</string>
 </resources>

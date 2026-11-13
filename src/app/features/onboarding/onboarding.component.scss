@@ -239,14 +239,9 @@
         @include feature-icon-badge;
         transition: var(--transition-standard);
 
-        &.accent {
-          background: rgba(var(--accent-color-rgb), 0.12);
-          color: var(--accent-color);
-        }
-
-        &.purple {
-          background: rgba(var(--purple-rgb), 0.14);
-          color: var(--purple);
+        &[data-tone] {
+          background: rgba(var(--tone-rgb), 0.14);
+          color: var(--tone);
         }
       }
 

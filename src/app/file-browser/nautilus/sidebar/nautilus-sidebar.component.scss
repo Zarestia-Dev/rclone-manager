@@ -71,7 +71,7 @@ mat-toolbar {
 // ── Section header ─────────────────────────────────────────────────────────
 
 .sidebar-section-header {
-  padding: 2px 8px 0;
+  padding: 2px var(--space-xs) 0;
   margin-top: 2px;
   height: 22px;
   display: flex;
@@ -108,7 +108,7 @@ mat-toolbar {
   gap: var(--space-xs);
   width: 100%;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 var(--space-xs);
   margin-bottom: 2px;
   border-radius: var(--radius-xs);
   color: var(--window-fg-color);

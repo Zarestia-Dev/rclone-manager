@@ -6,12 +6,15 @@
 use crate::context::AppHandle;
 use crate::services::settings::AppSettingsManager;
 use crate::{
-    rclone::commands::{
-        mount::mount_remote_profile, serve::start_serve_profile, sync::start_profile_batch,
+    rclone::{
+        backend::types::Backend,
+        commands::{
+            mount::mount_remote_profile, serve::start_serve_profile, sync::start_profile_batch,
+        },
     },
     utils::{
         types::origin::Origin,
-        types::remotes::{OperationType, ProfileConfig, ProfileParams},
+        types::remotes::{OperationType, ProfileConfig, ProfileParams, RemoteSettings},
     },
 };
 use log::{info, warn};
@@ -22,14 +25,23 @@ use std::time::Duration;
 /// This is called during app initialization.
 /// Profiles are started in parallel for faster startup. Profiles with an
 /// `autoStartDelay` run detached, so they never hold up initialization.
-pub async fn autostart_profiles(app: AppHandle) {
+///
+/// `snapshot` is the backend and remote profiles startup already read; without one they
+/// are read here.
+pub async fn autostart_profiles(
+    app: AppHandle,
+    snapshot: Option<(Backend, HashMap<String, RemoteSettings>)>,
+) {
     info!("Starting auto-start profiles check...");
-    let manager = app.state::<AppSettingsManager>();
-
-    let (backend, settings_map) = app
-        .state::<crate::rclone::backend::BackendManager>()
-        .active_remote_configs(manager.inner())
-        .await;
+    let (backend, settings_map) = match snapshot {
+        Some(snapshot) => snapshot,
+        None => {
+            let manager = app.state::<AppSettingsManager>();
+            app.state::<crate::rclone::backend::BackendManager>()
+                .active_remote_configs(manager.inner())
+                .await
+        }
+    };
 
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 

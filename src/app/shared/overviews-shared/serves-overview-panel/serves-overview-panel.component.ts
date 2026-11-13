@@ -17,6 +17,7 @@ import { ServeCardComponent } from '../../components/serve-card/serve-card.compo
 import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-serves-overview-panel',
   standalone: true,
@@ -27,6 +28,7 @@ import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar
     TranslatePipe,
     ServeCardComponent,
     OriginFilterBarComponent,
+    PillDirective,
   ],
   templateUrl: './serves-overview-panel.component.html',
   styleUrls: ['./serves-overview-panel.component.scss'],

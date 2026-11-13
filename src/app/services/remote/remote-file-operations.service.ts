@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { generatePrefixedId } from 'src/app/shared/utils';
 import {
+  BisyncConflict,
   Entry,
   FsInfo,
   Origin,
@@ -10,6 +11,7 @@ import {
   FsDeleteItem,
   ArchiveListResponse,
   RenameItem,
+  ConfigValue,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
@@ -174,6 +176,23 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
+  /** `options` are the index options by rclone's names, as a profile keeps them. */
+  async generateIndex(
+    remote: string,
+    path: string,
+    options: Record<string, ConfigValue>,
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('generate_index', {
+      remote,
+      path,
+      options,
+      origin: source,
+      group,
+    });
+  }
+
   async rename(
     remote: string,
     srcPath: string,
@@ -188,6 +207,28 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('rename', {
       items,
+      origin: source,
+      group,
+    });
+  }
+
+  /**
+   * Keeps one version of a file bisync could not reconcile on both of the job's paths.
+   * Resolves when every step has finished; a failed step stops the rest.
+   */
+  async resolveBisyncConflict(
+    path1: string,
+    path2: string,
+    conflict: BisyncConflict,
+    keep: 'path1' | 'path2',
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('resolve_bisync_conflict', {
+      path1,
+      path2,
+      conflict,
+      keep,
       origin: source,
       group,
     });
@@ -328,19 +369,27 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('archive_extract', { source, destination });
   }
 
+  /**
+   * Lists an archive's entries. The listing runs as a job in `group`, so stopping that group
+   * cancels it (a large archive on a remote can take minutes to read).
+   */
   async archiveList(
     source: string,
-    long?: boolean,
-    plain?: boolean,
-    filesOnly?: boolean,
-    dirsOnly?: boolean
+    options: {
+      long?: boolean;
+      plain?: boolean;
+      filesOnly?: boolean;
+      dirsOnly?: boolean;
+      group?: string;
+    } = {}
   ): Promise<ArchiveListResponse> {
     return this.invokeCommand<ArchiveListResponse>('archive_list', {
       source,
-      long,
-      plain,
-      files_only: filesOnly,
-      dirs_only: dirsOnly,
+      long: options.long,
+      plain: options.plain,
+      files_only: options.filesOnly,
+      dirs_only: options.dirsOnly,
+      group: options.group,
     });
   }
 }

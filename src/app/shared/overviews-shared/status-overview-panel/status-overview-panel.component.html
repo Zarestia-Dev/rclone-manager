@@ -4,7 +4,7 @@
       <mat-icon [svgIcon]="summaryIcon" class="mode-icon" aria-hidden="true"></mat-icon>
       <span class="panel-title truncate">{{ title() | translate }}</span>
     </div>
-    <span class="count-badge">{{ totalCount() }}</span>
+    <span appPill size="xs" tone="dim">{{ totalCount() }}</span>
   </div>
 
   <div class="progress-track" aria-hidden="true">

@@ -67,7 +67,7 @@
         @if (remoteTypes().length > 0) {
           <div class="empty-state-pills">
             @for (remote of suggestedRemotes(); track remote.value) {
-              <button class="app-pill interactive" (click)="onTypeSelected(remote.value)">
+              <button appPill (click)="onTypeSelected(remote.value)">
                 <mat-icon [svgIcon]="remote.icon"></mat-icon>
                 <span>{{ remote.label }}</span>
               </button>
@@ -161,13 +161,13 @@
       <div class="fields-mode-header anim-fade">
         <div class="fields-count">
           @if (basicLen > 0) {
-            <span class="count-badge primary">{{ basicLen }}</span>
+            <span class="count-value" data-tone="primary">{{ basicLen }}</span>
           }
           @if (basicLen > 0 && showAdv) {
             <span>+</span>
           }
           @if (showAdv) {
-            <span class="count-badge purple">{{ advLen }}</span>
+            <span class="count-value" data-tone="purple">{{ advLen }}</span>
           }
           @if (basicLen > 0 || showAdv) {
             <span>{{ 'wizards.remoteConfig.fields' | translate }}</span>
@@ -175,8 +175,8 @@
         </div>
         @if (providerTier(); as tier) {
           <span
-            class="app-pill"
-            [class]="tier.colorClass"
+            appPill
+            [tone]="tier.tone"
             [attr.title]="'wizards.remoteConfig.providerOverview.supportTier' | translate"
             >{{ tier.label }}</span
           >
@@ -273,7 +273,7 @@
                 }}</span>
                 <div class="provider-capabilities">
                   @for (hash of overview.Hashes ?? []; track $index) {
-                    <span class="app-pill pill-sm p-dim">{{ hash }}</span>
+                    <span appPill tone="dim" size="xs">{{ hash }}</span>
                   } @empty {
                     <span>{{ 'wizards.remoteConfig.providerOverview.noHashes' | translate }}</span>
                   }
@@ -287,7 +287,7 @@
                 }}</span>
                 <div class="provider-capabilities">
                   @for (label of providerCapabilities(); track label) {
-                    <span class="app-pill pill-sm p-dim">{{ label | translate }}</span>
+                    <span appPill tone="dim" size="xs">{{ label | translate }}</span>
                   } @empty {
                     <span>{{
                       'wizards.remoteConfig.providerOverview.noFeatures' | translate

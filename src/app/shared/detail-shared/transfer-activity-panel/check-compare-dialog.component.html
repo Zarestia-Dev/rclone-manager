@@ -1,0 +1,216 @@
+<header data-tauri-drag-region>
+  <button tabindex="-1" aria-hidden="true">
+    <mat-icon svgIcon="right-left"></mat-icon>
+  </button>
+  <p>
+    {{ labels.title | translate }}
+    @if (position(); as position) {
+      <span appPill tone="dim" size="xs">
+        {{
+          'shared.transferActivity.compare.position'
+            | translate: { index: position.index, total: position.total }
+        }}
+      </span>
+    }
+  </p>
+  <button
+    matIconButton
+    (click)="close()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <div class="file-head" [title]="entry().name">
+    <mat-icon svgIcon="file"></mat-icon>
+    <code class="file-name">
+      @if (fileDir()) {
+        <span class="file-dir">{{ fileDir() }}</span>
+      }
+      <span class="file-base">{{ fileBase() }}</span>
+    </code>
+  </div>
+
+  @if (loadError()) {
+    <app-alert-banner
+      severity="error"
+      [description]="
+        'shared.transferActivity.compare.loadFailed' | translate: { error: loadError() }
+      "
+    />
+  }
+
+  <div class="versions">
+    @for (side of sides(); track side.target) {
+      <section class="detail-section version" [attr.aria-busy]="!versions() && !loadError()">
+        <span class="section-title">
+          {{ (side.target === 'src' ? labels.src : labels.dst) | translate }}
+        </span>
+        <code class="where" [title]="side.path">{{ side.path }}</code>
+        @if (side.version; as version) {
+          <dl>
+            <dt>{{ 'shared.transferActivity.table.size' | translate }}</dt>
+            <dd>
+              @if (version.size >= 0) {
+                {{ version.size | formatFileSize }}
+              } @else {
+                {{ 'shared.transferActivity.compare.unknown' | translate }}
+              }
+              @if (comparison().larger === side.target) {
+                <span appPill tone="accent" size="xs">{{
+                  'shared.transferActivity.compare.larger' | translate
+                }}</span>
+              }
+            </dd>
+            <dt>{{ 'shared.transferActivity.compare.modified' | translate }}</dt>
+            <dd>
+              @if (version.modTime) {
+                {{ version.modTime | date: 'medium' }}
+              } @else {
+                {{ 'shared.transferActivity.compare.unknown' | translate }}
+              }
+              @if (comparison().newer === side.target) {
+                <span appPill tone="primary" size="xs">{{
+                  'shared.transferActivity.compare.newer' | translate
+                }}</span>
+              }
+            </dd>
+            @if (checksumResult(); as result) {
+              <dt>{{ result.hashType }}</dt>
+              <dd class="hash" [title]="side.target === 'src' ? result.src : result.dst">
+                {{ shortHash(side.target === 'src' ? result.src : result.dst) }}
+              </dd>
+            }
+          </dl>
+        } @else if (versions()) {
+          <p class="empty-state">
+            <span>{{ 'shared.transferActivity.compare.missing' | translate }}</span>
+          </p>
+        } @else if (!loadError()) {
+          <div class="loading-container">
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+          </div>
+        }
+      </section>
+    }
+  </div>
+
+  @if (versions()?.src && versions()?.dst) {
+    <div class="checksum">
+      @switch (checksumStatus()) {
+        @case ('done') {
+          @if (checksumResult(); as result) {
+            <span appPill [tone]="result.match ? 'primary' : 'orange'">
+              <mat-icon [svgIcon]="result.match ? 'check-circle' : 'circle-exclamation'" />
+              {{
+                (result.match
+                  ? 'shared.transferActivity.compare.checksum.match'
+                  : 'shared.transferActivity.compare.checksum.differ'
+                ) | translate: { type: result.hashType }
+              }}
+            </span>
+          }
+        }
+        @case ('none') {
+          <span appPill tone="dim">{{
+            'shared.transferActivity.compare.checksum.none' | translate
+          }}</span>
+        }
+        @case ('failed') {
+          <span appPill tone="warn" [title]="checksumError()">{{
+            'shared.transferActivity.compare.checksum.failed' | translate
+          }}</span>
+        }
+        @default {
+          <button
+            type="button"
+            matButton
+            [disabled]="checksumStatus() === 'loading'"
+            (click)="verifyChecksums()"
+          >
+            <mat-icon
+              [svgIcon]="checksumStatus() === 'loading' ? 'spinner' : 'fingerprint'"
+              [class.colorful-spinner]="checksumStatus() === 'loading'"
+            ></mat-icon>
+            {{ 'shared.transferActivity.compare.checksum.verify' | translate }}
+          </button>
+        }
+      }
+    </div>
+  }
+
+  <div
+    class="form-section"
+    role="group"
+    [attr.aria-label]="'shared.transferActivity.compare.which' | translate"
+  >
+    <span class="section-label">{{ 'shared.transferActivity.compare.which' | translate }}</span>
+    <div class="choices">
+      <button
+        type="button"
+        class="choice"
+        [attr.aria-pressed]="choice() === 'toDestination'"
+        [disabled]="!canKeepSource()"
+        (click)="pick('toDestination')"
+      >
+        <span class="choice-title">
+          {{ labels.keepSrc | translate }}
+        </span>
+        <code class="choice-paths">{{ outcomes().toDestination }}</code>
+      </button>
+      <button
+        type="button"
+        class="choice"
+        [attr.aria-pressed]="choice() === 'toSource'"
+        [disabled]="!canKeepDestination()"
+        (click)="pick('toSource')"
+      >
+        <span class="choice-title">
+          {{ labels.keepDst | translate }}
+        </span>
+        <code class="choice-paths">{{ outcomes().toSource }}</code>
+      </button>
+    </div>
+  </div>
+
+  @if (overwritten(); as target) {
+    <app-alert-banner
+      severity="warning"
+      [description]="
+        (target.discarded
+          ? 'shared.transferActivity.compare.discards'
+          : target.version
+            ? 'shared.transferActivity.compare.overwrites'
+            : 'shared.transferActivity.compare.recreates'
+        ) | translate: { path: target.path }
+      "
+    />
+  } @else {
+    <app-alert-banner
+      severity="dim"
+      [description]="'shared.transferActivity.compare.hint' | translate"
+    />
+  }
+</main>
+
+<footer>
+  @if (position()) {
+    <button type="button" matButton (click)="skip()">
+      <mat-icon svgIcon="chevron-right"></mat-icon>
+      {{ 'shared.transferActivity.compare.skip' | translate }}
+    </button>
+  }
+  <span class="spacer"></span>
+  <button type="button" matButton (click)="close()">{{ 'common.cancel' | translate }}</button>
+  <button type="button" matButton="filled" [disabled]="!choice()" (click)="apply()">
+    {{
+      (hasNext()
+        ? 'shared.transferActivity.compare.applyNext'
+        : 'shared.transferActivity.compare.apply'
+      ) | translate
+    }}
+  </button>
+</footer>

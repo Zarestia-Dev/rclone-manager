@@ -37,6 +37,16 @@ pub(crate) fn extract_node_op_config<'a>(config: &'a Value) -> NodeOpConfig<'a> 
     }
 }
 
+/// What a node reports when a simulation skips its real work: its description of
+/// what it would have done, marked as simulated.
+pub(crate) fn simulated_output(mut description: Value) -> NodeExecutionOutput {
+    if let Some(fields) = description.as_object_mut() {
+        fields.insert("simulated".into(), json!(true));
+        fields.insert("dryRun".into(), json!(true));
+    }
+    NodeExecutionOutput::new(description)
+}
+
 /// Dispatches an individual node's execution based on its kind and interpolated config.
 pub(crate) async fn execute_single_node(
     ctx: &RunContext,
@@ -65,7 +75,7 @@ pub(crate) async fn execute_single_node(
             flow::handle_join_node(node, workflow, config, &results)
         }
         NodeKind::AppStart => flow::handle_app_start_node(config, cancel, dry_run).await,
-        NodeKind::Delay => flow::execute_delay_node(config, cancel).await,
+        NodeKind::Delay => flow::execute_delay_node(config, cancel, dry_run).await,
         NodeKind::ScheduleWait => flow::execute_schedule_wait_node(config, cancel, dry_run).await,
         NodeKind::Condition => flow::condition_node(config).await,
         NodeKind::Stop => flow::handle_stop_node(config),
@@ -130,6 +140,60 @@ mod tests {
             node_results: Arc::new(RwLock::new(node_results)),
             run_id: "test-run".into(),
             dry_run: true,
+            ancestors: Vec::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_simulation_changes_nothing_through_mounts_serves_or_rc_commands() {
+        use crate::services::automation::runtime::WorkflowSnapshot;
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let nodes = vec![
+            WorkflowNode {
+                id: "rc".into(),
+                node_type: "rc_command".into(),
+                config: json!({"command": "operations/purge", "params": {"fs": "drive:"}}),
+                ..Default::default()
+            },
+            WorkflowNode {
+                id: "mount".into(),
+                node_type: "mount".into(),
+                config: json!({"remoteName": "drive", "config": {"rclone": {"fs": "drive:", "mountPoint": "/tmp/never-mounted"}}}),
+                ..Default::default()
+            },
+            WorkflowNode {
+                id: "serve".into(),
+                node_type: "serve".into(),
+                config: json!({"remoteName": "drive", "config": {"rclone": {"fs": "drive:", "type": "http"}}}),
+                ..Default::default()
+            },
+            WorkflowNode {
+                id: "unmount".into(),
+                node_type: "unmount".into(),
+                config: json!({"mountPoint": "/tmp/never-mounted", "remoteName": "drive"}),
+                ..Default::default()
+            },
+            WorkflowNode {
+                id: "stop".into(),
+                node_type: "stop_serve".into(),
+                config: json!({"serverId": "serve-1", "remoteName": "drive"}),
+                ..Default::default()
+            },
+        ];
+        let workflow = WorkflowDefinition {
+            nodes: nodes.clone(),
+            ..Default::default()
+        };
+        let snapshot =
+            WorkflowSnapshot::capture(app.state::<AppSettingsManager>().inner(), workflow).unwrap();
+        let ctx = test_context(&app, snapshot, HashMap::new());
+        for node in &nodes {
+            let output = execute_single_node(&ctx, node)
+                .await
+                .unwrap_or_else(|error| panic!("{} failed: {error}", node.id));
+            assert_eq!(output.value["simulated"], true, "{}", node.id);
+            assert_eq!(output.value["dryRun"], true, "{}", node.id);
         }
     }
 
@@ -365,6 +429,30 @@ mod tests {
             copyurl_body.get("_path").unwrap(),
             crate::rclone::endpoints::operations::COPYURL
         );
+    }
+
+    #[test]
+    fn work_a_node_starts_is_marked_with_the_workflow_it_ran_in_and_the_ones_before() {
+        let node = WorkflowNode {
+            id: "n1".into(),
+            ..Default::default()
+        };
+        let snapshot = crate::services::automation::runtime::WorkflowSnapshot {
+            definition: WorkflowDefinition {
+                id: "wf-b".into(),
+                name: "Nightly".into(),
+                ..Default::default()
+            },
+            quick_runs: HashMap::new(),
+            quick_run_names: HashMap::new(),
+        };
+        let mut ctx = test_context(&AppHandle::default(), snapshot, HashMap::new());
+        ctx.ancestors = vec!["wf-a".into()];
+
+        let run = ctx.workflow_run(&node);
+        assert_eq!(run.workflow_name, "Nightly");
+        assert!(run.is_node("wf-b", "n1"));
+        assert_eq!(run.lineage(), ["wf-a", "wf-b"]);
     }
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

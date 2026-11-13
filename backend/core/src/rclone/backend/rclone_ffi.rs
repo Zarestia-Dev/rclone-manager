@@ -379,7 +379,7 @@ mod tests {
                 let (entered, reading) = mpsc::channel();
                 let (release, released) = mpsc::channel();
                 let reader = std::thread::spawn(move || {
-                    with_library("operations/readfile", || {
+                    with_library("operations/getfile", || {
                         entered.send(()).unwrap();
                         released.recv_timeout(Duration::from_secs(5)).unwrap();
                         Ok(())

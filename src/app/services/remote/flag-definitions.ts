@@ -14,6 +14,91 @@ export const SUPPORTED_ARCHIVE_FORMATS = [
   'tar.lz4',
 ] as const;
 
+/**
+ * Serve options whose name means something different per server type. They are translated under
+ * the mapped key instead of the shared one (`key` is a TLS key for most servers, an SSH host key for sftp).
+ */
+export const serveTranslationKeys: Record<string, Record<string, string>> = {
+  sftp: { key: 'sftp_key' },
+};
+
+/**
+ * The file reports sync, copy and move can return. Each one is off by default because a report
+ * lists every file it covers; the job keeps what rclone returns (see `get_job_report`).
+ */
+const SYNC_REPORT_FLAGS: RcConfigOption[] = [
+  {
+    Name: 'combined',
+    Help: 'Make a combined report of changes.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'combined',
+  },
+  {
+    Name: 'missingOnSrc',
+    Help: 'Report all files missing from the source.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'missingOnSrc',
+  },
+  {
+    Name: 'missingOnDst',
+    Help: 'Report all files missing from the destination.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'missingOnDst',
+  },
+  {
+    Name: 'match',
+    Help: 'Report all matching files.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'match',
+  },
+  {
+    Name: 'differ',
+    Help: 'Report all non-matching files.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'differ',
+  },
+  {
+    Name: 'error',
+    Help: 'Report all files with errors (hashing or reading).',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'error',
+  },
+  {
+    Name: 'destAfter',
+    Help: 'Report all files that exist on the destination after the operation.',
+    Default: false,
+    DefaultStr: 'false',
+    Value: false,
+    Type: 'bool',
+    Advanced: false,
+    FieldName: 'destAfter',
+  },
+];
+
 export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   move: [
     {
@@ -36,6 +121,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'deleteEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   copy: [
     {
@@ -48,6 +134,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'createEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   sync: [
     {
@@ -60,6 +147,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Advanced: false,
       FieldName: 'createEmptySrcDirs',
     },
+    ...SYNC_REPORT_FLAGS,
   ],
   check: [
     {
@@ -235,7 +323,8 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
     },
     {
       Name: 'maxDelete',
-      Help: 'Abort sync if percentage of deleted files is above this threshold.',
+      TranslationKey: 'bisync_max_delete',
+      Help: 'Abort the run if more than this percentage of files would be deleted (0-100).',
       Default: 50,
       DefaultStr: '50',
       Value: 50,
@@ -252,6 +341,16 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Type: 'bool',
       Advanced: false,
       FieldName: 'force',
+    },
+    {
+      Name: 'maxDeleteRenamesAware',
+      Help: 'Exclude tracked renames from the --max-delete safety check (requires --track-renames).',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: false,
+      FieldName: 'maxDeleteRenamesAware',
     },
     {
       Name: 'checkSync',
@@ -454,6 +553,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
     },
     {
       Name: 'noCleanup',
+      TranslationKey: 'bisync_no_cleanup',
       Help: 'Retain working files.',
       Default: false,
       DefaultStr: 'false',
@@ -533,16 +633,6 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Type: 'bool',
       Advanced: false,
       FieldName: 'oneWay',
-    },
-    {
-      Name: 'download',
-      Help: 'Download and decrypt both sides to compare hashes.',
-      Default: false,
-      DefaultStr: 'false',
-      Value: false,
-      Type: 'bool',
-      Advanced: false,
-      FieldName: 'download',
     },
     {
       Name: 'combined',
@@ -627,6 +717,123 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       Type: 'bool',
       Advanced: false,
       FieldName: 'rmdirs',
+    },
+  ],
+  // Named as rclone names them. The backend moves them to where `operations/index` reads them:
+  // the options into `opt`, the rules into `opt.rules`, and PascalCase ones stay in `_config`.
+  // `TranslationKey` keeps them apart from rclone's own `--max-depth`, `--include` and the like.
+  index: [
+    {
+      Name: 'output',
+      TranslationKey: 'index_output',
+      Help: 'Which listings are written in every folder.',
+      Default: ['index.html=html'],
+      DefaultStr: 'index.html=html',
+      Value: ['index.html=html'],
+      Type: '[]string',
+      Advanced: false,
+      Required: true,
+      Exclusive: true,
+      FieldName: 'output',
+      Examples: [
+        { Value: 'index.html=html', Help: 'nautilus.modals.index.formats.html' },
+        { Value: 'index.json=json', Help: 'nautilus.modals.index.formats.json' },
+        { Value: 'caddy.json=caddy', Help: 'nautilus.modals.index.formats.caddy' },
+      ],
+    },
+    {
+      Name: 'maxDepth',
+      TranslationKey: 'index_max_depth',
+      Help: 'Only write listings this many folder levels deep, counting the folder itself as 1. Keep -1 for no limit.',
+      Default: -1,
+      DefaultStr: '-1',
+      Value: -1,
+      Type: 'int',
+      Advanced: false,
+      FieldName: 'maxDepth',
+    },
+    {
+      Name: 'IncludeRule',
+      TranslationKey: 'index_include_rule',
+      Help: "Only write listings in folders matching a pattern, for example /docs/**. Other folders are left alone but still appear in their parent's listing.",
+      Default: [],
+      DefaultStr: '',
+      Value: [],
+      Type: '[]string',
+      Advanced: false,
+      FieldName: 'IncludeRule',
+    },
+    {
+      Name: 'ExcludeRule',
+      TranslationKey: 'index_exclude_rule',
+      Help: 'Write and delete nothing in folders matching a pattern, for example /private/**. Use it to protect a folder that has its own index.',
+      Default: [],
+      DefaultStr: '',
+      Value: [],
+      Type: '[]string',
+      Advanced: false,
+      FieldName: 'ExcludeRule',
+    },
+    {
+      Name: 'dirTime',
+      TranslationKey: 'index_dir_time',
+      Help: 'The time shown next to a folder.',
+      Default: 'newest',
+      DefaultStr: 'newest',
+      Value: 'newest',
+      Type: 'string',
+      Advanced: false,
+      Exclusive: true,
+      FieldName: 'dirTime',
+      Examples: [
+        { Value: 'newest', Help: 'nautilus.modals.index.dirTime.newest' },
+        { Value: 'dir', Help: 'nautilus.modals.index.dirTime.dir' },
+        { Value: 'none', Help: 'nautilus.modals.index.dirTime.none' },
+      ],
+    },
+    {
+      Name: 'noModTime',
+      TranslationKey: 'index_no_mod_time',
+      Help: 'Show no modification times. This is the cheapest option on S3, Swift and Oracle, where every object otherwise needs its own request.',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: false,
+      FieldName: 'noModTime',
+    },
+    {
+      Name: 'linkIndex',
+      TranslationKey: 'index_link_index',
+      Help: 'Link folders as dir/index.html instead of dir/, for hosts that do not serve index documents (plain S3 URLs, B2 friendly URLs).',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: false,
+      FieldName: 'linkIndex',
+    },
+    {
+      Name: 'UseServerModTime',
+      TranslationKey: 'index_use_server_mod_time',
+      Help: 'Show the time an object was uploaded instead of its modification time. This avoids a request per object on S3 and is what the web server sends as Last-Modified.',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: false,
+      FieldName: 'UseServerModTime',
+    },
+    {
+      Name: 'rewrite',
+      TranslationKey: 'index_rewrite',
+      Help: 'Write every listing even if it has not changed, for example to apply new headers or metadata.',
+      Default: false,
+      DefaultStr: 'false',
+      Value: false,
+      Type: 'bool',
+      Advanced: true,
+      FieldName: 'rewrite',
     },
   ],
 };

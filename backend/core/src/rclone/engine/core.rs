@@ -8,6 +8,7 @@ impl Default for RcApiEngine {
         Self {
             phase: EnginePhase::default(),
             process: None,
+            process_backend: None,
             current_api_port: DEFAULT_API_PORT,
         }
     }

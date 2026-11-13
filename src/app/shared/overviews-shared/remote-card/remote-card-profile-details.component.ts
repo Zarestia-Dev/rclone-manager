@@ -1,39 +1,37 @@
-import { NgClass, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PrimaryActionType } from '@app/types';
-import {
-  DetailedOperationViewModel,
-  ProfileChipClickEvent,
-  ProfileOpenInFilesEvent,
-} from './remote-card.types';
+import { DetailedOperationViewModel, ProfilePathTarget, ProfileTarget } from './remote-card.types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-remote-card-profile-details',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, TitleCasePipe, MatIconModule, TranslatePipe],
+  imports: [TitleCasePipe, MatIconModule, TranslatePipe, PillDirective],
   templateUrl: './remote-card-profile-details.component.html',
   styleUrls: ['./remote-card-profile-details.component.scss'],
 })
 export class RemoteCardProfileDetailsComponent {
-  readonly detailedOperations = input<PrimaryActionType[]>([]);
   readonly detailedOperationViewModels = input<DetailedOperationViewModel[]>([]);
 
-  readonly profileChipClick = output<ProfileChipClickEvent>();
-  readonly profileOpenInFiles = output<ProfileOpenInFilesEvent>();
+  readonly profileToggle = output<ProfileTarget>();
+  readonly profileOpenInFiles = output<ProfilePathTarget>();
 
-  onProfileChipClick(operation: PrimaryActionType, profile: string, event: Event): void {
-    this.profileChipClick.emit({ operation, profile, event });
+  protected onToggle(operation: PrimaryActionType, profile: string, event: Event): void {
+    event.stopPropagation();
+    this.profileToggle.emit({ operation, profile });
   }
 
-  onProfileOpenInFiles(
+  protected onOpen(
     operation: PrimaryActionType,
     profile: string,
     path: string,
     event: Event
   ): void {
-    this.profileOpenInFiles.emit({ operation, profile, path, event });
+    event.stopPropagation();
+    this.profileOpenInFiles.emit({ operation, profile, path });
   }
 }

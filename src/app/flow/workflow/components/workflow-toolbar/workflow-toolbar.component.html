@@ -26,19 +26,7 @@
 
       <ng-template #workflowListMenu>
         <div class="material-context-menu limited" cdkMenu>
-          <div class="menu-group-label menu-header-row">
-            <span>{{ 'flow.workflow.savedWorkflows' | translate }}</span>
-            @if (hasDuplicateWorkflows()) {
-              <button
-                type="button"
-                class="action-button"
-                (click)="cleanDuplicates()"
-                [attr.title]="'flow.workflow.cleanDuplicates' | translate"
-              >
-                <mat-icon svgIcon="broom" class="orange"></mat-icon>
-              </button>
-            }
-          </div>
+          <div class="menu-group-label">{{ 'flow.workflow.savedWorkflows' | translate }}</div>
 
           @for (wf of allWorkflows(); track wf.id) {
             <div class="workflow-menu-row" [class.is-selected]="wf.id === activeWorkflow()?.id">
@@ -72,7 +60,7 @@
                   (click)="deleteWorkflow($event, wf.id)"
                   [attr.title]="'flow.workflow.actions.deleteWorkflow' | translate"
                 >
-                  <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                  <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
                 </button>
               </div>
             </div>
@@ -116,7 +104,9 @@
       <div class="toolbar-execution-group">
         <button
           type="button"
-          class="stop-workflow-btn warn"
+          class="stop-workflow-btn"
+          data-tone="warn"
+          data-variant="solid"
           (click)="stopWorkflow()"
           [attr.title]="'flow.workflow.toolbar.stop' | translate"
         >
@@ -130,10 +120,7 @@
             @if (engineService.isDryRun()) {
               <span class="simulation-tag">[{{ 'flow.workflow.toolbar.dryRun' | translate }}]</span>
             }
-            {{
-              engineService.executionProgress()?.currentStepTitle ||
-                ('flow.workflow.logs.running' | translate)
-            }}
+            {{ stepTitle() || ('flow.workflow.run.running' | translate) }}
           </span>
           @if (engineService.executionProgress(); as prog) {
             <span class="status-counter">({{ prog.completed }}/{{ prog.total }})</span>
@@ -161,12 +148,8 @@
           <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="loadTemplate(tpl)">
             <mat-icon [svgIcon]="tpl.icon"></mat-icon>
             <div class="option-content">
-              <span class="option-label truncate">{{
-                tpl.nameKey ? (tpl.nameKey | translate) : tpl.name
-              }}</span>
-              <small class="option-description">{{
-                tpl.descriptionKey ? (tpl.descriptionKey | translate) : tpl.description
-              }}</small>
+              <span class="option-label truncate">{{ tpl.nameKey | translate }}</span>
+              <small class="option-description">{{ tpl.descriptionKey | translate }}</small>
             </div>
           </button>
         }
@@ -174,36 +157,35 @@
     </ng-template>
   </div>
 
-  <!-- Right: Zoom, History, Grid Snap, Inspector & Console Toggle -->
+  <!-- Right: History, Grid Snap & Console Toggle -->
   <div class="toolbar-right">
     <!-- Undo / Redo (Desktop & Tablet) -->
-    <div class="button-group desktop-only">
-      <button
-        matIconButton
-        type="button"
-        (click)="undo()"
-        [disabled]="!stateService.canUndo()"
-        [attr.title]="('flow.workflow.toolbar.undo' | translate) + ' (Ctrl+Z)'"
-      >
-        <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-      </button>
-      <button
-        matIconButton
-        type="button"
-        (click)="redo()"
-        [disabled]="!stateService.canRedo()"
-        [attr.title]="('flow.workflow.toolbar.redo' | translate) + ' (Ctrl+Y)'"
-      >
-        <mat-icon svgIcon="rotate-right"></mat-icon>
-      </button>
-    </div>
+    <button
+      type="button"
+      class="action-button desktop-only"
+      (click)="undo()"
+      [disabled]="!stateService.canUndo()"
+      [attr.title]="('flow.workflow.toolbar.undo' | translate) + ' (Ctrl+Z)'"
+    >
+      <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+    </button>
+    <button
+      type="button"
+      class="action-button desktop-only"
+      (click)="redo()"
+      [disabled]="!stateService.canRedo()"
+      [attr.title]="('flow.workflow.toolbar.redo' | translate) + ' (Ctrl+Y)'"
+    >
+      <mat-icon svgIcon="rotate-right"></mat-icon>
+    </button>
+
+    <span class="toolbar-divider desktop-only" aria-hidden="true"></span>
 
     <!-- Grid Snap Toggle (Desktop & Tablet) -->
     <button
-      matIconButton
       type="button"
-      class="desktop-only"
-      [class.active-btn]="stateService.snapToGrid()"
+      class="action-button desktop-only"
+      [attr.aria-pressed]="stateService.snapToGrid()"
       (click)="toggleSnapToGrid()"
       [attr.title]="'flow.workflow.toolbar.snapToGrid' | translate"
     >
@@ -212,20 +194,19 @@
 
     <!-- Console / Execution Log Toggle (Always visible) -->
     <button
-      matIconButton
       type="button"
-      (click)="toggleLog.emit()"
-      [class.active-btn]="isLogOpen()"
-      [attr.title]="'flow.workflow.toolbar.toggleLog' | translate"
+      class="action-button"
+      [attr.aria-pressed]="isRunOpen()"
+      (click)="toggleRun.emit()"
+      [attr.title]="'flow.workflow.toolbar.showRun' | translate"
     >
-      <mat-icon svgIcon="terminal"></mat-icon>
+      <mat-icon svgIcon="clock-rotate-left"></mat-icon>
     </button>
 
     <!-- Mobile More Actions Menu (Visible only on mobile) -->
     <button
-      matIconButton
       type="button"
-      class="mobile-more-btn"
+      class="action-button mobile-more-btn"
       [cdkMenuTriggerFor]="mobileMoreMenu"
       [attr.title]="'common.moreActions' | translate"
     >

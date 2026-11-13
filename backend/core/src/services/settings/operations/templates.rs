@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::context::AppHandle;
-use crate::services::settings::AppSettingsManager;
+use crate::services::settings::with_sub_settings;
 use crate::utils::constants::SUB_TEMPLATES;
 use log::info;
 
@@ -11,12 +11,29 @@ use log::info;
 pub async fn list_user_templates(
     app: AppHandle,
 ) -> Result<HashMap<String, serde_json::Value>, String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .sub_settings(SUB_TEMPLATES)
-        .map_err(|e| e.to_string())?;
+    with_sub_settings(
+        &app,
+        SUB_TEMPLATES,
+        "backendErrors.settings.loadFailed",
+        |templates| templates.get_all_values(),
+    )
+    .await
+}
 
-    Ok(sub.get_all_values().unwrap_or_default())
+/// Create or replace a template; `set` is an upsert, so saving and updating are one operation.
+async fn store_template(
+    app: &AppHandle,
+    id: &str,
+    template: serde_json::Value,
+) -> Result<(), String> {
+    let id = id.to_owned();
+    with_sub_settings(
+        app,
+        SUB_TEMPLATES,
+        "backendErrors.settings.saveFailed",
+        move |templates| templates.set(&id, &template),
+    )
+    .await
 }
 
 /// Save a new user preset template by id and payload
@@ -25,14 +42,7 @@ pub async fn save_user_template(
     id: String,
     template: serde_json::Value,
 ) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .sub_settings(SUB_TEMPLATES)
-        .map_err(|e| e.to_string())?;
-
-    sub.set(&id, &template)
-        .map_err(|e| format!("Failed to save user template: {e}"))?;
-
+    store_template(&app, &id, template).await?;
     info!("User template {id} saved via rcman.");
     Ok(())
 }
@@ -43,28 +53,21 @@ pub async fn update_user_template(
     id: String,
     template: serde_json::Value,
 ) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .sub_settings(SUB_TEMPLATES)
-        .map_err(|e| e.to_string())?;
-
-    sub.set(&id, &template)
-        .map_err(|e| format!("Failed to update user template: {e}"))?;
-
+    store_template(&app, &id, template).await?;
     info!("User template {id} updated via rcman.");
     Ok(())
 }
 
 /// Delete a user preset template by id
 pub async fn delete_user_template(app: AppHandle, id: String) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .sub_settings(SUB_TEMPLATES)
-        .map_err(|e| e.to_string())?;
-
-    sub.delete(&id)
-        .map_err(|e| format!("Failed to delete user template: {e}"))?;
-
+    let deleted = id.clone();
+    with_sub_settings(
+        &app,
+        SUB_TEMPLATES,
+        "backendErrors.settings.deleteEntryFailed",
+        move |templates| templates.delete(&deleted),
+    )
+    .await?;
     info!("User template {id} deleted via rcman.");
     Ok(())
 }

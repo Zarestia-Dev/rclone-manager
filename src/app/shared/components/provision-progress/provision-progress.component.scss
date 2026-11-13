@@ -4,7 +4,7 @@
 
 .provision-progress-card {
   margin-top: var(--space-md);
-  padding: 14px 16px;
+  padding: 14px var(--space-md);
   border-radius: var(--card-border-radius);
   background: var(--view-bg-color);
   box-shadow: var(--box-shadow);
@@ -17,7 +17,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-xxs);
     font-size: var(--font-size-sm);
 
     .stage-label {

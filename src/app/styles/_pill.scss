@@ -1,0 +1,165 @@
+// The pill system. The Angular side is PillDirective (src/app/shared/directives/pill.directive.ts),
+// which sets .app-pill and the data-* attributes this file styles. Kept under :root so it has the
+// same specificity as the rest of the design system; it is @used after the other partials so it
+// keeps its place in the cascade.
+:root {
+  .app-pill {
+    // A pill is built from three independent inputs (see PillDirective):
+    //   tone    [data-tone]     which colour role   -> --tone* (custom-theme.scss) -> --pill-*
+    //   variant [data-variant]  how it is filled    -> --pill-fill* / --pill-fg / --pill-edge
+    //   role    button, a, [role='button'] are interactive; anything else is a label
+    // Tonal is the default variant. A pill with neither tone nor variant is a bare label, or the
+    // neutral look when it is interactive.
+    --pill-rgb: var(--dim-color-rgb);
+    --pill-color: var(--dim-color);
+    --pill-on: var(--window-bg-color);
+    --pill-fill: 15%;
+    --pill-fill-hover: 22%;
+    --pill-fill-active: 28%;
+    --pill-fill-selected: 30%;
+    --pill-fg: var(--pill-color);
+    --pill-edge: transparent;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    padding: var(--space-xxs) 10px;
+    border-radius: 999px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: var(--transition-fast);
+    line-height: 1.2;
+    min-height: 28px;
+    box-sizing: border-box;
+
+    // Sizes: md (the default) is 28px, sm 24px, xs 20px.
+    &[data-size="sm"],
+    &[data-size="xs"] {
+      padding: 2px var(--space-xs);
+
+      mat-icon {
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
+      }
+    }
+
+    &[data-size="sm"] {
+      min-height: 24px;
+    }
+
+    &[data-size="xs"] {
+      min-height: 20px;
+      padding-block: 1px;
+      font-size: var(--font-size-xs);
+    }
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+
+    span {
+      flex: 1;
+    }
+
+    // --- Tone: the colour role comes from the global tone scope in custom-theme.scss ---------
+    &[data-tone] {
+      --pill-rgb: var(--tone-rgb);
+      --pill-color: var(--tone);
+      --pill-on: var(--tone-on);
+    }
+
+    // --- Variant: how the tone is filled ------------------------------------------------------
+    &[data-variant="solid"] {
+      --pill-fill: 100%;
+      --pill-fill-hover: 88%;
+      --pill-fill-active: 76%;
+      --pill-fill-selected: 100%;
+      --pill-fg: var(--pill-on);
+    }
+
+    &[data-variant="outline"] {
+      --pill-fill: 0%;
+      --pill-fill-hover: 10%;
+      --pill-fill-active: 16%;
+      --pill-fill-selected: 20%;
+      --pill-edge: color-mix(in srgb, rgb(var(--pill-rgb)) 50%, transparent);
+    }
+
+    &[data-tone],
+    &[data-variant] {
+      background: color-mix(in srgb, rgb(var(--pill-rgb)) var(--pill-fill), transparent);
+      color: var(--pill-fg);
+      box-shadow: inset 0 0 0 1px var(--pill-edge);
+    }
+
+    // --- Role: interactive pills --------------------------------------------------------------
+    &:is(button, a, [role="button"]) {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      text-decoration: none;
+
+      &:focus-visible {
+        box-shadow: var(--focus-ring-accent);
+      }
+
+      // Neutral: no tone, no variant.
+      &:not([data-tone], [data-variant]) {
+        background: var(--selected-bg-color);
+        color: var(--dim-color);
+
+        &:hover {
+          background: var(--hover-bg-color);
+        }
+
+        &:active {
+          background: var(--active-bg-color);
+        }
+
+        // A selected pill reads at a glance: a stronger fill and an inner ring, as in GNOME. The
+        // ring is a shadow, not a border, so the pill keeps its size. It is the text color at 40%:
+        // a full black or white outline is too hard on the eye.
+        &[data-selected] {
+          background: var(--active-bg-color);
+          color: var(--window-fg-color);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
+        }
+      }
+
+      &[data-tone],
+      &[data-variant] {
+        &:hover {
+          background: color-mix(in srgb, rgb(var(--pill-rgb)) var(--pill-fill-hover), transparent);
+        }
+
+        &:active {
+          background: color-mix(in srgb, rgb(var(--pill-rgb)) var(--pill-fill-active), transparent);
+        }
+
+        &[data-selected] {
+          background: color-mix(
+            in srgb,
+            rgb(var(--pill-rgb)) var(--pill-fill-selected),
+            transparent
+          );
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
+        }
+
+        &:focus-visible {
+          box-shadow: var(--focus-ring-accent);
+        }
+      }
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+}

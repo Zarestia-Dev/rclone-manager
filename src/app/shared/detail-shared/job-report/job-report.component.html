@@ -1,0 +1,66 @@
+<div class="report-tabs">
+  @for (tab of tabs(); track tab.key) {
+    <button
+      type="button"
+      appPill
+      [tone]="pills[tab.key]"
+      [selected]="tab.key === activeReport()"
+      (click)="select(tab.key)"
+    >
+      {{ 'shared.transferActivity.report.tabs.' + tab.key | translate }}
+      <span appPill size="xs" tone="dim">{{ tab.count | number }}</span>
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <div class="loading-container">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+} @else if (failed()) {
+  <div class="empty-state">
+    <span>{{ 'shared.transferActivity.report.loadFailed' | translate }}</span>
+  </div>
+} @else if (rows().length === 0) {
+  <div class="empty-state">
+    <span>{{ 'shared.transferActivity.report.empty' | translate }}</span>
+  </div>
+} @else {
+  <div class="card-list-container">
+    @for (row of rows(); track $index) {
+      <div class="card-row-item">
+        <div class="card-header">
+          <div class="card-info-left">
+            <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+            <span class="card-title">
+              <span class="file-dir truncate" [attr.title]="row.path">{{
+                splitName(row.path).dir
+              }}</span>
+              <span
+                class="card-title-text truncate"
+                [appCopyToClipboard]="row.path"
+                [attr.title]="'common.copy' | translate"
+                >{{ splitName(row.path).base }}</span
+              >
+            </span>
+          </div>
+          @if (row.icon; as icon) {
+            <div class="card-info-right">
+              <span appPill [tone]="row.tone">
+                <mat-icon [svgIcon]="icon"></mat-icon>
+                {{ row.labelKey | translate }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+  @if (hiddenCount() > 0) {
+    <div class="infinite-scroll-loader">
+      <button type="button" appPill (click)="showMore()">
+        {{ 'shared.transferActivity.report.showMore' | translate: { count: hiddenCount() } }}
+      </button>
+    </div>
+  }
+}

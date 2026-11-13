@@ -58,7 +58,7 @@ describe('LogsModalComponent command output', () => {
     const element = show({
       status: { success: true, error: '', output: { error: true, result: text } },
     });
-    expect(element.querySelector('.app-pill.p-warn')).not.toBeNull();
+    expect(element.querySelector('[appPill][data-tone="warn"]')).not.toBeNull();
     expect(element.querySelector('.code-block')?.textContent).toBe(text);
     expect(element.querySelector('details')?.open).toBe(false);
     expect(element.querySelector('details pre')?.textContent).toContain('"success": true');
@@ -72,7 +72,7 @@ describe('LogsModalComponent command output', () => {
     expect(element.querySelector('.code-block')?.textContent).toBe(
       '<img src=x onerror=alert(1)>\nOK'
     );
-    expect(element.querySelector('.app-pill.p-warn')).toBeNull();
+    expect(element.querySelector('[appPill][data-tone="warn"]')).toBeNull();
   });
 
   it('keeps ordinary log context visible when there is no command output', () => {

@@ -37,6 +37,7 @@
       (sidenavAction)="onSidebarSidenavAction($event)"
       (requestAbout)="actions.openAboutModal($event)"
       (requestCleanup)="actions.confirmAndCleanup($event)"
+      (requestIndex)="actions.openIndex($event, '')"
       (remoteOpenedInNewTab)="tabSvc.createTab($event, '')"
       (remoteOpenedInNewWindow)="nautilusService.openStandaloneWindow($event.name, '')"
       (bookmarkOpenedInNewTab)="actions.openBookmarkInNewTab($event)"
@@ -176,7 +177,7 @@
       <div class="picker-actions desktop-picker">
         <button
           matButton="filled"
-          class="accent"
+          data-tone="accent"
           (click)="confirmSelection()"
           [disabled]="isConfirmDisabled()"
         >
@@ -193,7 +194,7 @@
 
     @if (pendingSharedPaths().length > 0) {
       <div class="android-share-banner">
-        <mat-icon svgIcon="file-arrow-up" class="accent"></mat-icon>
+        <mat-icon svgIcon="file-arrow-up" data-tone="accent"></mat-icon>
         <span class="share-label">
           {{
             'nautilus.androidShare.uploadHere' | translate: { count: pendingSharedPaths().length }
@@ -207,11 +208,11 @@
             [attr.title]="'shared.actions.cancel' | translate"
             [attr.aria-label]="'shared.actions.cancel' | translate"
           >
-            <mat-icon svgIcon="close" class="warn"></mat-icon>
+            <mat-icon svgIcon="close" data-tone="warn"></mat-icon>
           </button>
           <button
             matIconButton
-            class="accent"
+            data-tone="accent"
             (click)="uploadSharedFiles()"
             [attr.title]="'nautilus.androidShare.confirm' | translate"
             [attr.aria-label]="'nautilus.androidShare.confirm' | translate"

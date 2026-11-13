@@ -28,19 +28,23 @@ fn wait_for_display_ready() {
 /// same way GTK backend selection does.
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
 fn display_socket_ready() -> bool {
-    display_socket_candidates(
+    let candidates = display_socket_candidates(
         std::env::var("GDK_BACKEND").ok().as_deref(),
         std::env::var("WAYLAND_DISPLAY").ok().as_deref(),
         std::env::var("DISPLAY").ok().as_deref(),
         std::env::var("XDG_RUNTIME_DIR").ok().as_deref(),
-    )
-    .iter()
-    .any(|candidate| std::path::Path::new(candidate).exists())
+    );
+    // Nothing local to wait for (unresolvable backend, remote `DISPLAY`).
+    candidates.is_empty()
+        || candidates
+            .iter()
+            .any(|candidate| std::path::Path::new(candidate).exists())
 }
 
 /// Candidate socket paths for the configured display backend. Returns an
-/// empty list when no backend can be resolved, so the caller starts anyway
-/// instead of waiting out the full timeout on headless sessions.
+/// empty list when there is no local socket to wait for (Wayland without
+/// `XDG_RUNTIME_DIR`, or a remote `DISPLAY` such as `host:0`), which
+/// `display_socket_ready` treats as ready so startup is not delayed.
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
 fn display_socket_candidates(
     gdk_backend: Option<&str>,
@@ -65,11 +69,14 @@ fn display_socket_candidates(
             .collect();
     }
     let display = x_display.unwrap_or(":0");
-    let number = display
-        .trim_start_matches(':')
-        .split('.')
-        .next()
-        .unwrap_or("0");
+    // `:N` and `unix:N` are local; `host:N` is a remote server with no local socket.
+    let local = display
+        .strip_prefix("unix:")
+        .or_else(|| display.strip_prefix(':'));
+    let Some(local) = local else {
+        return Vec::new();
+    };
+    let number = local.split('.').next().unwrap_or("0");
     vec![std::path::PathBuf::from(format!(
         "/tmp/.X11-unix/X{number}"
     ))]
@@ -77,12 +84,6 @@ fn display_socket_candidates(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
-    wait_for_display_ready();
-    // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
-    // webview is created; skipped in headless web-server and mobile builds.
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
-    crate::desktop::graphics::apply_linux_graphics_quirks();
     let cli_args = match <crate::cli::CliArgs as clap::Parser>::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
@@ -93,6 +94,10 @@ pub fn run() {
         }
         Err(e) => e.exit(),
     };
+
+    // After CLI parsing so `--help`, `--version` and invalid arguments never wait.
+    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    wait_for_display_ready();
 
     let mut builder = super::plugins::register(tauri::Builder::default());
 
@@ -106,7 +111,7 @@ pub fn run() {
         builder = super::window::configure(builder);
     }
 
-    builder = builder.setup(move |app| crate::app::setup_context(app.handle(), cli_args.clone()));
+    builder = builder.setup(move |app| crate::app::setup_context(app.handle(), cli_args));
 
     #[cfg(all(desktop, feature = "tray"))]
     {
@@ -148,27 +153,30 @@ pub fn run() {
                     api.prevent_exit();
 
                     #[cfg(target_os = "linux")]
-                    {
-                        std::thread::spawn(|| {
-                            use sysinfo::{ProcessesToUpdate, System};
-
-                            let mut system = System::new();
-                            system.refresh_processes(ProcessesToUpdate::All, true);
-                            let my_pid = std::process::id();
-
-                            for process in system.processes().values() {
-                                let name = process.name().to_string_lossy();
-                                if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
-                                    && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
-                                {
-                                    let _ = process.kill();
-                                }
-                            }
-                        });
-                    }
+                    std::thread::spawn(kill_webkit_children);
                 }
             }
         });
+    }
+}
+
+/// Closing the last window leaves WebKit's helper processes running; stop our own
+/// children so a tray-resident app does not keep the web engine's memory.
+#[cfg(all(target_os = "linux", not(feature = "web-server")))]
+fn kill_webkit_children() {
+    use sysinfo::{ProcessesToUpdate, System};
+
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+    let my_pid = std::process::id();
+
+    for process in system.processes().values() {
+        let name = process.name().to_string_lossy();
+        if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
+            && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
+        {
+            let _ = process.kill();
+        }
     }
 }
 
@@ -219,10 +227,25 @@ mod display_readiness_tests {
     }
 
     #[test]
-    fn no_session_env_falls_back_to_x0_without_waiting() {
+    fn no_session_env_falls_back_to_x0() {
         assert_eq!(
             display_socket_candidates(None, None, None, None),
             vec![PathBuf::from("/tmp/.X11-unix/X0")]
+        );
+    }
+
+    #[test]
+    fn nothing_local_to_wait_for_yields_no_candidates() {
+        assert!(display_socket_candidates(Some("wayland"), None, None, None).is_empty());
+        assert!(display_socket_candidates(None, Some("wayland-0"), None, None).is_empty());
+        assert!(display_socket_candidates(None, None, Some("host:0"), None).is_empty());
+    }
+
+    #[test]
+    fn unix_prefixed_x_display_is_local() {
+        assert_eq!(
+            display_socket_candidates(None, None, Some("unix:3.0"), None),
+            vec![PathBuf::from("/tmp/.X11-unix/X3")]
         );
     }
 }

@@ -17,10 +17,11 @@ services:
 
     ports:
       - '8080:8080'
-      # Uncomment below if you need OAuth authentication for cloud remotes
-      # (Google Drive, OneDrive, Dropbox, etc.)
-      # Alternatively, use 'network_mode: host' — see docs for details.
-      # - "53682:53682"
+      # Do NOT publish 53682 for OAuth: rclone's OAuth callback server listens on
+      # the container's 127.0.0.1 only, so a port mapping cannot reach it.
+      # For cloud remotes (Google Drive, OneDrive, Dropbox, etc.) either use
+      # 'network_mode: host' (see below), or answer 'No' to the browser question
+      # and paste a token made by 'rclone authorize' on another machine.
 
     volumes:
       - rclone-data:/data # App data & rclone binary (auto-downloaded on first run)
@@ -58,7 +59,10 @@ services:
 
     # --- Optional: Host networking ---
     # Uncomment to fix OAuth browser authentication (Google Drive, OneDrive, etc.)
-    # When enabled, remove the 'ports' section above — it's not needed.
+    # When enabled, remove the 'ports' section above — it's not needed — and set
+    # RCLONE_MANAGER_PORT if 8080 is already used on the host.
+    # The browser must reach the host's 127.0.0.1:53682. On a remote server, forward it:
+    #   ssh -L 8080:127.0.0.1:8080 -L 53682:127.0.0.1:53682 user@your-server
     # network_mode: host
 
     # --- Optional: FUSE Mounting on Host ---

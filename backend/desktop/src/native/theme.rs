@@ -13,6 +13,7 @@ pub fn init_system_theme() {
 }
 
 /// Set the application theme (called from frontend IPC or bridge)
+#[cfg(not(feature = "web-server"))]
 #[tauri::command]
 pub async fn set_theme(system_is_dark: Option<bool>) -> Result<(), String> {
     if let Some(is_dark) = system_is_dark {
@@ -39,7 +40,7 @@ pub fn is_system_dark() -> bool {
     feature = "desktop",
     any(target_os = "linux", windows, target_os = "macos")
 ))]
-pub async fn apply_theme_change(is_dark: bool) {
+pub fn apply_theme_change(is_dark: bool) {
     let prev = SYSTEM_THEME_IS_DARK.swap(is_dark, Ordering::Relaxed);
     if prev != is_dark {
         log::info!(
@@ -69,6 +70,40 @@ fn detect_platform_theme() -> Option<bool> {
 // Linux Theme Detection & Watcher
 // ---------------------------------------------------------------------------
 
+/// Classifies a theme name or setting value; "dark" wins when both match.
+#[cfg(any(target_os = "linux", test))]
+fn classify_theme_name(name: &str, dark: &[&str], light: &[&str]) -> Option<bool> {
+    let name = name.to_lowercase();
+    if dark.iter().any(|word| name.contains(word)) {
+        Some(true)
+    } else if light.iter().any(|word| name.contains(word)) {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// Common GTK/KDE naming: `*-dark`, `*Black`, `*-light`, `*White`.
+#[cfg(any(target_os = "linux", test))]
+fn classify_common_theme_name(name: &str) -> Option<bool> {
+    classify_theme_name(name, &["dark", "black"], &["light", "white"])
+}
+
+/// A place a Linux desktop keeps its theme, with the desktops that own it.
+#[cfg(target_os = "linux")]
+type ThemeSource = (&'static [&'static str], fn() -> Option<bool>);
+
+#[cfg(target_os = "linux")]
+const THEME_SOURCES: [ThemeSource; 4] = [
+    (&["kde", "plasma"], detect_kde_theme),
+    (
+        &["gnome", "ubuntu", "unity", "pantheon"],
+        detect_gsettings_theme,
+    ),
+    (&[], detect_gtk_settings_file),
+    (&["xfce"], detect_other_de_theme),
+];
+
 #[cfg(target_os = "linux")]
 fn detect_platform_theme() -> Option<bool> {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP")
@@ -76,59 +111,40 @@ fn detect_platform_theme() -> Option<bool> {
         .unwrap_or_default()
         .to_lowercase();
 
-    // 1. If KDE / Plasma desktop, prioritize KDE Plasma config
-    if (desktop.contains("kde") || desktop.contains("plasma"))
-        && let Some(is_dark) = detect_kde_theme()
-    {
-        return Some(is_dark);
-    }
+    // The running desktop's own source first, then every other one exactly once. The sort
+    // is stable, so the others keep the order above.
+    let mut sources = THEME_SOURCES;
+    sources.sort_by_key(|(owners, _)| !owners.iter().any(|owner| desktop.contains(owner)));
+    sources.iter().find_map(|(_, detect)| detect()).or_else(|| {
+        std::env::var("GTK_THEME")
+            .ok()
+            .and_then(|theme| classify_common_theme_name(&theme))
+    })
+}
 
-    // 2. If GNOME / Ubuntu / Unity / Pantheon, prioritize GSettings
-    if (desktop.contains("gnome")
-        || desktop.contains("ubuntu")
-        || desktop.contains("unity")
-        || desktop.contains("pantheon"))
-        && let Some(is_dark) = detect_gsettings_theme()
-    {
-        return Some(is_dark);
-    }
+/// `$XDG_CONFIG_HOME`, or `~/.config` when it is unset.
+#[cfg(target_os = "linux")]
+fn config_home() -> Option<std::path::PathBuf> {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|dir| !dir.is_empty())
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| std::path::Path::new(&home).join(".config"))
+        })
+}
 
-    // 3. If XFCE, prioritize xfconf
-    if desktop.contains("xfce")
-        && let Some(is_dark) = detect_other_de_theme()
-    {
-        return Some(is_dark);
-    }
-
-    // General fallback: check all detection methods in sequence
-    if let Some(is_dark) = detect_kde_theme() {
-        return Some(is_dark);
-    }
-
-    if let Some(is_dark) = detect_gsettings_theme() {
-        return Some(is_dark);
-    }
-
-    if let Some(is_dark) = detect_gtk_settings_file() {
-        return Some(is_dark);
-    }
-
-    if let Some(is_dark) = detect_other_de_theme() {
-        return Some(is_dark);
-    }
-
-    // 5. Check GTK_THEME environment variable
-    if let Ok(theme) = std::env::var("GTK_THEME") {
-        let theme_lower = theme.to_lowercase();
-        if theme_lower.contains("dark") || theme_lower.contains("black") {
-            return Some(true);
-        }
-        if theme_lower.contains("light") || theme_lower.contains("white") {
-            return Some(false);
-        }
-    }
-
-    None
+/// Trimmed, lowercased stdout of a command that exited successfully.
+#[cfg(target_os = "linux")]
+fn command_output(program: &str, args: &[&str]) -> Option<String> {
+    let output = std::process::Command::new(program)
+        .args(args)
+        .output()
+        .ok()?;
+    output.status.success().then(|| {
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .to_lowercase()
+    })
 }
 
 /// Parses KDE Plasma `kdeglobals` content to determine dark mode.
@@ -151,12 +167,9 @@ pub fn parse_kde_globals(contents: &str) -> Option<bool> {
             && let Some((k, v)) = trimmed.split_once('=')
             && k.trim().eq_ignore_ascii_case("ColorScheme")
         {
-            let val = v.trim().to_lowercase();
-            if val.contains("dark") || val.contains("black") || val.contains("night") {
-                color_scheme_dark = Some(true);
-            } else if val.contains("light") || val.contains("white") {
-                color_scheme_dark = Some(false);
-            }
+            color_scheme_dark =
+                classify_theme_name(v, &["dark", "black", "night"], &["light", "white"])
+                    .or(color_scheme_dark);
         }
 
         if in_colors_window
@@ -182,18 +195,8 @@ pub fn parse_kde_globals(contents: &str) -> Option<bool> {
 
 #[cfg(target_os = "linux")]
 fn detect_kde_theme() -> Option<bool> {
-    let config_dir = std::env::var("XDG_CONFIG_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|_| std::env::var("HOME").map(|h| std::path::PathBuf::from(h).join(".config")))
-        .ok()?;
-
-    let kdeglobals = config_dir.join("kdeglobals");
-    if kdeglobals.exists()
-        && let Ok(contents) = std::fs::read_to_string(&kdeglobals)
-    {
-        return parse_kde_globals(&contents);
-    }
-    None
+    let contents = std::fs::read_to_string(config_home()?.join("kdeglobals")).ok()?;
+    parse_kde_globals(&contents)
 }
 
 /// Parses GTK `settings.ini` content to determine dark mode preference.
@@ -217,11 +220,7 @@ pub fn parse_gtk_settings(contents: &str) -> Option<bool> {
             }
 
             if key == "gtk-theme-name" {
-                if val.contains("dark") || val.contains("black") {
-                    theme_name_dark = Some(true);
-                } else if val.contains("light") || val.contains("white") {
-                    theme_name_dark = Some(false);
-                }
+                theme_name_dark = classify_common_theme_name(&val).or(theme_name_dark);
             }
         }
     }
@@ -235,96 +234,46 @@ pub fn parse_gtk_settings(contents: &str) -> Option<bool> {
 
 #[cfg(target_os = "linux")]
 fn detect_gtk_settings_file() -> Option<bool> {
-    let config_dir = std::env::var("XDG_CONFIG_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|_| std::env::var("HOME").map(|h| std::path::PathBuf::from(h).join(".config")))
-        .ok()?;
-
-    for gtk_ver in &["gtk-4.0", "gtk-3.0"] {
-        let settings_path = config_dir.join(gtk_ver).join("settings.ini");
-        if settings_path.exists()
-            && let Ok(contents) = std::fs::read_to_string(&settings_path)
-            && let Some(is_dark) = parse_gtk_settings(&contents)
-        {
-            return Some(is_dark);
-        }
-    }
-    None
+    let config_dir = config_home()?;
+    ["gtk-4.0", "gtk-3.0"].iter().find_map(|version| {
+        let contents =
+            std::fs::read_to_string(config_dir.join(version).join("settings.ini")).ok()?;
+        parse_gtk_settings(&contents)
+    })
 }
 
 #[cfg(target_os = "linux")]
 fn detect_gsettings_theme() -> Option<bool> {
-    // 1. color-scheme
-    if let Ok(output) = std::process::Command::new("gsettings")
-        .args(["get", "org.gnome.desktop.interface", "color-scheme"])
-        .output()
-        && output.status.success()
-    {
-        let val = String::from_utf8_lossy(&output.stdout).to_lowercase();
-        if val.contains("prefer-dark") {
-            return Some(true);
-        }
-        if val.contains("prefer-light") {
-            return Some(false);
-        }
-        // If "default" or unspecified, fall through to check gtk-theme
-    }
+    let setting = |schema: &str, key: &str| command_output("gsettings", &["get", schema, key]);
 
-    // 2. gtk-theme
-    if let Ok(output) = std::process::Command::new("gsettings")
-        .args(["get", "org.gnome.desktop.interface", "gtk-theme"])
-        .output()
-        && output.status.success()
-    {
-        let val = String::from_utf8_lossy(&output.stdout).to_lowercase();
-        if val.contains("dark") || val.contains("black") {
+    // "default" or unspecified falls through to the GTK theme name.
+    if let Some(scheme) = setting("org.gnome.desktop.interface", "color-scheme") {
+        if scheme.contains("prefer-dark") {
             return Some(true);
         }
-        if val.contains("light")
-            || val.contains("adwaita")
-            || val.contains("yaru")
-            || val.contains("breeze")
-        {
+        if scheme.contains("prefer-light") {
             return Some(false);
         }
     }
 
-    None
+    let theme = setting("org.gnome.desktop.interface", "gtk-theme")?;
+    classify_theme_name(
+        &theme,
+        &["dark", "black"],
+        &["light", "adwaita", "yaru", "breeze"],
+    )
 }
 
 #[cfg(target_os = "linux")]
 fn detect_other_de_theme() -> Option<bool> {
-    // Cinnamon
-    if let Ok(output) = std::process::Command::new("gsettings")
-        .args(["get", "org.cinnamon.desktop.interface", "gtk-theme"])
-        .output()
-        && output.status.success()
-    {
-        let val = String::from_utf8_lossy(&output.stdout).to_lowercase();
-        if val.contains("dark") {
-            return Some(true);
-        }
-        if val.contains("light") {
-            return Some(false);
-        }
-    }
-
-    // XFCE
-    if let Ok(output) = std::process::Command::new("xfconf-query")
-        .args(["-c", "xsettings", "-p", "/Net/ThemeName"])
-        .output()
-        && output.status.success()
-    {
-        let val = String::from_utf8_lossy(&output.stdout).to_lowercase();
-        if val.contains("dark") {
-            return Some(true);
-        }
-        if val.contains("light") {
-            return Some(false);
-        }
-    }
-
-    None
+    let cinnamon = command_output(
+        "gsettings",
+        &["get", "org.cinnamon.desktop.interface", "gtk-theme"],
+    );
+    let xfce = || command_output("xfconf-query", &["-c", "xsettings", "-p", "/Net/ThemeName"]);
+    cinnamon
+        .and_then(|theme| classify_theme_name(&theme, &["dark"], &["light"]))
+        .or_else(|| xfce().and_then(|theme| classify_theme_name(&theme, &["dark"], &["light"])))
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
@@ -394,6 +343,7 @@ fn detect_platform_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 /// Starts background monitoring for OS theme changes.
+#[cfg(not(target_os = "android"))]
 pub fn monitor_theme_changes() {
     #[cfg(all(
         feature = "desktop",
@@ -435,7 +385,7 @@ async fn run_theme_watcher() {
         .await
         && let Some(is_dark) = extract_portal_color_scheme(&res)
     {
-        apply_theme_change(is_dark).await;
+        apply_theme_change(is_dark);
     }
 
     let signal_res = proxy.receive_signal("SettingChanged").await;
@@ -457,9 +407,11 @@ async fn run_theme_watcher() {
             && key == "color-scheme"
         {
             if let Some(is_dark) = extract_portal_color_scheme(&value) {
-                apply_theme_change(is_dark).await;
-            } else if let Some(is_dark) = detect_platform_theme() {
-                apply_theme_change(is_dark).await;
+                apply_theme_change(is_dark);
+            } else if let Ok(Some(is_dark)) =
+                crate::utils::spawn_blocking(detect_platform_theme).await
+            {
+                apply_theme_change(is_dark);
             }
         }
     }
@@ -515,10 +467,7 @@ async fn run_theme_watcher() {
                 }
 
                 if WaitForSingleObject(event, INFINITE) == WAIT_OBJECT_0 {
-                    let is_dark = detect_platform_theme().unwrap_or(false);
-                    crate::utils::block_on(async move {
-                        apply_theme_change(is_dark).await;
-                    });
+                    apply_theme_change(detect_platform_theme().unwrap_or(false));
                 }
             }
 
@@ -563,10 +512,7 @@ async fn run_theme_watcher() {
         _object: *const c_void,
         _user_info: *const c_void,
     ) {
-        let is_dark = detect_platform_theme().unwrap_or(false);
-        crate::utils::spawn(async move {
-            apply_theme_change(is_dark).await;
-        });
+        apply_theme_change(detect_platform_theme().unwrap_or(false));
     }
 
     unsafe {
@@ -680,6 +626,19 @@ gtk-theme-name=Adwaita
 gtk-application-prefer-dark-theme=0
 "#;
         assert_eq!(parse_gtk_settings(contents), Some(false));
+    }
+
+    #[test]
+    fn theme_names_are_classified_with_dark_taking_precedence() {
+        assert_eq!(classify_common_theme_name("Yaru-Dark"), Some(true));
+        assert_eq!(classify_common_theme_name("Adwaita-light"), Some(false));
+        assert_eq!(classify_common_theme_name("HighContrastInverse"), None);
+        assert_eq!(classify_common_theme_name("dark-on-white"), Some(true));
+        assert_eq!(
+            classify_theme_name("'Breeze'", &["dark"], &["light", "breeze"]),
+            Some(false)
+        );
+        assert_eq!(classify_theme_name("", &["dark"], &["light"]), None);
     }
 
     #[test]

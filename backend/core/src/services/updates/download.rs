@@ -7,12 +7,8 @@ use std::path::{Path, PathBuf};
 fn client() -> Result<&'static reqwest::Client, String> {
     static CLIENT: std::sync::LazyLock<Result<reqwest::Client, String>> =
         std::sync::LazyLock::new(|| {
-            reqwest::Client::builder()
+            crate::utils::github_client::detect_stalls(reqwest::Client::builder())
                 .user_agent("rclone-manager-updater")
-                .connect_timeout(std::time::Duration::from_secs(15))
-                // Stall detection per read; `fetch` bounds the whole transfer. A fixed
-                // total timeout would abort large packages on slow connections.
-                .read_timeout(std::time::Duration::from_secs(60))
                 .redirect(reqwest::redirect::Policy::custom(|attempt| {
                     if attempt.url().scheme() != "https" || attempt.previous().len() >= 5 {
                         attempt.error("Unsafe update redirect")
@@ -26,36 +22,16 @@ fn client() -> Result<&'static reqwest::Client, String> {
     CLIENT.as_ref().map_err(Clone::clone)
 }
 
-/// Upper bound for a whole transfer: small metadata is quick, packages may be slow.
-fn transfer_deadline(limit: u64) -> std::time::Duration {
-    std::time::Duration::from_secs(if limit <= 1024 * 1024 {
-        60
-    } else {
-        2 * 60 * 60
-    })
-}
-
 pub(super) async fn fetch(
-    url: url::Url,
-    limit: u64,
-    progress: DownloadProgress,
-) -> Result<Vec<u8>, String> {
-    if url.scheme() != "https" {
-        return Err("Update download requires HTTPS".into());
-    }
-    tokio::time::timeout(
-        transfer_deadline(limit),
-        fetch_bounded(url, limit, progress),
-    )
-    .await
-    .map_err(|_| "Update download timed out".to_string())?
-}
-
-async fn fetch_bounded(
     url: url::Url,
     limit: u64,
     mut progress: DownloadProgress,
 ) -> Result<Vec<u8>, String> {
+    if url.scheme() != "https" {
+        return Err(crate::localized_error!(
+            "backendErrors.updater.insecureDownload"
+        ));
+    }
     use futures::StreamExt;
     log::debug!("Fetching update resource: {url}, size_limit={limit}");
     let response = client()?
@@ -67,14 +43,18 @@ async fn fetch_bounded(
         .map_err(|e| e.to_string())?;
     let length = response.content_length();
     if length.is_some_and(|n| n > limit) {
-        return Err("Update download exceeds size limit".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.downloadTooLarge"
+        ));
     }
     let mut stream = response.bytes_stream();
     let mut bytes = Vec::new();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| e.to_string())?;
         if bytes.len() as u64 + chunk.len() as u64 > limit {
-            return Err("Update download exceeds size limit".into());
+            return Err(crate::localized_error!(
+                "backendErrors.updater.downloadTooLarge"
+            ));
         }
         progress(chunk.len(), length);
         bytes.extend_from_slice(&chunk);
@@ -85,7 +65,9 @@ async fn fetch_bounded(
 
 pub(super) fn release_asset(release: &Release, name: &str) -> Result<url::Url, String> {
     if !valid_asset_name(name) {
-        return Err("Invalid release asset name".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.unexpectedAsset"
+        ));
     }
     let mut url = url::Url::parse(&format!(
         "https://github.com/{OWNER}/{REPO}/releases/download/"
@@ -98,13 +80,15 @@ pub(super) fn release_asset(release: &Release, name: &str) -> Result<url::Url, S
         .push(name);
     let expected = url.clone();
     let mut assets = release.assets.iter().filter(|a| a.name == name);
-    let asset = assets
-        .next()
-        .ok_or_else(|| format!("Missing signed update asset: {name}"))?;
+    let asset = assets.next().ok_or_else(
+        || crate::localized_error!("backendErrors.updater.missingAsset", "name" => name),
+    )?;
     if assets.next().is_some()
         || url::Url::parse(&asset.browser_download_url).ok().as_ref() != Some(&expected)
     {
-        return Err("Ambiguous or unexpected release asset URL".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.unexpectedAsset"
+        ));
     }
     Ok(url)
 }
@@ -127,7 +111,10 @@ pub(super) async fn cached_payload(manifest: &Manifest, path: &Path, key: &str) 
 }
 
 pub(super) async fn store_payload(path: PathBuf, bytes: Vec<u8>) -> Result<Vec<u8>, String> {
-    let directory = path.parent().ok_or("Missing cache directory")?.to_owned();
+    let directory = path
+        .parent()
+        .ok_or_else(|| crate::localized_error!("backendErrors.updater.invalidStagingDirectory"))?
+        .to_owned();
     let (temporary, bytes) = crate::utils::spawn_blocking(move || {
         std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
         let mut temporary =
@@ -251,18 +238,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn small_metadata_has_a_short_deadline_and_packages_a_long_one() {
-        assert_eq!(
-            transfer_deadline(super::super::manifest::MAX_MANIFEST_SIZE),
-            std::time::Duration::from_secs(60)
-        );
-        assert!(
-            transfer_deadline(super::super::manifest::MAX_ARTIFACT_SIZE)
-                >= std::time::Duration::from_secs(60 * 60)
-        );
-    }
-
     #[tokio::test]
     async fn downloads_reject_insecure_urls_before_making_a_request() {
         assert!(
@@ -282,16 +257,12 @@ mod tests {
         );
         let mut release = Release {
             tag_name: "v99.0.0".into(),
-            prerelease: false,
-            draft: false,
             assets: vec![crate::utils::github_client::Asset {
-                api_url: None,
                 name: "portable-linux-x86_64.json".into(),
                 browser_download_url: url.clone(),
+                ..Default::default()
             }],
-            body: None,
-            published_at: None,
-            html_url: String::new(),
+            ..Default::default()
         };
         assert_eq!(
             release_asset(&release, "portable-linux-x86_64.json")

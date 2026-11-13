@@ -69,7 +69,7 @@
     justify-content: center;
     opacity: 0;
     transition: var(--transition-fast);
-    color: #ffffff;
+    color: var(--accent-fg-color);
 
     &.always-visible {
       opacity: 0.85;
@@ -137,23 +137,6 @@
     gap: var(--space-xs);
     min-width: 0;
     flex-wrap: nowrap;
-
-    .app-pill {
-      max-width: 180px;
-      font-size: var(--font-size-xs);
-      min-height: 22px;
-      padding: 2px 8px;
-
-      mat-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
-      }
-
-      &.font-mono {
-        font-family: var(--font-mono);
-      }
-    }
   }
 }
 

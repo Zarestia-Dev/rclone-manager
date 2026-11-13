@@ -47,8 +47,8 @@
   @for (cat of categories; track cat.id) {
     <button
       type="button"
-      class="app-pill interactive"
-      [class.is-selected]="selectedCategory() === cat.id"
+      appPill
+      [selected]="selectedCategory() === cat.id"
       (click)="selectedCategory.set(cat.id)"
     >
       <mat-icon [svgIcon]="cat.icon"></mat-icon>
@@ -70,7 +70,7 @@
       (keydown.space)="addNodeToCanvas(item)"
       [attr.title]="'flow.workflow.palette.clickToAdd' | translate"
     >
-      <div class="item-icon-box" [ngClass]="'color-' + (item.cssClass || 'accent')">
+      <div class="item-icon-box" [attr.data-tone]="item.tone || 'accent'">
         <mat-icon [svgIcon]="item.icon"></mat-icon>
       </div>
       <div class="item-info">

@@ -4,10 +4,11 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { DiskUsage, DiskUsageSeverity } from '@app/types';
+import { DiskUsage, DiskUsageSeverity, PillTone } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-disk-usage-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,12 +20,20 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
     MatButtonModule,
     FormatFileSizePipe,
     TranslatePipe,
+    PillDirective,
   ],
   styleUrls: ['./disk-usage-panel.component.scss'],
   templateUrl: './disk-usage-panel.component.html',
 })
 export class DiskUsagePanelComponent {
   private readonly backendTranslation = inject(BackendTranslationService);
+
+  protected readonly usageTone: Readonly<Record<DiskUsageSeverity, PillTone>> = {
+    healthy: 'primary',
+    warning: 'yellow',
+    high: 'orange',
+    critical: 'warn',
+  };
 
   readonly config = input.required<DiskUsage>();
   readonly retry = output<void>();

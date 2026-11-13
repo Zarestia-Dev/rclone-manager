@@ -105,7 +105,7 @@
               <mat-icon
                 matListItemIcon
                 [svgIcon]="profileIcons()[targetType] || 'circle-info'"
-                [class.primary]="isActive"
+                [attr.data-tone]="isActive ? 'primary' : null"
               ></mat-icon>
               <span matListItemTitle>{{ profile.name }}</span>
             </button>
@@ -130,7 +130,7 @@
             >
               <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
               <span matListItemTitle>{{ item.label | translate }}</span>
-              <span matListItemMeta class="count-badge">{{
+              <span matListItemMeta appPill size="xs" tone="dim">{{
                 state.profileLists()[item.type].length
               }}</span>
             </button>

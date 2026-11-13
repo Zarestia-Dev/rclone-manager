@@ -33,19 +33,7 @@ describe('TaskNodeFormComponent', () => {
     fixture.detectChanges();
   });
 
-  it('emits remoteChange when remote changes', () => {
-    let emitted = '';
-    component.remoteChange.subscribe(val => {
-      emitted = val;
-    });
-
-    component.remoteChange.emit('gdrive');
-    expect(emitted).toBe('gdrive');
-  });
-
   it('identifies operation nodes with detailed config and renders summary card', () => {
-    expect(component.isDetailedConfigNode()).toBe(true);
-
     fixture.componentRef.setInput('inspectorRemote', 'my-drive');
     fixture.componentRef.setInput('inspectorSource', '/data/source');
     fixture.componentRef.setInput('inspectorDest', 'my-drive:dest');
@@ -79,7 +67,6 @@ describe('TaskNodeFormComponent', () => {
     fixture.componentRef.setInput('node', scriptNode);
     fixture.detectChanges();
 
-    expect(component.isDetailedConfigNode()).toBe(false);
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.operation-summary-card')).toBeNull();
   });
@@ -126,7 +113,7 @@ describe('TaskNodeFormComponent', () => {
     expect(component.node().type).toBe('cryptcheck');
   });
 
-  it('renders correctly for archivecreate task node and handles format and prefix', () => {
+  it('reads the archive format and prefix from the rclone settings, with zip as the default', () => {
     const archiveNode: WorkflowNode = {
       ...mockNode,
       id: 'node-archive-1',
@@ -134,57 +121,23 @@ describe('TaskNodeFormComponent', () => {
       title: 'Archive Node',
     };
     fixture.componentRef.setInput('node', archiveNode);
-    fixture.componentRef.setInput('nodeConfig', {
-      config: {
-        rclone: {
-          format: 'tar.gz',
-          prefix: 'backup-folder',
-        },
-      },
-    });
+    expect(component.archiveFormat()).toBe('zip');
+    expect(component.archivePrefix()).toBe('');
+
+    fixture.componentRef.setInput('rcloneConfig', { format: 'tar.gz', prefix: 'backup-folder' });
     fixture.detectChanges();
 
-    expect(component.node().type).toBe('archivecreate');
     expect(component.archiveFormat()).toBe('tar.gz');
     expect(component.archivePrefix()).toBe('backup-folder');
-
-    const emittedChanges: { key: string; value: unknown }[] = [];
-    component.rcloneFieldChange.subscribe(c => emittedChanges.push(c));
-
-    component.onArchiveFormatChange('tar.xz');
-    expect(emittedChanges).toContainEqual({ key: 'format', value: 'tar.xz' });
-
-    component.onArchivePrefixChange('new-prefix');
-    expect(emittedChanges).toContainEqual({ key: 'prefix', value: 'new-prefix' });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('TAR.GZ');
   });
 
-  it('renders correctly for copyurl task node and handles autoFilename', () => {
-    const copyurlNode: WorkflowNode = {
-      ...mockNode,
-      id: 'node-copyurl-1',
-      type: 'copyurl',
-      title: 'Copy URL Node',
-    };
-    fixture.componentRef.setInput('node', copyurlNode);
-    fixture.componentRef.setInput('nodeConfig', {
-      config: {
-        rclone: {
-          url: 'https://example.com/file.zip',
-          dstFs: 'downloads',
-          autoFilename: true,
-        },
-      },
-    });
-    fixture.detectChanges();
-
-    expect(component.node().type).toBe('copyurl');
+  it('treats a download as named after the file unless autoFilename is off', () => {
     expect(component.autoFilename()).toBe(true);
-
-    const emittedChanges: { key: string; value: unknown }[] = [];
-    component.rcloneFieldChange.subscribe(c => emittedChanges.push(c));
-
-    component.onAutoFilenameChange(false);
-    expect(emittedChanges).toContainEqual({ key: 'autoFilename', value: false });
+    fixture.componentRef.setInput('rcloneConfig', { url: 'https://example.com/f.zip' });
+    expect(component.autoFilename()).toBe(true);
+    fixture.componentRef.setInput('rcloneConfig', { autoFilename: false });
+    expect(component.autoFilename()).toBe(false);
   });
 
   it('computes rcParamCount correctly for empty, object, and string configs', () => {

@@ -13,20 +13,14 @@
           >{{ config().profileName || defaultProfileName }}</span
         >
         @if (dryRun() && isOperationsType()) {
-          <span
-            class="app-pill p-accent"
-            [attr.title]="'dashboard.appDetail.dryRunActive' | translate"
-          >
-            <mat-icon svgIcon="eye" class="accent"></mat-icon>
+          <span appPill tone="accent" [attr.title]="'dashboard.appDetail.dryRunActive' | translate">
+            <mat-icon svgIcon="eye" data-tone="accent"></mat-icon>
             <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
           </span>
         }
         @if (resync() && config().operationType === 'bisync') {
-          <span
-            class="app-pill p-orange"
-            [attr.title]="'dashboard.appDetail.resyncActive' | translate"
-          >
-            <mat-icon svgIcon="right-left" class="orange"></mat-icon>
+          <span appPill tone="orange" [attr.title]="'dashboard.appDetail.resyncActive' | translate">
+            <mat-icon svgIcon="right-left" data-tone="orange"></mat-icon>
             <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
           </span>
         }
@@ -38,7 +32,7 @@
         <button
           matIconButton
           class="quick-action"
-          [class]="buttonClass()"
+          [attr.data-tone]="buttonTone()"
           (click)="handleQuickAction($event)"
           [disabled]="config().isLoading"
           [attr.title]="
@@ -94,6 +88,17 @@
 
     @if (isOperationsType()) {
       <div class="controls">
+        @if (canReport()) {
+          <mat-slide-toggle
+            class="control"
+            [checked]="fileReport()"
+            (change)="toggleFileReport.emit()"
+            [disabled]="config().isActive || config().isLoading"
+          >
+            {{ 'shared.transferActivity.tabs.report' | translate }}
+          </mat-slide-toggle>
+        }
+
         <mat-slide-toggle
           class="control"
           [checked]="dryRun()"
@@ -114,11 +119,40 @@
           </mat-slide-toggle>
         }
       </div>
+
+      @if (canReport()) {
+        <div
+          class="report-options"
+          [class.open]="fileReport()"
+          [attr.inert]="fileReport() ? null : ''"
+        >
+          <div class="report-options-inner">
+            <div
+              class="report-options-list"
+              role="group"
+              [attr.aria-label]="'shared.transferActivity.tabs.report' | translate"
+            >
+              @for (key of extraReports; track key) {
+                <button
+                  type="button"
+                  appPill
+                  [tone]="pills[key]"
+                  [selected]="reports().includes(key)"
+                  [disabled]="config().isActive || config().isLoading"
+                  (click)="toggleReport.emit(key)"
+                >
+                  {{ 'shared.transferActivity.report.tabs.' + key | translate }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
     }
 
     <button
       matButton="filled"
-      [class]="buttonClass()"
+      [attr.data-tone]="buttonTone()"
       (click)="
         config().isActive
           ? stopJob.emit(config().operationType)

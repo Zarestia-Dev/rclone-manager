@@ -1,8 +1,12 @@
 <div class="confirm-modal">
   <div class="modal-content">
     <!-- Contextual Icon -->
-    <div class="modal-icon" [class]="getModalColor()">
-      <mat-icon [svgIcon]="getModalIcon()" [class]="getModalColor()" aria-hidden="true"></mat-icon>
+    <div class="modal-icon" [attr.data-tone]="getModalColor()">
+      <mat-icon
+        [svgIcon]="getModalIcon()"
+        [attr.data-tone]="getModalColor()"
+        aria-hidden="true"
+      ></mat-icon>
     </div>
     <h2 class="modal-title">{{ data.title | translate }}</h2>
     <p class="modal-message">{{ data.message | translate }}</p>
@@ -24,9 +28,7 @@
       <button
         matButton="filled"
         class="confirm-btn"
-        [class.warn]="getModalColor() === 'warn'"
-        [class.accent]="getModalColor() === 'accent'"
-        [class.primary]="getModalColor() === 'primary'"
+        [attr.data-tone]="getModalColor()"
         (click)="onConfirm()"
         [attr.aria-label]="data.confirmText || 'common.ok' | translate"
       >

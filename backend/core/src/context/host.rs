@@ -19,6 +19,10 @@ pub trait Host: Send + Sync {
     fn is_portable_installation(&self) -> bool {
         false
     }
+    /// The Linux package format a Tauri build was bundled as (DEB, RPM or AppImage).
+    fn native_bundle(&self) -> Option<crate::services::updates::policy::InstallationKind> {
+        None
+    }
     fn resolve_paths(&self, app: &AppHandle) -> Result<AppPaths, String>;
     fn restart(&self, app: &AppHandle) -> Result<(), String>;
     #[cfg(all(feature = "updater", unix))]
@@ -64,6 +68,10 @@ pub trait Host: Send + Sync {
     fn set_tray_visible(&self, _enabled: bool) {}
     #[cfg(any(feature = "autostart", feature = "flatpak"))]
     fn set_autostart(&self, _enabled: bool) {}
+    /// Re-register the OS autostart entry when the setting is on but the entry is gone,
+    /// e.g. after an uninstall removed it.
+    #[cfg(any(feature = "autostart", feature = "flatpak"))]
+    fn sync_autostart(&self) {}
     #[cfg(feature = "notifications")]
     fn notify(
         &self,
@@ -71,11 +79,12 @@ pub trait Host: Send + Sync {
     ) -> Result<(), String> {
         Err("Native notifications are unavailable".into())
     }
+    /// The native update for `expected_version` in `release`, if the host has one.
     #[cfg(feature = "updater")]
     async fn check_update(
         &self,
         _release: &crate::utils::github_client::Release,
-        _metadata: &mut crate::utils::types::updater::UpdateMetadata,
+        _expected_version: &str,
     ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
         Ok(None)
     }

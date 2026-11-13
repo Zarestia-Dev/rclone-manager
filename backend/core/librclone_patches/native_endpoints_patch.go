@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -240,7 +241,22 @@ func rcOperationsArchive(ctx context.Context, in rc.Params) (out rc.Params, err 
 	}
 }
 
+// listWriter collects each line written to it, as operations/check does for its reports.
+type listWriter struct {
+	lines *[]string
+}
+
+func (w listWriter) Write(p []byte) (int, error) {
+	*w.lines = append(*w.lines, strings.TrimSuffix(string(p), "\n"))
+	return len(p), nil
+}
+
 // rcOperationsCryptCheck checks integrity of an encrypted remote directly in process.
+//
+// It answers like operations/check: `hashType`, `status` ("OK" or what the check found),
+// `success`, and the paths of the `missingOnSrc`, `missingOnDst`, `differ` and `error`
+// reports. Differences are part of the answer, not an error of the call, so callers get the
+// files. The report parameters still name files to write the reports to, as the CLI flags do.
 func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	srcPath, _ := in.GetString("src")
 	if srcPath == "" {
@@ -318,6 +334,22 @@ func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, e
 	}
 	defer closeFn()
 
+	out = rc.Params{"hashType": hashType.String()}
+	for name, report := range map[string]*io.Writer{
+		"missingOnSrc": &opt.MissingOnSrc,
+		"missingOnDst": &opt.MissingOnDst,
+		"differ":       &opt.Differ,
+		"error":        &opt.Error,
+	} {
+		lines := []string{}
+		out[name] = &lines
+		if *report != nil {
+			*report = io.MultiWriter(*report, listWriter{&lines})
+		} else {
+			*report = listWriter{&lines}
+		}
+	}
+
 	opt.Check = func(ctx context.Context, dst, src fs.Object) (differ bool, noHash bool, err error) {
 		cryptDst := dst.(*crypt.Object)
 		underlyingDst := cryptDst.UnWrap()
@@ -343,10 +375,12 @@ func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, e
 		return false, false, nil
 	}
 
-	err = operations.CheckFn(ctx, opt)
-	if err != nil {
-		return nil, err
+	if err = operations.CheckFn(ctx, opt); err != nil {
+		out["status"] = err.Error()
+		out["success"] = false
+		return out, nil
 	}
-
-	return rc.Params{"success": true, "result": "cryptcheck passed"}, nil
+	out["status"] = "OK"
+	out["success"] = true
+	return out, nil
 }

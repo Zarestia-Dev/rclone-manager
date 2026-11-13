@@ -2,8 +2,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
+  height: 56px;
   padding: 0 var(--space-md);
+  --toolbar-control-height: 32px;
   background: var(--headerbar-bg-color);
   border-bottom: 1px solid var(--border-color);
   box-sizing: border-box;
@@ -13,7 +14,7 @@
   .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .toolbar-left {
@@ -28,7 +29,9 @@
     background: var(--hover-bg-color);
     box-shadow: 0 0 0 1px var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 2px 4px 2px 8px;
+    height: var(--toolbar-control-height);
+    padding: 0 var(--space-xxs) 0 var(--space-xs);
+    box-sizing: border-box;
     transition: var(--transition-fast);
 
     &:focus-within,
@@ -47,7 +50,7 @@
       font-family: inherit;
       min-width: 140px;
       max-width: 260px;
-      padding: 2px 4px;
+      padding: 2px var(--space-xxs);
 
       &::placeholder {
         color: var(--dim-color);
@@ -77,19 +80,27 @@
   }
 
   .run-workflow-btn,
+  .stop-workflow-btn,
+  .dry-run-workflow-btn,
+  .toolbar-pill-btn {
+    height: var(--toolbar-control-height);
+    box-sizing: border-box;
+  }
+
+  .run-workflow-btn,
   .stop-workflow-btn {
-    padding: 6px 14px;
+    padding: 0 var(--space-md);
   }
 
   .run-actions-group {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .run-workflow-btn {
     background: var(--primary-color);
-    color: #ffffff;
+    color: var(--accent-fg-color);
 
     &:hover {
       background: var(--gnome-green-5);
@@ -98,7 +109,7 @@
   }
 
   .dry-run-workflow-btn {
-    padding: 6px 12px;
+    padding: 0 var(--space-sm);
     background: rgba(var(--accent-color-rgb), 0.12);
     border: 1px dashed rgba(var(--accent-color-rgb), 0.45);
     color: var(--accent-color);
@@ -113,13 +124,13 @@
   .toolbar-execution-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
 
     .toolbar-execution-status {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: var(--space-xxs) 10px;
       border-radius: 999px;
       background: rgba(var(--accent-color-rgb), 0.12);
       border: 1px solid rgba(var(--accent-color-rgb), 0.25);
@@ -132,7 +143,7 @@
         border-color: rgba(var(--accent-color-rgb), 0.5);
 
         .simulation-tag {
-          margin-right: 4px;
+          margin-right: var(--space-xxs);
           font-weight: 700;
         }
       }
@@ -157,7 +168,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 0 var(--space-sm);
     border-radius: var(--button-border-radius);
     background: var(--hover-bg-color);
     box-shadow: 0 0 0 1px var(--border-color);
@@ -188,22 +199,15 @@
 
   // ── Right: Zoom & History ────────────────────────────────────────────────
 
-  .button-group {
-    display: flex;
-    align-items: center;
-    background: var(--bg-elevated-1);
-    box-shadow: 0 0 0 1px var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 2px;
+  .toolbar-divider {
+    width: 1px;
+    height: var(--space-md);
+    margin: 0 var(--space-xxs);
+    background: var(--border-color);
   }
 
   .mobile-more-btn {
     display: none;
-  }
-
-  .active-btn {
-    color: var(--accent-color) !important;
-    background: rgba(var(--accent-color-rgb), 0.15) !important;
   }
 
   // ── Responsive Breakpoints ───────────────────────────────────────────────
@@ -229,11 +233,11 @@
     .toolbar-left,
     .toolbar-center,
     .toolbar-right {
-      gap: 4px;
+      gap: var(--space-xxs);
     }
 
     .toolbar-left {
-      padding-left: 40px;
+      padding-left: 50px;
     }
 
     .workflow-title-group {
@@ -272,8 +276,6 @@
 
     .mobile-more-btn {
       display: inline-flex !important;
-      width: 32px;
-      height: 32px;
     }
   }
 }
@@ -281,12 +283,6 @@
 // ── CDK Menu Styling ─────────────────────────────────────────────────────────
 
 .material-context-menu {
-  .menu-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
   .workflow-menu-row {
     display: flex;
     align-items: center;
@@ -312,7 +308,7 @@
       display: flex;
       align-items: center;
       gap: 2px;
-      padding-right: 4px;
+      padding-right: var(--space-xxs);
       opacity: 0.35;
       transition: var(--transition-fast);
     }

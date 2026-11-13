@@ -13,6 +13,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
 import { MatDialog } from '@angular/material/dialog';
 import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-alert-rules',
   imports: [
@@ -24,6 +25,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
     MatSlideToggleModule,
     TranslatePipe,
     SearchContainerComponent,
+    PillDirective,
   ],
   template: `
     <div class="rules-container">
@@ -122,7 +124,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
                   @if (rule.event_filter.length > 0) {
                     <div class="filter-group">
                       @for (kind of rule.event_filter; track kind) {
-                        <span class="app-pill p-dim">
+                        <span appPill tone="dim">
                           {{ 'alerts.events.' + kind | translate }}
                         </span>
                       }
@@ -131,7 +133,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
                   @if (rule.remote_filter.length > 0) {
                     <div class="filter-group">
                       @for (rem of rule.remote_filter; track rem) {
-                        <span class="app-pill p-accent">
+                        <span appPill tone="accent">
                           <mat-icon svgIcon="server"></mat-icon>
                           {{ rem }}
                         </span>
@@ -284,7 +286,8 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
     }
 
     .mat-mdc-row {
-      border-left: 3px solid var(--row-accent, transparent);
+      --row-accent: transparent;
+      border-left: 3px solid var(--row-accent);
       transition:
         background 0.1s ease,
         border-color 0.1s ease;

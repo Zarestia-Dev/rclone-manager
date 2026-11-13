@@ -19,7 +19,7 @@ describe('RemoteStatusService', () => {
     return {
       id: `${type}-1`,
       addr: '127.0.0.1:8080',
-      profile,
+      starter: profile ? { kind: 'profile', name: profile } : undefined,
       params: { fs: 'drive:', type },
     };
   }

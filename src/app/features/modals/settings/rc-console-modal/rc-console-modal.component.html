@@ -1,0 +1,421 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="toggleSidebar()"
+    [attr.title]="'sidebar.toggleSidebar' | translate"
+    [attr.aria-label]="'sidebar.toggleSidebar' | translate"
+  >
+    <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
+  </button>
+  <p data-tauri-drag-region>{{ 'modals.rcConsole.title' | translate }}</p>
+  <button
+    type="button"
+    matIconButton
+    (click)="close()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main class="dull">
+  <mat-sidenav-container class="modal-sidenav-container">
+    <mat-sidenav
+      [opened]="isSidebarOpen()"
+      (openedChange)="isSidebarOpen.set($event)"
+      [mode]="sidebarMode()"
+      class="modal-sidebar"
+    >
+      <app-rc-sidebar
+        [commands]="commands()"
+        [selected]="activeCommand()?.Path ?? ''"
+        [readOnly]="readOnly()"
+        [canClear]="entries().length > 0"
+        (pick)="pickCommand($event)"
+        (clearRequested)="clear()"
+      />
+    </mat-sidenav>
+
+    <mat-sidenav-content class="modal-content">
+      <div class="toolbar">
+        <span appPill tone="dim" [title]="'modals.rcConsole.backendHint' | translate">
+          {{ backendName() }}
+        </span>
+        <button
+          type="button"
+          appPill
+          [tone]="readOnly() ? 'accent' : 'warn'"
+          [title]="'modals.rcConsole.readOnlyHint' | translate"
+          (click)="toggleReadOnly()"
+        >
+          <mat-icon [svgIcon]="readOnly() ? 'lock' : 'lock-open'"></mat-icon>
+          <span>
+            {{
+              (readOnly() ? 'modals.rcConsole.readOnly' : 'modals.rcConsole.readWrite') | translate
+            }}
+          </span>
+        </button>
+        <button
+          type="button"
+          appPill
+          [tone]="maskOutput() ? 'accent' : null"
+          [title]="'modals.rcConsole.maskHint' | translate"
+          (click)="toggleMask()"
+        >
+          <mat-icon [svgIcon]="maskOutput() ? 'eye-slash' : 'eye'"></mat-icon>
+          <span>
+            {{
+              (maskOutput() ? 'modals.rcConsole.masked' : 'modals.rcConsole.unmasked') | translate
+            }}
+          </span>
+        </button>
+        <div class="engine">
+          <span
+            appPill
+            [tone]="engineActive() ? 'dim' : 'warn'"
+            [title]="'modals.rcConsole.engine.info' | translate"
+          >
+            @if (engineActive()) {
+              {{ engineVersion() }}
+              @if (enginePid()) {
+                &middot; {{ enginePid() }}
+              }
+            } @else {
+              {{ 'modals.rcConsole.engine.notRunning' | translate }}
+            }
+          </span>
+          @if (canRestartEngine()) {
+            <button
+              type="button"
+              appPill
+              [tone]="restartArmed() ? 'warn' : null"
+              [disabled]="restartingEngine() || !enginePid()"
+              [title]="'modals.rcConsole.engine.restartHint' | translate"
+              (click)="restartEngine()"
+            >
+              <mat-icon
+                [svgIcon]="restartingEngine() ? 'spinner' : 'rotate-right'"
+                [class.spin]="restartingEngine()"
+              ></mat-icon>
+              <span>{{
+                (restartArmed()
+                  ? 'modals.rcConsole.engine.restartConfirm'
+                  : 'modals.rcConsole.engine.restart'
+                ) | translate
+              }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <section class="terminal">
+        <div #output class="console-output">
+          @if (entries().length === 0) {
+            <div class="welcome">
+              <div class="empty-state">
+                <mat-icon svgIcon="terminal"></mat-icon>
+                <span>{{ 'modals.rcConsole.emptyTitle' | translate }}</span>
+                <p>{{ 'modals.rcConsole.emptyHint' | translate }}</p>
+              </div>
+              <div class="quick">
+                <span class="quick-label">{{ 'modals.rcConsole.quickStart' | translate }}</span>
+                <div class="quick-chips">
+                  @for (example of quickStart(); track example) {
+                    <button type="button" appPill (click)="setLine(example)">
+                      <code>{{ example }}</code>
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="keys">
+                <span><kbd>Tab</kbd>{{ 'modals.rcConsole.hints.complete' | translate }}</span>
+                <span
+                  ><kbd>&uarr;</kbd><kbd>&darr;</kbd
+                  >{{ 'modals.rcConsole.hints.history' | translate }}</span
+                >
+                <span
+                  ><kbd>Shift</kbd><kbd>Enter</kbd
+                  >{{ 'modals.rcConsole.hints.newLine' | translate }}</span
+                >
+                <span
+                  ><kbd>Ctrl</kbd><kbd>L</kbd>{{ 'modals.rcConsole.hints.clear' | translate }}</span
+                >
+              </div>
+            </div>
+          }
+
+          @for (entry of entries(); track entry.id) {
+            <article class="entry">
+              <div class="entry-head">
+                <span class="prompt">&rsaquo;</span>
+                <span class="entry-text">{{ maskOutput() ? entry.maskedLine : entry.line }}</span>
+                @if (entry.running) {
+                  <mat-icon svgIcon="spinner" class="spin"></mat-icon>
+                } @else if (entry.response; as response) {
+                  @if (response.ok) {
+                    <span appPill tone="accent">{{ 'modals.rcConsole.statusOk' | translate }}</span>
+                  } @else {
+                    <span appPill tone="warn">
+                      {{
+                        response.status
+                          ? ('modals.rcConsole.statusHttp' | translate: { status: response.status })
+                          : ('modals.rcConsole.statusError' | translate)
+                      }}
+                    </span>
+                  }
+                  <span appPill tone="dim">{{ response.durationMs }}ms</span>
+                }
+                @if (entry.kind === 'call') {
+                  <span class="entry-actions">
+                    <button
+                      type="button"
+                      class="action-button"
+                      (click)="showHelp(entry.command)"
+                      [title]="'modals.rcConsole.showHelp' | translate"
+                      [attr.aria-label]="'modals.rcConsole.showHelp' | translate"
+                    >
+                      <mat-icon svgIcon="circle-info"></mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-button"
+                      (click)="setLine(entry.line)"
+                      [title]="'modals.rcConsole.edit' | translate"
+                      [attr.aria-label]="'modals.rcConsole.edit' | translate"
+                    >
+                      <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-button"
+                      [appCopyToClipboard]="entryRcLine(entry)"
+                      [title]="'modals.rcConsole.copyRcLine' | translate"
+                      [attr.aria-label]="'modals.rcConsole.copyRcLine' | translate"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
+                  </span>
+                }
+              </div>
+
+              @if (entry.kind === 'guide') {
+                <pre class="guide">{{ 'modals.rcConsole.helpText' | translate }}</pre>
+              } @else if (entry.response; as response) {
+                <app-rc-output
+                  [body]="response.body"
+                  [failed]="!response.ok"
+                  [mask]="maskOutput()"
+                />
+                @if (entry.jobId !== undefined) {
+                  <app-rc-job-card [jobId]="entry.jobId" [mask]="maskOutput()" />
+                }
+              }
+            </article>
+          }
+        </div>
+
+        @if (helpCommand(); as help) {
+          <app-rc-help
+            class="help"
+            [command]="help"
+            (insert)="setLine($event)"
+            (run)="runLine($event)"
+            (closed)="closeHelp()"
+          />
+        }
+
+        @if (activeCommand(); as active) {
+          @if (helpPath() === null) {
+            <div class="hint">
+              <span class="hint-title truncate">{{ active.Title }}</span>
+              @if (isDangerous(active.Path)) {
+                <span appPill tone="warn">{{ 'modals.rcConsole.dangerous' | translate }}</span>
+              }
+              <button type="button" appPill (click)="showHelp(active.Path)">
+                <mat-icon svgIcon="circle-info"></mat-icon>
+                <span>{{ 'modals.rcConsole.showHelp' | translate }}</span>
+              </button>
+            </div>
+          }
+          @if (missingParams().length > 0) {
+            <div class="chips">
+              @for (param of missingParams(); track param.name) {
+                <button
+                  type="button"
+                  appPill
+                  [tone]="param.required ? 'accent' : null"
+                  [title]="param.description"
+                  (click)="insertParam(param.name)"
+                >
+                  {{ param.name }}
+                </button>
+              }
+            </div>
+          }
+        }
+
+        @if (confirmCommand(); as dangerous) {
+          <div class="notice warn" role="alert">
+            <mat-icon svgIcon="circle-info"></mat-icon>
+            <span>{{ 'modals.rcConsole.confirmDanger' | translate: { command: dangerous } }}</span>
+          </div>
+        }
+
+        @if (notice(); as n) {
+          <div class="notice warn" role="alert">
+            <mat-icon svgIcon="circle-info"></mat-icon>
+            <span>{{ n.key | translate: n.params }}</span>
+            @if (n.allowWrites) {
+              <button type="button" appPill tone="warn" (click)="allowWrites()">
+                {{ 'modals.rcConsole.allowWrites' | translate }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (loadState() === 'unavailable') {
+          <div class="notice">
+            <mat-icon svgIcon="circle-info"></mat-icon>
+            <span>{{ 'modals.rcConsole.suggestionsUnavailable' | translate }}</span>
+          </div>
+        }
+
+        <div class="input-area">
+          @if (suggestions().length > 0) {
+            <ul
+              id="rc-suggestions"
+              class="popup"
+              role="listbox"
+              [attr.aria-label]="'modals.rcConsole.suggestions' | translate"
+            >
+              @for (suggestion of suggestions(); track suggestion.line; let i = $index) {
+                <!-- The input keeps the focus; arrow keys and Tab are handled there. -->
+                <li
+                  role="option"
+                  class="popup-row"
+                  tabindex="-1"
+                  [id]="'rc-suggestion-' + i"
+                  [class.selected]="i === selectedSuggestion()"
+                  [attr.aria-selected]="i === selectedSuggestion()"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="acceptSuggestion(suggestion)"
+                  (keydown.enter)="acceptSuggestion(suggestion)"
+                >
+                  <span class="popup-item">
+                    <span class="popup-main">{{ suggestion.label }}</span>
+                    <span class="popup-detail truncate">{{ suggestion.detail }}</span>
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (recentOpen()) {
+            <ul id="rc-history" class="popup">
+              @for (item of saved(); track item) {
+                <li class="popup-row">
+                  <button
+                    type="button"
+                    class="popup-item"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="useRecent(item)"
+                  >
+                    <mat-icon svgIcon="star" class="popup-icon"></mat-icon>
+                    <span class="popup-main truncate">{{ item }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-button"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="removeSaved(item)"
+                    [title]="'common.delete' | translate"
+                    [attr.aria-label]="'common.delete' | translate"
+                  >
+                    <mat-icon svgIcon="trash"></mat-icon>
+                  </button>
+                </li>
+              }
+              @for (item of recent(); track item) {
+                <li class="popup-row">
+                  <button
+                    type="button"
+                    class="popup-item"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="useRecent(item)"
+                  >
+                    <mat-icon svgIcon="clock-rotate-left" class="popup-icon"></mat-icon>
+                    <span class="popup-main truncate">{{ item }}</span>
+                  </button>
+                </li>
+              }
+              @if (saved().length === 0 && recent().length === 0) {
+                <li class="empty-state">
+                  <span>{{ 'modals.rcConsole.historyEmpty' | translate }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          <div class="input-row">
+            <span class="prompt">&rsaquo;</span>
+            <textarea
+              #lineInput
+              rows="1"
+              class="line-input"
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              enterkeyhint="send"
+              spellcheck="false"
+              aria-autocomplete="list"
+              [attr.aria-controls]="suggestions().length > 0 ? 'rc-suggestions' : null"
+              [attr.aria-activedescendant]="
+                suggestions().length > 0 ? 'rc-suggestion-' + selectedSuggestion() : null
+              "
+              [value]="line()"
+              [placeholder]="'modals.rcConsole.placeholder' | translate"
+              [attr.aria-label]="'modals.rcConsole.placeholder' | translate"
+              (input)="onInput(lineInput.value)"
+              (keydown)="onKeydown($event)"
+              (beforeinput)="onBeforeInput($event)"
+            ></textarea>
+            <button
+              type="button"
+              class="action-button"
+              [class.is-selected]="recentOpen()"
+              [attr.aria-expanded]="recentOpen()"
+              aria-controls="rc-history"
+              (click)="toggleRecent()"
+              [title]="'modals.rcConsole.history' | translate"
+              [attr.aria-label]="'modals.rcConsole.history' | translate"
+            >
+              <mat-icon svgIcon="clock-rotate-left"></mat-icon>
+            </button>
+            <button
+              type="button"
+              class="action-button"
+              [disabled]="!line().trim()"
+              (click)="saveCurrent()"
+              [title]="'modals.rcConsole.save' | translate"
+              [attr.aria-label]="'modals.rcConsole.save' | translate"
+            >
+              <mat-icon svgIcon="star-outline"></mat-icon>
+            </button>
+            <button
+              matButton="filled"
+              type="button"
+              class="run-button"
+              [disabled]="!line().trim()"
+              (click)="run()"
+              [title]="'modals.rcConsole.run' | translate"
+            >
+              <mat-icon svgIcon="play"></mat-icon>
+              {{ 'modals.rcConsole.run' | translate }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</main>

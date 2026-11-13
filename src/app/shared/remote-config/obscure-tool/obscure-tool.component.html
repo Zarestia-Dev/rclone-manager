@@ -49,7 +49,7 @@
           </button>
           <button
             matButton="elevated"
-            class="accent"
+            data-tone="accent"
             (click)="performObscure()"
             [disabled]="!clearText().trim() || isProcessing()"
           >
@@ -71,7 +71,7 @@
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
               [attr.title]="'modals.oauth.copyLink' | translate"
             >
-              <mat-icon svgIcon="copy" class="accent"></mat-icon>
+              <mat-icon svgIcon="copy" data-tone="accent"></mat-icon>
             </button>
           </div>
           <p class="result-help">{{ 'wizards.obscure.resultHelp' | translate }}</p>
@@ -98,7 +98,7 @@
               </mat-form-field>
               <button
                 matButton="elevated"
-                class="accent"
+                data-tone="accent"
                 [disabled]="!targetFieldCtrl.value"
                 (click)="applyToField()"
               >

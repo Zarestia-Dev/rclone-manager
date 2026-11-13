@@ -4,10 +4,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AppTab, ACTIVE_LABELS, INACTIVE_LABELS } from '@app/types';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-status-overview-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatCardModule, MatIconModule, TranslatePipe],
+  imports: [MatCardModule, MatIconModule, TranslatePipe, PillDirective],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
 })

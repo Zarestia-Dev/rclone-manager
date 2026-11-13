@@ -4,7 +4,8 @@
   @if (state.currentStep() > 1 && !state.editTarget() && !flow.isActive) {
     <button
       matButton="filled"
-      class="accent back-btn"
+      class="back-btn"
+      data-tone="accent"
       [disabled]="state.isAuthInProgress()"
       (click)="prevStep.emit()"
       animate.enter="fade-in-out-enter"
@@ -20,7 +21,8 @@
   @if ((state.isAuthInProgress() && !state.isAuthCancelled()) || flow.isActive) {
     <button
       matButton="filled"
-      class="warn cancel-btn"
+      class="cancel-btn"
+      data-tone="warn"
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
       (click)="cancelAuth.emit()"
@@ -83,7 +85,8 @@
   @if (state.currentStep() < state.stepConfigs().length && !state.editTarget() && !flow.isActive) {
     <button
       matButton="filled"
-      class="accent next-btn"
+      class="next-btn"
+      data-tone="accent"
       (click)="nextStep.emit()"
       [disabled]="state.isNextDisabled()"
       animate.enter="fade-in-out-enter"

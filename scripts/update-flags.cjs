@@ -25,7 +25,7 @@ function getFlags(url, loopback = false, prune = false) {
       return null;
     }
 
-    return parseFlags(result.stdout, prune);
+    return parseFlags(result.stdout, prune, getServeTranslationKeys());
   } catch (e) {
     if (e.code === 'ENOENT') {
       console.error('rclone command not found. Please verify it is installed and in your PATH.');
@@ -39,7 +39,7 @@ function getFlags(url, loopback = false, prune = false) {
 /**
  * Parses 'rclone rc options/info' output (JSON).
  */
-function parseFlags(output, prune = false) {
+function parseFlags(output, prune = false, serveKeys = {}) {
   let data;
   try {
     data = JSON.parse(output);
@@ -71,11 +71,13 @@ function parseFlags(output, prune = false) {
   }
 
   const flags = {};
-  for (const options of Object.values(data)) {
+  for (const [block, options] of Object.entries(data)) {
     if (!Array.isArray(options)) continue;
 
     for (const option of options) {
       if (!option || typeof option.Name !== 'string' || !option.Name.trim()) continue;
+      // Scoped options are written under their own key below, never the shared one.
+      if (serveKeys[block]?.[option.Name]) continue;
       const flagName = option.Name;
       const helpText = typeof option.Help === 'string' ? option.Help : '';
 
@@ -83,6 +85,19 @@ function parseFlags(output, prune = false) {
       flags[key] = {
         title: titleCase(flagName),
         help: helpText,
+      };
+    }
+  }
+  // Options that mean something different per serve type get their own key (see flag-definitions.ts).
+  for (const [serveType, names] of Object.entries(serveKeys)) {
+    for (const [name, translationKey] of Object.entries(names)) {
+      const option = (Array.isArray(data[serveType]) ? data[serveType] : []).find(
+        o => o && o.Name === name
+      );
+      if (!option) continue;
+      flags[normalizeFlagName(translationKey)] = {
+        title: titleCase(name),
+        help: typeof option.Help === 'string' ? option.Help : '',
       };
     }
   }
@@ -186,12 +201,79 @@ function getStaticFlags(prune = false) {
   return parseStaticFlags(fs.readFileSync(filePath, 'utf8'), prune);
 }
 
+/**
+ * Reads `serveTranslationKeys` ({ serveType: { optionName: translationKey } }) from flag-definitions.ts.
+ */
+function getServeTranslationKeys() {
+  const filePath = path.join(
+    PROJECT_ROOT,
+    'src',
+    'app',
+    'services',
+    'remote',
+    'flag-definitions.ts'
+  );
+  if (!fs.existsSync(filePath)) return {};
+  return parseServeTranslationKeys(fs.readFileSync(filePath, 'utf8'));
+}
+
+function parseServeTranslationKeys(content) {
+  const source = ts.createSourceFile('flag-definitions.ts', content, ts.ScriptTarget.Latest, true);
+  const name = node => (ts.isIdentifier(node) || ts.isStringLiteral(node) ? node.text : null);
+  const result = {};
+  function visit(node) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'serveTranslationKeys' &&
+      node.initializer &&
+      ts.isObjectLiteralExpression(node.initializer)
+    ) {
+      for (const group of node.initializer.properties) {
+        const serveType = ts.isPropertyAssignment(group) ? name(group.name) : null;
+        if (!serveType || !ts.isObjectLiteralExpression(group.initializer)) continue;
+        for (const entry of group.initializer.properties) {
+          const optionName = ts.isPropertyAssignment(entry) ? name(entry.name) : null;
+          if (optionName && ts.isStringLiteralLike(entry.initializer)) {
+            (result[serveType] ??= {})[optionName] = entry.initializer.text;
+          }
+        }
+      }
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return result;
+}
+
 function parseStaticFlags(content, prune = false) {
   const source = ts.createSourceFile('flag-definitions.ts', content, ts.ScriptTarget.Latest, true);
   const staticFlags = {};
   let incomplete = source.parseDiagnostics.length > 0;
 
+  // Groups may spread a shared top-level array of option literals (`...SHARED_FLAGS`).
+  const sharedArrays = new Map();
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.initializer &&
+        ts.isArrayLiteralExpression(declaration.initializer) &&
+        declaration.initializer.elements.every(element => ts.isObjectLiteralExpression(element))
+      ) {
+        sharedArrays.set(declaration.name.text, declaration.initializer);
+      }
+    }
+  }
+  const sharedSpread = node =>
+    ts.isSpreadElement(node) &&
+    ts.isIdentifier(node.expression) &&
+    sharedArrays.has(node.expression.text);
+
   function visitOption(node) {
+    if (sharedSpread(node)) visitOption(sharedArrays.get(node.expression.text));
     if (ts.isObjectLiteralExpression(node)) {
       const fields = {};
       let hasName = false;
@@ -216,7 +298,8 @@ function parseStaticFlags(content, prune = false) {
         incomplete = true;
       }
       if (fields.Name?.trim() && typeof fields.Help === 'string') {
-        const key = normalizeFlagName(fields.Name);
+        // A TranslationKey keeps a flag apart from an unrelated option that has the same name.
+        const key = normalizeFlagName(fields.TranslationKey || fields.Name);
         // Shared flag names may have operation-specific help; keep the first definition.
         staticFlags[key] ??= { title: titleCase(fields.Name), help: fields.Help };
       }
@@ -237,7 +320,9 @@ function parseStaticFlags(content, prune = false) {
           group =>
             !ts.isPropertyAssignment(group) ||
             !ts.isArrayLiteralExpression(group.initializer) ||
-            group.initializer.elements.some(option => !ts.isObjectLiteralExpression(option))
+            group.initializer.elements.some(
+              option => !ts.isObjectLiteralExpression(option) && !sharedSpread(option)
+            )
         )
       ) {
         incomplete = true;
@@ -315,4 +400,11 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { normalizeFlagName, parseFlags, parseStaticFlags, getStaticFlags, updateFile };
+module.exports = {
+  normalizeFlagName,
+  parseFlags,
+  parseStaticFlags,
+  parseServeTranslationKeys,
+  getStaticFlags,
+  updateFile,
+};

@@ -32,18 +32,13 @@ export class ConfigSearchService {
     if (query.trimStart().startsWith('-')) return matchesConfigSearch(field, query, { provider });
 
     const translate = (key: string): unknown => this.translate.instant(key);
+    const name = field.TranslationKey || field.Name;
     return matchesConfigSearch(field, query, {
       provider,
       keywords: [
         ...keywords,
-        translateRcloneOption(
-          field.Name,
-          'title',
-          field.FieldName || field.Name,
-          translate,
-          provider
-        ),
-        translateRcloneOption(field.Name, 'help', field.Help, translate, provider),
+        translateRcloneOption(name, 'title', field.FieldName || field.Name, translate, provider),
+        translateRcloneOption(name, 'help', field.Help, translate, provider),
       ],
     });
   }

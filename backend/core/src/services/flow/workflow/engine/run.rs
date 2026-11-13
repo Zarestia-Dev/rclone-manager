@@ -1,5 +1,6 @@
 //! Runs one workflow: schedules nodes as their inputs resolve and reports progress.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -14,19 +15,50 @@ use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
 use crate::services::flow::workflow::dag::validate_workflow;
 use crate::services::flow::workflow::engine::{
-    RunContext,
-    active::{ActiveWorkflowState, cleanup_workflow_resources, register_active_run},
+    RunContext, RunTrigger,
+    active::{
+        ActiveWorkflowState, cleanup_workflow_resources, register_active_run, remember_refused_run,
+    },
     cancel::CancelToken,
-    graph::{NodeFinishedEvent, RunGraph, RunState, emit_node_state},
+    graph::{NodeFinishedEvent, RunGraph, RunState},
     nodes::execute_single_node,
+    record::RunHandle,
 };
 use crate::services::flow::workflow::types::{
     NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowExecutionResult,
-    WorkflowExecutionStateEvent, WorkflowNode, WorkflowNodeExecutionState, WorkflowProgress,
+    WorkflowExecutionState, WorkflowNode, WorkflowNodeExecutionState, WorkflowProgress,
 };
 use crate::services::settings::AppSettingsManager;
 use crate::utils::app::notification::{NotificationEvent, WorkflowStage, notify};
-use crate::utils::types::{events::WORKFLOW_EXECUTION_STATE_CHANGED, origin::Origin};
+use crate::utils::types::origin::Origin;
+
+/// Most items of a list in an output that go out with a node-state event. The run
+/// keeps the whole output for the nodes after it; the interface only needs a glimpse.
+const EVENT_LIST_LIMIT: usize = 200;
+
+fn output_for_event(value: &Value) -> Cow<'_, Value> {
+    let too_long = |item: &Value| {
+        item.as_array()
+            .is_some_and(|list| list.len() > EVENT_LIST_LIMIT)
+    };
+    let Some(fields) = value
+        .as_object()
+        .filter(|fields| fields.values().any(too_long))
+    else {
+        return Cow::Borrowed(value);
+    };
+    // Only what goes out is copied: the lists over the limit are cut before they are cloned.
+    let trimmed = fields
+        .iter()
+        .map(|(key, item)| match item {
+            Value::Array(list) if list.len() > EVENT_LIST_LIMIT => {
+                (key.clone(), Value::Array(list[..EVENT_LIST_LIMIT].to_vec()))
+            }
+            other => (key.clone(), other.clone()),
+        })
+        .collect();
+    Cow::Owned(Value::Object(trimmed))
+}
 
 /// A node that panics fails its own step; otherwise the run would wait forever
 /// for a result that never arrives and keep its slot.
@@ -58,8 +90,17 @@ pub async fn execute_workflow(
     backend: Backend,
     workflow_id: String,
     dry_run: bool,
+    trigger: RunTrigger,
 ) -> Result<WorkflowExecutionResult, String> {
-    execute_workflow_inner(app, backend, workflow_id, dry_run, None).await
+    detached(execute_workflow_inner(
+        app,
+        backend,
+        workflow_id,
+        dry_run,
+        trigger,
+        None,
+    ))
+    .await
 }
 
 pub(crate) async fn execute_workflow_snapshot(
@@ -67,9 +108,32 @@ pub(crate) async fn execute_workflow_snapshot(
     backend: Backend,
     snapshot: Arc<crate::services::automation::runtime::WorkflowSnapshot>,
     dry_run: bool,
+    trigger: RunTrigger,
 ) -> Result<WorkflowExecutionResult, String> {
     let id = snapshot.definition.id.clone();
-    execute_workflow_inner(app, backend, id, dry_run, Some(snapshot)).await
+    detached(execute_workflow_inner(
+        app,
+        backend,
+        id,
+        dry_run,
+        trigger,
+        Some(snapshot),
+    ))
+    .await
+}
+
+/// Runs a workflow on a task of its own. A caller that stops waiting (a command whose
+/// connection closed because the interface was reloaded) must not stop the run: it would
+/// be left half done, with steps still running and no end ever reported.
+async fn detached(
+    run: impl Future<Output = Result<WorkflowExecutionResult, String>> + Send + 'static,
+) -> Result<WorkflowExecutionResult, String> {
+    crate::utils::spawn(run).await.unwrap_or_else(|error| {
+        log::error!("A workflow run ended abnormally: {error}");
+        Err(crate::localized_error!(
+            "backendErrors.workflow.unknownError"
+        ))
+    })
 }
 
 async fn execute_workflow_inner(
@@ -77,6 +141,7 @@ async fn execute_workflow_inner(
     backend: Backend,
     workflow_id: String,
     dry_run: bool,
+    trigger: RunTrigger,
     prepared: Option<Arc<crate::services::automation::runtime::WorkflowSnapshot>>,
 ) -> Result<WorkflowExecutionResult, String> {
     // Coordinate starts made before Vault is enabled with its enable transition.
@@ -101,6 +166,9 @@ async fn execute_workflow_inner(
         workflow.name
     );
 
+    let run_id = uuid::Uuid::new_v4().to_string();
+    let run = Arc::new(RunHandle::new(&workflow_id, &run_id, dry_run));
+
     let val_res = validate_workflow(workflow);
     if !val_res.valid {
         // Each error is a translation key with its own parameters, so only the first is
@@ -113,15 +181,8 @@ async fn execute_workflow_inner(
             "backendErrors.workflow.validationFailed",
             "error" => val_res.errors.first().map_or("", String::as_str)
         );
-        crate::services::bridge::emit(
-            WORKFLOW_EXECUTION_STATE_CHANGED,
-            WorkflowExecutionStateEvent {
-                workflow_id: workflow_id.clone(),
-                state: "failed".to_string(),
-                progress: None,
-                message: Some(message.clone()),
-            },
-        );
+        remember_refused_run(&backend.name, &workflow_id, run.clone());
+        run.execution(WorkflowExecutionState::Failed, None, Some(message.clone()));
         return Err(message);
     }
 
@@ -135,6 +196,7 @@ async fn execute_workflow_inner(
             cancel: cancel.clone(),
             active_job_ids: active_job_ids.clone(),
         },
+        run.clone(),
     )?;
 
     drop(starting);
@@ -142,23 +204,19 @@ async fn execute_workflow_inner(
     let start_instant = Instant::now();
     let total_nodes = workflow.nodes.len();
 
-    crate::services::bridge::emit(
-        WORKFLOW_EXECUTION_STATE_CHANGED,
-        WorkflowExecutionStateEvent {
-            workflow_id: workflow_id.clone(),
-            state: "started".to_string(),
-            progress: Some(WorkflowProgress {
-                total: total_nodes,
-                completed: 0,
-                current_step_title: crate::localized_success!(
-                    "backendErrors.workflow.startingWorkflow"
-                ),
-            }),
-            message: Some(crate::localized_success!(
-                "backendErrors.workflow.started",
-                "name" => workflow.name
-            )),
-        },
+    run.execution(
+        WorkflowExecutionState::Started,
+        Some(WorkflowProgress {
+            total: total_nodes,
+            completed: 0,
+            current_step_title: crate::localized_success!(
+                "backendErrors.workflow.startingWorkflow"
+            ),
+        }),
+        Some(crate::localized_success!(
+            "backendErrors.workflow.started",
+            "name" => workflow.name
+        )),
     );
 
     notify(
@@ -166,12 +224,13 @@ async fn execute_workflow_inner(
         NotificationEvent::Workflow(WorkflowStage::Started {
             workflow_id: workflow_id.clone(),
             workflow_name: workflow.name.clone(),
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         }),
     );
 
     let graph = RunGraph::new(workflow);
-    let mut state = RunState::new(&graph, workflow);
+    let mut state = RunState::new(&graph, workflow, &trigger);
+    state.skip_unstarted(&graph, workflow, &run);
 
     let ctx = Arc::new(RunContext {
         app: app.clone(),
@@ -180,8 +239,9 @@ async fn execute_workflow_inner(
         cancel: cancel.clone(),
         active_jobs: active_job_ids,
         node_results: Arc::new(RwLock::new(HashMap::new())),
-        run_id: uuid::Uuid::new_v4().to_string(),
+        run_id: run_id.clone(),
         dry_run,
+        ancestors: trigger.ancestors().to_vec(),
     });
     let (tx, mut rx) = tokio::sync::mpsc::channel::<NodeFinishedEvent>(total_nodes.max(1));
 
@@ -196,8 +256,7 @@ async fn execute_workflow_inner(
         } else {
             while let Some(idx) = state.start_next() {
                 running.push(idx);
-                emit_node_state(
-                    &workflow_id,
+                run.node_state(
                     &workflow.nodes[idx].id,
                     WorkflowNodeExecutionState::Running,
                     None,
@@ -235,22 +294,18 @@ async fn execute_workflow_inner(
             .collect::<Vec<_>>()
             .join(", ");
 
-        crate::services::bridge::emit(
-            WORKFLOW_EXECUTION_STATE_CHANGED,
-            WorkflowExecutionStateEvent {
-                workflow_id: workflow_id.clone(),
-                state: "running".to_string(),
-                progress: Some(WorkflowProgress {
-                    total: total_nodes,
-                    completed: state.completed,
-                    current_step_title: if running_titles.is_empty() {
-                        crate::localized_success!("backendErrors.workflow.processing")
-                    } else {
-                        running_titles
-                    },
-                }),
-                message: None,
-            },
+        run.execution(
+            WorkflowExecutionState::Running,
+            Some(WorkflowProgress {
+                total: total_nodes,
+                completed: state.completed,
+                current_step_title: if running_titles.is_empty() {
+                    crate::localized_success!("backendErrors.workflow.processing")
+                } else {
+                    running_titles
+                },
+            }),
+            None,
         );
 
         // Await next node completion
@@ -261,16 +316,16 @@ async fn execute_workflow_inner(
         running.retain(|&running_idx| running_idx != idx);
         let node = &workflow.nodes[idx];
         state.activate_edges(&graph, workflow, idx, &finished.outcome);
-        halted |= record_node_outcome(&ctx, &workflow_id, node, idx, &mut state, finished);
+        halted |= record_node_outcome(&ctx, &run, node, idx, &mut state, finished);
 
         // 2. Unless stopped or cancelled, queue the nodes this one opened up
         if !halted && !cancel.is_cancelled() {
-            state.queue_downstream(&graph, workflow, &workflow_id, idx);
+            state.queue_downstream(&graph, workflow, &run, idx);
         }
     }
 
-    state.skip_unreached(workflow, &workflow_id);
-    drop(active_run);
+    state.skip_unreached(workflow, &run);
+    active_run.release();
 
     let outcome = RunOutcome {
         halted,
@@ -278,7 +333,7 @@ async fn execute_workflow_inner(
         cancelled: cancel.is_cancelled(),
         elapsed: start_instant.elapsed(),
     };
-    Ok(finish_run(&app, &backend, workflow, workflow_id, &state, outcome).await)
+    Ok(finish_run(&app, &backend, workflow, &run, &state, outcome).await)
 }
 
 /// Whether the node asks to stop the run. Other nodes report `stopped` for what
@@ -290,7 +345,7 @@ fn ends_run(kind: NodeKind, output: &Value) -> bool {
 /// Stores what a finished node produced, tells the interface, and reports whether it asked to stop the run.
 fn record_node_outcome(
     ctx: &RunContext,
-    workflow_id: &str,
+    run: &RunHandle,
     node: &WorkflowNode,
     idx: usize,
     state: &mut RunState,
@@ -325,8 +380,7 @@ fn record_node_outcome(
                 halts_run = true;
             }
 
-            emit_node_state(
-                workflow_id,
+            run.node_state(
                 &node.id,
                 if is_node_success {
                     WorkflowNodeExecutionState::Success
@@ -335,7 +389,7 @@ fn record_node_outcome(
                 },
                 error_message,
                 Some(finished.duration_ms),
-                Some(&output.value),
+                Some(output_for_event(&output.value).into_owned()),
             );
             ctx.node_results
                 .write()
@@ -354,13 +408,12 @@ fn record_node_outcome(
                 "errorMessage": text,
                 "summary": crate::t!("backendErrors.workflow.stepFailed", "error" => text),
             });
-            emit_node_state(
-                workflow_id,
+            run.node_state(
                 &node.id,
                 WorkflowNodeExecutionState::Failed,
                 Some(&err),
                 Some(finished.duration_ms),
-                Some(&err_payload),
+                Some(err_payload.clone()),
             );
             ctx.node_results
                 .write()
@@ -384,10 +437,11 @@ async fn finish_run(
     app: &AppHandle,
     backend: &Backend,
     workflow: &WorkflowDefinition,
-    workflow_id: String,
+    run: &RunHandle,
     state: &RunState,
     outcome: RunOutcome,
 ) -> WorkflowExecutionResult {
+    let workflow_id = run.workflow_id().to_string();
     let RunOutcome {
         halted,
         dry_run,
@@ -424,53 +478,49 @@ async fn finish_run(
     }
 
     let final_state = if is_cancelled {
-        "cancelled"
+        WorkflowExecutionState::Cancelled
     } else if overall_success {
-        "completed"
+        WorkflowExecutionState::Completed
     } else {
-        "failed"
+        WorkflowExecutionState::Failed
     };
 
-    crate::services::bridge::emit(
-        WORKFLOW_EXECUTION_STATE_CHANGED,
-        WorkflowExecutionStateEvent {
-            workflow_id: workflow_id.clone(),
-            state: final_state.to_string(),
-            progress: Some(WorkflowProgress {
-                total: total_nodes,
-                completed: completed_nodes,
-                current_step_title: crate::localized_success!("backendErrors.workflow.finished"),
-            }),
-            message: Some(if is_cancelled {
-                crate::localized_success!("backendErrors.workflow.stoppedByUser")
-            } else if overall_success && halted {
-                crate::localized_success!(
-                    "backendErrors.workflow.completedViaStop",
-                    "name" => workflow.name
-                )
-            } else if overall_success && dry_run {
-                crate::localized_success!(
-                    "backendErrors.workflow.completedSimulation",
-                    "name" => workflow.name
-                )
-            } else if overall_success {
-                crate::localized_success!(
-                    "backendErrors.workflow.completedSuccessfully",
-                    "name" => workflow.name
-                )
-            } else {
-                crate::localized_success!(
-                    "backendErrors.workflow.finishedWithFailures",
-                    "name" => workflow.name,
-                    "count" => failed_nodes
-                )
-            }),
-        },
+    run.execution(
+        final_state,
+        Some(WorkflowProgress {
+            total: total_nodes,
+            completed: completed_nodes,
+            current_step_title: crate::localized_success!("backendErrors.workflow.finished"),
+        }),
+        Some(if is_cancelled {
+            crate::localized_success!("backendErrors.workflow.stoppedByUser")
+        } else if overall_success && halted {
+            crate::localized_success!(
+                "backendErrors.workflow.completedViaStop",
+                "name" => workflow.name
+            )
+        } else if overall_success && dry_run {
+            crate::localized_success!(
+                "backendErrors.workflow.completedSimulation",
+                "name" => workflow.name
+            )
+        } else if overall_success {
+            crate::localized_success!(
+                "backendErrors.workflow.completedSuccessfully",
+                "name" => workflow.name
+            )
+        } else {
+            crate::localized_success!(
+                "backendErrors.workflow.finishedWithFailures",
+                "name" => workflow.name,
+                "count" => failed_nodes
+            )
+        }),
     );
 
     if failed_nodes > 0 {
         // Clean up any orphan mounts or serves left behind by the failed workflow execution
-        cleanup_workflow_resources(app, backend, &workflow_id).await;
+        cleanup_workflow_resources(app, backend, &workflow_id, run.run_id()).await;
 
         notify(
             app,
@@ -482,7 +532,7 @@ async fn finish_run(
                     "count" => failed_nodes
                 ),
                 failed_node_title: None,
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     } else if is_cancelled {
@@ -491,7 +541,7 @@ async fn finish_run(
             NotificationEvent::Workflow(WorkflowStage::Stopped {
                 workflow_id: workflow_id.clone(),
                 workflow_name: workflow.name.clone(),
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     } else {
@@ -501,7 +551,7 @@ async fn finish_run(
                 workflow_id: workflow_id.clone(),
                 workflow_name: workflow.name.clone(),
                 duration_ms: total_duration_ms,
-                origin: Origin::Flow,
+                origin: Origin::Workflow,
             }),
         );
     }
@@ -538,6 +588,24 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
+
+    #[test]
+    fn long_lists_are_trimmed_only_in_what_goes_out_with_an_event() {
+        let long: Vec<usize> = (0..EVENT_LIST_LIMIT + 50).collect();
+        let output = json!({ "differ": long, "count": 250, "short": [1, 2] });
+        let sent = output_for_event(&output);
+        assert_eq!(sent["differ"].as_array().unwrap().len(), EVENT_LIST_LIMIT);
+        assert_eq!(sent["short"].as_array().unwrap().len(), 2);
+        assert_eq!(sent["count"], 250);
+        assert_eq!(
+            output["differ"].as_array().unwrap().len(),
+            EVENT_LIST_LIMIT + 50,
+            "the run keeps the whole output"
+        );
+
+        let small = json!({ "differ": [1] });
+        assert!(matches!(output_for_event(&small), Cow::Borrowed(_)));
+    }
 
     use crate::rclone::backend::types::Backend;
 
@@ -592,7 +660,14 @@ mod tests {
         let execution_app = app.clone();
         let id = workflow.id.clone();
         let execution = crate::utils::spawn(async move {
-            execute_workflow(execution_app, Backend::new_local("Local"), id, false).await
+            execute_workflow(
+                execution_app,
+                Backend::new_local("Local"),
+                id,
+                false,
+                RunTrigger::Manual,
+            )
+            .await
         });
         tokio::time::timeout(std::time::Duration::from_secs(2), async {
             while !is_workflow_active("Local", &workflow.id) {
@@ -629,9 +704,15 @@ mod tests {
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
         manager.lock().unwrap();
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
         assert!(result.success);
         assert_eq!(result.completed_nodes, 1);
         assert!(manager.is_locked());
@@ -651,6 +732,7 @@ mod tests {
             Backend::new_local("Local"),
             snapshot.clone(),
             false,
+            RunTrigger::Manual,
         );
         let second = async {
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
@@ -659,6 +741,7 @@ mod tests {
                 Backend::new_local("Local"),
                 snapshot.clone(),
                 false,
+                RunTrigger::Manual,
             )
             .await;
             // The refused start must leave the first run registered and stoppable.
@@ -687,18 +770,21 @@ mod tests {
             cancel: crate::services::flow::workflow::engine::cancel::CancelToken::new(),
             active_job_ids: Arc::new(RwLock::new(HashSet::new())),
         };
-        let on_nas = register_active_run("Backup", "copied-id", state("NAS-run")).unwrap();
+        let handle = || Arc::new(RunHandle::new("copied-id", "test-run", false));
+        let on_nas =
+            register_active_run("Backup", "copied-id", state("NAS-run"), handle()).unwrap();
         // Copying workflows to another backend keeps their ids; that copy is a different workflow.
-        let on_other = register_active_run("Backup", "copied-id", state("Other-run")).unwrap();
-        assert!(register_active_run("Backup", "copied-id", state("NAS-run")).is_err());
+        let on_other =
+            register_active_run("Backup", "copied-id", state("Other-run"), handle()).unwrap();
+        assert!(register_active_run("Backup", "copied-id", state("NAS-run"), handle()).is_err());
         assert!(is_workflow_active("NAS-run", "copied-id"));
         assert!(is_workflow_active("Other-run", "copied-id"));
         assert!(!is_workflow_active("Third-run", "copied-id"));
 
-        drop(on_nas);
+        on_nas.release();
         assert!(!is_workflow_active("NAS-run", "copied-id"));
         assert!(is_workflow_active("Other-run", "copied-id"));
-        drop(on_other);
+        on_other.release();
     }
 
     #[tokio::test]
@@ -716,12 +802,106 @@ mod tests {
                 Backend::new_local("Local"),
                 snapshot.clone(),
                 false,
+                RunTrigger::Manual,
             )
             .await
             .unwrap();
             assert!(result.success);
             assert!(!is_workflow_active("Local", "rerun-test"));
         }
+    }
+
+    #[tokio::test]
+    async fn a_finished_run_stays_available_as_a_snapshot_of_what_it_did() {
+        use crate::services::automation::runtime::WorkflowSnapshot;
+        use crate::services::flow::workflow::engine::{record::RunEvent, run_snapshots};
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let manager = app.state::<AppSettingsManager>();
+        let definition = timed_workflow("snapshot-test", 0);
+        let node_count = definition.nodes.len();
+        let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), definition).unwrap());
+        let result = execute_workflow_snapshot(
+            app.clone(),
+            Backend::new_local("Local"),
+            snapshot,
+            true,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
+        assert!(result.success);
+
+        let run = run_snapshots("Local")
+            .into_iter()
+            .find(|run| run.workflow_id == "snapshot-test")
+            .expect("the run is kept after it ends");
+        assert_eq!(run.state, WorkflowExecutionState::Completed);
+        assert!(run.dry_run);
+        assert_eq!(run.nodes.len(), node_count);
+        assert!(
+            run.nodes
+                .values()
+                .all(|node| node.state == WorkflowNodeExecutionState::Success)
+        );
+        // Started, a running and a finished event per node, and the end; progress-only
+        // events update the progress and stay out of the history.
+        assert_eq!(run.events.len(), 2 + node_count * 2);
+        assert!(run.progress.is_some());
+        let seqs: Vec<u64> = run
+            .events
+            .iter()
+            .map(|event| match event {
+                RunEvent::Node(e) => e.seq,
+                RunEvent::Execution(e) => e.seq,
+            })
+            .collect();
+        assert!(seqs.windows(2).all(|pair| pair[0] < pair[1]));
+        assert_eq!(seqs.last().copied(), Some(run.seq));
+    }
+
+    #[tokio::test]
+    async fn a_run_goes_on_when_the_caller_stops_waiting_for_it() {
+        use crate::services::automation::runtime::WorkflowSnapshot;
+        use crate::services::flow::workflow::engine::run_snapshots;
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let manager = app.state::<AppSettingsManager>();
+        let snapshot = Arc::new(
+            WorkflowSnapshot::capture(manager.inner(), timed_workflow("detached-test", 1)).unwrap(),
+        );
+
+        // The caller gives up, as a command does when its connection closes.
+        let abandoned = tokio::time::timeout(
+            Duration::from_millis(200),
+            execute_workflow_snapshot(
+                app.clone(),
+                Backend::new_local("Local"),
+                snapshot,
+                false,
+                RunTrigger::Manual,
+            ),
+        )
+        .await;
+        assert!(
+            abandoned.is_err(),
+            "the run is still going when the caller leaves"
+        );
+        assert!(is_workflow_active("Local", "detached-test"));
+
+        let ended = async {
+            while is_workflow_active("Local", "detached-test") {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        };
+        tokio::time::timeout(Duration::from_secs(10), ended)
+            .await
+            .expect("the run finishes by itself");
+        let run = run_snapshots("Local")
+            .into_iter()
+            .find(|run| run.workflow_id == "detached-test")
+            .unwrap();
+        assert_eq!(run.state, WorkflowExecutionState::Completed);
     }
 
     #[tokio::test]
@@ -758,11 +938,13 @@ mod tests {
                     id: "start".into(),
                     node_type: "manual".into(),
                     category: WorkflowNodeCategory::Trigger,
+                    outputs: vec![WorkflowPort::new("out", WorkflowPortType::Out)],
                     ..Default::default()
                 },
                 WorkflowNode {
                     id: "mystery".into(),
                     node_type: "does_not_exist".into(),
+                    inputs: vec![WorkflowPort::new("in", WorkflowPortType::In)],
                     ..Default::default()
                 },
             ],
@@ -778,9 +960,15 @@ mod tests {
         };
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
         assert!(!result.success);
         assert_eq!(result.failed_nodes, 1);
     }
@@ -809,13 +997,15 @@ mod tests {
                     app.clone(),
                     Backend::new_local("Local"),
                     "edited-while-running".into(),
-                    false
+                    false,
+                    RunTrigger::Manual
                 ),
                 execute_workflow(
                     app.clone(),
                     Backend::new_local("Local"),
                     "deleted-while-running".into(),
-                    false
+                    false,
+                    RunTrigger::Manual
                 ),
             )
         };
@@ -824,7 +1014,7 @@ mod tests {
             let mut edited = timed_workflow("edited-while-running", 1);
             edited.name = "Renamed by the user".into();
             save_workflow_record(&manager, &edited).unwrap();
-            crate::services::flow::workflow::commands::delete_workflow_by_id_sync(
+            crate::services::flow::workflow::commands::delete_workflow_by_id(
                 &manager,
                 "deleted-while-running",
             )
@@ -855,6 +1045,8 @@ mod tests {
             id: id.into(),
             node_type: node_type.into(),
             config,
+            inputs: vec![WorkflowPort::new("in", WorkflowPortType::In)],
+            outputs: vec![WorkflowPort::new("out", WorkflowPortType::Out)],
             ..Default::default()
         };
         let workflow = WorkflowDefinition {
@@ -883,9 +1075,15 @@ mod tests {
         };
         let manager = app.state::<AppSettingsManager>();
         let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
-        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
-            .await
-            .unwrap();
+        let result = execute_workflow_snapshot(
+            app,
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        )
+        .await
+        .unwrap();
 
         // The slow node was not cancelled by the stop node, and nothing started afterwards.
         assert!(result.success, "{result:?}");
@@ -905,8 +1103,13 @@ mod tests {
                 .unwrap(),
         );
         let started = Instant::now();
-        let run =
-            execute_workflow_snapshot(app.clone(), Backend::new_local("Local"), snapshot, false);
+        let run = execute_workflow_snapshot(
+            app.clone(),
+            Backend::new_local("Local"),
+            snapshot,
+            false,
+            RunTrigger::Manual,
+        );
         let stopper = async {
             tokio::time::sleep(Duration::from_millis(200)).await;
             stop_workflow(&app, "stop-wait-test").await.unwrap();

@@ -336,8 +336,8 @@ describe('DeleteRemoteModalComponent', () => {
 
   it('should return correct operation icon and pill class', () => {
     expect(component.getOpIcon('sync')).toBeDefined();
-    expect(component.getOpPillClass('sync')).toContain('p-');
+    expect(component.getOpTone('sync')).toBe('primary');
     expect(component.getOpIcon('unknown-op')).toBe('quick-run');
-    expect(component.getOpPillClass('unknown-op')).toBe('p-accent');
+    expect(component.getOpTone('unknown-op')).toBe('accent');
   });
 });

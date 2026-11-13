@@ -29,7 +29,7 @@
 }
 
 .mode-icon {
-  color: var(--mode-primary-color, var(--primary-color));
+  color: var(--tone);
   transition: color 0.3s ease;
   will-change: color;
 }
@@ -57,8 +57,8 @@
   &.active-fill {
     background: linear-gradient(
       90deg,
-      var(--mode-primary-color, var(--primary-color)),
-      var(--mode-light-color, var(--light-green))
+      var(--tone),
+      color-mix(in srgb, var(--tone) 55%, var(--accent-fg-color))
     );
   }
 
@@ -72,8 +72,8 @@
 
 .legend-dot {
   &.active {
-    background: var(--mode-primary-color, var(--primary-color));
-    box-shadow: 0 0 0 2px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+    background: var(--tone);
+    box-shadow: 0 0 0 2px rgba(var(--tone-rgb), 0.2);
   }
 
   &.inactive {

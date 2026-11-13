@@ -17,19 +17,27 @@ var mediaReads = struct {
 }{cancels: make(map[string]context.CancelFunc)}
 
 func init() {
+	// Wrap the stock operations/getfile in place rather than adding a second
+	// read call: callers without a readToken get exactly the upstream behavior.
 	getfile := rc.Calls.Get("operations/getfile")
 	if getfile == nil {
 		panic("operations/getfile is required for media reads")
 	}
-	rc.Add(rc.Call{Path: "operations/readfile", Fn: cancellableMediaRead(getfile.Fn), Title: "Read a bounded file range with cancellation"})
+	patched := *getfile
+	patched.Fn = cancellableMediaRead(getfile.Fn)
+	patched.Help += "\n\nThis build also accepts an optional readToken. A read that has one stops after\n30 seconds, or as soon as operations/cancelread is called with the same token.\n"
+	rc.Add(patched)
 	rc.Add(rc.Call{Path: "operations/cancelread", Fn: cancelMediaRead, Title: "Cancel an in-process file read"})
 }
 
 func cancellableMediaRead(read rc.Func) rc.Func {
 	return func(ctx context.Context, in rc.Params) (rc.Params, error) {
 		token, err := in.GetString("readToken")
+		if rc.IsErrParamNotFound(err) {
+			return read(ctx, in)
+		}
 		if err != nil || token == "" {
-			return nil, errors.New("readToken is required")
+			return nil, errors.New("readToken must be a non-empty string")
 		}
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		mediaReads.Lock()

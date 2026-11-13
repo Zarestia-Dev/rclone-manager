@@ -1,7 +1,7 @@
 //! Discover custom updates and adapt verified artifacts to platform installers.
 use super::download::{cached_payload, fetch, release_asset, store_payload};
 use super::manifest::{
-    CATALOG_NAME, MAX_MANIFEST_SIZE, Manifest, PUBLIC_KEY, select_manifest, target,
+    ArtifactKind, CATALOG_NAME, MAX_MANIFEST_SIZE, Manifest, PUBLIC_KEY, select_manifest, target,
 };
 use super::policy::{InstallationKind, UpdateMethod, UpdatePolicy};
 use crate::context::AppHandle;
@@ -9,11 +9,11 @@ use crate::utils::github_client::Release;
 use crate::utils::types::updater::{AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate};
 use std::sync::Arc;
 
-fn kind(policy: &UpdatePolicy) -> &'static str {
+fn kind(policy: &UpdatePolicy) -> ArtifactKind {
     match policy.installation {
-        InstallationKind::Portable => "portable",
-        InstallationKind::Android => "android",
-        _ => "server",
+        InstallationKind::Portable => ArtifactKind::Portable,
+        InstallationKind::Android => ArtifactKind::Android,
+        _ => ArtifactKind::Server,
     }
 }
 
@@ -28,25 +28,24 @@ pub(crate) async fn check(
         "Looking for signed update: release={}, kind={kind}, target={target}",
         release.tag_name
     );
-    let selected = if release.assets.iter().any(|a| a.name == CATALOG_NAME) {
-        let bytes = fetch(
-            release_asset(release, CATALOG_NAME)?,
-            MAX_MANIFEST_SIZE,
-            Box::new(|_, _| {}),
-        )
-        .await?;
-        log::debug!("Read {} bytes from {}", bytes.len(), CATALOG_NAME);
-        select_manifest(
-            &bytes,
-            super::clean_app_version(&release.tag_name),
-            kind,
-            &target,
-            PUBLIC_KEY,
-        )?
-    } else {
-        // Retain support for older releases; never fall back after an invalid catalog.
-        legacy_manifest(release, kind, &target).await?
-    };
+    if !release.assets.iter().any(|a| a.name == CATALOG_NAME) {
+        log::debug!("Release {} has no {CATALOG_NAME}", release.tag_name);
+        return Ok(None);
+    }
+    let catalog = fetch(
+        release_asset(release, CATALOG_NAME)?,
+        MAX_MANIFEST_SIZE,
+        Box::new(|_, _| {}),
+    )
+    .await?;
+    log::debug!("Read {} bytes from {}", catalog.len(), CATALOG_NAME);
+    let selected = select_manifest(
+        &catalog,
+        super::clean_app_version(&release.tag_name),
+        kind,
+        &target,
+        PUBLIC_KEY,
+    )?;
     let Some((manifest, bytes, signature)) = selected else {
         log::debug!(
             "No signed manifest for {kind}-{target} in {}",
@@ -84,35 +83,6 @@ pub(crate) async fn check(
     })))
 }
 
-async fn legacy_manifest(
-    release: &Release,
-    kind: &str,
-    target: &str,
-) -> Result<Option<(Manifest, Vec<u8>, String)>, String> {
-    let manifest_name = format!("{kind}-{target}.json");
-    // Retain legacy signed metadata without announcing releases lacking this target.
-    // Server packages were only ever published in the catalog.
-    if kind == "server" || !release.assets.iter().any(|a| a.name == manifest_name) {
-        return Ok(None);
-    }
-    let bytes = fetch(
-        release_asset(release, &manifest_name)?,
-        MAX_MANIFEST_SIZE,
-        Box::new(|_, _| {}),
-    )
-    .await?;
-    let signature = fetch(
-        release_asset(release, &format!("{manifest_name}.sig"))?,
-        MAX_MANIFEST_SIZE,
-        Box::new(|_, _| {}),
-    )
-    .await?;
-    let signature = String::from_utf8(signature).map_err(|e| e.to_string())?;
-    let manifest = Manifest::from_signed(&bytes, &signature, PUBLIC_KEY)?;
-    manifest.validate(super::clean_app_version(&release.tag_name), kind, target)?;
-    Ok(Some((manifest, bytes, signature)))
-}
-
 struct SignedUpdate {
     manifest: Manifest,
     manifest_bytes: Vec<u8>,
@@ -123,19 +93,29 @@ struct SignedUpdate {
     method: UpdateMethod,
 }
 
+impl SignedUpdate {
+    /// Android's installer only opens `.apk` files, so the verified cache doubles
+    /// as the installer input instead of a second copy.
+    fn cache_path(&self) -> std::path::PathBuf {
+        let extension = if self.manifest.kind == ArtifactKind::Android {
+            "apk"
+        } else {
+            "payload"
+        };
+        self.cache_directory.join(format!(
+            "{}-{}.{extension}",
+            self.manifest.kind, self.manifest.target
+        ))
+    }
+}
+
 #[async_trait::async_trait]
 impl AppUpdate for SignedUpdate {
     fn version(&self) -> &str {
         &self.manifest.version
     }
-    fn download_url(&self) -> &url::Url {
-        &self.download_url
-    }
     async fn download(&self, progress: DownloadProgress) -> Result<Vec<u8>, String> {
-        let cache_path = self.cache_directory.join(format!(
-            "{}-{}.payload",
-            self.manifest.kind, self.manifest.target
-        ));
+        let cache_path = self.cache_path();
         if let Some(bytes) = cached_payload(&self.manifest, &cache_path, PUBLIC_KEY).await {
             log::debug!(
                 "Reusing verified update cache: {} ({} bytes)",
@@ -177,12 +157,14 @@ impl AppUpdate for SignedUpdate {
         );
         if self.method == UpdateMethod::Android {
             #[cfg(target_os = "android")]
-            return super::android::install(&self.cache_directory, payload);
+            return super::android::install(&self.cache_path(), payload);
             #[cfg(not(target_os = "android"))]
-            return Err("Android installer is unavailable".into());
+            return Err(crate::localized_error!(
+                "backendErrors.updater.unsupportedInstallation"
+            ));
         }
         super::binary::prepare(
-            &self.manifest.kind,
+            self.manifest.kind,
             &self.manifest_bytes,
             &self.manifest_signature,
             payload,
@@ -200,24 +182,15 @@ mod tests {
         let app = AppHandle::default();
         let release = Release {
             tag_name: "v99.0.0".into(),
-            prerelease: false,
-            draft: false,
-            assets: vec![],
-            body: None,
-            published_at: None,
-            html_url: String::new(),
+            ..Default::default()
         };
         for installation in [
             InstallationKind::Portable,
             InstallationKind::Server,
             InstallationKind::Android,
         ] {
-            let policy = UpdatePolicy {
-                installation,
-                method: UpdateMethod::Binary,
-                can_install: true,
-                reason: None,
-            };
+            let policy =
+                super::super::policy::test_policy(installation, UpdateMethod::Binary, None);
             assert!(check(&app, &release, &policy).await.unwrap().is_none());
         }
     }

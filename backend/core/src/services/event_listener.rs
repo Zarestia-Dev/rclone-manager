@@ -25,6 +25,7 @@ use crate::{
 
 #[cfg(any(
     feature = "tray",
+    target_os = "android",
     all(
         feature = "desktop",
         not(any(target_os = "android", target_os = "ios"))
@@ -119,88 +120,143 @@ fn handle_remote_presence_changed(app: &AppHandle, payload: &Value) {
 fn handle_settings_changed(app: &AppHandle, payload: &Value) {
     debug!("Settings saved. Payload: {:?}", payload);
 
-    match serde_json::from_value::<SettingsChangeEvent>(payload.clone()) {
-        Ok(change) => match (change.category.as_str(), change.key.as_str()) {
-            #[cfg(feature = "notifications")]
-            ("general", "notifications") => {
-                if let Some(enabled) = change.value.as_bool() {
-                    handle_notifications_change(app, enabled);
-                }
+    let change = match serde_json::from_value::<SettingsChangeEvent>(payload.clone()) {
+        Ok(change) => change,
+        Err(e) => {
+            error!("Failed to parse settings change: {e}");
+            return;
+        }
+    };
+
+    if change.category == "*" {
+        apply_reset_changes(app, &change.value);
+    } else if let Some(reason) =
+        apply_setting_change(app, &change.category, &change.key, &change.value)
+    {
+        crate::rclone::engine::lifecycle::restart_for_config_change(app, reason);
+    }
+}
+
+/// Apply the settings a reset changed, sent as `{"category.key": new value}`.
+///
+/// Other `"*"` events (vault unlock, system refresh) carry `null` and apply nothing here.
+/// The engine restarts at most once, and when it does the bandwidth limit is left to the
+/// restarted engine, which applies the saved limit on start.
+fn apply_reset_changes(app: &AppHandle, changes: &Value) {
+    let Some(changes) = changes.as_object() else {
+        return;
+    };
+
+    let mut restart = false;
+    let mut bandwidth_limit = None;
+    for (full_key, value) in changes {
+        match full_key.split_once('.') {
+            Some(("core", "bandwidth_limit")) => bandwidth_limit = Some(value),
+            Some((category, key)) => {
+                restart |= apply_setting_change(app, category, key, value).is_some();
             }
-            #[cfg(any(feature = "autostart", all(target_os = "linux", feature = "flatpak")))]
-            ("general", "start_on_startup") => {
-                if let Some(startup) = change.value.as_bool() {
-                    app.host().set_autostart(startup);
-                }
+            None => debug!("Ignoring reset change without a category: {full_key}"),
+        }
+    }
+
+    if restart {
+        crate::rclone::engine::lifecycle::restart_for_config_change(app, "settings_reset");
+    } else if let Some(value) = bandwidth_limit {
+        handle_bandwidth_limit_change(app, value);
+    }
+}
+
+/// Apply one saved setting. Returns the restart reason when the change only takes
+/// effect once the engine restarts; the caller decides when to restart it.
+fn apply_setting_change(
+    app: &AppHandle,
+    category: &str,
+    key: &str,
+    value: &Value,
+) -> Option<&'static str> {
+    match (category, key) {
+        #[cfg(feature = "notifications")]
+        ("general", "notifications") => {
+            if let Some(enabled) = value.as_bool() {
+                handle_notifications_change(app, enabled);
             }
-            #[cfg(feature = "tray")]
-            ("general", "tray_enabled") => {
-                if let Some(enabled) = change.value.as_bool() {
-                    app.host().set_tray_visible(enabled);
-                }
+        }
+        #[cfg(any(feature = "autostart", all(target_os = "linux", feature = "flatpak")))]
+        ("general", "start_on_startup") => {
+            if let Some(startup) = value.as_bool() {
+                app.host().set_autostart(startup);
             }
-            #[cfg(feature = "tray")]
-            ("general", "tray_icon_theme") => {
+        }
+        #[cfg(target_os = "android")]
+        ("general", "keep_alive" | "start_on_boot") => {
+            crate::services::lifecycle::keep_alive::request_sync(app);
+        }
+        #[cfg(feature = "tray")]
+        ("general", "tray_enabled") => {
+            if let Some(enabled) = value.as_bool() {
+                app.host().set_tray_visible(enabled);
+            }
+        }
+        #[cfg(feature = "tray")]
+        ("general", "tray_icon_theme") => {
+            app.host().update_tray();
+        }
+        ("general", "restrict") => {
+            if let Some(restrict) = value.as_bool() {
+                handle_restrict_mode_change(restrict);
+            }
+        }
+        ("general", "language") => {
+            if let Some(lang) = value.as_str() {
+                crate::utils::i18n::apply_language_change(lang);
+            }
+        }
+        #[cfg(all(
+            feature = "desktop",
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        ("general", "prevent_sleep") => {
+            let app_clone = app.clone();
+            spawn(async move {
+                crate::services::power::update_power_inhibition(&app_clone).await;
+            });
+        }
+        ("core", "bandwidth_limit") => {
+            handle_bandwidth_limit_change(app, value);
+        }
+        ("core", "rclone_binary") => {
+            if let Some(path) = value.as_str() {
+                info!("Rclone binary changed to: {path}");
+                return Some("rclone_binary");
+            }
+        }
+        ("core", "rclone_additional_flags") => {
+            if let Some(flags) = value.as_array() {
+                info!("Rclone additional flags changed to: {flags:?}");
+                return Some("rclone_additional_flags");
+            }
+        }
+        #[cfg(feature = "tray")]
+        ("core", "max_tray_items") => {
+            if let Some(max) = value.as_u64() {
+                debug!("Max tray items changed to: {max}");
                 app.host().update_tray();
             }
-            ("general", "restrict") => {
-                if let Some(restrict) = change.value.as_bool() {
-                    handle_restrict_mode_change(restrict);
-                }
+        }
+        ("developer", "log_level") => {
+            if let Some(level) = value.as_str() {
+                debug!("Log level changed to: {level}");
+                update_log_level(level);
             }
-            ("general", "language") => {
-                if let Some(lang) = change.value.as_str() {
-                    crate::utils::i18n::apply_language_change(lang);
-                }
+        }
+        ("developer", "destroy_window_on_close") => {
+            if let Some(destroy) = value.as_bool() {
+                debug!("Destroy window on close changed to: {destroy}");
             }
-            #[cfg(all(
-                feature = "desktop",
-                not(any(target_os = "android", target_os = "ios"))
-            ))]
-            ("general", "prevent_sleep") => {
-                let app_clone = app.clone();
-                spawn(async move {
-                    crate::services::power::update_power_inhibition(&app_clone).await;
-                });
-            }
-            ("core", "bandwidth_limit") => {
-                handle_bandwidth_limit_change(app, &change.value);
-            }
-            ("core", "rclone_binary") => {
-                if let Some(path) = change.value.as_str() {
-                    handle_rclone_binary_change(app, path);
-                }
-            }
-            ("core", "rclone_additional_flags") => {
-                if let Some(flags) = change.value.as_array() {
-                    handle_rclone_flags_change(app, flags);
-                }
-            }
-            #[cfg(feature = "tray")]
-            ("core", "max_tray_items") => {
-                if let Some(max) = change.value.as_u64() {
-                    debug!("Max tray items changed to: {max}");
-                    app.host().update_tray();
-                }
-            }
-            ("developer", "log_level") => {
-                if let Some(level) = change.value.as_str() {
-                    debug!("Log level changed to: {level}");
-                    update_log_level(level);
-                }
-            }
-            ("developer", "destroy_window_on_close") => {
-                if let Some(destroy) = change.value.as_bool() {
-                    debug!("Destroy window on close changed to: {destroy}");
-                }
-            }
-            _ => debug!(
-                "Unhandled setting change: {}.{}",
-                change.category, change.key
-            ),
-        },
-        Err(e) => error!("Failed to parse settings change: {e}"),
+        }
+        _ => debug!("Unhandled setting change: {category}.{key}"),
     }
+    None
 }
 
 #[cfg(feature = "notifications")]
@@ -285,18 +341,6 @@ pub(crate) fn parse_setting_bandwidth_limit(value: &Value) -> String {
         .unwrap_or_else(|| "off".to_string())
 }
 
-fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
-    debug!("Rclone binary changed to: {path}");
-    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_binary");
-    info!("Rclone binary updated to: {path}");
-}
-
-fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
-    debug!("Rclone additional flags changed to: {flags:?}");
-    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_additional_flags");
-    info!("Engine restarting due to additional flags change");
-}
-
 fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
     let app = app.clone();
     let payload = payload.clone();
@@ -359,7 +403,15 @@ fn dispatch_bridge_event(app: &AppHandle, event: &BridgeEvent) {
     }
 
     #[cfg(target_os = "android")]
-    if event.event == crate::utils::types::events::MOUNT_STATE_CHANGED {
+    if matches!(
+        event.event.as_str(),
+        JOB_CACHE_CHANGED | MOUNT_STATE_CHANGED | SERVE_STATE_CHANGED
+    ) {
+        crate::services::lifecycle::keep_alive::request_sync(app);
+    }
+
+    #[cfg(target_os = "android")]
+    if event.event == MOUNT_STATE_CHANGED {
         let app = app.clone();
         spawn(async move {
             let mounts = app
@@ -437,6 +489,41 @@ mod tests {
         assert_eq!(parse_setting_bandwidth_limit(&json!(null)), "off");
         assert_eq!(parse_setting_bandwidth_limit(&json!("10M")), "10M");
         assert_eq!(parse_setting_bandwidth_limit(&json!(5000)), "5000");
+    }
+
+    #[test]
+    fn engine_settings_report_a_restart_instead_of_restarting() {
+        struct NoHost;
+        #[async_trait::async_trait]
+        impl crate::context::Host for NoHost {
+            fn resolve_paths(
+                &self,
+                _app: &AppHandle,
+            ) -> Result<crate::services::paths::AppPaths, String> {
+                Err("not used by settings changes".into())
+            }
+            fn restart(&self, _app: &AppHandle) -> Result<(), String> {
+                Err("not used by settings changes".into())
+            }
+        }
+        let app = AppHandle::new(std::sync::Arc::new(NoHost), Default::default());
+        assert_eq!(
+            apply_setting_change(&app, "core", "rclone_binary", &json!("/opt/rclone & 旅行")),
+            Some("rclone_binary")
+        );
+        assert_eq!(
+            apply_setting_change(&app, "core", "rclone_additional_flags", &json!([])),
+            Some("rclone_additional_flags")
+        );
+        for (category, key, value) in [
+            ("core", "rclone_binary", json!(null)),
+            ("core", "rclone_binary", json!(5)),
+            ("core", "rclone_additional_flags", json!("--fast-list")),
+            ("unrelated", "rclone_binary", json!("/opt/rclone")),
+            ("developer", "destroy_window_on_close", json!(true)),
+        ] {
+            assert_eq!(apply_setting_change(&app, category, key, &value), None);
+        }
     }
 
     #[cfg(feature = "tray")]
@@ -533,6 +620,39 @@ mod tests {
             }
             assert_eq!(*host.visibility.lock(), vec![true, false]);
             assert_eq!(host.updates.load(Ordering::Relaxed), 3);
+        }
+
+        #[test]
+        fn a_reset_applies_each_changed_setting_once() {
+            let host = Arc::new(TrayHost::default());
+            let app = AppHandle::new(host.clone(), ProductInfo::default());
+            let reset = |value: Value| {
+                dispatch_bridge_event(
+                    &app,
+                    &BridgeEvent {
+                        event: SYSTEM_SETTINGS_CHANGED.into(),
+                        payload: json!({"category": "*", "key": "*", "value": value}),
+                    },
+                );
+            };
+
+            // Vault unlock and system refresh send no changes.
+            reset(Value::Null);
+            reset(json!({}));
+            reset(json!([{"general.tray_enabled": true}]));
+            assert!(host.visibility.lock().is_empty());
+            assert_eq!(host.updates.load(Ordering::Relaxed), 0);
+
+            reset(json!({
+                "general.tray_enabled": true,
+                "general.tray_icon_theme": "auto",
+                "core.max_tray_items": 5,
+                "tray_enabled": false,
+                "unrelated.tray_enabled": false,
+                "": true,
+            }));
+            assert_eq!(*host.visibility.lock(), vec![true]);
+            assert_eq!(host.updates.load(Ordering::Relaxed), 2);
         }
 
         #[test]

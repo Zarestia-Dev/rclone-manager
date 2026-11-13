@@ -17,8 +17,11 @@ import {
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { relativeTimeLabel } from '../../utils/relative-time.util';
+import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +34,8 @@ import { relativeTimeLabel } from '../../utils/relative-time.util';
     FormatFileSizePipe,
     FormatTimePipe,
     TranslatePipe,
+    StarterPillComponent,
+    PillDirective,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   templateUrl: './jobs-panel.component.html',
@@ -43,6 +48,7 @@ export class JobsPanelComponent {
   private readonly modalService = inject(ModalService);
   private readonly jobService = inject(JobManagementService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
   private readonly clockInterval = computed(() =>
     this.config().jobs.some(job => job.status === JOB_STATUS.Running) ? 1000 : 60000
@@ -65,12 +71,14 @@ export class JobsPanelComponent {
         job.start_time && (job.status === JOB_STATUS.Running || job.end_time)
           ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
           : 0;
-      const errorText = job.error || job.stats?.lastError || '';
+      const errorText = this.backendTranslation.translateBackendMessage(
+        job.error || job.stats?.lastError
+      );
 
       return {
         ...job,
         statusLower,
-        badgeClass: JOB_STATUS_BADGE_MAP[statusLower] || 'p-accent',
+        tone: JOB_STATUS_BADGE_MAP[statusLower] || 'accent',
         relativeTime,
         durationSeconds,
         progress: hasProgress

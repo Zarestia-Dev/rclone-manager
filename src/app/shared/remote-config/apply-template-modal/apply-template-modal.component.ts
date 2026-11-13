@@ -17,6 +17,7 @@ import {
   TemplateDiffResult,
 } from '../template-diff.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 export interface ApplyTemplateModalData {
   template: UserPresetTemplate;
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
@@ -41,6 +42,7 @@ export interface ApplyTemplateModalResult {
     MatExpansionModule,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './apply-template-modal.component.html',
   styleUrls: ['./apply-template-modal.component.scss', '../../../styles/_shared-modal.scss'],

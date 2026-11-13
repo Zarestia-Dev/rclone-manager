@@ -121,7 +121,7 @@
               translatedMessage
             }}</span>
             @if (vm?.output?.failed) {
-              <span class="app-pill p-warn">{{ 'automation.status.failed' | translate }}</span>
+              <span appPill tone="warn">{{ 'automation.status.failed' | translate }}</span>
             }
 
             <div class="actions-hover">

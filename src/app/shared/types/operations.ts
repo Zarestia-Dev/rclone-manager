@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import { OPERATION_REGISTRY } from './operation-registry';
 
 // ── Types inferred directly from the registry! ──────────────────────────────
@@ -39,6 +40,9 @@ export interface ActionState {
   profileName?: string;
   operationType?: PrimaryActionType;
 }
+
+/** Shared "nothing in flight" value, so computeds reading it keep a stable reference. */
+export const NO_ACTIONS: readonly ActionState[] = Object.freeze([]);
 
 /**
  * Checks if a given action state array has an in-flight operation matching `opType` and optional `profileName`.
@@ -120,7 +124,7 @@ export interface SyncOperationConfig {
   /** i18n key for a descriptive tooltip. */
   description?: string;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
 }
 
 // ── View model ──────────────────────────────────────────────────────────────
@@ -133,10 +137,12 @@ export interface SyncOperationViewModel extends SyncOperationConfig {
 export interface QuickActionButton {
   id: string;
   icon: string;
-  tooltip: string;
+  /** i18n key of the tooltip; `tooltipProfile` is appended in brackets when set. */
+  tooltipKey: string;
+  tooltipProfile?: string;
   isLoading?: boolean;
   isDisabled?: boolean;
-  cssClass?: string;
+  tone?: PillTone;
 }
 
 export const OPERATION_ICONS = Object.freeze(
@@ -181,42 +187,10 @@ export const CORE_SYNC_OPS = [
   'copy',
   'move',
 ] as const satisfies readonly PrimaryActionType[];
-export const WATCH_SUPPORTED_OPS = [
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-  'check',
-] as const satisfies readonly PrimaryActionType[];
-export const CORE_COMMAND_OPS = [
-  'archivecreate',
-  'cryptcheck',
-] as const satisfies readonly PrimaryActionType[];
-export const MULTI_SOURCE_OPS = [
-  'sync',
-  'copy',
-  'move',
-  'delete',
-  'copyurl',
-  'check',
-  'cryptcheck',
-] as const satisfies readonly PrimaryActionType[];
-export const FILE_SOURCE_OPS = [
-  'copy',
-  'move',
-  'delete',
-  'archivecreate',
-] as const satisfies readonly PrimaryActionType[];
-export const BACKEND_PROFILE_SUPPORTED_OPS = [
-  'sync',
-  'copy',
-  'move',
-  'check',
-  'delete',
-  'copyurl',
-  'archivecreate',
-] as const satisfies readonly PrimaryActionType[];
-export const NON_JOB_OPS = ['mount', 'serve'] as const satisfies readonly PrimaryActionType[];
+/** Operations that are not rclone jobs: mount and serve. */
+export const NON_JOB_OPS = OPERATION_REGISTRY.filter(op => !op.isSyncType).map(
+  op => op.key
+) as PrimaryActionType[];
 
 export interface RenameItem {
   remote: string;
@@ -242,4 +216,5 @@ export const TRANSFER_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobAction
   'copyurl',
   'archivecreate',
   'archiveextract',
+  'index',
 ]);

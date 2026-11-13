@@ -15,4 +15,10 @@
     <string name="shortcut_file_manager_long">Open File Manager</string>
     <string name="shortcut_open_remote">Open %1$s</string>
     <string name="saf_folder_load_failed">Could not load this folder. Check the connection and try again.</string>
+    <string name="action_quit">Quit</string>
+    <string name="action_stop_jobs">Stop jobs</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="quit_confirm_title">Quit RClone Manager?</string>
+    <string name="quit_confirm_message">Running transfers, mounts and servers will be stopped.</string>
+    <string name="alerts_channel_name">Notifications</string>
 </resources>

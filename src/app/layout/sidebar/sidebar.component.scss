@@ -62,11 +62,6 @@
       color: var(--window-fg-color);
       font-weight: 700;
     }
-
-    .count-badge {
-      background: rgba(var(--accent-color-rgb), 0.15);
-      color: var(--accent-color);
-    }
   }
 
   .section-icon {
@@ -273,13 +268,10 @@
         transition: var(--transition-fast);
       }
 
-      .count-badge {
+      .app-pill {
         position: absolute;
         top: calc(-1 * var(--space-xs));
         right: calc(-1 * var(--space-xs));
-        margin-left: 0;
-        color: var(--accent-fg-color);
-        background: var(--primary-color);
       }
 
       &:hover {
@@ -288,46 +280,20 @@
       }
 
       &.active {
-        background: rgba(var(--status-color-rgb), 0.12);
-        border-color: rgba(var(--status-color-rgb), 0.4);
-        box-shadow: 0 0 0 1px rgba(var(--status-color-rgb), 0.15);
+        background: rgba(var(--tone-rgb), 0.12);
+        border-color: rgba(var(--tone-rgb), 0.4);
+        box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.15);
 
         mat-icon {
-          color: var(--status-color);
+          color: var(--tone);
         }
-        .count-badge {
+        .app-pill {
           animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
-          background: var(--status-color);
         }
 
         &:hover {
-          background: rgba(var(--status-color-rgb), 0.18);
-          box-shadow: 0 0 0 2px rgba(var(--status-color-rgb), 0.25);
-        }
-      }
-
-      &.serve,
-      &.mount {
-        --status-color: var(--accent-color);
-        --status-color-rgb: var(--accent-color-rgb);
-      }
-
-      &.sync-operations {
-        &.sync {
-          --status-color: var(--primary-color);
-          --status-color-rgb: var(--primary-color-rgb);
-        }
-        &.copy {
-          --status-color: var(--yellow);
-          --status-color-rgb: var(--yellow-rgb);
-        }
-        &.move {
-          --status-color: var(--orange);
-          --status-color-rgb: var(--orange-rgb);
-        }
-        &.bisync {
-          --status-color: var(--purple);
-          --status-color-rgb: var(--purple-rgb);
+          background: rgba(var(--tone-rgb), 0.18);
+          box-shadow: 0 0 0 2px rgba(var(--tone-rgb), 0.25);
         }
       }
     }

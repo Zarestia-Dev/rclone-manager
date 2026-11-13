@@ -11,6 +11,18 @@ use crate::{
     utils::types::{events::APP_EVENT, state::RcloneState},
 };
 
+/// Longest shutdown waits for in-flight initialization before tearing services down anyway.
+const INITIALIZATION_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Engine shutdown must outlast the graceful-exit wait, otherwise its forced kill is cut
+/// off before it can run.
+#[cfg(not(feature = "librclone"))]
+const ENGINE_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
+    crate::rclone::binaries::process_common::GRACEFUL_SHUTDOWN_TIMEOUT.as_secs() + 2,
+);
+#[cfg(feature = "librclone")]
+const ENGINE_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
 #[derive(Default)]
 struct ShutdownState(tokio::sync::OnceCell<()>);
 
@@ -32,8 +44,16 @@ async fn shutdown(app_handle: AppHandle) {
 
     let runtime = app_handle.state::<RcloneState>();
     runtime.set_shutting_down();
-    // Finish any in-flight initialization before tearing its services down.
-    let _startup = runtime.initialization_lock.lock().await;
+    // Let in-flight initialization finish before tearing its services down. A slow
+    // auto-start must not keep the app from exiting.
+    let _startup =
+        match tokio::time::timeout(INITIALIZATION_WAIT, runtime.initialization_lock.lock()).await {
+            Ok(guard) => Some(guard),
+            Err(_) => {
+                error!("Initialization is still running; shutting down without waiting for it");
+                None
+            }
+        };
 
     bridge::emit(
         APP_EVENT,
@@ -106,7 +126,7 @@ async fn shutdown(app_handle: AppHandle) {
 
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
-    let engine_result = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
+    let engine_result = tokio::time::timeout(ENGINE_SHUTDOWN_TIMEOUT, async move {
         let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
         engine_state.lock().await.shutdown(&app_clone).await;
         Ok::<(), String>(())
@@ -119,9 +139,14 @@ async fn shutdown(app_handle: AppHandle) {
         #[cfg(not(feature = "librclone"))]
         Err(_) => {
             error!("Engine shutdown timed out — force-killing rclone processes");
-            let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
-            if let Err(e) =
-                crate::utils::process::process_manager::kill_all_rclone_processes(force_kill_port)
+            // The engine's child always belongs to the Local backend, whichever one is active.
+            let local = app_handle
+                .state::<BackendManager>()
+                .get(crate::utils::constants::LOCAL_BACKEND_NAME)
+                .await;
+            if let Some(local) = local
+                && let Err(e) =
+                    crate::utils::process::process_manager::kill_all_rclone_processes(local.port)
             {
                 error!("Force kill failed: {e}");
             }
@@ -131,12 +156,8 @@ async fn shutdown(app_handle: AppHandle) {
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.
-    if let Some(env_manager) =
-        app_handle.try_state::<crate::services::security::SafeEnvironmentManager>()
-    {
-        env_manager.clear_config_password();
-        debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
-    }
+    crate::services::security::rclone_env::clear_config_password();
+    debug!("Cleared RCLONE_CONFIG_PASS from the environment");
 
     // Clear temporary file preview/viewer cache files
     app_handle.host().cleanup();
@@ -194,6 +215,15 @@ pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         Ok(())
     } else {
         Err(errors.join(", "))
+    }
+}
+
+/// Stops every active job for a user request (tray or notification action) and says so.
+pub async fn stop_all_active_jobs_with_notice(app: AppHandle) {
+    use crate::utils::app::notification::{NotificationEvent, SystemStage, notify};
+    match stop_all_active_jobs(app.clone()).await {
+        Ok(()) => notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped)),
+        Err(e) => error!("Failed to stop all active jobs: {e}"),
     }
 }
 

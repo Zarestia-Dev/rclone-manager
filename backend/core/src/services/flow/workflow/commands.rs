@@ -6,29 +6,30 @@ use crate::context::AppHandle;
 use chrono::Utc;
 use log::info;
 
-use super::types::{NodeKind, WorkflowDefinition, WorkflowExecutionResult, WorkflowInput};
+use super::types::{
+    NodeKind, WorkflowDefinition, WorkflowExecutionResult, WorkflowInput, WorkflowValidationResult,
+};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::SUB_WORKFLOWS;
 
 /// Lists all saved workflows from storage.
 pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, String> {
     let manager = app.state::<AppSettingsManager>();
-    get_all_workflows_sync(&manager)
+    get_all_workflows(&manager)
 }
 
-/// Ids of the workflows running on the active backend. Run state is only announced
-/// by events, so a view opened after a run began (an auto-start, a schedule or a
-/// file watcher) asks for it here.
-pub async fn get_active_workflows(app: AppHandle) -> Result<Vec<String>, String> {
+/// The latest run of every workflow on the active backend: the ones under way and the
+/// last that ended. Run state lives in the backend and is only announced by events, so
+/// a view opened after a run began (an auto-start, a schedule, a file watcher, or a
+/// reload of the interface) starts from these and then follows the events.
+pub async fn get_workflow_runs(
+    app: AppHandle,
+) -> Result<Vec<super::engine::record::WorkflowRunSnapshot>, String> {
     let backend = app
         .state::<crate::rclone::backend::BackendManager>()
         .get_active_name()
         .await;
-    let mut ids: Vec<_> = super::engine::get_active_workflow_ids(&backend)
-        .into_iter()
-        .collect();
-    ids.sort();
-    Ok(ids)
+    Ok(super::engine::run_snapshots(&backend))
 }
 
 /// Creates a new workflow record.
@@ -59,10 +60,7 @@ pub async fn create_workflow(
     };
 
     save_workflow_record(&manager, &record)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&record.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &record.id).await?;
     Ok(record)
 }
 
@@ -75,12 +73,13 @@ pub async fn update_workflow(
     let id = workflow
         .id
         .as_deref()
-        .ok_or_else(|| "Missing workflow ID for update".to_string())?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.workflow.missingWorkflowId"))?;
 
     info!("Updating workflow: {id}");
 
-    let mut existing =
-        get_workflow_by_id(&manager, id)?.ok_or_else(|| format!("Workflow '{id}' not found"))?;
+    let mut existing = get_workflow_by_id(&manager, id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.workflow.workflowNotFound", "id" => id),
+    )?;
 
     existing.name = workflow.name;
     existing.description = workflow.description;
@@ -91,10 +90,7 @@ pub async fn update_workflow(
     existing.updated_at = Some(Utc::now().to_rfc3339());
 
     save_workflow_record(&manager, &existing)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&existing.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &existing.id).await?;
     Ok(existing)
 }
 
@@ -102,11 +98,9 @@ pub async fn update_workflow(
 pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), String> {
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
-    delete_workflow_by_id_sync(&manager, &workflow_id)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&workflow_id);
-    }
-    sync_workflow_automations(&app).await?;
+    delete_workflow_by_id(&manager, &workflow_id)?;
+    super::engine::forget_workflow_runs(&workflow_id);
+    refresh_after_change(&app, &workflow_id).await?;
     Ok(())
 }
 
@@ -116,13 +110,14 @@ pub async fn duplicate_workflow(
     workflow_id: String,
 ) -> Result<WorkflowDefinition, String> {
     let manager = app.state::<AppSettingsManager>();
-    let existing = get_workflow_by_id(&manager, &workflow_id)?
-        .ok_or_else(|| format!("Workflow '{workflow_id}' not found"))?;
+    let existing = get_workflow_by_id(&manager, &workflow_id)?.ok_or_else(
+        || crate::localized_error!("backendErrors.workflow.workflowNotFound", "id" => workflow_id),
+    )?;
 
-    let all = get_all_workflows_sync(&manager)?;
+    let all = get_all_workflows(&manager)?;
     let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
-    let base_name = format!("{} (Copy)", existing.name);
+    let base_name = crate::t!("backendErrors.workflow.copyName", "name" => existing.name);
     let new_name = find_unique_name(&existing_names, &base_name);
 
     let now = Utc::now().to_rfc3339();
@@ -142,10 +137,7 @@ pub async fn duplicate_workflow(
     };
 
     save_workflow_record(&manager, &duplicated)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&duplicated.id);
-    }
-    sync_workflow_automations(&app).await?;
+    refresh_after_change(&app, &duplicated.id).await?;
     Ok(duplicated)
 }
 
@@ -159,7 +151,34 @@ pub async fn execute_workflow(
         .state::<crate::rclone::backend::BackendManager>()
         .get_active()
         .await;
-    super::engine::execute_workflow(app, backend, workflow_id, dry_run.unwrap_or(false)).await
+    super::engine::execute_workflow(
+        app,
+        backend,
+        workflow_id,
+        dry_run.unwrap_or(false),
+        super::engine::RunTrigger::Manual,
+    )
+    .await
+}
+
+/// Checks a workflow the way a run would, without storing it, so the canvas can show what
+/// would stop a run (errors) or probably is not meant (warnings) before one is started.
+pub async fn validate_workflow(
+    workflow: WorkflowInput,
+) -> Result<WorkflowValidationResult, String> {
+    let definition = WorkflowDefinition {
+        id: workflow.id.unwrap_or_default(),
+        name: workflow.name,
+        description: workflow.description,
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        viewport: workflow.viewport,
+        show_on_tray: workflow.show_on_tray,
+        created_at: None,
+        updated_at: None,
+        last_executed_at: None,
+    };
+    Ok(super::dag::validate_workflow(&definition))
 }
 
 /// Stops an actively running workflow.
@@ -167,25 +186,15 @@ pub async fn stop_workflow(app: AppHandle, workflow_id: String) -> Result<(), St
     super::engine::stop_workflow(&app, &workflow_id).await
 }
 
-/// Executes an arbitrary Rclone Remote Control (RC) command for testing and schema discovery.
-pub async fn test_rc_command(
-    app: AppHandle,
-    command: String,
-    params: Option<serde_json::Value>,
-) -> Result<serde_json::Value, String> {
-    use crate::services::flow::workflow::engine::parse_rc_params;
-    use crate::utils::types::state::RcloneState;
-
-    let state = app.state::<RcloneState>();
-    let parsed_params = parse_rc_params(params.as_ref())?;
-    state
-        .transport
-        .rpc(&command, Some(&parsed_params))
-        .await
-        .map_err(|e| format!("RC command '{command}' failed: {e}"))
-}
-
 // ── Persistence Helpers ──────────────────────────────────────────────────
+
+/// Drops what is cached for a changed workflow and re-applies the schedules and watchers.
+async fn refresh_after_change(app: &AppHandle, workflow_id: &str) -> Result<(), String> {
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(workflow_id);
+    }
+    crate::services::automation::commands::sync_flow_automations(app).await
+}
 
 /// Finds a unique workflow name by appending sequential numbers if a collision occurs with existing names.
 pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> String {
@@ -202,9 +211,7 @@ pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> St
     }
 }
 
-pub fn get_all_workflows_sync(
-    manager: &AppSettingsManager,
-) -> Result<Vec<WorkflowDefinition>, String> {
+pub fn get_all_workflows(manager: &AppSettingsManager) -> Result<Vec<WorkflowDefinition>, String> {
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
@@ -246,7 +253,7 @@ pub(crate) fn record_last_executed(
     // overwritten and a concurrent delete is not undone.
     sub.set_field_if_exists(id, "lastExecutedAt", &timestamp)
         .map(|_| ())
-        .map_err(|e| format!("Failed to save workflow: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.saveFailed", "error" => e))
 }
 
 pub fn save_workflow_record(
@@ -255,7 +262,7 @@ pub fn save_workflow_record(
 ) -> Result<(), String> {
     for node in &wf.nodes {
         if matches!(node.kind(), NodeKind::Cron | NodeKind::ScheduleWait) {
-            crate::services::automation::engine::validate_enabled_cron(
+            crate::utils::cron::validate_enabled_cron(
                 true,
                 node.config
                     .get("cronExpression")
@@ -268,41 +275,16 @@ pub fn save_workflow_record(
         .map_err(|e| e.to_string())?;
 
     sub.set(&wf.id, wf)
-        .map_err(|e| format!("Failed to save workflow: {e}"))
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.saveFailed", "error" => e))
 }
 
-pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
+pub fn delete_workflow_by_id(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
 
     sub.delete(id)
-        .map_err(|e| format!("Failed to delete workflow: {e}"))
-}
-
-pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
-    use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
-    use crate::services::automation::engine::apply_and_sync_automations;
-    use crate::services::settings::AppSettingsManager;
-
-    let manager = app.state::<AppSettingsManager>();
-    let cache = app.state::<AutomationsCache>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
-
-    let revision = app
-        .state::<crate::services::automation::runtime::RuntimeTasks>()
-        .revision();
-    let workflows = get_all_workflows_sync(&manager)?;
-    cache.load_from_workflows(&workflows, &backend_name).await?;
-    crate::services::automation::runtime::refresh_with_definitions(
-        app,
-        Some(revision),
-        None,
-        Some(workflows),
-    )
-    .await?;
-    apply_and_sync_automations(app).await
+        .map_err(|e| crate::localized_error!("backendErrors.workflow.deleteFailed", "error" => e))
 }
 
 #[cfg(test)]
@@ -328,36 +310,97 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn active_workflows_lists_runs_on_the_active_backend_only() {
+    async fn validating_a_workflow_reports_what_a_run_would_reject_without_storing_it() {
+        let node = |id: &str, title: &str| WorkflowNode {
+            id: id.into(),
+            title: title.into(),
+            ..Default::default()
+        };
+        let input = WorkflowInput {
+            id: None,
+            name: "Unsaved".into(),
+            description: None,
+            nodes: vec![node("a", "Alpha"), node("b", "Beta")],
+            edges: vec![WorkflowEdge {
+                id: "e1".into(),
+                source_node_id: "a".into(),
+                source_port_id: "out".into(),
+                target_node_id: "ghost".into(),
+                target_port_id: "in".into(),
+                is_active: None,
+            }],
+            viewport: CanvasViewport::default(),
+            show_on_tray: false,
+        };
+
+        let result = validate_workflow(input).await.unwrap();
+
+        assert!(!result.valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| e.contains("backendErrors.workflow.validationMissingTarget"))
+        );
+        assert!(
+            result
+                .warnings
+                .iter()
+                .any(|w| w.contains("backendErrors.workflow.validationDisconnected"))
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_runs_list_the_active_backend_only_and_keep_the_last_run() {
+        use std::sync::Arc;
+
         use crate::rclone::backend::{BackendManager, types::Backend};
         use crate::services::flow::workflow::engine::{
             active::{ActiveWorkflowState, register_active_run},
             cancel::CancelToken,
+            record::RunHandle,
         };
 
         let app = AppHandle::default();
         app.manage(BackendManager::new());
         let active = app.state::<BackendManager>().get_active_name().await;
-        let state = |backend: &str| ActiveWorkflowState {
-            backend: Backend::new_local(backend),
-            cancel: CancelToken::new(),
-            active_job_ids: Default::default(),
+        let register = |backend: &str, id: &str| {
+            let state = ActiveWorkflowState {
+                backend: Backend::new_local(backend),
+                cancel: CancelToken::new(),
+                active_job_ids: Default::default(),
+            };
+            register_active_run(
+                id,
+                id,
+                state,
+                Arc::new(RunHandle::new(id, "test-run", false)),
+            )
+            .unwrap()
         };
-        let own = register_active_run("Own", "wf-active-b", state(&active)).unwrap();
-        let first = register_active_run("First", "wf-active-a", state(&active)).unwrap();
-        let _elsewhere =
-            register_active_run("Else", "wf-active-other", state("another-backend")).unwrap();
+        let own = register(&active, "wf-runs-b");
+        let first = register(&active, "wf-runs-a");
+        let elsewhere = register("another-backend", "wf-runs-other");
 
-        let ids = get_active_workflows(app.clone()).await.unwrap();
-        let ours: Vec<_> = ids
-            .iter()
-            .filter(|id| id.starts_with("wf-active-"))
-            .collect();
-        assert_eq!(ours, ["wf-active-a", "wf-active-b"]);
+        let ours = |runs: Vec<super::super::engine::record::WorkflowRunSnapshot>| {
+            runs.into_iter()
+                .filter(|run| run.workflow_id.starts_with("wf-runs-"))
+                .map(|run| run.workflow_id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            ours(get_workflow_runs(app.clone()).await.unwrap()),
+            ["wf-runs-a", "wf-runs-b"]
+        );
 
-        drop((own, first));
-        let ids = get_active_workflows(app).await.unwrap();
-        assert!(!ids.iter().any(|id| id.starts_with("wf-active-")));
+        // A run that ended stays listed, as the last run of its workflow.
+        own.release();
+        first.release();
+        assert_eq!(
+            ours(get_workflow_runs(app.clone()).await.unwrap()),
+            ["wf-runs-a", "wf-runs-b"]
+        );
+        elsewhere.release();
     }
 
     #[test]
@@ -386,7 +429,7 @@ mod tests {
         };
 
         // 1. Initially empty
-        let list = get_all_workflows_sync(&manager).unwrap();
+        let list = get_all_workflows(&manager).unwrap();
         assert!(list.is_empty());
 
         // 2. Save
@@ -407,12 +450,12 @@ mod tests {
         );
 
         // 4. List
-        let list = get_all_workflows_sync(&manager).unwrap();
+        let list = get_all_workflows(&manager).unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, "wf-test-1");
 
         // 5. Delete
-        delete_workflow_by_id_sync(&manager, "wf-test-1").unwrap();
+        delete_workflow_by_id(&manager, "wf-test-1").unwrap();
         let after_delete = get_workflow_by_id(&manager, "wf-test-1").unwrap();
         assert!(after_delete.is_none());
     }
@@ -453,7 +496,7 @@ mod tests {
             .set("damaged", &serde_json::json!({"nodes": "not a list"}))
             .unwrap();
 
-        let all = get_all_workflows_sync(&manager).unwrap();
+        let all = get_all_workflows(&manager).unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "valid");
     }

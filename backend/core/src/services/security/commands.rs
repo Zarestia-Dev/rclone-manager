@@ -5,7 +5,7 @@ use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::system::unlock_rclone_config;
 #[cfg(not(feature = "librclone"))]
 use crate::services::check_binaries::build_rclone_command;
-use crate::services::security::SafeEnvironmentManager;
+use crate::services::security::rclone_env;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::LOCAL_BACKEND_NAME;
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
@@ -19,11 +19,8 @@ fn update_local_config_password(
         .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
     connections
-        .set_field(
-            LOCAL_BACKEND_NAME,
-            "config_password",
-            &password.unwrap_or_default(),
-        )
+        // `None` writes the schema default (`null`), which removes the credential.
+        .set_field(LOCAL_BACKEND_NAME, "config_password", &password)
         .map_err(|e| format!("Failed to update Local config password: {e}"))
 }
 
@@ -31,21 +28,18 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
     info!("Storing rclone config password");
 
     let manager = app.state::<AppSettingsManager>();
-    let env_manager = app.state::<SafeEnvironmentManager>();
 
     update_local_config_password(manager.inner(), Some(&password))
         .map_err(|e| crate::localized_error!("backendErrors.security.storeFailed", "error" => e))?;
 
-    env_manager.set_config_password(password.clone());
+    rclone_env::set_config_password(&password);
 
     crate::services::bridge::emit(RCLONE_PASSWORD_STORED, ());
 
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = Some(password.clone());
-        let _ = backend_manager
-            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-            .await;
+        let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         debug!("Updated in-memory Local backend config password");
     }
 
@@ -94,7 +88,6 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     info!("Removing stored config password");
 
     let manager = app.state::<AppSettingsManager>();
-    let env_manager = app.state::<SafeEnvironmentManager>();
 
     update_local_config_password(manager.inner(), None)
         .map_err(|e| format!("Failed to clear config password: {e}"))?;
@@ -102,12 +95,10 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = None;
-        let _ = backend_manager
-            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-            .await;
+        let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
     }
 
-    env_manager.clear_config_password();
+    rclone_env::clear_config_password();
     info!("Password removed successfully");
     Ok(())
 }
@@ -131,8 +122,7 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
             .await
         {
             Ok(_) => {
-                let env_manager = app.state::<SafeEnvironmentManager>();
-                env_manager.set_config_password(password.clone());
+                rclone_env::set_config_password(&password);
 
                 crate::services::bridge::emit(
                     crate::utils::types::events::RCLONE_CONFIG_UNLOCKED,
@@ -201,9 +191,8 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
     }
 }
 
-pub async fn set_config_password_env(app: AppHandle, password: String) -> Result<(), String> {
-    let env_manager = app.state::<SafeEnvironmentManager>();
-    env_manager.set_config_password(password);
+pub async fn set_config_password_env(password: String) -> Result<(), String> {
+    rclone_env::set_config_password(&password);
 
     crate::services::bridge::emit(RCLONE_PASSWORD_STORED, ());
 
@@ -358,7 +347,6 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             )?;
 
         let manager = app.state::<AppSettingsManager>();
-        let env_manager = app.state::<SafeEnvironmentManager>();
 
         if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
             warn!("Failed to store password after encryption: {e}");
@@ -366,13 +354,11 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             let backend_manager = app.state::<BackendManager>();
             if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
-                let _ = backend_manager
-                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                    .await;
+                let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
             }
         }
 
-        env_manager.set_config_password(password.clone());
+        rclone_env::set_config_password(&password);
         unlock_rclone_config(app.clone(), password).await?;
 
         info!("Configuration encrypted successfully");
@@ -386,7 +372,6 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
         run_encryption_command(&app, "set", &password).await?;
 
         let manager = app.state::<AppSettingsManager>();
-        let env_manager = app.state::<SafeEnvironmentManager>();
 
         if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
             warn!("Failed to store password after encryption: {e}");
@@ -394,13 +379,11 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             let backend_manager = app.state::<BackendManager>();
             if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
-                let _ = backend_manager
-                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                    .await;
+                let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
             }
         }
 
-        env_manager.set_config_password(password.clone());
+        rclone_env::set_config_password(&password);
         unlock_rclone_config(app.clone(), password).await?;
 
         info!("Configuration encrypted successfully");
@@ -424,7 +407,6 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
             )?;
 
         let manager = app.state::<AppSettingsManager>();
-        let env_manager = app.state::<SafeEnvironmentManager>();
 
         if let Err(e) = update_local_config_password(manager.inner(), None) {
             warn!("Failed to remove stored config password: {e}");
@@ -433,12 +415,10 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         let backend_manager = app.state::<BackendManager>();
         if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
-            let _ = backend_manager
-                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                .await;
+            let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         }
 
-        env_manager.clear_config_password();
+        rclone_env::clear_config_password();
         info!("Configuration unencrypted successfully");
         Ok(())
     }
@@ -450,7 +430,6 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         run_encryption_command(&app, "remove", &password).await?;
 
         let manager = app.state::<AppSettingsManager>();
-        let env_manager = app.state::<SafeEnvironmentManager>();
 
         if let Err(e) = update_local_config_password(manager.inner(), None) {
             warn!("Failed to remove stored config password: {e}");
@@ -459,12 +438,10 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         let backend_manager = app.state::<BackendManager>();
         if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
-            let _ = backend_manager
-                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
-                .await;
+            let _ = backend_manager.update(LOCAL_BACKEND_NAME, backend).await;
         }
 
-        env_manager.clear_config_password();
+        rclone_env::clear_config_password();
         info!("Configuration unencrypted successfully");
         Ok(())
     }
@@ -489,4 +466,35 @@ pub async fn change_config_password(
 
     info!("Configuration password changed successfully");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clearing_the_local_config_password_removes_its_credential() {
+        let directory = tempfile::tempdir().unwrap();
+        let manager: AppSettingsManager =
+            rcman::SettingsManager::builder("config-password-test", "1")
+                .with_config_dir(directory.path())
+                .with_schema::<crate::services::settings::schema::AppSettings>()
+                .with_credential_config(rcman::CredentialConfig::Custom(std::sync::Arc::new(
+                    rcman::MemoryBackend::new(),
+                )))
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile("connections")
+                        .with_schema::<crate::rclone::backend::types::Backend>(),
+                )
+                .build()
+                .unwrap();
+        let key = format!("sub.connections.{LOCAL_BACKEND_NAME}.config_password");
+
+        update_local_config_password(&manager, Some("secret")).unwrap();
+        let credentials = manager.credentials().unwrap();
+        assert!(credentials.get(&key).unwrap().is_some());
+
+        update_local_config_password(&manager, None).unwrap();
+        assert_eq!(credentials.get(&key).unwrap(), None);
+    }
 }

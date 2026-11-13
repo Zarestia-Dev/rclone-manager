@@ -32,14 +32,14 @@ describe('ExportModalComponent', () => {
 
   const mockCategories = [
     { id: 'settings', name: 'settings', categoryType: 'settings', optional: false },
-    { id: 'backend', name: 'backend', categoryType: 'subsettings', optional: false },
-    { id: 'connections', name: 'connections', categoryType: 'subsettings', optional: false },
-    { id: 'remotes', name: 'remotes', categoryType: 'subsettings', optional: false },
-    { id: 'alerts/rules', name: 'rules', categoryType: 'subsettings', optional: false },
-    { id: 'alerts/actions', name: 'actions', categoryType: 'subsettings', optional: false },
-    { id: 'quick_runs', name: 'quick_runs', categoryType: 'subsettings', optional: false },
-    { id: 'workflows', name: 'workflows', categoryType: 'subsettings', optional: false },
-    { id: 'templates', name: 'templates', categoryType: 'subsettings', optional: false },
+    { id: 'backend', name: 'backend', categoryType: 'sub_settings', optional: false },
+    { id: 'connections', name: 'connections', categoryType: 'sub_settings', optional: false },
+    { id: 'remotes', name: 'remotes', categoryType: 'sub_settings', optional: false },
+    { id: 'alerts/rules', name: 'rules', categoryType: 'sub_settings', optional: false },
+    { id: 'alerts/actions', name: 'actions', categoryType: 'sub_settings', optional: false },
+    { id: 'quick_runs', name: 'quick_runs', categoryType: 'sub_settings', optional: false },
+    { id: 'workflows', name: 'workflows', categoryType: 'sub_settings', optional: false },
+    { id: 'templates', name: 'templates', categoryType: 'sub_settings', optional: false },
   ];
 
   beforeEach(async () => {
@@ -106,6 +106,20 @@ describe('ExportModalComponent', () => {
     expect(templateOption?.description).toBe('modals.export.categories.templates.description');
   });
 
+  it('describes untranslated categories by their backend category type', () => {
+    const target = component as unknown as {
+      buildExportOptions: (categories: unknown[]) => void;
+    };
+    target.buildExportOptions([
+      { id: 'custom', name: 'custom', categoryType: 'sub_settings', optional: false },
+      { id: 'extra', name: 'extra', categoryType: 'external', optional: false },
+    ]);
+
+    const options = component.exportOptions();
+    expect(options.find(o => o.id === 'custom')?.description).toBe('modals.export.configFiles');
+    expect(options.find(o => o.id === 'extra')?.description).toBe('modals.export.externalConfig');
+  });
+
   it('pre-selects all available profiles by default', () => {
     expect(component.availableProfiles()).toEqual(['default', 'test']);
     expect(component.selectedProfiles()).toEqual(['default', 'test']);
@@ -135,13 +149,19 @@ describe('ExportModalComponent', () => {
     component.onExportOptionChange('specific_remote');
     expect(component.canExport()).toBe(false);
     component.onRemoteSelectionChange('remote1');
-    expect(component.canExport()).toBe(true);
+    // ...and a password, because its rclone definition is only exported encrypted
+    expect(component.canExport()).toBe(false);
 
     // Password validation when secrets included
     component.onPasswordProtectionChange(true);
     component.password.set(''); // Empty password
     expect(component.canExport()).toBe(false);
     component.password.set('1234'); // Valid password
+    expect(component.canExport()).toBe(true);
+
+    // Other export types stay available without a password
+    component.onPasswordProtectionChange(false);
+    component.onExportOptionChange('settings');
     expect(component.canExport()).toBe(true);
   });
 
@@ -156,13 +176,12 @@ describe('ExportModalComponent', () => {
       null,
       '',
       null,
-      ['default', 'test'],
-      false
+      ['default', 'test']
     );
   });
 
   it.each([true, false])(
-    'uses password protection to control exported secrets: %s',
+    'sends the password only when protection is enabled: %s',
     async enabled => {
       component.exportPath.set('/tmp/backup');
       component.onPasswordProtectionChange(enabled);
@@ -174,8 +193,7 @@ describe('ExportModalComponent', () => {
         enabled ? 'test password' : null,
         '',
         null,
-        ['default', 'test'],
-        enabled
+        ['default', 'test']
       );
     }
   );
@@ -270,21 +288,32 @@ describe('ExportModalComponent', () => {
   });
 
   it('renders alert banner when vault is open and hides it when vault is not open', () => {
+    const vaultBanner = (): Element | undefined =>
+      Array.from(fixture.nativeElement.querySelectorAll('app-alert-banner')).find(b =>
+        (b as Element).textContent?.includes('modals.export.vaultWarningTitle')
+      ) as Element | undefined;
+
     vaultServiceMock.isVaultEnabled.set(false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-alert-banner.warning')).toBeNull();
+    expect(vaultBanner()).toBeUndefined();
 
     vaultServiceMock.isVaultEnabled.set(true);
     fixture.detectChanges();
-    const banner = fixture.nativeElement.querySelector('app-alert-banner.warning');
-    expect(banner).not.toBeNull();
+    expect(vaultBanner()).toBeDefined();
   });
 
-  it('explains what a backup without a password leaves out', () => {
+  it('warns what a backup without a password leaves out', () => {
     fixture.detectChanges();
-    const banners = fixture.nativeElement.querySelectorAll('app-alert-banner.info');
+    const banners = fixture.nativeElement.querySelectorAll('app-alert-banner.warning');
     expect(banners.length).toBe(1);
     expect(banners[0].textContent).toContain('modals.export.noPasswordHint');
+  });
+
+  it('explains that a single remote needs a password to be exported', () => {
+    component.onExportOptionChange('specific_remote');
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('app-alert-banner.warning');
+    expect(banner.textContent).toContain('modals.export.remoteNeedsPassword');
   });
 
   it('shows the restore hint instead once a password is requested', () => {

@@ -25,7 +25,7 @@
         <div class="summary-header">
           <mat-icon [svgIcon]="getActionIcon(action.kind)"></mat-icon>
           <span class="action-name truncate">{{ action.name }}</span>
-          <span class="action-kind-pill">{{ action.kind }}</span>
+          <span appPill size="xs" tone="accent">{{ action.kind }}</span>
         </div>
         @if (getActionDetail(action); as detail) {
           <div class="summary-detail truncate" [attr.title]="detail">{{ detail }}</div>
@@ -38,7 +38,8 @@
       <span class="hint-text">{{ 'flow.workflow.inspector.noAlertActionsFound' | translate }}</span>
       <button
         type="button"
-        class="app-pill interactive primary-pill"
+        appPill
+        class="primary-pill"
         (click)="openAlertsModal()"
         [attr.title]="'flow.workflow.inspector.openAlertsModal' | translate"
       >
@@ -52,36 +53,20 @@
     <span class="section-sub-title">{{
       'flow.workflow.inspector.notificationPresets' | translate
     }}</span>
-    <div class="presets-row">
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('check_report')"
-      >
+    <div class="pill-group">
+      <button type="button" appPill (click)="applyNotificationPreset('check_report')">
         <mat-icon svgIcon="shield"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetCheckReport' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('transfer_summary')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('transfer_summary')">
         <mat-icon svgIcon="sync"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetTransferSummary' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('failure_alert')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('failure_alert')">
         <mat-icon svgIcon="warning"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetFailureAlert' | translate }}</span>
       </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        (click)="applyNotificationPreset('health_status')"
-      >
+      <button type="button" appPill (click)="applyNotificationPreset('health_status')">
         <mat-icon svgIcon="circle-info"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetHealthStatus' | translate }}</span>
       </button>
@@ -124,11 +109,11 @@
     <span class="section-sub-title">{{
       'flow.workflow.inspector.upstreamOutputs' | translate
     }}</span>
-    <div class="tags-row">
+    <div class="pill-group">
       @for (tok of quickOutputTokens(); track tok) {
         <button
           type="button"
-          class="app-pill interactive"
+          appPill
           (click)="insertVariableToken(tok)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >
@@ -182,12 +167,12 @@
     severity="info"
     [title]="'flow.workflow.inspector.templateVariables' | translate"
   >
-    <div class="tags-row">
+    <div class="pill-group">
       @for (key of templateKeys(); track key) {
         <button
           type="button"
-          class="app-pill interactive"
-          (click)="insertTemplateVariable(key)"
+          appPill
+          (click)="insertVariableToken(key)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >
           <code>{{ '{{' }}{{ key }}{{ '}}' }}</code>

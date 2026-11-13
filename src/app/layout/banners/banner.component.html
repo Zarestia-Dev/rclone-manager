@@ -14,7 +14,7 @@
   [attr.aria-hidden]="!showFlatpakWarning()"
   role="status"
 >
-  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <mat-icon svgIcon="circle-info" data-tone="accent"></mat-icon>
   <div class="banner-text-group">
     <span class="banner-message">{{ 'banners.flatpak.title' | translate }}</span>
     <span class="banner-subtitle">
@@ -46,7 +46,7 @@
   [attr.aria-hidden]="!showBatteryPrompt()"
   role="status"
 >
-  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <mat-icon svgIcon="circle-info" data-tone="accent"></mat-icon>
   <div class="banner-text-group">
     <span class="banner-message">{{ 'banners.battery.title' | translate }}</span>
     <span class="banner-subtitle">{{ 'banners.battery.subtitle' | translate }}</span>
@@ -72,7 +72,7 @@
   [attr.aria-hidden]="!showStoragePrompt()"
   role="status"
 >
-  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <mat-icon svgIcon="circle-info" data-tone="accent"></mat-icon>
   <div class="banner-text-group">
     <span class="banner-message">{{ 'banners.storage.title' | translate }}</span>
     <span class="banner-subtitle">{{ 'banners.storage.subtitle' | translate }}</span>
@@ -96,7 +96,7 @@
   [class.visible]="isMeteredConnection()"
   role="alert"
 >
-  <mat-icon svgIcon="circle-info" class="accent"></mat-icon>
+  <mat-icon svgIcon="circle-info" data-tone="accent"></mat-icon>
   <div class="banner-text-group">
     <span class="banner-message">{{ 'banners.metered.message' | translate }}</span>
   </div>

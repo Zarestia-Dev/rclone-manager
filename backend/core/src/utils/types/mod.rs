@@ -8,6 +8,7 @@ pub mod origin;
 pub mod provision;
 pub mod rclone;
 pub mod remotes;
+pub mod starter;
 pub mod state;
 
 pub mod updater;

@@ -3,10 +3,11 @@ name: "Publish to Chocolatey"
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release tag (e.g. v0.3.2). Leave empty to use the latest release."
+      dry_run:
+        description: "Build and check the package without pushing to Chocolatey"
         required: false
-        type: string
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -23,16 +24,9 @@ jobs:
       - name: Resolve version
         id: version
         shell: pwsh
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          $inputVersion = "$env:INPUT_VERSION".Trim()
-          if ($inputVersion) {
-            $ver = $inputVersion.TrimStart('v')
-          } else {
-            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
-            $ver = $release.tag_name.TrimStart('v')
-          }
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
+          $ver = $release.tag_name.TrimStart('v')
           Write-Host "Version: $ver"
           echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
 
@@ -82,12 +76,18 @@ jobs:
           $install = $install -replace '\{\{ARM64_HASH\}\}', '${{ steps.checksums.outputs.ARM64_HASH }}'
           Set-Content -Path "$chocoDir/tools/chocolateyInstall.ps1" -Value $install -NoNewline
 
-      - name: Pack and push
+      - name: Pack
+        shell: pwsh
+        run: |
+          cd backend/desktop/windows/chocolatey
+          choco pack rclone-manager.nuspec
+
+      - name: Push
+        if: ${{ !inputs.dry_run }}
         shell: pwsh
         env:
           CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
         run: |
           $ver = "${{ steps.version.outputs.VERSION }}"
           cd backend/desktop/windows/chocolatey
-          choco pack rclone-manager.nuspec
           choco push "rclone-manager.$ver.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY

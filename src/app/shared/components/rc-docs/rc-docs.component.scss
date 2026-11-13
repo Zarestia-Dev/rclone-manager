@@ -1,0 +1,36 @@
+:host {
+  display: block;
+  user-select: text;
+}
+
+.docs summary {
+  cursor: pointer;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+.markdown {
+  padding-top: var(--space-xs);
+  font-size: var(--font-size-sm);
+
+  :is(p, ul, ol) {
+    margin: 0 0 var(--space-xs);
+  }
+
+  pre {
+    margin: 0 0 var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-xs);
+    background: var(--bg-elevated);
+    overflow-x: auto;
+  }
+
+  :is(code, pre) {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+  }
+
+  a {
+    color: var(--accent-color);
+  }
+}

@@ -10,17 +10,20 @@ disk cache entries remain available for a later retry.
 
 ## Installation ownership
 
-| Installation                                                           | Installer                                                |
-| ---------------------------------------------------------------------- | -------------------------------------------------------- |
-| Native desktop / native headless with tray                             | Tauri updater                                            |
-| Linux AppImage in an owned, writable location                          | Tauri updater                                            |
-| Portable executable / standalone server in an owned, writable location | Core signed-artifact installer                           |
-| Direct Android APK                                                     | Core verification followed by Android's system installer |
-| AUR/pacman, DEB, RPM, Flatpak, Docker                                  | Release checks and external update instructions only     |
-| Unknown, read-only, or administratively disabled installation          | Installation disabled with an explanation                |
+| Installation                                                           | Installer                                                 |
+| ---------------------------------------------------------------------- | --------------------------------------------------------- |
+| Native desktop / native headless with tray (Windows, macOS)            | Tauri updater                                             |
+| Linux AppImage in an owned, writable location                          | Tauri updater                                             |
+| Linux DEB or RPM owned by dpkg or rpm                                  | Tauri updater (password prompt via pkexec/zenity/kdialog) |
+| Portable executable / standalone server in an owned, writable location | Core signed-artifact installer                            |
+| Direct Android APK                                                     | Core verification followed by Android's system installer  |
+| AUR/pacman                                                             | AUR availability check and the AUR helper command         |
+| Flatpak, Docker                                                        | Release checks and the update command only                |
+| Unknown, read-only, or administratively disabled installation          | Installation disabled with an explanation                 |
 
 `get_update_policy` returns the installation kind, installer method, eligibility,
-and localized reason. `can_auto_install` remains available for older callers.
+localized reason, and for external installations the command that updates them
+(and the AUR package name).
 An update is announced only after a compatible artifact is found for the current
 installation and architecture. Direct installers require valid updater metadata
 and its referenced release asset. Missing targets produce no update; network or
@@ -29,15 +32,28 @@ Read-only or administratively disabled installations still check artifact
 availability, while installation remains disabled.
 
 External installations announce upstream availability using a matching Linux
-server ZIP for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
-for RPM installations. Desktop and headless products and package architecture
-names are matched separately. This does not confirm that the corresponding
-container image, Flathub build, or AUR package has already been published there.
+server ZIP for Docker and a matching DEB for Flatpak (or DEB/RPM installations
+the app cannot install itself). Desktop and headless products and package
+architecture names are matched separately. This does not confirm that the
+corresponding container image or Flathub build has already been published there.
+
+AUR packages are published separately from GitHub releases, and only for stable
+releases, so an AUR install is offered the release whose version the AUR
+(`aur.archlinux.org/rpc/v5/info`) currently publishes for the owning package,
+whatever the update channel. `-git` packages build the default branch and are
+never announced. The UI shows `paru -S <package>` or `yay -S <package>`
+when one of those helpers is installed, and the `makepkg` steps otherwise.
 
 Linux detection checks ownership of the running executable using the available
-package managers, including AUR packages repackaged from upstream DEBs. The host
-identifies portable/server/native execution separately from Cargo feature
-unification. Permissions are checked again before download and apply.
+package managers: `pacman -Qqo` always, and `dpkg-query -S` or `rpm -qf` for a
+DEB or RPM build. A query that does not answer within two seconds is asked again
+on the next check. A Tauri build
+reports the package format the bundler patched into it. DEB and RPM builds are
+installed by Tauri only when dpkg or rpm owns the executable: the AUR packages
+repackage the upstream DEB, so their binary says DEB while pacman owns it, and
+they stay external. The host identifies portable/server/native execution
+separately from Cargo feature unification. Permissions are checked again before
+download and apply.
 
 `RCLONE_MANAGER_INSTALLATION_TYPE=docker|container|flatpak|aur|pacman|deb|rpm`
 declares external ownership. Docker and Podman containers are recognized without it
@@ -61,14 +77,17 @@ files belong to `v...` releases. The native Tauri `latest.json` remains separate
 The signed manifest binds version, product, target, asset name, byte size,
 SHA-256, and artifact signature. The installer verifies both signatures using
 the pinned production public key and rejects mismatched or non-increasing
-versions. Downloads use HTTPS, bounded redirects, timeouts, and size limits.
+versions. Downloads use HTTPS, bounded redirects and size limits. Requests fail
+when a connection stalls (30 s to connect, 120 s without data) but have no total
+deadline, so large downloads finish on slow links; the native Tauri check and
+download use the same limits. Release lists are revalidated with their ETag.
 Previously verified cached downloads are reverified before reuse.
 
 Production workflows require `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Android additionally requires its existing,
 persistent release keystore secrets. A missing Android release key fails the
 build rather than generating a key incompatible with earlier installations.
-Direct installers do not announce older releases without matching update metadata.
+Direct installers do not announce releases without `updater.json`.
 
 The public fixtures under `core/src/services/updates/fixtures/` test signatures
 without network access or production secrets. Their public key is never trusted
@@ -84,8 +103,9 @@ excludes prereleases; the beta channel includes prereleases and stable versions.
 
 A pre-release build can move to the latest stable release even when that release has
 a lower version number, so choosing the stable channel never waits for the next stable
-version. This applies to installers that replace the running build (Tauri, portable and
-server); package managers choose their own versions and Android version codes cannot
+version. This applies to installers that replace the running build (Tauri for native,
+AppImage, portable and server); packages only move forward, including DEB and RPM
+installed by Tauri (`rpm -U` refuses downgrades), and Android version codes cannot
 decrease. A stable build is only offered newer versions. The Rclone engine already
 follows Rclone's own `selfupdate`, which installs the latest release of the selected
 channel whenever it differs from the installed one.
@@ -158,8 +178,10 @@ Trial processes have an isolated Unix process group or a Windows Job Object.
 Windows startup is gated until the process has been assigned to its job. A failed
 trial or administrative stop cleans up its process tree before recovery. A normal
 close during the trial restores the original without reopening it. After commit,
-a clean ordinary exit allows a platform-spawned restart process to survive; stale
-supervisor environment variables cannot route updates to a departed helper.
+a clean ordinary exit allows a platform-spawned restart process to survive, and on
+Windows ending the waiting helper no longer ends the application. The trial
+application removes the receipt directory and token from its environment at
+startup, so rclone, scripts and restarted processes never inherit them.
 
 Consecutive updates hand the next private staging directory to the same helper
 after the current child exits cleanly. The helper validates the product, target,
@@ -175,12 +197,20 @@ manual diagnosis and recovery, with `failure.txt` when recovery was attempted.
 User configuration, vaults and databases are never restored by this mechanism.
 
 Apply failures returned by an installer preserve the downloaded payload for a
-retry and publish a localized failure in the shared snapshot. Installing state
+retry and publish a localized failure in the shared snapshot; a later check keeps
+it until another release is found. A failed restart after Tauri installed an
+update exits, so the installed build starts next. `get_app_update_info` and
+`get_rclone_update_info` return the whole updater state, so a reloaded web UI or
+another window shows the same picture: whether a check (including a scheduled
+one) is running, when the last check finished and why it failed, updates rolled
+back in this session (headless servers have no OS notifications), and the reminder
+to restart a remote rclone after it updated itself. Installing state
 prevents concurrent apply requests. The UI starts with installation disabled
 until backend policy resolves.
 
 Android verifies the APK package name, increasing version code, and current
-signing certificate set before requesting system installation. Unknown-source
+signing certificate set before requesting system installation. The verified download
+cache is the APK handed to the installer; no second copy is written. Unknown-source
 approval is handled by Android settings; a denied request retains the verified
 download for retry. Android completion or cancellation remains controlled by the
 system installer. This is for direct APK distribution; Play in-app updates are
@@ -192,6 +222,9 @@ The custom installer does not collect root/admin passwords or provision a
 privileged maintenance service. Protected portable/server paths remain blocked;
 administrators must use deployment tooling or arrange an owned, writable
 installation. Tauri's native installers retain their platform authorization flows.
+DEB and RPM updates need a session that can show Tauri's password prompt
+(pkexec, zenity or kdialog); a headless service without one reports the failure
+and keeps the verified download for a retry.
 
 The startup trial covers the direct portable/server installer. Native Tauri
 installers and Android's package installer do not acquire this supervisor or a

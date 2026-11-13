@@ -90,7 +90,7 @@
                         : ('modals.backend.removeTooltip' | translate)
                     "
                   >
-                    <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                    <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
                   </button>
                 }
               </div>
@@ -349,7 +349,7 @@
                   <mat-icon
                     matPrefix
                     svgIcon="file-lines"
-                    [class.primary]="editingBackendRuntimePath()"
+                    [attr.data-tone]="editingBackendRuntimePath() ? 'primary' : null"
                     [attr.title]="
                       editingBackendRuntimePath()
                         ? ('modals.backend.activeConfigPath' | translate) +
@@ -444,7 +444,7 @@
                 <div class="actions">
                   <button
                     matButton="filled"
-                    class="warn"
+                    data-tone="warn"
                     (click)="removeConfigPassword()"
                     [disabled]="!hasConfigPassword() || isSaving()"
                   >
@@ -465,7 +465,7 @@
 
   <footer>
     @if (formMode() === null) {
-      <button matButton="filled" class="primary" (click)="toggleAddForm()">
+      <button matButton="filled" data-tone="primary" (click)="toggleAddForm()">
         <mat-icon svgIcon="plus"></mat-icon>
         {{ 'modals.backend.addBackend' | translate }}
       </button>
@@ -473,7 +473,7 @@
       <button matButton="outlined" (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
       <button
         matButton="filled"
-        class="primary"
+        data-tone="primary"
         [disabled]="backendForm.invalid || isSaving()"
         (click)="saveBackend()"
       >

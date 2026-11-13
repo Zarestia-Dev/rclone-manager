@@ -1,0 +1,75 @@
+<div class="bar">
+  <div class="views" role="group">
+    <button type="button" appPill [selected]="view() === 'pretty'" (click)="setView('pretty')">
+      {{ 'modals.rcConsole.output.pretty' | translate }}
+    </button>
+    <button type="button" appPill [selected]="view() === 'raw'" (click)="setView('raw')">
+      {{ 'modals.rcConsole.output.raw' | translate }}
+    </button>
+    @if (table()) {
+      <button type="button" appPill [selected]="view() === 'table'" (click)="setView('table')">
+        {{ 'modals.rcConsole.output.table' | translate }}
+      </button>
+    }
+  </div>
+  <span class="meta">{{
+    'modals.rcConsole.output.lines' | translate: { count: lineCount() }
+  }}</span>
+  @if (cutByLimit()) {
+    <span appPill tone="orange">{{ 'modals.rcConsole.truncated' | translate }}</span>
+  }
+  <button
+    type="button"
+    class="action-button"
+    [appCopyToClipboard]="text()"
+    [title]="'common.copy' | translate"
+    [attr.aria-label]="'common.copy' | translate"
+  >
+    <mat-icon svgIcon="copy"></mat-icon>
+  </button>
+</div>
+
+@if (showTable() && table(); as t) {
+  <div class="table-wrap hide-scrollbar">
+    <table>
+      <thead>
+        <tr>
+          @for (column of t.columns; track column) {
+            <th>{{ column }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of tableRows(); track $index) {
+          <tr>
+            @for (column of t.columns; track column) {
+              <td>{{ cell(row[column]) }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (t.omitted > 0 && expanded()) {
+    <p class="note">
+      {{ 'modals.rcConsole.output.rowsOmitted' | translate: { count: t.omitted } }}
+    </p>
+  }
+} @else {
+  <pre
+    class="body"
+    [class.failed]="failed()"
+  >@for (part of segments(); track $index) {<span [class]="'tok-' + part.kind">{{ part.text }}</span>}</pre>
+}
+
+@if (canFold()) {
+  <button type="button" appPill class="fold" (click)="toggleExpanded()">
+    @if (expanded()) {
+      {{ 'modals.rcConsole.output.collapse' | translate }}
+    } @else if (showTable()) {
+      {{ 'modals.rcConsole.output.showMoreRows' | translate: { count: hiddenRows() } }}
+    } @else {
+      {{ 'modals.rcConsole.output.showMore' | translate: { count: hiddenLines() } }}
+    }
+  </button>
+}

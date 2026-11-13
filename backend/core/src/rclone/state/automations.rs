@@ -8,47 +8,20 @@ use tokio::sync::RwLock;
 
 use crate::{
     services::{
-        automation::engine::get_next_run,
         bridge,
         flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
     },
     utils::{
-        constants::{
-            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_BULK_UPDATE,
-            AUTOMATIONS_REMOTE_REMOVED,
-        },
+        constants::{AUTOMATION_UPDATED, AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED},
+        cron::get_next_run,
         types::{
-            automation::{Automation, AutomationArgs, AutomationStatus},
+            automation::{Automation, AutomationArgs, AutomationStatus, DEFAULT_WATCH_DELAY},
             events::AUTOMATIONS_CACHE_CHANGED,
-            remotes::{OperationType, ProfileParams, RemoteSettings},
+            origin::Origin,
+            remotes::{OperationType, ProfileConfig, RemoteSettings},
         },
     },
 };
-
-#[derive(Default, Debug, PartialEq, Clone)]
-struct ProfileConfig {
-    cron_enabled: Option<bool>,
-    cron_expression: Option<String>,
-    watch_enabled: Option<bool>,
-    watch_delay: Option<u64>,
-    watch_changed_only: Option<bool>,
-    source: Option<Value>,
-    dest: Option<Value>,
-}
-
-impl ProfileConfig {
-    fn from_profile(profile: &crate::utils::types::remotes::ProfileConfig) -> Self {
-        ProfileConfig {
-            cron_enabled: profile.app.cron_enabled,
-            cron_expression: profile.app.cron_expression.clone(),
-            watch_enabled: profile.app.watch_enabled,
-            watch_delay: profile.app.watch_delay,
-            watch_changed_only: profile.app.watch_changed_only,
-            source: profile.source_value().cloned(),
-            dest: profile.dest_value().cloned(),
-        }
-    }
-}
 
 fn normalize_paths(val: Option<&Value>) -> Vec<String> {
     match val {
@@ -71,7 +44,7 @@ pub struct CacheUpdateResult {
     /// Tasks whose cron expression, args, name, or type changed.
     pub updated: Vec<Automation>,
     /// Tasks removed because they are no longer present in the config.
-    /// Callers must unschedule these using the `scheduler_job_id` field.
+    /// Callers must unschedule these by automation ID.
     pub removed: Vec<Automation>,
 }
 
@@ -111,29 +84,16 @@ impl AutomationsCache {
         all_settings: &HashMap<String, RemoteSettings>,
         backend_name: &str,
     ) -> Result<CacheUpdateResult, String> {
-        let mut automations = Vec::new();
-
-        for (remote_name, remote_settings) in all_settings {
-            automations.extend(self.collect_automations_from_remote(
-                backend_name,
-                remote_name,
-                remote_settings,
-            ));
-        }
-
-        let result = self
-            .sync_automations(backend_name, automations, |t| {
-                t.backend_name == backend_name
-                    && t.args.params.source != Some(crate::utils::types::origin::Origin::QuickRun)
-                    && t.args.params.source != Some(crate::utils::types::origin::Origin::Flow)
+        let automations = all_settings
+            .iter()
+            .flat_map(|(remote_name, settings)| {
+                collect_automations_from_remote(backend_name, remote_name, settings)
             })
-            .await?;
-
-        if result.has_changes() {
-            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
-        }
-
-        Ok(result)
+            .collect();
+        self.sync_automations(automations, |t| {
+            t.backend_name == backend_name && !t.is_global()
+        })
+        .await
     }
 
     /// Load automations from Quick Runs, preserving existing automation states.
@@ -142,25 +102,12 @@ impl AutomationsCache {
         quick_runs: &[QuickRun],
         backend_name: &str,
     ) -> Result<CacheUpdateResult, String> {
-        let mut automations = Vec::new();
-
-        for qr in quick_runs {
-            if let Some(automation) = self.create_automation_from_quick_run(backend_name, qr) {
-                automations.push(automation);
-            }
-        }
-
-        let result = self
-            .sync_automations(backend_name, automations, |t| {
-                t.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun)
-            })
-            .await?;
-
-        if result.has_changes() {
-            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
-        }
-
-        Ok(result)
+        let automations = quick_runs
+            .iter()
+            .filter_map(|qr| create_automation_from_quick_run(backend_name, qr))
+            .collect();
+        self.sync_automations(automations, |t| t.args.source == Origin::QuickRun)
+            .await
     }
 
     /// Load automations from Workflows, preserving existing automation states.
@@ -169,442 +116,75 @@ impl AutomationsCache {
         workflows: &[WorkflowDefinition],
         backend_name: &str,
     ) -> Result<CacheUpdateResult, String> {
-        let mut automations = Vec::new();
+        let automations = workflows
+            .iter()
+            .filter_map(|wf| create_automation_from_workflow(backend_name, wf))
+            .collect();
+        self.sync_automations(automations, |t| t.args.source == Origin::Workflow)
+            .await
+    }
 
-        for wf in workflows {
-            if let Some(automation) = self.create_automation_from_workflow(backend_name, wf) {
-                automations.push(automation);
+    /// Makes the automations within `in_scope` match `new_automations` under one lock, keeping
+    /// the state (status, counters) of those that stay. One event announces all of it.
+    async fn sync_automations(
+        &self,
+        new_automations: Vec<Automation>,
+        in_scope: impl Fn(&Automation) -> bool,
+    ) -> Result<CacheUpdateResult, String> {
+        let active_ids: HashSet<String> = new_automations.iter().map(|t| t.id.clone()).collect();
+        let mut result = CacheUpdateResult {
+            added: Vec::new(),
+            updated: Vec::new(),
+            removed: Vec::new(),
+        };
+        {
+            let mut automations = self.automations.write().await;
+            for automation in new_automations {
+                match automations.get_mut(&automation.id) {
+                    Some(existing) if automation_config_changed(existing, &automation) => {
+                        info!("✏️ Updated automation: {}", automation.id);
+                        apply_config(existing, &automation);
+                        result.updated.push(existing.clone());
+                    }
+                    Some(_) => {}
+                    None => {
+                        info!("➕ Added automation: {}", automation.id);
+                        automations.insert(automation.id.clone(), automation.clone());
+                        result.added.push(automation);
+                    }
+                }
+            }
+            let stale: Vec<String> = automations
+                .values()
+                .filter(|t| in_scope(t) && !active_ids.contains(&t.id))
+                .map(|t| t.id.clone())
+                .collect();
+            for id in stale {
+                info!("🗑️ Removing stale automation: {id}");
+                result.removed.extend(automations.remove(&id));
             }
         }
-
-        let result = self
-            .sync_automations(backend_name, automations, |t| {
-                t.args.params.source == Some(crate::utils::types::origin::Origin::Flow)
-            })
-            .await?;
-
         if result.has_changes() {
             bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
         }
-
         Ok(result)
     }
 
-    /// Internal helper to sync a list of automations into the cache within a specific scope.
-    async fn sync_automations(
-        &self,
-        backend_name: &str,
-        new_automations: Vec<Automation>,
-        scope_predicate: impl Fn(&Automation) -> bool,
-    ) -> Result<CacheUpdateResult, String> {
-        let active_ids: HashSet<String> = new_automations.iter().map(|t| t.id.clone()).collect();
-        let mut added = Vec::new();
-        let mut updated = Vec::new();
-
-        for automation in new_automations {
-            if let Some(existing) = self.get_automation(&automation.id).await {
-                if self.automation_config_changed(&existing, &automation) {
-                    self.update_automation_config(&automation.id, &automation)
-                        .await?;
-                    info!(
-                        "✏️ Updated automation: {} ({})",
-                        automation.id, backend_name
-                    );
-                    if let Some(t) = self.get_automation(&automation.id).await {
-                        updated.push(t);
-                    }
-                }
-            } else {
-                self.add_automation(automation.clone()).await?;
-                info!("➕ Added automation: {} ({})", automation.id, backend_name);
-                added.push(automation);
-            }
-        }
-
-        // Cleanup stale automations within scope
-        let stale: Vec<String> = self
-            .get_all_automations()
-            .await
-            .into_iter()
-            .filter(|t| scope_predicate(t) && !active_ids.contains(&t.id))
-            .map(|t| t.id)
-            .collect();
-
-        let mut removed = Vec::with_capacity(stale.len());
-        for id in stale {
-            info!("🗑️ Removing stale automation: {id}");
-            removed.push(self.remove_automation(&id).await?);
-        }
-
-        Ok(CacheUpdateResult {
-            added,
-            updated,
-            removed,
-        })
-    }
-
-    fn collect_automations_from_remote(
-        &self,
-        backend_name: &str,
-        remote_name: &str,
-        remote_settings: &RemoteSettings,
-    ) -> Vec<Automation> {
-        let mut automations = Vec::new();
-
-        for op_type in OperationType::ALL
-            .iter()
-            .copied()
-            .filter(|op| op.is_automation())
-        {
-            if let Some(profiles) = remote_settings.get_configs(op_type) {
-                for (profile_name, profile) in profiles {
-                    let config = ProfileConfig::from_profile(profile);
-                    if let Some(automation) = self.create_automation_struct(
-                        backend_name,
-                        remote_name,
-                        profile_name,
-                        &op_type,
-                        &config,
-                    ) {
-                        automations.push(automation);
-                    }
-                }
-            }
-        }
-        automations
-    }
-
-    fn automation_config_changed(&self, existing: &Automation, new: &Automation) -> bool {
-        existing.cron_expression != new.cron_expression
-            || existing.args != new.args
-            || existing.automation_type != new.automation_type
-            || existing.watch_enabled != new.watch_enabled
-            || existing.watch_delay != new.watch_delay
-            || existing.watch_changed_only != new.watch_changed_only
-    }
-
-    async fn update_automation_config(
-        &self,
-        automation_id: &str,
-        new_config: &Automation,
-    ) -> Result<(), String> {
-        self.update_automation(automation_id, |t| {
-            t.cron_expression = new_config.cron_expression.clone();
-            t.args = new_config.args.clone();
-            t.automation_type = new_config.automation_type;
-            t.next_run = new_config.next_run;
-            t.watch_enabled = new_config.watch_enabled;
-            t.watch_delay = new_config.watch_delay;
-            t.watch_changed_only = new_config.watch_changed_only;
-            // Intentionally NOT overwriting `status` — the user's
-            // enabled/disabled choice is the source of truth in the cache.
-        })
-        .await
-        .map(|_| ())
-    }
-
-    fn create_automation_struct(
-        &self,
-        backend_name: &str,
-        remote_name: &str,
-        profile_name: &str,
-        automation_type: &OperationType,
-        config: &ProfileConfig,
-    ) -> Option<Automation> {
-        let cron_enabled = config.cron_enabled.unwrap_or(false);
-        let watch_enabled = config.watch_enabled.unwrap_or(false);
-
-        let cron = if cron_enabled {
-            config
-                .cron_expression
-                .as_ref()
-                .filter(|s| !s.is_empty())
-                .cloned()
-        } else {
-            None
-        };
-
-        if cron.is_none() && !watch_enabled {
-            return None;
-        }
-
-        let src_paths = normalize_paths(config.source.as_ref());
-        let dst_paths = normalize_paths(config.dest.as_ref());
-
-        if src_paths.is_empty() {
-            return None;
-        }
-
-        // Validate path counts based on automation type
-        match automation_type {
-            OperationType::Delete => {}
-            OperationType::Bisync => {
-                if src_paths.len() != 1 || dst_paths.len() != 1 {
-                    return None;
-                }
-            }
-            OperationType::Sync
-            | OperationType::Copy
-            | OperationType::Move
-            | OperationType::Check
-            | OperationType::Copyurl
-            | OperationType::Archivecreate
-            | OperationType::Cryptcheck => {
-                if src_paths.is_empty() || dst_paths.len() != 1 {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-
-        let automation_id =
-            Self::generate_automation_id(backend_name, remote_name, automation_type, profile_name);
-
-        let params = ProfileParams {
-            remote_name: remote_name.to_string(),
-            profile_name: profile_name.to_string(),
-            backend_name: Some(backend_name.to_string()),
-            source: Some(crate::utils::types::origin::Origin::Automation),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        };
-
-        let args = AutomationArgs {
-            params,
-            src_paths,
-            dst_paths,
-        };
-
-        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
-
-        Some(Automation {
-            id: automation_id,
-            automation_type: *automation_type,
-            remote_name: remote_name.to_string(),
-            profile_name: profile_name.to_string(),
-            cron_expression: cron,
-            status: AutomationStatus::Enabled,
-            args,
-            backend_name: backend_name.to_string(),
-            created_at: chrono::Utc::now(),
-            last_run: None,
-            next_run,
-            last_error: None,
-            current_job_id: None,
-            execution_id: None,
-            scheduler_job_id: None,
-            run_count: 0,
-            success_count: 0,
-            failure_count: 0,
-            stopped_count: 0,
-            watch_enabled,
-            watch_delay: config.watch_delay.unwrap_or(5),
-            watch_changed_only: if *automation_type == OperationType::Bisync {
-                false
-            } else {
-                config.watch_changed_only.unwrap_or(false)
-            },
-        })
-    }
-
-    pub fn create_automation_from_quick_run(
-        &self,
-        backend_name: &str,
-        qr: &QuickRun,
-    ) -> Option<Automation> {
-        let cron_enabled = qr.is_cron_enabled();
-        let watch_enabled = qr.is_watch_enabled();
-
-        if !cron_enabled && !watch_enabled {
-            return None;
-        }
-
-        let cron = if cron_enabled {
-            qr.cron_expression().filter(|s| !s.is_empty())
-        } else {
-            None
-        };
-
-        let mut src_paths = qr.watch_paths();
-        let rclone = qr.config.get("rclone");
-        if src_paths.is_empty() {
-            if let Some(src) = rclone.and_then(|r| r.get("srcFs")).and_then(Value::as_str)
-                && !src.trim().is_empty()
-            {
-                src_paths.push(src.to_string());
-            } else if let Some(src) = rclone
-                .and_then(|r| r.get("source").or_else(|| r.get("src")))
-                .and_then(Value::as_str)
-                && !src.trim().is_empty()
-            {
-                src_paths.push(src.to_string());
-            }
-        }
-        if src_paths.is_empty() {
-            src_paths.push(qr.remote_name.clone());
-        }
-
-        let mut dst_paths = Vec::new();
-        if let Some(dst) = rclone.and_then(|r| r.get("dstFs")).and_then(Value::as_str)
-            && !dst.trim().is_empty()
-        {
-            dst_paths.push(dst.to_string());
-        } else if let Some(dest) = rclone
-            .and_then(|r| r.get("dest").or_else(|| r.get("destination")))
-            .and_then(Value::as_str)
-            && !dest.trim().is_empty()
-        {
-            dst_paths.push(dest.to_string());
-        } else if let Some(mp) = rclone
-            .and_then(|r| r.get("mountPoint").or_else(|| r.get("mount_point")))
-            .and_then(Value::as_str)
-            && !mp.trim().is_empty()
-        {
-            dst_paths.push(mp.to_string());
-        }
-
-        let automation_id = qr.id.clone();
-
-        let params = ProfileParams {
-            remote_name: qr.remote_name.clone(),
-            profile_name: qr.name.clone(),
-            backend_name: None,
-            source: Some(crate::utils::types::origin::Origin::QuickRun),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        };
-
-        let args = AutomationArgs {
-            params,
-            src_paths,
-            dst_paths,
-        };
-
-        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
-        let watch_delay = qr
-            .config
-            .get("app")
-            .and_then(|a| a.get("watchDelay"))
-            .and_then(Value::as_u64)
-            .unwrap_or(5);
-        let watch_changed_only = qr
-            .config
-            .get("app")
-            .and_then(|a| a.get("watchChangedOnly"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-
-        Some(Automation {
-            id: automation_id,
-            automation_type: qr.operation_type,
-            remote_name: qr.remote_name.clone(),
-            profile_name: qr.name.clone(),
-            cron_expression: cron,
-            status: AutomationStatus::Enabled,
-            args,
-            backend_name: backend_name.to_string(),
-            created_at: chrono::Utc::now(),
-            last_run: None,
-            next_run,
-            last_error: None,
-            current_job_id: None,
-            execution_id: None,
-            scheduler_job_id: None,
-            run_count: 0,
-            success_count: 0,
-            failure_count: 0,
-            stopped_count: 0,
-            watch_enabled,
-            watch_delay,
-            watch_changed_only,
-        })
-    }
-
-    pub fn create_automation_from_workflow(
-        &self,
-        backend_name: &str,
-        wf: &WorkflowDefinition,
-    ) -> Option<Automation> {
-        let cron_enabled = wf.is_cron_enabled();
-        let watch_enabled = wf.is_watch_enabled();
-
-        if !cron_enabled && !watch_enabled {
-            return None;
-        }
-
-        let cron = if cron_enabled {
-            wf.effective_cron_expression()
-                .filter(|s| !s.trim().is_empty())
-        } else {
-            None
-        };
-
-        let automation_id = wf.id.clone();
-
-        let params = ProfileParams {
-            remote_name: "Workflow".to_string(),
-            profile_name: wf.name.clone(),
-            backend_name: None,
-            source: Some(crate::utils::types::origin::Origin::Flow),
-            no_cache: None,
-            scoped_targets: None,
-            execute_id: None,
-        };
-
-        let src_paths = if watch_enabled {
-            wf.watcher_paths()
-        } else {
-            vec![wf.name.clone()]
-        };
-
-        let args = AutomationArgs {
-            params,
-            src_paths,
-            dst_paths: vec!["Workflow Engine".to_string()],
-        };
-
-        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
-        let watch_delay = wf.watcher_debounce_seconds();
-
-        Some(Automation {
-            id: automation_id,
-            automation_type: OperationType::Sync,
-            remote_name: "Workflow".to_string(),
-            profile_name: wf.name.clone(),
-            cron_expression: cron,
-            status: AutomationStatus::Enabled,
-            args,
-            backend_name: backend_name.to_string(),
-            created_at: chrono::Utc::now(),
-            last_run: None,
-            next_run,
-            last_error: None,
-            current_job_id: None,
-            execution_id: None,
-            scheduler_job_id: None,
-            run_count: 0,
-            success_count: 0,
-            failure_count: 0,
-            stopped_count: 0,
-            watch_enabled,
-            watch_delay,
-            watch_changed_only: false,
-        })
-    }
-
+    #[cfg(test)]
     pub async fn add_automation(&self, automation: Automation) -> Result<Automation, String> {
         let automation_id = automation.id.clone();
         let mut automations = self.automations.write().await;
 
         if automations.contains_key(&automation_id) {
-            return Err(format!("Automation with ID {automation_id} already exists"));
+            return Err(crate::localized_error!(
+                "backendErrors.automation.alreadyExists",
+                "id" => automation_id
+            ));
         }
 
-        automations.insert(automation_id.clone(), automation.clone());
+        automations.insert(automation_id, automation.clone());
         drop(automations);
-        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         Ok(automation)
     }
 
@@ -683,9 +263,9 @@ impl AutomationsCache {
         update_fn: impl FnOnce(&mut Automation),
     ) -> Result<Automation, String> {
         let mut automations = self.automations.write().await;
-        let automation = automations
-            .get_mut(automation_id)
-            .ok_or_else(|| format!("Automation {automation_id} not found"))?;
+        let automation = automations.get_mut(automation_id).ok_or_else(|| {
+            crate::localized_error!("backendErrors.automation.automationNotFound")
+        })?;
 
         update_fn(automation);
         let updated_automation = automation.clone();
@@ -696,14 +276,15 @@ impl AutomationsCache {
     }
 
     /// Remove an automation from the cache and return it. The caller is responsible
-    /// for unscheduling the associated scheduler job via `scheduler_job_id`.
+    /// for unscheduling its job by automation ID.
+    #[cfg(test)]
     pub async fn remove_automation(&self, automation_id: &str) -> Result<Automation, String> {
         let mut automations = self.automations.write().await;
-        let automation = automations
-            .remove(automation_id)
-            .ok_or_else(|| format!("Automation {automation_id} not found"))?;
+        let automation = automations.remove(automation_id).ok_or_else(|| {
+            crate::localized_error!("backendErrors.automation.automationNotFound")
+        })?;
         drop(automations);
-        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         Ok(automation)
     }
 
@@ -716,9 +297,8 @@ impl AutomationsCache {
         remote_settings: &RemoteSettings,
     ) -> Result<CacheUpdateResult, String> {
         let automations =
-            self.collect_automations_from_remote(backend_name, remote_name, remote_settings);
-
-        self.sync_automations(backend_name, automations, |t| {
+            collect_automations_from_remote(backend_name, remote_name, remote_settings);
+        self.sync_automations(automations, |t| {
             !t.is_global() && t.backend_name == backend_name && t.remote_name == remote_name
         })
         .await
@@ -731,21 +311,17 @@ impl AutomationsCache {
         backend_name: &str,
         remote_name: &str,
     ) -> Result<Vec<Automation>, String> {
-        let to_remove: Vec<String> = self
-            .get_all_automations()
-            .await
-            .into_iter()
-            .filter(|t| {
-                !t.is_global() && t.backend_name == backend_name && t.remote_name == remote_name
-            })
-            .map(|t| t.id)
-            .collect();
-
-        let mut removed = Vec::with_capacity(to_remove.len());
-        for id in &to_remove {
-            removed.push(self.remove_automation(id).await?);
-        }
-
+        let mut automations = self.automations.write().await;
+        let mut removed = Vec::new();
+        automations.retain(|_, t| {
+            let owned =
+                !t.is_global() && t.backend_name == backend_name && t.remote_name == remote_name;
+            if owned {
+                removed.push(t.clone());
+            }
+            !owned
+        });
+        drop(automations);
         if !removed.is_empty() {
             bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_REMOTE_REMOVED);
         }
@@ -796,18 +372,234 @@ impl AutomationsCache {
                 true
             }
         });
+        drop(automations);
+        if !removed.is_empty() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
         removed
     }
+}
 
-    pub async fn get_automations_for_backend(&self, backend_name: &str) -> Vec<Automation> {
-        self.automations
-            .read()
-            .await
-            .values()
-            .filter(|t| !t.is_global() && t.backend_name == backend_name)
-            .cloned()
-            .collect()
+fn collect_automations_from_remote(
+    backend_name: &str,
+    remote_name: &str,
+    remote_settings: &RemoteSettings,
+) -> Vec<Automation> {
+    let mut automations = Vec::new();
+    for op_type in OperationType::ALL
+        .iter()
+        .copied()
+        .filter(|op| op.is_transfer())
+    {
+        let Some(profiles) = remote_settings.get_configs(op_type) else {
+            continue;
+        };
+        for (profile_name, profile) in profiles {
+            automations.extend(create_automation_struct(
+                backend_name,
+                remote_name,
+                profile_name,
+                &op_type,
+                profile,
+            ));
+        }
     }
+    automations
+}
+
+fn automation_config_changed(existing: &Automation, new: &Automation) -> bool {
+    existing.cron_expression != new.cron_expression
+        || existing.args != new.args
+        || existing.automation_type != new.automation_type
+        || existing.watch_enabled != new.watch_enabled
+        || existing.watch_delay != new.watch_delay
+        || existing.watch_changed_only != new.watch_changed_only
+}
+
+/// Takes the configuration of `new`. The status stays: the user's enabled/disabled choice
+/// is the source of truth in the cache.
+fn apply_config(existing: &mut Automation, new: &Automation) {
+    existing.cron_expression = new.cron_expression.clone();
+    existing.args = new.args.clone();
+    existing.automation_type = new.automation_type;
+    existing.next_run = new.next_run;
+    existing.watch_enabled = new.watch_enabled;
+    existing.watch_delay = new.watch_delay;
+    existing.watch_changed_only = new.watch_changed_only;
+}
+
+/// A new, enabled automation with its schedule and watch settings.
+fn scheduled(
+    mut automation: Automation,
+    cron_expression: Option<String>,
+    watch: (bool, u64, bool),
+) -> Automation {
+    automation.next_run = cron_expression
+        .as_deref()
+        .and_then(|cron| get_next_run(cron).ok());
+    automation.cron_expression = cron_expression;
+    (
+        automation.watch_enabled,
+        automation.watch_delay,
+        automation.watch_changed_only,
+    ) = watch;
+    automation
+}
+
+fn create_automation_struct(
+    backend_name: &str,
+    remote_name: &str,
+    profile_name: &str,
+    automation_type: &OperationType,
+    profile: &ProfileConfig,
+) -> Option<Automation> {
+    let watch_enabled = profile.app.watch_enabled.unwrap_or(false);
+    let cron = profile
+        .app
+        .cron_enabled
+        .unwrap_or(false)
+        .then(|| profile.app.cron_expression.clone())
+        .flatten()
+        .filter(|expression| !expression.is_empty());
+
+    if cron.is_none() && !watch_enabled {
+        return None;
+    }
+
+    let src_paths = normalize_paths(profile.source_value());
+    let dst_paths = normalize_paths(profile.dest_value());
+
+    // Validate path counts based on automation type
+    match automation_type {
+        _ if !automation_type.takes_destination() => {}
+        OperationType::Bisync => {
+            if src_paths.len() != 1 || dst_paths.len() != 1 {
+                return None;
+            }
+        }
+        OperationType::Sync
+        | OperationType::Copy
+        | OperationType::Move
+        | OperationType::Check
+        | OperationType::Copyurl
+        | OperationType::Archivecreate
+        | OperationType::Cryptcheck => {
+            if src_paths.is_empty() || dst_paths.len() != 1 {
+                return None;
+            }
+        }
+        _ => return None,
+    }
+    if src_paths.is_empty() {
+        return None;
+    }
+
+    let args = AutomationArgs {
+        source: Origin::Automation,
+        src_paths,
+        dst_paths,
+    };
+    let id = AutomationsCache::generate_automation_id(
+        backend_name,
+        remote_name,
+        automation_type,
+        profile_name,
+    );
+    let changed_only = *automation_type != OperationType::Bisync
+        && profile.app.watch_changed_only.unwrap_or(false);
+    Some(scheduled(
+        Automation::new(
+            id,
+            Some(*automation_type),
+            remote_name.to_string(),
+            profile_name.to_string(),
+            args,
+            backend_name,
+        ),
+        cron,
+        (
+            watch_enabled,
+            profile.app.watch_delay.unwrap_or(DEFAULT_WATCH_DELAY),
+            changed_only,
+        ),
+    ))
+}
+
+fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option<Automation> {
+    let cron_enabled = qr.is_cron_enabled();
+    let watch_enabled = qr.is_watch_enabled();
+    if !cron_enabled && !watch_enabled {
+        return None;
+    }
+
+    let cron = if cron_enabled {
+        qr.cron_expression().filter(|s| !s.is_empty())
+    } else {
+        None
+    };
+
+    let mut src_paths = qr.watch_paths();
+    if src_paths.is_empty() {
+        src_paths.push(qr.remote_name.clone());
+    }
+    let dst_paths: Vec<String> = qr.dest_path().into_iter().collect();
+
+    let args = AutomationArgs {
+        source: Origin::QuickRun,
+        src_paths,
+        dst_paths,
+    };
+    let watch_delay = qr.watch_delay().unwrap_or(DEFAULT_WATCH_DELAY);
+    let watch_changed_only = qr.watch_changed_only();
+    Some(scheduled(
+        Automation::new(
+            qr.id.clone(),
+            Some(qr.operation_type),
+            qr.remote_name.clone(),
+            qr.name.clone(),
+            args,
+            backend_name,
+        ),
+        cron,
+        (watch_enabled, watch_delay, watch_changed_only),
+    ))
+}
+
+fn create_automation_from_workflow(
+    backend_name: &str,
+    wf: &WorkflowDefinition,
+) -> Option<Automation> {
+    let cron_enabled = wf.is_cron_enabled();
+    let watch_enabled = wf.is_watch_enabled();
+    if !cron_enabled && !watch_enabled {
+        return None;
+    }
+
+    let cron = if cron_enabled {
+        wf.effective_cron_expression()
+            .filter(|s| !s.trim().is_empty())
+    } else {
+        None
+    };
+    // A workflow is no single operation and has no remote or destination. Its only paths are
+    // the folders it watches: a schedule-only workflow has none.
+    let args = AutomationArgs {
+        source: Origin::Workflow,
+        src_paths: wf.watcher_paths(),
+        dst_paths: Vec::new(),
+    };
+    Some(scheduled(
+        Automation::new(
+            wf.id.clone(),
+            None,
+            String::new(),
+            wf.name.clone(),
+            args,
+            backend_name,
+        ),
+        cron,
+        (watch_enabled, wf.watcher_debounce_seconds(), false),
+    ))
 }
 
 impl Default for AutomationsCache {
@@ -896,7 +688,7 @@ mod tests {
             automation.remote_name = remote.into();
             automation.backend_name = backend.into();
             if global {
-                automation.args.params.source = Some(crate::utils::types::origin::Origin::QuickRun);
+                automation.args.source = crate::utils::types::origin::Origin::QuickRun;
             }
             cache.add_automation(automation).await.unwrap();
         }
@@ -918,9 +710,45 @@ mod tests {
     }
 
     fn parse_profile_config(value: &Value) -> ProfileConfig {
-        ProfileConfig::from_profile(
-            &crate::utils::types::remotes::ProfileConfig::parse_from_value(value).unwrap(),
-        )
+        ProfileConfig::parse_from_value(value).unwrap()
+    }
+
+    /// The few profile settings these tests vary, built into a real profile.
+    #[derive(Default)]
+    struct Profile {
+        cron_enabled: Option<bool>,
+        cron_expression: Option<String>,
+        watch_enabled: Option<bool>,
+        watch_delay: Option<u64>,
+        watch_changed_only: Option<bool>,
+        source: Option<Value>,
+        dest: Option<Value>,
+    }
+
+    impl Profile {
+        fn build(&self) -> ProfileConfig {
+            let mut rclone = serde_json::Map::new();
+            rclone.extend(
+                self.source
+                    .clone()
+                    .map(|value| ("source".to_string(), value)),
+            );
+            rclone.extend(self.dest.clone().map(|value| ("dest".to_string(), value)));
+            let mut app = serde_json::Map::new();
+            for (key, value) in [
+                ("cronEnabled", self.cron_enabled.map(Value::from)),
+                (
+                    "cronExpression",
+                    self.cron_expression.clone().map(Value::from),
+                ),
+                ("watchEnabled", self.watch_enabled.map(Value::from)),
+                ("watchDelay", self.watch_delay.map(Value::from)),
+                ("watchChangedOnly", self.watch_changed_only.map(Value::from)),
+            ] {
+                app.extend(value.map(|value| (key.to_string(), value)));
+            }
+            parse_profile_config(&json!({"app": app, "rclone": rclone}))
+        }
     }
 
     #[test]
@@ -933,10 +761,10 @@ mod tests {
         });
 
         let p = parse_profile_config(&json_data);
-        assert_eq!(p.cron_enabled, Some(true));
-        assert_eq!(p.cron_expression.as_deref(), Some("0 0 * * *"));
-        assert_eq!(p.source.as_ref().and_then(|v| v.as_str()), Some("/src"));
-        assert_eq!(p.dest.as_ref().and_then(|v| v.as_str()), Some("/dst"));
+        assert_eq!(p.app.cron_enabled, Some(true));
+        assert_eq!(p.app.cron_expression.as_deref(), Some("0 0 * * *"));
+        assert_eq!(p.source_value().and_then(|v| v.as_str()), Some("/src"));
+        assert_eq!(p.dest_value().and_then(|v| v.as_str()), Some("/dst"));
     }
 
     #[test]
@@ -948,11 +776,11 @@ mod tests {
         });
         let p_sync = parse_profile_config(&json_sync);
         assert_eq!(
-            p_sync.source.as_ref().and_then(|v| v.as_str()),
+            p_sync.source_value().and_then(|v| v.as_str()),
             Some("/src-sync")
         );
         assert_eq!(
-            p_sync.dest.as_ref().and_then(|v| v.as_str()),
+            p_sync.dest_value().and_then(|v| v.as_str()),
             Some("/dst-sync")
         );
 
@@ -963,11 +791,11 @@ mod tests {
         });
         let p_bisync = parse_profile_config(&json_bisync);
         assert_eq!(
-            p_bisync.source.as_ref().and_then(|v| v.as_str()),
+            p_bisync.source_value().and_then(|v| v.as_str()),
             Some("/src-bisync")
         );
         assert_eq!(
-            p_bisync.dest.as_ref().and_then(|v| v.as_str()),
+            p_bisync.dest_value().and_then(|v| v.as_str()),
             Some("/dst-bisync")
         );
 
@@ -978,11 +806,11 @@ mod tests {
         });
         let p_mount = parse_profile_config(&json_mount);
         assert_eq!(
-            p_mount.source.as_ref().and_then(|v| v.as_str()),
+            p_mount.source_value().and_then(|v| v.as_str()),
             Some("/src-mount")
         );
         assert_eq!(
-            p_mount.dest.as_ref().and_then(|v| v.as_str()),
+            p_mount.dest_value().and_then(|v| v.as_str()),
             Some("/dst-mount")
         );
     }
@@ -1030,8 +858,8 @@ mod tests {
         AutomationsCache::new()
     }
 
-    fn make_full_profile_config(enabled: bool, cron: &str) -> ProfileConfig {
-        ProfileConfig {
+    fn make_full_profile_config(enabled: bool, cron: &str) -> Profile {
+        Profile {
             cron_enabled: Some(enabled),
             cron_expression: Some(cron.to_string()),
             source: Some(json!("/src")),
@@ -1042,30 +870,27 @@ mod tests {
 
     #[test]
     fn test_create_automation_struct_disabled_returns_none() {
-        let cache = make_cache();
         let cfg = make_full_profile_config(false, "* * * * *");
-        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
+        let result = create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build());
         assert!(result.is_none(), "disabled automation should return None");
     }
 
     #[test]
     fn test_create_automation_struct_empty_cron_returns_none() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some(String::new()),
             source: Some(json!("/src")),
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
+        let result = create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build());
         assert!(result.is_none(), "empty cron should return None");
     }
 
     #[test]
     fn test_create_automation_struct_empty_cron_but_watcher_enabled_returns_some() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some(String::new()),
             watch_enabled: Some(true),
@@ -1073,7 +898,7 @@ mod tests {
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
+        let result = create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build());
         assert!(
             result.is_some(),
             "empty cron with watcher enabled should return Some"
@@ -1085,8 +910,7 @@ mod tests {
 
     #[test]
     fn test_create_automation_struct_missing_source_returns_none() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
             source: None,
@@ -1094,17 +918,14 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
-                .is_none(),
+            create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build()).is_none(),
             "missing source should return None"
         );
     }
 
     #[test]
     fn test_create_automation_struct_empty_source_returns_none() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
             source: Some(json!("")),
@@ -1112,9 +933,7 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
-                .is_none(),
+            create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build()).is_none(),
             "empty source should return None"
         );
     }
@@ -1131,39 +950,37 @@ mod tests {
             }
         }))
         .unwrap();
-        let automations = make_cache().collect_automations_from_remote("b", "r", &settings);
+        let automations = collect_automations_from_remote("b", "r", &settings);
         assert_eq!(automations.len(), 1);
         assert_eq!(automations[0].profile_name, "Cleanup");
-        assert_eq!(automations[0].automation_type, OperationType::Delete);
+        assert_eq!(automations[0].automation_type, Some(OperationType::Delete));
         assert_eq!(automations[0].args.src_paths, vec!["r:trash", "r:old"]);
         assert!(automations[0].args.dst_paths.is_empty());
     }
 
     #[test]
     fn test_delete_automation_requires_only_sources() {
-        let cache = make_cache();
         for source in [json!("r:trash"), json!(["r:trash", "r:old"])] {
-            let cfg = ProfileConfig {
+            let cfg = Profile {
                 source: Some(source.clone()),
                 dest: None,
                 ..make_full_profile_config(true, "*/5 * * * *")
             };
-            let automation = cache
-                .create_automation_struct("b", "r", "cleanup", &OperationType::Delete, &cfg)
-                .expect("source-only Delete profiles must be schedulable");
-            assert_eq!(automation.automation_type, OperationType::Delete);
+            let automation =
+                create_automation_struct("b", "r", "cleanup", &OperationType::Delete, &cfg.build())
+                    .expect("source-only Delete profiles must be schedulable");
+            assert_eq!(automation.automation_type, Some(OperationType::Delete));
             assert_eq!(automation.args.src_paths, normalize_paths(Some(&source)));
             assert!(automation.args.dst_paths.is_empty());
         }
         for source in [None, Some(json!("")), Some(json!([]))] {
-            let cfg = ProfileConfig {
+            let cfg = Profile {
                 source,
                 dest: None,
                 ..make_full_profile_config(true, "*/5 * * * *")
             };
             assert!(
-                cache
-                    .create_automation_struct("b", "r", "cleanup", &OperationType::Delete, &cfg)
+                create_automation_struct("b", "r", "cleanup", &OperationType::Delete, &cfg.build())
                     .is_none()
             );
         }
@@ -1171,8 +988,7 @@ mod tests {
 
     #[test]
     fn test_create_automation_struct_missing_dest_returns_none() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
             source: Some(json!("/src")),
@@ -1180,17 +996,14 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
-                .is_none(),
+            create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build()).is_none(),
             "missing dest should return None"
         );
     }
 
     #[test]
     fn test_create_automation_struct_empty_dest_returns_none() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
             source: Some(json!("/src")),
@@ -1198,45 +1011,44 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
-                .is_none(),
+            create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg.build()).is_none(),
             "empty dest should return None"
         );
     }
 
     #[test]
     fn test_create_automation_struct_valid() {
-        let cache = make_cache();
-        let cfg = ProfileConfig {
+        let cfg = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!("/src")),
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let automation = cache
-            .create_automation_struct("backend", "remote", "daily", &OperationType::Copy, &cfg)
-            .expect("should produce an automation");
+        let automation = create_automation_struct(
+            "backend",
+            "remote",
+            "daily",
+            &OperationType::Copy,
+            &cfg.build(),
+        )
+        .expect("should produce an automation");
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
         assert_eq!(automation.cron_expression.as_deref(), Some("*/5 * * * *"));
-        assert_eq!(automation.automation_type, OperationType::Copy);
-        assert!(automation.scheduler_job_id.is_none());
+        assert_eq!(automation.automation_type, Some(OperationType::Copy));
         assert!(automation.current_job_id.is_none());
 
         assert_eq!(automation.args.src_paths, vec!["/src".to_string()]);
         assert_eq!(automation.args.dst_paths, vec!["/dst".to_string()]);
-        assert_eq!(automation.args.params.remote_name, "remote");
-        assert_eq!(automation.args.params.profile_name, "daily");
+        assert_eq!(automation.remote_name, "remote");
+        assert_eq!(automation.profile_name, "daily");
     }
 
     #[test]
     fn test_create_automation_struct_bisync_constraints() {
-        let cache = make_cache();
-
         // Exactly 1 source and 1 destination is valid
-        let cfg_valid = ProfileConfig {
+        let cfg_valid = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1"])),
@@ -1244,19 +1056,18 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Bisync,
-                    &cfg_valid
-                )
-                .is_some()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Bisync,
+                &cfg_valid.build()
+            )
+            .is_some()
         );
 
         // Multiple sources is invalid for Bisync
-        let cfg_multisrc = ProfileConfig {
+        let cfg_multisrc = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1", "/src2"])),
@@ -1264,19 +1075,18 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Bisync,
-                    &cfg_multisrc
-                )
-                .is_none()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Bisync,
+                &cfg_multisrc.build()
+            )
+            .is_none()
         );
 
         // Multiple destinations is invalid for Bisync
-        let cfg_multidst = ProfileConfig {
+        let cfg_multidst = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1"])),
@@ -1284,24 +1094,21 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Bisync,
-                    &cfg_multidst
-                )
-                .is_none()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Bisync,
+                &cfg_multidst.build()
+            )
+            .is_none()
         );
     }
 
     #[test]
     fn test_create_automation_struct_sync_copy_move_constraints() {
-        let cache = make_cache();
-
         // 1 source and 1 destination is valid
-        let cfg_one_to_one = ProfileConfig {
+        let cfg_one_to_one = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1"])),
@@ -1309,19 +1116,18 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Sync,
-                    &cfg_one_to_one
-                )
-                .is_some()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Sync,
+                &cfg_one_to_one.build()
+            )
+            .is_some()
         );
 
         // Multiple sources and 1 destination is valid
-        let cfg_multi_to_one = ProfileConfig {
+        let cfg_multi_to_one = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1", "/src2"])),
@@ -1329,19 +1135,18 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Sync,
-                    &cfg_multi_to_one
-                )
-                .is_some()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Sync,
+                &cfg_multi_to_one.build()
+            )
+            .is_some()
         );
 
         // Multiple destinations is invalid
-        let cfg_one_to_multi = ProfileConfig {
+        let cfg_one_to_multi = Profile {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
             source: Some(json!(["/src1"])),
@@ -1349,15 +1154,14 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            cache
-                .create_automation_struct(
-                    "backend",
-                    "remote",
-                    "daily",
-                    &OperationType::Sync,
-                    &cfg_one_to_multi
-                )
-                .is_none()
+            create_automation_struct(
+                "backend",
+                "remote",
+                "daily",
+                &OperationType::Sync,
+                &cfg_one_to_multi.build()
+            )
+            .is_none()
         );
     }
 
@@ -1366,32 +1170,22 @@ mod tests {
     fn base_automation() -> Automation {
         Automation {
             id: "b:r-sync-p".to_string(),
-            automation_type: OperationType::Sync,
+            automation_type: Some(OperationType::Sync),
             remote_name: "r".to_string(),
             profile_name: "p".to_string(),
             cron_expression: Some("* * * * *".to_string()),
             status: AutomationStatus::Enabled,
             args: AutomationArgs {
-                params: ProfileParams {
-                    remote_name: "r".to_string(),
-                    profile_name: "p".to_string(),
-                    backend_name: None,
-                    source: None,
-                    no_cache: None,
-                    scoped_targets: None,
-                    execute_id: None,
-                },
+                source: Origin::Automation,
                 src_paths: vec![],
                 dst_paths: vec![],
             },
             backend_name: "b".to_string(),
-            created_at: chrono::Utc::now(),
             last_run: None,
             next_run: None,
             last_error: None,
             current_job_id: None,
             execution_id: None,
-            scheduler_job_id: None,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -1404,28 +1198,25 @@ mod tests {
 
     #[test]
     fn test_automation_config_changed_same() {
-        let cache = make_cache();
         let a = base_automation();
         let b = base_automation();
-        assert!(!cache.automation_config_changed(&a, &b));
+        assert!(!automation_config_changed(&a, &b));
     }
 
     #[test]
     fn test_automation_config_changed_cron() {
-        let cache = make_cache();
         let a = base_automation();
         let mut b = base_automation();
         b.cron_expression = Some("0 9 * * 1-5".to_string());
-        assert!(cache.automation_config_changed(&a, &b));
+        assert!(automation_config_changed(&a, &b));
     }
 
     #[test]
     fn test_automation_config_changed_status_ignored() {
-        let cache = make_cache();
         let a = base_automation();
         let mut b = base_automation();
         b.status = AutomationStatus::Disabled;
-        assert!(!cache.automation_config_changed(&a, &b));
+        assert!(!automation_config_changed(&a, &b));
     }
 
     // Cache CRUD
@@ -1445,7 +1236,7 @@ mod tests {
     async fn concurrent_triggers_grant_exactly_one_execution_and_keep_its_backend() {
         let cache = make_cache();
         let mut automation = base_automation();
-        automation.args.params.source = Some(crate::utils::types::origin::Origin::QuickRun);
+        automation.args.source = crate::utils::types::origin::Origin::QuickRun;
         let id = automation.id.clone();
         cache.add_automation(automation).await.unwrap();
         let (a, b) = tokio::join!(
@@ -1644,22 +1435,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_remove_automation_preserves_scheduler_job_id() {
-        let cache = make_cache();
-        let mut automation = base_automation();
-        automation.scheduler_job_id = Some("550e8400-e29b-41d4-a716-446655440000".to_string());
-        let id = automation.id.clone();
-        cache.add_automation(automation).await.unwrap();
-
-        let removed = cache.remove_automation(&id).await.unwrap();
-        assert_eq!(
-            removed.scheduler_job_id.as_deref(),
-            Some("550e8400-e29b-41d4-a716-446655440000"),
-            "caller needs scheduler_job_id to unschedule the job"
-        );
-    }
-
-    #[tokio::test]
     async fn test_get_all_automations() {
         let cache = make_cache();
         let mut t1 = base_automation();
@@ -1683,7 +1458,6 @@ mod tests {
         let mut t1 = base_automation();
         t1.id = "b1:r-sync-p".to_string();
         t1.backend_name = "b1".to_string();
-        t1.scheduler_job_id = Some("550e8400-e29b-41d4-a716-446655440000".to_string());
 
         let mut t2 = base_automation();
         t2.id = "b2:r-sync-p".to_string();
@@ -1695,10 +1469,6 @@ mod tests {
         let evicted = cache.clear_backend_automations("b1").await;
         assert_eq!(evicted.len(), 1);
         assert_eq!(evicted[0].backend_name, "b1");
-        assert!(
-            evicted[0].scheduler_job_id.is_some(),
-            "job id must survive eviction"
-        );
         assert_eq!(
             cache.get_all_automations().await.len(),
             1,
@@ -1781,39 +1551,17 @@ mod tests {
         assert!(with_removal.has_changes());
     }
 
-    // get_automations_for_backend / prefix filtering
-
-    #[tokio::test]
-    async fn test_get_automations_for_backend_filters_correctly() {
-        let cache = make_cache();
-
-        let mut t1 = base_automation();
-        t1.id = "backend_a:remote-sync-p".to_string();
-        t1.backend_name = "backend_a".to_string();
-
-        let mut t2 = base_automation();
-        t2.id = "backend_b:remote-sync-p".to_string();
-        t2.backend_name = "backend_b".to_string();
-
-        cache.add_automation(t1).await.unwrap();
-        cache.add_automation(t2).await.unwrap();
-
-        let a_automations = cache.get_automations_for_backend("backend_a").await;
-        assert_eq!(a_automations.len(), 1);
-        assert_eq!(a_automations[0].backend_name, "backend_a");
-    }
-
     #[tokio::test]
     async fn deleting_global_definitions_after_switch_removes_their_automations() {
         let cache = make_cache();
         for (id, source) in [
             ("quick", crate::utils::types::origin::Origin::QuickRun),
-            ("flow", crate::utils::types::origin::Origin::Flow),
+            ("flow", crate::utils::types::origin::Origin::Workflow),
         ] {
             let mut automation = base_automation();
             automation.id = id.to_string();
             automation.backend_name = "A".to_string();
-            automation.args.params.source = Some(source);
+            automation.args.source = source;
             cache.add_automation(automation).await.unwrap();
         }
         assert!(cache.clear_backend_automations("A").await.is_empty());
@@ -1841,7 +1589,6 @@ mod tests {
 
     #[test]
     fn test_collect_automations_from_remote() {
-        let cache = make_cache();
         let remote_settings_val = json!({
             "syncConfigs": {
                 "watcher_profile": {
@@ -1871,22 +1618,21 @@ mod tests {
         let remote_settings: RemoteSettings =
             serde_json::from_value(remote_settings_val).expect("valid RemoteSettings");
 
-        let automations =
-            cache.collect_automations_from_remote("local", "gdrive", &remote_settings);
+        let automations = collect_automations_from_remote("local", "gdrive", &remote_settings);
         assert_eq!(automations.len(), 2);
 
         let watcher = automations
             .iter()
             .find(|a| a.profile_name == "watcher_profile")
             .expect("watcher automation found");
-        assert_eq!(watcher.automation_type, OperationType::Sync);
+        assert_eq!(watcher.automation_type, Some(OperationType::Sync));
         assert!(watcher.watch_enabled);
 
         let scheduled = automations
             .iter()
             .find(|a| a.profile_name == "scheduled_profile")
             .expect("scheduled automation found");
-        assert_eq!(scheduled.automation_type, OperationType::Copy);
+        assert_eq!(scheduled.automation_type, Some(OperationType::Copy));
         assert_eq!(scheduled.cron_expression.as_deref(), Some("0 12 * * *"));
     }
 
@@ -1933,21 +1679,28 @@ mod tests {
             ..Default::default()
         };
 
-        let auto1 = cache.create_automation_from_workflow("local", &wf_with_cron);
+        let auto1 = create_automation_from_workflow("local", &wf_with_cron);
         assert!(auto1.is_some());
         let a1 = auto1.unwrap();
         assert_eq!(a1.id, "wf-cron-1");
         assert_eq!(a1.cron_expression.as_deref(), Some("0 3 * * *"));
         assert!(!a1.watch_enabled);
         assert_eq!(
-            a1.args.params.source,
-            Some(crate::utils::types::origin::Origin::Flow)
+            a1.args.source,
+            crate::utils::types::origin::Origin::Workflow
+        );
+        assert!(a1.args.src_paths.is_empty() && a1.args.dst_paths.is_empty());
+        // A workflow is no single operation and has no remote.
+        assert!(a1.automation_type.is_none() && a1.remote_name.is_empty());
+        assert_eq!(
+            serde_json::to_value(&a1).unwrap()["automationType"],
+            serde_json::Value::Null
         );
 
-        let auto2 = cache.create_automation_from_workflow("local", &wf_without_cron);
+        let auto2 = create_automation_from_workflow("local", &wf_without_cron);
         assert!(auto2.is_none());
 
-        let auto3 = cache.create_automation_from_workflow("local", &wf_with_watcher);
+        let auto3 = create_automation_from_workflow("local", &wf_with_watcher);
         assert!(auto3.is_some());
         let a3 = auto3.unwrap();
         assert_eq!(a3.id, "wf-watcher-1");
@@ -2029,5 +1782,87 @@ mod tests {
         assert_eq!(res.removed.len(), 0);
         assert!(cache.get_automation("wf-preserve").await.is_some());
         assert!(cache.get_automation("qr-preserve").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn a_sync_changes_the_cache_under_one_lock_and_announces_it_once() {
+        let cache = make_cache();
+        let mut stale = base_automation();
+        stale.id = "stale".into();
+        let mut kept = base_automation();
+        kept.id = "kept".into();
+        kept.status = AutomationStatus::Disabled;
+        cache.add_automation(stale).await.unwrap();
+        cache.add_automation(kept.clone()).await.unwrap();
+
+        let mut changed = kept.clone();
+        changed.cron_expression = Some("0 5 * * *".into());
+        changed.status = AutomationStatus::Enabled;
+        let mut fresh = base_automation();
+        fresh.id = "fresh".into();
+        let result = cache
+            .sync_automations(vec![changed, fresh], |_| true)
+            .await
+            .unwrap();
+
+        assert_eq!(result.added.len(), 1);
+        assert_eq!(result.updated.len(), 1);
+        assert_eq!(result.removed.len(), 1);
+        assert_eq!(result.removed[0].id, "stale");
+        // The new configuration is taken, the user's enabled/disabled choice stays.
+        let kept = cache.get_automation("kept").await.unwrap();
+        assert_eq!(kept.cron_expression.as_deref(), Some("0 5 * * *"));
+        assert_eq!(kept.status, AutomationStatus::Disabled);
+        assert!(cache.get_automation("stale").await.is_none());
+        // Nothing changes the second time.
+        let again = cache
+            .sync_automations(cache.get_all_automations().await, |_| true)
+            .await
+            .unwrap();
+        assert!(!again.has_changes());
+    }
+
+    #[test]
+    fn quick_run_paths_come_from_the_canonical_setting_names() {
+        let quick_run = |rclone: Value| QuickRun {
+            id: "qr".into(),
+            name: "QR".into(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: "drive:".into(),
+            config: json!({"app": {"watchEnabled": true}, "rclone": rclone}),
+        };
+        let automation = create_automation_from_quick_run(
+            "b",
+            &quick_run(json!({"path1": "/a", "mountPoint": "/m"})),
+        )
+        .unwrap();
+        assert_eq!(automation.args.src_paths, vec!["/a"]);
+        assert_eq!(automation.args.dst_paths, vec!["/m"]);
+        // Blank values are skipped; with no source the remote itself is watched.
+        let automation =
+            create_automation_from_quick_run("b", &quick_run(json!({"source": "  ", "dest": ""})))
+                .unwrap();
+        assert_eq!(automation.args.src_paths, vec!["drive:"]);
+        assert!(automation.args.dst_paths.is_empty());
+    }
+
+    #[test]
+    fn a_new_automation_is_enabled_unscheduled_and_named_after_its_arguments() {
+        let automation = base_automation();
+        let created = Automation::new(
+            "id".into(),
+            Some(OperationType::Sync),
+            automation.remote_name.clone(),
+            automation.profile_name.clone(),
+            automation.args.clone(),
+            "backend",
+        );
+        assert_eq!(created.remote_name, "r");
+        assert_eq!(created.profile_name, "p");
+        assert_eq!(created.backend_name, "backend");
+        assert_eq!(created.status, AutomationStatus::Enabled);
+        assert!(created.cron_expression.is_none() && !created.watch_enabled);
+        assert_eq!(created.watch_delay, DEFAULT_WATCH_DELAY);
     }
 }

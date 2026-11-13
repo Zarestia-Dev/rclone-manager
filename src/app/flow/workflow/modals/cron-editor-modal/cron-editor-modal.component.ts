@@ -25,7 +25,7 @@ export interface CronEditorModalData {
 export class CronEditorModalComponent {
   readonly dialogRef = inject(MatDialogRef<CronEditorModalComponent>);
   readonly data: CronEditorModalData = inject(MAT_DIALOG_DATA);
-  private readonly workflowState = inject(WorkflowStateService, { optional: true });
+  private readonly workflowState = inject(WorkflowStateService);
 
   readonly cronExpression = signal<string>(
     (this.data?.node?.config?.['cronExpression'] as string) || '0 2 * * *'

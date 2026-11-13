@@ -30,6 +30,15 @@ pub enum TrayAction {
     Quit,
 }
 
+/// IDs join their parts with `__`, so `_` (and `%`) inside a part are percent-encoded.
+fn encode_part(part: &str) -> String {
+    urlencoding::encode(part).replace('_', "%5F")
+}
+
+fn decode_part(part: &str) -> String {
+    urlencoding::decode(part).map_or_else(|_| part.to_string(), std::borrow::Cow::into_owned)
+}
+
 impl TrayAction {
     /// Actions that do not expose configuration or control operations while locked.
     pub fn allowed_when_locked(&self) -> bool {
@@ -41,21 +50,33 @@ impl TrayAction {
     pub fn to_id(&self) -> String {
         match self {
             Self::StartProfile(op, remote, profile) => {
-                format!("{}_profile__{remote}__{profile}", op.as_str())
+                format!(
+                    "{}_profile__{}__{}",
+                    op.as_str(),
+                    encode_part(remote),
+                    encode_part(profile)
+                )
             }
             Self::StopProfile(op, remote, profile) => {
+                let (remote, profile) = (encode_part(remote), encode_part(profile));
                 if *op == OperationType::Mount {
                     format!("unmount_profile__{remote}__{profile}")
                 } else {
                     format!("stop_{}_profile__{remote}__{profile}", op.as_str())
                 }
             }
-            Self::StartQuickRun(id) => format!("start_quick_run__{id}"),
-            Self::StopQuickRun(id) => format!("stop_quick_run__{id}"),
-            Self::StartWorkflow(id) => format!("start_workflow__{id}"),
-            Self::StopWorkflow(id) => format!("stop_workflow__{id}"),
-            Self::Browse(remote, profile) => format!("browse_profile__{remote}__{profile}"),
-            Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
+            Self::StartQuickRun(id) => format!("start_quick_run__{}", encode_part(id)),
+            Self::StopQuickRun(id) => format!("stop_quick_run__{}", encode_part(id)),
+            Self::StartWorkflow(id) => format!("start_workflow__{}", encode_part(id)),
+            Self::StopWorkflow(id) => format!("stop_workflow__{}", encode_part(id)),
+            Self::Browse(remote, profile) => {
+                format!(
+                    "browse_profile__{}__{}",
+                    encode_part(remote),
+                    encode_part(profile)
+                )
+            }
+            Self::BrowseInApp(remote) => format!("browse_in_app__{}", encode_part(remote)),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
             Self::StopAllServes => "stop_all_serves".to_string(),
@@ -81,17 +102,17 @@ impl TrayAction {
             _ => {}
         }
 
-        let parts: Vec<&str> = id.splitn(3, "__").collect();
+        let parts: Vec<&str> = id.split("__").collect();
 
         if parts.len() == 2 {
             // Action without 3-part profile (browse-in-app, quick run, or workflow)
             let (prefix, payload) = (parts[0], parts[1]);
             match prefix {
-                "browse_in_app" => return Some(Self::BrowseInApp(payload.to_string())),
-                "start_quick_run" => return Some(Self::StartQuickRun(payload.to_string())),
-                "stop_quick_run" => return Some(Self::StopQuickRun(payload.to_string())),
-                "start_workflow" => return Some(Self::StartWorkflow(payload.to_string())),
-                "stop_workflow" => return Some(Self::StopWorkflow(payload.to_string())),
+                "browse_in_app" => return Some(Self::BrowseInApp(decode_part(payload))),
+                "start_quick_run" => return Some(Self::StartQuickRun(decode_part(payload))),
+                "stop_quick_run" => return Some(Self::StopQuickRun(decode_part(payload))),
+                "start_workflow" => return Some(Self::StartWorkflow(decode_part(payload))),
+                "stop_workflow" => return Some(Self::StopWorkflow(decode_part(payload))),
                 _ => return None,
             }
         }
@@ -101,7 +122,7 @@ impl TrayAction {
             return None;
         }
 
-        let (prefix, remote, profile) = (parts[0], parts[1].to_string(), parts[2].to_string());
+        let (prefix, remote, profile) = (parts[0], decode_part(parts[1]), decode_part(parts[2]));
 
         if prefix == "browse_profile" {
             return Some(Self::Browse(remote, profile));
@@ -156,6 +177,8 @@ mod tests {
             TrayAction::Browse("remote".to_string(), "profile1".to_string()),
             TrayAction::BrowseInApp("remote".to_string()),
             TrayAction::UnmountAll,
+            TrayAction::StopAllJobs,
+            TrayAction::StopAllServes,
             TrayAction::OpenFileBrowser,
             TrayAction::ShowApp,
             TrayAction::OpenWebUI,
@@ -167,6 +190,45 @@ mod tests {
             let parsed =
                 TrayAction::from_id(&id).unwrap_or_else(|| panic!("Should parse back: {id}"));
             assert_eq!(action, parsed);
+        }
+    }
+
+    #[test]
+    fn ids_survive_names_that_contain_the_separator() {
+        for name in [
+            "my__remote",
+            "_lead",
+            "trail_",
+            "a%5Fb",
+            "100%",
+            "Foto ğraf",
+            "x__y__z",
+        ] {
+            for action in [
+                TrayAction::StartProfile(OperationType::Sync, name.into(), name.into()),
+                TrayAction::StopProfile(OperationType::Mount, name.into(), name.into()),
+                TrayAction::StopProfile(OperationType::Serve, "r".into(), name.into()),
+                TrayAction::Browse(name.into(), "p".into()),
+                TrayAction::BrowseInApp(name.into()),
+                TrayAction::StartQuickRun(name.into()),
+                TrayAction::StopWorkflow(name.into()),
+            ] {
+                let id = action.to_id();
+                assert_eq!(TrayAction::from_id(&id), Some(action), "{id}");
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_or_malformed_ids_are_ignored() {
+        for id in [
+            "",
+            "status__remote",
+            "bogus__a__b",
+            "sync_profile__only",
+            "a__b__c__d",
+        ] {
+            assert_eq!(TrayAction::from_id(id), None, "{id}");
         }
     }
 }

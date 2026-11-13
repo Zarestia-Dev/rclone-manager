@@ -110,6 +110,80 @@ object RcloneSafBridge {
   private external fun nativeVfsRead(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
   private external fun nativeVfsWrite(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
   private external fun nativeOnMeteredChanged(isMetered: Boolean)
+  private external fun nativeStartCore(dataDir: String, cacheDir: String)
+  private external fun nativeQuit(): Boolean
+  private external fun nativeStopAllJobs()
+
+  private const val BOOT_PREFS_NAME = "rclone_boot_prefs"
+  private const val KEY_START_ON_BOOT = "start_on_boot"
+
+  /** Starts the backend without an activity, as after a boot. The activity attaches to it later. */
+  fun startCore(context: Context) {
+    val appCtx = context.applicationContext
+    ensureInitialized(appCtx)
+    if (!isLibraryLoaded) return
+    try {
+      nativeStartCore(appCtx.applicationInfo.dataDir, appCtx.cacheDir.absolutePath)
+    } catch (e: Throwable) {
+      Logger.error("startCore failed: ${e.message}")
+    }
+  }
+
+  /** Read by the boot receiver, which runs before any native code can read the settings. */
+  fun isStartOnBootEnabled(context: Context): Boolean =
+    context.applicationContext.getSharedPreferences(BOOT_PREFS_NAME, Context.MODE_PRIVATE)
+      .getBoolean(KEY_START_ON_BOOT, false)
+
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun syncKeepAlive(
+    keepAlive: Boolean,
+    startOnBoot: Boolean,
+    jobs: Int,
+    mounts: Int,
+    serves: Int,
+    text: String
+  ) {
+    val ctx = appContext ?: return
+    ctx.getSharedPreferences(BOOT_PREFS_NAME, Context.MODE_PRIVATE)
+      .edit().putBoolean(KEY_START_ON_BOOT, startOnBoot).apply()
+    RcloneKeepAliveService.sync(ctx, keepAlive, jobs, mounts, serves, text)
+  }
+
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun showNotification(title: String, body: String) {
+    val ctx = appContext ?: return
+    try {
+      RcloneNotifications.showAlert(ctx, title, body)
+    } catch (e: Throwable) {
+      Logger.error("showNotification failed: ${e.message}")
+    }
+  }
+
+  /** The notification's quit action: the same graceful shutdown as quitting inside the app. */
+  fun quitApp() {
+    val handled = isLibraryLoaded && try {
+      nativeQuit()
+    } catch (e: Throwable) {
+      Logger.error("nativeQuit failed: ${e.message}")
+      false
+    }
+    if (!handled) {
+      // No backend runs, so there is nothing to stop gracefully.
+      requestQuit()
+      android.os.Process.killProcess(android.os.Process.myPid())
+    }
+  }
+
+  fun stopAllJobs() {
+    if (!isLibraryLoaded) return
+    try {
+      nativeStopAllJobs()
+    } catch (e: Throwable) {
+      Logger.error("nativeStopAllJobs failed: ${e.message}")
+    }
+  }
 
   private val activeHandleCount = java.util.concurrent.atomic.AtomicInteger(0)
 

@@ -1,4 +1,4 @@
-import { OPERATION_REGISTRY, OperationDefinition } from '@app/types';
+import { OPERATION_REGISTRY, OperationDefinition, isSourceOnlyOperation } from '@app/types';
 import { NodePaletteItem, WorkflowNodeCategory, WorkflowPort } from '../types/workflow.types';
 import { getNodeStyleMeta } from '../utils/node-style.util';
 
@@ -94,7 +94,7 @@ function getOperationDefaultConfig(opKey: string): Record<string, unknown> {
     defaultRclone['mountPoint'] = '';
   } else if (opKey === 'serve') {
     defaultRclone['fs'] = '';
-  } else if (opKey === 'delete') {
+  } else if (isSourceOnlyOperation(opKey)) {
     defaultRclone['srcFs'] = '';
   } else if (opKey === 'copyurl') {
     defaultRclone['url'] = '';
@@ -141,7 +141,7 @@ function createPaletteItem(
     titleKey: meta.titleKey ?? type,
     descriptionKey: meta.descriptionKey ?? '',
     icon: meta.icon,
-    cssClass: meta.cssClass,
+    tone: meta.tone,
     defaultInputs,
     defaultOutputs,
     defaultConfig,
@@ -161,7 +161,7 @@ const OPERATION_PALETTE_ITEMS: NodePaletteItem[] = (
       titleKey: meta.titleKey ?? op.typeLabel ?? op.key,
       descriptionKey: meta.descriptionKey ?? op.settingsDescription ?? '',
       icon: meta.icon,
-      cssClass: meta.cssClass,
+      tone: meta.tone,
       defaultInputs: STANDARD_TASK_INPUTS,
       defaultOutputs: STANDARD_TASK_OUTPUTS,
       defaultConfig: getOperationDefaultConfig(op.key),
@@ -221,15 +221,13 @@ export const PALETTE_ITEMS: NodePaletteItem[] = [
   createPaletteItem('join', 'logic', JOIN_BRANCH_INPUTS, SINGLE_DONE_OUTPUT, {
     joinMode: 'all_success',
   }),
+  // The backend words an empty message and title itself, in its language.
   createPaletteItem('stop', 'logic', STANDARD_TASK_INPUTS, [], {
     status: 'success',
-    message: 'Workflow stopped',
   }),
 
   // ── Actions & Output ─────────────────────────────────────────────────────
   createPaletteItem('notification', 'action', STANDARD_TASK_INPUTS, SINGLE_DONE_OUTPUT, {
-    title: 'Notification',
-    message: 'Workflow step completed',
     severity: 'info',
   }),
   createPaletteItem('unmount', 'action', STANDARD_TASK_INPUTS, SINGLE_DONE_OUTPUT, {

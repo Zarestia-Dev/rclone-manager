@@ -1,4 +1,4 @@
-import { WorkflowNode } from '../types/workflow.types';
+import { WorkflowDefinition, WorkflowNode } from '../types/workflow.types';
 
 export interface NodeVariableField {
   key: string;
@@ -29,19 +29,55 @@ export const PREVIOUS_NODE_PSEUDO: WorkflowNode = {
   config: {},
 };
 
+/** The nodes a path of wires leads from into `nodeId`: the only ones whose output is there when it runs. */
+function getAncestors(
+  workflow: Pick<WorkflowDefinition, 'nodes' | 'edges'> | null | undefined,
+  nodeId: string | undefined
+): WorkflowNode[] {
+  if (!workflow || !nodeId) return [];
+  const sources = new Map<string, string[]>();
+  for (const edge of workflow.edges) {
+    sources.set(edge.targetNodeId, [...(sources.get(edge.targetNodeId) ?? []), edge.sourceNodeId]);
+  }
+  const seen = new Set<string>();
+  const pending = [nodeId];
+  while (pending.length > 0) {
+    for (const source of sources.get(pending.pop() as string) ?? []) {
+      if (source === nodeId || seen.has(source)) continue;
+      seen.add(source);
+      pending.push(source);
+    }
+  }
+  return workflow.nodes.filter(n => seen.has(n.id));
+}
+
 /**
- * Returns available upstream nodes for token interpolation, prepending
- * the virtual `prev` predecessor node and excluding the current node.
+ * Returns the nodes whose output a node can use in tokens: the virtual `prev` predecessor,
+ * then every node that leads into it.
  */
 export function getAvailableUpstreamNodes(
-  nodes: WorkflowNode[] | undefined,
+  workflow: Pick<WorkflowDefinition, 'nodes' | 'edges'> | null | undefined,
   currentNodeId?: string
 ): WorkflowNode[] {
-  const list: WorkflowNode[] = [PREVIOUS_NODE_PSEUDO];
-  if (nodes) {
-    list.push(...nodes.filter(n => n.id !== currentNodeId));
-  }
-  return list;
+  return [PREVIOUS_NODE_PSEUDO, ...getAncestors(workflow, currentNodeId)];
+}
+
+/** The node whose output reaches `nodeId` first (its first incoming wire): what `prev` refers to. */
+export function getPreviousNode(
+  workflow: Pick<WorkflowDefinition, 'nodes' | 'edges'> | null | undefined,
+  nodeId: string
+): WorkflowNode | undefined {
+  const edge = workflow?.edges.find(e => e.targetNodeId === nodeId);
+  return edge ? workflow?.nodes.find(n => n.id === edge.sourceNodeId) : undefined;
+}
+
+/** Fields `prev` offers for a node: those of the node before it, else the generic ones. */
+export function getPreviousNodeFields(
+  workflow: Pick<WorkflowDefinition, 'nodes' | 'edges'> | null | undefined,
+  nodeId: string
+): NodeVariableField[] {
+  const previous = getPreviousNode(workflow, nodeId);
+  return previous ? getNodeFields(previous) : getNodeFieldsForType('prev');
 }
 
 /**
@@ -82,8 +118,10 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
     case 'sync':
     case 'copy':
     case 'move':
+      return [...getNodeFieldsForType('bisync'), ...createTokenFields(['reportCounts', 'reports'])];
     case 'bisync':
     case 'delete':
+    case 'index':
     case 'copyurl':
     case 'archivecreate':
       return createTokenFields([
@@ -99,10 +137,11 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
         'jobId',
         'error',
       ]);
+    // Mounting and serving start no job to follow, so there is no `jobId`.
     case 'mount':
-      return createTokenFields(['mountPoint', 'remote', 'status', 'jobId', 'error']);
+      return createTokenFields(['mountPoint', 'remote', 'status', 'error']);
     case 'serve':
-      return createTokenFields(['addr', 'remote', 'status', 'jobId', 'error']);
+      return createTokenFields(['addr', 'remote', 'status', 'error']);
     case 'condition':
       return createTokenFields(['conditionMet', 'branch']);
     case 'schedule_wait':

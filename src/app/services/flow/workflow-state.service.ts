@@ -1,4 +1,5 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal, untracked } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import {
   CanvasViewport,
   WorkflowDefinition,
@@ -16,14 +17,27 @@ import {
 } from '../../flow/workflow/constants/palette.registry';
 import { generatePrefixedId } from '../../shared/utils';
 import {
+  toPersistableNode,
+  toPersistableWorkflow,
+  withRuntimeFields,
+} from '../../flow/workflow/utils/workflow-persist.util';
+import { WorkflowNodeLayoutService } from './workflow-node-layout.service';
+import {
   GRID_SIZE,
   MIN_ZOOM,
   MAX_ZOOM,
-  NODE_WIDTH,
-  DEFAULT_NODE_HEIGHT,
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
 } from '../../flow/workflow/constants/workflow.constants';
+
+/** Edits of the same field closer together than this are one undo step. */
+const COALESCE_WINDOW_MS = 1000;
+const MAX_UNDO_STEPS = 50;
+/** A join or fork keeps at least this many branches. */
+const MIN_BRANCH_PORTS = 2;
+
+/** What the last run left on a node. It describes a run, not the workflow, so it is never stored. */
+type NodeRunResult = Pick<WorkflowNode, 'state' | 'errorMessage' | 'lastDurationMs' | 'lastOutput'>;
 
 /** Cache of computed content hashes keyed by workflow reference to avoid redundant full-tree serializations */
 const contentHashCache = new WeakMap<WorkflowDefinition, string>();
@@ -74,6 +88,9 @@ function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowStateService {
+  private readonly translate = inject(TranslateService);
+  private readonly layoutService = inject(WorkflowNodeLayoutService);
+
   readonly currentWorkflow = signal<WorkflowDefinition | null>(null);
   readonly viewport = signal<CanvasViewport>({ x: 0, y: 0, zoom: 1 });
   readonly selectedNodeIds = signal<Set<string>>(new Set());
@@ -98,26 +115,48 @@ export class WorkflowStateService {
     height: DEFAULT_CANVAS_HEIGHT,
   });
 
-  /** Set to true while any node is actively dragging to suppress expensive full serialization */
+  /** True while a node is being dragged: the workflow is changing, so it is not compared with the saved one on every frame */
   readonly isDraggingNode = signal<boolean>(false);
 
-  /** Monotonic revision counters for O(1) dirty state tracking */
+  /** Id of the workflow on the canvas. Unlike the workflow, it does not change with every edit. */
+  readonly currentWorkflowId = computed(() => this.currentWorkflow()?.id);
+
+  /**
+   * Revision of the workflow on the canvas. Every edit takes a number nobody has had, so the
+   * revision of a saved state is only ever seen again when the workflow is that state again
+   * (undo or redo back to it).
+   */
   private readonly currentRevision = signal<number>(0);
   private readonly savedRevision = signal<number>(0);
+  private lastIssuedRevision = 0;
 
   /** Hash of the workflow as last loaded or saved */
   readonly lastSavedHash = signal<string>('');
 
-  /** Indicates whether the current workflow has unsaved changes compared to last saved state */
+  /**
+   * Indicates whether the current workflow has unsaved changes compared to last saved state.
+   * It follows the revision, not the workflow object: run results replace the object on
+   * every node event but change nothing that is saved.
+   */
   readonly hasUnsavedChanges = computed<boolean>(() => {
-    const current = this.currentWorkflow();
-    if (!current) return false;
+    if (this.currentWorkflowId() === undefined) return false;
     const baseline = this.lastSavedHash();
     if (!baseline) return false;
-    // O(1) fast-path: matching revisions guarantee clean state (e.g. undo back to baseline or transient state updates)
+    // O(1) fast-path: matching revisions guarantee clean state (e.g. undo back to baseline)
     if (this.currentRevision() === this.savedRevision()) return false;
-    return getWorkflowContentHash(current) !== baseline;
+    // Dragging changes the workflow on every frame; hashing it each time would cost more than it tells.
+    if (this.isDraggingNode()) return true;
+    return getWorkflowContentHash(untracked(this.currentWorkflow)) !== baseline;
   });
+
+  /** Changes when the workflow on the canvas is edited or another one is opened; not for run results. */
+  readonly editVersion = computed(
+    () => `${this.currentWorkflowId() ?? ''}:${this.currentRevision()}`
+  );
+
+  private nextRevision(): void {
+    this.currentRevision.set(++this.lastIssuedRevision);
+  }
 
   /** Active wire dragging state */
   readonly isConnecting = signal<{
@@ -149,13 +188,20 @@ export class WorkflowStateService {
    * Loads a workflow definition into the active canvas state.
    */
   loadWorkflow(workflow: WorkflowDefinition): void {
-    this.currentWorkflow.set(structuredClone(workflow));
+    const loaded = structuredClone(workflow);
+    const results = this.runResults.get(loaded.id);
+    this.currentWorkflow.set(
+      results
+        ? { ...loaded, nodes: loaded.nodes.map(n => ({ ...n, ...results.get(n.id) })) }
+        : loaded
+    );
     this.viewport.set(workflow.viewport ?? { x: 0, y: 0, zoom: 1 });
     this.clearSelection();
     this.undoStack.length = 0;
     this.undoRevisions.length = 0;
     this.redoStack.length = 0;
     this.redoRevisions.length = 0;
+    this.lastIssuedRevision = 0;
     this.currentRevision.set(0);
     this.savedRevision.set(0);
     this.updateUndoRedoSignals();
@@ -176,7 +222,7 @@ export class WorkflowStateService {
   /**
    * Creates a blank new workflow on the canvas.
    */
-  createNewWorkflow(name = 'New Workflow'): WorkflowDefinition {
+  createNewWorkflow(name = this.translate.instant('flow.workflow.untitled')): WorkflowDefinition {
     const newWf: WorkflowDefinition = {
       id: generatePrefixedId('wf'),
       name,
@@ -196,15 +242,15 @@ export class WorkflowStateService {
    * Updates top-level metadata of the active workflow (name, description, auto_start, cron_expression).
    */
   updateWorkflowMetadata(patch: Partial<WorkflowDefinition>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        ...patch,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(() => patch, `workflow:${Object.keys(patch).join(',')}`);
+  }
+
+  /**
+   * Sets the tray flag on the canvas without an undo step. It is stored on its own, so a
+   * history step must neither hold it back nor bring it back.
+   */
+  setShowOnTray(showOnTray: boolean): void {
+    this.currentWorkflow.update(wf => (wf ? { ...wf, showOnTray } : null));
   }
 
   setWorkflowName(name: string): void {
@@ -216,22 +262,56 @@ export class WorkflowStateService {
   }
 
   /**
+   * Changes the workflow on the canvas as one undoable step. Repeated edits sharing a
+   * `coalesceKey` in quick succession (typing in a field) are a single step.
+   */
+  private edit(
+    change: (workflow: WorkflowDefinition) => Partial<WorkflowDefinition>,
+    coalesceKey?: string
+  ): void {
+    this.snapshot(coalesceKey);
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, ...change(wf), updatedAt: new Date().toISOString() } : null
+    );
+  }
+
+  private lastSnapshot = { key: '', at: 0 };
+
+  /** Run results by workflow and node id; see `recordNodeRun`. */
+  private readonly runResults = new Map<string, Map<string, NodeRunResult>>();
+
+  /** A copy for the undo history: what was edited, without the results of a run. */
+  private cloneForHistory(workflow: WorkflowDefinition): WorkflowDefinition {
+    return structuredClone(toPersistableWorkflow(workflow));
+  }
+
+  /**
    * Records a snapshot into the undo stack before making mutations.
    */
-  snapshot(): void {
+  snapshot(coalesceKey?: string): void {
     const current = this.currentWorkflow();
-    if (current) {
-      this.undoStack.push(structuredClone(current));
+    if (!current) return;
+
+    const now = Date.now();
+    const joinsLastStep =
+      coalesceKey !== undefined &&
+      this.lastSnapshot.key === coalesceKey &&
+      now - this.lastSnapshot.at < COALESCE_WINDOW_MS &&
+      this.undoStack.length > 0;
+    this.lastSnapshot = { key: coalesceKey ?? '', at: now };
+
+    if (!joinsLastStep) {
+      this.undoStack.push(this.cloneForHistory(current));
       this.undoRevisions.push(this.currentRevision());
-      if (this.undoStack.length > 50) {
+      if (this.undoStack.length > MAX_UNDO_STEPS) {
         this.undoStack.shift();
         this.undoRevisions.shift();
       }
       this.redoStack.length = 0;
       this.redoRevisions.length = 0;
       this.updateUndoRedoSignals();
-      this.currentRevision.update(r => r + 1);
     }
+    this.nextRevision();
   }
 
   undo(): void {
@@ -240,12 +320,10 @@ export class WorkflowStateService {
     if (!prev || prevRev === undefined) return;
     const current = this.currentWorkflow();
     if (current) {
-      this.redoStack.push(structuredClone(current));
+      this.redoStack.push(this.cloneForHistory(current));
       this.redoRevisions.push(this.currentRevision());
     }
-    this.currentRevision.set(prevRev);
-    this.currentWorkflow.set(prev);
-    this.updateUndoRedoSignals();
+    this.restore(prev, prevRev, current);
   }
 
   redo(): void {
@@ -254,11 +332,30 @@ export class WorkflowStateService {
     if (!next || nextRev === undefined) return;
     const current = this.currentWorkflow();
     if (current) {
-      this.undoStack.push(structuredClone(current));
+      this.undoStack.push(this.cloneForHistory(current));
       this.undoRevisions.push(this.currentRevision());
     }
-    this.currentRevision.set(nextRev);
-    this.currentWorkflow.set(next);
+    this.restore(next, nextRev, current);
+  }
+
+  /** Puts a history step on the canvas. What the last run left on the nodes stays with them. */
+  private restore(
+    step: WorkflowDefinition,
+    revision: number,
+    current: WorkflowDefinition | null
+  ): void {
+    this.lastSnapshot = { key: '', at: 0 };
+    this.currentRevision.set(revision);
+    // The tray setting is stored the moment it is changed, so it is not part of the history.
+    this.currentWorkflow.set(
+      current
+        ? {
+            ...step,
+            showOnTray: current.showOnTray,
+            nodes: withRuntimeFields(step.nodes, current.nodes),
+          }
+        : step
+    );
     this.updateUndoRedoSignals();
   }
 
@@ -320,42 +417,25 @@ export class WorkflowStateService {
       titleKey: options?.titleKey,
       x: posX,
       y: posY,
-      inputs: defaultInputs,
-      outputs: defaultOutputs,
-      config: options?.config ?? {},
+      // Every node owns its ports and settings; the defaults and the template's are shared.
+      inputs: structuredClone(defaultInputs),
+      outputs: structuredClone(defaultOutputs),
+      config: structuredClone(options?.config ?? {}),
       state: 'idle',
     };
 
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: [...wf.nodes, newNode],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, nodes: [...wf.nodes, newNode], updatedAt: new Date().toISOString() } : null
+    );
 
     this.selectNode(newNode.id, false);
     return newNode;
   }
 
-  updateNodePosition(id: string, x: number, y: number): void {
-    const finalX = this.snapToGrid() ? Math.round(x / GRID_SIZE) * GRID_SIZE : x;
-    const finalY = this.snapToGrid() ? Math.round(y / GRID_SIZE) * GRID_SIZE : y;
-
-    this.currentRevision.update(r => r + 1);
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => (n.id === id ? { ...n, x: finalX, y: finalY } : n)),
-      };
-    });
-  }
-
+  /** Moves nodes, to the grid when snapping is on. Not an undo step: the caller takes one when a drag starts. */
   updateNodesPositions(updates: Map<string, { x: number; y: number }>): void {
     const snap = this.snapToGrid();
-    this.currentRevision.update(r => r + 1);
+    this.nextRevision();
     this.currentWorkflow.update(wf => {
       if (!wf) return null;
       return {
@@ -371,36 +451,28 @@ export class WorkflowStateService {
     });
   }
 
+  /** Merges `config` into the node's settings (top-level keys). */
   updateNodeConfig(id: string, config: Record<string, unknown>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
+    this.edit(
+      wf => ({
         nodes: wf.nodes.map(n => (n.id === id ? { ...n, config: { ...n.config, ...config } } : n)),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+      }),
+      `config:${id}:${Object.keys(config).join(',')}`
+    );
   }
 
   /**
    * Removes a specific field (or dot-notated nested path) from a node's config.
    */
   removeConfigField(nodeId: string, path: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          const config = structuredClone(n.config || {});
-          this.deleteNestedKey(config, path);
-          return { ...n, config };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.map(n => {
+        if (n.id !== nodeId) return n;
+        const config = structuredClone(n.config || {});
+        this.deleteNestedKey(config, path);
+        return { ...n, config };
+      }),
+    }));
   }
 
   private deleteNestedKey(obj: Record<string, unknown>, path: string): void {
@@ -419,61 +491,86 @@ export class WorkflowStateService {
     }
   }
 
-  updateNodeMetadata(id: string, patch: Partial<WorkflowNode>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => (n.id === id ? { ...n, ...patch } : n)),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-  }
-
+  /** Changes a node's own fields (title, subtitle, …); `patch.config` is merged into its settings. */
   updateNode(id: string, patch: Partial<WorkflowNode>): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== id) return n;
-          return {
-            ...n,
-            ...patch,
-            config: patch.config ? { ...n.config, ...patch.config } : n.config,
-          };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(
+      wf => ({
+        nodes: wf.nodes.map(n =>
+          n.id === id
+            ? {
+                ...n,
+                ...patch,
+                config: patch.config ? { ...n.config, ...patch.config } : n.config,
+              }
+            : n
+        ),
+      }),
+      `node:${id}:${Object.keys(patch).join(',')}`
+    );
   }
 
-  updateNodeExecutionState(
-    id: string,
+  /**
+   * Keeps what a run did to a node, for the workflow it belongs to. The workflow on the
+   * canvas shows it at once; any other shows it when it is opened again.
+   */
+  recordNodeRun(
+    workflowId: string,
+    nodeId: string,
     state: WorkflowNode['state'],
     errorMessage?: string,
     durationMs?: number,
     output?: unknown
   ): void {
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n =>
-          n.id === id
-            ? {
-                ...n,
-                state,
-                errorMessage,
-                lastDurationMs: durationMs ?? n.lastDurationMs,
-                lastOutput: output !== undefined ? output : n.lastOutput,
-              }
-            : n
-        ),
-      };
-    });
+    const byNode = this.runResults.get(workflowId) ?? new Map<string, NodeRunResult>();
+    const previous = byNode.get(nodeId);
+    const result: NodeRunResult = {
+      state,
+      errorMessage,
+      lastDurationMs: durationMs ?? previous?.lastDurationMs,
+      lastOutput: output !== undefined ? output : previous?.lastOutput,
+    };
+    byNode.set(nodeId, result);
+    this.runResults.set(workflowId, byNode);
+
+    if (this.currentWorkflowId() !== workflowId) return;
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, nodes: wf.nodes.map(n => (n.id === nodeId ? { ...n, ...result } : n)) } : null
+    );
+  }
+
+  /** Drops what runs left for a workflow that no longer exists. */
+  forgetRunResults(workflowId: string): void {
+    this.runResults.delete(workflowId);
+  }
+
+  /** Clears the state, error and duration of the last run (its output stays for the token pickers). */
+  resetRunResults(workflowId: string): void {
+    const byNode = this.runResults.get(workflowId);
+    if (byNode) {
+      for (const [id, result] of byNode) {
+        byNode.set(id, { state: 'idle', lastOutput: result.lastOutput });
+      }
+    }
+    if (this.currentWorkflowId() !== workflowId) return;
+    this.currentWorkflow.update(wf =>
+      wf
+        ? {
+            ...wf,
+            nodes: wf.nodes.map(n => ({
+              ...n,
+              state: 'idle' as const,
+              errorMessage: undefined,
+              lastDurationMs: undefined,
+            })),
+          }
+        : null
+    );
+  }
+
+  /** The workflow on the canvas as it is stored: with the view the user left it in. */
+  workflowToStore(): WorkflowDefinition | null {
+    const wf = this.currentWorkflow();
+    return wf ? { ...wf, viewport: this.viewport() } : null;
   }
 
   duplicateNode(id: string): WorkflowNode | null {
@@ -482,37 +579,27 @@ export class WorkflowStateService {
     const source = wf.nodes.find(n => n.id === id);
     if (!source) return null;
 
-    this.snapshot();
+    const sourceTitle = source.titleKey ? this.translate.instant(source.titleKey) : source.title;
     const duplicated: WorkflowNode = {
-      ...structuredClone(source),
+      ...structuredClone(toPersistableNode(source)),
       id: generatePrefixedId('node'),
-      title: `${source.title} (Copy)`,
+      title: this.translate.instant('flow.workflow.copyName', { name: sourceTitle }),
       titleKey: undefined,
       x: source.x + 32,
       y: source.y + 32,
       state: 'idle',
     };
 
-    this.currentWorkflow.update(w => {
-      if (!w) return null;
-      return { ...w, nodes: [...w.nodes, duplicated], updatedAt: new Date().toISOString() };
-    });
-
+    this.edit(w => ({ nodes: [...w.nodes, duplicated] }));
     this.selectNode(duplicated.id, false);
     return duplicated;
   }
 
   removeNode(id: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.filter(n => n.id !== id),
-        edges: wf.edges.filter(e => e.sourceNodeId !== id && e.targetNodeId !== id),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.filter(n => n.id !== id),
+      edges: wf.edges.filter(e => e.sourceNodeId !== id && e.targetNodeId !== id),
+    }));
     this.selectedNodeIds.update(set => {
       const next = new Set(set);
       next.delete(id);
@@ -521,69 +608,63 @@ export class WorkflowStateService {
   }
 
   addJoinInputPort(nodeId: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        const currentInputs = node.inputs || [];
-        const nextIndex = currentInputs.length + 1;
-        const newPort: WorkflowPort = {
-          id: `in${nextIndex}`,
-          name: `In ${nextIndex}`,
-          type: 'in',
-          label: `In ${nextIndex}`,
-        };
-        return { inputs: [...currentInputs, newPort] };
-      })
-    );
+    this.addPort(nodeId, 'inputs', 'in', 'flow.workflow.ports.inN', 'In');
   }
 
   removeJoinInputPort(nodeId: string, portId?: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        if (!node.inputs || node.inputs.length <= 2) return null;
-        const portToRemove = portId || node.inputs[node.inputs.length - 1].id;
-        return {
-          inputs: node.inputs.filter(p => p.id !== portToRemove),
-          removedPortId: portToRemove,
-          isInput: true,
-        };
-      })
-    );
+    this.removePort(nodeId, 'inputs', portId);
   }
 
   addForkOutputPort(nodeId: string): void {
+    this.addPort(nodeId, 'outputs', 'branch', 'flow.workflow.ports.branchN', 'Branch');
+  }
+
+  removeForkOutputPort(nodeId: string, portId?: string): void {
+    this.removePort(nodeId, 'outputs', portId);
+  }
+
+  /** Appends the next free `<prefix><n>` port to a node's inputs or outputs. */
+  private addPort(
+    nodeId: string,
+    side: 'inputs' | 'outputs',
+    idPrefix: 'in' | 'branch',
+    labelKey: string,
+    fallbackLabel: string
+  ): void {
     this.snapshot();
     this.currentWorkflow.update(wf =>
       updateNodePorts(wf, nodeId, node => {
-        const currentOutputs = node.outputs || [];
-        let nextIndex = currentOutputs.length + 1;
-        while (currentOutputs.some(p => p.id === `branch${nextIndex}`)) {
-          nextIndex++;
-        }
-        const newPort: WorkflowPort = {
-          id: `branch${nextIndex}`,
-          name: `Branch ${nextIndex}`,
-          type: 'out',
-          label: `Branch ${nextIndex}`,
+        const current = node[side] || [];
+        let n = current.length + 1;
+        while (current.some(p => p.id === `${idPrefix}${n}`)) n++;
+        const label = `${fallbackLabel} ${n}`;
+        const port: WorkflowPort = {
+          id: `${idPrefix}${n}`,
+          name: label,
+          type: side === 'inputs' ? 'in' : 'out',
+          label,
+          labelKey,
+          labelParams: { n },
         };
-        return { outputs: [...currentOutputs, newPort] };
+        const ports = [...current, port];
+        return side === 'inputs' ? { inputs: ports } : { outputs: ports };
       })
     );
   }
 
-  removeForkOutputPort(nodeId: string, portId?: string): void {
+  /** Removes a port (the last one by default), and the wires on it. A node keeps at least two. */
+  private removePort(nodeId: string, side: 'inputs' | 'outputs', portId?: string): void {
+    const current = this.currentWorkflow()?.nodes.find(n => n.id === nodeId)?.[side];
+    if (!current || current.length <= MIN_BRANCH_PORTS) return;
+    const removedPortId = portId || current[current.length - 1].id;
+    const ports = current.filter(p => p.id !== removedPortId);
     this.snapshot();
     this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        if (!node.outputs || node.outputs.length <= 2) return null;
-        const portToRemove = portId || node.outputs[node.outputs.length - 1].id;
-        return {
-          outputs: node.outputs.filter(p => p.id !== portToRemove),
-          removedPortId: portToRemove,
-          isInput: false,
-        };
-      })
+      updateNodePorts(wf, nodeId, () =>
+        side === 'inputs'
+          ? { inputs: ports, removedPortId, isInput: true }
+          : { outputs: ports, removedPortId, isInput: false }
+      )
     );
   }
 
@@ -610,7 +691,9 @@ export class WorkflowStateService {
     );
     if (exists) return false;
 
-    this.snapshot();
+    // A run could never start with the wire that closes a loop, so it is not drawn.
+    if (this.reaches(wf.edges, targetNodeId, sourceNodeId)) return false;
+
     const newEdge: WorkflowEdge = {
       id: generatePrefixedId('edge'),
       sourceNodeId,
@@ -619,28 +702,31 @@ export class WorkflowStateService {
       targetPortId,
     };
 
-    this.currentWorkflow.update(w => {
-      if (!w) return null;
-      return {
-        ...w,
-        edges: [...w.edges, newEdge],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(w => ({ edges: [...w.edges, newEdge] }));
 
     return true;
   }
 
+  /** Whether a path of wires leads from `from` to `to`. */
+  private reaches(edges: readonly WorkflowEdge[], from: string, to: string): boolean {
+    const next = new Map<string, string[]>();
+    for (const edge of edges) {
+      next.set(edge.sourceNodeId, [...(next.get(edge.sourceNodeId) ?? []), edge.targetNodeId]);
+    }
+    const seen = new Set<string>();
+    const pending = [from];
+    while (pending.length > 0) {
+      const node = pending.pop() as string;
+      if (node === to) return true;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      pending.push(...(next.get(node) ?? []));
+    }
+    return false;
+  }
+
   removeEdge(id: string): void {
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        edges: wf.edges.filter(e => e.id !== id),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({ edges: wf.edges.filter(e => e.id !== id) }));
     this.selectedEdgeIds.update(set => {
       const next = new Set(set);
       next.delete(id);
@@ -722,18 +808,12 @@ export class WorkflowStateService {
     const edgeIds = this.selectedEdgeIds();
     if (nodeIds.size === 0 && edgeIds.size === 0) return;
 
-    this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.filter(n => !nodeIds.has(n.id)),
-        edges: wf.edges.filter(
-          e => !edgeIds.has(e.id) && !nodeIds.has(e.sourceNodeId) && !nodeIds.has(e.targetNodeId)
-        ),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.edit(wf => ({
+      nodes: wf.nodes.filter(n => !nodeIds.has(n.id)),
+      edges: wf.edges.filter(
+        e => !edgeIds.has(e.id) && !nodeIds.has(e.sourceNodeId) && !nodeIds.has(e.targetNodeId)
+      ),
+    }));
     this.clearSelection();
   }
 
@@ -786,8 +866,9 @@ export class WorkflowStateService {
     for (const n of wf.nodes) {
       minX = Math.min(minX, n.x);
       minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + NODE_WIDTH);
-      maxY = Math.max(maxY, n.y + DEFAULT_NODE_HEIGHT);
+      const { width: nodeWidth, height: nodeHeight } = this.layoutService.sizeOf(n.id);
+      maxX = Math.max(maxX, n.x + nodeWidth);
+      maxY = Math.max(maxY, n.y + nodeHeight);
     }
 
     const contentWidth = maxX - minX + 100;

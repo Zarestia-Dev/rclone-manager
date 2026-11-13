@@ -1,34 +1,34 @@
 //! File operation handlers (streaming, etc.)
 
-use std::io::SeekFrom;
-use std::path::PathBuf;
-
 use axum::{
+    body::Body,
     extract::{Query, State},
-    http::{HeaderMap, Method, StatusCode, header},
-    response::IntoResponse,
+    http::{
+        HeaderMap, Method, StatusCode,
+        header::{
+            self, ACCEPT_RANGES, CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_RANGE,
+            CONTENT_SECURITY_POLICY, CONTENT_TYPE, X_CONTENT_TYPE_OPTIONS,
+        },
+    },
+    response::{IntoResponse, Response},
 };
 
 use serde::Deserialize;
-use tokio::fs::File;
-use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
-use crate::utils::io::file_stream::{
-    file_metadata, file_reader, local_file_reader, pin_file_transport,
-};
+use super::common::{classify_failure, reject_parent_components};
+use crate::utils::io::file_stream::{AssetSource, open_asset};
 use crate::utils::io::http_helpers::{
-    classify_error_status, content_disposition, has_parent_path_component, normalize_asset_path,
-    resolve_byte_range,
+    content_disposition, ensure_remote_colon, normalize_asset_path, resolve_byte_range,
 };
 use crate::utils::types::state::RcloneState;
 use crate::web::state::{AppError, WebServerState};
 
 #[derive(Deserialize)]
 pub struct StreamRemoteFileQuery {
-    pub remote: String,
-    pub path: String,
-    pub download: Option<bool>,
+    remote: String,
+    path: String,
+    download: Option<bool>,
 }
 
 pub async fn stream_remote_file_handler(
@@ -36,65 +36,32 @@ pub async fn stream_remote_file_handler(
     method: Method,
     headers: HeaderMap,
     Query(query): Query<StreamRemoteFileQuery>,
-) -> Result<impl IntoResponse, AppError> {
-    if has_parent_path_component(&query.path) {
-        return Err(AppError::BadRequest(anyhow::anyhow!(
-            "Path traversal denied"
-        )));
-    }
+) -> Result<Response, AppError> {
+    reject_parent_components(&query.path)?;
 
     // Query extraction has already decoded percent escapes exactly once.
-    let remote = if query.remote.ends_with(':') {
-        query.remote.clone()
-    } else {
-        format!("{}:", query.remote)
-    };
+    let remote = ensure_remote_colon(&query.remote);
     let transport = state.app_handle.state::<RcloneState>().transport.clone();
-    let transport = pin_file_transport(transport).await.map_err(stream_error)?;
-    let version = file_metadata(transport.as_ref(), &remote, &query.path)
+    let source = open_asset(transport, &remote, &query.path)
         .await
-        .map_err(stream_error)?;
-    let total = version.size;
-    let range = match resolve_byte_range(
-        (method == Method::GET)
-            .then(|| headers.get(header::RANGE).and_then(|v| v.to_str().ok()))
-            .flatten(),
-        total,
-    ) {
-        Ok(range) => range,
-        Err(_) => return unsatisfiable_response(total),
-    };
-    let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
-    let reader = file_reader(
-        transport,
-        remote,
-        query.path.clone(),
-        start,
-        length,
-        Some(version),
-    );
-    let byte_range = range.map(|(start, end)| (start, Some(end)));
+        .map_err(classify_failure)?;
 
     let filename = query.path.split('/').next_back().unwrap_or("file");
-    let mime_type = mime_guess::from_path(&query.path)
-        .first_or_octet_stream()
-        .to_string();
-
-    let body = axum::body::Body::from_stream(ReaderStream::new(reader));
-    build_stream_response(
-        body,
+    respond(
+        source,
+        &method,
+        &headers,
         filename,
-        &mime_type,
+        &query.path,
         query.download.unwrap_or(false),
-        byte_range,
-        Some(total),
     )
+    .await
 }
 
 #[derive(Deserialize)]
 pub struct StreamFileQuery {
-    pub path: String,
-    pub download: Option<bool>,
+    path: String,
+    download: Option<bool>,
 }
 
 pub async fn stream_file_handler(
@@ -102,235 +69,99 @@ pub async fn stream_file_handler(
     method: Method,
     headers: HeaderMap,
     Query(query): Query<StreamFileQuery>,
-) -> Result<impl IntoResponse, AppError> {
-    let path_str = normalize_asset_path(query.path);
+) -> Result<Response, AppError> {
+    let path = normalize_asset_path(query.path);
+    reject_parent_components(&path)?;
 
-    if has_parent_path_component(&path_str) {
-        return Err(AppError::BadRequest(anyhow::anyhow!(
-            "Path traversal denied"
-        )));
-    }
+    let transport = state.app_handle.state::<RcloneState>().transport.clone();
+    let source = open_asset(transport, "", &path)
+        .await
+        .map_err(classify_failure)?;
 
-    let path = PathBuf::from(&path_str);
+    let filename = std::path::Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file");
+    respond(
+        source,
+        &method,
+        &headers,
+        filename,
+        &path,
+        query.download.unwrap_or(false),
+    )
+    .await
+}
 
+/// Types a browser executes or renders with scripting when opened directly.
+fn is_active_content(mime: &str) -> bool {
+    matches!(
+        mime,
+        "text/html" | "application/xhtml+xml" | "image/svg+xml" | "text/xml" | "application/xml"
+    )
+}
+
+/// Answers a GET/HEAD for `source`, honouring a single `Range` header.
+async fn respond(
+    source: AssetSource,
+    method: &Method,
+    headers: &HeaderMap,
+    filename: &str,
+    mime_path: &str,
+    download: bool,
+) -> Result<Response, AppError> {
+    let total = source.total();
     let range_header = (method == Method::GET)
         .then(|| headers.get(header::RANGE).and_then(|v| v.to_str().ok()))
         .flatten();
-
-    let filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("file")
-        .to_string();
-    let mime_type = mime_guess::from_path(&path)
+    let range = match resolve_byte_range(range_header, total) {
+        Ok(range) => range,
+        Err(_) => {
+            return Ok((
+                StatusCode::RANGE_NOT_SATISFIABLE,
+                [(CONTENT_RANGE, format!("bytes */{total}"))],
+            )
+                .into_response());
+        }
+    };
+    let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
+    let reader = source
+        .into_reader(start, length)
+        .await
+        .map_err(AppError::internal)?;
+    let mime = mime_guess::from_path(mime_path)
         .first_or_octet_stream()
         .to_string();
-
-    // Try standard local file opening first
-    if let Ok(metadata) = tokio::fs::metadata(&path).await
-        && !metadata.is_file()
-    {
-        return Err(AppError::BadRequest(anyhow::anyhow!(
-            "Only regular files can be streamed"
-        )));
-    }
-    let file_result = File::open(&path).await;
-
-    match file_result {
-        Ok(mut file) => {
-            let metadata = file.metadata().await.map_err(anyhow::Error::msg)?;
-            if !metadata.is_file() {
-                return Err(AppError::BadRequest(anyhow::anyhow!(
-                    "Only regular files can be streamed"
-                )));
-            }
-            let total_len = metadata.len();
-
-            let byte_range = match resolve_byte_range(range_header, total_len) {
-                Ok(range) => range.map(|(start, end)| (start, Some(end))),
-                Err(_) => return unsatisfiable_response(total_len),
-            };
-            if let Some((start, end_opt)) = byte_range {
-                file.seek(SeekFrom::Start(start))
-                    .await
-                    .map_err(anyhow::Error::msg)?;
-
-                let count = match end_opt {
-                    Some(end) if end >= start && end < total_len => end - start + 1,
-                    _ => total_len - start,
-                };
-
-                let body = axum::body::Body::from_stream(ReaderStream::new(local_file_reader(
-                    file, metadata, count,
-                )));
-                build_stream_response(
-                    body,
-                    &filename,
-                    &mime_type,
-                    query.download.unwrap_or(false),
-                    Some((start, end_opt)),
-                    Some(total_len),
-                )
-            } else {
-                let body = axum::body::Body::from_stream(ReaderStream::new(local_file_reader(
-                    file, metadata, total_len,
-                )));
-                build_stream_response(
-                    body,
-                    &filename,
-                    &mime_type,
-                    query.download.unwrap_or(false),
-                    None,
-                    Some(total_len),
-                )
-            }
-        }
-        Err(e) => {
-            // Fallback to rclone cat
-            log::debug!(
-                "⚠️ Standard stream failed for {}, attempting cat fallback: {}",
-                path_str,
-                e
-            );
-            let rclone_state = state.app_handle.state::<RcloneState>();
-            let transport = rclone_state.transport.clone();
-
-            let transport = pin_file_transport(transport).await.map_err(stream_error)?;
-            let version = file_metadata(transport.as_ref(), "", &path_str)
-                .await
-                .map_err(stream_error)?;
-            let total = version.size;
-            let range = match resolve_byte_range(range_header, total) {
-                Ok(range) => range,
-                Err(_) => return unsatisfiable_response(total),
-            };
-            let (start, length) = range.map_or((0, total), |(start, end)| (start, end - start + 1));
-            let reader = file_reader(
-                transport,
-                String::new(),
-                path_str,
-                start,
-                length,
-                Some(version),
-            );
-            build_stream_response(
-                axum::body::Body::from_stream(ReaderStream::new(reader)),
-                &filename,
-                &mime_type,
-                query.download.unwrap_or(false),
-                range.map(|(start, end)| (start, Some(end))),
-                Some(total),
-            )
-        }
-    }
-}
-
-fn stream_error(error: crate::rclone::backend::transport::BackendError) -> AppError {
-    let message = error.to_string();
-    match classify_error_status(&message) {
-        StatusCode::NOT_FOUND => AppError::NotFound(message),
-        StatusCode::FORBIDDEN | StatusCode::LOCKED => {
-            AppError::BadRequest(anyhow::anyhow!(message))
-        }
-        _ => AppError::InternalServerError(anyhow::anyhow!(message)),
-    }
-}
-
-fn unsatisfiable_response(total: u64) -> Result<axum::response::Response, AppError> {
-    axum::response::Response::builder()
-        .status(StatusCode::RANGE_NOT_SATISFIABLE)
-        .header(header::CONTENT_RANGE, format!("bytes */{total}"))
-        .body(axum::body::Body::empty())
-        .map_err(|e| AppError::InternalServerError(e.into()))
-}
-
-fn build_stream_response(
-    body: axum::body::Body,
-    filename: &str,
-    mime_type: &str,
-    download: bool,
-    byte_range: Option<(u64, Option<u64>)>,
-    total_len: Option<u64>,
-) -> Result<axum::response::Response, AppError> {
-    let mut builder = axum::response::Response::builder()
-        .header(header::CONTENT_TYPE, mime_type)
-        .header(header::CACHE_CONTROL, "no-store")
-        .header(header::ACCEPT_RANGES, "bytes")
-        .header(
-            header::CONTENT_DISPOSITION,
-            content_disposition(download, filename),
-        );
-
-    if let Some((start, end_opt)) = byte_range {
-        builder = builder.status(StatusCode::PARTIAL_CONTENT);
-        if let Some(total) = total_len {
-            let end = match end_opt {
-                Some(e) if e >= start && e < total => e,
-                _ => total.saturating_sub(1),
-            };
-            let length = end.saturating_sub(start) + 1;
-            builder = builder
-                .header(
-                    header::CONTENT_RANGE,
-                    format!("bytes {start}-{end}/{total}"),
-                )
-                .header(header::CONTENT_LENGTH, length.to_string());
+    // The API shares the application's origin: script in a shared HTML or SVG
+    // file must not run with the user's session when opened directly.
+    let sandbox = is_active_content(&mime).then_some([(CONTENT_SECURITY_POLICY, "sandbox")]);
+    Ok((
+        if range.is_some() {
+            StatusCode::PARTIAL_CONTENT
         } else {
-            return Err(AppError::InternalServerError(anyhow::anyhow!(
-                "Partial response requires file length"
-            )));
-        }
-    } else {
-        builder = builder.status(StatusCode::OK);
-        if let Some(total) = total_len {
-            builder = builder.header(header::CONTENT_LENGTH, total.to_string());
-        }
-    }
-
-    builder
-        .body(body)
-        .map_err(|e| AppError::InternalServerError(anyhow::anyhow!(e.to_string())))
+            StatusCode::OK
+        },
+        [
+            (CONTENT_TYPE, mime),
+            (CONTENT_LENGTH, length.to_string()),
+            (CONTENT_DISPOSITION, content_disposition(download, filename)),
+        ],
+        [
+            (CACHE_CONTROL, "no-store"),
+            (ACCEPT_RANGES, "bytes"),
+            (X_CONTENT_TYPE_OPTIONS, "nosniff"),
+        ],
+        sandbox,
+        range.map(|(start, end)| [(CONTENT_RANGE, format!("bytes {start}-{end}/{total}"))]),
+        Body::from_stream(ReaderStream::new(reader)),
+    )
+        .into_response())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_build_stream_response_headers() {
-        let body = axum::body::Body::empty();
-        let resp =
-            build_stream_response(body, "test.txt", "text/plain", false, None, Some(100)).unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(
-            resp.headers().get(header::CONTENT_TYPE).unwrap(),
-            "text/plain"
-        );
-        assert_eq!(resp.headers().get(header::ACCEPT_RANGES).unwrap(), "bytes");
-        assert_eq!(resp.headers().get(header::CONTENT_LENGTH).unwrap(), "100");
-    }
-
-    #[test]
-    fn test_build_stream_response_partial_content() {
-        let body = axum::body::Body::empty();
-        let resp = build_stream_response(
-            body,
-            "video.mp4",
-            "video/mp4",
-            false,
-            Some((0, Some(499))),
-            Some(1000),
-        )
-        .unwrap();
-
-        assert_eq!(resp.status(), StatusCode::PARTIAL_CONTENT);
-        assert_eq!(
-            resp.headers().get(header::CONTENT_RANGE).unwrap(),
-            "bytes 0-499/1000"
-        );
-        assert_eq!(resp.headers().get(header::CONTENT_LENGTH).unwrap(), "500");
-    }
     struct MediaTransport;
     #[async_trait::async_trait]
     impl crate::rclone::backend::RcloneTransport for MediaTransport {
@@ -372,18 +203,19 @@ mod tests {
             Default::default(),
             Arc::new(MediaTransport),
         ));
-        crate::web::routes::build_api_router(WebServerState {
-            app_handle: app,
-            event_bridge: Arc::new(crate::services::bridge::EventBridge::new(8, None)),
-            auth_credentials: Some(("user".into(), "unused".into())),
-            tls: false,
-            sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::from([
-                (
-                    "media-session".into(),
-                    std::time::Instant::now() + std::time::Duration::from_secs(60),
-                ),
-            ]))),
-        })
+        let mut state = WebServerState::new(
+            app,
+            Arc::new(crate::services::bridge::EventBridge::new(8, None)),
+            Some("unused".into()),
+            false,
+        );
+        state.sessions = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::from([
+            (
+                "media-session".into(),
+                std::time::Instant::now() + std::time::Duration::from_secs(60),
+            ),
+        ])));
+        crate::web::routes::build_api_router(state)
     }
     #[tokio::test]
     async fn authenticated_media_routes_return_matching_headers_and_bytes() {
@@ -464,6 +296,77 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn only_scriptable_types_are_sandboxed() {
+        for mime in [
+            "text/html",
+            "image/svg+xml",
+            "application/xhtml+xml",
+            "text/xml",
+        ] {
+            assert!(is_active_content(mime), "{mime}");
+        }
+        for mime in ["application/pdf", "audio/mpeg", "image/png", "text/plain"] {
+            assert!(!is_active_content(mime), "{mime}");
+        }
+    }
+
+    #[tokio::test]
+    async fn streamed_files_cannot_be_sniffed_and_active_content_is_sandboxed() {
+        use tower::ServiceExt;
+        let dir = tempfile::tempdir().unwrap();
+        for (name, sandboxed) in [
+            ("page.html", true),
+            ("vector.svg", true),
+            ("song.mp3", false),
+        ] {
+            let path = dir.path().join(name);
+            std::fs::write(&path, b"<script>alert(1)</script>").unwrap();
+            let response = media_router()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .uri(format!(
+                            "/stream?path={}",
+                            percent_encoding::utf8_percent_encode(
+                                path.to_str().unwrap(),
+                                percent_encoding::NON_ALPHANUMERIC
+                            )
+                        ))
+                        .header("Cookie", "session=media-session")
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), 200, "{name}");
+            assert_eq!(response.headers()[X_CONTENT_TYPE_OPTIONS], "nosniff");
+            assert_eq!(
+                response
+                    .headers()
+                    .get(CONTENT_SECURITY_POLICY)
+                    .map(|value| value.to_str().unwrap()),
+                sandboxed.then_some("sandbox"),
+                "{name}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn parent_components_are_forbidden_not_bad_requests() {
+        use tower::ServiceExt;
+        let response = media_router()
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/stream?path=%2Ftmp%2F..%2Fetc%2Fpasswd")
+                    .header("Cookie", "session=media-session")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 403);
+    }
+
     #[tokio::test]
     async fn local_media_route_supports_suffix_ranges_and_empty_files() {
         use tower::ServiceExt;

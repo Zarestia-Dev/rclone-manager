@@ -20,9 +20,16 @@ import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.s
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
-import { OPERATION_REGISTRY, QuickRun, RemoteSettings, RCLONE_PATH_KEYS } from '@app/types';
+import {
+  OPERATION_REGISTRY,
+  PillTone,
+  QuickRun,
+  RemoteSettings,
+  RCLONE_PATH_KEYS,
+} from '@app/types';
 import { WorkflowDefinition, WorkflowNode } from 'src/app/flow/workflow/types/workflow.types';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 export interface DeleteRemoteModalData {
   remoteName: string;
 }
@@ -31,7 +38,7 @@ export interface ProfileItem {
   type: string;
   name: string;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
   actionLabel: string;
 }
 
@@ -44,6 +51,7 @@ export interface ProfileItem {
     TitleCasePipe,
     UpperCasePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './delete-remote-modal.component.html',
   styleUrls: ['./delete-remote-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -110,7 +118,7 @@ export class DeleteRemoteModalComponent {
             type: opDef.key,
             name: profileName,
             icon: opDef.icon,
-            cssClass: opDef.cssClass,
+            tone: opDef.tone,
             actionLabel: opDef.actionLabel,
           });
         }
@@ -240,9 +248,8 @@ export class DeleteRemoteModalComponent {
     return OPERATION_REGISTRY.find(d => d.key === op)?.icon ?? 'quick-run';
   }
 
-  getOpPillClass(op: string): string {
-    const css = OPERATION_REGISTRY.find(d => d.key === op)?.cssClass ?? 'accent';
-    return `p-${css}`;
+  getOpTone(op: string): PillTone {
+    return OPERATION_REGISTRY.find(d => d.key === op)?.tone ?? 'accent';
   }
 
   @HostListener('document:keydown.escape', ['$event'])

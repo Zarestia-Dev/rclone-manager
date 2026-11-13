@@ -8,6 +8,25 @@ pub(super) const MAX_ARTIFACT_SIZE: u64 = 512 * 1024 * 1024;
 pub(super) const MAX_MANIFEST_SIZE: u64 = 64 * 1024;
 pub(super) const CATALOG_NAME: &str = "updater.json";
 
+/// The product a signed artifact installs, spelled as in the catalog and plans.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ArtifactKind {
+    Portable,
+    Server,
+    Android,
+}
+
+impl std::fmt::Display for ArtifactKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Portable => "portable",
+            Self::Server => "server",
+            Self::Android => "android",
+        })
+    }
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Catalog {
@@ -26,20 +45,22 @@ struct SignedManifest {
 pub(super) fn select_manifest(
     bytes: &[u8],
     version: &str,
-    kind: &str,
+    kind: ArtifactKind,
     target: &str,
     key: &str,
 ) -> Result<Option<(Manifest, Vec<u8>, String)>, String> {
-    let catalog: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+    let catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
     if catalog.schema_version != 1 || catalog.version != version {
-        return Err("Custom update catalog schema or version does not match".into());
+        return Err(verification_failed(
+            "Custom update catalog schema or version does not match",
+        ));
     }
     let Some(entry) = catalog.entries.get(&format!("{kind}-{target}")) else {
         return Ok(None);
     };
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&entry.manifest)
-        .map_err(|e| e.to_string())?;
+        .map_err(verification_failed)?;
     let manifest = Manifest::from_signed(&bytes, &entry.signature, key)?;
     manifest.validate(version, kind, target)?;
     Ok(Some((manifest, bytes, entry.signature.clone())))
@@ -49,7 +70,7 @@ pub(super) fn select_manifest(
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Manifest {
     pub version: String,
-    pub kind: String,
+    pub kind: ArtifactKind,
     pub target: String,
     pub asset: String,
     pub size: u64,
@@ -70,7 +91,7 @@ pub(super) struct ArchiveInfo {
 
 impl ArchiveInfo {
     fn validate(&self, manifest: &Manifest) -> Result<(), String> {
-        if !matches!(manifest.kind.as_str(), "portable" | "server")
+        if manifest.kind == ArtifactKind::Android
             || !manifest.asset.ends_with(".zip")
             || !["windows-", "linux-", "macos-"]
                 .iter()
@@ -78,18 +99,20 @@ impl ArchiveInfo {
             || !valid_artifact(self.size, &self.sha256, &self.signature)
             || !safe_member_path(&self.binary_path)
             || self.binary_path.ends_with('/')
-            || (manifest.kind == "portable"
+            || (manifest.kind == ArtifactKind::Portable
                 && manifest.target.starts_with("macos-")
                 && manifest.bundle_root().is_none())
         {
-            return Err("Invalid update ZIP metadata".into());
+            return Err(verification_failed("Invalid update ZIP metadata"));
         }
         Ok(())
     }
 
     pub(super) fn verify(&self, bytes: &[u8], key: &str) -> Result<(), String> {
         if bytes.len() as u64 != self.size || sha256(bytes) != self.sha256 {
-            return Err("Portable ZIP size or checksum does not match".into());
+            return Err(verification_failed(
+                "Portable ZIP size or checksum does not match",
+            ));
         }
         verify_signature(bytes, &self.signature, key)
     }
@@ -98,7 +121,7 @@ impl ArchiveInfo {
 impl Manifest {
     pub(super) fn from_signed(bytes: &[u8], signature: &str, key: &str) -> Result<Self, String> {
         verify_signature(bytes, signature, key)?;
-        serde_json::from_slice(bytes).map_err(|e| e.to_string())
+        serde_json::from_slice(bytes).map_err(verification_failed)
     }
 
     pub(super) fn download_size(&self) -> u64 {
@@ -131,14 +154,18 @@ impl Manifest {
     }
 
     fn read_verified_archive(&self, bytes: &[u8], key: &str) -> Result<Vec<u8>, String> {
-        let archive = self.archive.as_ref().ok_or("Missing portable ZIP")?;
+        let archive = self
+            .archive
+            .as_ref()
+            .ok_or_else(|| verification_failed("Missing portable ZIP"))?;
         archive.verify(bytes, key)?;
         log::debug!(
             "Verified portable ZIP size, SHA-256 and signature: {} ({} bytes)",
             self.asset,
             bytes.len()
         );
-        let binary = read_zip_member(bytes, &archive.binary_path, self.size, self.bundle_root())?;
+        let binary = read_zip_member(bytes, &archive.binary_path, self.size, self.bundle_root())
+            .map_err(verification_failed)?;
         self.verify_payload_with_key(&binary, key)?;
         log::debug!(
             "Verified ZIP member size, SHA-256 and signature: {} ({} bytes)",
@@ -149,7 +176,7 @@ impl Manifest {
     }
 
     pub(super) fn bundle_root(&self) -> Option<&str> {
-        if self.kind != "portable" || !self.target.starts_with("macos-") {
+        if self.kind != ArtifactKind::Portable || !self.target.starts_with("macos-") {
             return None;
         }
         let path = &self.archive.as_ref()?.binary_path;
@@ -167,30 +194,37 @@ impl Manifest {
     }
     /// Android version codes cannot decrease, so only that kind refuses a channel switch.
     pub(super) fn version_allowed(&self, current: &str) -> bool {
-        if self.kind == "android" {
+        if self.kind == ArtifactKind::Android {
             super::is_version_newer(current, &self.version)
         } else {
             super::is_update_candidate(current, &self.version)
         }
     }
 
-    pub(super) fn validate(&self, version: &str, kind: &str, target: &str) -> Result<(), String> {
+    pub(super) fn validate(
+        &self,
+        version: &str,
+        kind: ArtifactKind,
+        target: &str,
+    ) -> Result<(), String> {
         if self.version != version
             || self.kind != kind
             || self.target != target
             || !self.version_allowed(env!("CARGO_PKG_VERSION"))
         {
-            return Err("Update product, version or architecture does not match".into());
+            return Err(verification_failed(
+                "Update product, version or architecture does not match",
+            ));
         }
         if !valid_asset_name(&self.asset)
             || !valid_artifact(self.size, &self.sha256, &self.signature)
         {
-            return Err("Invalid update artifact metadata".into());
+            return Err(verification_failed("Invalid update artifact metadata"));
         }
         match &self.archive {
             Some(archive) => archive.validate(self)?,
-            None if self.kind == "server" => {
-                return Err("Server updates must be ZIP archives".into());
+            None if self.kind == ArtifactKind::Server => {
+                return Err(verification_failed("Server updates must be ZIP archives"));
             }
             None => {}
         }
@@ -199,10 +233,19 @@ impl Manifest {
 
     pub(super) fn verify_payload_with_key(&self, bytes: &[u8], key: &str) -> Result<(), String> {
         if bytes.len() as u64 != self.size || sha256(bytes) != self.sha256 {
-            return Err("Update size or checksum does not match the signed manifest".into());
+            return Err(verification_failed(
+                "Update size or checksum does not match the signed manifest",
+            ));
         }
         verify_signature(bytes, &self.signature, key)
     }
+}
+
+/// Every authentication failure reads the same to the user; the log says which
+/// check failed.
+pub(super) fn verification_failed(detail: impl std::fmt::Display) -> String {
+    log::warn!("Update verification failed: {detail}");
+    crate::localized_error!("backendErrors.updater.verificationFailed")
 }
 
 fn valid_artifact(size: u64, hash: &str, signature: &str) -> bool {
@@ -246,14 +289,14 @@ fn verify_signature(bytes: &[u8], signature: &str, key: &str) -> Result<(), Stri
         String::from_utf8(
             base64::engine::general_purpose::STANDARD
                 .decode(text.trim())
-                .map_err(|e| e.to_string())?,
+                .map_err(verification_failed)?,
         )
-        .map_err(|e| e.to_string())
+        .map_err(verification_failed)
     };
-    let key = PublicKey::decode(&decode(key)?).map_err(|e| e.to_string())?;
-    let signature = Signature::decode(&decode(signature)?).map_err(|e| e.to_string())?;
+    let key = PublicKey::decode(&decode(key)?).map_err(verification_failed)?;
+    let signature = Signature::decode(&decode(signature)?).map_err(verification_failed)?;
     key.verify(bytes, &signature, false)
-        .map_err(|e| e.to_string())
+        .map_err(verification_failed)
 }
 
 #[cfg(test)]
@@ -261,7 +304,7 @@ pub(super) fn test_portable_manifest(target: &str) -> Manifest {
     select_manifest(
         include_bytes!("fixtures/portable-catalog.json"),
         "99.0.0",
-        "portable",
+        ArtifactKind::Portable,
         target,
         include_str!("fixtures/portable-public.key"),
     )
@@ -309,7 +352,7 @@ mod tests {
         let manifest: Manifest = serde_json::from_value(value).unwrap();
         assert!(
             manifest
-                .validate("99.0.0", "portable", "linux-x86_64")
+                .validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
                 .is_err()
         );
     }
@@ -364,7 +407,7 @@ mod tests {
         select_manifest(
             include_bytes!("fixtures/server-catalog.json"),
             "99.0.0",
-            "server",
+            ArtifactKind::Server,
             target,
             include_str!("fixtures/server-public.key"),
         )
@@ -414,16 +457,19 @@ mod tests {
     fn server_updates_must_be_zip_archives() {
         let manifest = server_manifest("linux-x86_64");
         manifest
-            .validate("99.0.0", "server", "linux-x86_64")
+            .validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
             .unwrap();
         let mut raw = manifest.clone();
         raw.archive = None;
-        assert!(raw.validate("99.0.0", "server", "linux-x86_64").is_err());
+        assert!(
+            raw.validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
+                .is_err()
+        );
         let mut renamed = manifest;
         renamed.asset = "server-linux-x86_64-99.0.0".into();
         assert!(
             renamed
-                .validate("99.0.0", "server", "linux-x86_64")
+                .validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
                 .is_err()
         );
     }
@@ -446,7 +492,7 @@ mod tests {
         invalid.signature.clear();
         assert!(invalid.validate(&manifest).is_err());
         let mut invalid = manifest.clone();
-        invalid.kind = "android".into();
+        invalid.kind = ArtifactKind::Android;
         assert!(archive.validate(&invalid).is_err());
         let mut invalid = manifest.clone();
         invalid.asset = "portable.tar.gz".into();
@@ -482,7 +528,7 @@ mod tests {
         let (manifest, bytes, signature) = select_manifest(
             &catalog,
             "99.0.0",
-            "portable",
+            ArtifactKind::Portable,
             "linux-x86_64",
             include_str!("fixtures/public.key"),
         )
@@ -497,27 +543,46 @@ mod tests {
             )
             .unwrap();
         assert!(
-            select_manifest(&catalog, "99.0.0", "server", "linux-x86_64", PUBLIC_KEY)
-                .unwrap()
-                .is_none()
+            select_manifest(
+                &catalog,
+                "99.0.0",
+                ArtifactKind::Server,
+                "linux-x86_64",
+                PUBLIC_KEY
+            )
+            .unwrap()
+            .is_none()
         );
         assert!(
-            select_manifest(&catalog, "99.0.0", "portable", "linux-aarch64", PUBLIC_KEY)
-                .unwrap()
-                .is_none()
+            select_manifest(
+                &catalog,
+                "99.0.0",
+                ArtifactKind::Portable,
+                "linux-aarch64",
+                PUBLIC_KEY
+            )
+            .unwrap()
+            .is_none()
         );
         assert!(
             select_manifest(
                 &catalog,
                 "99.0.1",
-                "portable",
+                ArtifactKind::Portable,
                 "linux-x86_64",
                 include_str!("fixtures/public.key")
             )
             .is_err()
         );
         assert!(
-            select_manifest(&catalog, "99.0.0", "portable", "linux-x86_64", PUBLIC_KEY).is_err()
+            select_manifest(
+                &catalog,
+                "99.0.0",
+                ArtifactKind::Portable,
+                "linux-x86_64",
+                PUBLIC_KEY
+            )
+            .is_err()
         );
     }
 
@@ -544,7 +609,7 @@ mod tests {
                 select_manifest(
                     &serde_json::to_vec(&catalog).unwrap(),
                     "99.0.0",
-                    "portable",
+                    ArtifactKind::Portable,
                     "linux-x86_64",
                     include_str!("fixtures/public.key")
                 )
@@ -558,7 +623,7 @@ mod tests {
             select_manifest(
                 &serde_json::to_vec(&catalog).unwrap(),
                 "99.0.0",
-                "server",
+                ArtifactKind::Server,
                 "linux-x86_64",
                 include_str!("fixtures/public.key")
             )
@@ -586,14 +651,14 @@ mod tests {
         );
         assert!(
             manifest
-                .validate("99.0.0", "server", "linux-x86_64")
+                .validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
                 .is_err()
         );
     }
     fn manifest() -> Manifest {
         Manifest {
             version: "99.0.0".into(),
-            kind: "portable".into(),
+            kind: ArtifactKind::Portable,
             target: "linux-x86_64".into(),
             asset: "portable-linux-x86_64.bin".into(),
             size: 3,
@@ -606,12 +671,12 @@ mod tests {
     fn only_android_refuses_to_leave_a_prerelease_for_an_older_stable_version() {
         let mut m = manifest();
         m.version = "0.3.3".into();
-        for kind in ["portable", "server"] {
-            m.kind = kind.into();
+        for kind in [ArtifactKind::Portable, ArtifactKind::Server] {
+            m.kind = kind;
             assert!(m.version_allowed("0.3.4-beta.1"));
             assert!(!m.version_allowed("0.3.4"));
         }
-        m.kind = "android".into();
+        m.kind = ArtifactKind::Android;
         assert!(!m.version_allowed("0.3.4-beta.1"));
         assert!(m.version_allowed("0.3.2"));
     }
@@ -619,18 +684,21 @@ mod tests {
     #[test]
     fn metadata_is_bound_to_product_version_architecture_and_size() {
         let m = manifest();
-        assert!(m.validate("99.0.0", "portable", "linux-x86_64").is_ok());
+        assert!(
+            m.validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
+                .is_ok()
+        );
         for (v, k, t) in [
-            ("99.0.1", "portable", "linux-x86_64"),
-            ("99.0.0", "server", "linux-x86_64"),
-            ("99.0.0", "portable", "linux-aarch64"),
+            ("99.0.1", ArtifactKind::Portable, "linux-x86_64"),
+            ("99.0.0", ArtifactKind::Server, "linux-x86_64"),
+            ("99.0.0", ArtifactKind::Portable, "linux-aarch64"),
         ] {
             assert!(m.validate(v, k, t).is_err());
         }
         for size in [0, MAX_ARTIFACT_SIZE + 1] {
             assert!(
                 Manifest { size, ..manifest() }
-                    .validate("99.0.0", "portable", "linux-x86_64")
+                    .validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
                     .is_err()
             );
         }

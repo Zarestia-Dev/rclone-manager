@@ -1191,17 +1191,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "croner"
-version = "4.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26d09284075f5c87675790d1ad74212a7863eb8bdf228cdbd364f08a152fc62d"
-dependencies = [
- "chrono",
- "derive_builder",
- "strum",
-]
-
-[[package]]
 name = "crossbeam-channel"
 version = "0.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4780,12 +4769,13 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rclone-manager"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "async-trait",
  "clap",
  "futures",
  "http",
+ "jni 0.22.4",
  "log",
  "mime_guess",
  "notify-rust",
@@ -4818,13 +4808,13 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-core"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
  "chrono",
  "clap",
- "croner 4.0.2",
+ "croner",
  "dirs 7.0.0",
  "futures",
  "handlebars",
@@ -4871,9 +4861,8 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-server"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
- "anyhow",
  "async-stream",
  "async-trait",
  "axum",
@@ -4901,9 +4890,9 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db8d61cec5646adcca97dcbafcb40bfd466b789788c2e5f5af6ebbd2d0894aa6"
+checksum = "b29d61b7cec183643c0e226469ac54869062b97333017f25b5785b1900bef45e"
 dependencies = [
  "aes-gcm",
  "android-native-keyring-store",
@@ -4923,6 +4912,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.1",
+ "subtle",
  "tempfile",
  "thiserror 2.0.21",
  "time",
@@ -4934,9 +4924,9 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86ab9824871360795c992f6dcf37f63b7ab71e315b73e6afc304f3a16059681d"
+checksum = "d3c51b2c0a3ce20c5a024fbd76fa1c757f313afe96b43f16be5ae64abe89b0d9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6616,7 +6606,7 @@ checksum = "1f50e41f200fd8ed426489bd356910ede4f053e30cebfbd59ef0f856f0d7432a"
 dependencies = [
  "chrono",
  "chrono-tz",
- "croner 3.0.1",
+ "croner",
  "num-derive 0.4.2",
  "num-traits",
  "tokio",
@@ -6811,6 +6801,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08a05a66a4fdd61cbbe0a1d755ffe0ca6aba159dd4820936a0ff8a8278245b9c"
 dependencies = [
+ "async-compression",
  "bitflags 2.13.2",
  "bytes",
  "futures-core",

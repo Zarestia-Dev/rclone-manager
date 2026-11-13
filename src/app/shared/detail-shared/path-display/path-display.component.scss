@@ -1,3 +1,8 @@
+:host {
+  --path-item-padding: var(--item-padding);
+  --path-item-bg: var(--sidebar-bg-color);
+}
+
 .path-section {
   display: flex;
   align-items: stretch;
@@ -10,8 +15,8 @@
     column-gap: var(--space-sm);
     flex: 1;
     min-width: 0;
-    padding: var(--path-item-padding, var(--item-padding));
-    background: var(--path-item-bg, var(--sidebar-bg-color));
+    padding: var(--path-item-padding);
+    background: var(--path-item-bg);
     border-radius: var(--item-radius);
     transition: var(--transition-fast);
 
@@ -25,12 +30,8 @@
     .folder-button {
       position: relative;
       &.active {
-        background: color-mix(
-          in srgb,
-          var(--mat-sys-primary, var(--accent-color)) 18%,
-          transparent
-        );
-        color: var(--mat-sys-primary, var(--accent-color));
+        background: color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
+        color: var(--mat-sys-primary);
       }
       &.inactive {
         background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
@@ -42,9 +43,9 @@
         right: -8px;
         min-width: 16px;
         height: 16px;
-        padding: 0 4px;
-        border-radius: 8px;
-        background: var(--mat-sys-primary, var(--accent-color));
+        padding: 0 var(--space-xxs);
+        border-radius: var(--radius-xs);
+        background: var(--mat-sys-primary);
         color: white;
         font-size: 10px;
         font-weight: 700;

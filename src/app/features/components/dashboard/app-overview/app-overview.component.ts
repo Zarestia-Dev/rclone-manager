@@ -4,8 +4,10 @@ import {
   PrimaryActionType,
   Remote,
   MODE_CONFIG,
+  isActiveOnTab,
   StopJobEvent,
   OpenInFilesEvent,
+  PillTone,
 } from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +35,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
   host: {
     class: 'app-overview',
     '[class]': 'mode()',
+    '[attr.data-tone]': 'tone()',
     'attr.animate.enter': 'fade-in-out-enter',
     'attr.animate.leave': 'fade-in-out-leave',
   },
@@ -44,6 +47,9 @@ export class AppOverviewComponent {
 
   // --- Inputs ---
   readonly mode = input<OperationTab>('mount');
+  protected readonly tone = computed<PillTone>(() =>
+    this.mode() === 'operations' ? 'primary' : 'accent'
+  );
 
   // --- Outputs ---
   readonly remoteSelected = output<Remote>();
@@ -73,7 +79,6 @@ export class AppOverviewComponent {
   readonly activeCount = computed(() => this.activeRemotes().length);
   readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
-  readonly primaryActionLabel = computed(() => this.modeConfig().label);
   readonly activeIcon = computed(() => this.modeConfig().icon);
   readonly activeTitle = computed(() => this.modeConfig().activeTitle);
   readonly inactiveTitle = computed(() => this.modeConfig().inactiveTitle);
@@ -111,18 +116,6 @@ export class AppOverviewComponent {
   // --- Private helpers ---
 
   private isActive(remote: Remote): boolean {
-    switch (this.mode()) {
-      case 'mount':
-        return remote.status.mount.active;
-      case 'operations':
-        return (
-          remote.status.sync.active ||
-          remote.status.copy.active ||
-          remote.status.move.active ||
-          remote.status.bisync.active
-        );
-      case 'serve':
-        return remote.status.serve.active;
-    }
+    return isActiveOnTab(remote, this.mode());
   }
 }

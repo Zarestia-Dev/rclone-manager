@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+.report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+}
+
+.report-copy {
+  margin-left: auto;
+}

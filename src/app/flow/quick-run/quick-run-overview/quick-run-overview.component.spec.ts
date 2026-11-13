@@ -14,7 +14,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { QuickRun, Remote } from '@app/types';
+import { Automation, QuickRun, Remote } from '@app/types';
 
 describe('QuickRunOverviewComponent', () => {
   let fixture: ComponentFixture<QuickRunOverviewComponent>;
@@ -53,6 +53,7 @@ describe('QuickRunOverviewComponent', () => {
 
   let mockNavigationDispatcher: {
     onItemAction: ReturnType<typeof vi.fn>;
+    navigateToAutomation: ReturnType<typeof vi.fn>;
   };
 
   let mockPathService: {
@@ -138,6 +139,7 @@ describe('QuickRunOverviewComponent', () => {
 
     mockNavigationDispatcher = {
       onItemAction: vi.fn(),
+      navigateToAutomation: vi.fn(),
     };
 
     mockPathService = {
@@ -236,5 +238,24 @@ describe('QuickRunOverviewComponent', () => {
 
     component.onCreateQuickRunForRemote('my-remote');
     expect(mockQuickRunService.openEditor).toHaveBeenCalledWith(undefined, undefined, 'my-remote');
+  });
+
+  it('opens the remote of a Quick Run automation, and a workflow in the builder', async () => {
+    await createComponent();
+    const open = vi.spyOn(component.openRemoteDetail, 'emit');
+
+    component.handleAutomationClick({
+      remoteName: 'drive',
+      args: { source: 'quickrun' },
+    } as unknown as Automation);
+    expect(open).toHaveBeenCalledWith('drive');
+
+    const workflow = {
+      remoteName: 'Workflow',
+      args: { source: 'workflow' },
+    } as unknown as Automation;
+    component.handleAutomationClick(workflow);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(mockNavigationDispatcher.navigateToAutomation).toHaveBeenCalledWith(workflow);
   });
 });

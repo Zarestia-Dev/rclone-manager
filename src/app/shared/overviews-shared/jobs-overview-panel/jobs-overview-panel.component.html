@@ -7,12 +7,12 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="jobs" data-tone="yellow" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.jobs' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
       @let activeJobs = activeJobsCount();
-      <span class="app-pill" [class.p-primary]="activeJobs > 0" [class.p-dim]="activeJobs === 0">
+      <span appPill [tone]="activeJobs > 0 ? 'primary' : 'dim'">
         {{
           activeJobs > 0
             ? ('generalOverview.jobs.activeCount'
@@ -98,7 +98,7 @@
           <div class="section-heading">
             <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
             <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
-            <span class="count-badge">{{ runningJobs().length }}</span>
+            <span appPill size="xs" tone="dim">{{ runningJobs().length }}</span>
           </div>
 
           <div class="running-jobs-list">
@@ -114,28 +114,28 @@
                 <!-- Card Header: Identity + Stop Action -->
                 <div class="card-header">
                   <div class="card-identity">
-                    <div class="job-icon-wrap {{ vm.typeClass }}">
+                    <div class="job-icon-wrap" [attr.data-tone]="vm.typeTone">
                       <mat-icon [svgIcon]="vm.typeIcon" [class]="vm.animationClass"></mat-icon>
                     </div>
 
                     <div class="job-details">
                       <div class="job-title-row">
                         <span class="job-title truncate">{{ vm.label }}</span>
-                        <span class="app-pill p-dim pill-sm truncate">#{{ vm.job.jobid }}</span>
+                        <span appPill tone="dim" size="xs" class="truncate"
+                          >#{{ vm.job.jobid }}</span
+                        >
                         @if (vm.job.remote_name) {
-                          <span class="app-pill p-dim pill-sm" [attr.title]="vm.job.remote_name">
+                          <span appPill tone="dim" size="xs" [attr.title]="vm.job.remote_name">
                             <mat-icon svgIcon="cloud"></mat-icon>
                             <span class="truncate">{{ vm.job.remote_name }}</span>
                           </span>
                         }
-                        @if (vm.job.profile) {
-                          <span class="app-pill p-dim pill-sm truncate">{{ vm.job.profile }}</span>
-                        }
-                        <span class="app-pill {{ vm.originBadgeClass }} pill-sm">
+                        <app-starter-pill [starter]="vm.job.starter" />
+                        <span appPill size="xs" [tone]="vm.originTone">
                           {{ vm.originLabel }}
                         </span>
                         @if (vm.job.dry_run) {
-                          <span class="app-pill p-accent pill-sm">
+                          <span appPill tone="accent" size="xs">
                             {{ 'detailShared.jobs.dryRun' | translate }}
                           </span>
                         }
@@ -156,7 +156,7 @@
                     (click)="onStopJobClick(vm.job, $event)"
                     [attr.title]="'detailShared.jobs.actions.stop' | translate"
                   >
-                    <mat-icon svgIcon="stop" class="warn"></mat-icon>
+                    <mat-icon svgIcon="stop" data-tone="warn"></mat-icon>
                   </button>
                 </div>
 
@@ -201,7 +201,9 @@
                 <div class="card-metrics-row">
                   @if (jStats) {
                     <div
-                      class="app-pill pill-sm p-primary"
+                      appPill
+                      tone="primary"
+                      size="xs"
                       [attr.title]="'generalOverview.jobs.speed' | translate"
                     >
                       <mat-icon svgIcon="bolt"></mat-icon>
@@ -214,7 +216,9 @@
 
                     @if (jStats.eta && jStats.eta > 0) {
                       <div
-                        class="app-pill pill-sm p-accent"
+                        appPill
+                        tone="accent"
+                        size="xs"
                         [attr.title]="'generalOverview.jobs.eta' | translate"
                       >
                         <mat-icon svgIcon="clock"></mat-icon>
@@ -224,7 +228,9 @@
 
                     @if (jStats.totalTransfers > 0) {
                       <div
-                        class="app-pill pill-sm p-dim"
+                        appPill
+                        tone="dim"
+                        size="xs"
                         [attr.title]="'generalOverview.jobs.transfers' | translate"
                       >
                         <mat-icon svgIcon="file"></mat-icon>
@@ -234,7 +240,9 @@
 
                     @if (jStats.errors > 0) {
                       <div
-                        class="app-pill pill-sm p-warn"
+                        appPill
+                        tone="warn"
+                        size="xs"
                         [attr.title]="'generalOverview.jobs.errors' | translate"
                       >
                         <mat-icon svgIcon="circle-exclamation"></mat-icon>
@@ -242,7 +250,7 @@
                       </div>
                     }
                   } @else {
-                    <div class="app-pill pill-sm p-primary">
+                    <div appPill tone="primary" size="xs">
                       <mat-icon svgIcon="bolt"></mat-icon>
                       <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
                     </div>

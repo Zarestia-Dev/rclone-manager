@@ -39,6 +39,7 @@ import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
 
 import { OpenerService } from 'src/app/services/infrastructure/platform/opener.service';
+import { WorkflowEventService } from 'src/app/services/flow/workflow-event.service';
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { MainView } from '@app/types';
@@ -110,6 +111,9 @@ export class AppComponent implements OnInit {
     inject(DebugService);
     inject(AppLifecycleService).initialize();
     inject(OpenerService).initializeGlobalLinkInterceptor();
+    // Follows workflow runs from the start, so the sidebar and every view know of runs that began
+    // before the Flow workspace was opened (or before the interface was reloaded).
+    inject(WorkflowEventService);
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();

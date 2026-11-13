@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::types::remotes::{OperationType, ProfileParams};
+use crate::utils::types::{origin::Origin, remotes::OperationType};
 
 /// Status of an automation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -18,9 +18,8 @@ pub enum AutomationStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AutomationArgs {
-    /// Core parameters for the profile operation
-    #[serde(flatten)]
-    pub params: ProfileParams,
+    /// What defined the automation: a remote profile, a Quick Run or a workflow.
+    pub source: Origin,
 
     /// All source paths from the profile (can be 1 or many)
     pub src_paths: Vec<String>,
@@ -29,8 +28,11 @@ pub struct AutomationArgs {
     pub dst_paths: Vec<String>,
 }
 
+/// Seconds a watched change must stay quiet before the automation runs.
+pub const DEFAULT_WATCH_DELAY: u64 = 5;
+
 fn default_watch_delay() -> u64 {
-    5
+    DEFAULT_WATCH_DELAY
 }
 
 /// Represents an automation with cron configuration
@@ -40,10 +42,10 @@ pub struct Automation {
     /// Unique identifier for the automation
     pub id: String,
 
-    /// Type of rclone operation
-    pub automation_type: OperationType,
+    /// Type of rclone operation; none for a workflow, which is no single operation.
+    pub automation_type: Option<OperationType>,
 
-    /// Remote name this automation is associated with
+    /// Remote name this automation is associated with; empty for a workflow.
     pub remote_name: String,
 
     /// Profile name within the remote
@@ -63,9 +65,6 @@ pub struct Automation {
     #[serde(default = "crate::rclone::backend::types::default_backend_name")]
     pub backend_name: String,
 
-    /// When the automation was created
-    pub created_at: DateTime<Utc>,
-
     /// Last time the automation ran
     pub last_run: Option<DateTime<Utc>>,
 
@@ -81,10 +80,6 @@ pub struct Automation {
     /// Identity reserved before any asynchronous work starts.
     #[serde(skip)]
     pub execution_id: Option<String>,
-
-    /// Scheduler job UUID (used to unschedule the automation)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scheduler_job_id: Option<String>,
 
     /// Total number of times this automation has run
     pub run_count: u64,
@@ -113,16 +108,44 @@ pub struct Automation {
 }
 
 impl Automation {
+    /// An enabled automation that has never run, with no schedule and no watching.
+    #[must_use]
+    pub fn new(
+        id: String,
+        automation_type: Option<OperationType>,
+        remote_name: String,
+        profile_name: String,
+        args: AutomationArgs,
+        backend_name: &str,
+    ) -> Self {
+        Self {
+            id,
+            automation_type,
+            remote_name,
+            profile_name,
+            cron_expression: None,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            last_run: None,
+            next_run: None,
+            last_error: None,
+            current_job_id: None,
+            execution_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled: false,
+            watch_delay: DEFAULT_WATCH_DELAY,
+            watch_changed_only: false,
+        }
+    }
+
     /// Quick Run and workflow definitions are global; remote profiles are scoped.
     #[must_use]
     pub fn is_global(&self) -> bool {
-        matches!(
-            self.args.params.source,
-            Some(
-                crate::utils::types::origin::Origin::QuickRun
-                    | crate::utils::types::origin::Origin::Flow
-            )
-        )
+        matches!(self.args.source, Origin::QuickRun | Origin::Workflow)
     }
 
     #[must_use]
@@ -149,10 +172,12 @@ impl Automation {
 
     #[must_use]
     pub fn log_name(&self) -> String {
-        format!(
-            "{}: {}-{}.{}",
-            self.backend_name, self.remote_name, self.profile_name, self.id
-        )
+        let name = if self.remote_name.is_empty() {
+            self.profile_name.clone()
+        } else {
+            format!("{}-{}", self.remote_name, self.profile_name)
+        };
+        format!("{}: {name}.{}", self.backend_name, self.id)
     }
 
     /// Update the automation after a successful run
@@ -227,6 +252,9 @@ pub struct CronValidationResponse {
     pub is_valid: bool,
     pub error_message: Option<String>,
     pub next_run: Option<DateTime<Utc>>,
+    /// UTC offset (e.g. `+03:00`) that schedules fire in: the offset of the machine running
+    /// the app, which is not the browser's when the UI is opened through the web server.
+    pub utc_offset: String,
 }
 
 #[cfg(test)]
@@ -237,32 +265,22 @@ mod tests {
     fn create_test_automation() -> Automation {
         Automation {
             id: "test-id".to_string(),
-            automation_type: OperationType::Sync,
+            automation_type: Some(OperationType::Sync),
             remote_name: "remote".to_string(),
             profile_name: "profile".to_string(),
             cron_expression: Some("0 0 * * *".to_string()),
             status: AutomationStatus::Enabled,
             args: AutomationArgs {
-                params: ProfileParams {
-                    remote_name: "remote".to_string(),
-                    profile_name: "profile".to_string(),
-                    backend_name: None,
-                    source: None,
-                    no_cache: None,
-                    scoped_targets: None,
-                    execute_id: None,
-                },
+                source: Origin::Automation,
                 src_paths: vec![],
                 dst_paths: vec![],
             },
             backend_name: "Local".to_string(),
-            created_at: Utc::now(),
             last_run: None,
             next_run: None,
             last_error: None,
             current_job_id: None,
             execution_id: None,
-            scheduler_job_id: None,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -288,7 +306,7 @@ mod tests {
                 serialized["dstPaths"],
                 serde_json::json!(["backup:folder/#1"])
             );
-            assert_eq!(serialized["remoteName"], "remote");
+            assert_eq!(serialized["source"], "automation");
             let restored: AutomationArgs = serde_json::from_value(serialized).unwrap();
             assert_eq!(restored, args);
         }
@@ -318,11 +336,8 @@ mod tests {
     #[test]
     fn global_definitions_remain_scheduled_when_backend_selection_changes() {
         let mut automation = create_test_automation();
-        for source in [
-            crate::utils::types::origin::Origin::QuickRun,
-            crate::utils::types::origin::Origin::Flow,
-        ] {
-            automation.args.params.source = Some(source);
+        for source in [Origin::QuickRun, Origin::Workflow] {
+            automation.args.source = source;
             assert!(automation.belongs_to_backend("Other"));
             assert!(automation.should_schedule("Other"));
             automation.status = AutomationStatus::Running;
@@ -350,6 +365,7 @@ mod tests {
             OperationType::Cryptcheck.as_job_type(),
             Some(JobType::CryptCheck)
         );
+        assert_eq!(OperationType::Index.as_job_type(), Some(JobType::Index));
     }
 
     #[test]
@@ -411,5 +427,19 @@ mod tests {
     fn test_log_name() {
         let automation = create_test_automation();
         assert_eq!(automation.log_name(), "Local: remote-profile.test-id");
+
+        // A workflow has no remote to name.
+        let mut workflow = create_test_automation();
+        workflow.remote_name.clear();
+        assert_eq!(workflow.log_name(), "Local: profile.test-id");
+    }
+
+    #[test]
+    fn an_automation_sends_the_ui_only_what_defines_it() {
+        let json = serde_json::to_value(create_test_automation().args).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"source": "automation", "srcPaths": [], "dstPaths": []})
+        );
     }
 }

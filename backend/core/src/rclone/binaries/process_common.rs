@@ -3,7 +3,7 @@ use log::{debug, error, info, warn};
 use std::time::Duration;
 
 use crate::services::check_binaries::build_rclone_command;
-use crate::services::security::SafeEnvironmentManager;
+use crate::services::security::rclone_env;
 use crate::services::settings::AppSettingsManager;
 use crate::services::settings::schema::CoreSettings;
 use crate::utils::security::is_sensitive_field;
@@ -14,19 +14,17 @@ pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 /// Apply environment variables to the rclone command.
 async fn apply_rclone_environment(
     app: &AppHandle,
-    mut command: crate::utils::process::command::Command,
-) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
+    mut command: tokio::process::Command,
+) -> Result<tokio::process::Command, crate::rclone::engine::error::EngineError> {
     let mut password_found = false;
 
-    if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-        let env_vars = env_manager.get_env_vars();
-        if env_vars.contains_key("RCLONE_CONFIG_PASS") {
-            debug!("Applying environment manager vars to rclone process");
-            for (key, value) in env_vars {
-                command = command.env(&key, &value);
-            }
-            password_found = true;
+    let env_vars = rclone_env::vars();
+    if env_vars.contains_key(rclone_env::CONFIG_PASS_VAR) {
+        debug!("Applying RCLONE_* environment to the rclone process");
+        for (key, value) in env_vars {
+            command.env(&key, &value);
         }
+        password_found = true;
     }
 
     let settings_manager = app.state::<AppSettingsManager>();
@@ -44,7 +42,7 @@ async fn apply_rclone_environment(
                             value
                         }
                     );
-                    command = command.env(key, value);
+                    command.env(key, value);
                 }
             }
         }
@@ -125,7 +123,7 @@ fn append_user_flags_from_app(
 /// Build the rclone `rcd` command for the main engine.
 pub async fn build_rclone_process_command(
     app: &AppHandle,
-) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
+) -> Result<tokio::process::Command, crate::rclone::engine::error::EngineError> {
     use crate::rclone::backend::BackendManager;
     use std::path::PathBuf;
 
@@ -148,13 +146,12 @@ pub async fn build_rclone_process_command(
         backend.password = Some(pass);
         backend.is_auth_generated = true;
 
-        let settings_manager = app.state::<AppSettingsManager>();
         let _ = backend_manager_state
-            .update(&settings_manager, &backend.name, backend.clone())
+            .update(&backend.name, backend.clone())
             .await;
     }
 
-    let command = build_rclone_command(app, None, config_path.as_deref(), None);
+    let mut command = build_rclone_command(app, None, config_path.as_deref(), None);
     let mut args = build_rclone_base_args(&backend.host, backend.port);
 
     let log_file_path = crate::services::paths::AppPaths::from_app_handle(app).map_or_else(
@@ -191,7 +188,8 @@ pub async fn build_rclone_process_command(
         args.push(format!("--rc-pass={pass}"));
     }
 
-    apply_rclone_environment(app, command.args(args)).await
+    command.args(args);
+    apply_rclone_environment(app, command).await
 }
 
 /// Send a quit request and wait for the process to exit, force-killing after the timeout.

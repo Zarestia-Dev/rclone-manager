@@ -4,6 +4,7 @@ import {
   createDefaultRemoteOperationState,
   createDefaultRemoteFeatures,
 } from './remotes';
+import { OPERATION_REGISTRY } from './operation-registry';
 
 describe('Remote Factory Functions', () => {
   describe('createDefaultRemoteOperationState', () => {
@@ -28,7 +29,13 @@ describe('Remote Factory Functions', () => {
       expect(status.copyurl).toEqual({ active: false });
       expect(status.archivecreate).toEqual({ active: false });
       expect(status.cryptcheck).toEqual({ active: false });
+      expect(status.index).toEqual({ active: false });
       expect(status.serve).toEqual({ active: false, count: 0, serves: [] });
+    });
+
+    it('has an entry for every operation of the registry and nothing else', () => {
+      const keys = Object.keys(createDefaultRemoteStatus()).filter(key => key !== 'diskUsage');
+      expect(keys.sort()).toEqual(OPERATION_REGISTRY.map(op => op.key).sort());
     });
   });
 

@@ -110,7 +110,9 @@ COPY --from=builder /app/backend/target/release/rclone-manager-server /usr/local
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 8080 53682
+# Port 53682 (OAuth callback) is deliberately not exposed: rclone binds it to the
+# container's loopback, so publishing it has no effect. Use host networking.
+EXPOSE 8080
 
 # Healthcheck ensures the container marks itself unhealthy if the API stops responding
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

@@ -118,10 +118,6 @@
         background: var(--bg-elevated-2);
       }
 
-      .app-pill {
-        min-height: var(--icon-size-lg);
-      }
-
       details {
         min-width: 0;
 
@@ -180,10 +176,6 @@
         font: inherit;
         flex: 1;
       }
-
-      .app-pill {
-        min-height: var(--titlebar-height);
-      }
     }
 
     .cm-panels :is(button, summary):focus-visible {
@@ -241,7 +233,6 @@
       height: var(--icon-size-xl);
     }
 
-    .app-pill,
     .cm-textfield,
     .cm-button,
     summary {

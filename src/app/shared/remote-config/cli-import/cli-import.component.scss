@@ -40,7 +40,7 @@
   .info-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-xxs);
     min-width: 0;
 
     .label {
@@ -85,7 +85,7 @@
     .selection-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xxs);
       font-size: var(--font-size-xs);
 
       .link-btn {
@@ -104,7 +104,7 @@
 
       .separator {
         color: var(--dim-color);
-        margin: 0 4px;
+        margin: 0 var(--space-xxs);
       }
     }
   }
@@ -172,7 +172,7 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 4px;
+      gap: var(--space-xxs);
 
       .flag-guidance-text {
         font-size: var(--font-size-xs);

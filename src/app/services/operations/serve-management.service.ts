@@ -3,7 +3,13 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { OperationContext, ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
+import {
+  OperationContext,
+  ServeStartResponse,
+  ServeListResponse,
+  ServeListItem,
+  profileOf,
+} from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -198,7 +204,7 @@ export class ServeManagementService extends TauriBaseService {
     return this._runningServes().filter(serve => {
       const matchesRemote = this.pathService.getRemoteNameFromFs(serve.params?.fs) === remoteName;
       if (profile) {
-        return matchesRemote && serve.profile === profile;
+        return matchesRemote && profileOf(serve) === profile;
       }
       return matchesRemote;
     });

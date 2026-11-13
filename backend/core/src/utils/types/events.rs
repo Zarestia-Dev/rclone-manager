@@ -51,6 +51,10 @@ pub const REMOTE_SETTINGS_CHANGED: &str = "remote_settings_changed";
 /// Emitted when global system settings (notifications, autostart, theme, bandwidth, etc.) change.
 /// - Emitted by: `services::settings::operations::core`
 /// - Handled by: `services::event_listener` (applies setting to OS/engine), `AppSettingsService`
+///
+/// `category` and `key` of `"*"` mean "reload everything". After a reset all, `value` is
+/// `{"category.key": new value}` for every setting the reset changed, which the backend
+/// listener applies; the other `"*"` emitters (vault unlock, system refresh) send `null`.
 pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";
 
 /// Emitted when the active bandwidth limit is changed.
@@ -126,7 +130,16 @@ pub const AUTOMATIONS_CACHE_CHANGED: &str = "automations_cache_changed";
 
 // --- Workflow Events ---
 
+/// Emitted when a step of a workflow run changes state. Carries the run's `runId` and a
+/// `seq` that orders the events of the run; the same events make up the snapshots
+/// `get_workflow_runs` returns.
+/// - Emitted by: `services::flow::workflow::engine::record::RunHandle`
+/// - Handled by: `WorkflowEventService`
 pub const WORKFLOW_NODE_STATE_CHANGED: &str = "workflow_node_state_changed";
+
+/// Emitted when a workflow run starts, makes progress or ends (completed, failed or cancelled).
+/// - Emitted by: `services::flow::workflow::engine::record::RunHandle`
+/// - Handled by: `WorkflowEventService`, and the tray (re-render)
 pub const WORKFLOW_EXECUTION_STATE_CHANGED: &str = "workflow_execution_state_changed";
 
 // --- Alert Events ---
@@ -136,6 +149,15 @@ pub const ALERT_FIRED: &str = "alert_fired";
 // --- Application Events ---
 
 pub const APP_EVENT: &str = "app_event";
+
+/// `status` values of updater [`APP_EVENT`]s, consumed by `EventListenersService`.
+/// `UPDATE_FOUND`/`RCLONE_UPDATE_FOUND` carry an `UpdateInfo` (services/updates,
+/// rclone/binaries/updater); `DOWNLOAD_PROGRESS` a `DownloadStatus` (updates/install).
+pub mod app_event_status {
+    pub const UPDATE_FOUND: &str = "update_found";
+    pub const RCLONE_UPDATE_FOUND: &str = "rclone_update_found";
+    pub const DOWNLOAD_PROGRESS: &str = "download_progress";
+}
 
 /// Emitted by app/rclone updaters after state changes; consumed by frontend update services.
 pub const UPDATER_STATE_CHANGED: &str = "updater_state_changed";
@@ -317,13 +339,7 @@ pub struct JobChangeEvent {
     pub sources: Vec<String>,
     pub destination: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub quick_run_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workflow_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
+    pub starter: Option<crate::utils::types::starter::Starter>,
 }
 
 impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
@@ -336,10 +352,7 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
             source: Some(job.source.join(", ")),
             sources: job.source.clone(),
             destination: Some(job.destination.clone()),
-            profile: job.profile.clone(),
-            quick_run_id: job.quick_run_id.clone(),
-            workflow_id: job.workflow_id.clone(),
-            node_id: job.node_id.clone(),
+            starter: job.starter.clone(),
         }
     }
 }
@@ -347,6 +360,7 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::types::starter::{Starter, WorkflowRun};
     use serde_json::json;
 
     #[test]
@@ -414,31 +428,18 @@ mod tests {
 
     #[test]
     fn test_job_change_event_from_job_info() {
-        use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
-        use chrono::Utc;
+        use crate::utils::types::jobs::{JobInfo, JobStatus};
 
         let mut job = JobInfo {
-            stats_revision: 0,
             jobid: 42,
             execute_id: Some("exec-42".to_string()),
-            quick_run_id: Some("qr-99".to_string()),
-            job_type: JobType::Sync,
             remote_name: "gdrive".to_string(),
             source: vec!["/local/dir".to_string()],
             destination: "gdrive:backup".to_string(),
-            start_time: Utc::now(),
-            end_time: None,
-            status: JobStatus::Running,
-            error: None,
-            stats: None,
             group: "job/42".to_string(),
-            profile: Some("daily-backup".to_string()),
-            origin: None,
+            starter: Some(Starter::profile("daily-backup")),
             backend_name: "default".to_string(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: Some("wf-alpha".to_string()),
-            node_id: Some("node-beta".to_string()),
+            ..JobInfo::for_test()
         };
 
         let ev: JobChangeEvent = (&job).into();
@@ -447,20 +448,37 @@ mod tests {
         assert_eq!(ev.remote.as_deref(), Some("gdrive"));
         assert_eq!(ev.source.as_deref(), Some("/local/dir"));
         assert_eq!(ev.destination.as_deref(), Some("gdrive:backup"));
-        assert_eq!(ev.profile.as_deref(), Some("daily-backup"));
-        assert_eq!(ev.quick_run_id.as_deref(), Some("qr-99"));
-        assert_eq!(ev.workflow_id.as_deref(), Some("wf-alpha"));
-        assert_eq!(ev.node_id.as_deref(), Some("node-beta"));
+        assert_eq!(ev.starter, Some(Starter::profile("daily-backup")));
 
         let serialized = serde_json::to_string(&ev).unwrap();
         assert!(serialized.contains(r#""jobId":"42""#));
-        assert!(serialized.contains(r#""quickRunId":"qr-99""#));
-        assert!(serialized.contains(r#""workflowId":"wf-alpha""#));
-        assert!(serialized.contains(r#""nodeId":"node-beta""#));
-        assert!(serialized.contains(r#""profile":"daily-backup""#));
+        assert!(serialized.contains(r#""starter":{"kind":"profile","name":"daily-backup"}"#));
 
         let deserialized: JobChangeEvent = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, ev);
+        job.starter = Some(Starter::quick_run("qr-99", "Nightly", None));
+        let event = JobChangeEvent::from(&job);
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(
+            json["starter"],
+            json!({ "kind": "quick_run", "id": "qr-99", "name": "Nightly" })
+        );
+        job.starter = Some(Starter::Workflow(WorkflowRun::new(
+            "wf-b",
+            "Workflow",
+            "node-1",
+            vec!["wf-a".into()],
+        )));
+        assert_eq!(
+            serde_json::to_value(JobChangeEvent::from(&job)).unwrap()["starter"],
+            json!({
+                "kind": "workflow",
+                "workflowId": "wf-b",
+                "workflowName": "Workflow",
+                "nodeId": "node-1",
+                "ancestors": ["wf-a"],
+            })
+        );
         job.source = vec!["first:folder/a, b.txt".into(), "second:folder/c.txt".into()];
         let event = JobChangeEvent::from(&job);
         let json = serde_json::to_value(&event).unwrap();

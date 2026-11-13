@@ -1,4 +1,5 @@
 @use "card-actions";
+@use "card-action-mixins" as mixins;
 
 :host {
   position: relative;
@@ -11,63 +12,19 @@
     background: var(--hover-bg-color);
   }
 
-  // Operation & State colors
-  &.mounted,
-  &.serving,
-  &.op-mount,
-  &.op-serve {
-    --state-color: var(--accent-color);
-    --state-color-rgb: var(--accent-color-rgb);
-  }
-  &.syncing,
-  &.op-sync {
-    --state-color: var(--primary-color);
-    --state-color-rgb: var(--primary-color-rgb);
-  }
-  &.copying,
-  &.op-copy {
-    --state-color: var(--yellow);
-    --state-color-rgb: var(--yellow-rgb);
-  }
-  &.moving,
-  &.op-move {
-    --state-color: var(--orange);
-    --state-color-rgb: var(--orange-rgb);
-  }
-  &.bisyncing,
-  &.op-bisync {
-    --state-color: var(--purple);
-    --state-color-rgb: var(--purple-rgb);
-  }
-  &.op-delete {
-    --state-color: var(--warn-color);
-    --state-color-rgb: var(--warn-color-rgb);
-  }
+  // The card carries data-tone: the colour of its active operation (tone scope, custom-theme.scss).
 
   // Active border ring and icon container highlight
-  &.mounted,
-  &.serving,
-  &.syncing,
-  &.copying,
-  &.moving,
-  &.bisyncing,
-  &.is-running {
-    box-shadow: 0 0 0 1px rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.2);
+  &.is-active {
+    box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.2);
 
     .card-info .icon-container {
-      background: rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.2);
+      background: rgba(var(--tone-rgb), 0.1);
+      box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.2);
 
       .card-type-icon {
-        color: var(--state-color, var(--accent-color));
+        color: var(--tone);
       }
-    }
-  }
-
-  &.inactive-remote .card-info .icon-container {
-    background: var(--bg-elevated-4);
-    .card-type-icon {
-      color: rgba(var(--window-fg-color-rgb), 0.5);
     }
   }
 }
@@ -111,7 +68,7 @@
     flex-shrink: 0;
 
     .card-type-icon {
-      color: var(--state-color, var(--primary-color));
+      color: var(--tone);
     }
   }
 
@@ -150,40 +107,12 @@
   gap: var(--space-xs);
   align-items: center;
   flex-shrink: 0;
-
-  .app-pill {
-    min-height: 24px;
-    padding: 2px 8px;
-
-    mat-icon {
-      width: var(--icon-size-xs);
-      height: var(--icon-size-xs);
-      font-size: var(--icon-size-xs);
-    }
-  }
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 
 .folder-badge {
-  position: absolute;
-  top: var(--space-xxs);
-  right: calc(var(--space-md) * -1);
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  background: var(--accent-color);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
+  @include mixins.count-badge;
 }
 
 // ── Responsive Breakpoints ───────────────────────────────────────────────────

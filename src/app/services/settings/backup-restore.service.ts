@@ -31,8 +31,7 @@ export class BackupRestoreService extends TauriBaseService {
     password: string | null,
     remoteName: string,
     userNote: string | null,
-    includeProfiles?: string[],
-    includeSecrets?: boolean
+    includeProfiles?: string[]
   ): Promise<void> {
     await this.invokeWithNotification(
       'backup_settings',
@@ -43,7 +42,6 @@ export class BackupRestoreService extends TauriBaseService {
         remoteName,
         userNote,
         includeProfiles,
-        includeSecrets,
       },
       {
         successKey: 'backup.backupSuccess',
@@ -59,8 +57,7 @@ export class BackupRestoreService extends TauriBaseService {
   async restoreSettings(
     path: string,
     password: string | null,
-    restoreProfile?: string,
-    restoreProfileAs?: string
+    restoreProfile?: string
   ): Promise<void> {
     await this.invokeWithNotification(
       'restore_settings',
@@ -68,7 +65,6 @@ export class BackupRestoreService extends TauriBaseService {
         backupPath: path,
         password,
         restoreProfile,
-        restoreProfileAs,
       },
       {
         successKey: 'backup.restoreSuccess',
@@ -87,20 +83,20 @@ export class BackupRestoreService extends TauriBaseService {
       if (!path) return null;
 
       const analysis = await this.analyzeBackupFile(path);
-      if (!analysis) return null;
-      return { path, analysis };
+      return analysis ? { path, analysis } : null;
     } catch (error) {
       if (error instanceof Error && error.message === 'File selection cancelled') {
         return null;
       }
-      console.error('Failed to analyze backup:', error);
+      console.error('Failed to select a backup:', error);
       this.notificationService.showError(this.translate.instant('backup.analyzeFailed'));
       return null;
     }
   }
 
   /**
-   * Analyze backup file contents
+   * Analyze backup file contents.
+   * Reports a failure to the user and returns null, so callers do not report it again.
    */
   async analyzeBackupFile(path: string): Promise<BackupAnalysis | null> {
     try {
@@ -108,7 +104,7 @@ export class BackupRestoreService extends TauriBaseService {
     } catch (error) {
       this.notificationService.confirmModal(
         this.translate.instant('common.error'),
-        String(error),
+        this.backendTranslation.translateBackendMessage(error),
         '',
         'common.close',
         {
@@ -116,7 +112,7 @@ export class BackupRestoreService extends TauriBaseService {
           color: 'warn',
         }
       );
-      throw error;
+      return null;
     }
   }
 

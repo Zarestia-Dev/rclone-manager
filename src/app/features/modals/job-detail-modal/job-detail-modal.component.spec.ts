@@ -23,6 +23,7 @@ describe('JobDetailModalComponent', () => {
     deleteJob: ReturnType<typeof vi.fn>;
     resetGroupStats: ReturnType<typeof vi.fn>;
     getJob: ReturnType<typeof vi.fn>;
+    getJobReport: ReturnType<typeof vi.fn>;
   };
   let fileSystemSpy: {
     openInFiles: ReturnType<typeof vi.fn>;
@@ -93,6 +94,7 @@ describe('JobDetailModalComponent', () => {
       deleteJob: vi.fn().mockResolvedValue(undefined),
       resetGroupStats: vi.fn().mockResolvedValue(undefined),
       getJob: vi.fn().mockReturnValue(mockJob),
+      getJobReport: vi.fn().mockResolvedValue(null),
     };
     fileSystemSpy = {
       openInFiles: vi.fn().mockResolvedValue(undefined),
@@ -129,7 +131,19 @@ describe('JobDetailModalComponent', () => {
     expect(component.jobData().jobid).toBe(42);
     expect(component.jobStatus()).toBe('completed');
     expect(component.isMount()).toBe(false);
-    expect(component.progress()).toBe(100);
+  });
+
+  it('shows updated directories and treats jobs stored without the counter as zero', () => {
+    expect(component.fileCounters()?.updatedDirs).toBe(0);
+    jobManagementSpy.getJob.mockReturnValue({
+      ...mockJob,
+      stats: { ...mockJob.stats, updatedDirs: 7 },
+    });
+    fixture.destroy();
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.fileCounters()?.updatedDirs).toBe(7);
+    expect(fixture.nativeElement.textContent).toContain('modals.jobDetail.fields.updatedDirs');
   });
 
   it('should close the dialog when close() is invoked', () => {
@@ -181,5 +195,90 @@ describe('JobDetailModalComponent', () => {
 
   it('should query jobService.getJob with execute_id and jobid', () => {
     expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42, undefined);
+  });
+
+  describe('what started the job', () => {
+    const run = { workflowId: 'wf', workflowName: 'Nightly backup', nodeId: 'n1', ancestors: [] };
+    const identifiersFor = (job: Partial<JobInfo>): ReturnType<typeof component.identifiers> => {
+      jobManagementSpy.getJob.mockReturnValue({ ...mockJob, ...job });
+      fixture.destroy();
+      fixture = TestBed.createComponent(JobDetailModalComponent);
+      fixture.detectChanges();
+      return fixture.componentInstance.identifiers();
+    };
+
+    it('names the profile of a profile job', () => {
+      const identifiers = identifiersFor({ starter: { kind: 'profile', name: 'Daily' } });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.profile',
+        name: 'Daily',
+      });
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names the Quick Run of a Quick Run job instead of the default profile', () => {
+      const identifiers = identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly' },
+      });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.quickRun',
+        name: 'Nightly',
+      });
+      expect(identifiers.origin).toBe('quickrun');
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names the workflow of a workflow node, which has no profile or Quick Run', () => {
+      const identifiers = identifiersFor({ starter: { kind: 'workflow', ...run } });
+      expect(identifiers.starter).toEqual({
+        label: 'modals.jobDetail.fields.workflow',
+        name: 'Nightly backup',
+      });
+      expect(identifiers.origin).toBe('workflow');
+      expect(identifiers.viaWorkflow).toBeNull();
+    });
+
+    it('names both the Quick Run and the workflow node that ran it', () => {
+      const identifiers = identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly', workflow: run },
+      });
+      expect(identifiers.starter?.name).toBe('Nightly');
+      expect(identifiers.viaWorkflow).toBe('Nightly backup');
+      expect(identifiers.origin).toBe('workflow');
+    });
+
+    it('names nothing for work nothing started, keeping its stored origin', () => {
+      const identifiers = identifiersFor({ origin: 'filemanager' });
+      expect(identifiers.starter).toBeNull();
+      expect(identifiers.viaWorkflow).toBeNull();
+      expect(identifiers.origin).toBe('filemanager');
+    });
+
+    it('shows the rows that name what started the job', () => {
+      identifiersFor({
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly', workflow: run },
+      });
+      const text: string = fixture.nativeElement.textContent;
+      expect(text).toContain('modals.jobDetail.fields.quickRun');
+      expect(text).toContain('Nightly');
+      expect(text).toContain('modals.jobDetail.fields.workflow');
+      expect(text).toContain('Nightly backup');
+      expect(text).toContain('modals.jobDetail.sections.execution');
+    });
+  });
+
+  it('hands the activity panel the reports of a job that kept some', () => {
+    expect(component.transferActivityConfig().report).toBeUndefined();
+    jobManagementSpy.getJob.mockReturnValue({ ...mockJob, report_counts: { combined: 3 } });
+    fixture.destroy();
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.transferActivityConfig().report).toEqual({
+      jobId: 42,
+      counts: { combined: 3 },
+      path1: mockJob.source[0],
+      path2: mockJob.destination,
+      dryRun: mockJob.dry_run,
+    });
   });
 });

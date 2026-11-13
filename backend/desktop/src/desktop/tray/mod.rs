@@ -9,11 +9,13 @@ pub mod tray_action;
 
 use crate::rclone::backend::BackendManager;
 use crate::services::settings::AppSettingsManager;
-use crate::utils::types::jobs::{JobStatus, JobType};
-use crate::utils::types::origin::Origin;
+use crate::utils::json_helpers::{extract_remote_name_from_fs, normalize_remote_name};
+use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
 use crate::utils::types::remotes::{MountedRemote, OperationType, ServeInstance};
+use crate::utils::types::starter;
 use icon::TrayIconKind;
 use menu::MenuPlan;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
@@ -42,8 +44,9 @@ impl TrayVisualCache {
     }
 }
 
+#[derive(Default)]
 pub struct TrayMenuState {
-    pub cache: Mutex<TrayVisualCache>,
+    visuals: Mutex<TrayVisualCache>,
     pub update_lock: tokio::sync::Mutex<()>,
     pub has_pending: AtomicBool,
     /// Native visibility stays available while vault-protected settings are locked.
@@ -52,15 +55,13 @@ pub struct TrayMenuState {
     pub requested_visible: AtomicBool,
 }
 
-impl Default for TrayMenuState {
-    fn default() -> Self {
-        Self {
-            cache: Mutex::new(TrayVisualCache::default()),
-            update_lock: tokio::sync::Mutex::new(()),
-            has_pending: AtomicBool::new(false),
-            visible: AtomicBool::new(false),
-            requested_visible: AtomicBool::new(false),
-        }
+impl TrayMenuState {
+    /// What the native tray currently shows. It is plain data, so a lock poisoned by a
+    /// panic elsewhere is still safe to use and must not take the tray down with it.
+    pub fn visuals(&self) -> std::sync::MutexGuard<'_, TrayVisualCache> {
+        self.visuals
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 
@@ -80,17 +81,17 @@ pub struct TrayRemoteSummary {
     pub name: String,
     pub show_on_tray: bool,
     pub primary_actions: Vec<String>,
-    pub sync_profiles: Vec<TrayProfileSummary>,
-    pub copy_profiles: Vec<TrayProfileSummary>,
-    pub move_profiles: Vec<TrayProfileSummary>,
-    pub bisync_profiles: Vec<TrayProfileSummary>,
-    pub check_profiles: Vec<TrayProfileSummary>,
-    pub delete_profiles: Vec<TrayProfileSummary>,
-    pub copyurl_profiles: Vec<TrayProfileSummary>,
-    pub archivecreate_profiles: Vec<TrayProfileSummary>,
-    pub cryptcheck_profiles: Vec<TrayProfileSummary>,
-    pub mount_profiles: Vec<TrayProfileSummary>,
-    pub serve_profiles: Vec<TrayProfileSummary>,
+    /// Profiles of every operation the remote can run, in `OperationType::ALL` order.
+    pub profiles: Vec<(OperationType, Vec<TrayProfileSummary>)>,
+}
+
+impl TrayRemoteSummary {
+    pub fn profiles_for(&self, op: OperationType) -> &[TrayProfileSummary] {
+        self.profiles
+            .iter()
+            .find(|(candidate, _)| *candidate == op)
+            .map_or(&[], |(_, profiles)| profiles.as_slice())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -107,6 +108,59 @@ pub struct TrayWorkflowSummary {
     pub name: String,
     pub is_active: bool,
     pub show_on_tray: bool,
+}
+
+/// Which configured profiles are running right now. Runs started by quick runs are left
+/// out: they belong to the quick run, not to the profile they were copied from.
+struct ActiveProfiles<'a> {
+    jobs: HashSet<(&'a str, &'a str, &'a JobType)>,
+    // Mounts and serves are matched by remote name, so a serve of `remote:sub/path`
+    // is found the same way as a mount of `remote:`.
+    mounts: HashSet<(Cow<'a, str>, &'a str)>,
+    serves: HashSet<(Cow<'a, str>, &'a str)>,
+}
+
+impl<'a> ActiveProfiles<'a> {
+    fn new(jobs: &'a [JobInfo], mounts: &'a [MountedRemote], serves: &'a [ServeInstance]) -> Self {
+        Self {
+            jobs: jobs
+                .iter()
+                .filter_map(|j| {
+                    let profile = starter::profile_name(j.starter.as_ref())?;
+                    Some((j.remote_name.as_str(), profile, &j.job_type))
+                })
+                .collect(),
+            mounts: mounts
+                .iter()
+                .filter_map(|m| {
+                    let profile = starter::profile_name(m.starter.as_ref())?;
+                    Some((extract_remote_name_from_fs(&m.fs), profile))
+                })
+                .collect(),
+            serves: serves
+                .iter()
+                .filter_map(|s| {
+                    let fs = s.params.get("fs").and_then(|v| v.as_str())?;
+                    let profile = starter::profile_name(s.starter.as_ref())?;
+                    Some((extract_remote_name_from_fs(fs), profile))
+                })
+                .collect(),
+        }
+    }
+
+    fn contains(&self, remote: &str, op: OperationType, profile: &str) -> bool {
+        match op {
+            OperationType::Mount => self
+                .mounts
+                .contains(&(normalize_remote_name(remote), profile)),
+            OperationType::Serve => self
+                .serves
+                .contains(&(normalize_remote_name(remote), profile)),
+            op => op
+                .as_job_type()
+                .is_some_and(|job_type| self.jobs.contains(&(remote, profile, &job_type))),
+        }
+    }
 }
 
 pub struct TraySnapshot {
@@ -141,54 +195,24 @@ impl TraySnapshot {
             })
             .collect();
 
-        // Index non-quickrun active jobs by (&remote_name, &profile, &job_type) for O(1) profile matching
-        let active_profile_jobs: HashSet<(&str, &str, &JobType)> = active_jobs_raw
-            .iter()
-            .filter(|j| j.origin != Some(Origin::QuickRun) && j.quick_run_id.is_none())
-            .filter_map(|j| {
-                let profile = j.profile.as_deref()?;
-                Some((j.remote_name.as_str(), profile, &j.job_type))
-            })
-            .collect();
-
-        // Index non-quickrun active mounts by (&clean_fs, &profile)
-        let active_profile_mounts: HashSet<(&str, &str)> = mounted_remotes
-            .iter()
-            .filter(|mt| mt.origin != Some(Origin::QuickRun) && mt.quick_run_id.is_none())
-            .filter_map(|mt| {
-                let profile = mt.profile.as_deref()?;
-                let fs_clean = mt.fs.split(':').next().unwrap_or("").trim_end_matches(':');
-                Some((fs_clean, profile))
-            })
-            .collect();
-
-        // Index non-quickrun active serves by (&clean_fs, &profile)
-        let active_profile_serves: HashSet<(&str, &str)> = active_serves
-            .iter()
-            .filter(|srv| srv.origin != Some(Origin::QuickRun) && srv.quick_run_id.is_none())
-            .filter_map(|srv| {
-                let profile = srv.profile.as_deref()?;
-                let fs = srv.params.get("fs").and_then(|v| v.as_str()).unwrap_or("");
-                let fs_clean = fs.trim_end_matches(':');
-                Some((fs_clean, profile))
-            })
-            .collect();
+        let active_profiles =
+            ActiveProfiles::new(&active_jobs_raw, &mounted_remotes, &active_serves);
 
         // Index active quick run IDs
         let active_qr_mounts: HashSet<&str> = mounted_remotes
             .iter()
-            .filter_map(|mt| mt.quick_run_id.as_deref())
+            .filter_map(|mt| starter::quick_run_id(mt.starter.as_ref()))
             .collect();
 
         let active_qr_serves: HashSet<&str> = active_serves
             .iter()
-            .filter_map(|srv| srv.quick_run_id.as_deref())
+            .filter_map(|srv| starter::quick_run_id(srv.starter.as_ref()))
             .collect();
 
         let active_qr_jobs: HashSet<&str> = active_jobs_raw
             .iter()
             .filter(|j| j.status == JobStatus::Running)
-            .filter_map(|j| j.quick_run_id.as_deref())
+            .filter_map(|j| starter::quick_run_id(j.starter.as_ref()))
             .collect();
 
         let all_remote_settings =
@@ -206,78 +230,35 @@ impl TraySnapshot {
                     .clone()
                     .unwrap_or_else(|| vec!["mount".into(), "sync".into(), "bisync".into()]);
 
-                let target_remote = crate::utils::json_helpers::normalize_remote_name(&name);
-                let remote_clean = target_remote.trim_end_matches(':');
-
-                let build_job_profiles = |op: OperationType| -> Vec<TrayProfileSummary> {
-                    let Some(jtype) = op.as_job_type() else {
-                        return Vec::new();
-                    };
-                    s_parsed
-                        .get_configs(op)
-                        .map(|m| {
-                            m.keys()
-                                .map(|pname| TrayProfileSummary {
-                                    is_active: active_profile_jobs.contains(&(
-                                        name.as_str(),
-                                        pname.as_str(),
-                                        &jtype,
-                                    )),
-                                    name: pname.clone(),
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default()
-                };
-
-                let mount_profiles = s_parsed
-                    .mount_configs
-                    .as_ref()
-                    .map(|m| {
-                        m.keys()
-                            .map(|pname| TrayProfileSummary {
-                                is_active: active_profile_mounts
-                                    .contains(&(remote_clean, pname.as_str())),
-                                name: pname.clone(),
+                let profiles = OperationType::ALL
+                    .iter()
+                    .map(|&op| {
+                        let summaries = s_parsed
+                            .get_configs(op)
+                            .map(|configs| {
+                                configs
+                                    .keys()
+                                    .map(|profile| TrayProfileSummary {
+                                        is_active: active_profiles.contains(&name, op, profile),
+                                        name: profile.clone(),
+                                    })
+                                    .collect()
                             })
-                            .collect()
+                            .unwrap_or_default();
+                        (op, summaries)
                     })
-                    .unwrap_or_default();
-
-                let serve_profiles = s_parsed
-                    .serve_configs
-                    .as_ref()
-                    .map(|m| {
-                        m.keys()
-                            .map(|pname| TrayProfileSummary {
-                                is_active: active_profile_serves
-                                    .contains(&(remote_clean, pname.as_str())),
-                                name: pname.clone(),
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                    .collect();
 
                 TrayRemoteSummary {
-                    sync_profiles: build_job_profiles(OperationType::Sync),
-                    copy_profiles: build_job_profiles(OperationType::Copy),
-                    move_profiles: build_job_profiles(OperationType::Move),
-                    bisync_profiles: build_job_profiles(OperationType::Bisync),
-                    check_profiles: build_job_profiles(OperationType::Check),
-                    delete_profiles: build_job_profiles(OperationType::Delete),
-                    copyurl_profiles: build_job_profiles(OperationType::Copyurl),
-                    archivecreate_profiles: build_job_profiles(OperationType::Archivecreate),
-                    cryptcheck_profiles: build_job_profiles(OperationType::Cryptcheck),
-                    name: name.to_owned(),
+                    name: name.clone(),
                     show_on_tray,
                     primary_actions,
-                    mount_profiles,
-                    serve_profiles,
+                    profiles,
                 }
             })
             .collect();
 
-        let raw_quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(
+        let raw_quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs(
             settings_manager.inner(),
         )
         .unwrap_or_default();
@@ -301,10 +282,9 @@ impl TraySnapshot {
             })
             .collect();
 
-        let raw_workflows = crate::services::flow::workflow::commands::get_all_workflows_sync(
-            settings_manager.inner(),
-        )
-        .unwrap_or_default();
+        let raw_workflows =
+            crate::services::flow::workflow::commands::get_all_workflows(settings_manager.inner())
+                .unwrap_or_default();
 
         let active_wf_ids =
             crate::services::flow::workflow::engine::get_active_workflow_ids(&backend.name);
@@ -336,6 +316,7 @@ impl TraySnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::types::starter::Starter;
 
     fn cached_visuals() -> TrayVisualCache {
         TrayVisualCache {
@@ -343,6 +324,73 @@ mod tests {
             tooltip: Some("Tooltip".into()),
             icon: Some(TrayIconKind::ColorNormal),
         }
+    }
+
+    fn job(remote: &str, profile: &str, job_type: JobType) -> JobInfo {
+        serde_json::from_value(serde_json::json!({
+            "jobid": 1,
+            "job_type": job_type,
+            "remote_name": remote,
+            "source": [],
+            "destination": "",
+            "start_time": "2026-01-01T00:00:00Z",
+            "status": "Running",
+            "stats": null,
+            "group": "job/1",
+            "starter": { "kind": "profile", "name": profile },
+        }))
+        .unwrap()
+    }
+
+    fn serve(fs: &str, profile: &str) -> ServeInstance {
+        let mut serve = ServeInstance::new("id", "127.0.0.1:1", serde_json::json!({ "fs": fs }));
+        serve.starter = Some(Starter::profile(profile));
+        serve
+    }
+
+    fn mount(fs: &str, profile: &str) -> MountedRemote {
+        let mut mount = MountedRemote::new(fs, "/mnt");
+        mount.starter = Some(Starter::profile(profile));
+        mount
+    }
+
+    #[test]
+    fn running_profiles_are_matched_by_remote_operation_and_name() {
+        let jobs = [job("gdrive", "Default", JobType::Sync)];
+        let mounts = [mount("gdrive:", "Default")];
+        let serves = [serve("gdrive:photos/2024", "Default")];
+        let active = ActiveProfiles::new(&jobs, &mounts, &serves);
+
+        assert!(active.contains("gdrive", OperationType::Sync, "Default"));
+        assert!(active.contains("gdrive", OperationType::Mount, "Default"));
+        // A serve of a sub-path belongs to its remote like any other.
+        assert!(active.contains("gdrive", OperationType::Serve, "Default"));
+        assert!(active.contains("gdrive:", OperationType::Serve, "Default"));
+
+        // Profile names repeat across remotes and operations.
+        assert!(!active.contains("other", OperationType::Sync, "Default"));
+        assert!(!active.contains("other", OperationType::Serve, "Default"));
+        assert!(!active.contains("gdrive2", OperationType::Mount, "Default"));
+        assert!(!active.contains("gdrive", OperationType::Copy, "Default"));
+        assert!(!active.contains("gdrive", OperationType::Sync, "Other"));
+    }
+
+    #[test]
+    fn quick_run_executions_do_not_mark_profiles_active() {
+        let quick_run = Some(Starter::quick_run("qr-1", "Default", None));
+        let mut quick_job = job("gdrive", "Default", JobType::Sync);
+        quick_job.starter.clone_from(&quick_run);
+        let mut quick_mount = mount("gdrive:", "Default");
+        quick_mount.starter.clone_from(&quick_run);
+        let mut quick_serve = serve("gdrive:", "Default");
+        quick_serve.starter = quick_run;
+        let jobs = [quick_job];
+        let mounts = [quick_mount];
+        let serves = [quick_serve];
+        let active = ActiveProfiles::new(&jobs, &mounts, &serves);
+        assert!(!active.contains("gdrive", OperationType::Sync, "Default"));
+        assert!(!active.contains("gdrive", OperationType::Mount, "Default"));
+        assert!(!active.contains("gdrive", OperationType::Serve, "Default"));
     }
 
     #[test]

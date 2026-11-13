@@ -1,6 +1,5 @@
+/** Width and height a node is assumed to have until the browser has measured it. */
 export const NODE_WIDTH = 240;
-export const PORT_ROW_START_Y = 96;
-export const PORT_ROW_HEIGHT = 28;
 export const DEFAULT_NODE_HEIGHT = 120;
 
 export const GRID_SIZE = 16;

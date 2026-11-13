@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { MountedRemote, OperationContext, Origin } from '@app/types';
+import { MountedRemote, OperationContext, Origin, profileOf } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -39,6 +39,11 @@ export class MountManagementService extends TauriBaseService {
   constructor() {
     super();
     this.initializeEventListeners();
+    // Like the jobs and serves, the mounts are loaded by the service itself: what the interface
+    // shows of a running mount (a Quick Run's state) must not wait for another service to ask.
+    this.getMountedRemotes().catch(err =>
+      console.error('[MountManagementService] Failed to load mounts:', err)
+    );
   }
 
   private initializeEventListeners(): void {
@@ -127,6 +132,6 @@ export class MountManagementService extends TauriBaseService {
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
     const all = this.mountsByRemoteProfile().get(remoteName) ?? [];
     if (!profile) return all;
-    return all.filter(m => m.profile === profile);
+    return all.filter(m => profileOf(m) === profile);
   }
 }

@@ -3,7 +3,7 @@ import { ApiClientService } from '../infrastructure/platform/api-client.service'
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal, computed, WritableSignal } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, from, of } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
 import { RemoteFeatures, VaultStatePayload, JobInfo } from '@app/types';
 import { VaultService } from '../security/vault.service';
@@ -52,6 +52,7 @@ describe('RemoteFacadeService', () => {
     options: ReturnType<typeof vi.fn>;
     saveSetting: ReturnType<typeof vi.fn>;
     saveRemoteSettings: ReturnType<typeof vi.fn>;
+    resetRemoteSettings: ReturnType<typeof vi.fn>;
   };
   let mockStatusService: {
     refreshStatus: ReturnType<typeof vi.fn>;
@@ -80,6 +81,7 @@ describe('RemoteFacadeService', () => {
       options: vi.fn().mockReturnValue(null),
       saveSetting: vi.fn().mockResolvedValue(undefined),
       saveRemoteSettings: vi.fn().mockResolvedValue(undefined),
+      resetRemoteSettings: vi.fn().mockResolvedValue(undefined),
     };
 
     mockStatusService = {
@@ -136,6 +138,7 @@ describe('RemoteFacadeService', () => {
           useValue: {
             getDiskUsage: vi.fn().mockResolvedValue({ total: 1000, used: 200, free: 800 }),
             cleanup: vi.fn().mockResolvedValue(undefined),
+            generateIndex: vi.fn().mockResolvedValue(undefined),
           },
         },
         { provide: AppSettingsService, useValue: mockAppSettingsService },
@@ -220,7 +223,7 @@ describe('RemoteFacadeService', () => {
         },
         {
           provide: ModalService,
-          useValue: {},
+          useValue: { openIndexCreate: vi.fn() },
         },
       ],
     });
@@ -384,6 +387,22 @@ describe('RemoteFacadeService', () => {
     expect(service.loading()).toBe(false);
   });
 
+  it('never reports a remote as missing while the catalogue is still loading', async () => {
+    let resolveConfigs!: (value: Record<string, unknown>) => void;
+    mockRemoteService.getAllRemoteConfigs.mockReturnValue(
+      new Promise<Record<string, unknown>>(r => {
+        resolveConfigs = r;
+      })
+    );
+    const loading = service.loadRemotes();
+    expect(service.loading()).toBe(true);
+    expect(service.isRemoteMissing('late')).toBe(false);
+
+    resolveConfigs({ other: { type: 's3' } });
+    await loading;
+    expect(service.isRemoteMissing('late')).toBe(true);
+  });
+
   it('finishes list loading while unrelated status refresh is still pending', async () => {
     await service.refreshAll();
     let finish!: () => void;
@@ -480,6 +499,9 @@ describe('RemoteFacadeService', () => {
     expect(service.getRemote('b')?.name).toBe('b');
     expect(mockRemoteService.getFeaturesSignal).toHaveBeenCalledTimes(1);
     expect(service.isRemoteActive('a:')).toBe(true);
+    expect(service.isRemoteMissing('a:')).toBe(false);
+    expect(service.isRemoteMissing('gone')).toBe(true);
+    expect(service.isRemoteMissing(null)).toBe(false);
     expect(service.getRemote(null)).toBeUndefined();
     expect(service.getRemote('missing')).toBeUndefined();
     expect(service.orderedVisibleRemotes().map(r => r.name)).toEqual(['b']);
@@ -496,9 +518,25 @@ describe('RemoteFacadeService', () => {
     >;
     jobs.set({
       drive: [
-        { jobid: 3, job_type: 'sync', status: 'Completed', profile: 'photos' },
-        { jobid: 9, job_type: 'sync', status: 'Completed', profile: 'photos' },
-        { jobid: 20, job_type: 'sync', status: 'Running', profile: 'photos', origin: 'quickrun' },
+        {
+          jobid: 3,
+          job_type: 'sync',
+          status: 'Completed',
+          starter: { kind: 'profile', name: 'photos' },
+        },
+        {
+          jobid: 9,
+          job_type: 'sync',
+          status: 'Completed',
+          starter: { kind: 'profile', name: 'photos' },
+        },
+        {
+          jobid: 20,
+          job_type: 'sync',
+          status: 'Running',
+          starter: { kind: 'profile', name: 'photos' },
+          origin: 'quickrun',
+        },
       ] as JobInfo[],
     });
     await service.loadRemotes();
@@ -645,7 +683,9 @@ describe('RemoteFacadeService', () => {
     const mounts = TestBed.inject(MountManagementService).mountedRemotes as WritableSignal<
       import('@app/types').MountedRemote[]
     >;
-    mounts.set([{ fs: 'drive:', mount_point: '/tmp/other', profile: 'other' }]);
+    mounts.set([
+      { fs: 'drive:', mount_point: '/tmp/other', starter: { kind: 'profile', name: 'other' } },
+    ]);
     await expect(service.stopJob('drive', 'mount', undefined, 'missing')).rejects.toThrow(
       'Active mount not found'
     );
@@ -680,6 +720,125 @@ describe('RemoteFacadeService', () => {
     confirm(true);
     expect(await cleanup).toBe(false);
     expect(TestBed.inject(RemoteFileOperationsService).cleanup).not.toHaveBeenCalled();
+  });
+
+  describe('generateIndex', () => {
+    const options = { output: ['index.html=html'], maxDepth: 2 };
+    const dialog = (result: unknown): void => {
+      vi.mocked(TestBed.inject(ModalService).openIndexCreate).mockReturnValue({
+        afterClosed: () => of(result),
+      } as never);
+    };
+    const writeIndex = (): ReturnType<typeof vi.fn> =>
+      vi.mocked(TestBed.inject(RemoteFileOperationsService).generateIndex) as ReturnType<
+        typeof vi.fn
+      >;
+
+    it('writes the listings of the folder with what the dialog returned', async () => {
+      dialog(options);
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(true);
+
+      expect(TestBed.inject(ModalService).openIndexCreate).toHaveBeenCalledWith({
+        target: 'drive:/site',
+      });
+      expect(writeIndex()).toHaveBeenCalledExactlyOnceWith(
+        'drive:',
+        'site',
+        options,
+        'filemanager'
+      );
+      expect(TestBed.inject(NotificationService).showInfo).toHaveBeenCalledWith(
+        'nautilus.notifications.indexStarted'
+      );
+    });
+
+    it('does nothing when the dialog is dismissed', async () => {
+      dialog(undefined);
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(false);
+
+      expect(writeIndex()).not.toHaveBeenCalled();
+    });
+
+    it('does not write to a different backend after the dialog was opened', async () => {
+      let close!: (value: unknown) => void;
+      vi.mocked(TestBed.inject(ModalService).openIndexCreate).mockReturnValue({
+        afterClosed: () => from(new Promise(resolve => (close = resolve))),
+      } as never);
+
+      const run = service.generateIndex('drive:', 'site', 'filemanager');
+      backendSwitched$.next();
+      close(options);
+
+      expect(await run).toBe(false);
+      expect(writeIndex()).not.toHaveBeenCalled();
+    });
+
+    it('reports a failed run once', async () => {
+      dialog(options);
+      writeIndex().mockRejectedValueOnce(new Error('denied'));
+
+      expect(await service.generateIndex('drive:', 'site', 'filemanager')).toBe(false);
+
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledExactlyOnceWith(
+        'nautilus.errors.indexFailed'
+      );
+    });
+
+    it('lists a whole remote under its colon and a local folder as it is', async () => {
+      dialog(options);
+
+      await service.generateRemoteIndex({ name: 'drive' });
+      await service.generateRemoteIndex({ name: '/home/me/site', isLocal: true }, 'filemanager');
+
+      expect(writeIndex().mock.calls.map(call => call.slice(0, 2))).toEqual([
+        ['drive:', ''],
+        ['/home/me/site', ''],
+      ]);
+      expect(writeIndex().mock.calls.map(call => call[3])).toEqual(['dashboard', 'filemanager']);
+    });
+  });
+
+  describe('resetSettings', () => {
+    const confirm = (): ReturnType<typeof vi.fn> =>
+      vi.mocked(TestBed.inject(NotificationService).confirmModal) as ReturnType<typeof vi.fn>;
+
+    it('resets the saved settings of the remote after the user confirms', async () => {
+      confirm().mockResolvedValueOnce(true);
+
+      await service.resetSettings('drive');
+
+      expect(confirm()).toHaveBeenCalledTimes(1);
+      expect(mockAppSettingsService.resetRemoteSettings).toHaveBeenCalledWith('drive');
+    });
+
+    it('keeps the settings when the user cancels', async () => {
+      confirm().mockResolvedValueOnce(false);
+
+      await service.resetSettings('drive');
+
+      expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('does not even ask for an empty remote name', async () => {
+      await service.resetSettings('');
+
+      expect(confirm()).not.toHaveBeenCalled();
+      expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('reports a failed reset instead of throwing', async () => {
+      const error = new Error('disk full');
+      confirm().mockResolvedValueOnce(true);
+      mockAppSettingsService.resetRemoteSettings.mockRejectedValueOnce(error);
+      const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await expect(service.resetSettings('drive')).resolves.toBeUndefined();
+
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledWith(error);
+      log.mockRestore();
+    });
   });
 
   it('opens the requested profile using the canonical nested rclone fields', async () => {

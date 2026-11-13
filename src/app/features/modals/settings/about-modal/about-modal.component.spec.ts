@@ -4,6 +4,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal, WritableSignal } from '@angular/core';
 import { AboutModalComponent } from './about-modal.component';
+import { BackendUpdateStatus, UpdateInfo } from '@app/types';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
@@ -23,6 +24,9 @@ describe('AboutModalComponent', () => {
   let canAutoInstall: WritableSignal<boolean>;
   let readyToRestart: WritableSignal<boolean>;
   let installationFailure: WritableSignal<string>;
+  let installationCommand: WritableSignal<string>;
+  let installationPackage: WritableSignal<string>;
+  let updateAvailable: WritableSignal<UpdateInfo | null>;
   const cancelUpdate = vi.fn();
   const relaunchApp = vi.fn();
 
@@ -31,6 +35,9 @@ describe('AboutModalComponent', () => {
     canAutoInstall = signal(true);
     readyToRestart = signal(false);
     installationFailure = signal('');
+    installationCommand = signal('');
+    installationPackage = signal('');
+    updateAvailable = signal<UpdateInfo | null>(null);
     cancelUpdate.mockReset().mockResolvedValue(undefined);
     relaunchApp.mockReset().mockResolvedValue(undefined);
     dialogRefSpy = { close: vi.fn() };
@@ -41,7 +48,7 @@ describe('AboutModalComponent', () => {
 
     const mockAppUpdaterService = {
       autoCheckEnabled: signal(true),
-      updateAvailable: signal(null),
+      updateAvailable,
       updateInProgress: signal(false),
       updateChannel: signal('stable'),
       skippedVersions: signal([]),
@@ -54,6 +61,11 @@ describe('AboutModalComponent', () => {
       canAutoInstall,
       installationReason: signal(''),
       installationFailure,
+      installationCommand,
+      installationPackage,
+      lastCheckedAt: signal(null),
+      checkError: signal(''),
+      rolledBack: signal([]),
     };
 
     const mockRcloneUpdateService = {
@@ -66,6 +78,9 @@ describe('AboutModalComponent', () => {
       skippedVersions: signal([]),
       autoCheckEnabled: signal(true),
       isUpdaterEnabled: signal(true),
+      lastCheckedAt: signal(null),
+      error: signal(''),
+      notice: signal(''),
     };
 
     const mockDebugService = {
@@ -159,22 +174,43 @@ describe('AboutModalComponent', () => {
     }
   );
 
-  it.each([
-    ['flatpak', 'flatpak update io.github.zarestia_dev.rclone-manager'],
-    ['container', 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest'],
-  ])('provides installation-specific manual instructions for %s', (type, command) => {
-    buildType.set(type);
-    canAutoInstall.set(false);
-    expect(component.updateInstructions()?.command).toBe(command);
-  });
+  it.each(['flatpak', 'container', 'pacman'])(
+    'shows the command the backend built for %s installations',
+    type => {
+      buildType.set(type);
+      canAutoInstall.set(false);
+      installationCommand.set('update it');
+      expect(component.updateInstructions()?.command).toBe('update it');
+    }
+  );
 
-  it('directs AUR installations to the package source', () => {
+  it('directs AUR installations to their own package page', () => {
     buildType.set('pacman');
     canAutoInstall.set(false);
     expect(component.updateInstructions()?.links[0].url).toBe(
       'https://aur.archlinux.org/packages?K=rclone-manager'
     );
     expect(component.updateInstructions()?.command).toBeUndefined();
+    installationPackage.set('rclone-manager-headless');
+    expect(component.updateInstructions()?.links[0].url).toBe(
+      'https://aur.archlinux.org/packages/rclone-manager-headless'
+    );
+    expect(component.getPlatformLabel('pacman')).toBe('AUR');
+  });
+
+  it('labels the release by its pre-release flag rather than its tag text', () => {
+    const update: UpdateInfo = {
+      version: '1.2.0-rc.1',
+      currentVersion: '1.1.0',
+      updateAvailable: true,
+      status: BackendUpdateStatus.Available,
+      releaseTag: 'v1.2.0-rc.1',
+      prerelease: true,
+    };
+    updateAvailable.set(update);
+    expect(component.appUpdateReleaseChannel()).toBe('beta');
+    updateAvailable.set({ ...update, prerelease: false, releaseTag: 'v1.2.0-beta-notes' });
+    expect(component.appUpdateReleaseChannel()).toBe('stable');
   });
 
   it('provides the download page for portable installations', () => {

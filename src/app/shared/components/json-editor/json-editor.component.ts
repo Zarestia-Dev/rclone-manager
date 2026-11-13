@@ -73,6 +73,7 @@ import {
 } from '@codemirror/autocomplete';
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 
+import { PillDirective } from '../../directives/pill.directive';
 export type JsonEditorLookupTable = Signal<
   Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
 >;
@@ -269,6 +270,7 @@ function buildRcloneCompletionSource(
     TranslatePipe,
     RcloneOptionTranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',

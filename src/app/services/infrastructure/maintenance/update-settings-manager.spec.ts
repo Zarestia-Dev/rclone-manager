@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { BackendUpdateStatus, UpdateInfo } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { UpdateSettingsManager } from './update-settings-manager';
+import { UpdateSettingsManager, isUpdateInFlight } from './update-settings-manager';
 
 describe('UpdateSettingsManager availability', () => {
   it('retains a skipped version while downloading, installing or waiting for restart', async () => {
@@ -41,5 +41,15 @@ describe('UpdateSettingsManager availability', () => {
       expect(settings.computeAvailableUpdate({ ...info, status })?.status).toBe(status);
     }
     expect(settings.computeAvailableUpdate({ ...info, version: '1.3.0' })?.version).toBe('1.3.0');
+  });
+});
+
+describe('isUpdateInFlight', () => {
+  it('is true only while a download, installation or staged update is active', () => {
+    expect(isUpdateInFlight(BackendUpdateStatus.Downloading)).toBe(true);
+    expect(isUpdateInFlight(BackendUpdateStatus.Installing)).toBe(true);
+    expect(isUpdateInFlight(BackendUpdateStatus.ReadyToRestart)).toBe(true);
+    expect(isUpdateInFlight(BackendUpdateStatus.Available)).toBe(false);
+    expect(isUpdateInFlight(undefined)).toBe(false);
   });
 });

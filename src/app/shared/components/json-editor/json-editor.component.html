@@ -12,10 +12,8 @@
 
     @for (chip of chips(); track chip.controlKey) {
       <span
-        class="app-pill interactive"
-        [class.p-primary]="chip.isActive"
-        [class.p-accent]="chip.isChanged"
-        [class.p-dim]="!chip.isActive"
+        appPill
+        [tone]="!chip.isActive ? 'dim' : chip.isChanged ? 'accent' : 'primary'"
         [attr.title]="
           chip.field.Name
             | rcloneOptionTranslate
@@ -63,7 +61,7 @@
         >
           <span class="item-label">{{ ex.Help || ex.Value | translate }}</span>
           @if (ex.Help && ex.Help !== ex.Value) {
-            <span class="app-pill p-accent">{{ ex.Value }}</span>
+            <span appPill tone="accent">{{ ex.Value }}</span>
           }
         </button>
       }

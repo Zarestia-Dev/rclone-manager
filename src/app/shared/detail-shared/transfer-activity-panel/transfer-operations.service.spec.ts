@@ -16,7 +16,7 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { DownloadService } from 'src/app/services/operations/download.service';
-import { ActivityActionItem } from './activity.utils';
+import { ActivityActionItem, compareSidesOf } from './activity.utils';
 
 describe('TransferOperationsService', () => {
   let service: TransferOperationsService;
@@ -25,6 +25,9 @@ describe('TransferOperationsService', () => {
   const getPublicLink = vi.fn().mockResolvedValue({ url: 'https://example.com/file' });
   const deleteItems = vi.fn().mockResolvedValue('job');
   const transferItems = vi.fn().mockResolvedValue('job');
+  const getStat = vi.fn();
+  const getFsInfo = vi.fn();
+  const getHashsumFile = vi.fn();
   const download = vi.fn().mockResolvedValue(undefined);
   const copy = vi.fn().mockReturnValue(true);
   const confirmModal = vi.fn().mockResolvedValue(true);
@@ -48,7 +51,14 @@ describe('TransferOperationsService', () => {
         { provide: RemoteManagementService, useValue: { getFeaturesSignal } },
         {
           provide: RemoteFileOperationsService,
-          useValue: { getPublicLink, deleteItems, transferItems },
+          useValue: {
+            getPublicLink,
+            deleteItems,
+            transferItems,
+            getStat,
+            getFsInfo,
+            getHashsumFile,
+          },
         },
         { provide: TranslateService, useValue: { instant: (key: string): string => key } },
         { provide: Clipboard, useValue: { copy } },
@@ -204,5 +214,92 @@ describe('TransferOperationsService', () => {
         'copy'
       )
     ).toBe(false);
+  });
+
+  describe('resolving a check difference', () => {
+    const differing = { ...item, jobid: 3, status: TRANSFER_STATUS.Partial } as CompletedTransfer;
+    const sides = compareSidesOf(differing);
+
+    it('copies from the source to the destination, or the other way round', async () => {
+      await service.resolveCheck(differing, 'toDestination');
+      expect(transferItems).toHaveBeenLastCalledWith(
+        [expect.objectContaining({ remote: 'drive:photos', path: 'folder/file.txt' })],
+        'backup:archive',
+        'folder',
+        'copy',
+        'dashboard',
+        undefined,
+        3
+      );
+      await service.resolveCheck(differing, 'toSource');
+      expect(transferItems).toHaveBeenLastCalledWith(
+        [expect.objectContaining({ remote: 'backup:archive', path: 'folder/file.txt' })],
+        'drive:photos',
+        'folder',
+        'copy',
+        'dashboard',
+        undefined,
+        3
+      );
+    });
+
+    it('reads the size and modification time of both sides from the remotes', async () => {
+      getStat.mockImplementation(async (fs: string) => ({
+        item:
+          fs === 'drive:photos'
+            ? { Size: 12, ModTime: '2026-11-07T10:00:00Z' }
+            : { Size: 20, ModTime: '' },
+      }));
+      expect(await service.getVersionsAt(sides.src, sides.dst)).toEqual({
+        src: { size: 12, modTime: '2026-11-07T10:00:00Z' },
+        dst: { size: 20, modTime: null },
+      });
+      expect(getStat).toHaveBeenCalledWith(
+        'backup:archive',
+        'folder/file.txt',
+        { filesOnly: true },
+        'dashboard'
+      );
+    });
+
+    it('reports a side whose file is gone, or that has no root, as missing', async () => {
+      getStat.mockResolvedValueOnce({ item: null });
+      getStat.mockResolvedValueOnce({ item: { Size: 3, ModTime: '2026-01-01T00:00:00Z' } });
+      const versions = await service.getVersionsAt(sides.src, sides.dst);
+      expect(versions.src).toBeNull();
+      expect(versions.dst?.size).toBe(3);
+      expect(
+        (await service.getVersionsAt(sides.src, { fs: '', path: differing.name })).dst
+      ).toBeNull();
+    });
+
+    it('hashes both files with the first type the two remotes share', async () => {
+      getFsInfo.mockImplementation(async (fs: string) => ({
+        Hashes: fs === 'drive:photos' ? ['sha1', 'md5', 'crc32'] : ['md5', 'crc32'],
+      }));
+      getHashsumFile.mockImplementation(async (_fs: string, _path: string, type: string) => ({
+        hash: 'abc',
+        hashType: type,
+      }));
+      expect(await service.compareChecksumsAt(sides.src, sides.dst)).toEqual({
+        hashType: 'md5',
+        src: 'abc',
+        dst: 'abc',
+        match: true,
+      });
+      getHashsumFile.mockResolvedValueOnce({ hash: 'abc', hashType: 'md5' });
+      getHashsumFile.mockResolvedValueOnce({ hash: 'def', hashType: 'md5' });
+      expect((await service.compareChecksumsAt(sides.src, sides.dst))?.match).toBe(false);
+    });
+
+    it('does not compare when the remotes share no hash type or a root is missing', async () => {
+      getFsInfo.mockResolvedValueOnce({ Hashes: ['sha1'] });
+      getFsInfo.mockResolvedValueOnce({ Hashes: ['md5'] });
+      expect(await service.compareChecksumsAt(sides.src, sides.dst)).toBeNull();
+      expect(getHashsumFile).not.toHaveBeenCalled();
+      expect(
+        await service.compareChecksumsAt({ fs: '', path: differing.name }, sides.dst)
+      ).toBeNull();
+    });
   });
 });

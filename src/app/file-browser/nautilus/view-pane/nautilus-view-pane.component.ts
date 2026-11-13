@@ -27,6 +27,7 @@ import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.
 import { Entry, FileBrowserItem, fileBrowserItemKey } from '@app/types';
 import { getShareInfo } from 'src/app/shared/utils';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-nautilus-view-pane',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +40,7 @@ import { getShareInfo } from 'src/app/shared/utils';
     TranslatePipe,
     FormatFileSizePipe,
     FormatRelativeDatePipe,
+    PillDirective,
   ],
   templateUrl: './nautilus-view-pane.component.html',
   styleUrl: './nautilus-view-pane.component.scss',

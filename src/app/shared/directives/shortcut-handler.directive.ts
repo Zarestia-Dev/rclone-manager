@@ -49,6 +49,7 @@ export class ShortcutHandlerDirective {
     'app.exportConfiguration': () => this.exportConfiguration(),
     'app.openPreferences': () => this.openPreferences(),
     'app.openFlags': () => this.openRcloneFlags(),
+    'app.openRcConsole': () => this.openRcConsole(),
     'app.openVault': () => this.openVault(),
     'app.openAlerts': () => this.openAlerts(),
     'app.toggleFlowOverlay': () => this.toggleFlowOverlay(),
@@ -203,6 +204,10 @@ export class ShortcutHandlerDirective {
 
   private openRcloneFlags(): void {
     this.modalService.openRcloneFlags();
+  }
+
+  private openRcConsole(): void {
+    this.modalService.openRcConsole();
   }
 
   private openVault(): void {

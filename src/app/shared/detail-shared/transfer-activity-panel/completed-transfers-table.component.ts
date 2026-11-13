@@ -18,8 +18,10 @@ import {
   activityError,
   canCopyFailedTransfer,
   effectiveTransferStatus,
+  splitPath,
 } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-completed-transfers-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +34,7 @@ import {
     TranslatePipe,
     FormatFileSizePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
@@ -40,25 +43,22 @@ import {
           <div class="card-row-item" [class]="transfer.displayStatus">
             <div class="card-header">
               <div class="card-info-left">
-                <mat-icon
-                  svgIcon="file"
-                  class="card-primary-icon"
-                  [attr.title]="transfer.name"
-                ></mat-icon>
-                <span class="card-title-text truncate" [title]="transfer.name">{{
-                  transfer.name
-                }}</span>
+                <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+                <span class="card-title">
+                  <span class="file-dir truncate" [title]="transfer.name">{{ transfer.dir }}</span>
+                  <span
+                    class="card-title-text truncate"
+                    [appCopyToClipboard]="transfer.name"
+                    [attr.title]="'common.copy' | translate"
+                    >{{ transfer.base }}</span
+                  >
+                </span>
               </div>
               <div class="card-info-right">
-                <span
-                  class="app-pill"
-                  [class]="transfer.badge.cssClass"
-                  [attr.title]="transfer.displayError"
-                >
+                <span appPill [tone]="transfer.badge.tone" [attr.title]="transfer.displayError">
                   <mat-icon [svgIcon]="transfer.badge.icon"></mat-icon>
                   {{ transfer.badge.text | translate }}
                 </span>
-
                 @if (canResolve(transfer)) {
                   <button
                     type="button"
@@ -75,14 +75,6 @@ import {
                 }
               </div>
             </div>
-
-            <app-activity-paths
-              [item]="transfer"
-              [rowId]="transfer.uniqueId"
-              [jobType]="jobType()"
-              [fallbackLabel]="remoteName()"
-              [allowDelete]="true"
-            ></app-activity-paths>
 
             <div class="card-footer">
               <div class="card-footer-left">
@@ -103,11 +95,18 @@ import {
                   <span>{{ transfer.relativeTime }}</span>
                 }
                 @if (transfer.duration) {
-                  <span class="app-pill pill-sm p-primary">{{ transfer.duration }}</span>
+                  <span appPill tone="primary" size="xs">{{ transfer.duration }}</span>
                 }
               </div>
             </div>
 
+            <app-activity-paths
+              [item]="transfer"
+              [rowId]="transfer.uniqueId"
+              [jobType]="jobType()"
+              [fallbackLabel]="remoteName()"
+              [allowDelete]="true"
+            ></app-activity-paths>
             @if (isResolving(transfer)) {
               <app-activity-progress [state]="transfer.resolveState"></app-activity-progress>
             }
@@ -184,6 +183,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
 
       return {
         ...transfer,
+        ...splitPath(transfer.name),
         displayStatus: status,
         displayError: activityError(transfer),
         relativeTime: transfer.completedAt ? this.getRelativeTime(transfer.completedAt) : '',

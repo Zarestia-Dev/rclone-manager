@@ -115,7 +115,9 @@
     "toggleCopyurl": "Alternar Copiar URL como acción rápida",
     "toggleArchivecreate": "Alternar Archivo como acción rápida",
     "successStart": "Se inició correctamente {{type}} para {{remote}} ({{profile}})",
-    "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}"
+    "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}",
+    "indexActive": "Listados de directorio activos",
+    "toggleIndex": "Alternar Listados de directorio como acción rápida"
   },
   "serve": {
     "noActive": "Sin servicios activos",
@@ -144,6 +146,10 @@
       "disable": "Deshabilitar automatización",
       "stopping": "La automatización se está deteniendo..."
     },
+    "actions": {
+      "run": "Ejecutar ahora",
+      "stop": "Detener la ejecución actual"
+    },
     "nextRun": {
       "disabled": "La automatización está deshabilitada",
       "stopping": "Deshabilitando después de la ejecución actual",
@@ -156,6 +162,7 @@
       "realtime": "Monitoreo en tiempo real",
       "debounce": "Retardo de rebote",
       "watcherActive": "Observador activo",
+      "watchedFolder": "Carpeta vigilada",
       "seconds": "segundos",
       "realtimeSchedule": "Observador de archivos en tiempo real",
       "changedOnlyShort": "Solo subdirectorios",
@@ -177,7 +184,8 @@
     "cryptcheck": "Verificación cifrada",
     "serve": "Servir",
     "start": "Iniciar",
-    "stop": "Detener"
+    "stop": "Detener",
+    "index": "Listados de directorio"
   },
   "sidebar": {
     "toggleSidebar": "Alternar barra lateral",
@@ -196,10 +204,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "Información del trabajo",
-      "type": "Tipo de trabajo",
-      "id": "ID del trabajo",
-      "status": "Estado de la tarea",
       "started": "Iniciado",
       "finished": "Finalizado",
       "duration": "Duración"
@@ -221,10 +225,6 @@
       "moving": "Moviendo",
       "copying": "Copiando",
       "serving": "Sirviendo"
-    },
-    "stats": {
-      "emptyTitle": "No hay estadísticas disponibles",
-      "emptyMessage": "Las estadísticas se mostrarán cuando se esté ejecutando una operación"
     },
     "pathDisplay": {
       "source": "Fuente",
@@ -268,8 +268,7 @@
     "skipped": "Versión de Rclone {{version}} omitida",
     "restored": "Versión de Rclone {{version}} restaurada",
     "autoCheckEnabled": "La verificación automática de actualizaciones de Rclone está habilitada",
-    "autoCheckDisabled": "La verificación automática de actualizaciones de Rclone está deshabilitada",
-    "manualRestartRequired": "Rclone se actualizó en el servidor remoto. Por favor, reinicie manualmente el servicio rclone remoto para aplicar la nueva versión."
+    "autoCheckDisabled": "La verificación automática de actualizaciones de Rclone está deshabilitada"
   },
   "alerts": {
     "title": "Alertas y Notificaciones",
@@ -316,7 +315,7 @@
       "startup": "Inicio",
       "update": "Actualización",
       "internal": "Interno",
-      "flow": "Espacio de Trabajo Flow",
+      "workflow": "Flujo de Trabajo",
       "quickrun": "Ejecución Rápida"
     },
     "rule": {
@@ -469,7 +468,7 @@
       },
       "start_on_startup": {
         "label": "Iniciar al inicio",
-        "description": "Iniciar automáticamente la aplicación cuando se inicia el sistema."
+        "description": "Iniciar automáticamente la aplicación cuando se inicia el sistema. Una bóveda bloqueada permanece bloqueada hasta que abras la aplicación."
       },
       "notifications": {
         "label": "Habilitar notificaciones",
@@ -489,12 +488,11 @@
       },
       "keep_alive": {
         "label": "Ejecutar en segundo plano",
-        "description": "Mantener RClone Manager, las transferencias activas y los discos montados ejecutándose en segundo plano al minimizar o cerrar.",
-        "notification": {
-          "jobs": "Tareas activas: {{count}}",
-          "mounts": "Montajes: {{count}}",
-          "serves": "Servicios: {{count}}"
-        }
+        "description": "Mantener RClone Manager, las transferencias activas y los discos montados ejecutándose en segundo plano al minimizar o cerrar."
+      },
+      "start_on_boot": {
+        "label": "Iniciar con el teléfono",
+        "description": "Inicia RClone Manager en segundo plano al arrancar el teléfono para ejecutar los perfiles de inicio automático y las programaciones. Algunos fabricantes (Xiaomi, Huawei, Oppo, …) también exigen permitir el inicio automático de esta aplicación en los ajustes del sistema. Una bóveda bloqueada permanece bloqueada hasta que abras la aplicación."
       }
     },
     "core": {
@@ -719,6 +717,7 @@
       "preferences": "Preferencias",
       "advanced": "Ajustes avanzados",
       "flags": "Banderas de Rclone",
+      "rcConsole": "Consola RC",
       "vault": "Bóveda",
       "fileBrowser": "Explorador de archivos",
       "flowWorkspace": "Espacio de trabajo Flow",
@@ -747,6 +746,11 @@
         "content": "El plugin de montaje le permite montar el almacenamiento en la nube como unidades locales. Este componente opcional mejora su experiencia con Rclone.",
         "skipMountTitle": "No utilizaré el montaje",
         "skipMountDesc": "Omita la instalación de controladores si no planea montar unidades."
+      },
+      "androidAccess": {
+        "title": "Permisos de Android",
+        "content": "Ambos son opcionales y se pueden permitir más tarde. Permiten a RClone Manager explorar carpetas locales y mantener transferencias y programaciones en marcha con la pantalla apagada.",
+        "allowed": "Permitido"
       },
       "selectConfig": {
         "title": "Seleccionar configuración de Rclone",
@@ -800,7 +804,8 @@
       "installPlugin": "Instalar plugin",
       "installingPlugin": "Instalando...",
       "unlock": "Desbloquear",
-      "getStarted": "Empezar"
+      "getStarted": "Empezar",
+      "skip": "Omitir"
     },
     "validation": {
       "completeInstallation": "Por favor, complete las opciones de instalación anteriores",
@@ -886,11 +891,20 @@
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
-        "recent": "Reciente ({{count}})"
+        "recent": "Reciente ({{count}})",
+        "report": "Informe de archivos",
+        "conflicts": "Conflictos ({{count}})"
       },
       "table": {
         "size": "Tamaño",
-        "transferred": "transferido"
+        "transferred": "transferido",
+        "file": "Archivo",
+        "direction": "Dirección",
+        "took": "Duración",
+        "when": "Cuándo",
+        "progress": "Progreso",
+        "speed": "Velocidad",
+        "eta": "Tiempo restante"
       },
       "status": {
         "failed": "Fallido",
@@ -909,10 +923,6 @@
       "actions": {
         "resolveToDst": "Copiar al destino",
         "resolveToSrc": "Copiar al origen",
-        "resolveOverwrite": "Resolver conflicto de archivos",
-        "resolveOverwriteTitle": "Resolver conflicto de archivos",
-        "resolveOverwriteMessage": "El archivo '{{name}}' existe tanto en el origen como en el destino, pero difiere. ¿Desea sobrescribir el archivo en el destino con el archivo de origen?",
-        "overwriteDst": "Sobrescribir destino",
         "copyUrl": "Copiar URL",
         "download": "Descargar archivo",
         "successSync": "Operación de sincronización de archivo iniciada correctamente",
@@ -920,7 +930,8 @@
         "successCopyUrl": "URL de descarga copiada al portapapeles",
         "failCopyUrl": "Error al generar la URL de descarga",
         "successDownload": "Archivo descargado correctamente",
-        "failDownload": "Error al descargar el archivo"
+        "failDownload": "Error al descargar el archivo",
+        "resolveChoose": "Elegir qué versión conservar"
       },
       "empty": {
         "noRecent": "No hay actividad de archivos reciente",
@@ -948,9 +959,95 @@
       },
       "titleDelete": "Actividad de eliminación",
       "titleActivity": "Actividad",
-      "loadMore": "Mostrar más"
+      "loadMore": "Mostrar más",
+      "report": {
+        "tabs": {
+          "combined": "Combinado",
+          "missingOnDst": "Faltan en destino",
+          "differ": "Diferentes",
+          "missingOnSrc": "Faltan en origen",
+          "match": "Coinciden",
+          "error": "Errores",
+          "destAfter": "Destino después"
+        },
+        "sigils": {
+          "missingOnDst": "Falta en destino",
+          "missingOnSrc": "Falta en origen",
+          "differ": "Difiere",
+          "match": "Coincide",
+          "error": "Error"
+        },
+        "empty": "No hay archivos en este informe.",
+        "loadFailed": "No se pudo cargar el informe.",
+        "showMore": "Mostrar {{count}} más"
+      },
+      "direction": {
+        "toDestination": "Nuevo en el origen: copiar al destino",
+        "toSource": "Solo en el destino: copiar al origen",
+        "choose": "Difiere en ambos lados: tú decides cuál gana",
+        "labelToDestination": "Al destino",
+        "labelToSource": "Al origen",
+        "labelChoose": "Elegir ganador"
+      },
+      "bulk": {
+        "title": "Diferencias seleccionadas",
+        "selectAll": "Seleccionar las {{count}} diferencias abiertas",
+        "selected": "{{count}} seleccionadas",
+        "toDestination": "{{count}} al destino",
+        "toSource": "{{count}} al origen",
+        "choose": "{{count}} requieren una decisión",
+        "clear": "Borrar selección",
+        "applyOneWay": "Copiar {{count}} archivos",
+        "review": "Revisar {{count}} conflictos…",
+        "started": "Se inició la copia de {{count}} archivos",
+        "partial": "Se iniciaron {{started}} copias, {{failed}} fallaron"
+      },
+      "compare": {
+        "title": "El archivo cambió en ambos lados",
+        "position": "{{index}} de {{total}}",
+        "source": "Origen",
+        "destination": "Destino",
+        "modified": "Modificado",
+        "unknown": "Desconocido",
+        "larger": "Mayor",
+        "newer": "Más reciente",
+        "missing": "Este archivo ya no existe aquí.",
+        "loadFailed": "No se pudo leer el archivo: {{error}}",
+        "which": "¿Qué versión debe prevalecer?",
+        "keepSource": "Conservar la versión del origen",
+        "keepDestination": "Conservar la versión del destino",
+        "overwrites": "Se sobrescribirá {{path}}. Solo se puede recuperar si ese remoto conserva versiones anteriores.",
+        "recreates": "Se creará {{path}} a partir de la versión que conserves.",
+        "hint": "Elige una versión. No cambia nada hasta que apliques.",
+        "skip": "Omitir este archivo",
+        "apply": "Aplicar",
+        "applyNext": "Aplicar y siguiente",
+        "checksum": {
+          "verify": "Comparar sumas de verificación",
+          "match": "Las sumas {{type}} son idénticas",
+          "differ": "Las sumas {{type}} difieren",
+          "none": "Estos remotos no comparten ningún tipo de suma",
+          "failed": "No se pudieron leer las sumas de verificación"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Conservar la versión de Path1",
+        "keepPath2": "Conservar la versión de Path2",
+        "titleBisync": "Archivo modificado en ambas rutas",
+        "discards": "La otra versión ({{path}}) se descartará, junto con sus copias en ambas rutas. Solo se puede recuperar si los remotos conservan versiones anteriores."
+      },
+      "export": {
+        "copy": "Copiar como CSV",
+        "copied": "{{count}} filas copiadas como CSV"
+      },
+      "conflicts": {
+        "empty": "No hay conflictos en esta ejecución.",
+        "loadFailed": "No se pudieron cargar los conflictos.",
+        "resolved": "{{name}} resuelto",
+        "keptPath1": "Versión de Path1 conservada",
+        "keptPath2": "Versión de Path2 conservada"
+      }
     },
-
     "inputModal": {
       "name": "Nombre",
       "required": "{{field}} es obligatorio",
@@ -1156,6 +1253,38 @@
     "validation": {
       "required": "Este campo es obligatorio.",
       "min": "El valor debe ser al menos {{val}}."
+    },
+    "monitor": {
+      "status": {
+        "running": "En curso",
+        "completed": "Completado",
+        "failed": "Fallido",
+        "stopped": "Detenido"
+      },
+      "kpi": {
+        "progress": "Progreso",
+        "speed": "Velocidad",
+        "avgSpeed": "Velocidad media",
+        "eta": "Tiempo restante",
+        "took": "Duración",
+        "files": "Archivos",
+        "checks": "Comprobaciones",
+        "errors": "Errores",
+        "avg": "media",
+        "peak": "pico",
+        "total": "total",
+        "left": "restantes",
+        "speedHistory": "Velocidad de transferencia en el tiempo",
+        "checked": "Comprobados",
+        "compared": "Comparados",
+        "matched": "Coinciden",
+        "differences": "Diferencias",
+        "unreadable": "No legibles",
+        "onlyOnSource": "solo en el origen",
+        "onlyOnDestination": "solo en el destino",
+        "differ": "difieren",
+        "deleted": "Eliminados"
+      }
     }
   },
   "wizards": {
@@ -1383,6 +1512,8 @@
       "yourSchedule": "Su programación",
       "nextRun": "Próxima ejecución:",
       "timezoneNote": "Las horas están en su zona horaria local (UTC{{timezone}}) y se convierten automáticamente a UTC para la programación.",
+      "cronValidationFailed": "No se pudo validar la programación",
+      "cronInvalid": "Expresión cron no válida",
       "tabSimple": "Simple",
       "tabAdvanced": "Avanzado",
       "days": {
@@ -1439,23 +1570,6 @@
       "aria": {
         "clear": "Borrar",
         "cronFor": "Expresión Cron para {{name}}"
-      },
-      "relativeTime": {
-        "inPast": "en el pasado ({{date}})",
-        "lessThanMinute": "en menos de un minuto",
-        "in": "en {{time}}",
-        "days": {
-          "one": "1 día",
-          "other": "{{count}} días"
-        },
-        "hours": {
-          "one": "1 hora",
-          "other": "{{count}} horas"
-        },
-        "minutes": {
-          "one": "1 minuto",
-          "other": "{{count}} minutos"
-        }
       },
       "cronPlaceholder": "Introduzca una expresión cron (ej. 0 0 * * *)"
     },
@@ -1517,8 +1631,9 @@
         "description": "Archivo rclone.conf completo"
       },
       "remoteConfigs": {
-        "title": "Configuraciones remotas"
+        "title": "Ajustes de remotos"
       },
+      "noRemoteDefinitions": "Esta copia no incluye rclone.conf, por lo que los remotos en sí no se restaurarán; solo sus ajustes de la aplicación (montajes, inicio automático, opciones). Vuelva a añadir los remotos o restaure desde una copia protegida con contraseña.",
       "profiles": {
         "title": "Perfiles"
       },
@@ -1540,13 +1655,7 @@
       "restoreAction": "Restaurar copia de seguridad",
       "errors": {
         "passwordRequired": "Se requiere contraseña",
-        "passwordEmpty": "La contraseña no puede estar vacía ni contener espacios en blanco",
-        "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
-        "integrityFailed": "El archivo de copia de seguridad está dañado o ha sido manipulado.",
-        "verificationFailed": "Error en la verificación del archivo. Es posible que la copia de seguridad esté dañada.",
-        "requiresPassword": "Esta copia de seguridad requiere una contraseña para descifrarla.",
-        "decryptFailed": "Error al descifrar la copia de seguridad. Comprueba tu contraseña.",
-        "generic": "Se ha producido un error durante la restauración: {{error}}"
+        "passwordEmpty": "La contraseña no puede estar vacía ni contener espacios en blanco"
       }
     },
     "launchRestoreFailed": "Error al iniciar el flujo de restauración",
@@ -1558,7 +1667,7 @@
   "updates": {
     "discardDownload": "Descartar descarga",
     "cancelFailed": "Error al cancelar la descarga de actualización.",
-    "installSuccess": "Actualización instalada. Reinicia la aplicación.",
+    "downloadComplete": "Actualización descargada y lista para instalar.",
     "checkFailed": "Error al buscar actualizaciones: {{error}}",
     "installFailed": "Error al instalar la actualización: {{error}}",
     "restartFailed": "Error al reiniciar la aplicación: {{error}}",
@@ -1713,7 +1822,8 @@
         "check": "Comprobar",
         "upload": "Subir",
         "archivecreate": "Archivar",
-        "archiveextract": "Extraer archivo"
+        "archiveextract": "Extraer archivo",
+        "index": "Listados de directorio"
       }
     },
     "fileViewer": {
@@ -1839,7 +1949,10 @@
       "dryRunActive": "Simulacro activo: no se realizarán cambios",
       "resync": "Resincronizar",
       "resyncActive": "Resincronización activa: realizando resincronización completa",
-      "remoteSettings": "Ajustes de remoto"
+      "remoteSettings": "Ajustes de remoto",
+      "indexSettings": "Ajustes de listados de directorio",
+      "index": "Listados de directorio",
+      "indexDesc": "Escribe listados navegables en las carpetas para sitios web estáticos"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -1848,7 +1961,6 @@
       "cronExpression": "Expresión Cron:",
       "nextRunLabel": "Próxima ejecución:",
       "lastRunLabel": "Última ejecución:",
-      "createdLabel": "Creado:",
       "statistics": "Estadísticas",
       "successful": "Exitoso",
       "failedCount": "Fallido",
@@ -1878,6 +1990,7 @@
       "showShortcuts": "Mostrar atajos de teclado",
       "openPreferences": "Abrir preferencias",
       "openFlags": "Abrir banderas de Rclone",
+      "openRcConsole": "Abrir la consola RC",
       "openVault": "Abrir bóveda",
       "forceCheck": "Forzar comprobación de montajes",
       "forceCheckServes": "Forzar comprobación de remotos servidos",
@@ -1934,25 +2047,24 @@
       "title": "Detalles del trabajo #{{id}}",
       "sections": {
         "overview": "Información del trabajo",
-        "statistics": "Estadísticas",
         "paths": "Rutas",
         "errors": "Errores",
-        "profile": "Perfil",
+        "execution": "Ejecución",
         "serverSideFlags": "Lado del servidor y flags"
       },
       "fields": {
         "type": "Tipo de trabajo",
         "profile": "Perfil",
+        "quickRun": "Ejecución Rápida",
+        "workflow": "Flujo de Trabajo",
         "status": "Estado",
         "started": "Iniciado",
         "finished": "Finalizado",
         "duration": "Duración",
-        "speed": "Velocidad",
-        "eta": "Tiempo restante",
         "files": "Archivos",
-        "checks": "Comprobaciones",
         "deleted": "Eliminados",
         "renamed": "Renombrados",
+        "updatedDirs": "Directorios actualizados",
         "listed": "Listados",
         "errorsCount": "Errores",
         "remoteSource": "Origen remoto",
@@ -1964,9 +2076,7 @@
         "serverSideCopies": "Copias del Lado del Servidor",
         "serverSideMoves": "Movimientos del Lado del Servidor",
         "retryError": "Error de Reintento",
-        "fatalError": "Error Fatal",
-        "speedAvg": "Velocidad Promedio",
-        "transferred": "Transferido"
+        "fatalError": "Error Fatal"
       }
     },
     "about": {
@@ -1980,10 +2090,10 @@
       "wiki": "Página Wiki",
       "reportIssues": "Informar de problemas",
       "rcloneWebsite": "Sitio web de Rclone",
-      "readyToRestart": "Se requiere reinicio",
-      "restartDescription": "Se ha instalado una actualización. Reinicie la aplicación para aplicar los cambios.",
-      "rcloneRestartRequired": "Reinicio de Rclone Requerido",
-      "rcloneRestartDescription": "Se ha instalado una actualización de Rclone. Por favor, reinicie el motor para aplicar los cambios.",
+      "readyToRestart": "Actualización lista",
+      "restartDescription": "La actualización se ha descargado. Reinicie la aplicación para instalarla.",
+      "rcloneRestartRequired": "Actualización de Rclone lista",
+      "rcloneRestartDescription": "La actualización de Rclone se ha descargado. Reinicie el motor para instalarla.",
       "restartNow": "Reiniciar ahora",
       "updateAvailable": "Actualización disponible",
       "version": "Versión",
@@ -2075,7 +2185,8 @@
       "clear": "Borrar",
       "cacheCleared": "Caché borrada correctamente",
       "cacheClearFailed": "Error al borrar la caché",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "Última comprobación: {{time}}"
     },
     "logs": {
       "fetchError": "Error al obtener los registros de la aplicación.",
@@ -2157,7 +2268,8 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
-      "noPasswordHint": "Sin contraseña, rclone.conf y los secretos guardados no se incluyen en la copia de seguridad. Las credenciales escritas directamente en Ejecuciones rápidas o en flujos de trabajo se exportan tal cual.",
+      "noPasswordHint": "Sin contraseña, rclone.conf y los secretos guardados no se incluyen, por lo que sus remotos no podrán recrearse en otra máquina. Las credenciales escritas directamente en Ejecuciones rápidas o flujos de trabajo se exportan tal cual.",
+      "remoteNeedsPassword": "Un remoto individual solo se puede exportar con contraseña, porque su configuración de rclone solo se incluye en copias cifradas.",
       "vaultWarningTitle": "La bóveda de configuración está abierta",
       "vaultWarningDesc": "Las copias de seguridad exportadas no heredan el cifrado de la bóveda. Utilice la opción de cifrado a continuación para proteger las credenciales y configuraciones sensibles con una contraseña.",
       "exportNow": "Exportar ahora",
@@ -2384,7 +2496,8 @@
         "filter": "Filtrar",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Remoto en tiempo de ejecución"
+        "runtimeRemote": "Remoto en tiempo de ejecución",
+        "index": "Listados de directorio"
       },
       "advancedProfiles": {
         "title": "Perfiles avanzados",
@@ -2505,6 +2618,102 @@
         "RulesOpt": "Opciones de regla",
         "MetricsAuth": "Autenticación de métricas",
         "MetricsHTTP": "Configuraciones HTTP de métricas"
+      }
+    },
+    "rcConsole": {
+      "title": "Consola RC",
+      "suggestions": "Sugerencias",
+      "clear": "Limpiar consola",
+      "emptyTitle": "Consola RC de rclone",
+      "emptyHint": "Ejecuta cualquier llamada de control remoto de rclone. Empieza a escribir para ver sugerencias o escribe help para ver la sintaxis.",
+      "placeholder": "comando rc, p. ej. core/version",
+      "run": "Ejecutar",
+      "statusOk": "OK",
+      "statusError": "Error",
+      "statusHttp": "HTTP {{status}}",
+      "truncated": "Salida truncada, copia para obtener el texto completo",
+      "dangerous": "Peligroso",
+      "confirmDanger": "{{command}} puede borrar datos o cambiar el estado de rclone. Pulsa Intro de nuevo para ejecutarlo, Esc para cancelar.",
+      "suggestionsUnavailable": "Las sugerencias no están disponibles: no se pudo leer la lista de comandos de rclone.",
+      "helpText": "Ejecuta cualquier llamada de control remoto (rc) de rclone.\n\n  core/version\n  operations/list fs=drive: remote=Photos\n  operations/list --json '{\"fs\":\"drive:\"}'\n  core/command -a ls -a drive: -o max-depth=1\n\nLos pares clave=valor se envían como cadenas, igual que \"rclone rc\".\n-o nombre=valor rellena \"opt\", -a valor rellena \"arg\" y --json acepta un objeto JSON.\nAñade _async=true para ejecutar la llamada como trabajo, _group=nombre para fijar un grupo de estadísticas.\n\nTab completa un comando, ↑/↓ recorren el historial, Ctrl+L o \"clear\" vacían la consola.\nhelp <comando> abre la documentación de una llamada, y la lista de API de la izquierda permite explorarlas todas.",
+      "errors": {
+        "empty": "Escribe primero un comando.",
+        "unclosedQuote": "Hay unas comillas sin cerrar. Una barra invertida antes de unas comillas las escapa, así que termina una ruta entre comillas con dos barras invertidas (C:\\dir\\\\).",
+        "missingEquals": "Se esperaba clave=valor, pero se recibió '{{token}}'.",
+        "missingValue": "{{flag}} necesita un valor.",
+        "badJson": "JSON no válido: {{error}}",
+        "jsonNotObject": "Los parámetros JSON deben ser un objeto."
+      },
+      "backendHint": "El backend que recibe estas llamadas",
+      "readOnly": "Solo lectura",
+      "readWrite": "Lectura/escritura",
+      "readOnlyHint": "El modo de solo lectura solo deja pasar las llamadas que leen. Haz clic para cambiar.",
+      "masked": "Secretos ocultos",
+      "unmasked": "Secretos visibles",
+      "maskHint": "Oculta contraseñas y tokens en la salida, en las copias y en las líneas mostradas",
+      "readOnlyBlocked": "El modo de solo lectura está activado, por lo que no se ejecutó {{command}}.",
+      "allowWrites": "Permitir escritura",
+      "engine": {
+        "restart": "Reiniciar motor",
+        "restartConfirm": "Haz clic otra vez para reiniciar",
+        "restartHint": "Detiene rclone y la app lo inicia de nuevo desde la misma ruta, así que se usa una compilación nueva. Los trabajos y montajes en curso terminan.",
+        "restarting": "Se detuvo rclone. La app lo está iniciando de nuevo.",
+        "failed": "No se pudo detener el proceso de rclone",
+        "noProcess": "No hay ningún proceso de rclone que detener",
+        "info": "Versión de rclone e ID del proceso",
+        "notRunning": "El motor no está en ejecución"
+      },
+      "showHelp": "Mostrar ayuda",
+      "edit": "Editar y ejecutar de nuevo",
+      "copyRcLine": "comando rclone rc",
+      "snippetSecret": "Esta línea define un secreto, por lo que no se guardó.",
+      "history": "Historial y líneas guardadas",
+      "save": "Guardar esta línea",
+      "historyEmpty": "Todavía no hay nada. Las líneas que ejecutes aparecerán aquí.",
+      "output": {
+        "pretty": "Formateado",
+        "raw": "Sin formato",
+        "table": "Tabla",
+        "lines": "{{count}} líneas",
+        "showMore": "Mostrar {{count}} líneas más",
+        "showMoreRows": "Mostrar {{count}} filas más",
+        "collapse": "Contraer",
+        "rowsOmitted": "No se muestran {{count}} filas más"
+      },
+      "tree": {
+        "title": "API",
+        "filter": "Filtrar llamadas",
+        "empty": "Ninguna llamada coincide."
+      },
+      "help": {
+        "parameters": "Parámetros",
+        "optional": "opcional",
+        "use": "Usar",
+        "noParameters": "La ayuda de esta llamada no lista parámetros.",
+        "examples": "Ejemplos",
+        "insert": "Insertar",
+        "run": "Ejecutar",
+        "fullDocs": "Documentación completa",
+        "required": "obligatorio",
+        "requiredMissing": "Faltan {{count}} obligatorios"
+      },
+      "job": {
+        "waiting": "Esperando el trabajo {{id}}…",
+        "running": "Trabajo {{id}} en curso",
+        "done": "Trabajo {{id}} terminado",
+        "failed": "Trabajo {{id}} fallido",
+        "lost": "Trabajo no encontrado",
+        "stop": "Detener",
+        "transfers": "{{done}} / {{total}} transferencias",
+        "checks": "{{count}} comprobaciones",
+        "errors": "{{count}} errores"
+      },
+      "quickStart": "Prueba una de estas",
+      "hints": {
+        "complete": "completar",
+        "history": "historial",
+        "newLine": "nueva línea",
+        "clear": "limpiar"
       }
     }
   },
@@ -2645,6 +2854,28 @@
         "statsChanged": "{{count}} a renombrar",
         "statsUnchanged": "{{count}} sin cambios",
         "statsConflicts": "{{count}} conflicto(s)"
+      },
+      "index": {
+        "title": "Generar listados de directorio",
+        "description": "Escribe un listado navegable en {{target}} y en cada carpeta que contiene, para poder servirlo como sitio web estático.",
+        "overwriteWarning": "Los archivos existentes con el mismo nombre que los listados seleccionados (index.html por defecto) se sobrescriben sin comprobar su origen. Omite una carpeta abajo para proteger un índice escrito a mano.",
+        "confirm": "Generar",
+        "sections": {
+          "output": "Listados",
+          "folders": "Carpetas",
+          "appearance": "Apariencia",
+          "advanced": "Avanzado"
+        },
+        "formats": {
+          "html": "Página HTML (index.html)",
+          "json": "JSON como rclone lsjson (index.json)",
+          "caddy": "JSON como Caddy file_server browse (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "Archivo más reciente dentro",
+          "dir": "La fecha propia de la carpeta",
+          "none": "Sin fecha"
+        }
       }
     },
     "errors": {
@@ -2667,7 +2898,8 @@
       "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
       "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
       "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}",
-      "noRemoteSelected": "Por favor, navega primero a un remoto."
+      "noRemoteSelected": "Por favor, navega primero a un remoto.",
+      "indexFailed": "No se pudieron escribir los listados de directorio: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2712,7 +2944,8 @@
       "switchPane": "Cambiar de Panel",
       "copyPublicLink": "Copiar enlace público",
       "createFolderWithItems": "Nueva carpeta con selección...",
-      "renameMultiple": "Renombrar varios..."
+      "renameMultiple": "Renombrar varios...",
+      "generateIndex": "Generar listados de directorio"
     },
     "view": {
       "iconSize": "Tamaño del ícono",
@@ -2738,7 +2971,8 @@
       "getPublicLinkStarted": "Generando enlace público...",
       "archiveCreateStarted": "Creación de archivo iniciada...",
       "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
-      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"
+      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos",
+      "indexStarted": "Escribiendo listados de directorio..."
     },
     "androidShare": {
       "uploadHere": "Subir {{count}} archivo(s) compartido(s) a esta carpeta",
@@ -2767,6 +3001,7 @@
       "aboutRemote": "Acerca del remoto",
       "emptyTrash": "Vaciar papelera",
       "viewLogs": "Ver registros",
+      "inRcConsole": "Inspeccionar en la consola RC",
       "cloneRemote": "Clonar remoto",
       "exportConfig": "Exportar configuración",
       "resetSettings": "Restablecer configuraciones",
@@ -2818,7 +3053,6 @@
       "save": "Guardar diseño",
       "reset": "Restablecer diseño",
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
-      "toggleAutomationFailed": "Error al alternar automatización",
       "showDetailed": "Mostrar tarjetas detalladas",
       "showCompact": "Mostrar tarjetas compactas"
     },
@@ -2870,6 +3104,7 @@
       "errors": "Errores:",
       "deletes": "Eliminaciones:",
       "renames": "Renombrados:",
+      "updatedDirs": "Directorios actualizados:",
       "serverCopies": "Copias en servidor:",
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
@@ -2890,11 +3125,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "Montar",
-      "startOperations": "Iniciar operación",
-      "startServe": "Iniciar servicio"
-    },
     "panelTitles": {
       "mountedRemotes": "Remotos montados",
       "activeOperations": "Operaciones activas",
@@ -2923,6 +3153,10 @@
       "validationSelfLoop": "Un nodo no puede conectarse consigo mismo (bucle): {{id}}",
       "validationCycle": "El grafo contiene dependencias cíclicas (los flujos de trabajo deben ser DAG)",
       "validationDisconnected": "El nodo '{{title}}' está desconectado del flujo de trabajo",
+      "validationMissingPort": "Un cable está conectado a un puerto que el nodo '{{title}}' no tiene: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' lee la salida de '{{node}}', que no está en el flujo de trabajo",
+      "validationTokenNotUpstream": "'{{title}}' lee la salida de '{{node}}', que no conduce hasta él, por lo que el valor puede estar vacío",
+      "validationPrevWithoutInput": "'{{title}}' lee la salida del nodo anterior, pero no hay nada conectado a él",
       "cancelled": "Ejecución cancelada",
       "jobUntracked": "El trabajo {{id}} ya no se sigue; su resultado es desconocido",
       "jobStopped": "El trabajo {{id}} se detuvo",
@@ -2977,7 +3211,16 @@
       "reportAndMore": "... y {{count}} más",
       "reportStatusErrors": "Terminó con {{count}} error(es)",
       "reportStatusMatched": "Los {{count}} archivo(s) coinciden exactamente (0 diferencias).",
-      "reportStatus": "Estado"
+      "reportStatus": "Estado",
+      "missingWorkflowId": "Falta el ID del flujo de trabajo para actualizarlo",
+      "workflowNotFound": "No se encontró el flujo de trabajo '{{id}}'",
+      "saveFailed": "No se pudo guardar el flujo de trabajo: {{error}}",
+      "deleteFailed": "No se pudo eliminar el flujo de trabajo: {{error}}",
+      "copyName": "{{name}} (copia)"
+    },
+    "rcConsole": {
+      "emptyCommand": "No se indicó ningún comando RC.",
+      "transportFailed": "No se pudo contactar con rclone: {{error}}"
     },
     "mount": {
       "pointEmpty": "El punto de montaje no puede estar vacío",
@@ -2990,10 +3233,18 @@
       "macfuseMissing": "macFUSE / FUSE-T no está instalado. Instale macFUSE para habilitar el montaje en macOS.",
       "driveLetterInUse": "La letra de unidad seleccionada ya está en uso por el sistema.",
       "permissionDenied": "Permiso denegado al intentar montar.",
-      "deviceBusy": "El punto de montaje o dispositivo de destino está ocupado. Cierre los archivos abiertos, administradores de archivos o terminales que accedan al directorio e inténtelo de nuevo."
+      "deviceBusy": "El punto de montaje o dispositivo de destino está ocupado. Cierre los archivos abiertos, administradores de archivos o terminales que accedan al directorio e inténtelo de nuevo.",
+      "profileNotMounted": "El perfil '{{profile}}' no está montado en {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
+      "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'",
+      "singleSourceOnly": "{{operation}} solo admite una ruta de origen",
+      "directoriesOnly": "{{operation}} solo admite directorios, no archivos: {{source}}",
+      "sourcePathInvalid": "No se pudo leer la ruta de origen: {{path}}",
+      "destinationPathInvalid": "No se pudo leer la ruta de destino: {{path}}",
+      "filePathsInvalid": "No se pudo leer el origen '{{source}}' o el destino '{{destination}}' como ruta de archivo. Usa el formato 'remote:ruta/al/archivo' o una ruta local.",
+      "unsupportedOperation": "La operación {{operation}} no se puede ejecutar como transferencia",
+      "destinationMissing": "No se especificó ningún destino"
     },
     "serve": {
       "parseFailed": "Error al analizar la respuesta: {{error}}",
@@ -3002,7 +3253,8 @@
       "privilegedPort": "Los puertos inferiores a 1024 requieren permisos de administrador. Elija un puerto igual o superior a 1024.",
       "tlsError": "Error al cargar o analizar el certificado SSL/TLS.",
       "startFailed": "Error al iniciar el servidor: {{error}}",
-      "stopFailed": "Error al detener el servidor: {{error}}"
+      "stopFailed": "Error al detener el servidor: {{error}}",
+      "profileNotRunning": "No se encontró ningún servidor en ejecución para el perfil '{{profile}}' en {{remote}}"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"
@@ -3017,6 +3269,12 @@
       "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
       "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura.",
       "ioError": "Error de E/S: {{error}}"
+    },
+    "upload": {
+      "legacyBatch": "Esta subida la inició una página desactualizada. Recarga la aplicación e inténtalo de nuevo.",
+      "noFiles": "La subida no contiene archivos.",
+      "invalidPath": "La subida contiene una ruta de archivo o carpeta no válida.",
+      "invalidModifiedTime": "La subida contiene una fecha de modificación no válida."
     },
     "rclone": {
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
@@ -3042,6 +3300,16 @@
       "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
       "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
       "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}",
+      "remoteAuthRejected": "El backend remoto {{name}} en {{address}} rechazó las credenciales de la API RC (HTTP 401)",
+      "remoteUnreachable": "No se puede acceder al backend remoto {{name}} en {{address}}",
+      "portHeldByStaleProcess": "El puerto {{port}} sigue ocupado por un proceso de rclone que no se pudo detener (puede pertenecer a otro usuario o estar terminado pero reteniendo el socket). Deténgalo manualmente o cambie el puerto del backend en los ajustes.",
+      "portInUse": "El puerto {{port}} ya está en uso por otro proceso o aplicación",
+      "portBindFailed": "No se pudo enlazar el puerto {{port}} (dirección ya en uso)",
+      "exitedDuringStartup": "El proceso de rclone terminó durante el inicio. Revise el registro de rclone.",
+      "startupTimeout": "Se agotó el tiempo de espera para que la API de rclone estuviera lista ({{seconds}} s)",
+      "librcloneInitFailed": "No se pudo inicializar librclone: {{error}}",
+      "encryptionCheckFailed": "No se pudo comprobar si la configuración está cifrada: {{error}}",
+      "configLoadFailed": "No se pudo cargar el archivo de configuración de rclone: {{error}}",
       "downloadCancelled": "Descarga cancelada por el usuario",
       "noUpdateAvailable": "No hay actualizaciones disponibles"
     },
@@ -3061,10 +3329,13 @@
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
       "exportFailed": "Fallo en la exportación de la copia de seguridad: {{error}}",
       "refreshFailed": "Error al actualizar el sistema tras restaurar la copia de seguridad: {{error}}",
-      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}"
+      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}",
+      "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
+      "passwordRequired": "Esta copia de seguridad requiere una contraseña para descifrarla."
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
+      "invalidName": "El nombre del backend no puede empezar por un punto, terminar en punto o espacio, contener / \\ : < > \" | ? * ni ser un nombre reservado como CON",
       "cannotAddLocal": "No se puede agregar un backend llamado 'Local'",
       "cannotRemoveLocal": "No se puede eliminar el backend Local",
       "cannotRemoveActive": "No se puede eliminar el backend activo",
@@ -3079,7 +3350,11 @@
       "notFound": "JobInfo no encontrado",
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
       "executionFailed": "Ejecución del trabajo fallida: {{error}}",
-      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
+      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación.",
+      "profileNotRunning": "No se encontró ningún trabajo {{jobType}} activo para el perfil '{{profile}}' en {{remote}}",
+      "stopped": "Trabajo detenido",
+      "failed": "El trabajo falló",
+      "lost": "Rclone ya no conoce este trabajo. Caducó tras finalizar o el motor se reinició, por lo que su resultado no está disponible."
     },
     "cache": {
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
@@ -3095,7 +3370,18 @@
       "startFailed": "Error al iniciar el motor de automatización: {{error}}",
       "stopFailed": "Error al detener el motor de automatización: {{error}}",
       "invalidCron": "Expresión cron inválida: {{error}}",
-      "automationNotFound": "Automatización no encontrada"
+      "cronRequired": "Se requiere una expresión cron",
+      "cronFieldCount": "Una expresión cron tiene 5 campos: minuto, hora, día, mes y día de la semana",
+      "configChanged": "La configuración de la tarea cambió mientras se preparaba. Inténtalo de nuevo.",
+      "automationNotFound": "Automatización no encontrada",
+      "watcherPending": "La vigilancia espera carpetas que aún no existen: {{paths}}",
+      "noLocalPaths": "No hay rutas locales que vigilar",
+      "alreadyExists": "Ya existe una automatización con el ID {{id}}",
+      "noCronExpression": "La automatización no tiene expresión cron",
+      "schedulerNotInitialized": "El programador no está inicializado",
+      "profileNotFound": "No se encontró el perfil {{operation}} '{{profile}}' de '{{remote}}'",
+      "workflowNotFound": "No se encontró el flujo de trabajo '{{id}}'",
+      "quickRunNotFound": "No se encontró la ejecución rápida '{{id}}'"
     },
     "system": {
       "unlockFailed": "Desbloqueo fallido: {{error}}"
@@ -3109,13 +3395,11 @@
     },
     "updater": {
       "noPending": "No hay actualizaciones pendientes",
-      "invalidUrl": "URL inválida: {{error}}",
       "github": "Error de la API de GitHub: {{error}}",
       "githubRateLimit": "Límite de solicitudes de la API de GitHub excedido. Inténtelo más tarde.",
       "updateFailed": "Actualización fallida: {{error}}",
       "updateUnavailable": "El archivo de actualización ya no está disponible: {{error}}",
       "relaunchFailed": "Error al reiniciar la aplicación: {{error}}",
-      "restartFailed": "Error al reiniciar: {{error}}",
       "notWritable": "La ruta de actualización no tiene permisos de escritura",
       "rollback": {
         "exited": "La aplicación actualizada se cerró antes de confirmar el inicio (código {{code}}).",
@@ -3130,24 +3414,54 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "Instalar este paquete requiere una solicitud de contraseña de administrador (pkexec, zenity o kdialog), pero no se encontró ninguna.",
+      "verificationFailed": "No se pudo verificar la actualización: su firma, suma de comprobación o metadatos no coinciden.",
+      "insecureDownload": "La descarga de la actualización no se sirvió mediante HTTPS.",
+      "downloadTooLarge": "La descarga de la actualización es más grande de lo esperado.",
+      "missingAsset": "La versión no tiene ningún archivo de actualización llamado {{name}}.",
+      "unexpectedAsset": "La versión incluye un archivo de actualización inesperado o duplicado.",
+      "argumentsTooLong": "Los argumentos de inicio son demasiado largos para conservarlos durante una actualización.",
+      "startupPending": "La actualización anterior aún está confirmando que se inició. Inténtalo de nuevo en unos segundos.",
+      "versionMustIncrease": "Una actualización posterior debe tener una versión más reciente.",
+      "invalidBundle": "La aplicación portátil no es un paquete de aplicación de macOS completo.",
+      "missingBackup": "Falta la copia de seguridad de la versión actual.",
+      "invalidStagingDirectory": "La carpeta de preparación de la actualización no es válida.",
+      "helperFailed": "No se pudo iniciar el asistente de actualización ({{error}}) y falló el reinicio de la aplicación: {{restart}}",
+      "processUnavailable": "No se pudo supervisar el proceso de la aplicación actualizada.",
+      "ownedByAnotherUser": "El archivo de la aplicación pertenece a otro usuario."
     },
     "settings": {
       "loadFailed": "Error al cargar configuraciones: {{error}}",
       "saveFailed": "Error al guardar la configuración: {{error}}",
       "resetFailed": "Error al restablecer la configuración: {{error}}",
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
-      "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
-      "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
+      "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}",
+      "taskFailed": "La tarea de ajustes falló: {{error}}",
+      "deleteEntryFailed": "No se pudo eliminar la entrada de ajustes: {{error}}",
+      "managerInitFailed": "No se pudo crear el administrador de ajustes: {{error}}"
     },
     "vault": {
       "passwordEmpty": "La contraseña de la bóveda no puede estar vacía",
       "notEnabled": "La bóveda no está habilitada",
       "invalidPassword": "Contraseña maestra de la bóveda incorrecta",
-      "operationFailed": "Operación de la bóveda fallida: {{error}}"
+      "operationFailed": "Operación de la bóveda fallida: {{error}}",
+      "operationInProgress": "Hay otra operación de la bóveda en curso",
+      "workflowsActive": "Espere a que terminen los flujos de trabajo en ejecución antes de activar la bóveda"
+    },
+    "notification": {
+      "toastFailed": "No se pudo mostrar la notificación del sistema: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "Esa versión ya no existe: {{path}}. Ejecuta bisync de nuevo para ver los conflictos actuales.",
+      "stepFailed": "No se pudo actualizar {{path}}: {{error}}"
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "Copia de seguridad creada en: {{path}}",
+      "restored": "Ajustes restaurados correctamente ({{count}} elementos restaurados)"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} desmontado exitosamente",
       "allUnmounted": "Todos los remotos desmontados exitosamente"
@@ -3166,7 +3480,8 @@
     },
     "rclone": {
       "updated": "Rclone actualizado exitosamente (canal {{channel}})",
-      "mountPluginInstalled": "Complemento de montaje instalado con éxito"
+      "mountPluginInstalled": "Complemento de montaje instalado con éxito",
+      "remoteRestartRequired": "Rclone se actualizó en el servidor remoto. Por favor, reinicie manualmente el servicio rclone remoto para aplicar la nueva versión."
     },
     "job": {
       "stopped": "Trabajo detenido exitosamente",
@@ -3233,7 +3548,9 @@
         "startArchivecreate": "Iniciar archivo",
         "stopArchivecreate": "Detener archivo",
         "startServe": "Iniciar servicio",
-        "stopServe": "Detener servicio"
+        "stopServe": "Detener servicio",
+        "startIndex": "Generar listados de directorio",
+        "stopIndex": "Detener listados de directorio"
       },
       "browse": "Explorar archivos",
       "emptyState": {
@@ -3277,7 +3594,8 @@
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
     "tooltipServes": "{{count}} Servicios",
-    "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]"
+    "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]",
+    "indexCount": "Listados de directorio [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Operaciones activas en curso: {{details}}",
@@ -3302,6 +3620,7 @@
       "automationFailed": "Error en automatización de {{type}}",
       "automationStopped": "Automatización de {{type}} detenida",
       "allJobsStopped": "Todos los trabajos detenidos",
+      "automationUnavailable": "Automatización no disponible",
       "allServesStopped": "Todos los servidores detenidos",
       "allUnmounted": "Todos los remotos desconectados",
       "updateFound": "Nueva versión disponible",
@@ -3341,6 +3660,7 @@
       "serveFailed": "Error al iniciar el servicio para {{remote}} en {{backend}}: {{error}}",
       "serveStopped": "Servidor detenido para {{remote}} en {{backend}}.",
       "allJobsStopped": "Todos los trabajos activos se detuvieron con éxito.",
+      "automationUnavailable": "No se pudieron iniciar las programaciones ni los observadores de archivos: {{error}}",
       "allServesStopped": "Todos los servidores activos se cerraron con éxito.",
       "allUnmounted": "Todos los remotos se desconectaron con éxito.",
       "automationStarted": "La automatización {{type}} '{{automation}}' se está ejecutando en {{backend}}.",
@@ -3600,6 +3920,8 @@
       "savedWorkflows": "Flujos guardados",
       "presetRecipes": "Recetas predefinidas",
       "unsavedChanges": "Cambios no guardados",
+      "discardConfirm": "El flujo de trabajo del lienzo tiene cambios sin guardar. ¿Descartarlos?",
+      "discard": "Descartar",
       "saving": "Guardando...",
       "categories": {
         "all": "Todos"
@@ -3636,7 +3958,7 @@
         "resetZoom": "Restablecer zoom",
         "fitToView": "Ajustar a pantalla",
         "snapToGrid": "Ajustar a la cuadrícula",
-        "toggleLog": "Registro de ejecución",
+        "showRun": "Mostrar la última ejecución",
         "toggleInspector": "Alternar inspector",
         "dryRun": "Modo de prueba",
         "dryRunTooltip": "Simular la ejecución del flujo de trabajo sin modificar datos ni ejecutar comandos reales"
@@ -3651,6 +3973,8 @@
       },
       "inspector": {
         "general": "Configuración general",
+        "checks": "Comprobaciones",
+        "warningsCount": "Advertencias ({{count}})",
         "parameters": "Parámetros y opciones",
         "nodeTitle": "Título del nodo",
         "nodeSubtitle": "Subtítulo / Descripción",
@@ -3666,12 +3990,8 @@
         "destinationPath": "Ruta de destino (dstFs)",
         "mountPoint": "Punto de montaje",
         "rcEndpoint": "Punto final RC",
+        "rcOffline": "No se pudo leer la lista de llamadas de rclone, así que solo se muestran las habituales.",
         "rcParameters": "Parámetros RC (JSON)",
-        "rcPresets": "Puntos finales preestablecidos",
-        "presetCategoryAll": "Todos",
-        "presetCategoryVfs": "VFS",
-        "presetCategoryOps": "Almacenamiento",
-        "presetCategoryCore": "Núcleo",
         "insertVariable": "Insertar variable de salida del nodo",
         "insertTokenBtn": "Insertar variable",
         "formatJson": "Dar formato a JSON",
@@ -3792,18 +4112,19 @@
         "transfers": "Transferencias",
         "errors": "Errores",
         "testRun": "Ejecutar prueba",
+        "testNeedsPlainJson": "La prueba necesita JSON simple. Sustituye antes las variables {{ }} por valores reales.",
         "testRunRcHint": "Probar este comando RC con los parámetros actuales",
-        "testSuccess": "Prueba exitosa",
-        "testFailed": "Prueba fallida",
         "useAsSampleSchema": "Guardar como esquema de salida",
         "sampleOutputSchema": "Esquema de salida de muestra",
-        "sampleOutputSchemaDesc": "Esquema de respuesta JSON para exponer campos de variables dinámicas en tarjetas posteriores",
+        "sampleOutputSchemaDesc": "Se rellena con una prueba correcta, o pega una respuesta. Sus campos pasan a ser variables en los pasos siguientes.",
         "sampleOutputPlaceholder": "Pegue la respuesta JSON de muestra aquí...",
         "availableOutputKeys": "Variables detectadas",
         "upstreamOutputs": "Salidas y variables ascendentes",
         "nodeOutput": "Salida de ejecución del nodo",
         "checkReport": "Informe de diferencias de comprobación",
         "rawOutputJson": "Datos de salida (JSON)",
+        "tabResult": "Resultado",
+        "tabSettings": "Ajustes",
         "conditionPresets": "Ajustes rápidos de condición",
         "condPresetHasDiff": "Hay diferencias",
         "condPresetNoDiff": "Sin diferencias",
@@ -3822,14 +4143,25 @@
         "opEndsWith": "Termina Con",
         "opArrayNotEmpty": "La Matriz Contiene Elementos",
         "opArrayIsEmpty": "La Matriz Está Vacía",
-        "preview": "Vista Previa del Mensaje"
+        "preview": "Vista Previa del Mensaje",
+        "presets": {
+          "checkReportTitle": "Diferencias detectadas (auditoría Check)",
+          "checkReportMsg": "Se encontraron diferencias entre origen y destino:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Transferencia completada correctamente",
+          "transferSummaryMsg": "Transferencia finalizada:\nTransferido: {{prev.bytesFormatted}}\nArchivos: {{prev.transfers}}\nVelocidad: {{prev.speedFormatted}}\nErrores: {{prev.errors}}",
+          "failureAlertTitle": "Falló un paso del flujo de trabajo",
+          "failureAlertMsg": "La ejecución falló en el nodo.\n\nDetalles del error:\n{{prev.error}}",
+          "healthStatusTitle": "Informe de ejecución del flujo de trabajo",
+          "healthStatusMsg": "El paso del flujo de trabajo terminó con el estado: {{prev.status}}.\nTransferido: {{prev.bytesFormatted}}"
+        }
       },
       "status": {
         "running": "En ejecución",
         "success": "Completado",
         "failed": "Fallido",
         "skipped": "Omitido",
-        "idle": "Inactivo"
+        "idle": "Inactivo",
+        "queued": "En espera"
       },
       "ports": {
         "in": "Entrada",
@@ -3848,7 +4180,9 @@
         "branch2": "Rama 2",
         "in1": "Entrada 1",
         "in2": "Entrada 2",
-        "done": "Listo"
+        "done": "Listo",
+        "inN": "Entrada {{n}}",
+        "branchN": "Rama {{n}}"
       },
       "nodes": {
         "manualTrigger": "Disparador manual",
@@ -3892,29 +4226,26 @@
         "logAudit": "Registro de auditoría",
         "logAuditDesc": "Escribe una entrada en el registro de ejecución del flujo",
         "stopServe": "Detener servicio de red",
-        "stopServeDesc": "Detiene los servicios de red activos para un remoto"
+        "stopServeDesc": "Detiene los servicios de red activos para un remoto",
+        "sync": "Sincronizar",
+        "copy": "Copiar",
+        "check": "Verificar",
+        "mount": "Montar"
       },
-      "logs": {
-        "stepRunning": "El paso \"{{title}}\" se está ejecutando...",
-        "stepCompleted": "El paso \"{{title}}\" se completó en {{duration}} ms",
-        "stepFailed": "El paso \"{{title}}\" falló: {{error}}",
-        "stepSkipped": "El paso \"{{title}}\" se omitió (rama no seguida)",
-        "unknownError": "Error desconocido",
-        "cancelRequested": "Se solicitó cancelar la ejecución del flujo de trabajo",
-        "startExecution": "Iniciando la ejecución del flujo de trabajo \"{{name}}\"",
-        "startSimulation": "Iniciando la simulación (ejecución de prueba) del flujo de trabajo \"{{name}}\"",
-        "executionError": "Error en la ejecución del flujo de trabajo: {{error}}",
+      "run": {
+        "title": "Última ejecución",
+        "copy": "Copiar resumen",
+        "openStep": "Abrir paso",
+        "empty": "Aún no hay ejecuciones. Ejecuta el flujo para ver aquí sus pasos.",
         "running": "Ejecutando...",
-        "title": "Registro de ejecución",
-        "copy": "Copiar registros",
-        "clear": "Borrar registros",
-        "jumpToNode": "Haga clic para enfocar el nodo en el lienzo",
-        "empty": "Sin registros de ejecución todavía. Ejecute un flujo de trabajo.",
-        "copied": "Registros copiados al portapapeles",
-        "filterAll": "Todos",
-        "filterErrors": "Errores",
-        "filterWarnings": "Advertencias",
-        "filterSuccess": "Éxito"
+        "executionError": "Error en la ejecución del flujo de trabajo: {{error}}",
+        "state": {
+          "started": "Iniciando",
+          "running": "En ejecución",
+          "completed": "Completado",
+          "failed": "Fallido",
+          "cancelled": "Cancelado"
+        }
       },
       "tokens": {
         "prevNode": "Nodo Anterior",
@@ -3955,7 +4286,9 @@
           "resumedAt": "Reanudado en",
           "command": "Comando",
           "result": "Resultado del comando",
-          "json": "JSON formateado"
+          "json": "JSON formateado",
+          "reports": "Informes de archivos",
+          "reportCounts": "Recuento de informes de archivos"
         }
       },
       "details": "Detalles del flujo de trabajo",
@@ -3963,8 +4296,6 @@
       "description": "Descripción del flujo",
       "descriptionPlaceholder": "Describa el propósito de este flujo de trabajo...",
       "deleteConfirm": "¿Está seguro de que desea eliminar este flujo de trabajo?",
-      "cleanDuplicates": "Limpiar duplicados",
-      "cleanDuplicatesConfirm": "¿Está seguro de que desea eliminar los flujos duplicados?",
       "stats": {
         "title": "Resumen",
         "nodes": "Nodos totales",
@@ -3979,37 +4310,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Comprobación Inteligente de Desviación y Sincronización Condicional",
-          "description": "Verifica diferencias con check; sincroniza solo si se detectan diferencias y notifica con detalles de volumen."
+          "description": "Verifica diferencias con check; sincroniza solo si se detectan diferencias y notifica con detalles de volumen.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "No se detectaron diferencias",
+              "message": "El origen y el destino ya son idénticos. Se omitió la sincronización."
+            },
+            "node-notify-sync-done": {
+              "title": "Sincronización completada",
+              "message": "Diferencias resueltas: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} archivos)."
+            },
+            "node-notify-check-failed": {
+              "title": "Falló la comprobación de diferencias",
+              "message": "La comprobación no pudo terminar, así que no se sincronizó nada:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Auditoría de Integridad de Datos e Informe de Desviación",
-          "description": "Ejecuta una comprobación de integridad programada; envía una alerta con informe Markdown si existen diferencias."
+          "description": "Ejecuta una comprobación de integridad programada; envía una alerta con informe Markdown si existen diferencias.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Integridad verificada",
+              "message": "Todos los archivos coinciden con el destino. No hay discrepancias."
+            },
+            "node-notify-drift": {
+              "title": "Alerta de auditoría de integridad"
+            },
+            "node-notify-audit-failed": {
+              "title": "Falló la auditoría de integridad",
+              "message": "La auditoría no pudo terminar:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Sincronización Segura con Alerta de Fallo",
-          "description": "Ejecuta una sincronización, notificando el volumen transferido en éxito o los detalles exactos del error en fallo."
+          "description": "Ejecuta una sincronización, notificando el volumen transferido en éxito o los detalles exactos del error en fallo.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Sincronización correcta",
+              "message": "Transferido: {{prev.bytesFormatted}} (velocidad: {{prev.speedFormatted}}). Todos los archivos están al día."
+            },
+            "node-notify-fail": {
+              "title": "Falló la sincronización",
+              "message": "La copia de seguridad encontró un error:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Copia de Seguridad Diaria y Notificación",
-          "description": "Ejecuta una sincronización diaria programada a las 02:00, notificando el éxito o alertando en caso de fallo."
+          "description": "Ejecuta una sincronización diaria programada a las 02:00, notificando el éxito o alertando en caso de fallo.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Copia de seguridad completada",
+              "message": "Sincronización diaria completada: {{prev.bytesFormatted}} transferidos (velocidad: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Falló la copia de seguridad",
+              "message": "La copia de seguridad diaria encontró un error:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Vigilante de Carpeta y Carga Automática",
-          "description": "Supervisa una carpeta local en busca de cambios y copia archivos nuevos/modificados a la nube."
+          "description": "Supervisa una carpeta local en busca de cambios y copia archivos nuevos/modificados a la nube.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Subida automática terminada",
+              "message": "Subida automática completada: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} archivos)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Espejo Paralelo Multi-Nube",
-          "description": "Sincroniza datos simultáneamente en dos proveedores en la nube y luego verifica la finalización."
+          "description": "Sincroniza datos simultáneamente en dos proveedores en la nube y luego verifica la finalización.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Réplica completada",
+              "message": "Todas las sincronizaciones paralelas en la nube han terminado."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "Montaje a Demanda y Notificación",
-          "description": "Monta una ruta de almacenamiento remoto y notifica al escritorio cuando la unidad esté lista."
+          "description": "Monta una ruta de almacenamiento remoto y notifica al escritorio cuando la unidad esté lista.",
+          "nodes": {
+            "node-notify": {
+              "title": "Unidad montada",
+              "message": "Su almacenamiento remoto está montado y listo para usar."
+            }
+          }
         },
         "manualTrigger": "Manual",
         "manualTriggerDesc": "Activado manualmente a demanda",
         "vfsRefresh": {
           "name": "Automatización de Actualización de Caché VFS",
-          "description": "Envía un comando RC vfs/refresh para recargar la caché de directorios en unidades montadas y notifica al escritorio."
+          "description": "Envía un comando RC vfs/refresh para recargar la caché de directorios en unidades montadas y notifica al escritorio.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Caché VFS actualizada",
+              "message": "La recarga de la caché de directorios terminó correctamente.\nComando: {{prev.command}}\nEstado: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "Falló la actualización de VFS",
+              "message": "El comando RC falló:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {
@@ -4020,7 +4426,8 @@
         "title": "Bienvenido al Constructor de Flujos",
         "subtitle": "Crea un nuevo flujo de trabajo o elige una plantilla para automatizar tus operaciones de rclone."
       },
-      "showInTray": "Mostrar en la bandeja del sistema"
+      "showInTray": "Mostrar en la bandeja del sistema",
+      "copyName": "{{name}} (copia)"
     },
     "shortcuts": {
       "title": "Atajos de teclado de Flow"

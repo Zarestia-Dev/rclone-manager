@@ -8,17 +8,6 @@ import {
 import type { PrimaryActionType } from './operations';
 
 /**
- * Runtime status of a quick run entry.
- *
- * - `idle`       — saved but never executed (or stopped long ago)
- * - `running`    — currently executing a job
- * - `completed`  — last execution finished successfully
- * - `failed`     — last execution failed
- * - `stopped`    — last execution was stopped by the user
- */
-export type QuickRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
-
-/**
  * Active sub-mode / panel in the Flow workspace.
  */
 export type FlowSubMode = 'builder' | 'quick_run';
@@ -53,7 +42,6 @@ export interface QuickRunConfig extends ConfigWithSubConfigs {
  *   - the bound `remoteName` (used for path autocomplete + job dispatch)
  *   - the operation type (any `PrimaryActionType`)
  *   - the full app + rclone config (mirrors `ProfileConfig` shape)
- *   - runtime metadata (status, last run, job id, run count, etc.)
  */
 export interface QuickRun {
   /** Stable unique identifier (uuid v4 or similar). */
@@ -76,9 +64,6 @@ export interface QuickRun {
 
   /** Full app + rclone config — same shape as a remote-config profile. */
   config: QuickRunConfig;
-
-  /** In-memory runtime status — drives the card badge + detail header color. */
-  status: QuickRunStatus;
 }
 
 /**
@@ -93,6 +78,11 @@ export interface QuickRunInput {
   config: QuickRunConfig;
 }
 
+/** Whether a quick run is listed in the tray menu; it is unless the config says otherwise. */
+export function isShownOnTray(config: Partial<QuickRunConfig> | null | undefined): boolean {
+  return config?.app?.showOnTray ?? true;
+}
+
 /**
  * Safely extract the rclone srcFs/dstFs/path1/path2/fs/mountPoint from a
  * quick run's config, returning the most relevant value for display.
@@ -103,8 +93,9 @@ export interface QuickRunInput {
  *
  * - For mount: returns `mountPoint` (no destination concept).
  * - For bisync: returns `path1` (source) and `path2` (destination).
- * - For sync/copy/move/check/cryptcheck/delete/copyurl/archivecreate:
+ * - For sync/copy/move/check/cryptcheck/copyurl/archivecreate:
  *   returns `srcFs` (source) and `dstFs` (destination).
+ * - For delete and index: returns `srcFs` (source) only.
  * - For serve: returns `fs` (source) only.
  */
 export function getQuickRunPaths(config: ConfigWithSubConfigs): {

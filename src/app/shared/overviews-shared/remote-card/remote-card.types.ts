@@ -1,36 +1,41 @@
-import { PrimaryActionType, OpenableFolder } from '@app/types';
+import {
+  ALL_PRIMARY_ACTIONS,
+  OPERATION_ICONS,
+  OPERATION_TONE,
+  PillTone,
+  PrimaryActionType,
+} from '@app/types';
 
 export interface StatusIndicatorViewModel {
   op: PrimaryActionType;
-  meta: { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean };
-  tooltip: string;
+  meta: StatusIndicatorMeta;
+  /** Comma-separated names of the profiles running this operation. */
+  profiles: string;
 }
 
 export interface ProfilePathViewModel {
   path: string;
-  isLocal: boolean;
-  tooltip: string;
+  icon: string;
 }
 
 export interface ProfileChipViewModel {
   name: string;
   isBusy: boolean;
-  canOpen: boolean;
   isActive: boolean;
   isOpening: boolean;
-  chipTooltip: string;
+  /** i18n key of the chip tooltip (start or stop); the profile name follows in brackets. */
+  tooltipKey: string;
   openPaths: ProfilePathViewModel[];
 }
 
 export interface DetailedOperationViewModel {
-  key: PrimaryActionType;
   operation: PrimaryActionType;
-  cssClass: string;
+  tone: PillTone;
   labelIcon: string;
   profiles: ProfileChipViewModel[];
 }
 
-/** Per-operation profile picker entry used by the compact card's hover blossom. */
+/** Per-operation profile picker entry used by the compact card's profile menu. */
 export interface ProfilePickerEntry {
   operation: PrimaryActionType;
   profile: string;
@@ -38,16 +43,15 @@ export interface ProfilePickerEntry {
   isBusy: boolean;
   startIcon: string;
   stopIcon: string;
-  cssClass: string;
-  tooltip: string;
+  tone: PillTone;
 }
 
-/** Per-operation group of profile picker entries (one group per operation). */
+/** A profile menu: one per operation that has several profiles. */
 export interface ProfilePickerGroup {
   operation: PrimaryActionType;
-  cssClass: string;
-  /** Single-button trigger tooltip when only one profile exists. */
-  triggerTooltip: string;
+  tone: PillTone;
+  /** i18n key of the menu button tooltip. */
+  triggerTooltipKey: string;
   /** Icon to show on the trigger button. */
   triggerIcon: string;
   /** Whether the operation is currently active (any profile running). */
@@ -57,57 +61,53 @@ export interface ProfilePickerGroup {
   entries: ProfilePickerEntry[];
 }
 
-export interface ActionButtonClickEvent {
-  id: string;
-  event: Event;
-}
-
-export interface ProfilePickerClickEvent {
+export interface ProfileTarget {
   operation: PrimaryActionType;
   profile: string;
-  event: Event;
 }
 
-export interface OpenFolderClickEvent {
-  folder: OpenableFolder;
-  event: Event;
-}
-
-export interface ProfileChipClickEvent {
-  operation: PrimaryActionType;
-  profile: string;
-  event: Event;
-}
-
-export interface ProfileOpenInFilesEvent {
-  operation: PrimaryActionType;
-  profile: string;
+export interface ProfilePathTarget extends ProfileTarget {
   path: string;
-  event: Event;
 }
 
-export const STATUS_INDICATOR_META: Record<
-  PrimaryActionType,
-  { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean }
-> = {
-  mount: { icon: 'mount', pillClass: 'p-accent', ariaKey: 'detailShared.status.mounted' },
-  sync: { icon: 'refresh', pillClass: 'p-primary', ariaKey: 'detailShared.status.syncing' },
-  copy: { icon: 'copy', pillClass: 'p-yellow', ariaKey: 'detailShared.status.copying' },
-  move: { icon: 'move', pillClass: 'p-orange', ariaKey: 'detailShared.status.moving' },
-  bisync: { icon: 'right-left', pillClass: 'p-purple', ariaKey: 'detailShared.status.bisyncing' },
-  serve: {
-    icon: 'satellite-dish',
-    pillClass: 'p-accent',
-    ariaKey: 'detailShared.status.serving',
-    animateContainer: true,
-  },
-  check: { icon: 'search', pillClass: 'p-accent', ariaKey: 'operations.checkActive' },
-  cryptcheck: { icon: 'shield', pillClass: 'p-accent', ariaKey: 'operations.cryptcheckActive' },
-  delete: { icon: 'trash', pillClass: 'p-warn', ariaKey: 'operations.deleteActive' },
-  copyurl: { icon: 'link', pillClass: 'p-accent', ariaKey: 'operations.copyurlActive' },
-  archivecreate: {
-    icon: 'compress',
-    pillClass: 'p-primary',
-    ariaKey: 'operations.archivecreateActive',
-  },
+export interface StatusIndicatorMeta {
+  icon: string;
+  tone: PillTone;
+  ariaKey: string;
+  animateContainer?: boolean;
+}
+
+const STATUS_ARIA_KEYS: Record<PrimaryActionType, string> = {
+  mount: 'detailShared.status.mounted',
+  sync: 'detailShared.status.syncing',
+  copy: 'detailShared.status.copying',
+  move: 'detailShared.status.moving',
+  bisync: 'detailShared.status.bisyncing',
+  serve: 'detailShared.status.serving',
+  check: 'operations.checkActive',
+  cryptcheck: 'operations.cryptcheckActive',
+  delete: 'operations.deleteActive',
+  copyurl: 'operations.copyurlActive',
+  archivecreate: 'operations.archivecreateActive',
+  index: 'operations.indexActive',
 };
+
+/** Where the status pill differs from the operation itself: serving shows a spinning dish. */
+const STATUS_OVERRIDES: Partial<Record<PrimaryActionType, Partial<StatusIndicatorMeta>>> = {
+  serve: { icon: 'satellite-dish', animateContainer: true },
+};
+
+/** The status pill of each operation: its icon and tone are the operation's own. */
+export const STATUS_INDICATOR_META = Object.freeze(
+  Object.fromEntries(
+    ALL_PRIMARY_ACTIONS.map(op => [
+      op,
+      {
+        icon: OPERATION_ICONS[op],
+        tone: OPERATION_TONE[op],
+        ariaKey: STATUS_ARIA_KEYS[op],
+        ...STATUS_OVERRIDES[op],
+      },
+    ])
+  )
+) as Readonly<Record<PrimaryActionType, StatusIndicatorMeta>>;

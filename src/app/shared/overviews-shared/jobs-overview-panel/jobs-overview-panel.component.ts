@@ -14,7 +14,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-import { JobInfo, JobStatItem, Origin, JOB_ICON_MAP, getExecutionOrigin } from '@app/types';
+import {
+  JobInfo,
+  JobStatItem,
+  OPERATION_TONE,
+  Origin,
+  PillTone,
+  JOB_ICON_MAP,
+  getExecutionOrigin,
+} from '@app/types';
 import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
@@ -22,15 +30,17 @@ import { ModalService } from '../../../services/ui/modal.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
+import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 export interface RunningJobViewModel {
   job: JobInfo;
   typeIcon: string;
-  typeClass: string;
+  typeTone: PillTone;
   animationClass: string;
   label: string;
   originLabel: string;
-  originBadgeClass: string;
+  originTone: PillTone;
   progressPercentage: number;
 }
 
@@ -51,6 +61,8 @@ export interface RunningJobViewModel {
     CopyToClipboardDirective,
     AlertBannerComponent,
     OriginFilterBarComponent,
+    StarterPillComponent,
+    PillDirective,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],
@@ -102,6 +114,7 @@ export class JobsOverviewPanelComponent {
       { labelKey: 'generalOverview.jobs.errors', value: s.errors, error: s.errors > 0 },
       { labelKey: 'generalOverview.jobs.deletes', value: s.deletes },
       { labelKey: 'generalOverview.jobs.renames', value: s.renames },
+      { labelKey: 'generalOverview.jobs.updatedDirs', value: s.updatedDirs ?? 0 },
       { labelKey: 'generalOverview.jobs.serverCopies', value: s.serverSideCopies },
       { labelKey: 'generalOverview.jobs.serverMoves', value: s.serverSideMoves },
     ];
@@ -115,11 +128,11 @@ export class JobsOverviewPanelComponent {
       return {
         job,
         typeIcon: this.getJobTypeIcon(job),
-        typeClass: this.getJobTypeClass(job),
+        typeTone: this.getJobTone(job),
         animationClass: this.getJobAnimationClass(job),
         label: this.getJobLabel(job),
         originLabel: this.getOriginLabel(getExecutionOrigin(job)),
-        originBadgeClass: this.getOriginBadgeClass(getExecutionOrigin(job)),
+        originTone: this.getOriginTone(getExecutionOrigin(job)),
         progressPercentage,
       };
     })
@@ -129,18 +142,9 @@ export class JobsOverviewPanelComponent {
     return JOB_ICON_MAP[job.job_type] ?? 'folder';
   }
 
-  getJobTypeClass(job: JobInfo): string {
-    switch (job.job_type) {
-      case 'sync':
-      case 'bisync':
-        return 'type-primary';
-      case 'copy':
-        return 'type-yellow';
-      case 'move':
-        return 'type-orange';
-      default:
-        return 'type-accent';
-    }
+  /** The colour of the job's operation, from the operation registry; accent for any other job. */
+  getJobTone(job: JobInfo): PillTone {
+    return OPERATION_TONE[job.job_type] ?? 'accent';
   }
 
   getJobAnimationClass(job: JobInfo): string {
@@ -155,9 +159,9 @@ export class JobsOverviewPanelComponent {
 
   getOriginLabel(origin?: Origin): string {
     switch (origin) {
-      case 'flow': {
-        const t = this.translate.instant('flow.title');
-        return t === 'flow.title' ? 'Flow' : t;
+      case 'workflow': {
+        const t = this.translate.instant('flow.tabs.workflow');
+        return t === 'flow.tabs.workflow' ? 'Workflow' : t;
       }
       case 'quickrun': {
         const t = this.translate.instant('flow.tabs.quickRun');
@@ -180,18 +184,18 @@ export class JobsOverviewPanelComponent {
     }
   }
 
-  getOriginBadgeClass(origin?: Origin): string {
+  getOriginTone(origin?: Origin): PillTone {
     switch (origin) {
-      case 'flow':
-        return 'p-accent';
+      case 'workflow':
+        return 'accent';
       case 'quickrun':
-        return 'p-primary';
+        return 'primary';
       case 'automation':
-        return 'p-orange';
+        return 'orange';
       case 'filemanager':
-        return 'p-accent';
+        return 'accent';
       default:
-        return 'p-dim';
+        return 'dim';
     }
   }
 

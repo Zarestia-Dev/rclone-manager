@@ -13,18 +13,18 @@ import {
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowToolbarComponent } from '../workflow-toolbar/workflow-toolbar.component';
 import { WorkflowPaletteComponent } from '../workflow-palette/workflow-palette.component';
 import { WorkflowCanvasComponent } from '../workflow-canvas/workflow-canvas.component';
 import { WorkflowInspectorComponent } from '../workflow-inspector/workflow-inspector.component';
-import { WorkflowExecutionLogComponent } from '../workflow-execution-log/workflow-execution-log.component';
+import { WorkflowRunSummaryComponent } from '../workflow-run-summary/workflow-run-summary.component';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowEngineService } from '../../../../services/flow/workflow-engine.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { WorkflowEventService } from '../../../../services/flow/workflow-event.service';
-import { NotificationService } from '../../../../services/ui/notification.service';
 import { WorkflowTemplate } from '../../types/workflow.types';
+import type { PillTone } from '@app/types';
 import {
   isInputFocused,
   isKeyboardEventInScope,
@@ -32,6 +32,7 @@ import {
 } from '../../../../shared/utils/keyboard-utils';
 import { syncResponsiveSidebar } from '../../../../shared/utils';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-workflow-workspace',
   imports: [
@@ -43,7 +44,8 @@ import { syncResponsiveSidebar } from '../../../../shared/utils';
     WorkflowPaletteComponent,
     WorkflowCanvasComponent,
     WorkflowInspectorComponent,
-    WorkflowExecutionLogComponent,
+    WorkflowRunSummaryComponent,
+    PillDirective,
   ],
   templateUrl: './workflow-workspace.component.html',
   styleUrl: './workflow-workspace.component.scss',
@@ -54,8 +56,6 @@ export class WorkflowWorkspaceComponent {
   readonly engineService = inject(WorkflowEngineService);
   readonly storageService = inject(WorkflowStorageService);
   readonly eventService = inject(WorkflowEventService);
-  private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -63,12 +63,11 @@ export class WorkflowWorkspaceComponent {
   readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
 
   readonly isPaletteOpen = signal<boolean>(true);
-  readonly isLogOpen = signal<boolean>(false);
+  readonly isRunOpen = signal<boolean>(false);
   readonly isInspectorOpen = signal<boolean>(true);
-  readonly isSaving = signal<boolean>(false);
+  readonly isSaving = this.storageService.isSaving;
 
   readonly hasWorkflow = computed(() => !!this.stateService.currentWorkflow());
-  readonly hasSelectedNode = computed(() => !!this.stateService.selectedNode());
 
   readonly isAnyDrawerOpenOnMobile = computed(() => {
     return this.isSidebarOver() && (this.isPaletteOpen() || this.isInspectorOpen());
@@ -87,11 +86,9 @@ export class WorkflowWorkspaceComponent {
       }
     });
 
-    // Auto-open execution console when workflow run starts
+    // A run that starts shows its summary.
     effect(() => {
-      if (this.engineService.isExecuting()) {
-        this.isLogOpen.set(true);
-      }
+      if (this.engineService.isExecuting()) this.isRunOpen.set(true);
     });
 
     // Synchronize mobile drawer state to stateService so FlowContainer can auto-hide bottom tabs
@@ -134,8 +131,8 @@ export class WorkflowWorkspaceComponent {
     }
   }
 
-  toggleLog(): void {
-    this.isLogOpen.update(v => !v);
+  toggleRun(): void {
+    this.isRunOpen.update(v => !v);
   }
 
   onNodeAdded(): void {
@@ -145,49 +142,29 @@ export class WorkflowWorkspaceComponent {
   }
 
   async saveWorkflow(): Promise<void> {
-    const current = this.stateService.currentWorkflow();
-    if (!current || this.isSaving()) return;
-    this.isSaving.set(true);
-    try {
-      await this.storageService.saveWorkflow(current);
-      this.stateService.markSaved(current);
-    } catch {
-      this.notificationService.showError(this.translate.instant('common.error'));
-    } finally {
-      this.isSaving.set(false);
-    }
+    await this.storageService.saveCurrentWorkflow();
   }
 
   createNewWorkflow(): void {
-    const newWf = this.stateService.createNewWorkflow();
-    void this.storageService.saveWorkflow(newWf);
+    void this.storageService.createAndOpenWorkflow();
   }
 
   loadTemplate(tpl: WorkflowTemplate): void {
-    const instantiated = this.storageService.instantiateTemplate(tpl.id);
-    this.stateService.loadWorkflow(instantiated);
-    void this.storageService.saveWorkflow(instantiated);
+    void this.storageService.openTemplate(tpl);
   }
 
-  loadWorkflowById(id: string): void {
-    const wf = this.storageService.workflows().find(w => w.id === id);
-    if (wf) {
-      this.stateService.loadWorkflow(wf);
-    }
-  }
-
-  getTemplatePillClass(category: string): string {
+  getTemplateTone(category: string): PillTone {
     switch (category) {
       case 'backup':
-        return 'p-primary';
+        return 'primary';
       case 'automation':
-        return 'p-orange';
+        return 'orange';
       case 'sync':
-        return 'p-accent';
+        return 'accent';
       case 'utility':
-        return 'p-purple';
+        return 'purple';
       default:
-        return 'p-accent';
+        return 'accent';
     }
   }
 

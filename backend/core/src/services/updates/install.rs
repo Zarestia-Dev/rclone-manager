@@ -4,7 +4,7 @@ use crate::services::updates::emit_state_changed;
 use crate::utils::app::notification::NotificationEvent;
 use crate::utils::app::notification::UpdateStage;
 use crate::utils::app::notification::notify;
-use crate::utils::types::events::APP_EVENT;
+use crate::utils::types::events::{APP_EVENT, app_event_status};
 use crate::utils::types::updater::AppUpdaterState;
 use crate::utils::types::updater::DownloadStatus;
 use crate::utils::types::updater::InstallOutcome;
@@ -15,7 +15,7 @@ use log::{info, warn};
 fn emit_progress(status: DownloadStatus) {
     crate::services::bridge::emit(
         APP_EVENT,
-        serde_json::json!({ "status": "download_progress", "data": status }),
+        serde_json::json!({ "status": app_event_status::DOWNLOAD_PROGRESS, "data": status }),
     );
 }
 
@@ -61,7 +61,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     };
     emit_state_changed();
 
-    info!("Downloading app update from: {}", update.download_url());
+    info!("Downloading app update {}", update.version());
     notify(
         &app,
         NotificationEvent::AppUpdate(UpdateStage::Started {
@@ -246,17 +246,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                             &working_directory,
                         );
                         if let Err(error) = result {
-                            // The engine is already stopped. Exiting lets a service manager
-                            // restart the installed build instead of leaving a half-stopped app.
-                            log::error!("Failed to restart after application update: {error}");
-                            let failure = crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => error);
-                            notify(
-                                &app,
-                                NotificationEvent::AppUpdate(UpdateStage::Failed {
-                                    error: failure,
-                                }),
-                            );
-                            app.exit(1);
+                            exit_after_failed_restart(&app, &error);
                         }
                     }
                     InstallOutcome::Exit => {
@@ -267,15 +257,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                         if let Err(error) =
                             crate::services::lifecycle::exit::relaunch_app(app.clone()).await
                         {
-                            log::error!("Failed to restart after application update: {error}");
-                            let state = app.state::<AppUpdaterState>();
-                            let mut data = state.data.lock();
-                            data.state = UpdateState::Available;
-                            data.failure_message = Some(
-                                crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => error),
-                            );
-                            drop(data);
-                            emit_state_changed();
+                            exit_after_failed_restart(&app, &error);
                         }
                     }
                     InstallOutcome::AwaitingUser => unreachable!(),
@@ -284,6 +266,20 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
             Ok(())
         }
     }
+}
+
+/// The update is installed and the application already shut down, so staying
+/// open would leave a stopped engine behind an outdated window. Exiting lets the
+/// user or a service manager start the installed build.
+fn exit_after_failed_restart(app: &AppHandle, error: &str) {
+    log::error!("Failed to restart after application update: {error}");
+    notify(
+        app,
+        NotificationEvent::AppUpdate(UpdateStage::Failed {
+            error: crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => error),
+        }),
+    );
+    app.exit(1);
 }
 
 async fn shutdown_for_update(app: AppHandle) {
@@ -336,14 +332,11 @@ mod tests {
         }
     }
 
-    struct FailingUpdate(url::Url);
+    struct FailingUpdate;
     #[async_trait::async_trait]
     impl AppUpdate for FailingUpdate {
         fn version(&self) -> &str {
             "99.0.0"
-        }
-        fn download_url(&self) -> &url::Url {
-            &self.0
         }
         async fn download(&self, _: DownloadProgress) -> std::result::Result<Vec<u8>, String> {
             panic!("A retry must reuse verified bytes")
@@ -365,9 +358,7 @@ mod tests {
                 version: "99.0.0".into(),
                 ..Default::default()
             });
-            data.pending_action = Some(Arc::new(FailingUpdate(
-                "https://example.invalid/update".parse().unwrap(),
-            )));
+            data.pending_action = Some(Arc::new(FailingUpdate));
             data.downloaded_payload = Some(b"verified".to_vec());
         }
         app.manage(state);

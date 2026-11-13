@@ -12,6 +12,7 @@ import {
   ConfigValuesSource,
 } from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-config-modal-sidebar',
   imports: [
@@ -21,6 +22,7 @@ import {
     MatListModule,
     TranslatePipe,
     PresetTemplateBarComponent,
+    PillDirective,
   ],
   templateUrl: './config-modal-sidebar.component.html',
   styleUrl: './config-modal-sidebar.component.scss',

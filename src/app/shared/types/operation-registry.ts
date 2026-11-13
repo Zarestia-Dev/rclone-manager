@@ -1,3 +1,5 @@
+import type { PillTone } from './pill';
+
 export interface OperationDefinition {
   /** The operation key (e.g., 'sync', 'check', 'mount') */
   readonly key: string;
@@ -13,13 +15,25 @@ export interface OperationDefinition {
   readonly hasLinkedProfiles: boolean;
   /** Is it a flag type with dedicated flag definitions? */
   readonly isFlagType: boolean;
+  /** Works on its sources alone, without a destination (delete, index). */
+  readonly sourceOnly?: boolean;
+  /** A folder watcher can start it (local backend only). */
+  readonly watchable?: boolean;
+  /** A profile can list several sources. */
+  readonly multiSource?: boolean;
+  /** A source can be a single file as well as a folder. */
+  readonly fileSource?: boolean;
+  /** It runs with a backend profile, which supplies its `DryRun` and similar settings. */
+  readonly backendProfile?: boolean;
+  /** It runs through its own rclone command instead of the sync family's form. */
+  readonly coreCommand?: boolean;
 
   // ── Visual metadata ───────────────────────────────────────
   readonly icon: string;
   /** Capitalized label for rclone API calls */
   readonly apiLabel: string;
-  /** CSS class for theming */
-  readonly cssClass: string;
+  /** Colour role of the operation (bisync purple, serve accent, ...); see the tone scope in custom-theme.scss. */
+  readonly tone: PillTone;
   /** Animation class when active */
   readonly animationClass: string;
 
@@ -61,7 +75,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'mount',
     apiLabel: 'Mount',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.mount',
     activeTooltip: 'mount.mounted',
@@ -84,9 +98,12 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'refresh',
     apiLabel: 'Sync',
-    cssClass: 'primary',
+    tone: 'primary',
     animationClass: 'animate-spin',
     actionLabel: 'actions.sync',
     activeTooltip: 'operations.syncing',
@@ -109,9 +126,13 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
     icon: 'copy',
     apiLabel: 'Copy',
-    cssClass: 'yellow',
+    tone: 'yellow',
     animationClass: 'animate-copy',
     actionLabel: 'actions.copy',
     activeTooltip: 'operations.copying',
@@ -134,9 +155,13 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
     icon: 'move',
     apiLabel: 'Move',
-    cssClass: 'orange',
+    tone: 'orange',
     animationClass: 'animate-move',
     actionLabel: 'actions.move',
     activeTooltip: 'operations.moving',
@@ -159,9 +184,10 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
     icon: 'right-left',
     apiLabel: 'Bisync',
-    cssClass: 'purple',
+    tone: 'purple',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.bisync',
     activeTooltip: 'operations.bisyncActive',
@@ -186,7 +212,7 @@ export const OPERATION_REGISTRY = [
     isFlagType: true,
     icon: 'serve',
     apiLabel: 'Serve',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-pulse-blue',
     actionLabel: 'actions.serve',
     activeTooltip: 'serve.serving',
@@ -209,9 +235,12 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'search',
     apiLabel: 'Check',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.check',
     activeTooltip: 'operations.checkActive',
@@ -234,9 +263,13 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    fileSource: true,
+    backendProfile: true,
+    sourceOnly: true,
     icon: 'trash',
     apiLabel: 'Delete',
-    cssClass: 'warn',
+    tone: 'warn',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.delete',
     activeTooltip: 'operations.deleteActive',
@@ -259,9 +292,11 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    backendProfile: true,
     icon: 'link',
     apiLabel: 'Copyurl',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.copyurl',
     activeTooltip: 'operations.copyurlActive',
@@ -284,9 +319,12 @@ export const OPERATION_REGISTRY = [
     isBrowsable: false,
     hasLinkedProfiles: true,
     isFlagType: true,
+    fileSource: true,
+    backendProfile: true,
+    coreCommand: true,
     icon: 'compress',
     apiLabel: 'Archivecreate',
-    cssClass: 'primary',
+    tone: 'primary',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.archivecreate',
     activeTooltip: 'operations.archivecreating',
@@ -309,9 +347,11 @@ export const OPERATION_REGISTRY = [
     isBrowsable: true,
     hasLinkedProfiles: true,
     isFlagType: true,
+    multiSource: true,
+    coreCommand: true,
     icon: 'shield',
     apiLabel: 'Cryptcheck',
-    cssClass: 'accent',
+    tone: 'accent',
     animationClass: 'animate-breathing',
     actionLabel: 'actions.cryptcheck',
     activeTooltip: 'operations.cryptcheckActive',
@@ -327,4 +367,61 @@ export const OPERATION_REGISTRY = [
     supportsProfiles: true,
     configKey: 'cryptcheckConfigs',
   },
+  {
+    key: 'index',
+    isSyncType: true,
+    isPrimary: true,
+    isBrowsable: false,
+    hasLinkedProfiles: true,
+    isFlagType: true,
+    watchable: true,
+    multiSource: true,
+    backendProfile: true,
+    sourceOnly: true,
+    icon: 'file-lines',
+    apiLabel: 'Index',
+    tone: 'orange',
+    animationClass: 'animate-breathing',
+    actionLabel: 'actions.index',
+    activeTooltip: 'operations.indexActive',
+    inactiveTooltip: 'operations.toggleIndex',
+    startIcon: 'file-lines',
+    stopIcon: 'stop',
+    startTooltip: 'overviews.remoteCard.actions.startIndex',
+    stopTooltip: 'overviews.remoteCard.actions.stopIndex',
+    settingsLabel: 'dashboard.appDetail.indexSettings',
+    settingsDescription: 'dashboard.appDetail.indexDesc',
+    typeLabel: 'dashboard.appDetail.index',
+    supportsVfs: false,
+    supportsProfiles: true,
+    configKey: 'indexConfigs',
+  },
 ] as const satisfies readonly OperationDefinition[];
+
+/** Colour role per operation key; the one place that says bisync is purple and serve is accent. */
+export const OPERATION_TONE: Readonly<Record<string, PillTone>> = Object.freeze(
+  Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.tone]))
+);
+
+const OPERATION_BY_KEY: ReadonlyMap<string, OperationDefinition> = new Map(
+  OPERATION_REGISTRY.map(op => [op.key, op])
+);
+
+/** The yes/no capabilities of an operation, as the registry entries set them. */
+export type OperationFlag =
+  'sourceOnly' | 'watchable' | 'multiSource' | 'fileSource' | 'backendProfile' | 'coreCommand';
+
+/** Whether the registry entry of `key` sets `flag`; false for a key it does not know. */
+export function operationHas(key: string, flag: OperationFlag): boolean {
+  return getOperationDef(key)?.[flag] === true;
+}
+
+/** Whether an operation works on its sources alone: delete and index have no destination. */
+export function isSourceOnlyOperation(key: string): boolean {
+  return operationHas(key, 'sourceOnly');
+}
+
+/** The registry entry of an operation key; `undefined` for a key the registry does not know. */
+export function getOperationDef(key: string): OperationDefinition | undefined {
+  return OPERATION_BY_KEY.get(key);
+}

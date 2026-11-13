@@ -18,10 +18,19 @@ import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag
 import { NodePaletteItem, WorkflowNodeCategory } from '../../types/workflow.types';
 import { isMobile } from '../../../../services/infrastructure/platform/api-client.service';
 import { PALETTE_ITEMS } from '../../constants/palette.registry';
+import { DEFAULT_NODE_HEIGHT, NODE_WIDTH } from '../../constants/workflow.constants';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-workflow-palette',
-  imports: [CommonModule, MatIconModule, MatButtonModule, TranslatePipe, SearchContainerComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+    TranslatePipe,
+    SearchContainerComponent,
+    PillDirective,
+  ],
   templateUrl: './workflow-palette.component.html',
   styleUrl: './workflow-palette.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,6 +73,7 @@ export class WorkflowPaletteComponent {
     startY: number;
     started: boolean;
     svgIcon: SVGElement | null;
+    card: HTMLElement | null;
   } | null = null;
   private _ignoreNextItemClick = false;
 
@@ -108,6 +118,7 @@ export class WorkflowPaletteComponent {
     const cardEl = event.currentTarget as HTMLElement | null;
     const svgIcon = cardEl?.querySelector('svg') ?? null;
 
+    this._ignoreNextItemClick = false;
     this._pendingPointerDrag = {
       item,
       pointerId: event.pointerId,
@@ -115,6 +126,7 @@ export class WorkflowPaletteComponent {
       startY: event.clientY,
       started: false,
       svgIcon,
+      card: cardEl,
     };
 
     window.addEventListener('pointermove', this._onWindowPointerMove);
@@ -150,14 +162,13 @@ export class WorkflowPaletteComponent {
 
     const wasDragging = this._pendingPointerDrag.started;
     const item = this._pendingPointerDrag.item;
+    const card = this._pendingPointerDrag.card;
     this._pendingPointerDrag = null;
     this._removePointerListeners();
 
     if (wasDragging) {
-      this._ignoreNextItemClick = true;
-      setTimeout(() => {
-        this._ignoreNextItemClick = false;
-      }, 50);
+      // Released on the card it was taken from, the browser sends it a click, which must not add a second node.
+      this._ignoreNextItemClick = event.target instanceof Node && !!card?.contains(event.target);
 
       const result = this.dragDropService.commitDrag({ x: event.clientX, y: event.clientY });
       if (result) {
@@ -179,15 +190,16 @@ export class WorkflowPaletteComponent {
   }
 
   addNodeToCanvas(item: NodePaletteItem): void {
-    if (this._ignoreNextItemClick) return;
+    if (this._ignoreNextItemClick) {
+      this._ignoreNextItemClick = false;
+      return;
+    }
 
     const vp = this.stateService.viewport();
     const dims = this.stateService.canvasDimensions();
-    const midX = (dims.width || 800) / 2;
-    const midY = (dims.height || 600) / 2;
-    // Center node relative to current canvas camera (offset by half node width)
-    const canvasX = (midX - vp.x) / vp.zoom - 120;
-    const canvasY = (midY - vp.y) / vp.zoom - 40;
+    // The middle of what the canvas shows, as the node's middle (it has no measure yet).
+    const canvasX = (dims.width / 2 - vp.x) / vp.zoom - NODE_WIDTH / 2;
+    const canvasY = (dims.height / 2 - vp.y) / vp.zoom - DEFAULT_NODE_HEIGHT / 2;
     const title = this.translate.instant(item.titleKey);
 
     this.stateService.addNode(item.type, item.category, title, canvasX, canvasY, {

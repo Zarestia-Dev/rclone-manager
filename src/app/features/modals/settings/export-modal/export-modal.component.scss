@@ -1,3 +1,7 @@
+:host {
+  --row-color: var(--primary-color);
+}
+
 // Labels & Headings
 .section-label {
   font-size: var(--font-size-md);
@@ -34,7 +38,7 @@ $category-colors: (
 
 // Shared Option & Panel Header Layout (Icon + Two-line Text)
 %option-content-layout {
-  --item-color: var(--row-color, var(--primary-color));
+  --item-color: var(--row-color);
 
   .icon-wrapper {
     display: flex;

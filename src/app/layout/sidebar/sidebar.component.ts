@@ -14,7 +14,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
-import { OPERATION_REGISTRY, QuickRun, Remote, FlowSubMode, RCLONE_PATH_KEYS } from '@app/types';
+import {
+  getOperationDef,
+  OPERATION_TONE,
+  QuickRun,
+  Remote,
+  FlowSubMode,
+  RCLONE_PATH_KEYS,
+} from '@app/types';
 import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
 import { getNodeStyleMeta } from 'src/app/flow/workflow/utils/node-style.util';
 
@@ -29,6 +36,7 @@ import { WorkflowStateService } from 'src/app/services/flow/workflow-state.servi
 import { WorkflowEngineService } from 'src/app/services/flow/workflow-engine.service';
 import { TranslateService } from '@ngx-translate/core';
 
+import { PillDirective } from '../../shared/directives/pill.directive';
 export type SidebarMode = 'remotes' | 'flow';
 
 @Component({
@@ -40,12 +48,14 @@ export type SidebarMode = 'remotes' | 'flow';
     MatIconModule,
     TranslatePipe,
     SearchContainerComponent,
+    PillDirective,
   ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
+  protected readonly operationTone = OPERATION_TONE;
   readonly mode = input<SidebarMode>('remotes');
   readonly flowSubMode = input<FlowSubMode>('quick_run');
   readonly customTitle = input<string>();
@@ -113,7 +123,7 @@ export class SidebarComponent {
 
   // ── Workflow state ────────────────────────────────────────────────────────
   readonly workflows = this.workflowStorage.workflows;
-  readonly selectedWorkflowId = computed(() => this.workflowState.currentWorkflow()?.id ?? null);
+  readonly selectedWorkflowId = computed(() => this.workflowState.currentWorkflowId() ?? null);
 
   // ── Search & Filter state ─────────────────────────────────────────────────
   readonly searchTerm = signal('');
@@ -157,7 +167,6 @@ export class SidebarComponent {
     return this.flowSubMode() === 'quick_run' && this.selectedQuickRunId() === id;
   }
 
-  private static readonly OPERATION_MAP = new Map(OPERATION_REGISTRY.map(def => [def.key, def]));
   private readonly cronTooltipCache = new Map<string, string>();
 
   isQuickRunRunning(id: string): boolean {
@@ -165,13 +174,11 @@ export class SidebarComponent {
   }
 
   getQuickRunIcon(qr: QuickRun): string {
-    return SidebarComponent.OPERATION_MAP.get(qr.operationType)?.icon ?? 'operations';
+    return getOperationDef(qr.operationType)?.icon ?? 'operations';
   }
 
   getQuickRunActionLabel(qr: QuickRun): string {
-    return (
-      SidebarComponent.OPERATION_MAP.get(qr.operationType)?.actionLabel ?? 'flow.tabs.quickRun'
-    );
+    return getOperationDef(qr.operationType)?.actionLabel ?? 'flow.tabs.quickRun';
   }
 
   hasCron(qr: QuickRun): boolean {
@@ -192,8 +199,8 @@ export class SidebarComponent {
   }
 
   // ── Workflow actions & helpers ───────────────────────────────────────────
-  selectWorkflow(wf: WorkflowDefinition): void {
-    this.workflowState.loadWorkflow(wf);
+  async selectWorkflow(wf: WorkflowDefinition): Promise<void> {
+    if (!(await this.workflowStorage.openWorkflow(wf))) return;
     this.workflowSelected.emit(wf);
     this.itemSelected.emit();
   }
@@ -203,7 +210,7 @@ export class SidebarComponent {
   }
 
   isWorkflowRunning(id: string): boolean {
-    return this.workflowEngine.isExecuting() && this.workflowState.currentWorkflow()?.id === id;
+    return this.workflowEngine.isRunning(id);
   }
 
   hasAutoStartNode(wf: WorkflowDefinition): boolean {

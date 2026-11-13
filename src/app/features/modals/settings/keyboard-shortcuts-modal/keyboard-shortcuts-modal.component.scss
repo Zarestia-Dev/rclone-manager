@@ -20,7 +20,7 @@
 
       .key {
         background: var(--accent-color) !important;
-        color: #ffffff !important;
+        color: var(--accent-fg-color) !important;
         box-shadow:
           0 0 16px rgba(var(--accent-color-rgb), 0.75),
           0 0 32px rgba(var(--accent-color-rgb), 0.4),

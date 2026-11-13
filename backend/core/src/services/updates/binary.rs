@@ -1,5 +1,5 @@
 //! Stage verified artifacts; only the helper replaces a stopped application.
-use super::manifest::{Manifest, PUBLIC_KEY};
+use super::manifest::{ArtifactKind, Manifest, PUBLIC_KEY};
 use crate::utils::app::paths::{app_bundle_path, installation_directory};
 use crate::utils::types::updater::InstallOutcome;
 use std::{
@@ -16,7 +16,7 @@ const MAX_ENCODED_ARGUMENTS: usize = 30_000;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(super) struct StagedUpdate {
-    pub(super) kind: String,
+    pub(super) kind: ArtifactKind,
     pub(super) target: PathBuf,
     /// Never written to disk; supplied through `ARGS_ENV` or reused from a previous plan.
     #[serde(skip)]
@@ -31,7 +31,9 @@ pub(super) struct StagedUpdate {
 fn encode_arguments(arguments: &[std::ffi::OsString]) -> Result<String, String> {
     let encoded = serde_json::to_string(arguments).map_err(|e| e.to_string())?;
     if encoded.len() > MAX_ENCODED_ARGUMENTS {
-        return Err("Launch arguments are too long to preserve across an update".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.argumentsTooLong"
+        ));
     }
     Ok(encoded)
 }
@@ -45,7 +47,7 @@ fn take_launch_arguments() -> Result<Vec<std::ffi::OsString>, String> {
 }
 
 pub(crate) fn prepare(
-    kind: &str,
+    kind: ArtifactKind,
     manifest: &[u8],
     signature: &str,
     payload: &[u8],
@@ -55,13 +57,15 @@ pub(crate) fn prepare(
         .and_then(|p| p.canonicalize())
         .map_err(|e| e.to_string())?;
     super::policy::writable_binary(&target).map_err(|e| e.to_string())?;
-    let supervisor = std::env::var_os(super::health::DIRECTORY_ENV)
-        .map(PathBuf::from)
+    let supervisor = super::health::trial_directory()
+        .map(Path::to_path_buf)
         .filter(|directory| supervisor_active(directory, &target));
     if let Some(active) = &supervisor
         && !active.join("committed").is_file()
     {
-        return Err("Current update has not finished startup verification".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.startupPending"
+        ));
     }
     prune_completed(&target);
     let arguments: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
@@ -74,7 +78,7 @@ pub(crate) fn prepare(
         .tempdir_in(installation_directory(&target).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
     let plan = StagedUpdate {
-        kind: kind.into(),
+        kind,
         target,
         args: arguments,
         working_directory: std::env::current_dir().map_err(|e| e.to_string())?,
@@ -180,7 +184,9 @@ pub fn restart(
     working_directory: &Path,
 ) -> Result<(), String> {
     use std::os::unix::process::CommandExt;
-    let directory = previous.parent().ok_or("Missing recovery directory")?;
+    let directory = previous
+        .parent()
+        .ok_or_else(|| crate::localized_error!("backendErrors.updater.missingBackup"))?;
     let error = match encode_arguments(arguments) {
         Ok(encoded) => std::process::Command::new(previous)
             .arg("--rcman-update-supervisor")
@@ -194,12 +200,14 @@ pub fn restart(
         Err(error) => error,
     };
     // No replacement has happened yet. Restart the still-installed original.
-    Err(format!(
-        "Helper failed: {error}; restarting application failed: {}",
-        std::process::Command::new(executable)
-            .args(arguments)
-            .current_dir(working_directory)
-            .exec()
+    let restart = std::process::Command::new(executable)
+        .args(arguments)
+        .current_dir(working_directory)
+        .exec();
+    Err(crate::localized_error!(
+        "backendErrors.updater.helperFailed",
+        "error" => error,
+        "restart" => restart
     ))
 }
 
@@ -250,7 +258,11 @@ fn preserve_previous(directory: &Path, target: &Path) -> std::io::Result<()> {
     file.sync_all()
 }
 
-fn read_manifest(directory: &Path, expected_kind: &str, key: &str) -> std::io::Result<Manifest> {
+fn read_manifest(
+    directory: &Path,
+    expected_kind: ArtifactKind,
+    key: &str,
+) -> std::io::Result<Manifest> {
     let bytes = std::fs::read(directory.join("manifest.json"))?;
     let signature = std::fs::read_to_string(directory.join("manifest.sig"))?;
     let manifest = Manifest::from_signed(&bytes, &signature, key).map_err(std::io::Error::other)?;
@@ -266,9 +278,11 @@ fn install_staged(
     current_version: &str,
     key: &str,
 ) -> Result<String, String> {
-    let manifest = read_manifest(directory, &plan.kind, key).map_err(|e| e.to_string())?;
+    let manifest = read_manifest(directory, plan.kind, key).map_err(|e| e.to_string())?;
     if !manifest.version_allowed(current_version) {
-        return Err("Update version must increase across supervisor handoffs".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.versionMustIncrease"
+        ));
     }
     let payload = std::fs::read(directory.join("payload")).map_err(|e| e.to_string())?;
     manifest.verify_install_payload(&payload, key)?;
@@ -305,16 +319,21 @@ fn replace_bundle(
 ) -> Result<(), String> {
     use crate::utils::archive::extract_zip_bundle;
     super::policy::writable_binary(target).map_err(|e| e.to_string())?;
-    let bundle = app_bundle_path(target).ok_or("Portable app is not in a macOS bundle")?;
+    let bundle = app_bundle_path(target)
+        .ok_or_else(|| crate::localized_error!("backendErrors.updater.invalidBundle"))?;
     if !directory.join("previous").is_file() {
-        return Err("Missing previous executable".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.missingBackup"
+        ));
     }
     let candidate = directory.join("candidate");
     extract_zip_bundle(payload, &candidate, root)?;
     let candidate_bundle = candidate.join(root);
     let binary = candidate_bundle.join(target.strip_prefix(bundle).map_err(|e| e.to_string())?);
     if !candidate_bundle.join("Contents/Info.plist").is_file() {
-        return Err("Portable app bundle has no Info.plist".into());
+        return Err(crate::localized_error!(
+            "backendErrors.updater.invalidBundle"
+        ));
     }
     manifest.verify_payload_with_key(&std::fs::read(&binary).map_err(|e| e.to_string())?, key)?;
     std::fs::set_permissions(
@@ -341,7 +360,9 @@ fn replace_with_sync(
     super::policy::writable_binary(target)?;
     // Preparation must have preserved the original before the application exits.
     if !directory.join("previous").is_file() {
-        return Err(std::io::Error::other("Missing previous executable"));
+        return Err(std::io::Error::other(crate::localized_error!(
+            "backendErrors.updater.missingBackup"
+        )));
     }
     let payload = directory.join("payload");
     std::fs::set_permissions(&payload, std::fs::metadata(target)?.permissions())?;
@@ -354,11 +375,11 @@ fn replace_with_sync(
 
 fn sync_parent(target: &Path) -> std::io::Result<()> {
     #[cfg(unix)]
-    std::fs::File::open(
-        target
-            .parent()
-            .ok_or_else(|| std::io::Error::other("Missing installation directory"))?,
-    )?
+    std::fs::File::open(target.parent().ok_or_else(|| {
+        std::io::Error::other(crate::localized_error!(
+            "backendErrors.updater.invalidStagingDirectory"
+        ))
+    })?)?
     .sync_all()?;
     #[cfg(not(unix))]
     let _ = target;
@@ -377,7 +398,9 @@ pub(super) fn restore_previous(directory: &Path, target: &Path) -> std::io::Resu
     } else {
         let previous = directory.join("previous");
         if !previous.is_file() {
-            return Err(std::io::Error::other("Missing previous executable"));
+            return Err(std::io::Error::other(crate::localized_error!(
+                "backendErrors.updater.missingBackup"
+            )));
         }
         #[cfg(windows)]
         if target.exists() {
@@ -424,12 +447,8 @@ fn take_failed_updates_in(parent: &Path, target: &Path) -> Vec<FailedUpdate> {
         {
             continue;
         }
-        let same_target = std::fs::read(directory.join("target.json"))
-            .ok()
-            .and_then(|b| serde_json::from_slice::<PathBuf>(&b).ok())
-            .is_some_and(|p| p == target);
         // A running supervisor still owns its stage.
-        if !same_target || stage_lock(&directory).is_err() {
+        if !stages_target(&directory, target) || stage_lock(&directory).is_err() {
             continue;
         }
         let version = std::fs::read(directory.join("manifest.json"))
@@ -449,6 +468,14 @@ fn take_failed_updates_in(parent: &Path, target: &Path) -> Vec<FailedUpdate> {
     failures
 }
 
+/// Whether a staging directory was prepared for `target`.
+fn stages_target(directory: &Path, target: &Path) -> bool {
+    std::fs::read(directory.join("target.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<PathBuf>(&bytes).ok())
+        .is_some_and(|staged| staged == target)
+}
+
 pub(super) fn validate_stage(directory: &Path, target: &Path) -> std::io::Result<()> {
     let metadata = std::fs::symlink_metadata(directory)?;
     if !metadata.is_dir()
@@ -457,12 +484,18 @@ pub(super) fn validate_stage(directory: &Path, target: &Path) -> std::io::Result
             .file_name()
             .is_some_and(|n| n.to_string_lossy().starts_with(".rcman-update-"))
     {
-        return Err(std::io::Error::other("Invalid update directory"));
+        return Err(std::io::Error::other(crate::localized_error!(
+            "backendErrors.updater.invalidStagingDirectory"
+        )));
     }
     Ok(())
 }
 
-fn read_plan(directory: &Path, target: Option<&Path>, kind: &str) -> Result<StagedUpdate, String> {
+fn read_plan(
+    directory: &Path,
+    target: Option<&Path>,
+    kind: ArtifactKind,
+) -> Result<StagedUpdate, String> {
     let plan: StagedUpdate = serde_json::from_slice(
         &std::fs::read(directory.join("plan.json")).map_err(|e| e.to_string())?,
     )
@@ -524,11 +557,7 @@ fn prune_completed(target: &Path) {
         if validate_stage(&directory, target).is_err() || !finished {
             continue;
         }
-        let matches = std::fs::read(directory.join("target.json"))
-            .ok()
-            .and_then(|b| serde_json::from_slice::<PathBuf>(&b).ok())
-            .is_some_and(|p| p == target);
-        if !matches {
+        if !stages_target(&directory, target) {
             continue;
         }
         if let Ok(lock) = stage_lock(&directory) {
@@ -550,7 +579,8 @@ fn remove_completed(directory: &Path) -> std::io::Result<()> {
 
 /// Runs before CLI/runtime/GUI setup. Never accepts elevated privileges.
 /// A process started as the update helper exits here; any other process returns.
-pub fn run_helper_if_requested(expected_kind: &str) {
+pub fn run_helper_if_requested(expected_kind: ArtifactKind) {
+    super::health::capture_trial();
     #[cfg(windows)]
     super::process_tree::wait_for_assignment();
     let mut args = std::env::args_os().skip(1);
@@ -648,7 +678,7 @@ fn install_loop(mut directory: PathBuf, mut plan: StagedUpdate, key: &str) -> Re
         match super::supervisor::run(&directory, &plan, &version)? {
             super::supervisor::Completion::Exit(code) => return Ok(code),
             super::supervisor::Completion::Next(next) => {
-                let mut next_plan = read_plan(&next, Some(&plan.target), &plan.kind)?;
+                let mut next_plan = read_plan(&next, Some(&plan.target), plan.kind)?;
                 inherit_arguments(&mut next_plan, &mut plan);
                 drop(lock);
                 if directory != bootstrap {
@@ -822,7 +852,7 @@ mod tests {
         let executable = std::env::current_exe().unwrap().canonicalize().unwrap();
         let before = std::fs::metadata(&executable).unwrap();
         let result = prepare(
-            "server",
+            ArtifactKind::Server,
             b"manifest fixture",
             "signature fixture",
             b"candidate",
@@ -1003,7 +1033,7 @@ mod tests {
 
     fn plan_with(args: &[&str]) -> StagedUpdate {
         StagedUpdate {
-            kind: "server".into(),
+            kind: ArtifactKind::Server,
             target: PathBuf::from("app"),
             args: args.iter().map(std::ffi::OsString::from).collect(),
             working_directory: PathBuf::from("."),
@@ -1087,7 +1117,7 @@ mod tests {
             .unwrap();
         let target = root.path().join("app");
         let plan = StagedUpdate {
-            kind: "server".into(),
+            kind: ArtifactKind::Server,
             target: target.clone(),
             args: vec![],
             working_directory: root.path().into(),
@@ -1099,10 +1129,17 @@ mod tests {
             &serde_json::to_vec(&plan).unwrap(),
         )
         .unwrap();
-        assert!(read_plan(stage.path(), Some(&root.path().join("other")), "server").is_err());
-        assert!(read_plan(stage.path(), Some(&target), "portable").is_err());
+        assert!(
+            read_plan(
+                stage.path(),
+                Some(&root.path().join("other")),
+                ArtifactKind::Server
+            )
+            .is_err()
+        );
+        assert!(read_plan(stage.path(), Some(&target), ArtifactKind::Portable).is_err());
         assert_eq!(
-            read_plan(stage.path(), Some(&target), "server")
+            read_plan(stage.path(), Some(&target), ArtifactKind::Server)
                 .unwrap()
                 .target,
             target

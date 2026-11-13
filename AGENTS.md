@@ -96,16 +96,26 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
 
 13. **Design System First, Global SCSS & Anti-Duplication Rule (CRITICAL)**
     - **Never Reinvent Existing Classes (Single Canonical Class Rule)**: Before adding any new CSS class to a component's `.scss` file, AI agents **MUST** inspect `src/custom-theme.scss` and `src/app/styles/`. There is **exactly ONE** canonical global class for each UI primitive. You **MUST** reuse it instead of inventing a custom class or alias with duplicate styling:
-      - **Pills / Badges / Chips**: Always use `.app-pill` (with `.interactive`, `.is-selected`, and semantic color variants `.p-primary`, `.p-accent`, `.p-orange`, `.p-yellow`, `.p-purple`, `.p-warn`, `.p-dim`). **DO NOT** create custom `.filter-chip`, `.badge`, `.status-tag`, `.job-id-pill`, `.stat-pill`, or `.chip` classes.
+      - **Pills / Badges / Chips**: Always use the `appPill` directive (`PillDirective`, `src/app/shared/directives/pill.directive.ts`), which owns the `.app-pill` class. `<span appPill tone="accent" size="xs">`, `<span appPill="solid" tone="primary">` (emphasis: `tonal` default, `solid`, `outline`), `<button appPill tone="accent" [selected]="on()">`. `size` is `xs` (20px), `sm` (24px) or `md` (28px, the default); do not restyle a pill's height, padding or font size in component SCSS. `tone` is a typed `PillTone` (`primary | accent | orange | yellow | purple | warn | dim`; omit for neutral). A `<button>`, `<a>` or `role="button"` pill is interactive and a `<span>` never is; `[selected]` sets `aria-pressed`. Keep tones as `PillTone` values in TypeScript (`toPillTone()` narrows a colour name), never as class-name strings. **DO NOT** add `p-*`, `interactive`, `is-selected` or `pill-sm` classes, or custom `.filter-chip`, `.badge`, `.status-tag`, `.job-id-pill`, `.stat-pill` or `.chip` classes. Pills that perform an action (run, insert, allow) are `matButton`, not pills. Code that builds a pill without Angular sets the `app-pill` class plus the same `data-tone`, `data-variant`, `data-size` and `data-selected` attributes.
       - **Action / Icon Buttons**: Always use `.action-button` (standard 32x32px icon button). **DO NOT** create custom `.action-btn`, `.icon-btn`, `.tool-btn`, `.chip-delete-btn`, `.action-mini-btn`, or `.custom-icon-button` classes.
+      - **Material Icons**: Before using a `mat-icon` with `svgIcon`, inspect `src/app/services/ui/constants/icon-registry.ts` and reuse an existing registered icon whenever possible. Every static or dynamically returned icon name must match a registered key; do not invent names that only compile but fail at runtime. If a genuinely new icon is needed, add its SVG asset and register it in the shared icon registry in the same change.
       - **Text Truncation (Ellipsis)**: Always use the single canonical `.truncate` class. **DO NOT** re-declare `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` in component SCSS files.
-      - **Counter Badges**: Always use the single canonical `.count-badge` class. **DO NOT** create custom `.cat-count-badge`, `.log-count-badge`, or `.config-count-badge` classes.
-      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, or component-specific empty-state clones.
+      - **Counter Badges**: A count is a pill: `<span appPill size="xs" tone="dim">{{ n }}</span>` (`tone="primary"` / `"accent"` when active, `appPill="solid"` for a notification bubble). **DO NOT** create custom `.count-badge`, `.cat-count-badge`, `.log-count-badge` or `.config-count-badge` classes. Push it to the end of a flex row with the global `.ml-auto`.
+      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, `.empty`, `.popup-empty`, `.no-results`, `.empty-list`, or component-specific empty-state clones. This covers every "nothing to show" message, however small: a sidebar filter with no match, an empty history popup or a list with no rows all use `.empty-state` (an icon is optional; a lone `span` is fine). Before writing any class whose name contains `empty`, `no-` or `none`, check `src/custom-theme.scss`.
       - **Loaders / Overlays**: Always use `.loading-container` (inline spinner) or `.loading-overlay` (modal absolute overlay from `_shared-modal.scss`).
       - **Context Menus**: Always use `.material-context-menu` and `.menu-item` (see Rule 5).
       - **Scrollbar Concealing**: Always use `.hide-scrollbar`. **DO NOT** write custom `::-webkit-scrollbar { display: none; }` or `scrollbar-width: none` in components.
       - **Detail Sections & Rows**: Always use `.detail-section`, `.section-title`, `.error-entry`, and `.card-row-item`.
       - **Modal Scaffolding**: Standard modals should extend or include `src/app/styles/_shared-modal.scss` via `styleUrls: ['...', 'path/to/_shared-modal.scss']` and use standard `header`, `main`, `footer`, `.form-section`, and `.section-label`.
+    - **Colour Roles & the Tone Scope (CRITICAL)**:
+      - A colour role (an operation, a status, a mode) is a `PillTone` (`primary | accent | orange | yellow | purple | warn | dim`). **ONE** place decides which operation has which role: `tone` in `OPERATION_REGISTRY` (`src/app/shared/types/operation-registry.ts`); read it through `OPERATION_TONE[key]` or `OPERATION_REGISTRY`. **DO NOT** copy that mapping into a component, a `switch`, a Record or a per-operation SCSS block.
+      - In a template, give the element that owns the colour `[attr.data-tone]="tone"` (or `data-tone="accent"` when fixed). That is the **tone scope** (`custom-theme.scss`): it sets `--tone`, `--tone-rgb` and `--tone-on` for the element and everything inside it, and also `--mat-sys-primary`, so Material controls (progress bars, toggles) and `var(--mat-sys-primary)` follow it. Nested scopes override outer ones.
+      - In SCSS, read the role with `var(--tone)`, `rgba(var(--tone-rgb), 0.15)` and `var(--tone-on)` (text on a solid fill). **DO NOT** write `&.sync { color: var(--primary-color) }`, `.op-*`, `.color-*`, `.box-*` or `@each` colour maps in component SCSS, and **DO NOT** invent `--state-color`, `--op-color`, `--mode-primary-color`, `--row-color`-style aliases.
+      - Hold tones as `PillTone` in TypeScript, never as a class name or a free `string`. `PILL_TONE_VAR` exists only for the few places that cannot read the scope (a CSS gradient built in TypeScript).
+      - **DO NOT** write `#fff`, `#ffffff` or `white` for text on a coloured fill: use `var(--accent-fg-color)` (or `var(--tone-on)`). A custom property a component reads must have its default declared on `:host` or the element, never as a `var(--x, fallback)`.
+      - A coloured icon is `<mat-icon data-tone="warn">`; a coloured Material button is filled by its tone: `<button matButton="filled" data-tone="accent">` (also `matIconButton`, `matMiniFab`, `matFab`); any other button needs `data-variant="solid"` as well, because a plain button's `data-tone` is only a tone scope. **DO NOT** put `primary`, `accent`, `warn`, `orange`, `purple` or `yellow` in a `class` or `[class]` binding, and do not write `color: white !important`; the global rules in `custom-theme.scss` read `data-tone`.
+      - Spacing and radius are tokens: write `var(--space-xs)` or `var(--radius-sm)` whenever the value equals one (4, 8, 12, 16, 20, 24, 32 px; radius 4, 8, 12, 16, 24 px), and `var(--transition-fast)` / `var(--transition-standard)` for those exact transitions.
+      - Status colours (success, failure, running) are not operation colours: they keep their semantic tokens and are not read from the registry.
     - **Global Inherited Resets Prohibition**:
       - `html, body` globally enforces `user-select: none;` and `-webkit-user-drag: none;` across the entire application.
       - **DO NOT** declare redundant `user-select: none;` or `-webkit-user-drag: none;` in component SCSS files.
@@ -114,6 +124,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
       - Never hardcode raw pixel sizes, margins, paddings, or arbitrary hex colors (e.g. Bootstrap `#28a745`, `#ffc107`, `#17a2b8` or Tailwind `#3b82f6`, `#ef4444`).
       - **DO NOT invent CSS variables or alias tokens**: Every semantic role maps to exactly ONE canonical variable (1-to-1 token mapping). Defining alias/duplicate variables (e.g. `--text-secondary`, `--text-muted`, `--color-danger`, `--bg-hover`, `--bg-selected`, `--bg-elevated-05`) is strictly prohibited.
       - **DO NOT write fallbacks** into `var()` calls (e.g. `var(--accent-color, #3b82f6)`, `var(--dim-color, #a0a0a0)`, or `var(--bg-elevated, rgba(...))`). Global tokens in `src/custom-theme.scss` are guaranteed to exist at `:root`.
+      - Before deleting a CSS variable as unused, search **every** file type, not only `.scss`, `.ts` and `.html`: SVG icons read `--rc-spinner-main`, `--rc-spinner-inner` and `--rc-spinner-track` (`src/assets/icons`), and backend resources carry their own styles. A variable that is read but never defined silently does nothing, so a new `var(--x)` must name a token that exists in `src/custom-theme.scss`.
       - Always use canonical CSS variables:
         - Spacing: `var(--space-xxs)` through `var(--space-2xl)`
         - Border Radius: `var(--radius-xxs)` through `var(--radius-lg)`
@@ -132,7 +143,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
     - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
     - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
-    - Whether an installed build may be replaced by a release is decided by `is_update_candidate`, not `is_version_newer` alone: a pre-release build can move to any stable release, so leaving the beta channel never waits for the next stable version. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions.
+    - Whether an installed build may be replaced by a release is decided by `is_update_candidate`, not `is_version_newer` alone: a pre-release build can move to any stable release, so leaving the beta channel never waits for the next stable version. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions, including DEB and RPM installs that Tauri updates (`rpm -U` refuses downgrades).
 
 16. **Default Profile Name (CRITICAL)**
     - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
@@ -140,10 +151,16 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
 
 17. **Updater & Release Contracts (CRITICAL)**
-    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
+    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater (including the DEB/RPM/server-ZIP matching in `backend/core/src/services/updates/availability.rs`, which derives the `RClone.Manager[.Headless]` prefix from the Tauri product name) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
     - Validation rules exist in both `scripts/create-update-manifest.cjs` and `backend/core/src/services/updates/manifest.rs`; keep them identical and covered by the shared fixtures under `services/updates/fixtures/`.
     - Never write command-line arguments, passwords or tokens to disk. The update helper receives the launch arguments through its environment.
     - Server updates are ZIP archives only; `tar.gz` is not used for releases.
+
+18. **RC Console Knowledge Lists (CRITICAL)**
+    - rclone publishes no schema, so the RC console keeps three hand-written lists: `READ_ONLY_COMMANDS` and `DANGEROUS_COMMANDS` in `src/app/shared/utils/rc/rc-console.util.ts`, and `REQUIRED_PARAMS` in `src/app/shared/utils/rc/rc-schema.util.ts`.
+    - After `npm run sync:endpoints`, read its "RC console lists to review" output and update these lists for every call it names: a new call is read-only, dangerous or neither, and its required parameters are read from rclone's Go source (the handler returns an error when a key is missing), never guessed from the help text.
+    - Whenever you edit one of these lists, or add a call that takes other calls (like `job/batch`), check it against rclone and keep a call out of `READ_ONLY_COMMANDS` if it can write. A call may not be in both lists. Update `rc-console.util.spec.ts` and `rc-schema.util.spec.ts` to match.
+    - `scripts/update-endpoints.cjs` reads these two files with patterns (`new Set([...])` and `'path': ['a', 'b'],` lines); keep that shape, or update the script and `scripts/update-endpoints.test.cjs` together.
 
 ---
 
@@ -160,6 +177,8 @@ All changes proposed by AI agents must pass the checks enforced by our GitHub Ac
 ## Build, Test & Lint Commands
 
 The commands below mirror the exact validation checks executed in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+The root [justfile](justfile) runs the same commands: `just ci` runs everything below, and `just frontend`, `just rust`, `just clippy`, `just rust-test` or `just scripts` run one group (`just` lists them). It holds no logic of its own; when a command here changes, change the matching recipe too.
 
 ### 1. Frontend (Angular / TypeScript)
 
@@ -198,8 +217,10 @@ Rust lives in the `backend` Cargo workspace: `core` (shared), `server` (HTTP), a
 > When `librclone.a` / Go toolchain is not compiled locally, set `export LIBRCLONE_SKIP_LINK_CHECK=1` so Clippy can type-check Rust without linking errors.
 
 ```bash
-# 1. Clippy check - Desktop target
-cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features -- -D warnings
+# 1. Clippy check - Desktop targets (with and without the tray, and portable)
+for features in desktop desktop,tray portable; do
+  cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features -- -D warnings
+done
 
 # 2. Clippy check - Web Server target
 mkdir -p dist/rclone-manager/browser
@@ -213,7 +234,11 @@ cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features --lib
+# The tray tests need the tray feature and the Tauri mock runtime; graphics tests mutate the
+# environment, so run these single-threaded.
+for features in desktop desktop,tray,tauri-test; do
+  cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features --lib -- --test-threads=1
+done
 
 # 6. Updater unit tests (they spawn processes and use file locks, so CI runs them single-threaded)
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
@@ -245,7 +270,7 @@ npm run dev:headless
 
 ## Utility Scripts
 
-- `npm run sync:endpoints`: Update endpoint definitions from rclone schemas.
+- `npm run sync:endpoints`: Update endpoint definitions from rclone schemas, then list the RC console lists that need review (see rule 18).
 - `npm run sync:providers`: Sync rclone provider configurations.
 - `npm run sync:flags`: Sync rclone CLI flag definitions.
 - `npm run audit:i18n`: Verify missing translation keys.

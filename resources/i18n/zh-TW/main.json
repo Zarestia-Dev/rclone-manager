@@ -115,7 +115,9 @@
     "toggleCopyurl": "切換複製 URL 為快捷操作",
     "toggleArchivecreate": "切換封存為快捷操作",
     "successStart": "成功為 {{remote}} ({{profile}}) 啟動了 {{type}}",
-    "failedStart": "無法為 {{remote}} 啟動 {{type}}：{{error}}"
+    "failedStart": "無法為 {{remote}} 啟動 {{type}}：{{error}}",
+    "indexActive": "目錄清單進行中",
+    "toggleIndex": "切換目錄清單為快捷操作"
   },
   "serve": {
     "noActive": "無正在執行的服務",
@@ -144,6 +146,10 @@
       "disable": "禁用自動化",
       "stopping": "自動化正在停止..."
     },
+    "actions": {
+      "run": "立即執行",
+      "stop": "停止目前執行"
+    },
     "nextRun": {
       "disabled": "自動化已禁用",
       "stopping": "當前執行結束後禁用",
@@ -156,6 +162,7 @@
       "realtime": "實時監控",
       "debounce": "防抖延遲",
       "watcherActive": "監控器處於活動狀態",
+      "watchedFolder": "監看資料夾",
       "seconds": "秒",
       "realtimeSchedule": "實時檔案監控",
       "changedOnlyShort": "僅子目錄",
@@ -177,7 +184,8 @@
     "cryptcheck": "加密檢查",
     "serve": "提供服務 (Serve)",
     "start": "啟動",
-    "stop": "停止"
+    "stop": "停止",
+    "index": "目錄清單"
   },
   "sidebar": {
     "toggleSidebar": "切換側邊欄",
@@ -196,10 +204,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "任務資訊",
-      "type": "任務型別",
-      "id": "任務 ID",
-      "status": "任務狀態",
       "started": "開始時間",
       "finished": "完成時間",
       "duration": "持續時間"
@@ -221,10 +225,6 @@
       "moving": "移動中",
       "copying": "複製中",
       "serving": "服務執行中"
-    },
-    "stats": {
-      "emptyTitle": "暫無統計資料",
-      "emptyMessage": "操作執行時將顯示統計資訊"
     },
     "pathDisplay": {
       "source": "源路徑",
@@ -268,8 +268,7 @@
     "skipped": "已跳過 Rclone 版本 {{version}}",
     "restored": "已恢復 Rclone 版本 {{version}}",
     "autoCheckEnabled": "已啟用 Rclone 自動檢查更新",
-    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新",
-    "manualRestartRequired": "Rclone 已在遠端伺服器上更新。請手動重新啟動遠端 rclone 服務以應用新版本。"
+    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新"
   },
   "alerts": {
     "title": "警報與通知",
@@ -316,7 +315,7 @@
       "startup": "啟動",
       "update": "更新",
       "internal": "內部",
-      "flow": "Flow 工作區",
+      "workflow": "工作流",
       "quickrun": "快速執行"
     },
     "rule": {
@@ -471,7 +470,7 @@
       },
       "start_on_startup": {
         "label": "開機自動啟動",
-        "description": "系統啟動時自動執行本應用"
+        "description": "系統啟動時自動執行本應用。已鎖定的保存庫在您開啟應用程式之前會保持鎖定。"
       },
       "notifications": {
         "label": "啟用通知",
@@ -491,12 +490,11 @@
       },
       "keep_alive": {
         "label": "在後台執行",
-        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。",
-        "notification": {
-          "jobs": "執行中的工作：{{count}}",
-          "mounts": "掛載：{{count}}",
-          "serves": "服務：{{count}}"
-        }
+        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。"
+      },
+      "start_on_boot": {
+        "label": "手機開機時啟動",
+        "description": "手機開機後在背景啟動 RClone Manager，以執行自動啟動設定檔和排程。部分廠商（小米、華為、OPPO 等）還需要在系統設定中允許此應用程式自動啟動。已鎖定的保存庫在您開啟應用程式之前會保持鎖定。"
       }
     },
     "core": {
@@ -719,6 +717,7 @@
       "preferences": "偏好設定",
       "advanced": "進階設定",
       "flags": "Rclone 旗標",
+      "rcConsole": "RC 主控台",
       "vault": "保存庫",
       "fileBrowser": "檔案瀏覽器",
       "flowWorkspace": "Flow 工作區",
@@ -747,6 +746,11 @@
         "content": "掛載外掛程式可將雲端儲存對映為本機磁碟，可選元件，增強使用體驗。",
         "skipMountTitle": "我不會使用掛載",
         "skipMountDesc": "如果您不打算掛載磁碟機，可以跳過安裝掛載驅動程式。"
+      },
+      "androidAccess": {
+        "title": "Android 權限",
+        "content": "兩項皆為選用，也可以稍後再允許。它們讓 RClone Manager 能夠瀏覽本機資料夾，並在螢幕關閉時繼續執行傳輸和排程。",
+        "allowed": "已允許"
       },
       "selectConfig": {
         "title": "選擇 Rclone 設定",
@@ -800,7 +804,8 @@
       "installPlugin": "安裝外掛程式",
       "installingPlugin": "正在安裝...",
       "unlock": "解鎖",
-      "getStarted": "開始使用"
+      "getStarted": "開始使用",
+      "skip": "略過"
     },
     "validation": {
       "completeInstallation": "請先完成上方安裝選項",
@@ -886,11 +891,20 @@
       "resetStats": "重設統計",
       "tabs": {
         "active": "進行中（{{count}}）",
-        "recent": "最近完成（{{count}}）"
+        "recent": "最近完成（{{count}}）",
+        "report": "檔案報告",
+        "conflicts": "衝突 ({{count}})"
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸"
+        "transferred": "已傳輸",
+        "file": "檔案",
+        "direction": "方向",
+        "took": "耗時",
+        "when": "時間",
+        "progress": "進度",
+        "speed": "速度",
+        "eta": "剩餘時間"
       },
       "status": {
         "failed": "失敗",
@@ -909,10 +923,6 @@
       "actions": {
         "resolveToDst": "複製到目的地",
         "resolveToSrc": "複製到源",
-        "resolveOverwrite": "解決檔案衝突",
-        "resolveOverwriteTitle": "解決檔案衝突",
-        "resolveOverwriteMessage": "檔案“{{name}}”在源和目的地都存在但內容不同。您要用源檔案覆蓋目的地檔案嗎？",
-        "overwriteDst": "覆蓋目的地",
         "copyUrl": "複製 URL",
         "download": "下載檔案",
         "successSync": "檔案同步操作成功啟動",
@@ -920,7 +930,8 @@
         "successCopyUrl": "下載 URL 已複製到剪貼簿",
         "failCopyUrl": "生成下載 URL 失敗",
         "successDownload": "檔案下載成功",
-        "failDownload": "下載檔案失敗"
+        "failDownload": "下載檔案失敗",
+        "resolveChoose": "選擇要保留的版本"
       },
       "messages": {
         "resolveStarted": "檔案不匹配處理已開始",
@@ -948,9 +959,95 @@
       },
       "titleDelete": "刪除活動",
       "titleActivity": "活動",
-      "loadMore": "顯示更多"
+      "loadMore": "顯示更多",
+      "report": {
+        "tabs": {
+          "combined": "合併",
+          "missingOnDst": "目的端缺少",
+          "differ": "不同",
+          "missingOnSrc": "來源端缺少",
+          "match": "相同",
+          "error": "錯誤",
+          "destAfter": "操作後的目的端"
+        },
+        "sigils": {
+          "missingOnDst": "目的端缺少",
+          "missingOnSrc": "來源端缺少",
+          "differ": "不同",
+          "match": "相同",
+          "error": "錯誤"
+        },
+        "empty": "此報告中沒有檔案。",
+        "loadFailed": "無法載入報告。",
+        "showMore": "再顯示 {{count}} 項"
+      },
+      "direction": {
+        "toDestination": "來源端新增:複製到目的地",
+        "toSource": "僅目的地存在:複製到來源端",
+        "choose": "兩端內容不同:由你決定保留哪一個",
+        "labelToDestination": "到目的地",
+        "labelToSource": "到源",
+        "labelChoose": "需要選擇"
+      },
+      "bulk": {
+        "title": "已選差異",
+        "selectAll": "全選 {{count}} 項未處理差異",
+        "selected": "已選 {{count}} 項",
+        "toDestination": "{{count}} 項到目的地",
+        "toSource": "{{count}} 項到來源端",
+        "choose": "{{count}} 項需要決定",
+        "clear": "清除",
+        "applyOneWay": "複製 {{count}} 個檔案",
+        "review": "檢視 {{count}} 個衝突…",
+        "started": "已開始複製 {{count}} 個檔案",
+        "partial": "已開始 {{started}} 個複製工作,{{failed}} 個失敗"
+      },
+      "compare": {
+        "title": "檔案在兩端都已變更",
+        "position": "第 {{index}} 個,共 {{total}} 個",
+        "source": "來源端",
+        "destination": "目的地",
+        "modified": "修改時間",
+        "unknown": "未知",
+        "larger": "較大",
+        "newer": "較新",
+        "missing": "此處已不存在該檔案。",
+        "loadFailed": "無法讀取檔案:{{error}}",
+        "which": "應保留哪個版本?",
+        "keepSource": "保留來源端版本",
+        "keepDestination": "保留目的地版本",
+        "overwrites": "{{path}} 將被覆寫。只有該遠端保留了歷史版本時才能還原。",
+        "recreates": "{{path}} 將依你保留的版本建立。",
+        "hint": "請選擇一個版本。按下套用之前不會有任何變更。",
+        "skip": "略過此檔案",
+        "apply": "套用",
+        "applyNext": "套用並繼續",
+        "checksum": {
+          "verify": "比較檢查碼",
+          "match": "{{type}} 檢查碼相同",
+          "differ": "{{type}} 檢查碼不同",
+          "none": "這些遠端沒有共同的檢查碼類型",
+          "failed": "無法讀取檢查碼"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "保留 Path1 的版本",
+        "keepPath2": "保留 Path2 的版本",
+        "titleBisync": "檔案在兩個路徑上都已變更",
+        "discards": "另一個版本({{path}})及其在兩個路徑上的副本將被捨棄。只有遠端保留了歷史版本時才能還原。"
+      },
+      "export": {
+        "copy": "複製為 CSV",
+        "copied": "已將 {{count}} 列複製為 CSV"
+      },
+      "conflicts": {
+        "empty": "本次執行沒有衝突。",
+        "loadFailed": "無法載入衝突。",
+        "resolved": "已解決 {{name}}",
+        "keptPath1": "已保留 Path1 的版本",
+        "keptPath2": "已保留 Path2 的版本"
+      }
     },
-
     "inputModal": {
       "name": "名稱",
       "required": "{{field}} 為必填項",
@@ -1156,6 +1253,38 @@
     "validation": {
       "required": "此欄位是必需的。",
       "min": "值必須至少為 {{val}}。"
+    },
+    "monitor": {
+      "status": {
+        "running": "執行中",
+        "completed": "已完成",
+        "failed": "失敗",
+        "stopped": "已停止"
+      },
+      "kpi": {
+        "progress": "進度",
+        "speed": "速度",
+        "avgSpeed": "平均速度",
+        "eta": "剩餘時間",
+        "took": "耗時",
+        "files": "檔案",
+        "checks": "檢查",
+        "errors": "錯誤",
+        "avg": "平均",
+        "peak": "峰值",
+        "total": "總計",
+        "left": "剩餘",
+        "speedHistory": "傳輸速度變化",
+        "checked": "已檢查",
+        "compared": "已比較",
+        "matched": "相符",
+        "differences": "差異",
+        "unreadable": "無法讀取",
+        "onlyOnSource": "僅來源端",
+        "onlyOnDestination": "僅目的地",
+        "differ": "內容不同",
+        "deleted": "已刪除"
+      }
     }
   },
   "wizards": {
@@ -1386,6 +1515,8 @@
       "yourSchedule": "你的計劃",
       "nextRun": "下次執行：",
       "timezoneNote": "時間為本機時區（UTC{{timezone}}），計劃任務會自動轉換為 UTC 時間",
+      "cronValidationFailed": "無法驗證排程",
+      "cronInvalid": "cron 運算式無效",
       "tabSimple": "簡易",
       "tabAdvanced": "進階",
       "days": {
@@ -1442,23 +1573,6 @@
       "aria": {
         "clear": "清除",
         "cronFor": "{{name}} 的 cron 運算式"
-      },
-      "relativeTime": {
-        "inPast": "已過去（{{date}}）",
-        "lessThanMinute": "不到1分鐘後",
-        "in": "{{time}} 後",
-        "days": {
-          "one": "1 天",
-          "other": "{{count}} 天"
-        },
-        "hours": {
-          "one": "1 小時",
-          "other": "{{count}} 小時"
-        },
-        "minutes": {
-          "one": "1 分鐘",
-          "other": "{{count}} 分鐘"
-        }
       },
       "cronPlaceholder": "輸入 cron 運算式（例如 0 0 * * *）"
     },
@@ -1517,8 +1631,9 @@
         "description": "完整 rclone.conf 檔案"
       },
       "remoteConfigs": {
-        "title": "遠端連線設定"
+        "title": "遠端設定"
       },
+      "noRemoteDefinitions": "此備份不含 rclone.conf，因此不會還原遠端本身，只還原其應用程式設定（掛載、自動啟動、選項）。請重新新增遠端，或從受密碼保護的備份還原。",
       "profiles": {
         "title": "設定檔案"
       },
@@ -1540,13 +1655,7 @@
       "restoreAction": "恢復備份",
       "errors": {
         "passwordRequired": "必須輸入密碼",
-        "passwordEmpty": "密碼不能為空或空白字元",
-        "wrongPassword": "密碼錯誤，請重試",
-        "integrityFailed": "備份檔案已損壞或被篡改",
-        "verificationFailed": "檔案驗證失敗，備份可能已損壞",
-        "requiresPassword": "此備份需要密碼才能解密",
-        "decryptFailed": "備份解密失敗，請檢查密碼",
-        "generic": "恢復過程中發生錯誤：{{error}}"
+        "passwordEmpty": "密碼不能為空或空白字元"
       }
     },
     "launchRestoreFailed": "啟動恢復流程失敗",
@@ -1558,7 +1667,7 @@
   "updates": {
     "discardDownload": "捨棄下載",
     "cancelFailed": "取消更新下載失敗。",
-    "installSuccess": "更新已安裝，請重新啟動應用",
+    "downloadComplete": "更新已下載，可以安裝。",
     "checkFailed": "檢查更新失敗：{{error}}",
     "installFailed": "安裝更新失敗：{{error}}",
     "restartFailed": "重新啟動應用失敗：{{error}}",
@@ -1713,7 +1822,8 @@
         "check": "檢查",
         "upload": "上傳",
         "archivecreate": "封存",
-        "archiveextract": "解壓縮封存"
+        "archiveextract": "解壓縮封存",
+        "index": "目錄清單"
       }
     },
     "fileViewer": {
@@ -1839,7 +1949,10 @@
       "dryRunActive": "模擬執行已啟用 — 不會進行任何更改",
       "resync": "重新同步",
       "resyncActive": "重新同步已啟用 — 正在執行完整重新同步",
-      "remoteSettings": "遠端設定"
+      "remoteSettings": "遠端設定",
+      "indexSettings": "目錄清單設定",
+      "index": "目錄清單",
+      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站"
     },
     "generalDetail": {
       "automations": "自動化",
@@ -1848,7 +1961,6 @@
       "cronExpression": "Cron 運算式：",
       "nextRunLabel": "下次執行：",
       "lastRunLabel": "上次執行：",
-      "createdLabel": "建立時間：",
       "statistics": "統計",
       "successful": "成功",
       "failedCount": "失敗",
@@ -1878,6 +1990,7 @@
       "showShortcuts": "顯示鍵盤快速鍵",
       "openPreferences": "開啟偏好設定",
       "openFlags": "開啟 Rclone 旗標",
+      "openRcConsole": "開啟 RC 主控台",
       "openVault": "開啟保存庫",
       "forceCheck": "強制檢查掛載",
       "forceCheckServes": "強制檢查已服務遠端",
@@ -1975,25 +2088,24 @@
       "title": "任務詳情 #{{id}}",
       "sections": {
         "overview": "任務詳情",
-        "statistics": "統計資料",
         "paths": "路徑",
         "errors": "錯誤",
-        "profile": "設定檔案",
+        "execution": "執行",
         "serverSideFlags": "伺服端與旗標"
       },
       "fields": {
         "type": "任務型別",
         "profile": "設定檔案",
+        "quickRun": "快速執行",
+        "workflow": "工作流",
         "status": "狀態",
         "started": "開始時間",
         "finished": "完成時間",
         "duration": "耗時",
-        "speed": "速度",
-        "eta": "預計剩餘時間",
         "files": "檔案",
-        "checks": "檢查",
         "deleted": "已刪除",
         "renamed": "已重新命名",
+        "updatedDirs": "更新目錄",
         "listed": "已列錨",
         "errorsCount": "錯誤",
         "remoteSource": "遠端源",
@@ -2005,9 +2117,7 @@
         "serverSideCopies": "服務端複製",
         "serverSideMoves": "服務端移動",
         "retryError": "重試錯誤",
-        "fatalError": "致命錯誤",
-        "speedAvg": "平均速度",
-        "transferred": "已傳輸"
+        "fatalError": "致命錯誤"
       }
     },
     "about": {
@@ -2021,10 +2131,10 @@
       "wiki": "Wiki 頁面",
       "reportIssues": "報告問題",
       "rcloneWebsite": "Rclone 官網",
-      "readyToRestart": "需要重新啟動",
-      "restartDescription": "已安裝更新，請重新啟動應用以生效。",
-      "rcloneRestartRequired": "需要重新啟動 Rclone",
-      "rcloneRestartDescription": "已安裝 Rclone 更新，請重新啟動引擎以生效。",
+      "readyToRestart": "更新已就緒",
+      "restartDescription": "更新已下載，請重新啟動應用以安裝。",
+      "rcloneRestartRequired": "Rclone 更新已就緒",
+      "rcloneRestartDescription": "Rclone 更新已下載，請重新啟動引擎以安裝。",
       "restartNow": "立即重新啟動",
       "updateAvailable": "有更新可用",
       "version": "版本",
@@ -2116,7 +2226,8 @@
       "clear": "清除",
       "cacheCleared": "快取已清除",
       "cacheClearFailed": "清除快取失敗",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "上次檢查：{{time}}"
     },
     "logs": {
       "fetchError": "取得應用日誌失敗。",
@@ -2198,7 +2309,8 @@
       "passwordLabel": "加密密碼",
       "passwordPlaceholder": "輸入密碼",
       "passwordHint": "恢復備份時需要使用此密碼。",
-      "noPasswordHint": "未設定密碼時，備份不包含 rclone.conf 和已儲存的密鑰。直接填寫在快速執行或工作流程中的憑證將依原樣匯出。",
+      "noPasswordHint": "未設定密碼時，備份不包含 rclone.conf 和已儲存的密鑰，因此無法在其他裝置上重建遠端。直接填寫在快速執行或工作流程中的憑證將依原樣匯出。",
+      "remoteNeedsPassword": "單一遠端只能在設定密碼後匯出，因為其 rclone 設定僅包含在加密備份中。",
       "vaultWarningTitle": "設定保存庫已開啟",
       "vaultWarningDesc": "匯出的備份不繼承保存庫加密。若要使用密碼保護機密認證與設定，請啟用下方的加密選項。",
       "exportNow": "立即匯出",
@@ -2425,7 +2537,8 @@
         "filter": "過濾",
         "vfs": "VFS",
         "backend": "後端",
-        "runtimeRemote": "執行時遠端"
+        "runtimeRemote": "執行時遠端",
+        "index": "目錄清單"
       },
       "advancedProfiles": {
         "title": "進階設定檔案",
@@ -2546,6 +2659,102 @@
         "RulesOpt": "規則選項",
         "MetricsAuth": "指標驗證",
         "MetricsHTTP": "指標 HTTP 設定"
+      }
+    },
+    "rcConsole": {
+      "title": "RC 主控台",
+      "suggestions": "建議",
+      "clear": "清除主控台",
+      "emptyTitle": "rclone RC 主控台",
+      "emptyHint": "執行任何 rclone 遠端控制呼叫。開始輸入即可取得建議，輸入 help 檢視語法。",
+      "placeholder": "rc 指令，例如 core/version",
+      "run": "執行",
+      "statusOk": "成功",
+      "statusError": "錯誤",
+      "statusHttp": "HTTP {{status}}",
+      "truncated": "輸出已截斷，複製可取得完整內容",
+      "dangerous": "危險",
+      "confirmDanger": "{{command}} 可能會刪除資料或變更 rclone 的狀態。再按一次 Enter 執行，按 Esc 取消。",
+      "suggestionsUnavailable": "建議無法使用：無法從 rclone 讀取指令清單。",
+      "helpText": "執行任何 rclone 遠端控制 (rc) 呼叫。\n\n  core/version\n  operations/list fs=drive: remote=Photos\n  operations/list --json '{\"fs\":\"drive:\"}'\n  core/command -a ls -a drive: -o max-depth=1\n\nkey=value 參數與 \"rclone rc\" 一樣以字串形式傳送。\n-o name=value 填入 \"opt\"，-a value 填入 \"arg\"，--json 接受 JSON 物件。\n加上 _async=true 可將呼叫當作工作執行，加上 _group=name 可設定統計群組。\n\nTab 補全指令，↑/↓ 瀏覽歷史記錄，Ctrl+L 或 \"clear\" 清除主控台。\nhelp <指令> 會開啟某個呼叫的文件，左側的 API 清單可瀏覽全部呼叫。",
+      "errors": {
+        "empty": "請先輸入指令。",
+        "unclosedQuote": "引號未結束。引號前的反斜線會跳脫該引號，因此帶引號的路徑應以兩個反斜線結尾 (C:\\dir\\\\)。",
+        "missingEquals": "需要 key=value 格式，但收到 '{{token}}'。",
+        "missingValue": "{{flag}} 需要一個值。",
+        "badJson": "無效的 JSON：{{error}}",
+        "jsonNotObject": "JSON 參數必須是物件。"
+      },
+      "backendHint": "接收這些呼叫的後端",
+      "readOnly": "唯讀",
+      "readWrite": "讀寫",
+      "readOnlyHint": "唯讀模式只放行讀取類呼叫。按一下即可切換。",
+      "masked": "已隱藏機密",
+      "unmasked": "顯示機密",
+      "maskHint": "在輸出、複製內容與顯示的指令列中隱藏密碼和權杖",
+      "readOnlyBlocked": "唯讀模式已開啟，因此未執行 {{command}}。",
+      "allowWrites": "允許寫入",
+      "engine": {
+        "restart": "重新啟動引擎",
+        "restartConfirm": "再次點擊以重新啟動",
+        "restartHint": "停止 rclone，應用程式會從同一路徑重新啟動它，因此會使用新的建置。執行中的工作和掛載會結束。",
+        "restarting": "rclone 已停止，應用程式正在重新啟動它。",
+        "failed": "無法停止 rclone 程序",
+        "noProcess": "沒有可停止的 rclone 程序",
+        "info": "rclone 版本和程序 ID",
+        "notRunning": "引擎未執行"
+      },
+      "showHelp": "顯示說明",
+      "edit": "編輯並重新執行",
+      "copyRcLine": "rclone rc 指令",
+      "snippetSecret": "這一行設定了機密資訊，因此未儲存。",
+      "history": "歷史記錄與已儲存的指令列",
+      "save": "儲存此指令列",
+      "historyEmpty": "尚無內容。執行過的指令列會顯示在這裡。",
+      "output": {
+        "pretty": "格式化",
+        "raw": "原始",
+        "table": "表格",
+        "lines": "{{count}} 行",
+        "showMore": "再顯示 {{count}} 行",
+        "showMoreRows": "再顯示 {{count}} 行",
+        "collapse": "收合",
+        "rowsOmitted": "另有 {{count}} 行未顯示"
+      },
+      "tree": {
+        "title": "API",
+        "filter": "篩選呼叫",
+        "empty": "沒有相符的呼叫。"
+      },
+      "help": {
+        "parameters": "參數",
+        "optional": "選用",
+        "use": "使用",
+        "noParameters": "此呼叫的說明中沒有列出參數。",
+        "examples": "範例",
+        "insert": "插入",
+        "run": "執行",
+        "fullDocs": "完整文件",
+        "required": "必填",
+        "requiredMissing": "還有 {{count}} 個必填項為空"
+      },
+      "job": {
+        "waiting": "正在等待工作 {{id}}…",
+        "running": "工作 {{id}} 執行中",
+        "done": "工作 {{id}} 已完成",
+        "failed": "工作 {{id}} 失敗",
+        "lost": "找不到工作",
+        "stop": "停止",
+        "transfers": "{{done}} / {{total}} 個傳輸",
+        "checks": "{{count}} 項檢查",
+        "errors": "{{count}} 個錯誤"
+      },
+      "quickStart": "試試這些",
+      "hints": {
+        "complete": "補全",
+        "history": "歷史記錄",
+        "newLine": "換行",
+        "clear": "清除"
       }
     }
   },
@@ -2686,6 +2895,28 @@
         "statsChanged": "{{count}} 個待重新命名",
         "statsUnchanged": "{{count}} 個未變更",
         "statsConflicts": "{{count}} 個衝突"
+      },
+      "index": {
+        "title": "產生目錄清單",
+        "description": "在 {{target}} 及其下的每個資料夾中寫入可瀏覽的清單，以便作為靜態網站提供。",
+        "overwriteWarning": "與所選清單同名的現有檔案（預設為 index.html）會被直接覆寫，不會檢查其來源。若要保護手寫的索引，請在下方略過對應的資料夾。",
+        "confirm": "產生",
+        "sections": {
+          "output": "清單",
+          "folders": "資料夾",
+          "appearance": "外觀",
+          "advanced": "進階"
+        },
+        "formats": {
+          "html": "HTML 頁面 (index.html)",
+          "json": "rclone lsjson 格式的 JSON (index.json)",
+          "caddy": "Caddy file_server browse 格式的 JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "其中最新的檔案",
+          "dir": "資料夾本身的時間",
+          "none": "不顯示時間"
+        }
       }
     },
     "errors": {
@@ -2708,7 +2939,8 @@
       "archiveCreateFailed": "建立封存失敗: {{error}}",
       "externalDropFailed": "處理外部檔案拖放失敗。",
       "sendToFailed": "更新檔案瀏覽器右鍵選單失敗：{{error}}",
-      "noRemoteSelected": "請先導航至一個遠端連線。"
+      "noRemoteSelected": "請先導航至一個遠端連線。",
+      "indexFailed": "寫入目錄清單失敗：{{error}}"
     },
     "contextMenu": {
       "open": "開啟",
@@ -2753,7 +2985,8 @@
       "switchPane": "切換窗格",
       "copyPublicLink": "複製公共連結",
       "createFolderWithItems": "用所選專案新增資料夾...",
-      "renameMultiple": "批次重新命名..."
+      "renameMultiple": "批次重新命名...",
+      "generateIndex": "產生目錄清單"
     },
     "view": {
       "iconSize": "圖示大小",
@@ -2779,7 +3012,8 @@
       "getPublicLinkStarted": "正在生成公共連結...",
       "archiveCreateStarted": "已開始建立封存操作...",
       "sendToAdded": "已將“{{remote}}{{path}}”新增至檔案瀏覽器右鍵選單",
-      "sendToRemoved": "已將“{{remote}}{{path}}”從檔案瀏覽器右鍵選單移除"
+      "sendToRemoved": "已將“{{remote}}{{path}}”從檔案瀏覽器右鍵選單移除",
+      "indexStarted": "正在寫入目錄清單..."
     },
     "androidShare": {
       "uploadHere": "將 {{count}} 個共享檔案上傳至此資料夾",
@@ -2808,6 +3042,7 @@
       "aboutRemote": "關於遠端連線",
       "emptyTrash": "清空垃圾桶",
       "viewLogs": "檢視日誌",
+      "inRcConsole": "在 RC 主控台中檢視",
       "cloneRemote": "克隆遠端連線",
       "exportConfig": "匯出設定",
       "resetSettings": "重設設定",
@@ -2859,7 +3094,6 @@
       "save": "儲存佈局",
       "reset": "重設佈局",
       "resetSuccess": "佈局已恢復預設",
-      "toggleAutomationFailed": "切換自動化狀態失敗",
       "showDetailed": "顯示詳細卡片",
       "showCompact": "顯示緊湊卡片"
     },
@@ -2911,6 +3145,7 @@
       "errors": "錯誤：",
       "deletes": "刪除：",
       "renames": "重新命名：",
+      "updatedDirs": "更新目錄：",
       "serverCopies": "服務端複製：",
       "serverMoves": "服務端移動：",
       "lastError": "最後錯誤：",
@@ -2931,11 +3166,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "掛載",
-      "startOperations": "開始操作",
-      "startServe": "啟動服務"
-    },
     "panelTitles": {
       "mountedRemotes": "已掛載遠端連線",
       "activeOperations": "活動操作",
@@ -2964,6 +3194,10 @@
       "validationSelfLoop": "節點不能連接到自身（自環）：{{id}}",
       "validationCycle": "圖包含循環相依（工作流程必須是 DAG）",
       "validationDisconnected": "節點「{{title}}」與工作流程斷開連接",
+      "validationMissingPort": "連線接到了節點 '{{title}}' 上不存在的連接埠：{{port}}",
+      "validationTokenUnknownNode": "'{{title}}' 讀取了不在工作流程中的 '{{node}}' 的輸出",
+      "validationTokenNotUpstream": "'{{title}}' 讀取了未連接到它的 '{{node}}' 的輸出，值可能為空",
+      "validationPrevWithoutInput": "'{{title}}' 讀取了上一個節點的輸出，但沒有任何節點連接到它",
       "cancelled": "執行已取消",
       "jobUntracked": "工作 {{id}} 已不再被追蹤，結果未知",
       "jobStopped": "工作 {{id}} 已停止",
@@ -3018,7 +3252,16 @@
       "reportAndMore": "……另外還有 {{count}} 個",
       "reportStatusErrors": "完成，有 {{count}} 個錯誤",
       "reportStatusMatched": "全部 {{count}} 個檔案完全一致（0 處差異）。",
-      "reportStatus": "狀態"
+      "reportStatus": "狀態",
+      "missingWorkflowId": "缺少用於更新的工作流程 ID",
+      "workflowNotFound": "找不到工作流程「{{id}}」",
+      "saveFailed": "儲存工作流程失敗：{{error}}",
+      "deleteFailed": "刪除工作流程失敗：{{error}}",
+      "copyName": "{{name}}（副本）"
+    },
+    "rcConsole": {
+      "emptyCommand": "未提供 RC 指令。",
+      "transportFailed": "無法連線到 rclone：{{error}}"
     },
     "mount": {
       "pointEmpty": "掛載點不能為空",
@@ -3031,10 +3274,18 @@
       "macfuseMissing": "系統未安裝 macFUSE / FUSE-T。在 macOS 上掛載需要安裝 macFUSE。",
       "driveLetterInUse": "所選磁碟機代號已被系統佔用。",
       "permissionDenied": "嘗試掛載時許可權不足。",
-      "deviceBusy": "目標掛載點或裝置正忙。請關閉存取該目錄的已開啟檔案、檔案管理員或終端機後重試。"
+      "deviceBusy": "目標掛載點或裝置正忙。請關閉存取該目錄的已開啟檔案、檔案管理員或終端機後重試。",
+      "profileNotMounted": "設定檔案 '{{profile}}' 未在 {{remote}} 上掛載"
     },
     "operations": {
-      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整"
+      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整",
+      "singleSourceOnly": "{{operation}} 僅支援單一來源路徑",
+      "directoriesOnly": "{{operation}} 僅支援目錄，不支援檔案：{{source}}",
+      "sourcePathInvalid": "無法解析來源路徑：{{path}}",
+      "destinationPathInvalid": "無法解析目的路徑：{{path}}",
+      "filePathsInvalid": "無法將來源 '{{source}}' 或目的地 '{{destination}}' 解析為檔案路徑。請使用 'remote:path/to/file' 格式或本機路徑。",
+      "unsupportedOperation": "操作 {{operation}} 無法作為傳輸執行",
+      "destinationMissing": "未指定目的地"
     },
     "serve": {
       "parseFailed": "解析響應失敗：{{error}}",
@@ -3043,7 +3294,8 @@
       "privilegedPort": "1024 以下的連線埠需要管理員許可權。請選擇 1024 或更高的連線埠。",
       "tlsError": "載入或解析 SSL/TLS 證書失敗。",
       "startFailed": "啟動服務失敗：{{error}}",
-      "stopFailed": "停止服務失敗：{{error}}"
+      "stopFailed": "停止服務失敗：{{error}}",
+      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的服務"
     },
     "request": {
       "failed": "請求失敗：{{error}}"
@@ -3058,6 +3310,12 @@
       "fileLocked": "檔案當前已被鎖定或被其他處理程式佔用。",
       "readOnly": "目標檔案系統為只讀或受防寫。",
       "ioError": "IO 錯誤：{{error}}"
+    },
+    "upload": {
+      "legacyBatch": "此上傳由過期的頁面發起。請重新載入應用程式後再試一次。",
+      "noFiles": "上傳中沒有檔案。",
+      "invalidPath": "上傳包含無效的檔案或資料夾路徑。",
+      "invalidModifiedTime": "上傳包含無效的修改時間。"
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",
@@ -3084,7 +3342,17 @@
       "invalidFlags": "檢測到無效的 rclone 旗標: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支援遠端更新",
       "backupFailed": "備份當前 rclone 二進位制檔案失敗：{{error}}",
-      "rcAuthFailed": "Rclone 遠端控制身分驗證失敗：{{error}}"
+      "rcAuthFailed": "Rclone 遠端控制身分驗證失敗：{{error}}",
+      "remoteAuthRejected": "遠端後端 {{name}}（{{address}}）拒絕了 RC API 憑證（HTTP 401）",
+      "remoteUnreachable": "無法連線至遠端後端 {{name}}（{{address}}）",
+      "portHeldByStaleProcess": "連接埠 {{port}} 仍被無法停止的 rclone 程序佔用（它可能屬於其他使用者，或已結束但仍佔用通訊端）。請手動停止它，或在設定中變更後端連接埠。",
+      "portInUse": "連接埠 {{port}} 已被其他程序或應用程式佔用",
+      "portBindFailed": "無法繫結連接埠 {{port}}（位址已被使用）",
+      "exitedDuringStartup": "rclone 程序在啟動期間結束。請檢視 rclone 記錄。",
+      "startupTimeout": "等待 rclone API 就緒逾時（{{seconds}} 秒）",
+      "librcloneInitFailed": "librclone 初始化失敗：{{error}}",
+      "encryptionCheckFailed": "無法檢查設定是否已加密：{{error}}",
+      "configLoadFailed": "無法載入 rclone 設定檔：{{error}}"
     },
     "security": {
       "passwordEmpty": "密碼不能為空",
@@ -3102,10 +3370,13 @@
       "restoreFailed": "備份恢復失敗: {{error}}",
       "exportFailed": "備份匯出失敗: {{error}}",
       "refreshFailed": "備份恢復後重新整理系統失敗: {{error}}",
-      "restoreIncomplete": "備份恢復未完成: {{error}}"
+      "restoreIncomplete": "備份恢復未完成: {{error}}",
+      "wrongPassword": "密碼錯誤，請重試",
+      "passwordRequired": "此備份需要密碼才能解密"
     },
     "backend": {
       "nameEmpty": "後端名稱不能為空",
+      "invalidName": "後端名稱不能以點開頭，不能以點或空格結尾，不能包含 / \\ : < > \" | ? *，也不能是 CON 等保留名稱",
       "cannotAddLocal": "無法新增名為 'Local' 的後端",
       "cannotRemoveLocal": "無法移除本機後端",
       "cannotRemoveActive": "無法移除當前活動後端",
@@ -3120,7 +3391,11 @@
       "notFound": "未找到任務資訊",
       "monitoringFailed": "任務監控錯誤過多：{{error}}",
       "executionFailed": "任務執行失敗：{{error}}",
-      "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。"
+      "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。",
+      "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務",
+      "stopped": "工作已停止",
+      "failed": "工作失敗",
+      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。"
     },
     "cache": {
       "fetchConfigFailed": "取得遠端連線設定失敗",
@@ -3136,7 +3411,18 @@
       "startFailed": "啟動自動化引擎失敗：{{error}}",
       "stopFailed": "停止自動化引擎失敗：{{error}}",
       "invalidCron": "Cron 運算式無效：{{error}}",
-      "automationNotFound": "未找到自動化"
+      "cronRequired": "需要 cron 運算式",
+      "cronFieldCount": "cron 運算式包含 5 個欄位：分、時、日、月、星期",
+      "configChanged": "任務設定在準備期間已變更，請重試。",
+      "automationNotFound": "未找到自動化",
+      "watcherPending": "監看正在等待尚不存在的資料夾：{{paths}}",
+      "noLocalPaths": "沒有可監看的本機路徑",
+      "alreadyExists": "ID 為 {{id}} 的自動化已存在",
+      "noCronExpression": "自動化沒有 cron 運算式",
+      "schedulerNotInitialized": "排程器尚未初始化",
+      "profileNotFound": "找不到 '{{remote}}' 的 {{operation}} 設定檔 '{{profile}}'",
+      "workflowNotFound": "找不到工作流程 '{{id}}'",
+      "quickRunNotFound": "找不到快速執行 '{{id}}'"
     },
     "system": {
       "unlockFailed": "解鎖失敗：{{error}}"
@@ -3150,13 +3436,11 @@
     },
     "updater": {
       "noPending": "暫無待處理更新",
-      "invalidUrl": "URL 無效：{{error}}",
       "github": "GitHub API 錯誤：{{error}}",
       "githubRateLimit": "超出 GitHub API 請求頻率限制，請稍後重試。",
       "updateFailed": "更新失敗：{{error}}",
       "updateUnavailable": "更新檔案不再可用：{{error}}",
       "relaunchFailed": "重新啟動失敗：{{error}}",
-      "restartFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
       "rollback": {
         "exited": "更新後的應用程式在確認啟動前結束（代碼 {{code}}）。",
@@ -3171,24 +3455,54 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "安裝此套件需要管理員密碼提示工具（pkexec、zenity 或 kdialog），但找不到任何一個。",
+      "verificationFailed": "無法驗證更新：其簽章、總和檢查碼或中繼資料不符。",
+      "insecureDownload": "更新下載未透過 HTTPS 提供。",
+      "downloadTooLarge": "更新下載的大小超出預期。",
+      "missingAsset": "此版本沒有名為 {{name}} 的更新檔案。",
+      "unexpectedAsset": "此版本列出了非預期或重複的更新檔案。",
+      "argumentsTooLong": "啟動參數過長，無法在更新後保留。",
+      "startupPending": "上一次更新仍在確認啟動。請幾秒後再試一次。",
+      "versionMustIncrease": "後續更新必須是較新的版本。",
+      "invalidBundle": "可攜版應用程式不是完整的 macOS 應用程式套件。",
+      "missingBackup": "目前版本的備份遺失。",
+      "invalidStagingDirectory": "更新暫存資料夾無效。",
+      "helperFailed": "無法啟動更新協助程式（{{error}}），且重新啟動應用程式失敗：{{restart}}",
+      "processUnavailable": "無法監控已更新應用程式的處理程序。",
+      "ownedByAnotherUser": "應用程式檔案屬於其他使用者。"
     },
     "settings": {
       "loadFailed": "載入設定失敗：{{error}}",
       "saveFailed": "儲存設定失敗：{{error}}",
       "resetFailed": "重設設定失敗：{{error}}",
       "resetAllFailed": "重設所有設定失敗：{{error}}",
-      "subSettingsFailed": "取得子設定失敗：{{error}}",
-      "deleteFailed": "刪除遠端連線設定失敗：{{error}}"
+      "deleteFailed": "刪除遠端連線設定失敗：{{error}}",
+      "taskFailed": "設定工作失敗：{{error}}",
+      "deleteEntryFailed": "無法刪除設定項目：{{error}}",
+      "managerInitFailed": "無法建立設定管理員：{{error}}"
     },
     "vault": {
       "passwordEmpty": "保存庫密碼不能為空",
       "notEnabled": "保存庫未啟用",
       "invalidPassword": "保存庫主密碼不正確",
-      "operationFailed": "保存庫操作失敗：{{error}}"
+      "operationFailed": "保存庫操作失敗：{{error}}",
+      "operationInProgress": "另一項保險庫操作正在進行中",
+      "workflowsActive": "啟用保險庫前，請等待執行中的工作流程完成"
+    },
+    "notification": {
+      "toastFailed": "無法顯示系統通知：{{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "該版本已不存在:{{path}}。請重新執行 bisync 以查看目前的衝突。",
+      "stepFailed": "無法更新 {{path}}:{{error}}"
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "備份已建立：{{path}}",
+      "restored": "設定已成功還原（已還原 {{count}} 項）"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} 解除安裝成功",
       "allUnmounted": "所有遠端連線已成功解除安裝"
@@ -3207,7 +3521,8 @@
     },
     "rclone": {
       "updated": "Rclone 更新成功（{{channel}} 通道）",
-      "mountPluginInstalled": "掛載外掛程式安裝成功"
+      "mountPluginInstalled": "掛載外掛程式安裝成功",
+      "remoteRestartRequired": "Rclone 已在遠端伺服器上更新。請手動重新啟動遠端 rclone 服務以應用新版本。"
     },
     "job": {
       "stopped": "任務已停止",
@@ -3274,7 +3589,9 @@
         "startArchivecreate": "開始封存",
         "stopArchivecreate": "停止封存",
         "startServe": "啟動服務",
-        "stopServe": "停止服務"
+        "stopServe": "停止服務",
+        "startIndex": "開始產生目錄清單",
+        "stopIndex": "停止產生目錄清單"
       },
       "browse": "瀏覽檔案",
       "emptyState": {
@@ -3318,7 +3635,8 @@
     "tooltipMounts": "{{count}} 個掛載",
     "tooltipServe": "1 個服務",
     "tooltipServes": "{{count}} 個服務",
-    "workflowsCount": "工作流程 [{{active}}/{{total}}]"
+    "workflowsCount": "工作流程 [{{active}}/{{total}}]",
+    "indexCount": "目錄清單 [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "正在執行活動操作：{{details}}",
@@ -3343,6 +3661,7 @@
       "automationFailed": "{{type}} 自動化錯誤",
       "automationStopped": "{{type}} 自動化已停止",
       "allJobsStopped": "所有任務已停止",
+      "automationUnavailable": "自動化無法使用",
       "allServesStopped": "所有伺服器已停止",
       "allUnmounted": "所有遠端連線已斷開",
       "updateFound": "發現新版本",
@@ -3386,6 +3705,7 @@
       "serveFailed": "無法在 {{backend}} 上為遠端連線 {{remote}} 啟動服務：{{error}}",
       "serveStopped": "已停止 {{backend}} 上 {{remote}} 的服務。",
       "allJobsStopped": "已成功終止所有活動任務。",
+      "automationUnavailable": "無法啟動排程和檔案監看：{{error}}",
       "allServesStopped": "已成功關閉所有活動伺服器。",
       "allUnmounted": "已成功斷開所有遠端掛載。",
       "automationStarted": "{{type}} 自動化 '{{automation}}' 正在 {{backend}} 上執行。",
@@ -3641,6 +3961,8 @@
       "savedWorkflows": "已儲存工作流",
       "presetRecipes": "預設配方",
       "unsavedChanges": "未儲存的更改",
+      "discardConfirm": "畫布上的工作流程有未儲存的變更。要捨棄嗎？",
+      "discard": "捨棄",
       "saving": "正在儲存...",
       "categories": {
         "all": "全部"
@@ -3677,7 +3999,7 @@
         "resetZoom": "重設縮放",
         "fitToView": "適應螢幕",
         "snapToGrid": "對齊網格",
-        "toggleLog": "切換執行日誌",
+        "showRun": "顯示上次執行",
         "toggleInspector": "切換檢查器",
         "dryRun": "模擬執行",
         "dryRunTooltip": "模擬工作流執行，不修改數據或執行真實命令"
@@ -3692,6 +4014,8 @@
       },
       "inspector": {
         "general": "常規設置",
+        "checks": "檢查",
+        "warningsCount": "警告（{{count}}）",
         "parameters": "引數與選項",
         "nodeTitle": "節點標題",
         "nodeSubtitle": "副標題 / 描述",
@@ -3707,12 +4031,8 @@
         "destinationPath": "目標路徑 (dstFs)",
         "mountPoint": "掛載點",
         "rcEndpoint": "RC 介面端點",
+        "rcOffline": "無法從 rclone 讀取呼叫清單，因此只顯示常用的呼叫。",
         "rcParameters": "RC 引數 (JSON)",
-        "rcPresets": "預設端點",
-        "presetCategoryAll": "全部",
-        "presetCategoryVfs": "VFS",
-        "presetCategoryOps": "存儲",
-        "presetCategoryCore": "核心",
         "insertVariable": "插入節點輸出變量",
         "insertTokenBtn": "插入變量",
         "formatJson": "格式化 JSON",
@@ -3833,18 +4153,19 @@
         "transfers": "傳輸",
         "errors": "錯誤",
         "testRun": "測試執行",
+        "testNeedsPlainJson": "測試執行需要純 JSON。請先將 {{ }} 變數替換為實際值。",
         "testRunRcHint": "使用當前參數測試此 RC 命令",
-        "testSuccess": "測試成功",
-        "testFailed": "測試失敗",
         "useAsSampleSchema": "儲存為輸出結構 (Schema)",
         "sampleOutputSchema": "範例輸出結構 (Schema)",
-        "sampleOutputSchemaDesc": "用於在下游卡片中公開動態變數欄位的 JSON 回應結構",
+        "sampleOutputSchemaDesc": "測試執行成功後會自動填入，也可以貼上一個回應。其欄位會成為後續步驟中的變數。",
         "sampleOutputPlaceholder": "在此貼上範例 JSON 回應...",
         "availableOutputKeys": "偵測到的變數鍵",
         "upstreamOutputs": "上游輸出與變數",
         "nodeOutput": "節點執行輸出",
         "checkReport": "檢查差異報告",
         "rawOutputJson": "輸出資料 (JSON)",
+        "tabResult": "結果",
+        "tabSettings": "設定",
         "conditionPresets": "快速條件預設",
         "condPresetHasDiff": "存在差異",
         "condPresetNoDiff": "無差異",
@@ -3863,7 +4184,17 @@
         "opEndsWith": "結尾為",
         "opArrayNotEmpty": "陣列非空",
         "opArrayIsEmpty": "陣列為空",
-        "preview": "訊息預覽"
+        "preview": "訊息預覽",
+        "presets": {
+          "checkReportTitle": "偵測到差異（Check 稽核）",
+          "checkReportMsg": "來源與目的地之間存在差異：\n\n{{prev.report}}",
+          "transferSummaryTitle": "傳輸已成功完成",
+          "transferSummaryMsg": "傳輸完成：\n已傳輸：{{prev.bytesFormatted}}\n檔案數：{{prev.transfers}}\n速度：{{prev.speedFormatted}}\n錯誤：{{prev.errors}}",
+          "failureAlertTitle": "工作流程步驟失敗",
+          "failureAlertMsg": "節點執行失敗。\n\n錯誤詳情：\n{{prev.error}}",
+          "healthStatusTitle": "工作流程執行報告",
+          "healthStatusMsg": "工作流程步驟已結束，狀態：{{prev.status}}。\n已傳輸：{{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "已掛載",
@@ -3874,7 +4205,8 @@
         "success": "已完成",
         "failed": "失敗",
         "skipped": "已略過",
-        "idle": "空閒"
+        "idle": "空閒",
+        "queued": "等待中"
       },
       "ports": {
         "in": "輸入",
@@ -3893,7 +4225,9 @@
         "branch2": "分支 2",
         "in1": "輸入 1",
         "in2": "輸入 2",
-        "done": "完成"
+        "done": "完成",
+        "inN": "輸入 {{n}}",
+        "branchN": "分支 {{n}}"
       },
       "nodes": {
         "manualTrigger": "手動觸發",
@@ -3937,29 +4271,26 @@
         "systemPower": "系統電源管理",
         "systemPowerDesc": "讓主機系統睡眠、鎖定或關機",
         "logAudit": "稽核日誌",
-        "logAuditDesc": "在工作流程執行日誌中寫入記錄"
+        "logAuditDesc": "在工作流程執行日誌中寫入記錄",
+        "sync": "同步",
+        "copy": "複製",
+        "check": "檢查",
+        "mount": "掛載"
       },
-      "logs": {
-        "stepRunning": "步驟「{{title}}」正在執行...",
-        "stepCompleted": "步驟「{{title}}」已在 {{duration}} 毫秒內完成",
-        "stepFailed": "步驟「{{title}}」失敗：{{error}}",
-        "stepSkipped": "步驟「{{title}}」已略過（未選擇該分支）",
-        "unknownError": "未知錯誤",
-        "cancelRequested": "已要求取消工作流程執行",
-        "startExecution": "正在開始執行工作流程「{{name}}」",
-        "startSimulation": "正在開始模擬（試執行）工作流程「{{name}}」",
-        "executionError": "工作流程執行錯誤：{{error}}",
+      "run": {
+        "title": "上次執行",
+        "copy": "複製摘要",
+        "openStep": "開啟步驟",
+        "empty": "尚未執行。執行工作流程後，步驟將顯示在這裡。",
         "running": "執行中...",
-        "title": "執行日誌",
-        "copy": "複製日誌",
-        "clear": "清空日誌",
-        "jumpToNode": "點擊以在畫布上聚焦節點",
-        "empty": "暫無執行日誌。執行工作流以檢視步驟輸出。",
-        "copied": "日誌已複製到剪貼板",
-        "filterAll": "全部",
-        "filterErrors": "錯誤",
-        "filterWarnings": "警告",
-        "filterSuccess": "成功"
+        "executionError": "工作流程執行錯誤：{{error}}",
+        "state": {
+          "started": "正在啟動",
+          "running": "執行中",
+          "completed": "已完成",
+          "failed": "失敗",
+          "cancelled": "已取消"
+        }
       },
       "tokens": {
         "prevNode": "上一個節點",
@@ -4000,7 +4331,9 @@
           "resumedAt": "恢復執行時間",
           "command": "命令",
           "result": "命令結果",
-          "json": "格式化 JSON"
+          "json": "格式化 JSON",
+          "reports": "檔案報告",
+          "reportCounts": "檔案報告數量"
         }
       },
       "details": "工作流詳情",
@@ -4008,8 +4341,6 @@
       "description": "工作流描述",
       "descriptionPlaceholder": "描述此工作流的用途...",
       "deleteConfirm": "確定要刪除此工作流嗎？",
-      "cleanDuplicates": "清理重複項",
-      "cleanDuplicatesConfirm": "確定要刪除重複的工作流嗎？",
       "stats": {
         "title": "概覽",
         "nodes": "節點總數",
@@ -4020,37 +4351,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "智慧差異檢查與條件同步",
-          "description": "使用 check 驗證差異；僅在檢測到偏差時才執行同步，並通知傳輸量詳情。"
+          "description": "使用 check 驗證差異；僅在檢測到偏差時才執行同步，並通知傳輸量詳情。",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "未偵測到差異",
+              "message": "來源與目的地已經一致，已略過同步。"
+            },
+            "node-notify-sync-done": {
+              "title": "同步完成",
+              "message": "差異已解決：已傳輸 {{prev.bytesFormatted}}（{{prev.transfers}} 個檔案）。"
+            },
+            "node-notify-check-failed": {
+              "title": "差異檢查失敗",
+              "message": "檢查未能完成，因此沒有同步任何內容：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "資料完整性審計與差異報告",
-          "description": "執行定期完整性檢查；如果存在差異，則發送帶有 Markdown 格式差異報告的告警。"
+          "description": "執行定期完整性檢查；如果存在差異，則發送帶有 Markdown 格式差異報告的告警。",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "完整性已驗證",
+              "message": "所有檔案均與目的地一致，未發現差異。"
+            },
+            "node-notify-drift": {
+              "title": "完整性稽核警示"
+            },
+            "node-notify-audit-failed": {
+              "title": "完整性稽核失敗",
+              "message": "稽核未能完成：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "帶失敗告警的安全同步",
-          "description": "執行同步操作，成功時通知傳輸量，失敗時轉發詳細錯誤資訊。"
+          "description": "執行同步操作，成功時通知傳輸量，失敗時轉發詳細錯誤資訊。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "同步成功",
+              "message": "已傳輸：{{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。所有檔案均為最新。"
+            },
+            "node-notify-fail": {
+              "title": "同步失敗",
+              "message": "備份時發生錯誤：\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "每日備份與通知",
-          "description": "在每天 02:00 執行排程的每日同步，成功或失敗時均會通知。"
+          "description": "在每天 02:00 執行排程的每日同步，成功或失敗時均會通知。",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "備份完成",
+              "message": "每日同步完成：已傳輸 {{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。"
+            },
+            "node-action-notify-fail": {
+              "title": "備份失敗",
+              "message": "每日備份時發生錯誤：\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "資料夾監視與自動上傳",
-          "description": "監視本機資料夾的變更，並將新檔案/修改後的檔案複製到雲端儲存。"
+          "description": "監視本機資料夾的變更，並將新檔案/修改後的檔案複製到雲端儲存。",
+          "nodes": {
+            "node-action-notify": {
+              "title": "自動上傳完成",
+              "message": "自動上傳完成：已傳輸 {{prev.bytesFormatted}}（{{prev.transfers}} 個檔案）。"
+            }
+          }
         },
         "parallelMirror": {
           "name": "多雲平行鏡像",
-          "description": "同時同步資料到兩個不同的雲端服務商，並驗證完成情況。"
+          "description": "同時同步資料到兩個不同的雲端服務商，並驗證完成情況。",
+          "nodes": {
+            "node-notify-done": {
+              "title": "鏡像完成",
+              "message": "所有平行雲端同步作業已完成。"
+            }
+          }
         },
         "mountOnDemand": {
           "name": "按需掛載與通知",
-          "description": "掛載遠端儲存路徑，並在磁碟機就緒時向桌面發送通知。"
+          "description": "掛載遠端儲存路徑，並在磁碟機就緒時向桌面發送通知。",
+          "nodes": {
+            "node-notify": {
+              "title": "磁碟機已掛載",
+              "message": "您的遠端儲存已掛載，可以使用。"
+            }
+          }
         },
         "manualTrigger": "手動",
         "manualTriggerDesc": "按需手動觸發",
         "vfsRefresh": {
           "name": "VFS 快取重新整理自動化",
-          "description": "傳送 vfs/refresh 遠端控制 (RC) 命令以重新載入已掛載磁碟機上的目錄快取，並向桌面發送通知。"
+          "description": "傳送 vfs/refresh 遠端控制 (RC) 命令以重新載入已掛載磁碟機上的目錄快取，並向桌面發送通知。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS 快取已更新",
+              "message": "目錄快取已成功重新載入。\n指令：{{prev.command}}\n狀態：{{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS 更新失敗",
+              "message": "RC 指令失敗：\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {
@@ -4061,7 +4467,8 @@
         "title": "歡迎使用工作流構建器",
         "subtitle": "建立新的工作流或選擇預設範本，以自動化您的 rclone 操作。"
       },
-      "showInTray": "在系統匣顯示"
+      "showInTray": "在系統匣顯示",
+      "copyName": "{{name}}（副本）"
     },
     "shortcuts": {
       "title": "Flow 鍵盤快捷鍵"

@@ -1,0 +1,18 @@
+// Used by every node form that offers presets or variables beside its fields.
+.output-vars-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: 10px var(--space-sm);
+  background: var(--bg-elevated-1);
+  box-shadow: 0 0 0 1px var(--border-color);
+  border-radius: var(--radius-sm);
+
+  .section-sub-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--dim-color);
+  }
+}

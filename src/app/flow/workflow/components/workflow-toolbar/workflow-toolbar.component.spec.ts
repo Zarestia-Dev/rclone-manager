@@ -38,7 +38,6 @@ describe('WorkflowToolbarComponent', () => {
             saveWorkflow: vi.fn(),
             deleteWorkflow: vi.fn(),
             duplicateWorkflow: vi.fn(),
-            cleanDuplicates: vi.fn(),
             instantiateTemplate: vi.fn(),
           },
         },
@@ -78,12 +77,12 @@ describe('WorkflowToolbarComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], name: 'Backup & 旅行', nameKey: undefined };
+    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], nameKey: 'Backup & 旅行' };
     presets.set([recipe]);
     fixture.detectChanges();
     await fixture.whenStable();
     expect(document.querySelector('.material-context-menu .option-label')?.textContent).toContain(
-      recipe.name
+      recipe.nameKey
     );
   });
 

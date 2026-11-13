@@ -1,9 +1,14 @@
-import type { JobInfo, TransferFile, CompletedTransfer } from './jobs';
+import type { PillTone } from './pill';
+import type {
+  GlobalStats,
+  JobInfo,
+  JobReportCounts,
+  JobStatus,
+  TransferFile,
+  CompletedTransfer,
+} from './jobs';
 import type { JobActionType, PrimaryActionType, RemoteAction } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
-
-// ── Shared color tokens used across operation UI ───────────────────────────
-export type OperationColor = 'primary' | 'accent' | 'yellow' | 'orange' | 'purple' | 'warn';
 
 // ── Settings Panel ──────────────────────────────────────────────────────────
 export interface SettingsSection {
@@ -30,22 +35,6 @@ export interface GroupedSettings {
   entries: SettingEntry[];
 }
 
-// ── Stats Panel ─────────────────────────────────────────────────────────────
-export interface StatItem {
-  value: string | number;
-  label: string;
-  isPrimary?: boolean;
-  hasError?: boolean;
-  progress?: number;
-  tooltip?: string;
-}
-
-export interface StatsPanelConfig {
-  title: string;
-  icon: string;
-  stats: StatItem[];
-}
-
 // ── Path Display ────────────────────────────────────────────────────────────
 export interface PathDisplayConfig {
   source: string | string[];
@@ -65,34 +54,13 @@ export interface JobsPanelConfig {
   jobs: JobInfo[];
 }
 
-// ── Profile selector ────────────────────────────────────────────────────────
-export interface ProfileOption {
-  name: string;
-  label: string;
-}
-
-// ── Job Info Panel ──────────────────────────────────────────────────────────
-export interface JobInfoConfig {
-  operationType: string;
-  jobId?: number;
-  status?: string;
-  startTime?: Date;
-  endTime?: Date;
-  duration?: string;
-  profiles?: ProfileOption[];
-  selectedProfile?: string;
-  showProfileSelector?: boolean;
-  errors?: string[];
-  dryRun?: boolean;
-}
-
 // ── Operation Control ───────────────────────────────────────────────────────
 export interface OperationControlConfig {
   operationType: PrimaryActionType;
   isActive: boolean;
   isError?: boolean;
   isLoading: boolean;
-  cssClass: string;
+  tone: PillTone;
   pathConfig: PathDisplayConfig;
   primaryButtonLabel: string;
   primaryIcon: string;
@@ -111,6 +79,38 @@ export interface TransferActivityPanelConfig {
   remoteName: string;
   showHistory: boolean;
   jobType?: JobActionType;
+  /** The finished job whose reports the panel offers as tabs, when it kept any. */
+  report?: {
+    jobId: number;
+    counts: JobReportCounts;
+    /** The two paths of a bisync job, which its conflicts are resolved on. */
+    path1?: string;
+    path2?: string;
+    /** Nothing was changed by a dry run, so there is nothing to resolve. */
+    dryRun?: boolean;
+  };
+}
+
+// ── Job Monitor ─────────────────────────────────────────────────────────────
+/** Everything the job monitor shows for one job: its header, its figures and its file activity. */
+export interface JobMonitorConfig {
+  jobType: JobActionType;
+  /** Already translated, e.g. "Sync". */
+  title: string;
+  icon: string;
+  jobId?: number;
+  status?: JobStatus;
+  /** Whether work is going on right now; this is what makes figures live. */
+  running: boolean;
+  dryRun?: boolean;
+  /** Why the job failed, as rclone or the backend reported it; shown translated above the figures. */
+  error?: string;
+  startTime?: Date | string;
+  endTime?: Date | string;
+  /** Already formatted. */
+  duration?: string;
+  stats: GlobalStats;
+  activity: TransferActivityPanelConfig;
 }
 
 // ── Installation wizard ─────────────────────────────────────────────────────
@@ -131,7 +131,6 @@ export interface InstallationTabOption {
 }
 
 // ── Remote card display ─────────────────────────────────────────────────────
-export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 export type CardDisplayMode = 'compact' | 'detailed';
 
 /**
@@ -143,15 +142,3 @@ export const ACTION_ANIMATION_CLASS = Object.freeze(
     OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [op.key, op.animationClass])
   )
 ) as Readonly<Record<PrimaryActionType, string>>;
-
-/**
- * Mapping of operation colors to their corresponding CSS variable names.
- */
-export const OPERATION_COLOR_VAR: Readonly<Record<OperationColor, string>> = Object.freeze({
-  primary: 'var(--primary-color)',
-  accent: 'var(--accent-color)',
-  yellow: 'var(--yellow)',
-  orange: 'var(--orange)',
-  purple: 'var(--purple)',
-  warn: 'var(--warn-color)',
-});

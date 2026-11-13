@@ -38,6 +38,7 @@ import { VfsInstance } from '@app/types';
 
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../directives/pill.directive';
 const POLL_INTERVAL_MS = 5000;
 const PRIORITY_EXPIRY = -999_999_999;
 const DELAY_EXPIRY = 999_999_999;
@@ -75,6 +76,7 @@ interface QueueRow extends VfsQueueItem {
     MatSliderModule,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',

@@ -8,6 +8,7 @@ const {
   normalizeFlagName,
   parseFlags,
   parseStaticFlags,
+  parseServeTranslationKeys,
   getStaticFlags,
   updateFile,
 } = require('./update-flags.cjs');
@@ -94,6 +95,62 @@ test('static parsing handles nested examples, mixed quotes, escapes, and multili
     full_path: { title: 'Full Path', help: "Keep 'quoted' paths\nwith \t whitespace" },
     resync_mode: { title: 'Resync Mode', help: 'Line one\nLine two' },
   });
+});
+
+test('a static flag with a TranslationKey is keyed apart from the option it shares a name with', () => {
+  const flags = parseStaticFlags(`const staticFlagDefinitions = {
+    bisync: [
+      { Name: 'maxDelete', TranslationKey: 'bisync_max_delete', Help: 'Percentage of deletes.' },
+      { Name: 'resync', Help: 'Resync.' },
+    ],
+  };`);
+  assert.deepEqual(flags, {
+    bisync_max_delete: { title: 'Max Delete', help: 'Percentage of deletes.' },
+    resync: { title: 'Resync', help: 'Resync.' },
+  });
+});
+
+test('serve translation keys are read from flag-definitions.ts', () => {
+  assert.deepEqual(
+    parseServeTranslationKeys(`export const serveTranslationKeys = {
+      sftp: { key: 'sftp_key' },
+      'other-type': { 'some-name': 'other_key' },
+    };`),
+    { sftp: { key: 'sftp_key' }, 'other-type': { 'some-name': 'other_key' } }
+  );
+  assert.deepEqual(parseServeTranslationKeys('const unrelated = {};'), {});
+});
+
+test('scoped serve options take their help from their own serve block', () => {
+  // sftp comes last so the shared key would be overwritten if it were not excluded.
+  const schema = JSON.stringify({
+    http: [{ Name: 'key', Help: 'TLS PEM Private key' }],
+    sftp: [{ Name: 'key', Help: 'SSH private host key file' }],
+  });
+  const flags = parseFlags(schema, false, { sftp: { key: 'sftp_key' } });
+  assert.equal(flags.key.help, 'TLS PEM Private key');
+  assert.deepEqual(flags.sftp_key, { title: 'Key', help: 'SSH private host key file' });
+  assert.equal(parseFlags(schema, false, { ftp: { key: 'ftp_key' } }).ftp_key, undefined);
+});
+
+test('a shared array of option literals spread into groups is read, and pruning stays allowed', () => {
+  const source = `
+    const SHARED: RcConfigOption[] = [{ Name: 'destAfter', Help: 'After.' }];
+    export const staticFlagDefinitions = {
+      copy: [{ Name: 'createEmptySrcDirs', Help: 'Empty.' }, ...SHARED],
+      sync: [...SHARED],
+    };`;
+  const expected = {
+    create_empty_src_dirs: { title: 'Create Empty Src Dirs', help: 'Empty.' },
+    dest_after: { title: 'Dest After', help: 'After.' },
+  };
+  assert.deepEqual(parseStaticFlags(source), expected);
+  assert.deepEqual(parseStaticFlags(source, true), expected);
+});
+
+test('pruning refuses a spread that is not a shared array of option literals', () => {
+  const source = `export const staticFlagDefinitions = { copy: [...computeFlags()] };`;
+  assert.equal(parseStaticFlags(source, true), null);
 });
 
 test('shared static flag names retain the first definition instead of overwriting help', () => {

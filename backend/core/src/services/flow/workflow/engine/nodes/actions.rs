@@ -60,14 +60,15 @@ pub(crate) async fn handle_exec_script_node(
         return Err(crate::localized_error!("backendErrors.workflow.cancelled"));
     }
 
-    let mut cmd = if cfg!(target_os = "windows") {
-        crate::utils::process::command::Command::new("cmd").args(["/C", &full_cmd])
+    let (shell, flag) = if cfg!(target_os = "windows") {
+        ("cmd", "/C")
     } else {
-        crate::utils::process::command::Command::new("sh").args(["-c", &full_cmd])
+        ("sh", "-c")
     };
-
+    let mut cmd = crate::utils::process::command::command(shell);
+    cmd.args([flag, &full_cmd]);
     if let Some(dir) = working_dir {
-        cmd = cmd.current_dir(dir);
+        cmd.current_dir(dir);
     }
 
     let output = tokio::select! {
@@ -179,7 +180,7 @@ pub(crate) async fn system_power_node(
         })));
     }
 
-    crate::services::power::actions::execute_system_power_internal(action)
+    crate::services::power::actions::execute_system_power(action.to_owned())
         .await
         .map_err(|e| {
             crate::localized_error!(

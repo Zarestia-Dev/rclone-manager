@@ -17,7 +17,11 @@ describe('Nautilus shared upload operations', () => {
   const makeDirectory = vi.fn();
   const uploadWebFilesBatch = vi.fn();
   const uploadLocalDropPaths = vi.fn();
-  const notifications = { showError: vi.fn(), showWarning: vi.fn(), showSuccess: vi.fn() };
+  const notifications = {
+    showError: vi.fn(),
+    showWarning: vi.fn(),
+    showSuccess: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -11,7 +11,10 @@ import { DatePipe, UpperCasePipe } from '@angular/common';
 import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
 import { BackupAnalysis } from '@app/types';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
+import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-restore-preview-modal',
   imports: [
@@ -25,6 +28,8 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
     DatePipe,
     UpperCasePipe,
     TranslatePipe,
+    AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -34,6 +39,7 @@ export class RestorePreviewModalComponent {
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   readonly analysis: BackupAnalysis = this.data.analysis;
@@ -45,7 +51,10 @@ export class RestorePreviewModalComponent {
   readonly hasUserNote = !!this.analysis.userNote;
   readonly profiles = this.analysis.contents?.profiles ?? [];
   readonly showRemoteCount = (this.analysis.contents?.remoteCount ?? 0) > 1;
-  readonly itemCount = this.#computeItemCount();
+  // App-side remote settings without any rclone definitions restore as orphans.
+  readonly missingRemoteDefinitions =
+    (this.analysis.contents?.remoteCount ?? 0) > 0 && !this.analysis.contents?.remoteDefinitions;
+  readonly itemCount = this.computeItemCount();
 
   // Mutable UI state
   readonly password = signal('');
@@ -98,7 +107,7 @@ export class RestorePreviewModalComponent {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
       this.dialogRef.close(true);
     } catch (error) {
-      this.#handleRestoreError(error);
+      this.passwordError.set(this.backendTranslation.translateBackendMessage(error));
     } finally {
       this.isVerifying.set(false);
     }
@@ -111,8 +120,7 @@ export class RestorePreviewModalComponent {
     }
   }
 
-  #computeItemCount(): number {
-    // native JavaScript private class field. I wonder that so lets give a try. So its cant accesible on runtime to...
+  private computeItemCount(): number {
     const c = this.analysis.contents;
     if (!c) return 0;
     return (
@@ -120,25 +128,6 @@ export class RestorePreviewModalComponent {
       (c.backendConfig ? 1 : 0) +
       (c.rcloneConfig ? 1 : 0) +
       (c.remoteCount ?? 0)
-    );
-  }
-
-  #handleRestoreError(error: unknown): void {
-    const msg = String(error).toLowerCase();
-    let key: string;
-
-    if (msg.includes('wrong password')) key = 'backup.restore.errors.wrongPassword';
-    else if (msg.includes('integrity check failed')) key = 'backup.restore.errors.integrityFailed';
-    else if (msg.includes('checksum') || msg.includes('hash'))
-      key = 'backup.restore.errors.verificationFailed';
-    else if (msg.includes('password') && msg.includes('required'))
-      key = 'backup.restore.errors.requiresPassword';
-    else if (msg.includes('decrypt') || msg.includes('encryption'))
-      key = 'backup.restore.errors.decryptFailed';
-    else key = 'backup.restore.errors.generic';
-
-    this.passwordError.set(
-      this.translate.instant(key, key.endsWith('generic') ? { error: String(error) } : {})
     );
   }
 }

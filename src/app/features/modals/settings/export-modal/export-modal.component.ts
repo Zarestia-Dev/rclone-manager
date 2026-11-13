@@ -115,8 +115,10 @@ export class ExportModalComponent implements OnInit {
     if (this.isLoading() || this.isExporting()) return false;
     const hasPath = !!this.exportPath().trim();
     const hasValidPassword = !this.withPassword() || !!this.password().trim();
+    // A single remote's rclone definition is only exported inside an encrypted backup.
     const hasRemoteSelected =
-      this.selectedOption() !== 'specific_remote' || !!this.selectedRemoteName().trim();
+      this.selectedOption() !== 'specific_remote' ||
+      (!!this.selectedRemoteName().trim() && this.withPassword());
     const hasProfiles = !this.shouldShowProfileSelection() || this.selectedProfiles().length > 0;
     return hasPath && hasValidPassword && hasRemoteSelected && hasProfiles;
   });
@@ -181,7 +183,7 @@ export class ExportModalComponent implements OnInit {
               ? `${translationRoot}.description`
               : 'Alert rules and actions',
             icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
-            categoryType: 'subsettings',
+            categoryType: 'sub_settings',
             isTranslationKey: !!translationRoot,
           });
         }
@@ -304,8 +306,7 @@ export class ExportModalComponent implements OnInit {
         this.withPassword() ? this.password().trim() : null,
         selectedId === 'specific_remote' ? this.selectedRemoteName().trim() : '',
         this.userNote().trim() || null,
-        this.selectedProfiles(),
-        this.withPassword()
+        this.selectedProfiles()
       );
     } catch (error) {
       console.error('Export failed:', error);

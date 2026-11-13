@@ -34,7 +34,7 @@
           </button>
           <button
             matButton="elevated"
-            class="accent"
+            data-tone="accent"
             (click)="previewImport()"
             [disabled]="!cliInput().trim()"
           >
@@ -282,7 +282,7 @@
 
             <button
               matButton="elevated"
-              class="primary"
+              data-tone="primary"
               [disabled]="isApplyDisabled()"
               (click)="onApply()"
             >

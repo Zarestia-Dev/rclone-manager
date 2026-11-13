@@ -1,0 +1,90 @@
+<aside class="sidebar-inner">
+  <div class="sidebar-header">
+    <span class="header-label">{{ 'modals.rcConsole.tree.title' | translate }}</span>
+  </div>
+
+  <app-search-container
+    [visible]="searchVisible()"
+    [searchText]="filter()"
+    placeholder="modals.rcConsole.tree.filter"
+    ariaLabel="modals.rcConsole.tree.filter"
+    (searchTextChange)="filter.set($event)"
+    (visibleChange)="setSearchVisible($event)"
+  ></app-search-container>
+
+  <div class="step-indicator-container hide-scrollbar">
+    <mat-nav-list
+      class="step-indicator"
+      [attr.aria-label]="'modals.rcConsole.tree.title' | translate"
+    >
+      @for (group of groups(); track group.module) {
+        <button
+          mat-list-item
+          [attr.aria-expanded]="isOpen(group.module)"
+          [attr.title]="group.module"
+          (click)="toggle(group.module)"
+        >
+          <mat-icon
+            matListItemIcon
+            [svgIcon]="isOpen(group.module) ? 'chevron-down' : 'chevron-right'"
+          ></mat-icon>
+          <span matListItemTitle>{{ group.module }}</span>
+          <span matListItemMeta appPill size="xs" tone="dim">{{ group.commands.length }}</span>
+        </button>
+        @if (isOpen(group.module)) {
+          @for (command of group.commands; track command.Path) {
+            @let marker = flag(command.Path);
+            <button
+              mat-list-item
+              class="command"
+              [class.blocked]="marker === 'lock'"
+              [activated]="command.Path === selected()"
+              [attr.title]="command.Title"
+              (click)="pick.emit(command.Path)"
+            >
+              <span matListItemTitle>{{ name(command.Path) }}</span>
+              @if (marker) {
+                <mat-icon
+                  matListItemMeta
+                  class="flag"
+                  [attr.data-tone]="marker === 'shield-xmark' ? 'warn' : null"
+                  [svgIcon]="marker"
+                ></mat-icon>
+              }
+            </button>
+          }
+        }
+      } @empty {
+        <div class="empty-state">
+          <mat-icon svgIcon="search"></mat-icon>
+          <span>{{ 'modals.rcConsole.tree.empty' | translate }}</span>
+        </div>
+      }
+    </mat-nav-list>
+  </div>
+
+  <div class="sidebar-footer">
+    <mat-nav-list class="step-indicator">
+      <button
+        mat-list-item
+        [activated]="searchVisible()"
+        (click)="setSearchVisible(!searchVisible())"
+        [attr.title]="'shared.search.toggle' | translate"
+      >
+        <mat-icon matListItemIcon svgIcon="search"></mat-icon>
+        <span matListItemTitle>{{ 'shared.search.toggle' | translate }}</span>
+      </button>
+      @if (showClear()) {
+        <button
+          mat-list-item
+          [disabled]="!canClear()"
+          (click)="clearRequested.emit()"
+          [attr.title]="'modals.rcConsole.clear' | translate"
+        >
+          <mat-icon matListItemIcon svgIcon="trash"></mat-icon>
+          <span matListItemTitle>{{ 'modals.rcConsole.clear' | translate }}</span>
+        </button>
+      }
+    </mat-nav-list>
+  </div>
+</aside>

@@ -103,16 +103,14 @@ describe('ActionNodeFormComponent', () => {
     expect(emitted).toEqual({ key: 'severity', value: 'critical' });
   });
 
-  it('emits actionId and actionKind when an action is selected', () => {
-    const emittedList: { key: string; value: unknown }[] = [];
-    component.configChange.subscribe(val => {
-      emittedList.push(val);
-    });
+  it('emits actionId, actionKind and icon together when an action is selected', () => {
+    const patches: Record<string, unknown>[] = [];
+    component.configPatch.subscribe(patch => patches.push(patch));
 
     component.onActionSelect('action-telegram-1');
-    expect(emittedList).toContainEqual({ key: 'actionId', value: 'action-telegram-1' });
-    expect(emittedList).toContainEqual({ key: 'actionKind', value: 'telegram' });
-    expect(emittedList).toContainEqual({ key: 'icon', value: 'telegram' });
+    expect(patches).toEqual([
+      { actionId: 'action-telegram-1', actionKind: 'telegram', icon: 'telegram' },
+    ]);
   });
 
   it('opens alerts modal when openAlertsModal is called', () => {
@@ -126,18 +124,18 @@ describe('ActionNodeFormComponent', () => {
     expect(component.getActionIcon('unknown')).toBe('bell');
   });
 
-  it('inserts template variable into message when insertTemplateVariable is called', () => {
+  it('inserts a variable into the message when insertVariableToken is called', () => {
     let emitted: { key: string; value: unknown } | null = null;
     component.configChange.subscribe(val => {
       emitted = val;
     });
 
-    component.insertTemplateVariable('profile');
+    component.insertVariableToken('profile');
     expect(emitted).toEqual({ key: 'message', value: '{{profile}}' });
   });
 
   it('returns appropriate action details from getActionDetail', () => {
-    expect(component.getActionDetail(mockActions[0])).toBe('Chat ID: 456');
+    expect(component.getActionDetail(mockActions[0])).toBe('456');
     expect(
       component.getActionDetail({
         id: 'w1',
@@ -185,20 +183,26 @@ describe('ActionNodeFormComponent', () => {
 
     expect(component.unmountTargetMode()).toBe('node');
 
-    const emittedList: { key: string; value: unknown }[] = [];
-    component.configChange.subscribe(val => {
-      emittedList.push(val);
-    });
+    const patches: Record<string, unknown>[] = [];
+    component.configPatch.subscribe(patch => patches.push(patch));
 
-    // Switch to custom mode
+    // Switch to custom mode: one step
     component.setUnmountTargetMode('custom');
-    expect(emittedList).toContainEqual({ key: 'targetMode', value: 'custom' });
-    expect(emittedList).toContainEqual({ key: 'targetNodeId', value: '' });
+    expect(patches.pop()).toEqual({ targetMode: 'custom', targetNodeId: '' });
 
-    // Switch to node mode
+    // Switch to node mode: the typed target goes, a node is already chosen
     component.setUnmountTargetMode('node');
-    expect(emittedList).toContainEqual({ key: 'targetMode', value: 'node' });
-    expect(emittedList).toContainEqual({ key: 'mountPoint', value: '' });
+    expect(patches.pop()).toEqual({ targetMode: 'node', mountPoint: '' });
+
+    // Without a chosen node, the first one is picked
+    fixture.componentRef.setInput('nodeConfig', { mountPoint: '/mnt/x' });
+    fixture.detectChanges();
+    component.setUnmountTargetMode('node');
+    expect(patches.pop()).toEqual({
+      targetMode: 'node',
+      mountPoint: '',
+      targetNodeId: 'node-mount-1',
+    });
   });
 
   it('computes stop_serve target mode correctly and toggles mode', () => {
@@ -231,45 +235,53 @@ describe('ActionNodeFormComponent', () => {
 
     expect(component.stopServeTargetMode()).toBe('custom');
 
-    const emittedList: { key: string; value: unknown }[] = [];
-    component.configChange.subscribe(val => {
-      emittedList.push(val);
-    });
+    const patches: Record<string, unknown>[] = [];
+    component.configPatch.subscribe(patch => patches.push(patch));
 
-    // Switch to node mode
+    // Switch to node mode: the typed server goes, the first node is picked
     component.setStopServeTargetMode('node');
-    expect(emittedList).toContainEqual({ key: 'targetMode', value: 'node' });
-    expect(emittedList).toContainEqual({ key: 'serverId', value: '' });
+    expect(patches.pop()).toEqual({
+      targetMode: 'node',
+      serverId: '',
+      targetNodeId: 'node-serve-1',
+    });
 
     // Switch to custom mode
     component.setStopServeTargetMode('custom');
-    expect(emittedList).toContainEqual({ key: 'targetMode', value: 'custom' });
-    expect(emittedList).toContainEqual({ key: 'targetNodeId', value: '' });
+    expect(patches.pop()).toEqual({ targetMode: 'custom', targetNodeId: '' });
   });
 
-  it('applies notification presets properly', () => {
-    const emittedList: { key: string; value: unknown }[] = [];
-    component.configChange.subscribe(val => {
-      emittedList.push(val);
-    });
+  it('applies a notification preset as one change, in the language of the interface', () => {
+    const patches: Record<string, unknown>[] = [];
+    component.configPatch.subscribe(patch => patches.push(patch));
 
     component.applyNotificationPreset('check_report');
-    expect(emittedList.some(e => e.key === 'title' && String(e.value).includes('Difference'))).toBe(
-      true
-    );
-    expect(
-      emittedList.some(e => e.key === 'message' && String(e.value).includes('{{prev.report}}'))
-    ).toBe(true);
-    expect(emittedList.some(e => e.key === 'severity' && e.value === 'warning')).toBe(true);
-
-    emittedList.length = 0;
     component.applyNotificationPreset('failure_alert');
-    expect(emittedList.some(e => e.key === 'title' && String(e.value).includes('Failed'))).toBe(
-      true
-    );
-    expect(
-      emittedList.some(e => e.key === 'message' && String(e.value).includes('{{prev.error}}'))
-    ).toBe(true);
-    expect(emittedList.some(e => e.key === 'severity' && e.value === 'error')).toBe(true);
+
+    expect(patches).toEqual([
+      {
+        title: 'flow.workflow.inspector.presets.checkReportTitle',
+        message: 'flow.workflow.inspector.presets.checkReportMsg',
+        severity: 'warning',
+      },
+      {
+        title: 'flow.workflow.inspector.presets.failureAlertTitle',
+        message: 'flow.workflow.inspector.presets.failureAlertMsg',
+        severity: 'error',
+      },
+    ]);
+  });
+
+  describe('message preview', () => {
+    it('shows only what a run produced and leaves any other token as it is', () => {
+      fixture.componentRef.setInput('nodeConfig', {
+        message: 'Moved {{prev.bytesFormatted}}, {{prev.summary}}, {{nodes.missing.status}}',
+      });
+      fixture.detectChanges();
+
+      expect(component.previewMessage()).toBe(
+        'Moved {{prev.bytesFormatted}}, {{prev.summary}}, {{nodes.missing.status}}'
+      );
+    });
   });
 });

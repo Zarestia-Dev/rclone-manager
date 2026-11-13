@@ -1,10 +1,14 @@
 pub mod archive;
 pub mod backend;
+pub mod bisync_conflict;
 pub mod common;
 pub mod filesystem;
+pub mod index;
 pub mod job;
+pub mod job_chain;
 pub mod job_parser;
 pub mod mount;
+pub mod rc_console;
 pub mod remote;
 pub mod serve;
 pub mod sync;

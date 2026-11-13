@@ -7,8 +7,6 @@ pub enum UpdaterError {
     GitHub(#[from] github_client::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("invalid URL: {0}")]
-    InvalidUrl(#[from] url::ParseError),
     #[error("no pending update")]
     NoPendingUpdate,
     #[error("update artifact is no longer available: {0}")]
@@ -19,29 +17,18 @@ pub enum UpdaterError {
     RcloneVersionCheck(String),
     #[error("rclone selfupdate failed: {0}")]
     RcloneSelfUpdate(String),
-    #[error("relaunch error: {0}")]
-    Relaunch(String),
-    #[error("restart error: {0}")]
-    Restart(String),
     #[error("backend error: {0}")]
     Backend(String),
-    #[error("update path not writable")]
-    NotWritable,
     #[error("failed to backup current rclone binary: {0}")]
     BackupFailed(std::io::Error),
 }
 
-impl serde::Serialize for UpdaterError {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let msg = match self {
+impl UpdaterError {
+    /// The localized message the frontend translates.
+    pub fn localized(&self) -> String {
+        match self {
             Self::NoPendingUpdate => {
                 crate::localized_error!("backendErrors.updater.noPending")
-            }
-            Self::InvalidUrl(e) => {
-                crate::localized_error!("backendErrors.updater.invalidUrl", "error" => e)
             }
             Self::GitHub(github_client::Error::RateLimitExceeded) => {
                 crate::localized_error!("backendErrors.updater.githubRateLimit")
@@ -52,9 +39,6 @@ impl serde::Serialize for UpdaterError {
             Self::UpdateUnavailable(e) => {
                 crate::localized_error!("backendErrors.updater.updateUnavailable", "error" => e)
             }
-            Self::Relaunch(e) => {
-                crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => e)
-            }
             Self::RcloneVersionCheck(e) => {
                 crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e)
             }
@@ -62,10 +46,6 @@ impl serde::Serialize for UpdaterError {
                 crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
             }
             Self::BinaryNotFound => crate::localized_error!("backendErrors.rclone.binaryNotFound"),
-            Self::Restart(e) => {
-                crate::localized_error!("backendErrors.updater.restartFailed", "error" => e)
-            }
-            Self::NotWritable => crate::localized_error!("backendErrors.updater.notWritable"),
             Self::Io(e) => {
                 crate::localized_error!("backendErrors.updater.ioError", "error" => e)
             }
@@ -73,9 +53,47 @@ impl serde::Serialize for UpdaterError {
                 crate::localized_error!("backendErrors.rclone.backupFailed", "error" => e)
             }
             Self::Backend(e) => e.clone(),
-        };
-        serializer.serialize_str(&msg)
+        }
     }
+}
+
+impl serde::Serialize for UpdaterError {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.localized())
+    }
+}
+
+/// An update the supervisor rolled back, shown until the application exits.
+#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RolledBackUpdate {
+    pub version: String,
+    pub reason: String,
+}
+
+/// Everything a viewer needs to rebuild the updater view, also after a reload.
+#[derive(serde::Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdaterSnapshot {
+    pub update: Option<UpdateInfo>,
+    pub checking: bool,
+    /// When the last check finished (RFC 3339), whether started by a user or on schedule.
+    pub last_checked_at: Option<String>,
+    /// The localized failure of the last check (or, for rclone, the last update).
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rolled_back: Vec<RolledBackUpdate>,
+    /// A localized note that outlives the action that produced it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
+}
+
+/// The time a check finished, as the snapshot reports it.
+pub fn check_finished_at() -> String {
+    chrono::Utc::now().to_rfc3339()
 }
 
 pub type Result<T> = std::result::Result<T, UpdaterError>;
@@ -101,7 +119,6 @@ pub type DownloadProgress = Box<dyn FnMut(usize, Option<u64>) + Send>;
 #[async_trait::async_trait]
 pub trait AppUpdate: Send + Sync {
     fn version(&self) -> &str;
-    fn download_url(&self) -> &url::Url;
     async fn download(&self, on_progress: DownloadProgress)
     -> std::result::Result<Vec<u8>, String>;
     fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String>;
@@ -144,6 +161,9 @@ pub struct AppUpdaterData {
     pub downloaded_payload: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
     pub download_handle: Option<tokio::task::JoinHandle<()>>,
+    pub last_checked_at: Option<String>,
+    pub last_error: Option<String>,
+    pub rolled_back: Vec<RolledBackUpdate>,
 }
 
 /// Static update metadata — used for both App and Rclone updates.
@@ -153,6 +173,9 @@ pub struct UpdateMetadata {
     pub version: String,
     pub current_version: String,
     pub update_available: bool,
+    /// The release is a pre-release (beta channel only).
+    #[serde(default)]
+    pub prerelease: bool,
 
     // Optional metadata
     pub release_tag: Option<String>,
@@ -173,6 +196,18 @@ pub struct UpdateInfo {
     pub download: Option<DownloadStatus>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub installation: Option<crate::services::updates::policy::UpdatePolicy>,
+}
+
+impl UpdateInfo {
+    /// An update without download progress or installation policy (rclone).
+    pub fn new(metadata: UpdateMetadata, status: UpdateState) -> Self {
+        Self {
+            metadata,
+            status,
+            download: None,
+            installation: None,
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -197,8 +232,7 @@ pub struct DownloadStatus {
 pub struct UpdateResult {
     pub success: bool,
     pub message: Option<String>,
-    pub output: Option<String>,
-    pub channel: Option<String>,
+    /// A remote backend replaced its own binary and must be restarted by its owner.
     pub manual: bool,
 }
 
@@ -215,6 +249,9 @@ pub struct RcloneUpdaterData {
     pub state: UpdateState,
     pub pending_update: Option<UpdateMetadata>,
     pub cancel_token: Option<tokio_util::sync::CancellationToken>,
+    pub last_checked_at: Option<String>,
+    pub last_error: Option<String>,
+    pub notice: Option<String>,
 }
 
 #[cfg(feature = "updater")]
@@ -224,16 +261,7 @@ impl AppUpdaterState {
         let handle = {
             let mut data = self.data.lock();
             if data.state == UpdateState::ReadyToRestart {
-                data.state = if data.last_metadata.is_some() {
-                    UpdateState::Available
-                } else {
-                    UpdateState::Idle
-                };
-                data.downloaded_payload = None;
-                data.download_handle = None;
-                data.downloaded_bytes = 0;
-                data.total_bytes = 0;
-                data.failure_message = None;
+                data.discard_download();
                 return;
             }
             if data.state != UpdateState::Downloading {
@@ -251,20 +279,33 @@ impl AppUpdaterState {
             let mut data = self.data.lock();
             // The worker may have completed before the abort took effect.
             if data.state == UpdateState::Downloading {
-                data.state = if data.last_metadata.is_some() {
-                    UpdateState::Available
-                } else {
-                    UpdateState::Idle
-                };
-                data.downloaded_bytes = 0;
-                data.total_bytes = 0;
-                data.failure_message = None;
+                data.discard_download();
             }
         }
     }
 }
 
 impl AppUpdaterData {
+    /// Return to the state implied by the last discovered update.
+    pub fn settle(&mut self) {
+        self.state = if self.last_metadata.is_some() {
+            UpdateState::Available
+        } else {
+            UpdateState::Idle
+        };
+    }
+
+    /// Drop a staged or interrupted download; the discovered release stays offered.
+    #[cfg(feature = "updater")]
+    fn discard_download(&mut self) {
+        self.settle();
+        self.downloaded_payload = None;
+        self.download_handle = None;
+        self.downloaded_bytes = 0;
+        self.total_bytes = 0;
+        self.failure_message = None;
+    }
+
     #[cfg(feature = "updater")]
     pub fn take_staged_update(&mut self) -> Option<(PendingAppUpdate, Vec<u8>)> {
         if self.state != UpdateState::ReadyToRestart || self.pending_action.is_none() {
@@ -272,6 +313,17 @@ impl AppUpdaterData {
         }
         let payload = self.downloaded_payload.take()?;
         self.pending_action.take().map(|update| (update, payload))
+    }
+
+    pub fn snapshot(&self) -> UpdaterSnapshot {
+        UpdaterSnapshot {
+            update: self.info(),
+            checking: self.state == UpdateState::Checking,
+            last_checked_at: self.last_checked_at.clone(),
+            error: self.last_error.clone(),
+            rolled_back: self.rolled_back.clone(),
+            notice: None,
+        }
     }
 
     pub fn info(&self) -> Option<UpdateInfo> {
@@ -314,13 +366,57 @@ impl AppUpdaterData {
 }
 
 impl RcloneUpdaterData {
+    /// Return to the state implied by the known update.
+    pub fn settle(&mut self) {
+        self.state = if self.pending_update.is_some() {
+            UpdateState::Available
+        } else {
+            UpdateState::Idle
+        };
+    }
+
+    /// A local download stages a binary for the next engine restart. A remote
+    /// backend replaces its own binary, so nothing is left to apply here; the
+    /// remote still runs the old version until it restarts.
+    pub fn finish_update(&mut self, result: &Result<UpdateResult>) {
+        match result {
+            Ok(result) if result.success && !result.manual => {
+                self.state = UpdateState::ReadyToRestart;
+                self.last_error = None;
+            }
+            Ok(result) if result.success => {
+                self.pending_update = None;
+                self.settle();
+                self.last_error = None;
+                self.notice = Some(crate::localized_success!(
+                    "backendSuccess.rclone.remoteRestartRequired"
+                ));
+            }
+            // Cancelled, or nothing to install.
+            Ok(_) => self.settle(),
+            Err(error) => {
+                self.settle();
+                self.last_error = Some(error.localized());
+            }
+        }
+        self.cancel_token = None;
+    }
+
+    pub fn snapshot(&self) -> UpdaterSnapshot {
+        UpdaterSnapshot {
+            update: self.info(),
+            checking: self.state == UpdateState::Checking,
+            last_checked_at: self.last_checked_at.clone(),
+            error: self.last_error.clone(),
+            rolled_back: Vec::new(),
+            notice: self.notice.clone(),
+        }
+    }
+
     pub fn info(&self) -> Option<UpdateInfo> {
-        self.pending_update.clone().map(|metadata| UpdateInfo {
-            metadata,
-            status: self.state,
-            download: None,
-            installation: None,
-        })
+        self.pending_update
+            .clone()
+            .map(|metadata| UpdateInfo::new(metadata, self.state))
     }
 }
 
@@ -329,17 +425,13 @@ mod tests {
     use super::*;
 
     #[cfg(feature = "updater")]
-    struct StubUpdate(url::Url);
+    struct StubUpdate;
 
     #[cfg(feature = "updater")]
     #[async_trait::async_trait]
     impl AppUpdate for StubUpdate {
         fn version(&self) -> &str {
             "1.2.0"
-        }
-
-        fn download_url(&self) -> &url::Url {
-            &self.0
         }
 
         async fn download(
@@ -362,9 +454,7 @@ mod tests {
     #[cfg(feature = "updater")]
     #[tokio::test]
     async fn staged_update_uses_a_host_capability_without_native_plugin_state() {
-        let update: PendingAppUpdate = std::sync::Arc::new(StubUpdate(
-            "https://example.invalid/update".parse().unwrap(),
-        ));
+        let update: PendingAppUpdate = std::sync::Arc::new(StubUpdate);
         let payload = update
             .download(Box::new(|bytes, total| {
                 assert_eq!(bytes, 3);
@@ -380,7 +470,6 @@ mod tests {
         };
         let (update, payload) = data.take_staged_update().unwrap();
         assert_eq!(update.version(), "1.2.0");
-        assert_eq!(update.download_url().host_str(), Some("example.invalid"));
         assert!(update.install(&[]).is_err());
         assert!(update.install(&payload).is_ok());
         assert!(data.take_staged_update().is_none());
@@ -432,9 +521,7 @@ mod tests {
             data.state = UpdateState::ReadyToRestart;
             data.downloaded_payload = Some(vec![1, 2, 3]);
             data.last_metadata = Some(metadata());
-            data.pending_action = Some(std::sync::Arc::new(StubUpdate(
-                "https://example.invalid/update".parse().unwrap(),
-            )));
+            data.pending_action = Some(std::sync::Arc::new(StubUpdate));
             data.failure_message = Some("Permission denied".into());
             data.downloaded_bytes = 3;
             data.total_bytes = 3;
@@ -567,6 +654,85 @@ mod tests {
         }
         data.pending_update = None;
         assert!(data.info().is_none());
+    }
+
+    #[test]
+    fn only_local_rclone_downloads_wait_for_an_engine_restart() {
+        let done = |manual| -> Result<UpdateResult> {
+            Ok(UpdateResult {
+                success: true,
+                manual,
+                ..Default::default()
+            })
+        };
+        let mut data = RcloneUpdaterData {
+            state: UpdateState::Downloading,
+            pending_update: Some(metadata()),
+            cancel_token: Some(Default::default()),
+            last_error: Some("old failure".into()),
+            ..Default::default()
+        };
+        data.finish_update(&done(false));
+        assert_eq!(data.state, UpdateState::ReadyToRestart);
+        assert!(data.pending_update.is_some());
+        assert!(data.cancel_token.is_none());
+        assert!(data.last_error.is_none());
+
+        // The remote backend already replaced itself: nothing is left to apply,
+        // but it keeps running the old version until it restarts.
+        data.state = UpdateState::Downloading;
+        data.finish_update(&done(true));
+        assert_eq!(data.state, UpdateState::Idle);
+        assert!(data.info().is_none());
+        assert_eq!(
+            data.snapshot().notice.as_deref(),
+            Some("backendSuccess.rclone.remoteRestartRequired")
+        );
+
+        // Failures and cancellations keep offering the known update; only
+        // failures are remembered for later viewers.
+        data.pending_update = Some(metadata());
+        data.state = UpdateState::Downloading;
+        data.finish_update(&Ok(UpdateResult::default()));
+        assert_eq!(data.state, UpdateState::Available);
+        assert!(data.last_error.is_none());
+        data.state = UpdateState::Downloading;
+        data.finish_update(&Err(UpdaterError::BinaryNotFound));
+        assert_eq!(data.state, UpdateState::Available);
+        assert_eq!(
+            data.snapshot().error.as_deref(),
+            Some("backendErrors.rclone.binaryNotFound")
+        );
+        data.pending_update = None;
+        data.finish_update(&Err(UpdaterError::NoPendingUpdate));
+        assert_eq!(data.state, UpdateState::Idle);
+    }
+
+    #[test]
+    fn snapshots_report_checking_and_outlive_a_missing_update() {
+        let mut data = AppUpdaterData {
+            state: UpdateState::Checking,
+            ..Default::default()
+        };
+        // A first check has no metadata yet, but viewers still see it running.
+        let snapshot = data.snapshot();
+        assert!(snapshot.update.is_none() && snapshot.checking);
+        data.state = UpdateState::Idle;
+        data.last_checked_at = Some(check_finished_at());
+        data.last_error = Some("backendErrors.updater.githubRateLimit".into());
+        data.rolled_back.push(RolledBackUpdate {
+            version: "1.2.0".into(),
+            reason: "did not start".into(),
+        });
+        let json = serde_json::to_value(data.snapshot()).unwrap();
+        assert_eq!(json["checking"], false);
+        assert!(json["update"].is_null());
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(json["lastCheckedAt"].as_str().unwrap()).is_ok()
+        );
+        assert_eq!(json["error"], "backendErrors.updater.githubRateLimit");
+        assert_eq!(json["rolledBack"][0]["version"], "1.2.0");
+        assert!(json.get("notice").is_none());
     }
 
     #[test]

@@ -1,16 +1,18 @@
-const TIER_COLORS = {
-  'Tier 1': 'p-primary',
-  'Tier 2': 'p-yellow',
-  'Tier 3': 'p-orange',
-  'Tier 4': 'p-warn',
-  'Tier 5': 'p-warn',
-} as const;
+import type { PillTone } from '@app/types';
+
+const TIER_TONES = {
+  'Tier 1': 'primary',
+  'Tier 2': 'yellow',
+  'Tier 3': 'orange',
+  'Tier 4': 'warn',
+  'Tier 5': 'warn',
+} as const satisfies Record<string, PillTone>;
 
 export function getProviderTier(
   tier: string | null | undefined
-): { label: string; colorClass: string } | undefined {
-  if (!tier || !Object.hasOwn(TIER_COLORS, tier)) return undefined;
-  return { label: tier, colorClass: TIER_COLORS[tier as keyof typeof TIER_COLORS] };
+): { label: string; tone: PillTone } | undefined {
+  if (!tier || !Object.hasOwn(TIER_TONES, tier)) return undefined;
+  return { label: tier, tone: TIER_TONES[tier as keyof typeof TIER_TONES] };
 }
 
 export const REMOTE_FEATURE_LABEL_KEYS = {

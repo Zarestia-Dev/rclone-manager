@@ -1,3 +1,4 @@
+import type { PillTone } from './pill';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
@@ -26,17 +27,7 @@ export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
 );
 
 export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
-  mount: 'hard-drive',
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  serve: 'satellite-dish',
-  check: 'search',
-  delete: 'trash',
-  copyurl: 'download',
-  archivecreate: 'compress',
-  cryptcheck: 'shield',
+  ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
   vfs: 'vfs',
   filter: 'filter',
   backend: 'database',
@@ -107,6 +98,7 @@ export interface RemoteConfigKeysRecord {
   copyurl: 'copyurlConfigs';
   archivecreate: 'archivecreateConfigs';
   cryptcheck: 'cryptcheckConfigs';
+  index: 'indexConfigs';
   filter: 'filterConfigs';
   vfs: 'vfsConfigs';
   backend: 'backendConfigs';
@@ -126,7 +118,7 @@ export const REMOTE_CONFIG_KEYS = Object.freeze({
 export interface UIOperationMetadata {
   label: string;
   icon: string;
-  cssClass: string;
+  tone: PillTone;
   description?: string;
   typeLabel?: string;
   supportsVfs?: boolean;
@@ -140,7 +132,7 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
       {
         label: op.settingsLabel,
         icon: op.icon,
-        cssClass: op.cssClass,
+        tone: op.tone,
         description: op.settingsDescription,
         typeLabel: op.typeLabel,
         supportsVfs: op.supportsVfs,
@@ -151,25 +143,25 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
   vfs: {
     label: 'dashboard.appDetail.vfsOptions',
     icon: 'vfs',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   filter: {
     label: 'dashboard.appDetail.filterOptions',
     icon: 'filter',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   backend: {
     label: 'dashboard.appDetail.backendConfig',
     icon: 'server',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
   runtimeRemote: {
     label: 'dashboard.appDetail.runtimeRemoteOptions',
     icon: 'gear',
-    cssClass: 'accent',
+    tone: 'accent',
     supportsProfiles: true,
   },
 });
@@ -292,6 +284,7 @@ export interface BisyncConfig {
     checkAccess?: boolean;
     checkFilename?: string;
     maxDelete?: number;
+    maxDeleteRenamesAware?: boolean;
     force?: boolean;
     checkSync?: boolean | 'only';
     compare?: string;
@@ -377,6 +370,24 @@ export interface CryptcheckConfig {
   };
 }
 
+export interface IndexConfig {
+  app: AppConfig;
+  rclone: {
+    /** The folders that get listings. */
+    srcFs?: string | string[];
+    output?: string[];
+    maxDepth?: number;
+    IncludeRule?: string[];
+    ExcludeRule?: string[];
+    dirTime?: string;
+    noModTime?: boolean;
+    linkIndex?: boolean;
+    UseServerModTime?: boolean;
+    rewrite?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
+}
+
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
   [remoteName: string]: unknown;
@@ -392,6 +403,7 @@ export interface RemoteConfigSections {
   copyurlConfigs?: Record<string, CopyurlConfig>;
   archivecreateConfigs?: Record<string, ArchivecreateConfig>;
   cryptcheckConfigs?: Record<string, CryptcheckConfig>;
+  indexConfigs?: Record<string, IndexConfig>;
 
   filterConfigs?: Record<string, FilterConfig>;
   backendConfigs?: Record<string, BackendConfig>;
@@ -412,6 +424,8 @@ export interface RcConfigExample {
 export interface RcConfigOption {
   Name: string;
   FieldName: string;
+  /** Translation key base when `Name` collides with an unrelated option (e.g. `bisync_max_delete`). */
+  TranslationKey?: string;
   Help: string;
   Provider?: string;
   Groups?: string;

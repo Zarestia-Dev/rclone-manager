@@ -92,17 +92,6 @@ impl NodeKind {
     }
 }
 
-/// Resolves the canonical category for a given node type name, including
-/// names from older or planned versions that are not executable here.
-#[must_use]
-pub fn category_for_node_type(node_type: &str) -> WorkflowNodeCategory {
-    match node_type {
-        "branch" | "filter" | "merge" | "retry" | "fork" | "loop" => WorkflowNodeCategory::Logic,
-        "command" | "webhook" => WorkflowNodeCategory::Action,
-        other => NodeKind::parse(other).category(),
-    }
-}
-
 /// Port type on a workflow node.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -125,12 +114,34 @@ pub struct WorkflowPort {
     pub port_type: WorkflowPortType,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// Translation key of the label; `label` is the fallback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_key: Option<String>,
+    /// Values for the placeholders of `label_key`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_params: Option<serde_json::Map<String, Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
+#[cfg(test)]
+impl WorkflowPort {
+    /// A port with nothing but what a wire needs, for tests.
+    pub(crate) fn new(id: &str, port_type: WorkflowPortType) -> Self {
+        Self {
+            id: id.into(),
+            name: id.into(),
+            port_type,
+            label: None,
+            label_key: None,
+            label_params: None,
+            description: None,
+        }
+    }
+}
+
 /// Execution lifecycle state for an individual node.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum WorkflowNodeExecutionState {
     Idle,
@@ -208,9 +219,11 @@ impl WorkflowNode {
         NodeKind::parse(&self.node_type)
     }
 
+    /// Whether the node starts a run, by its stored category or by what its type says.
     #[must_use]
-    pub fn resolved_category(&self) -> WorkflowNodeCategory {
-        category_for_node_type(&self.node_type)
+    pub fn is_trigger(&self) -> bool {
+        self.category == WorkflowNodeCategory::Trigger
+            || self.kind().category() == WorkflowNodeCategory::Trigger
     }
 }
 
@@ -270,20 +283,22 @@ pub struct WorkflowDefinition {
     pub last_executed_at: Option<String>,
 }
 
+/// Reads a non-negative whole number from a node setting stored as an integer,
+/// a float or a numeric string.
+#[must_use]
+pub fn config_u64(config: &Value, key: &str) -> Option<u64> {
+    let value = config.get(key)?;
+    value
+        .as_u64()
+        .or_else(|| value.as_f64().map(|float| float.max(0.0) as u64))
+        .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
+}
+
 /// Helper to extract `delaySeconds` from a node's configuration object,
-/// supporting both numeric and string representations.
+/// supporting numeric and string representations.
 #[must_use]
 pub fn parse_delay_seconds(config: &Value) -> u64 {
-    config
-        .get("delaySeconds")
-        .and_then(Value::as_u64)
-        .or_else(|| {
-            config
-                .get("delaySeconds")
-                .and_then(Value::as_str)
-                .and_then(|s| s.parse::<u64>().ok())
-        })
-        .unwrap_or(0)
+    config_u64(config, "delaySeconds").unwrap_or(0)
 }
 
 impl WorkflowDefinition {
@@ -323,41 +338,27 @@ impl WorkflowDefinition {
 
     #[must_use]
     pub fn is_watch_enabled(&self) -> bool {
-        self.nodes.iter().any(|n| {
-            if n.kind() != NodeKind::Watcher {
-                return false;
-            }
-            if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
-                paths
-                    .iter()
-                    .any(|p| p.as_str().map(|s| !s.trim().is_empty()).unwrap_or(false))
-            } else if let Some(path) = n.config.get("watchPath").and_then(Value::as_str) {
-                !path.trim().is_empty()
-            } else {
-                false
-            }
-        })
+        !self.watcher_paths().is_empty()
     }
 
+    /// The distinct, non-empty paths of every watcher node, from `watchPaths` or the older `watchPath`.
     #[must_use]
     pub fn watcher_paths(&self) -> Vec<String> {
-        let mut result = Vec::new();
-        for n in &self.nodes {
-            if n.kind() == NodeKind::Watcher {
-                if let Some(paths) = n.config.get("watchPaths").and_then(Value::as_array) {
-                    for p in paths {
-                        if let Some(s) = p.as_str() {
-                            let trimmed = s.trim();
-                            if !trimmed.is_empty() && !result.contains(&trimmed.to_string()) {
-                                result.push(trimmed.to_string());
-                            }
-                        }
-                    }
-                } else if let Some(path) = n.config.get("watchPath").and_then(Value::as_str) {
-                    let trimmed = path.trim();
-                    if !trimmed.is_empty() && !result.contains(&trimmed.to_string()) {
-                        result.push(trimmed.to_string());
-                    }
+        let mut result: Vec<String> = Vec::new();
+        for node in self.nodes.iter().filter(|n| n.kind() == NodeKind::Watcher) {
+            let configured: Vec<&str> =
+                if let Some(paths) = node.config.get("watchPaths").and_then(Value::as_array) {
+                    paths.iter().filter_map(Value::as_str).collect()
+                } else {
+                    node.config
+                        .get("watchPath")
+                        .and_then(Value::as_str)
+                        .into_iter()
+                        .collect()
+                };
+            for path in configured.into_iter().map(str::trim) {
+                if !path.is_empty() && !result.iter().any(|known| known == path) {
+                    result.push(path.to_string());
                 }
             }
         }
@@ -369,17 +370,7 @@ impl WorkflowDefinition {
         self.nodes
             .iter()
             .find(|n| n.kind() == NodeKind::Watcher)
-            .and_then(|n| {
-                n.config
-                    .get("debounceSeconds")
-                    .and_then(Value::as_u64)
-                    .or_else(|| {
-                        n.config
-                            .get("debounceSeconds")
-                            .and_then(Value::as_str)
-                            .and_then(|s| s.parse::<u64>().ok())
-                    })
-            })
+            .and_then(|n| config_u64(&n.config, "debounceSeconds"))
             .unwrap_or(5)
     }
 
@@ -444,21 +435,27 @@ pub struct WorkflowValidationResult {
     pub warnings: Vec<String>,
 }
 
-/// Tauri event payload for node execution state transitions.
+/// Node execution state transition of one run.
 ///
-/// Borrows its fields: node outputs can be large and are already held by the run.
+/// `run_id` and `seq` order the events of a run: a view that loaded a snapshot of
+/// the run ignores every event the snapshot already contains.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct WorkflowNodeStateEvent<'a> {
-    pub workflow_id: &'a str,
-    pub node_id: &'a str,
+pub struct WorkflowNodeStateEvent {
+    pub workflow_id: String,
+    pub run_id: String,
+    pub seq: u64,
+    /// RFC 3339, millisecond precision.
+    pub at: String,
+    pub node_id: String,
     pub state: WorkflowNodeExecutionState,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_message: Option<&'a str>,
+    pub error_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    /// Left out of the history a snapshot carries; the snapshot lists the latest output of each node.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output: Option<&'a Value>,
+    pub output: Option<Value>,
 }
 
 /// Progress details for live workflow execution.
@@ -470,15 +467,38 @@ pub struct WorkflowProgress {
     pub current_step_title: String,
 }
 
-/// Tauri event payload for workflow-level state updates.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Where a run is. `Started` and `Running` are live; the rest end the run.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkflowExecutionState {
+    Started,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+impl WorkflowExecutionState {
+    #[must_use]
+    pub fn is_live(self) -> bool {
+        matches!(self, Self::Started | Self::Running)
+    }
+}
+
+/// Workflow-level state transition of one run.
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowExecutionStateEvent {
     pub workflow_id: String,
-    pub state: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: String,
+    pub seq: u64,
+    /// RFC 3339, millisecond precision.
+    pub at: String,
+    pub state: WorkflowExecutionState,
+    pub dry_run: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<WorkflowProgress>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
 
@@ -486,6 +506,27 @@ pub struct WorkflowExecutionStateEvent {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_port_keeps_its_label_key_and_params_when_stored() {
+        let stored = json!({
+            "id": "in3",
+            "name": "In 3",
+            "type": "in",
+            "label": "In 3",
+            "labelKey": "flow.workflow.ports.inN",
+            "labelParams": { "n": 3 }
+        });
+        let port: WorkflowPort = serde_json::from_value(stored.clone()).unwrap();
+        assert_eq!(port.label_key.as_deref(), Some("flow.workflow.ports.inN"));
+        assert_eq!(serde_json::to_value(&port).unwrap(), stored);
+
+        // Ports stored before these fields existed still load and stay as they were.
+        let old = json!({ "id": "out", "name": "Out", "type": "out" });
+        let port: WorkflowPort = serde_json::from_value(old.clone()).unwrap();
+        assert!(port.label_key.is_none() && port.label_params.is_none());
+        assert_eq!(serde_json::to_value(&port).unwrap(), old);
+    }
 
     #[test]
     fn test_workflow_definition_serde() {
@@ -644,31 +685,6 @@ mod tests {
     }
 
     #[test]
-    fn test_category_for_node_type_helper() {
-        assert_eq!(
-            category_for_node_type("manual"),
-            WorkflowNodeCategory::Trigger
-        );
-        assert_eq!(
-            category_for_node_type("cron"),
-            WorkflowNodeCategory::Trigger
-        );
-        assert_eq!(category_for_node_type("sync"), WorkflowNodeCategory::Task);
-        assert_eq!(
-            category_for_node_type("branch"),
-            WorkflowNodeCategory::Logic
-        );
-        assert_eq!(
-            category_for_node_type("schedule_wait"),
-            WorkflowNodeCategory::Logic
-        );
-        assert_eq!(
-            category_for_node_type("notification"),
-            WorkflowNodeCategory::Action
-        );
-    }
-
-    #[test]
     fn node_kinds_cover_every_executable_type_and_leave_the_rest_unknown() {
         for (name, kind) in [
             ("manual", NodeKind::Manual),
@@ -700,17 +716,30 @@ mod tests {
         for (name, category) in [
             ("manual", Trigger),
             ("job_event", Trigger),
+            ("cron", Trigger),
             ("delay", Logic),
             ("join", Logic),
-            ("loop", Logic),
+            ("schedule_wait", Logic),
             ("notification", Action),
-            ("webhook", Action),
             ("condition", Task),
             ("stop", Task),
             ("sync", Task),
             ("unheard_of", Task),
         ] {
-            assert_eq!(category_for_node_type(name), category, "{name}");
+            assert_eq!(NodeKind::parse(name).category(), category, "{name}");
         }
+    }
+
+    #[test]
+    fn a_node_is_a_trigger_by_its_stored_category_or_by_its_type() {
+        let node = |node_type: &str, category| WorkflowNode {
+            node_type: node_type.into(),
+            category,
+            ..Default::default()
+        };
+        assert!(node("cron", WorkflowNodeCategory::Task).is_trigger());
+        assert!(node("from_a_newer_version", WorkflowNodeCategory::Trigger).is_trigger());
+        assert!(!node("sync", WorkflowNodeCategory::Task).is_trigger());
+        assert!(!node("from_a_newer_version", WorkflowNodeCategory::Action).is_trigger());
     }
 }

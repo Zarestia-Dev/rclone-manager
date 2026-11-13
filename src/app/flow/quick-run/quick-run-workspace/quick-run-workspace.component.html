@@ -43,6 +43,12 @@
             <mat-icon svgIcon="info" class="menu-item-icon"></mat-icon>
             <span class="menu-item-label">{{ 'home.options.aboutRemote' | translate }}</span>
           </button>
+          <button class="menu-item" (click)="generateIndex(targetRemote)" cdkMenuItem>
+            <mat-icon svgIcon="file-lines" class="menu-item-icon"></mat-icon>
+            <span class="menu-item-label"
+              >{{ 'nautilus.contextMenu.generateIndex' | translate }}...</span
+            >
+          </button>
           @if (canEmptyTrash(targetRemote)) {
             <button class="menu-item danger-item" (click)="emptyTrash(targetRemote)" cdkMenuItem>
               <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
@@ -88,6 +94,12 @@
         <button class="menu-item" (click)="openRemoteAbout(activeRemote)" cdkMenuItem>
           <mat-icon svgIcon="info" class="menu-item-icon"></mat-icon>
           <span class="menu-item-label">{{ 'home.options.aboutRemote' | translate }}</span>
+        </button>
+        <button class="menu-item" (click)="generateIndex(activeRemote)" cdkMenuItem>
+          <mat-icon svgIcon="file-lines" class="menu-item-icon"></mat-icon>
+          <span class="menu-item-label"
+            >{{ 'nautilus.contextMenu.generateIndex' | translate }}...</span
+          >
         </button>
         @if (canEmptyTrash(activeRemote)) {
           <button class="menu-item danger-item" (click)="emptyTrash(activeRemote)" cdkMenuItem>

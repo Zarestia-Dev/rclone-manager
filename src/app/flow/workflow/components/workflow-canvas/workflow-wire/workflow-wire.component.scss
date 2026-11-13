@@ -96,7 +96,7 @@
     }
 
     .handle-icon {
-      stroke: #ffffff;
+      stroke: var(--accent-fg-color);
       stroke-width: 2px;
       stroke-linecap: round;
       pointer-events: none;
@@ -106,8 +106,7 @@
     &:hover {
       .handle-bg {
         r: 14;
-        fill: color-mix(in srgb, var(--destructive-bg-color) 85%, white);
-        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+        fill: color-mix(in srgb, var(--destructive-bg-color) 85%, var(--accent-fg-color));
       }
 
       .handle-icon {

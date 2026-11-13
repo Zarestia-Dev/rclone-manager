@@ -32,10 +32,7 @@ impl NativeLifecycleCommand {
             Self::Pending => {
                 let summary = crate::services::lifecycle::exit::check_pending_app_exit(app.clone())
                     .map(|summary| {
-                        super::host::exit_notice_summary(
-                            summary,
-                            crate::services::settings::access::is_locked(&app),
-                        )
+                        summary.redacted(crate::services::settings::access::is_locked(&app))
                     });
                 return serde_json::to_value(summary).map_err(|error| error.to_string());
             }

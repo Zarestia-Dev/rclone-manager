@@ -43,6 +43,7 @@ export const VERB_MAP: Record<string, { verb: string; mountSubtype?: string }> =
   check: { verb: 'check' },
   delete: { verb: 'delete' },
   copyurl: { verb: 'copyurl' },
+  index: { verb: 'index' },
   copyto: { verb: 'copy' },
   moveto: { verb: 'move' },
   cleanup: { verb: 'delete' },

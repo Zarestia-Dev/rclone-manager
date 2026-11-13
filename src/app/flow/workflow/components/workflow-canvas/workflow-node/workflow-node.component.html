@@ -1,9 +1,11 @@
 <div
+  #card
   class="workflow-node-card"
   role="button"
   tabindex="0"
   [class.selected]="isSelected()"
-  [ngClass]="[statusClass(), 'color-' + nodeCssClass()]"
+  [attr.data-tone]="nodeTone()"
+  [ngClass]="statusClass()"
   (click)="onCardClick($event)"
   (keydown.enter)="onCardClick($event)"
   (keydown.space)="onCardClick($event)"
@@ -13,7 +15,7 @@
   <!-- Node Header -->
   <div class="node-header">
     <div class="node-category-wrapper">
-      <span class="app-pill" [ngClass]="nodePillClass()">
+      <span appPill size="xs" [tone]="nodeTone()">
         {{ 'flow.workflow.category.' + node().category | translate }}
       </span>
       @if (isLiveActive()) {
@@ -32,7 +34,6 @@
           class="action-button job-btn"
           [class.is-running]="job.status === 'Running'"
           (click)="onInspectJob($event)"
-          (touchstart)="$event.stopPropagation()"
           [attr.title]="'flow.workflow.actions.inspectJob' | translate"
         >
           <mat-icon svgIcon="jobs"></mat-icon>
@@ -42,16 +43,14 @@
         type="button"
         class="action-button"
         (click)="onInspect($event)"
-        (touchstart)="$event.stopPropagation()"
         [attr.title]="'flow.workflow.toolbar.toggleInspector' | translate"
       >
-        <mat-icon svgIcon="tune"></mat-icon>
+        <mat-icon svgIcon="gear"></mat-icon>
       </button>
       <button
         type="button"
         class="action-button"
         (click)="onDuplicate($event)"
-        (touchstart)="$event.stopPropagation()"
         [attr.title]="'flow.workflow.actions.duplicate' | translate"
       >
         <mat-icon svgIcon="copy"></mat-icon>
@@ -60,7 +59,6 @@
         type="button"
         class="action-button danger"
         (click)="onDelete($event)"
-        (touchstart)="$event.stopPropagation()"
         [attr.title]="'flow.workflow.actions.delete' | translate"
       >
         <mat-icon svgIcon="trash"></mat-icon>
@@ -70,7 +68,7 @@
 
   <!-- Node Body: Icon + Title & Subtitle + Execution Feedback -->
   <div class="node-body">
-    <div class="node-icon-box" [ngClass]="'box-' + nodeCssClass()">
+    <div class="node-icon-box">
       <mat-icon [svgIcon]="nodeIcon()"></mat-icon>
     </div>
     <div class="node-text-content">
@@ -123,7 +121,9 @@
             <div
               class="port-slot port-slot-in"
               [attr.title]="
-                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+                inPort.labelKey
+                  ? (inPort.labelKey | translate: inPort.labelParams)
+                  : inPort.label || inPort.name
               "
             >
               <div
@@ -132,12 +132,11 @@
                 [attr.data-port-id]="inPort.id"
                 [attr.data-port-type]="inPort.type"
                 [attr.data-is-output]="false"
-                (mousedown)="onPortMouseDown(inPort, false, $event)"
-                (mouseup)="onPortMouseUp(inPort, false, $event)"
-                (touchstart)="onPortTouchStart(inPort, false, $event)"
               ></div>
               <span class="port-label truncate">{{
-                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+                inPort.labelKey
+                  ? (inPort.labelKey | translate: inPort.labelParams)
+                  : inPort.label || inPort.name
               }}</span>
             </div>
           }
@@ -147,11 +146,15 @@
             <div
               class="port-slot port-slot-out"
               [attr.title]="
-                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+                outPort.labelKey
+                  ? (outPort.labelKey | translate: outPort.labelParams)
+                  : outPort.label || outPort.name
               "
             >
               <span class="port-label truncate">{{
-                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+                outPort.labelKey
+                  ? (outPort.labelKey | translate: outPort.labelParams)
+                  : outPort.label || outPort.name
               }}</span>
               <div
                 class="port-handle output-handle"
@@ -159,9 +162,6 @@
                 [attr.data-port-id]="outPort.id"
                 [attr.data-port-type]="outPort.type"
                 [attr.data-is-output]="true"
-                (mousedown)="onPortMouseDown(outPort, true, $event)"
-                (mouseup)="onPortMouseUp(outPort, true, $event)"
-                (touchstart)="onPortTouchStart(outPort, true, $event)"
               ></div>
             </div>
           }
@@ -172,9 +172,9 @@
 
   <!-- Error Message Banner -->
   @if (node().errorMessage) {
-    <div class="node-error-message" [attr.title]="node().errorMessage">
+    <div class="node-error-message" [attr.title]="errorText()">
       <mat-icon svgIcon="warning" class="error-icon"></mat-icon>
-      <span class="error-text truncate">{{ node().errorMessage }}</span>
+      <span class="error-text truncate">{{ errorText() }}</span>
     </div>
   }
 </div>

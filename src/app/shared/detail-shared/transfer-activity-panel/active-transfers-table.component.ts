@@ -12,7 +12,13 @@ import {
   TransferFile,
 } from '@app/types';
 import { TransferOperationsService } from './transfer-operations.service';
-import { matchesActivitySearch } from './activity.utils';
+import { matchesActivitySearch, splitPath } from './activity.utils';
+
+import { PillDirective } from '../../directives/pill.directive';
+interface ActiveRow extends TransferFile {
+  isPreparing: boolean;
+  uniqueId: string;
+}
 
 @Component({
   selector: 'app-active-transfers-table',
@@ -25,46 +31,74 @@ import { matchesActivitySearch } from './activity.utils';
     TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
+    PillDirective,
   ],
   template: `
     <div class="card-list-container">
-      <!-- Checks are stateless display slots: rclone replaces their names as work advances. -->
-      @for (name of filteredChecks(); track $index) {
-        <div class="card-row-item">
-          <div class="card-header">
-            <div class="card-info-left">
-              <mat-icon class="card-primary-icon" [svgIcon]="activityIcon()"></mat-icon>
-              <span class="card-title-text truncate" [title]="name">{{ name }}</span>
+      @if (enrichedTransfers().length > 0 || filteredChecks().length > 0) {
+        <!-- Checks are stateless display slots: rclone replaces their names as work advances. -->
+        @for (name of filteredChecks(); track $index) {
+          <div class="card-row-item">
+            <div class="card-header">
+              <div class="card-info-left">
+                <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+                <span class="card-title" [title]="name">
+                  <span class="file-dir truncate">{{ splitName(name).dir }}</span>
+                  <span class="card-title-text truncate">{{ splitName(name).base }}</span>
+                </span>
+              </div>
+              <div class="card-info-right">
+                <span appPill tone="accent">{{ checkLabel() | translate }}</span>
+              </div>
             </div>
-            <span class="app-pill p-accent">{{ checkLabel() | translate }}</span>
           </div>
-        </div>
-      }
-      @if (enrichedTransfers().length > 0) {
+        }
         @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
           <div class="card-row-item">
             <div class="card-header">
               <div class="card-info-left">
-                <mat-icon
-                  svgIcon="file"
-                  class="card-primary-icon"
-                  [attr.title]="transfer.name"
-                ></mat-icon>
-                <span class="card-title-text truncate" [title]="transfer.name">{{
-                  transfer.name
-                }}</span>
+                <mat-icon svgIcon="file" class="card-primary-icon"></mat-icon>
+                <span class="card-title" [title]="transfer.name">
+                  <span class="file-dir truncate">{{ splitName(transfer.name).dir }}</span>
+                  <span class="card-title-text truncate">{{ splitName(transfer.name).base }}</span>
+                </span>
               </div>
-              <div class="card-info-right">
-                @if (transfer.isPreparing) {
-                  <span class="percentage-text preparing">{{
-                    'shared.transferActivity.status.preparing' | translate
-                  }}</span>
-                } @else if (transfer.percentage === 100) {
-                  <span class="percentage-text finalizing">{{
-                    'shared.transferActivity.status.finalizing' | translate
-                  }}</span>
-                } @else {
-                  <span class="percentage-text">{{ transfer.percentage }}%</span>
+              <div class="card-info-right"></div>
+            </div>
+
+            <div class="card-progress">
+              <mat-progress-bar
+                [mode]="transfer.isPreparing ? 'indeterminate' : 'determinate'"
+                [value]="transfer.isPreparing ? 0 : transfer.percentage"
+              ></mat-progress-bar>
+              @if (transfer.isPreparing) {
+                <span class="percentage-text preparing">{{
+                  'shared.transferActivity.status.preparing' | translate
+                }}</span>
+              } @else if (transfer.percentage === 100) {
+                <span class="percentage-text finalizing">{{
+                  'shared.transferActivity.status.finalizing' | translate
+                }}</span>
+              } @else {
+                <span class="percentage-text">{{ transfer.percentage }}%</span>
+              }
+            </div>
+
+            <div class="card-footer">
+              <div class="card-footer-left">
+                <span class="size-text">
+                  {{ transfer.bytes | formatFileSize }}
+                  @if (transfer.size >= 0) {
+                    / {{ transfer.size | formatFileSize }}
+                  }
+                </span>
+              </div>
+              <div class="card-footer-right">
+                @if (transfer.speed > 0) {
+                  <span class="speed-text">{{ transfer.speed | formatFileSize }}/s</span>
+                }
+                @if (transfer.eta > 0) {
+                  <span class="eta-text">{{ transfer.eta | formatTime }}</span>
                 }
               </div>
             </div>
@@ -75,41 +109,15 @@ import { matchesActivitySearch } from './activity.utils';
               [jobType]="jobType()"
               [fallbackLabel]="remoteName()"
             ></app-activity-paths>
-
-            <div class="card-progress">
-              <mat-progress-bar
-                [mode]="transfer.isPreparing ? 'indeterminate' : 'determinate'"
-                [value]="transfer.isPreparing ? 0 : transfer.percentage"
-              ></mat-progress-bar>
-            </div>
-
-            <div class="card-footer">
-              <div class="card-footer-left">
-                <span class="size-text"
-                  >{{ transfer.bytes | formatFileSize }}
-                  @if (transfer.size >= 0) {
-                    / {{ transfer.size | formatFileSize }}
-                  }
-                </span>
-              </div>
-              <div class="card-footer-right">
-                @if (transfer.speed > 0) {
-                  <span class="speed-text"> {{ transfer.speed | formatFileSize }}/s </span>
-                }
-                @if (transfer.eta > 0) {
-                  <span class="eta-text">{{ transfer.eta | formatTime }}</span>
-                }
-              </div>
-            </div>
           </div>
         }
-      } @else if (filteredChecks().length === 0 && searchTerm().trim()) {
+      } @else if (searchTerm().trim()) {
         <div class="empty-state">
           <mat-icon svgIcon="search"></mat-icon>
           <span>{{ 'shared.search.title' | translate }}</span>
           <p>{{ 'shared.search.description' | translate }}</p>
         </div>
-      } @else if (filteredChecks().length === 0) {
+      } @else {
         <div class="empty-state">
           <mat-icon [svgIcon]="activityIcon()"></mat-icon>
           <span>{{ 'shared.transferActivity.empty.noActiveActivity' | translate }}</span>
@@ -142,13 +150,15 @@ export class ActiveTransfersTableComponent {
       : this.checks();
   });
 
+  protected readonly splitName = splitPath;
+
   protected readonly enrichedTransfers = computed(() => {
     const search = this.normalizedSearch();
     const items = this.transfers();
 
     const filtered = search ? items.filter(t => matchesActivitySearch(t, search)) : items;
 
-    return filtered.map(transfer => ({
+    return filtered.map<ActiveRow>(transfer => ({
       ...transfer,
       isPreparing:
         transfer.size < 0 || transfer.percentage == null || !Number.isFinite(transfer.percentage),

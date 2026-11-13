@@ -26,6 +26,7 @@ import { TabsButtonsComponent } from 'src/app/layout/tabs-buttons/tabs-buttons.c
 import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quick-run-workspace.component';
 import { WorkflowWorkspaceComponent } from './workflow/components/workflow-workspace/workflow-workspace.component';
 import { WorkflowStateService } from '../services/flow/workflow-state.service';
+import { WorkflowStorageService } from '../services/flow/workflow-storage.service';
 import { BannerComponent } from '../layout/banners/banner.component';
 import { WorkspaceShellComponent } from '../layout/workspace-shell/workspace-shell.component';
 
@@ -52,6 +53,7 @@ import { WorkspaceShellComponent } from '../layout/workspace-shell/workspace-she
 export class FlowContainerComponent {
   readonly quickRunService = inject(QuickRunService);
   private readonly workflowState = inject(WorkflowStateService);
+  private readonly workflowStorage = inject(WorkflowStorageService);
   private readonly uiStateService = inject(UiStateService);
   private readonly localStorage = inject(LocalStorageService);
   private readonly destroyRef = inject(DestroyRef);
@@ -148,7 +150,7 @@ export class FlowContainerComponent {
   /** Switch to the Workflow Builder tab and create a fresh workflow. */
   newWorkflow(): void {
     this.setSubMode('builder');
-    this.workflowState.createNewWorkflow();
+    void this.workflowStorage.createAndOpenWorkflow();
     this.closeSidebarIfOver();
   }
 

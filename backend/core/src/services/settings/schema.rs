@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // List of supported BCP-47 language tags
-// When adding a new language, add its BCP-47 code here and create the translation file
+// When adding a new language, add its BCP-47 code here, to the `options(...)` of
+// `GeneralSettings::language` (a test keeps both in step) and create the translation file
 const SUPPORTED_LANGUAGES: &[&str] = &[
     "en-US", "tr-TR", "es-ES", "zh-CN", "zh-TW", "fr-FR", "uk-UA", "ru-RU", "pt-BR", "ja-JP",
 ];
@@ -114,6 +115,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(target_os = "android")]
     pub keep_alive: bool,
+
+    #[setting(
+        label = "settings.general.start_on_boot.label",
+        description = "settings.general.start_on_boot.description"
+    )]
+    #[cfg(target_os = "android")]
+    pub start_on_boot: bool,
 }
 
 impl Default for GeneralSettings {
@@ -147,6 +155,8 @@ impl Default for GeneralSettings {
             prevent_sleep: true,
             #[cfg(target_os = "android")]
             keep_alive: true,
+            #[cfg(target_os = "android")]
+            start_on_boot: false,
             language,
             default_view: "main_menu".to_string(),
             restrict: true,
@@ -480,6 +490,28 @@ impl Default for UserPresetTemplate {
 #[cfg(test)]
 mod feature_tests {
     use super::GeneralSettings;
+    use rcman::SettingsSchema;
+
+    // The derive attribute needs literals, so the language list exists twice.
+    #[test]
+    fn supported_languages_match_the_language_options() {
+        let metadata = GeneralSettings::get_metadata();
+        let mut offered: Vec<String> = metadata["general.language"]
+            .constraints
+            .options
+            .as_ref()
+            .expect("language is a select setting")
+            .iter()
+            .map(|option| option.value.as_str().unwrap().to_owned())
+            .collect();
+        let mut supported: Vec<String> = super::SUPPORTED_LANGUAGES
+            .iter()
+            .map(|language| (*language).to_owned())
+            .collect();
+        offered.sort();
+        supported.sort();
+        assert_eq!(offered, supported);
+    }
 
     #[test]
     fn settings_expose_only_enabled_integrations() {

@@ -20,6 +20,15 @@
   opacity: 0.4;
 }
 
+// An idle card greys its icon; a running one is tinted by the shared card styles.
+:host(:not(.is-active)) .card-info .icon-container {
+  background: var(--bg-elevated-4);
+
+  .card-type-icon {
+    color: rgba(var(--window-fg-color-rgb), 0.5);
+  }
+}
+
 // ── Edit overlay ──────────────────────────────────────────────────────────────
 .card-edit-overlay {
   position: absolute;
@@ -37,7 +46,7 @@
   .drag-handle {
     cursor: grab;
     color: var(--dim-color);
-    padding: 4px;
+    padding: var(--space-xxs);
     width: 20px;
     height: 20px;
     display: flex;
@@ -46,18 +55,6 @@
 
     &:active {
       cursor: grabbing;
-    }
-  }
-
-  .hide-btn {
-    width: 32px;
-    height: 32px;
-    line-height: 32px;
-
-    mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
     }
   }
 }

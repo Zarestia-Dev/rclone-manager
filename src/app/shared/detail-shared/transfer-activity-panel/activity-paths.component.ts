@@ -5,12 +5,13 @@ import { JobActionType } from '@app/types';
 import { TransferOperationsService } from './transfer-operations.service';
 import { ActivityActionItem, ActivityTarget } from './activity.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 const ACTIVITY_TARGETS: readonly ActivityTarget[] = ['src', 'dst'];
 
 @Component({
   selector: 'app-activity-paths',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe, PillDirective],
   template: `
     <div class="card-paths">
       @for (path of paths(); track path.target; let first = $first) {
@@ -19,7 +20,9 @@ const ACTIVITY_TARGETS: readonly ActivityTarget[] = ['src', 'dst'];
         }
         <div class="path-segment">
           <div
-            class="app-pill p-dim path-endpoint"
+            appPill
+            tone="dim"
+            class="path-endpoint"
             [class]="path.target"
             role="group"
             [attr.aria-label]="path.fs"
@@ -69,7 +72,7 @@ const ACTIVITY_TARGETS: readonly ActivityTarget[] = ['src', 'dst'];
                   >
                     <mat-icon
                       [svgIcon]="action === 'delete' ? 'spinner' : 'trash'"
-                      class="warn"
+                      data-tone="warn"
                       [class.colorful-spinner]="action === 'delete'"
                     ></mat-icon>
                   </button>

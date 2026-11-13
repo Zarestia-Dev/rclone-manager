@@ -1,4 +1,9 @@
-<div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
+<div
+  class="general-overview"
+  data-tone="purple"
+  animate.enter="fade-in-out-enter"
+  animate.leave="fade-in-out-leave"
+>
   <header class="overview-header">
     <app-overview-header
       [mode]="'general'"
@@ -55,7 +60,7 @@
                 <mat-slide-toggle
                   [checked]="panel.visible"
                   (change)="togglePanelVisibility(panel.id)"
-                  class="primary"
+                  data-tone="primary"
                 >
                 </mat-slide-toggle>
               </div>
@@ -78,8 +83,6 @@
                   [isEditingLayout]="isEditingLayout()"
                   [mode]="'general'"
                   [displayMode]="cardDisplayMode()"
-                  [primaryActionLabel]="'actions.mount' | translate"
-                  [activeIcon]="'mount'"
                   [expanded]="panelOpenStates()['remotes']"
                   (expandedChange)="setPanelOpenState('remotes', $event)"
                   (remoteSelected)="selectRemote.emit($event)"
@@ -125,7 +128,6 @@
                   [defaultOriginFilter]="'dashboard'"
                   [showFilterChips]="true"
                   (automationClick)="onAutomationClick($event)"
-                  (toggleAutomation)="toggleAutomation($event)"
                   (openInFiles)="onOpenAutomationInFiles($event)"
                 ></app-automations-overview-panel>
               }

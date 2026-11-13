@@ -12,8 +12,6 @@ macro_rules! MASTER_COMMAND_LIST {
     ($action:ident) => {
         $action! {
             // PLATFORM
-            (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
-            (can_auto_install, $crate::services::updates::policy::can_auto_install, [], [infallible]);
             #[cfg(feature = "updater")]
             (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [sync, infallible]);
             (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
@@ -62,6 +60,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (obscure_value, $crate::rclone::queries::system::obscure_value, [clear: String]);
             (get_remote_types, $crate::rclone::queries::get_remote_types, []);
             (bandwidth_limit, $crate::rclone::commands::system::bandwidth_limit, [rate: Option<String>]);
+            (rc_console_call, $crate::rclone::commands::rc_console::rc_console_call, [command: String, params: Option<serde_json::Value>]);
 
             // SYNC OPERATIONS
             (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::utils::types::remotes::OperationType, params: $crate::utils::types::remotes::ProfileParams]);
@@ -108,17 +107,19 @@ macro_rules! MASTER_COMMAND_LIST {
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: $crate::rclone::commands::filesystem::TransferMode, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (resolve_bisync_conflict, $crate::rclone::commands::bisync_conflict::resolve_bisync_conflict, [path1: String, path2: String, conflict: $crate::rclone::commands::bisync_conflict::BisyncConflict, keep: $crate::rclone::commands::bisync_conflict::Side, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (generate_index, $crate::rclone::commands::index::generate_index, [remote: String, path: String, options: serde_json::Value, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
 
             // ARCHIVE OPERATIONS
             (archive_create, $crate::rclone::commands::archive::archive_create, [source: String, destination: String, format: Option<String>, prefix: Option<String>, full_path: Option<bool>, include: Option<Vec<String>>]);
             (archive_extract, $crate::rclone::commands::archive::archive_extract, [source: String, destination: String]);
-            (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>]);
+            (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>, group: Option<String>]);
 
             // FLAGS & OPTIONS
             (get_operation_flags, $crate::rclone::queries::flags::get_operation_flags, [operation: String]);
@@ -149,9 +150,9 @@ macro_rules! MASTER_COMMAND_LIST {
             (delete_remote_settings, $crate::services::settings::remote::manager::delete_remote_settings, [remote_name: String]);
 
             // BACKUP & RESTORE
-            (backup_settings, $crate::services::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>, include_secrets: Option<bool>]);
+            (backup_settings, $crate::services::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>]);
             (analyze_backup_file, $crate::services::settings::backup::backup_manager::analyze_backup_file, [path: std::path::PathBuf]);
-            (restore_settings, $crate::services::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>, restore_profile_as: Option<String>]);
+            (restore_settings, $crate::services::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>]);
             (get_export_categories, $crate::services::settings::backup::export_categories::get_export_categories, []);
 
             // NETWORK
@@ -187,6 +188,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // JOBS
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
+            (get_job_report, $crate::rclone::commands::job::get_job_report, [jobid: u64]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
             (stop_all_active_jobs, $crate::services::lifecycle::shutdown::stop_all_active_jobs, []);
@@ -213,30 +215,32 @@ macro_rules! MASTER_COMMAND_LIST {
             // AUTOMATIONS
             (get_automations, $crate::rclone::state::automations::get_automations, []);
             (toggle_automation, $crate::services::automation::commands::toggle_automation, [automation_id: String]);
-            (validate_cron, $crate::services::automation::commands::validate_cron, [cron_expression: String], [no_app]);
+            (run_automation, $crate::services::automation::commands::run_automation, [automation_id: String]);
+            (stop_automation, $crate::services::automation::commands::stop_automation, [automation_id: String]);
+            (validate_cron,$crate::services::automation::commands::validate_cron, [cron_expression: String], [no_app]);
 
             // QUICK RUNS (FLOW WORKSPACE)
             (list_quick_runs, $crate::services::flow::quick_run::commands::list_quick_runs, []);
             (create_quick_run, $crate::services::flow::quick_run::commands::create_quick_run, [quick_run: $crate::services::flow::quick_run::types::QuickRunInput]);
             (update_quick_run, $crate::services::flow::quick_run::commands::update_quick_run, [quick_run: $crate::services::flow::quick_run::types::QuickRunInput]);
             (delete_quick_run, $crate::services::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
-            (start_quick_run, $crate::services::flow::quick_run::commands::start_quick_run, [quick_run_id: String, workflow_id: Option<String>, node_id: Option<String>]);
+            (start_quick_run, $crate::services::flow::quick_run::commands::start_quick_run, [quick_run_id: String]);
             (stop_quick_run, $crate::services::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
 
             // WORKFLOWS (FLOW WORKSPACE)
             (list_workflows, $crate::services::flow::workflow::commands::list_workflows, []);
-            (get_active_workflows, $crate::services::flow::workflow::commands::get_active_workflows, []);
+            (get_workflow_runs, $crate::services::flow::workflow::commands::get_workflow_runs, []);
             (create_workflow, $crate::services::flow::workflow::commands::create_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (update_workflow, $crate::services::flow::workflow::commands::update_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (delete_workflow, $crate::services::flow::workflow::commands::delete_workflow, [workflow_id: String]);
             (duplicate_workflow, $crate::services::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
+            (validate_workflow, $crate::services::flow::workflow::commands::validate_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput], [no_app]);
             (execute_workflow, $crate::services::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
             (stop_workflow, $crate::services::flow::workflow::commands::stop_workflow, [workflow_id: String]);
-            (test_rc_command, $crate::services::flow::workflow::commands::test_rc_command, [command: String, params: Option<serde_json::Value>]);
 
             // WATCHERS
-            (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
-            (force_check_serves, $crate::rclone::state::watcher::force_check_serves, []);
+            (force_check_mounted_remotes, $crate::rclone::state::remote_refresh::force_check_mounted_remotes, []);
+            (force_check_serves, $crate::rclone::state::remote_refresh::force_check_serves, []);
             (set_poller_visibility, $crate::rclone::engine::poller::set_poller_visibility, [visible: bool], [sync]);
             (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 
@@ -256,7 +260,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (encrypt_config, $crate::services::security::encrypt_config, [password: String]);
             (unencrypt_config, $crate::services::security::unencrypt_config, [password: String]);
             (change_config_password, $crate::services::security::change_config_password, [old_password: String, new_password: String]);
-            (set_config_password_env, $crate::services::security::set_config_password_env, [password: String]);
+            (set_config_password_env, $crate::services::security::set_config_password_env, [password: String], [no_app]);
 
             // CONFIGURATION VAULT (rcman)
             (get_vault_info, $crate::services::settings::vault::get_vault_info, []);

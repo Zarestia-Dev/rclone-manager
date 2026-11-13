@@ -41,7 +41,7 @@
     padding: var(--space-md);
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: var(--space-xs);
 
     button {
       width: 100% !important;

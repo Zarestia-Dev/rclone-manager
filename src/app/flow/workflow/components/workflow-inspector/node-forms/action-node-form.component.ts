@@ -28,9 +28,20 @@ import { WorkflowStateService } from '../../../../../services/flow/workflow-stat
 import {
   getAvailableUpstreamNodes,
   getNodeFields,
-  getNodeFieldsForType,
+  getPreviousNode,
+  getPreviousNodeFields,
   NodeVariableField,
 } from '../../../utils/node-fields.util';
+
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
+
+/** The quick messages of a notification: the text lives under `flow.workflow.inspector.presets.<text>Title/Msg`. */
+const NOTIFICATION_PRESETS = {
+  check_report: { text: 'checkReport', severity: 'warning' },
+  transfer_summary: { text: 'transferSummary', severity: 'info' },
+  failure_alert: { text: 'failureAlert', severity: 'error' },
+  health_status: { text: 'healthStatus', severity: 'info' },
+} as const;
 
 @Component({
   selector: 'app-action-node-form',
@@ -46,6 +57,7 @@ import {
     MatButtonModule,
     TranslatePipe,
     AlertBannerComponent,
+    PillDirective,
   ],
   templateUrl: './action-node-form.component.html',
   styleUrl: './action-node-form.component.scss',
@@ -55,8 +67,8 @@ export class ActionNodeFormComponent implements OnInit {
   public readonly alertService = inject(AlertService);
   public readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  private readonly fileSystemService = inject(FileSystemService, { optional: true });
-  private readonly workflowState = inject(WorkflowStateService, { optional: true });
+  private readonly fileSystemService = inject(FileSystemService);
+  private readonly workflowState = inject(WorkflowStateService);
 
   readonly node = input.required<WorkflowNode>();
   readonly nodeConfig = input.required<Record<string, unknown>>();
@@ -64,6 +76,8 @@ export class ActionNodeFormComponent implements OnInit {
   readonly availableServeNodes = input<WorkflowNode[]>([]);
 
   readonly configChange = output<{ key: string; value: unknown }>();
+  /** Several settings changed together: one undo step. */
+  readonly configPatch = output<Record<string, unknown>>();
 
   readonly templateKeys = signal<string[]>([
     'profile',
@@ -84,7 +98,7 @@ export class ActionNodeFormComponent implements OnInit {
   ]);
 
   readonly upstreamNodes = computed<WorkflowNode[]>(() => {
-    return getAvailableUpstreamNodes(this.workflowState?.currentWorkflow()?.nodes, this.node().id);
+    return getAvailableUpstreamNodes(this.workflowState.currentWorkflow(), this.node().id);
   });
 
   readonly selectedVariableNodeId = signal<string>('prev');
@@ -92,16 +106,8 @@ export class ActionNodeFormComponent implements OnInit {
 
   readonly availableFieldsForSelectedNode = computed<NodeVariableField[]>(() => {
     const targetId = this.selectedVariableNodeId();
-    const wf = this.workflowState?.currentWorkflow();
     if (targetId === 'prev') {
-      const incomingEdge = wf?.edges?.find(e => e.targetNodeId === this.node().id);
-      const upstreamNode = incomingEdge
-        ? wf?.nodes?.find(n => n.id === incomingEdge.sourceNodeId)
-        : undefined;
-      if (upstreamNode) {
-        return getNodeFields(upstreamNode);
-      }
-      return getNodeFieldsForType('prev');
+      return getPreviousNodeFields(this.workflowState.currentWorkflow(), this.node().id);
     }
     const target = this.upstreamNodes().find(n => n.id === targetId);
     return target ? getNodeFields(target) : [];
@@ -111,12 +117,9 @@ export class ActionNodeFormComponent implements OnInit {
     const raw = (this.nodeConfig()['message'] as string) || '';
     if (!raw) return '';
 
-    const wf = this.workflowState?.currentWorkflow();
-    const incomingEdge = wf?.edges?.find(e => e.targetNodeId === this.node().id);
-    const upstreamNode = incomingEdge
-      ? wf?.nodes?.find(n => n.id === incomingEdge.sourceNodeId)
-      : undefined;
-    const lastOutput = (upstreamNode?.lastOutput as Record<string, unknown>) || {};
+    const wf = this.workflowState.currentWorkflow();
+    const lastOutput =
+      (getPreviousNode(wf, this.node().id)?.lastOutput as Record<string, unknown>) || {};
 
     return raw.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, token) => {
       const trimmed = token.trim();
@@ -126,26 +129,7 @@ export class ActionNodeFormComponent implements OnInit {
           const val = lastOutput[field];
           return typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
         }
-        switch (field) {
-          case 'bytesFormatted':
-            return '1.45 GiB';
-          case 'speedFormatted':
-            return '45.2 MiB/s';
-          case 'transfers':
-            return '12';
-          case 'errors':
-            return '0';
-          case 'status':
-            return 'success';
-          case 'summary':
-            return 'Transfer completed: 1.45 GiB in 12 files (0 errors)';
-          case 'report':
-            return '### Check Report\n- **Status**: Differences detected (2 files)\n- **Differing Files (2)**:\n  • photos/vacation.jpg\n  • docs/report.pdf';
-          case 'error':
-            return 'Failed to connect to host: connection refused';
-          default:
-            return match;
-        }
+        return match;
       }
       if (trimmed.startsWith('nodes.') || trimmed.startsWith('steps.')) {
         const rawPath = trimmed.replace(/^(nodes|steps)\./, '');
@@ -171,73 +155,61 @@ export class ActionNodeFormComponent implements OnInit {
     return actions.length > 0 ? actions[0] : undefined;
   });
 
-  readonly unmountTargetMode = computed<'node' | 'custom'>(() => {
+  /** Whether the target is a node of the workflow or typed in; older settings only hold the typed one. */
+  private targetModeOf(typedKey: 'mountPoint' | 'serverId'): 'node' | 'custom' {
     const cfg = this.nodeConfig();
     if (cfg['targetMode'] === 'custom' || cfg['targetMode'] === 'node') {
       return cfg['targetMode'];
     }
-    return cfg['mountPoint'] && !cfg['targetNodeId'] ? 'custom' : 'node';
-  });
+    return cfg[typedKey] && !cfg['targetNodeId'] ? 'custom' : 'node';
+  }
 
-  readonly stopServeTargetMode = computed<'node' | 'custom'>(() => {
-    const cfg = this.nodeConfig();
-    if (cfg['targetMode'] === 'custom' || cfg['targetMode'] === 'node') {
-      return cfg['targetMode'];
-    }
-    return cfg['serverId'] && !cfg['targetNodeId'] ? 'custom' : 'node';
-  });
+  readonly unmountTargetMode = computed(() => this.targetModeOf('mountPoint'));
+  readonly stopServeTargetMode = computed(() => this.targetModeOf('serverId'));
 
   ngOnInit(): void {
-    if (typeof this.alertService?.getTemplateKeys === 'function') {
-      this.alertService
-        .getTemplateKeys()
-        .then(keys => {
-          if (keys && keys.length > 0) {
-            this.templateKeys.set(keys);
-          }
-        })
-        .catch(() => {
-          // Fallback default keys remain
-        });
-    }
+    this.alertService
+      .getTemplateKeys()
+      .then(keys => {
+        if (keys && keys.length > 0) {
+          this.templateKeys.set(keys);
+        }
+      })
+      .catch(() => {
+        // Fallback default keys remain
+      });
   }
 
   onActionSelect(actionId: string): void {
-    this.configChange.emit({ key: 'actionId', value: actionId });
     const selected = this.alertService.actions().find(a => a.id === actionId);
-    if (selected) {
-      this.configChange.emit({ key: 'actionKind', value: selected.kind });
-      this.configChange.emit({ key: 'icon', value: this.getActionIcon(selected.kind) });
-    }
+    this.configPatch.emit({
+      actionId,
+      ...(selected && { actionKind: selected.kind, icon: this.getActionIcon(selected.kind) }),
+    });
   }
 
   getActionIcon(kind?: string): string {
     return (kind && this.alertService.getActionIcon(kind as AlertActionKind)) || 'bell';
   }
 
+  /** The one thing that tells an action of its kind apart from the others. */
   getActionDetail(action: AlertAction): string {
     switch (action.kind) {
       case 'webhook':
         return `${action.method || 'POST'} ${action.url}`;
       case 'telegram':
-        return `Chat ID: ${action.chat_id || 'N/A'}`;
+        return action.chat_id || '';
       case 'whatsapp':
-        return `Phone: ${action.phone || 'N/A'}`;
+        return action.phone || '';
       case 'script':
         return action.command || '';
       case 'mqtt':
-        return `Topic: ${action.topic || 'N/A'}`;
+        return action.topic || '';
       case 'email':
-        return `To: ${action.to || 'N/A'}`;
-      case 'os_toast':
-        return 'System Desktop Notification';
+        return action.to || '';
       default:
         return '';
     }
-  }
-
-  insertTemplateVariable(key: string): void {
-    this.insertVariableToken(key);
   }
 
   insertVariableToken(token: string, targetField: 'title' | 'message' = 'message'): void {
@@ -260,19 +232,32 @@ export class ActionNodeFormComponent implements OnInit {
   }
 
   setUnmountTargetMode(mode: 'node' | 'custom'): void {
-    this.configChange.emit({ key: 'targetMode', value: mode });
-    if (mode === 'node') {
-      this.configChange.emit({ key: 'mountPoint', value: '' });
-      if (!this.nodeConfig()['targetNodeId'] && this.availableMountNodes().length > 0) {
-        this.configChange.emit({ key: 'targetNodeId', value: this.availableMountNodes()[0].id });
-      }
-    } else {
-      this.configChange.emit({ key: 'targetNodeId', value: '' });
+    this.setTargetMode(mode, 'mountPoint', this.availableMountNodes());
+  }
+
+  setStopServeTargetMode(mode: 'node' | 'custom'): void {
+    this.setTargetMode(mode, 'serverId', this.availableServeNodes());
+  }
+
+  /** Switching to a node clears the typed target and picks the first node; switching back clears the node. */
+  private setTargetMode(
+    mode: 'node' | 'custom',
+    typedKey: 'mountPoint' | 'serverId',
+    nodes: WorkflowNode[]
+  ): void {
+    if (mode === 'custom') {
+      this.configPatch.emit({ targetMode: mode, targetNodeId: '' });
+      return;
     }
+    const pickFirst = !this.nodeConfig()['targetNodeId'] && nodes.length > 0;
+    this.configPatch.emit({
+      targetMode: mode,
+      [typedKey]: '',
+      ...(pickFirst && { targetNodeId: nodes[0].id }),
+    });
   }
 
   async browseUnmountFolder(): Promise<void> {
-    if (!this.fileSystemService) return;
     try {
       const path = await this.fileSystemService.selectFolder();
       if (path) {
@@ -283,99 +268,16 @@ export class ActionNodeFormComponent implements OnInit {
     }
   }
 
-  setStopServeTargetMode(mode: 'node' | 'custom'): void {
-    this.configChange.emit({ key: 'targetMode', value: mode });
-    if (mode === 'node') {
-      this.configChange.emit({ key: 'serverId', value: '' });
-      if (!this.nodeConfig()['targetNodeId'] && this.availableServeNodes().length > 0) {
-        this.configChange.emit({ key: 'targetNodeId', value: this.availableServeNodes()[0].id });
-      }
-    } else {
-      this.configChange.emit({ key: 'targetNodeId', value: '' });
-    }
-  }
-
   onFieldChange(key: string, value: unknown): void {
     this.configChange.emit({ key, value });
   }
 
-  private getLocalizedPresetText(key: string, fallback: string): string {
-    const res = this.translate.instant(key);
-    return res && res !== key ? res : fallback;
-  }
-
-  applyNotificationPreset(
-    preset: 'check_report' | 'transfer_summary' | 'failure_alert' | 'health_status'
-  ): void {
-    switch (preset) {
-      case 'check_report':
-        this.onFieldChange(
-          'title',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.checkReportTitle',
-            'Difference Detected (Check Audit)'
-          )
-        );
-        this.onFieldChange(
-          'message',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.checkReportMsg',
-            '⚠️ Differences found between source and destination:\n\n{{prev.report}}'
-          )
-        );
-        this.onFieldChange('severity', 'warning');
-        break;
-      case 'transfer_summary':
-        this.onFieldChange(
-          'title',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.transferSummaryTitle',
-            'Sync Completed Successfully'
-          )
-        );
-        this.onFieldChange(
-          'message',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.transferSummaryMsg',
-            '✅ Daily backup finished:\nTransferred: {{prev.bytesFormatted}}\nFiles: {{prev.transfers}}\nSpeed: {{prev.speedFormatted}}\nErrors: {{prev.errors}}'
-          )
-        );
-        this.onFieldChange('severity', 'info');
-        break;
-      case 'failure_alert':
-        this.onFieldChange(
-          'title',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.failureAlertTitle',
-            'Workflow Step Failed'
-          )
-        );
-        this.onFieldChange(
-          'message',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.failureAlertMsg',
-            '❌ Execution failed on node.\n\nError details:\n{{prev.error}}'
-          )
-        );
-        this.onFieldChange('severity', 'error');
-        break;
-      case 'health_status':
-        this.onFieldChange(
-          'title',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.healthStatusTitle',
-            'Workflow Execution Report'
-          )
-        );
-        this.onFieldChange(
-          'message',
-          this.getLocalizedPresetText(
-            'flow.workflow.inspector.presets.healthStatusMsg',
-            'Workflow step finished with status: {{prev.status}}.\nTransferred: {{prev.bytesFormatted}}'
-          )
-        );
-        this.onFieldChange('severity', 'info');
-        break;
-    }
+  applyNotificationPreset(preset: keyof typeof NOTIFICATION_PRESETS): void {
+    const { text, severity } = NOTIFICATION_PRESETS[preset];
+    this.configPatch.emit({
+      title: this.translate.instant(`flow.workflow.inspector.presets.${text}Title`),
+      message: this.translate.instant(`flow.workflow.inspector.presets.${text}Msg`),
+      severity,
+    });
   }
 }

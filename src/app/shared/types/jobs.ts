@@ -1,6 +1,8 @@
 import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
+import type { PillTone } from './pill';
+import { Starter } from './starter';
 
 export const JOB_STATUS = Object.freeze({
   Running: 'Running',
@@ -88,6 +90,8 @@ export interface GlobalStats {
   fatalError: boolean;
   lastError: string;
   renames: number;
+  /** Directories whose modtime or metadata was set; absent on jobs stored before rclone 1.76. */
+  updatedDirs?: number;
   retryError: boolean;
   serverSideCopies: number;
   serverSideCopyBytes: number;
@@ -167,10 +171,8 @@ export interface JobInfo {
   remote_name: string;
   stats: GlobalStats;
   group?: string;
-  profile?: string;
-  quick_run_id?: string;
-  workflow_id?: string;
-  node_id?: string;
+  /** What started the job: a profile, a Quick Run or a workflow node; absent for ad hoc work. */
+  starter?: Starter;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
@@ -178,12 +180,36 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
+  /** Files listed per report of a finished sync, copy or move; the lists come from `getJobReport`. */
+  report_counts?: JobReportCounts;
 }
 
-export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
-  completed: 'p-primary',
-  failed: 'p-warn',
-  stopped: 'p-orange',
+/** The report parameters rclone accepts on sync/copy, sync/move and sync/sync. */
+export type JobReportKey =
+  'combined' | 'missingOnSrc' | 'missingOnDst' | 'match' | 'differ' | 'error' | 'destAfter';
+
+/**
+ * A file that changed on both paths of a bisync run. Bisync kept both versions: the one from Path1
+ * is now under `path1Now`, the one from Path2 under `path2Now` (names relative to their path), and
+ * each was copied to the other path.
+ */
+export interface BisyncConflict {
+  /** The file's name, the same on both paths. */
+  path: string;
+  path1Now: string;
+  path2Now: string;
+}
+
+/** How many files each report of a job lists, and how many conflicts a bisync run settled. */
+export type JobReportCounts = Partial<Record<JobReportKey, number>> & { conflicts?: number };
+
+/** The reports rclone returned, as it returned them. */
+export type JobReport = Partial<Record<JobReportKey, string[]>> & { conflicts?: BisyncConflict[] };
+
+export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, PillTone>> = Object.freeze({
+  completed: 'primary',
+  failed: 'warn',
+  stopped: 'orange',
 });
 
 export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
@@ -191,5 +217,6 @@ export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
   rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',
+  index: 'file-lines',
   upload: 'file-arrow-up',
 });

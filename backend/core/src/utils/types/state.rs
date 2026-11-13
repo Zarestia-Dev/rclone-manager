@@ -177,6 +177,10 @@ impl std::fmt::Display for EnginePhase {
 pub struct RcApiEngine {
     pub phase: EnginePhase,
     pub process: Option<Child>,
+    /// Backend that `process` was spawned for. The active backend can change while the
+    /// child keeps running, so shutdown must not address its quit request to the active one.
+    #[cfg(not(feature = "librclone"))]
+    pub process_backend: Option<String>,
     #[cfg(not(feature = "librclone"))]
     pub current_api_port: u16,
 }

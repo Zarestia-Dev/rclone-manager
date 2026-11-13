@@ -3,9 +3,7 @@ use crate::context::{AppHandle, BackendContext};
 use crate::services::lifecycle::shutdown::handle_shutdown;
 use crate::utils::{
     github_client,
-    types::updater::{
-        AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate, UpdateMetadata,
-    },
+    types::updater::{AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate},
 };
 use log::{info, warn};
 use tauri_plugin_updater::UpdaterExt;
@@ -16,10 +14,6 @@ struct NativeUpdate(tauri_plugin_updater::Update);
 impl AppUpdate for NativeUpdate {
     fn version(&self) -> &str {
         &self.0.version
-    }
-
-    fn download_url(&self) -> &url::Url {
-        &self.0.download_url
     }
 
     async fn download(
@@ -45,7 +39,7 @@ impl AppUpdate for NativeUpdate {
 pub(crate) async fn check_native_updater(
     app: &AppHandle,
     release: &github_client::Release,
-    metadata: &mut UpdateMetadata,
+    expected: &str,
 ) -> Result<Option<PendingAppUpdate>, String> {
     let Some(manifest) = release.assets.iter().find(|a| a.name == "latest.json") else {
         log::debug!(
@@ -64,9 +58,11 @@ pub(crate) async fn check_native_updater(
     let app_exit = app.clone();
     let updater_builder = app
         .updater_builder()
+        // A stalled check would hold the updater lock; slow links still finish.
+        .configure_client(github_client::detect_stalls)
         .endpoints(vec![endpoint])
         .map_err(|error| error.to_string())?;
-    let expected = metadata.version.clone();
+    let expected = expected.to_owned();
 
     let check_result = updater_builder
         .version_comparator(move |curr, upd| {
@@ -92,8 +88,7 @@ pub(crate) async fn check_native_updater(
         Err(error) => return Err(error.to_string()),
     };
 
-    if let Some(mut u) = check_result {
-        adjust_download_url(&mut u, &release.tag_name);
+    if let Some(u) = check_result {
         if !release_has_download(release, &u.download_url) {
             log::debug!(
                 "Native update references an absent release asset: {}",
@@ -106,8 +101,6 @@ pub(crate) async fn check_native_updater(
             u.version,
             u.download_url
         );
-        metadata.version = u.version.clone();
-        metadata.current_version = u.current_version.clone();
         Ok(Some(std::sync::Arc::new(NativeUpdate(u))))
     } else {
         Ok(None)
@@ -124,22 +117,6 @@ fn release_has_download(release: &github_client::Release, download: &url::Url) -
 
 fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bool {
     manifest == expected && crate::utils::version::is_update_candidate(current, manifest)
-}
-
-// Rewrites the download URL to use the release tag path instead of the generic
-// version path that the manifest may have generated (e.g. /download/beta-1/ vs /download/v1.2.3/).
-fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
-    let version_seg = format!("/download/v{}/", update.version);
-    let tag_seg = format!("/download/{tag}/");
-    let url_str = update.download_url.to_string();
-
-    if url_str.contains(&version_seg)
-        && !url_str.contains(&tag_seg)
-        && let Ok(parsed) = url_str.replace(&version_seg, &tag_seg).parse()
-    {
-        log::debug!("Adjusted update URL: {} -> {}", update.download_url, parsed);
-        update.download_url = parsed;
-    }
 }
 
 #[cfg(test)]
@@ -167,12 +144,7 @@ mod tests {
             "https://github.com/Zarestia-Dev/rclone-manager/releases/download/v1.2.3/app.AppImage";
         let mut release = Release {
             tag_name: "v1.2.3".into(),
-            prerelease: false,
-            draft: false,
-            assets: vec![],
-            body: None,
-            published_at: None,
-            html_url: String::new(),
+            ..Default::default()
         };
         let url = download.parse().unwrap();
         assert!(!release_has_download(&release, &url));
@@ -184,7 +156,7 @@ mod tests {
             release.assets = vec![Asset {
                 name: "app.AppImage".into(),
                 browser_download_url: other.into(),
-                api_url: None,
+                ..Default::default()
             }];
             assert!(!release_has_download(&release, &url));
         }

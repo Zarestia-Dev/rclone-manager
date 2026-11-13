@@ -165,13 +165,6 @@ impl MenuPlan {
 
 // Plan builders (pure data, off main thread)
 
-struct ProfileSubmenuConfig {
-    label_key: &'static str,
-    start_label_key: &'static str,
-    stop_label_key: &'static str,
-    op: OperationType,
-}
-
 fn build_remote_submenu(
     remote_summary: &TrayRemoteSummary,
     snapshot: &TraySnapshot,
@@ -185,15 +178,12 @@ fn build_remote_submenu(
         .filter(|j| j.remote_name == *remote)
         .count();
 
-    let total_job_profiles = remote_summary.sync_profiles.len()
-        + remote_summary.copy_profiles.len()
-        + remote_summary.move_profiles.len()
-        + remote_summary.bisync_profiles.len()
-        + remote_summary.check_profiles.len()
-        + remote_summary.delete_profiles.len()
-        + remote_summary.copyurl_profiles.len()
-        + remote_summary.archivecreate_profiles.len()
-        + remote_summary.cryptcheck_profiles.len();
+    let total_job_profiles: usize = remote_summary
+        .profiles
+        .iter()
+        .filter(|(op, _)| op.is_transfer())
+        .map(|(_, profiles)| profiles.len())
+        .sum();
 
     let job_status_text = if total_job_profiles > 0 {
         t!(
@@ -214,124 +204,30 @@ fn build_remote_submenu(
     submenu_items.push(MenuItemKind::Separator);
 
     for action in &remote_summary.primary_actions {
-        let (profiles, cfg) = match action.as_str() {
-            "mount" => (
-                remote_summary.mount_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.mountCount",
-                    start_label_key: "tray.mount",
-                    stop_label_key: "tray.unmount",
-                    op: OperationType::Mount,
-                },
-            ),
-            "sync" => (
-                remote_summary.sync_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.syncCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Sync,
-                },
-            ),
-            "copy" => (
-                remote_summary.copy_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.copyCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Copy,
-                },
-            ),
-            "move" => (
-                remote_summary.move_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.moveCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Move,
-                },
-            ),
-            "bisync" => (
-                remote_summary.bisync_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.bisyncCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Bisync,
-                },
-            ),
-            "check" => (
-                remote_summary.check_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.checkCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Check,
-                },
-            ),
-            "delete" => (
-                remote_summary.delete_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.deleteCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Delete,
-                },
-            ),
-            "copyurl" => (
-                remote_summary.copyurl_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.copyurlCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Copyurl,
-                },
-            ),
-            "archivecreate" => (
-                remote_summary.archivecreate_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.archivecreateCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Archivecreate,
-                },
-            ),
-            "cryptcheck" => (
-                remote_summary.cryptcheck_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.cryptcheckCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Cryptcheck,
-                },
-            ),
-            "serve" => (
-                remote_summary.serve_profiles.as_slice(),
-                ProfileSubmenuConfig {
-                    label_key: "tray.serveCount",
-                    start_label_key: "tray.start",
-                    stop_label_key: "tray.stop",
-                    op: OperationType::Serve,
-                },
-            ),
-            _ => continue,
+        let Ok(op) = action.parse::<OperationType>() else {
+            continue;
         };
         submenu_items.push(MenuItemKind::Submenu(build_profile_submenu(
-            remote, profiles, cfg,
+            remote,
+            op,
+            remote_summary.profiles_for(op),
         )));
     }
 
     submenu_items.push(MenuItemKind::Separator);
 
-    let is_mounted = remote_summary.mount_profiles.iter().any(|p| p.is_active);
-    let is_serving = remote_summary.serve_profiles.iter().any(|p| p.is_active);
+    let mounted_profiles: Vec<&TrayProfileSummary> = remote_summary
+        .profiles_for(OperationType::Mount)
+        .iter()
+        .filter(|p| p.is_active)
+        .collect();
+    let is_mounted = !mounted_profiles.is_empty();
+    let is_serving = remote_summary
+        .profiles_for(OperationType::Serve)
+        .iter()
+        .any(|p| p.is_active);
 
     if is_mounted {
-        let mounted_profiles: Vec<&TrayProfileSummary> = remote_summary
-            .mount_profiles
-            .iter()
-            .filter(|p| p.is_active)
-            .collect();
         if mounted_profiles.len() <= 1 {
             let p = mounted_profiles
                 .first()
@@ -397,54 +293,83 @@ fn build_remote_submenu(
     }
 }
 
-fn build_profile_submenu(
-    remote: &str,
-    profiles: &[TrayProfileSummary],
-    cfg: ProfileSubmenuConfig,
-) -> SubmenuPlan {
-    let active = profiles.iter().filter(|p| p.is_active).count();
-    let label = t!(
-        cfg.label_key,
-        "active" => &active.to_string(),
-        "total"  => &profiles.len().to_string()
-    );
-
-    let items = profiles
-        .iter()
-        .map(|p| {
-            let action = if p.is_active {
-                TrayAction::StopProfile(cfg.op, remote.to_string(), p.name.clone())
-            } else {
-                TrayAction::StartProfile(cfg.op, remote.to_string(), p.name.clone())
-            };
-            let item_label = if p.is_active {
-                format!("● {} ▸ {}", p.name, t!(cfg.stop_label_key))
-            } else {
-                format!("  {} ▸ {}", p.name, t!(cfg.start_label_key))
-            };
-            MenuItemKind::Regular(RegularItem {
-                id: action.to_id(),
-                label: item_label,
-                enabled: true,
-            })
-        })
-        .collect();
-
-    SubmenuPlan {
+/// A toggle entry: "● name ▸ stop" while active, "  name ▸ start" otherwise.
+fn toggle_item(
+    name: &str,
+    active: bool,
+    action: &TrayAction,
+    start_key: &str,
+    stop_key: &str,
+) -> MenuItemKind {
+    let label = if active {
+        format!("● {name} ▸ {}", t!(stop_key))
+    } else {
+        format!("  {name} ▸ {}", t!(start_key))
+    };
+    MenuItemKind::Regular(RegularItem {
+        id: action.to_id(),
         label,
-        enabled: !profiles.is_empty(),
+        enabled: true,
+    })
+}
+
+/// A submenu labelled "<active>/<total>" through `count_key`, disabled when empty.
+fn counted_submenu(count_key: &str, active: usize, items: Vec<MenuItemKind>) -> SubmenuPlan {
+    SubmenuPlan {
+        label: t!(
+            count_key,
+            "active" => &active.to_string(),
+            "total" => &items.len().to_string()
+        ),
+        enabled: !items.is_empty(),
         items,
     }
 }
 
-fn build_quick_runs_submenu(quick_runs: &[&super::TrayQuickRunSummary]) -> SubmenuPlan {
-    let active_count = quick_runs.iter().filter(|qr| qr.is_active).count();
-    let label = t!(
-        "tray.quickRunsCount",
-        "active" => &active_count.to_string(),
-        "total" => &quick_runs.len().to_string()
-    );
+fn build_profile_submenu(
+    remote: &str,
+    op: OperationType,
+    profiles: &[TrayProfileSummary],
+) -> SubmenuPlan {
+    let (start_key, stop_key) = if op == OperationType::Mount {
+        ("tray.mount", "tray.unmount")
+    } else {
+        ("tray.start", "tray.stop")
+    };
+    let items = profiles
+        .iter()
+        .map(|p| {
+            let action = if p.is_active {
+                TrayAction::StopProfile(op, remote.to_string(), p.name.clone())
+            } else {
+                TrayAction::StartProfile(op, remote.to_string(), p.name.clone())
+            };
+            toggle_item(&p.name, p.is_active, &action, start_key, stop_key)
+        })
+        .collect();
+    let active = profiles.iter().filter(|p| p.is_active).count();
+    counted_submenu(count_label_key(op), active, items)
+}
 
+/// Spelled out (not formatted from the operation name) so the i18n audit sees each key.
+fn count_label_key(op: OperationType) -> &'static str {
+    match op {
+        OperationType::Mount => "tray.mountCount",
+        OperationType::Sync => "tray.syncCount",
+        OperationType::Copy => "tray.copyCount",
+        OperationType::Move => "tray.moveCount",
+        OperationType::Bisync => "tray.bisyncCount",
+        OperationType::Serve => "tray.serveCount",
+        OperationType::Check => "tray.checkCount",
+        OperationType::Delete => "tray.deleteCount",
+        OperationType::Copyurl => "tray.copyurlCount",
+        OperationType::Archivecreate => "tray.archivecreateCount",
+        OperationType::Cryptcheck => "tray.cryptcheckCount",
+        OperationType::Index => "tray.indexCount",
+    }
+}
+
+fn build_quick_runs_submenu(quick_runs: &[&TrayQuickRunSummary]) -> SubmenuPlan {
     let items = quick_runs
         .iter()
         .map(|qr| {
@@ -453,34 +378,14 @@ fn build_quick_runs_submenu(quick_runs: &[&super::TrayQuickRunSummary]) -> Subme
             } else {
                 TrayAction::StartQuickRun(qr.id.clone())
             };
-            let item_label = if qr.is_active {
-                format!("● {} ▸ {}", qr.name, t!("tray.stop"))
-            } else {
-                format!("  {} ▸ {}", qr.name, t!("tray.start"))
-            };
-            MenuItemKind::Regular(RegularItem {
-                id: action.to_id(),
-                label: item_label,
-                enabled: true,
-            })
+            toggle_item(&qr.name, qr.is_active, &action, "tray.start", "tray.stop")
         })
         .collect();
-
-    SubmenuPlan {
-        label,
-        enabled: !quick_runs.is_empty(),
-        items,
-    }
+    let active = quick_runs.iter().filter(|qr| qr.is_active).count();
+    counted_submenu("tray.quickRunsCount", active, items)
 }
 
-fn build_workflows_submenu(workflows: &[&super::TrayWorkflowSummary]) -> SubmenuPlan {
-    let active_count = workflows.iter().filter(|w| w.is_active).count();
-    let label = t!(
-        "tray.workflowsCount",
-        "active" => &active_count.to_string(),
-        "total" => &workflows.len().to_string()
-    );
-
+fn build_workflows_submenu(workflows: &[&TrayWorkflowSummary]) -> SubmenuPlan {
     let items = workflows
         .iter()
         .map(|wf| {
@@ -489,24 +394,11 @@ fn build_workflows_submenu(workflows: &[&super::TrayWorkflowSummary]) -> Submenu
             } else {
                 TrayAction::StartWorkflow(wf.id.clone())
             };
-            let item_label = if wf.is_active {
-                format!("● {} ▸ {}", wf.name, t!("tray.stop"))
-            } else {
-                format!("  {} ▸ {}", wf.name, t!("tray.start"))
-            };
-            MenuItemKind::Regular(RegularItem {
-                id: action.to_id(),
-                label: item_label,
-                enabled: true,
-            })
+            toggle_item(&wf.name, wf.is_active, &action, "tray.start", "tray.stop")
         })
         .collect();
-
-    SubmenuPlan {
-        label,
-        enabled: !workflows.is_empty(),
-        items,
-    }
+    let active = workflows.iter().filter(|w| w.is_active).count();
+    counted_submenu("tray.workflowsCount", active, items)
 }
 
 // Tauri object construction (main thread only)
@@ -566,7 +458,7 @@ fn kind_to_tauri<R: Runtime>(
 }
 
 #[cfg(test)]
-mod vault_tests {
+mod tests {
     use super::*;
 
     #[test]
@@ -582,5 +474,95 @@ mod vault_tests {
         assert!(!TrayAction::OpenFileBrowser.allowed_when_locked());
         assert!(!TrayAction::StopAllJobs.allowed_when_locked());
         assert!(!TrayAction::StartQuickRun("example".into()).allowed_when_locked());
+    }
+
+    fn profile(name: &str, is_active: bool) -> TrayProfileSummary {
+        TrayProfileSummary {
+            name: name.into(),
+            is_active,
+        }
+    }
+
+    fn remote(name: &str, show_on_tray: bool) -> TrayRemoteSummary {
+        TrayRemoteSummary {
+            name: name.into(),
+            show_on_tray,
+            primary_actions: vec!["sync".into(), "mount".into(), "not-an-operation".into()],
+            profiles: vec![
+                (
+                    OperationType::Sync,
+                    vec![profile("A", true), profile("B", false)],
+                ),
+                (OperationType::Mount, vec![profile("M", true)]),
+            ],
+        }
+    }
+
+    fn snapshot(remotes: Vec<TrayRemoteSummary>) -> TraySnapshot {
+        TraySnapshot {
+            active_jobs: vec![],
+            mounted_remotes: vec![],
+            active_serves: vec![],
+            remotes,
+            quick_runs: vec![],
+            workflows: vec![],
+        }
+    }
+
+    fn collect_ids(items: &[MenuItemKind], ids: &mut Vec<String>) {
+        for item in items {
+            match item {
+                MenuItemKind::Regular(item) => ids.push(item.id.clone()),
+                MenuItemKind::Submenu(submenu) => collect_ids(&submenu.items, ids),
+                _ => {}
+            }
+        }
+    }
+
+    fn plan_ids(snapshot: &TraySnapshot, max_items: usize) -> Vec<String> {
+        let mut ids = Vec::new();
+        collect_ids(&MenuPlan::build(snapshot, max_items).items, &mut ids);
+        ids
+    }
+
+    #[test]
+    fn running_profiles_offer_stop_and_idle_ones_offer_start() {
+        let ids = plan_ids(&snapshot(vec![remote("r", true)]), 10);
+        let has = |action: TrayAction| ids.contains(&action.to_id());
+        let (r, s, m) = ("r".to_string(), OperationType::Sync, OperationType::Mount);
+
+        assert!(has(TrayAction::StopProfile(s, r.clone(), "A".into())));
+        assert!(!has(TrayAction::StartProfile(s, r.clone(), "A".into())));
+        assert!(has(TrayAction::StartProfile(s, r.clone(), "B".into())));
+        assert!(has(TrayAction::StopProfile(m, r.clone(), "M".into())));
+        // A mounted remote is browsed through its mount, not in the app.
+        assert!(has(TrayAction::Browse(r.clone(), "M".into())));
+        assert!(!has(TrayAction::BrowseInApp(r)));
+        assert!(has(TrayAction::Quit));
+    }
+
+    #[test]
+    fn unmounted_remotes_browse_in_the_app() {
+        let mut idle = remote("r", true);
+        idle.profiles[1].1[0].is_active = false;
+        let ids = plan_ids(&snapshot(vec![idle]), 10);
+        assert!(ids.contains(&TrayAction::BrowseInApp("r".into()).to_id()));
+    }
+
+    #[test]
+    fn hidden_and_surplus_remotes_are_left_out() {
+        let remotes = vec![
+            remote("one", true),
+            remote("hidden", false),
+            remote("two", true),
+        ];
+        let all = plan_ids(&snapshot(remotes.clone()), 10);
+        let browse =
+            |name: &str| all.contains(&TrayAction::Browse(name.into(), "M".into()).to_id());
+        assert!(browse("one") && browse("two") && !browse("hidden"));
+
+        let limited = plan_ids(&snapshot(remotes), 1);
+        assert!(limited.contains(&TrayAction::Browse("one".into(), "M".into()).to_id()));
+        assert!(!limited.contains(&TrayAction::Browse("two".into(), "M".into()).to_id()));
     }
 }

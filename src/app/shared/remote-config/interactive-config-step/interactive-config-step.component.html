@@ -73,7 +73,8 @@
                     (ngModelChange)="onAnswerChange($event)"
                     [ngModelOptions]="{ standalone: true }"
                     [disabled]="canceling()"
-                    class="toggle-input primary"
+                    class="toggle-input"
+                    data-tone="primary"
                     [attr.aria-label]="opt.Name || 'Toggle option'"
                   >
                     <span class="toggle-label">{{

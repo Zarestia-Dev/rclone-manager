@@ -272,6 +272,13 @@
 // View: Updates / About App
 // ----------------------------------------------------------------------------
 .updates-page {
+  .last-checked {
+    margin: 0;
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--dim-color);
+  }
+
   .debug-actions-section {
     display: flex;
     flex-direction: column;

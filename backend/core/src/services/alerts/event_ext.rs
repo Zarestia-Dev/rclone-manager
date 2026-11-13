@@ -1,7 +1,7 @@
 use crate::services::alerts::types::{AlertEventKind, AlertSeverity};
 use crate::utils::app::notification::{
-    AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, UpdateStage,
-    WorkflowStage,
+    AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, SystemStage,
+    UpdateStage, WorkflowStage,
 };
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
@@ -333,6 +333,7 @@ impl NotificationEvent {
                 UpdateStage::Failed { .. } => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
+            Self::System(SystemStage::AutomationUnavailable { .. }) => AlertSeverity::High,
             Self::System(_) => AlertSeverity::Info,
         }
     }
@@ -389,12 +390,12 @@ mod tests {
         let event = NotificationEvent::Workflow(WorkflowStage::Started {
             workflow_id: "wf-123".to_string(),
             workflow_name: "Backup Daily".to_string(),
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         });
 
         assert_eq!(event.alert_kind(), AlertEventKind::Workflow);
         assert_eq!(event.alert_severity(), AlertSeverity::Info);
-        assert_eq!(event.alert_origin(), Origin::Flow);
+        assert_eq!(event.alert_origin(), Origin::Workflow);
         assert_eq!(event.alert_operation(), Some("Workflow".to_string()));
     }
 
@@ -405,12 +406,12 @@ mod tests {
             workflow_name: "Sync S3".to_string(),
             error: "Connection timeout".to_string(),
             failed_node_title: Some("Upload step".to_string()),
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         });
 
         assert_eq!(event.alert_kind(), AlertEventKind::Workflow);
         assert_eq!(event.alert_severity(), AlertSeverity::High);
-        assert_eq!(event.alert_origin(), Origin::Flow);
+        assert_eq!(event.alert_origin(), Origin::Workflow);
     }
 
     #[test]
@@ -419,14 +420,14 @@ mod tests {
             workflow_id: "wf-789".to_string(),
             workflow_name: "Archive".to_string(),
             duration_ms: 1500,
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         });
         assert_eq!(completed.alert_severity(), AlertSeverity::Info);
 
         let stopped = NotificationEvent::Workflow(WorkflowStage::Stopped {
             workflow_id: "wf-789".to_string(),
             workflow_name: "Archive".to_string(),
-            origin: Origin::Flow,
+            origin: Origin::Workflow,
         });
         assert_eq!(stopped.alert_severity(), AlertSeverity::Warning);
     }

@@ -37,7 +37,6 @@ describe('QuickRunService', () => {
       app: { autoStart: false },
       rclone: { srcFs: '/home/user/docs', dstFs: 'drive:backup' },
     },
-    status: 'idle',
   };
 
   beforeEach(() => {
@@ -203,6 +202,19 @@ describe('QuickRunService', () => {
       expect(service.quickRuns()).toEqual([mockQuickRun]);
     });
 
+    it('refresh keeps the previous list and clears the loading flag when the backend fails', async () => {
+      invokeSpy.mockResolvedValueOnce([mockQuickRun]);
+      await service.refresh();
+      invokeSpy.mockRejectedValueOnce(new Error('offline'));
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await service.refresh();
+
+      expect(service.quickRuns()).toEqual([mockQuickRun]);
+      expect(service.isLoading()).toBe(false);
+      error.mockRestore();
+    });
+
     it('save should handle create and update via backend', async () => {
       const input: QuickRunInput = {
         name: 'New Quick Run',
@@ -214,7 +226,6 @@ describe('QuickRunService', () => {
       invokeSpy.mockResolvedValue({
         ...input,
         id: 'qr-new',
-        status: 'idle',
       });
 
       const result = await service.save(input);
@@ -319,7 +330,6 @@ describe('QuickRunService', () => {
       expect(invokeSpy).toHaveBeenCalledWith('start_quick_run', { quickRunId: 'qr-1' });
       expect(res?.jobId).toBe(42);
       expect(res?.executeId).toBe('exec-1');
-      expect(service.runningIds().has('qr-1')).toBe(true);
       expect(service.actionInProgress()['qr-1']).toBeUndefined();
     });
 
@@ -366,13 +376,55 @@ describe('QuickRunService', () => {
       });
       expect(inFlightStateDuringExecution).toBe('stop');
       expect(service.actionInProgress()['qr-1']).toBeUndefined();
-      expect(service.runningIds().has('qr-1')).toBe(false);
     });
 
-    it('stop should notify error and not mark as stopped when backend command fails', async () => {
+    it('start refreshes the job, mount and serve stores before the button is released', async () => {
       invokeSpy.mockResolvedValue([mockQuickRun]);
       await service.refresh();
-      service.markRunning('qr-1');
+      invokeSpy.mockResolvedValue({ status: 'running', jobId: 42 });
+      let busyDuringRefresh: 'start' | 'stop' | undefined;
+      vi.mocked(TestBed.inject(JobManagementService).refreshJobs).mockImplementation(async () => {
+        busyDuringRefresh = service.actionInProgress()['qr-1'];
+        return [];
+      });
+
+      await service.start('qr-1');
+
+      expect(busyDuringRefresh).toBe('start');
+      expect(TestBed.inject(MountManagementService).getMountedRemotes).toHaveBeenCalled();
+      expect(TestBed.inject(ServeManagementService).refreshServes).toHaveBeenCalled();
+    });
+
+    it('start survives a failing store refresh and returns the result', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+      invokeSpy.mockResolvedValue({ status: 'running', jobId: 42 });
+      vi.mocked(TestBed.inject(MountManagementService).getMountedRemotes).mockRejectedValue(
+        new Error('offline')
+      );
+
+      const res = await service.start('qr-1');
+
+      expect(res?.jobId).toBe(42);
+      expect(service.actionInProgress()['qr-1']).toBeUndefined();
+    });
+
+    it('start returns null for an unknown quick run without calling the backend', async () => {
+      expect(await service.start('missing')).toBeNull();
+      expect(invokeSpy).not.toHaveBeenCalled();
+    });
+
+    it('stop should notify error and keep the run listed as running when the backend command fails', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+      (TestBed.inject(JobManagementService).jobs as ReturnType<typeof signal>).set([
+        {
+          jobid: 7,
+          status: 'Running',
+          starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' },
+        },
+      ]);
+      TestBed.tick();
       expect(service.runningIds().has('qr-1')).toBe(true);
 
       invokeSpy.mockRejectedValue(new Error('fusermount3: Device or resource busy'));
@@ -380,13 +432,46 @@ describe('QuickRunService', () => {
       await service.stop('qr-1');
 
       expect(notificationSpy.showError).toHaveBeenCalled();
-      // Should NOT have removed qr-1 from running IDs since stop failed
       expect(service.runningIds().has('qr-1')).toBe(true);
-      expect(service.quickRuns().find(q => q.id === 'qr-1')?.status).toBe('running');
       expect(service.actionInProgress()['qr-1']).toBeUndefined();
     });
 
-    it('should isolate mount status by quick_run_id and not falsely mark other quick runs as mounted', async () => {
+    it('runningIds keeps its identity while the set of running quick runs is unchanged', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+      const jobs = TestBed.inject(JobManagementService).jobs as ReturnType<typeof signal>;
+      const running = (extra: number): unknown[] => [
+        { jobid: 7, status: 'Running', starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' } },
+        { jobid: extra, status: 'Completed', starter: { kind: 'profile', name: 'other' } },
+      ];
+      jobs.set(running(8));
+      TestBed.tick();
+      const first = service.runningIds();
+
+      jobs.set(running(9));
+      TestBed.tick();
+
+      expect(service.runningIds()).toBe(first);
+    });
+
+    it('a finished or stopped job is no longer running', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+      const jobs = TestBed.inject(JobManagementService).jobs as ReturnType<typeof signal>;
+      jobs.set([
+        { jobid: 7, status: 'Running', starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' } },
+      ]);
+      TestBed.tick();
+      expect(service.runningIds().has('qr-1')).toBe(true);
+
+      jobs.set([
+        { jobid: 7, status: 'Stopped', starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' } },
+      ]);
+      TestBed.tick();
+      expect(service.runningIds().has('qr-1')).toBe(false);
+    });
+
+    it('should isolate mount status by Quick Run id and not falsely mark other quick runs as mounted', async () => {
       const mountQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-mount-1',
@@ -411,7 +496,7 @@ describe('QuickRunService', () => {
         {
           fs: 'drive:',
           mount_point: '/mnt/test',
-          quick_run_id: 'qr-mount-1',
+          starter: { kind: 'quick_run', id: 'qr-mount-1', name: 'qr-mount-1' },
           origin: 'quickrun',
         },
       ]);
@@ -422,7 +507,7 @@ describe('QuickRunService', () => {
       expect(service.runningIds().has('qr-mount-2')).toBe(false);
     });
 
-    it('should isolate serve status by quick_run_id and not activate on remote profile serves', async () => {
+    it('should isolate serve status by Quick Run id and not activate on remote profile serves', async () => {
       const serveQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-serve-1',
@@ -446,14 +531,14 @@ describe('QuickRunService', () => {
           id: 'srv-1',
           addr: '127.0.0.1:8080',
           params: { fs: 'drive:' },
-          quick_run_id: 'qr-serve-1',
+          starter: { kind: 'quick_run', id: 'qr-serve-1', name: 'qr-serve-1' },
           origin: 'quickrun',
         },
         {
           id: 'srv-dashboard',
           addr: '127.0.0.1:8081',
           params: { fs: 'drive:' },
-          profile: 'Serve 2', // Same name as qr-serve-2, but it's a dashboard profile!
+          starter: { kind: 'profile', name: 'Serve 2' }, // Same name as qr-serve-2, but it's a dashboard profile!
           origin: 'dashboard',
         },
       ]);
@@ -472,20 +557,20 @@ describe('QuickRunService', () => {
         {
           jobid: 500,
           status: 'Completed',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-01T00:00:00Z',
         },
         {
           jobid: 1,
           status: 'Running',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-02T00:00:00Z',
         },
         {
           jobid: 2,
           parent_job_id: 1,
           status: 'Completed',
-          quick_run_id: 'qr-master',
+          starter: { kind: 'quick_run', id: 'qr-master', name: 'qr-master' },
           start_time: '2026-10-03T00:00:00Z',
         },
       ]);
@@ -493,7 +578,7 @@ describe('QuickRunService', () => {
       expect(service.runningIds().has('qr-master')).toBe(true);
     });
 
-    it('should isolate sync job status by quick_run_id and ignore remote profile jobs', async () => {
+    it('should isolate sync job status by Quick Run id and ignore remote profile jobs', async () => {
       const syncQr1: QuickRun = {
         ...mockQuickRun,
         id: 'qr-sync-1',
@@ -521,7 +606,7 @@ describe('QuickRunService', () => {
           destination: '/local/dest1',
           status: 'Running',
           execute_id: 'exec-qr-1',
-          quick_run_id: 'qr-sync-1',
+          starter: { kind: 'quick_run', id: 'qr-sync-1', name: 'qr-sync-1' },
           origin: 'quickrun',
         },
         {
@@ -530,7 +615,7 @@ describe('QuickRunService', () => {
           remote_name: 'drive:',
           source: 'drive:path2',
           destination: '/local/dest2',
-          profile: 'Sync 2',
+          starter: { kind: 'profile', name: 'Sync 2' },
           status: 'Running',
           execute_id: 'exec-dash-2',
           origin: 'dashboard',

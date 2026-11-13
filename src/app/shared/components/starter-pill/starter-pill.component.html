@@ -1,0 +1,8 @@
+@if (pill(); as pill) {
+  <span appPill tone="dim" size="xs" [attr.title]="pill.name">
+    @if (pill.icon) {
+      <mat-icon [svgIcon]="pill.icon"></mat-icon>
+    }
+    <span class="truncate">{{ pill.name }}</span>
+  </span>
+}

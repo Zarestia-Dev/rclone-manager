@@ -14,4 +14,10 @@
     <string name="shortcut_file_manager_long">ファイルマネージャーを開く</string>
     <string name="shortcut_open_remote">%1$s を開く</string>
     <string name="saf_folder_load_failed">このフォルダーを読み込めませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="action_quit">終了</string>
+    <string name="action_stop_jobs">ジョブを停止</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="quit_confirm_title">RClone Managerを終了しますか？</string>
+    <string name="quit_confirm_message">実行中の転送、マウント、サーバーが停止されます。</string>
+    <string name="alerts_channel_name">通知</string>
 </resources>

@@ -7,11 +7,51 @@ pub mod remote;
 pub mod schema;
 pub mod vault;
 
+use crate::context::AppHandle;
 use schema::AppSettings;
 
 /// Type alias for the application's settings manager
 /// Uses rcman's `JsonManager` convenience alias with our `AppSettings` schema
 pub type AppSettingsManager = rcman::JsonManager<AppSettings>;
+
+/// One registered sub-settings store.
+pub type AppSubSettings = rcman::SubSettings<rcman::JsonStorage>;
+
+/// Run synchronous rcman work on the blocking pool.
+///
+/// rcman is synchronous by design and may wait on the OS keychain, an fsync or
+/// key derivation, so async handlers never call it on a runtime worker.
+pub(crate) async fn blocking<T, F>(app: &AppHandle, work: F) -> Result<T, String>
+where
+    F: FnOnce(&AppSettingsManager) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    let app = app.clone();
+    crate::utils::spawn_blocking(move || work(app.state::<AppSettingsManager>().inner()))
+        .await
+        .map_err(
+            |error| crate::localized_error!("backendErrors.settings.taskFailed", "error" => error),
+        )
+}
+
+/// [`blocking`] on one sub-settings store. `failure` is the `backendErrors` key
+/// reported when the store is missing or `work` fails.
+pub(crate) async fn with_sub_settings<T, F>(
+    app: &AppHandle,
+    name: &'static str,
+    failure: &'static str,
+    work: F,
+) -> Result<T, String>
+where
+    F: FnOnce(&AppSubSettings) -> rcman::Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    blocking(app, move |manager| {
+        manager.sub_settings(name).and_then(|store| work(&store))
+    })
+    .await?
+    .map_err(|error| crate::localized_error!(failure, "error" => error))
+}
 
 #[cfg(test)]
 mod tests {

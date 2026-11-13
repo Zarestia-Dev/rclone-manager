@@ -100,6 +100,7 @@ export class NautilusSidebarComponent {
 
   readonly requestAbout = output<ExplorerRoot>();
   readonly requestCleanup = output<ExplorerRoot>();
+  readonly requestIndex = output<ExplorerRoot>();
   readonly requestBookmarkRemoval = output<FileBrowserItem>();
   readonly requestProperties = output<FileBrowserItem>();
 

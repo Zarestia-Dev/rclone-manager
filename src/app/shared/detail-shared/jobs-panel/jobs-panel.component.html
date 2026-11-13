@@ -3,9 +3,9 @@
 <mat-card class="detail-panel jobs-panel">
   <mat-card-header class="panel-header">
     <mat-card-title>
-      <mat-icon svgIcon="jobs" style="color: var(--op-color, var(--primary-color))"></mat-icon>
+      <mat-icon svgIcon="jobs" style="color: var(--mat-sys-primary)"></mat-icon>
       <span>{{ 'detailShared.jobs.title' | translate }}</span>
-      <span class="count-badge">{{ cfg.jobs.length }}</span>
+      <span appPill size="xs" tone="dim">{{ cfg.jobs.length }}</span>
     </mat-card-title>
   </mat-card-header>
 
@@ -38,15 +38,13 @@
               "
               >#{{ job.jobid }}</span
             >
-            @if (job.profile) {
-              <span class="app-pill p-dim pill-sm truncate">{{ job.profile }}</span>
-            }
+            <app-starter-pill [starter]="job.starter" />
           </div>
 
           <div class="card-info-right">
             <span
-              class="app-pill"
-              [class]="job.badgeClass"
+              appPill
+              [tone]="job.tone"
               [class.has-error]="job.statusLower === 'failed' && job.errorText"
               [attr.title]="job.statusLower === 'failed' && job.errorText ? job.errorText : ''"
             >
@@ -73,7 +71,7 @@
             >
               <mat-icon
                 [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"
-                [class]="job.statusLower === 'running' ? 'warn' : 'orange'"
+                [attr.data-tone]="job.statusLower === 'running' ? 'warn' : 'orange'"
               ></mat-icon>
             </button>
           </div>
@@ -98,12 +96,12 @@
             </div>
             <div class="card-footer-right">
               @if (job.dry_run) {
-                <span class="app-pill p-accent pill-sm">
+                <span appPill tone="accent" size="xs">
                   {{ 'detailShared.jobs.dryRun' | translate }}
                 </span>
               }
               @if (job.durationSeconds > 0) {
-                <span class="app-pill p-dim pill-sm">{{ job.durationSeconds | formatTime }}</span>
+                <span appPill tone="dim" size="xs">{{ job.durationSeconds | formatTime }}</span>
               }
               @if (job.relativeTime) {
                 <span>{{ job.relativeTime }}</span>

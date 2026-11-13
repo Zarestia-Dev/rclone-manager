@@ -17,7 +17,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 'drive:',
       automationType: 'sync',
       status: 'enabled',
-      args: { source: 'flow' },
+      args: { source: 'workflow', srcPaths: [], dstPaths: [] },
     },
     {
       id: 'auto-2',
@@ -25,7 +25,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 's3:',
       automationType: 'backup',
       status: 'enabled',
-      args: { source: 'quickrun' },
+      args: { source: 'quickrun', srcPaths: [], dstPaths: [] },
     },
     {
       id: 'auto-3',
@@ -33,7 +33,7 @@ describe('AutomationsOverviewPanelComponent', () => {
       remoteName: 'dropbox:',
       automationType: 'copy',
       status: 'disabled',
-      args: {},
+      args: { srcPaths: [], dstPaths: [] },
     },
   ] as unknown as Automation[];
 
@@ -55,10 +55,10 @@ describe('AutomationsOverviewPanelComponent', () => {
     fixture.detectChanges();
   });
 
-  it('filters automations by flow origin correctly', () => {
+  it('filters automations by workflow origin correctly', () => {
     expect(component.allAutomations().length).toBe(3);
 
-    component.selectedOriginFilter.set('flow');
+    component.selectedOriginFilter.set('workflow');
     fixture.detectChanges();
     expect(component.allAutomations().length).toBe(1);
     expect(component.allAutomations()[0].id).toBe('auto-1');

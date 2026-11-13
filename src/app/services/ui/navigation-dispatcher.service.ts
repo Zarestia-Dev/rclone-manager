@@ -1,11 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { Automation, Remote, ServeListItem, AppTab, QuickRun } from '@app/types';
+import { Automation, Remote, ServeListItem, AppTab, QuickRun, quickRunIdOf } from '@app/types';
 import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
-import { WorkflowStateService } from '../flow/workflow-state.service';
 
 /**
  * Dispatches centralized UI navigation requests across main views, tabs,
@@ -20,7 +19,6 @@ export class NavigationDispatcherService {
   private readonly pathService = inject(PathService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly workflowStorage = inject(WorkflowStorageService);
-  private readonly workflowState = inject(WorkflowStateService);
 
   /**
    * Navigates directly to a workflow on the Flow canvas.
@@ -31,9 +29,7 @@ export class NavigationDispatcherService {
     const wf = this.workflowStorage
       .workflows()
       .find(w => (workflowId && w.id === workflowId) || (workflowName && w.name === workflowName));
-    if (wf) {
-      this.workflowState.loadWorkflow(wf);
-    }
+    if (wf) void this.workflowStorage.openWorkflow(wf);
   }
 
   /**
@@ -46,32 +42,27 @@ export class NavigationDispatcherService {
       return;
     }
 
-    if (serve.profile) {
-      const qr = this.findQuickRun(serve.profile);
-      if (qr) {
-        this.navigateToQuickRun(qr.id);
-      }
-    }
+    const quickRunId = quickRunIdOf(serve);
+    if (quickRunId) this.navigateToQuickRun(quickRunId);
   }
 
   /**
    * Navigate to the remote, Quick Run, or Workflow corresponding to the given automation.
    */
   navigateToAutomation(automation: Automation): void {
-    if (automation.args?.source === 'flow') {
+    if (automation.args?.source === 'workflow') {
       this.navigateToWorkflow(automation.id, automation.profileName);
       return;
     }
 
-    const remoteName = automation.remoteName || automation.args?.remoteName;
-    if (remoteName && remoteName !== 'Workflow') {
-      this.navigateToRemote(remoteName, 'operations');
+    if (automation.args?.source === 'quickrun') {
+      const qr = this.findQuickRun(automation.id);
+      if (qr) this.navigateToQuickRun(qr.id);
       return;
     }
 
-    const qr = this.findQuickRun(automation.profileName);
-    if (qr) {
-      this.navigateToQuickRun(qr.id);
+    if (automation.remoteName) {
+      this.navigateToRemote(automation.remoteName, 'operations');
     }
   }
 

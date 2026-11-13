@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::utils::types::jobs::JobType;
 
@@ -42,8 +42,44 @@ pub fn parse_job_response(response_json: &Value) -> Result<u64, String> {
         })
 }
 
-/// Parses raw text output from `operations/cryptcheck` into structured JSON.
-pub fn parse_cryptcheck_output(raw_result: &str) -> Value {
+/// What `operations/cryptcheck` reported, read from its text output.
+#[derive(Debug, PartialEq)]
+pub struct CryptcheckReport {
+    success: bool,
+    status: String,
+    differ: Vec<String>,
+    missing_on_dst: Vec<String>,
+    missing_on_src: Vec<String>,
+    errors: Vec<String>,
+}
+
+impl CryptcheckReport {
+    fn has_issues(&self) -> bool {
+        !(self.differ.is_empty()
+            && self.missing_on_dst.is_empty()
+            && self.missing_on_src.is_empty()
+            && self.errors.is_empty())
+    }
+
+    /// The same shape `operations/check` returns, which is what the job stores and the UI reads.
+    pub fn to_output(&self) -> Value {
+        json!({
+            "results": [
+                {
+                    "success": self.success,
+                    "status": self.status,
+                    "differ": self.differ,
+                    "missingOnDst": self.missing_on_dst,
+                    "missingOnSrc": self.missing_on_src,
+                    "error": self.errors,
+                }
+            ]
+        })
+    }
+}
+
+/// Reads the text output of `operations/cryptcheck`.
+pub fn parse_cryptcheck_output(raw_result: &str) -> CryptcheckReport {
     let mut differ = Vec::new();
     let mut missing_on_dst = Vec::new();
     let mut missing_on_src = Vec::new();
@@ -115,42 +151,32 @@ pub fn parse_cryptcheck_output(raw_result: &str) -> Value {
         }
     }
 
-    let has_issues = !differ.is_empty()
-        || !missing_on_dst.is_empty()
-        || !missing_on_src.is_empty()
-        || !error_list.is_empty();
-    if has_issues {
-        success = false;
-        if status == "OK" {
-            let mut parts = Vec::new();
-            if !differ.is_empty() {
-                parts.push(format!("{} differences", differ.len()));
-            }
-            if !missing_on_dst.is_empty() {
-                parts.push(format!("{} missing on destination", missing_on_dst.len()));
-            }
-            if !missing_on_src.is_empty() {
-                parts.push(format!("{} missing on source", missing_on_src.len()));
-            }
-            if !error_list.is_empty() {
-                parts.push(format!("{} errors", error_list.len()));
-            }
-            status = format!("{} found", parts.join(", "));
+    let mut report = CryptcheckReport {
+        success,
+        status,
+        differ,
+        missing_on_dst,
+        missing_on_src,
+        errors: error_list,
+    };
+    if report.has_issues() {
+        report.success = false;
+        if report.status == "OK" {
+            let counts = [
+                (report.differ.len(), "differences"),
+                (report.missing_on_dst.len(), "missing on destination"),
+                (report.missing_on_src.len(), "missing on source"),
+                (report.errors.len(), "errors"),
+            ];
+            let parts: Vec<String> = counts
+                .iter()
+                .filter(|(count, _)| *count > 0)
+                .map(|(count, what)| format!("{count} {what}"))
+                .collect();
+            report.status = format!("{} found", parts.join(", "));
         }
     }
-
-    serde_json::json!({
-        "results": [
-            {
-                "success": success,
-                "status": status,
-                "differ": differ,
-                "missingOnDst": missing_on_dst,
-                "missingOnSrc": missing_on_src,
-                "error": error_list,
-            }
-        ]
-    })
+    report
 }
 
 /// Evaluates job completion status and determines overall outcome, success/failure flags,
@@ -160,197 +186,203 @@ pub fn resolve_job_outcome(
     job_type: &JobType,
     source_paths: &[String],
 ) -> JobOutcome {
-    let mut success = job_status
-        .get("success")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let stopped = job_status
-        .get("stopped")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let mut error_msg = job_status
+    let error = job_status
         .get("error")
-        .and_then(|v| v.as_str())
+        .and_then(Value::as_str)
         .unwrap_or("")
-        .trim()
-        .to_string();
+        .trim();
+    let mut outcome = JobOutcome {
+        success: job_status
+            .get("success")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        stopped: job_status
+            .get("stopped")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        error_msg: (!error.is_empty()).then(|| error.to_string()),
+        cryptcheck_output: None,
+    };
 
-    let mut cryptcheck_output = None;
-
-    if success && let Some(output) = job_status.get("output") {
-        if *job_type == JobType::CryptCheck
-            && let Some(result_str) = output.get("result").and_then(|v| v.as_str())
-        {
-            let parsed = parse_cryptcheck_output(result_str);
-            let first_result = parsed
-                .get("results")
-                .and_then(|r| r.as_array())
-                .and_then(|a| a.first());
-            let check_success = first_result
-                .and_then(|r| r.get("success"))
-                .and_then(Value::as_bool)
-                .unwrap_or(true);
-            let check_status = first_result
-                .and_then(|r| r.get("status"))
-                .and_then(Value::as_str)
-                .unwrap_or("OK")
-                .to_string();
-
-            let has_parsed_issues = first_result
-                .and_then(|r| r.get("differ"))
-                .and_then(|a| a.as_array())
-                .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("missingOnDst"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("missingOnSrc"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("error"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty());
-
-            if has_parsed_issues {
-                success = check_success;
-                if !success {
-                    error_msg = check_status;
-                }
-            } else if output
-                .get("error")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-            {
-                success = false;
-                error_msg = result_str.trim().to_string();
-            } else {
-                success = true;
-                error_msg = String::new();
-            }
-            cryptcheck_output = Some(parsed);
+    if outcome.success
+        && let Some(output) = job_status.get("output")
+    {
+        if *job_type == JobType::CryptCheck {
+            apply_cryptcheck_output(&mut outcome, output);
         }
-
-        // 1. Check for operations/batch results
-        if let Some(results) = output.get("results").and_then(|v| v.as_array()) {
-            for res in results {
-                let has_error = res.get("success").and_then(Value::as_bool) == Some(false)
-                    || res
-                        .get("status")
-                        .and_then(Value::as_i64)
-                        .is_some_and(|s| s >= 400)
-                    || res.get("error").is_some_and(|e| match e {
-                        Value::Null => false,
-                        Value::Bool(b) => *b,
-                        Value::String(s) => !s.trim().is_empty(),
-                        Value::Array(arr) => !arr.is_empty(),
-                        Value::Object(obj) => !obj.is_empty(),
-                        _ => true,
-                    });
-
-                if has_error {
-                    success = false;
-                    let err = if let Some(e) = res.get("error") {
-                        let formatted = match e {
-                            Value::String(s) => s.clone(),
-                            Value::Array(arr) => arr
-                                .iter()
-                                .filter_map(|v| v.as_str())
-                                .collect::<Vec<_>>()
-                                .join(", "),
-                            _ => e.to_string(),
-                        };
-                        if formatted.trim().is_empty() {
-                            if *job_type == JobType::Check {
-                                res.get("status")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("Differences found")
-                                    .to_string()
-                            } else {
-                                "Unknown error".to_string()
-                            }
-                        } else {
-                            formatted
-                        }
-                    } else if *job_type == JobType::Check {
-                        res.get("status")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("Differences found")
-                            .to_string()
-                    } else {
-                        "Unknown error".to_string()
-                    };
-
-                    if !err.is_empty() {
-                        let source_str = source_paths.join(", ");
-                        let item_name = res
-                            .get("input")
-                            .and_then(|i| {
-                                i.get("srcRemote")
-                                    .or_else(|| i.get("remote"))
-                                    .or_else(|| i.get("dstRemote"))
-                                    .or_else(|| i.get("path1"))
-                                    .or_else(|| i.get("path2"))
-                            })
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(&source_str);
-
-                        let full_err = format!("{item_name}: {err}");
-                        if error_msg.is_empty() {
-                            error_msg = full_err;
-                        } else if !error_msg.contains(&full_err) {
-                            error_msg = format!("{error_msg}; {full_err}");
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Check for individual command error (e.g. core/command)
-        if success
-            && output
-                .get("error")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-        {
-            success = false;
-            if let Some(result) = output.get("result").and_then(|v| v.as_str())
-                && !result.trim().is_empty()
-            {
-                error_msg = result.trim().to_string();
-            }
-        }
-
-        // 3. Check for check operation results (e.g. operations/check)
-        if success && *job_type == JobType::Check {
-            let check_obj = if let Some(results) = output.get("results").and_then(|v| v.as_array())
-            {
-                results.first()
-            } else {
-                Some(output)
-            };
-            if let Some(check_obj) = check_obj
-                && let Some(check_success) = check_obj.get("success").and_then(Value::as_bool)
-                && !check_success
-            {
-                success = false;
-                error_msg = check_obj
-                    .get("status")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Differences found")
-                    .to_string();
-            }
+        apply_batch_results(&mut outcome, output, job_type, source_paths);
+        apply_command_error(&mut outcome, output);
+        if matches!(job_type, JobType::Check | JobType::CryptCheck) {
+            apply_check_result(&mut outcome, output);
         }
     }
+    outcome
+}
 
-    let final_error = (!error_msg.is_empty()).then_some(error_msg);
+fn output_flags_error(output: &Value) -> bool {
+    output
+        .get("error")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
 
-    JobOutcome {
-        success,
-        stopped,
-        error_msg: final_error,
-        cryptcheck_output,
+/// `operations/cryptcheck` answers with text; what it found decides the outcome.
+fn apply_cryptcheck_output(outcome: &mut JobOutcome, output: &Value) {
+    let Some(raw) = output.get("result").and_then(Value::as_str) else {
+        // The in-process endpoint answers as `operations/check` does, with the files of each
+        // report: that answer is the report. `apply_batch_results` and `apply_check_result`
+        // read from it whether the check passed.
+        if output.is_object() && (output.get("results").is_some() || output.get("status").is_some())
+        {
+            outcome.cryptcheck_output = Some(output.clone());
+        }
+        return;
+    };
+    let report = parse_cryptcheck_output(raw);
+    if report.has_issues() {
+        outcome.success = false;
+        outcome.error_msg = Some(report.status.clone());
+    } else if output_flags_error(output) {
+        outcome.success = false;
+        outcome.error_msg = Some(raw.trim().to_string());
+    } else {
+        outcome.success = true;
+        outcome.error_msg = None;
+    }
+    outcome.cryptcheck_output = Some(report.to_output());
+}
+
+/// Whether the `error` of a batch result says something went wrong.
+fn error_is_set(error: &Value) -> bool {
+    match error {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::String(text) => !text.trim().is_empty(),
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(fields) => !fields.is_empty(),
+        _ => true,
+    }
+}
+
+/// The failure text of one batch result: `None` while it succeeded, an empty text when it
+/// failed without saying why.
+fn batch_failure(result: &Value, job_type: &JobType) -> Option<String> {
+    let failed = result.get("success").and_then(Value::as_bool) == Some(false)
+        || result
+            .get("status")
+            .and_then(Value::as_i64)
+            .is_some_and(|status| status >= 400)
+        || result.get("error").is_some_and(error_is_set);
+    if !failed {
+        return None;
+    }
+    let from_error = result.get("error").map(|error| match error {
+        Value::String(text) => text.clone(),
+        Value::Array(items) => items
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join(", "),
+        other => other.to_string(),
+    });
+    Some(match from_error.filter(|text| !text.trim().is_empty()) {
+        Some(text) => text,
+        None if matches!(job_type, JobType::Check | JobType::CryptCheck) => result
+            .get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("Differences found")
+            .to_string(),
+        None => "Unknown error".to_string(),
+    })
+}
+
+/// `job/batch` and `operations/batch` answer with one result per input.
+fn apply_batch_results(
+    outcome: &mut JobOutcome,
+    output: &Value,
+    job_type: &JobType,
+    source_paths: &[String],
+) {
+    let Some(results) = output.get("results").and_then(Value::as_array) else {
+        return;
+    };
+    let all_sources = source_paths.join(", ");
+    for (index, result) in results.iter().enumerate() {
+        let Some(error) = batch_failure(result, job_type) else {
+            continue;
+        };
+        outcome.success = false;
+        if error.is_empty() {
+            continue;
+        }
+        // Results follow the order of the inputs, which follows the order of the sources.
+        let source = source_paths
+            .get(index)
+            .filter(|source| !source.is_empty())
+            .unwrap_or(&all_sources);
+        let item = result
+            .get("input")
+            .and_then(|input| {
+                // `srcFs` and `src` are what the check and cryptcheck inputs name their source.
+                [
+                    "srcRemote",
+                    "remote",
+                    "dstRemote",
+                    "path1",
+                    "path2",
+                    "srcFs",
+                    "src",
+                ]
+                .iter()
+                .find_map(|key| input.get(*key))
+            })
+            .and_then(Value::as_str)
+            .unwrap_or(source);
+        // A remote's root already ends with the colon the message is separated by.
+        let full = format!("{}: {error}", item.trim_end_matches(':'));
+        match outcome.error_msg.as_mut() {
+            None => outcome.error_msg = Some(full),
+            Some(message) if !message.contains(&full) => {
+                *message = format!("{message}; {full}");
+            }
+            Some(_) => {}
+        }
+    }
+}
+
+/// A single command (`core/command`) reports its failure in the output itself.
+fn apply_command_error(outcome: &mut JobOutcome, output: &Value) {
+    if !outcome.success || !output_flags_error(output) {
+        return;
+    }
+    outcome.success = false;
+    if let Some(result) = output.get("result").and_then(Value::as_str)
+        && !result.trim().is_empty()
+    {
+        outcome.error_msg = Some(result.trim().to_string());
+    }
+}
+
+/// `operations/check` succeeds as a call even when it found differences.
+fn apply_check_result(outcome: &mut JobOutcome, output: &Value) {
+    if !outcome.success {
+        return;
+    }
+    let result = match output.get("results").and_then(Value::as_array) {
+        Some(results) => results.first(),
+        None => Some(output),
+    };
+    if let Some(result) = result
+        && result.get("success").and_then(Value::as_bool) == Some(false)
+    {
+        outcome.success = false;
+        outcome.error_msg = Some(
+            result
+                .get("status")
+                .and_then(Value::as_str)
+                .unwrap_or("Differences found")
+                .to_string(),
+        );
     }
 }
 
@@ -364,7 +396,8 @@ mod tests {
         for suffix in [": Failed backup", ": error archive", ": hashes differ"] {
             let output = parse_cryptcheck_output(&format!(
                 "ERROR : a.txt: file not in Local file system at /tmp/root{suffix}"
-            ));
+            ))
+            .to_output();
             assert_eq!(output["results"][0]["missingOnSrc"], json!(["a.txt"]));
             assert_eq!(output["results"][0]["error"], json!([]));
         }
@@ -373,13 +406,14 @@ mod tests {
     #[test]
     fn cryptcheck_reports_keep_colons_in_file_names() {
         let text = "2026/10/20 12:00:00 ERROR : folder/a:b.txt: file not in Encrypted drive 'dst:'\n2026/10/20 12:00:00 ERROR : folder/a: b.txt: hashes differ (dst:path)\n2026/10/20 12:00:00 ERROR : other:c.txt: file not in Local file system at /src\n";
-        let output = parse_cryptcheck_output(text);
+        let output = parse_cryptcheck_output(text).to_output();
         let result = &output["results"][0];
         assert_eq!(result["missingOnDst"], json!(["folder/a:b.txt"]));
         assert_eq!(result["differ"], json!(["folder/a: b.txt"]));
         assert_eq!(result["missingOnSrc"], json!(["other:c.txt"]));
         assert_eq!(result["success"], false);
-        let output = parse_cryptcheck_output("ERROR : file:a: unfamiliar failure with: details");
+        let output =
+            parse_cryptcheck_output("ERROR : file:a: unfamiliar failure with: details").to_output();
         assert_eq!(
             output["results"][0]["error"],
             json!(["file:a: unfamiliar failure with: details"])
@@ -407,7 +441,7 @@ mod tests {
     #[test]
     fn test_parse_cryptcheck_output_success() {
         let raw = "2026/08/20 10:00:00 NOTICE: Encrypted drive 'enc:': 0 differences found\n";
-        let parsed = parse_cryptcheck_output(raw);
+        let parsed = parse_cryptcheck_output(raw).to_output();
         let res = &parsed["results"][0];
         assert_eq!(res["success"], true);
         assert_eq!(res["status"], "OK");
@@ -421,7 +455,7 @@ mod tests {
 2026/08/20 10:00:00 ERROR : file2.txt: file not in Encrypted drive
 2026/08/20 10:00:00 NOTICE: Encrypted drive 'enc:': 1 differences found
 "#;
-        let parsed = parse_cryptcheck_output(raw);
+        let parsed = parse_cryptcheck_output(raw).to_output();
         let res = &parsed["results"][0];
         assert_eq!(res["success"], false);
         assert_eq!(
@@ -466,6 +500,112 @@ mod tests {
         assert_eq!(
             outcome.error_msg.as_deref(),
             Some("src: 3 differences found")
+        );
+    }
+
+    #[test]
+    fn batch_failures_are_named_by_input_and_not_repeated() {
+        let status = json!({
+            "finished": true,
+            "success": true,
+            "output": {"results": [
+                {"input": {"srcRemote": "a:"}, "error": "boom", "status": 500},
+                {"input": {"srcRemote": "a:"}, "error": "boom", "status": 500},
+                {"success": true},
+                {"error": ["x", "y"]},
+                {"status": 404},
+            ]}
+        });
+        let outcome = resolve_job_outcome(&status, &JobType::Copy, &["src".to_string()]);
+        assert!(!outcome.success);
+        assert_eq!(
+            outcome.error_msg.as_deref(),
+            Some("a: boom; src: x, y; src: Unknown error")
+        );
+    }
+
+    #[test]
+    fn a_cryptcheck_answered_like_check_is_the_report_and_decides_the_outcome() {
+        let answer = json!({
+            "hashType": "md5",
+            "status": "1 differences found",
+            "success": false,
+            "missingOnSrc": ["extra.txt"],
+            "missingOnDst": [],
+            "differ": [],
+            "error": []
+        });
+        let status = json!({ "finished": true, "success": true, "output": answer });
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &["src".to_string()]);
+        assert!(!outcome.success);
+        assert_eq!(outcome.error_msg.as_deref(), Some("1 differences found"));
+        assert_eq!(outcome.cryptcheck_output, Some(answer));
+
+        let passed = json!({ "status": "OK", "success": true, "differ": [], "error": [] });
+        let status = json!({ "finished": true, "success": true, "output": passed });
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &["src".to_string()]);
+        assert!(outcome.success);
+        assert_eq!(outcome.error_msg, None);
+        assert_eq!(outcome.cryptcheck_output, Some(passed));
+    }
+
+    #[test]
+    fn a_batch_of_cryptchecks_names_the_source_each_failure_belongs_to() {
+        let results = json!([
+            { "status": "OK", "success": true, "differ": [] },
+            { "status": "2 differences found", "success": false, "missingOnDst": ["a", "b"] }
+        ]);
+        let status = json!({
+            "finished": true,
+            "success": true,
+            "output": { "results": results }
+        });
+        let sources = ["first:".to_string(), "second:".to_string()];
+        let outcome = resolve_job_outcome(&status, &JobType::CryptCheck, &sources);
+        assert!(!outcome.success);
+        assert_eq!(
+            outcome.error_msg.as_deref(),
+            Some("second: 2 differences found")
+        );
+        assert_eq!(
+            outcome.cryptcheck_output,
+            Some(json!({ "results": results }))
+        );
+    }
+
+    #[test]
+    fn a_command_that_reports_an_error_fails_the_job_with_its_text() {
+        let status = json!({
+            "finished": true,
+            "success": true,
+            "output": {"error": true, "result": " disk full \n"}
+        });
+        let outcome = resolve_job_outcome(&status, &JobType::Unknown("cmd".into()), &[]);
+        assert!(!outcome.success);
+        assert_eq!(outcome.error_msg.as_deref(), Some("disk full"));
+        // A failed job keeps its own error and is not looked into further.
+        let failed = json!({"finished": true, "success": false, "error": " nope ",
+            "output": {"error": true, "result": "other"}});
+        let outcome = resolve_job_outcome(&failed, &JobType::Sync, &[]);
+        assert_eq!(outcome.error_msg.as_deref(), Some("nope"));
+    }
+
+    #[test]
+    fn a_clean_cryptcheck_succeeds_and_a_noisy_one_fails_with_a_summary() {
+        let clean = json!({"finished": true, "success": true,
+            "output": {"result": "NOTICE: Encrypted drive 'enc:': 0 differences found"}});
+        let outcome = resolve_job_outcome(&clean, &JobType::CryptCheck, &[]);
+        assert!(outcome.success);
+        assert!(outcome.error_msg.is_none());
+        assert!(outcome.cryptcheck_output.is_some());
+
+        let differing = json!({"finished": true, "success": true,
+            "output": {"result": "ERROR : a.txt: MD5 differ\nERROR : b.txt: file not in Encrypted drive"}});
+        let outcome = resolve_job_outcome(&differing, &JobType::CryptCheck, &[]);
+        assert!(!outcome.success);
+        assert_eq!(
+            outcome.error_msg.as_deref(),
+            Some("1 differences, 1 missing on destination found")
         );
     }
 }

@@ -62,7 +62,7 @@
         color: var(--primary-color);
         text-decoration: none;
         border-bottom: 1px solid rgba(var(--primary-color-rgb), 0.3);
-        transition: all 0.2s ease;
+        transition: var(--transition-fast);
         word-break: break-all;
 
         &:hover {
@@ -79,7 +79,7 @@
       br {
         display: block;
         content: "";
-        margin: 4px 0;
+        margin: var(--space-xxs) 0;
       }
     }
 
@@ -179,7 +179,7 @@
         margin-inline: 40px; // We don't want to text overlap mobile reset button
 
         code {
-          padding: 2px 4px;
+          padding: 2px var(--space-xxs);
         }
         a {
           display: inline-block;

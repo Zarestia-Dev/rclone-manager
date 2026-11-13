@@ -208,4 +208,47 @@ describe('WorkflowPaletteComponent', () => {
     window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 85, clientY: 90 }));
     expect(emittedItem).toEqual(item);
   });
+
+  describe('the click that follows a drag', () => {
+    const drag = (releasedOn: EventTarget): void => {
+      const item = component.filteredItems()[0];
+      component.onItemPointerDown(item, {
+        button: 0,
+        pointerId: 1,
+        clientX: 50,
+        clientY: 50,
+        currentTarget: fixture.nativeElement.querySelector('.palette-item-card'),
+      } as unknown as PointerEvent);
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { pointerId: 1, clientX: 80, clientY: 80 })
+      );
+      vi.spyOn(dragDropService, 'commitDrag').mockReturnValue(null);
+      const up = new PointerEvent('pointerup', {
+        pointerId: 1,
+        clientX: 80,
+        clientY: 80,
+        bubbles: true,
+      });
+      releasedOn.dispatchEvent(up);
+    };
+
+    it('is ignored once when the drag ends on the card it began on', () => {
+      const addSpy = vi.spyOn(stateService, 'addNode');
+      drag(fixture.nativeElement.querySelector('.palette-item-card'));
+
+      component.addNodeToCanvas(component.filteredItems()[0]);
+      expect(addSpy).not.toHaveBeenCalled();
+
+      component.addNodeToCanvas(component.filteredItems()[0]);
+      expect(addSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not ignored when the drag ends anywhere else', () => {
+      const addSpy = vi.spyOn(stateService, 'addNode');
+      drag(window);
+
+      component.addNodeToCanvas(component.filteredItems()[0]);
+      expect(addSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

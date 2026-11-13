@@ -1,43 +1,27 @@
 use crate::context::AppHandle;
-#[cfg(all(target_os = "linux", feature = "flatpak"))]
+#[cfg(autostart_portal)]
 use crate::utils::spawn;
 use log::debug;
-#[cfg(all(
-    feature = "tauri-plugin-autostart",
-    not(all(target_os = "linux", feature = "flatpak"))
-))]
+#[cfg(autostart_plugin)]
 use tauri_plugin_autostart::ManagerExt;
 
-#[cfg(all(target_os = "linux", feature = "flatpak"))]
+#[cfg(autostart_portal)]
 pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
     use std::collections::HashMap;
     use zbus::Variant;
     use zbus::{Connection, Proxy};
 
-    // Attempt to connect to the session DBus
-    let connection = match Connection::session().await {
-        Ok(c) => c,
-        Err(e) => {
-            log::error!("Failed to connect to session bus: {e}");
-            return Err(e.to_string());
-        }
-    };
+    let connection = Connection::session().await.map_err(|e| e.to_string())?;
 
-    // Create a proxy to the Desktop portal Background interface
-    let proxy = match Proxy::new(
+    // Proxy to the Desktop portal Background interface
+    let proxy = Proxy::new(
         &connection,
         "org.freedesktop.portal.Desktop",
         "/org/freedesktop/portal/desktop",
         "org.freedesktop.portal.Background",
     )
     .await
-    {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("Failed to create Background portal proxy: {e}");
-            return Err(e.to_string());
-        }
-    };
+    .map_err(|e| e.to_string())?;
 
     // Prepare the options dictionary (a{sv})
     let mut options: HashMap<&str, Variant> = HashMap::new();
@@ -62,25 +46,18 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
 
     // Call RequestBackground(parent_window: String, options: a{sv}) -> (ObjectPath)
     // We pass an empty string for parent_window since we don't track the X11/Wayland window ID here.
-    match proxy
+    let path = proxy
         .call::<_, _, zbus::OwnedObjectPath>("RequestBackground", &("", &options))
         .await
-    {
-        Ok(path) => {
-            log::debug!(
-                "Background portal request sent successfully. Request path: {}",
-                path.as_str()
-            );
-            Ok(())
-        }
-        Err(e) => {
-            log::error!("Background portal request failed: {e}");
-            Err(e.to_string())
-        }
-    }
+        .map_err(|e| e.to_string())?;
+    log::debug!(
+        "Background portal request sent successfully. Request path: {}",
+        path.as_str()
+    );
+    Ok(())
 }
 
-#[cfg(all(target_os = "linux", feature = "flatpak"))]
+#[cfg(autostart_portal)]
 pub(crate) fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
     spawn(async move {
@@ -90,16 +67,39 @@ pub(crate) fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     });
 }
 
-#[cfg(all(
-    feature = "tauri-plugin-autostart",
-    not(all(target_os = "linux", feature = "flatpak"))
-))]
+#[cfg(autostart_plugin)]
 pub(crate) fn handle_autostart_change(app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
     let autostart = app.autolaunch();
-    let _ = if enabled {
+    let result = if enabled {
         autostart.enable()
     } else {
         autostart.disable()
     };
+    if let Err(e) = result {
+        log::error!(
+            "Failed to {} autostart: {e}",
+            if enabled { "enable" } else { "disable" }
+        );
+    }
+}
+
+/// Re-create the OS autostart entry if it was removed while the setting is still on.
+#[cfg(autostart_plugin)]
+pub(crate) fn restore_missing_autostart(app: &AppHandle) {
+    // A development binary must not register itself to launch at login.
+    if cfg!(debug_assertions) {
+        return;
+    }
+    let autostart = app.autolaunch();
+    match autostart.is_enabled() {
+        Ok(true) => {}
+        Ok(false) => {
+            debug!("Autostart entry is missing, restoring it");
+            if let Err(e) = autostart.enable() {
+                log::error!("Failed to restore autostart entry: {e}");
+            }
+        }
+        Err(e) => log::error!("Failed to check autostart entry: {e}"),
+    }
 }

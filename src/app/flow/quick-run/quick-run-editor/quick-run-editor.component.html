@@ -181,8 +181,8 @@
               @for (op of operations; track op.key) {
                 <button
                   type="button"
-                  class="app-pill interactive"
-                  [class.is-selected]="currentOpType() === op.key"
+                  appPill
+                  [selected]="currentOpType() === op.key"
                   (click)="selectOperation(op.key)"
                   [disabled]="isSaving()"
                   [attr.title]="getOperationLabel(op.key) | translate"

@@ -8,6 +8,7 @@ import {
   SYNC_TYPES,
   OPERATION_ICONS,
   DEFAULT_PROFILE_NAME,
+  profileOf,
 } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
@@ -86,7 +87,7 @@ export class RemoteStatusService {
     if (serves.length === 0) return this.translate.instant('serve.serving');
     if (serves.length === 1)
       return this.translate.instant('serve.servingWithProfile', {
-        profile: serves[0].profile || DEFAULT_PROFILE_NAME,
+        profile: profileOf(serves[0]) || DEFAULT_PROFILE_NAME,
         type: serves[0].params.type.toUpperCase(),
         addr: serves[0].addr,
       });
@@ -95,7 +96,7 @@ export class RemoteStatusService {
       profiles: serves
         .map(s =>
           this.translate.instant('serve.profileInfo', {
-            profile: s.profile || DEFAULT_PROFILE_NAME,
+            profile: profileOf(s) || DEFAULT_PROFILE_NAME,
             type: s.params.type.toUpperCase(),
           })
         )

@@ -29,6 +29,7 @@ import {
   ExportModalData,
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
+import type { CheckCompareData } from '../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
@@ -235,9 +236,17 @@ export class ModalService extends TauriBaseService {
       import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
         m => m.RcloneFlagsModalComponent
       ),
+    'rc-console': () =>
+      import('../../features/modals/settings/rc-console-modal/rc-console-modal.component').then(
+        m => m.RcConsoleModalComponent
+      ),
     vault: () =>
       import('../../features/modals/settings/vault-modal/vault-modal.component').then(
         m => m.VaultModalComponent
+      ),
+    'check-compare': () =>
+      import('../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component').then(
+        m => m.CheckCompareDialogComponent
       ),
     'job-detail': () =>
       import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
@@ -270,6 +279,10 @@ export class ModalService extends TauriBaseService {
     'archive-create': () =>
       import('../../shared/modals/archive-create-modal/archive-create-modal.component').then(
         m => m.ArchiveCreateModalComponent
+      ),
+    'index-create': () =>
+      import('../../shared/modals/index-create-modal/index-create-modal.component').then(
+        m => m.IndexCreateModalComponent
       ),
     'quick-run-editor': () =>
       import('../../flow/quick-run/quick-run-editor/quick-run-editor.component').then(
@@ -485,16 +498,17 @@ export class ModalService extends TauriBaseService {
     return this.openModal(
       'workflow-rc-editor',
       {
-        width: '780px',
+        width: '1000px',
         maxWidth: '95vw',
-        maxHeight: '90vh',
+        height: '85vh',
+        maxHeight: '780px',
         disableClose: true,
         data: { node },
       },
       {
         title: this.translate.instant('flow.workflow.nodes.rcCommand'),
-        width: 780,
-        height: 700,
+        width: 1000,
+        height: 760,
         suffix: node.id,
       }
     );
@@ -589,6 +603,19 @@ export class ModalService extends TauriBaseService {
     );
   }
 
+  /**
+   * Asks which version of each file should win, all in one dialog. The dialog calls back into the
+   * opener for every answer, which a separate window could not do, so it never opens as one.
+   */
+  openCheckCompare(data: CheckCompareData): DialogRefLike<void> {
+    return this.openModal('check-compare', {
+      width: '680px',
+      maxWidth: '100vw',
+      data,
+      panelClass: 'mobile-sheet-dialog',
+    });
+  }
+
   openRestorePreview<TResult = unknown>(options: RestorePreviewOptions): DialogRefLike<TResult> {
     const data = { backupPath: options.backupPath, analysis: options.analysis };
     return this.openModal(
@@ -647,6 +674,24 @@ export class ModalService extends TauriBaseService {
         title: this.translate.instant('titlebar.menu.flags'),
         width: 680,
         height: 600,
+      }
+    );
+  }
+
+  /** `line` fills the input, for example `operations/fsinfo fs=remote:` when opened from a remote. */
+  openRcConsole<TResult = unknown>(line?: string): DialogRefLike<TResult> {
+    return this.openModal(
+      'rc-console',
+      {
+        ...STANDARD_MODAL_SIZE,
+        maxWidth: '900px',
+        disableClose: true,
+        data: line ? { line } : undefined,
+      },
+      {
+        title: this.translate.instant('modals.rcConsole.title'),
+        width: 900,
+        height: 640,
       }
     );
   }
@@ -742,6 +787,17 @@ export class ModalService extends TauriBaseService {
     return this.openModal('archive-create', {
       width: '450px',
       height: '600px',
+      disableClose: true,
+      data,
+    });
+  }
+
+  openIndexCreate<TResult = unknown>(data: { target: string }): DialogRefLike<TResult> {
+    return this.openModal('index-create', {
+      width: '520px',
+      maxWidth: '90vw',
+      height: '90vh',
+      maxHeight: '720px',
       disableClose: true,
       data,
     });

@@ -54,13 +54,18 @@ pub fn url_decode(s: &str) -> String {
         .unwrap_or_else(|_| s.to_string())
 }
 
+/// Ensures a remote name terminates with the colon (`:`) rclone expects.
+pub fn ensure_remote_colon(remote: &str) -> String {
+    if remote.ends_with(':') {
+        remote.to_owned()
+    } else {
+        format!("{remote}:")
+    }
+}
+
 /// Decodes a remote name and ensures it terminates with a colon (`:`).
 pub fn decode_remote_name(remote: &str) -> String {
-    let mut decoded = url_decode(remote);
-    if !decoded.ends_with(':') {
-        decoded.push(':');
-    }
-    decoded
+    ensure_remote_colon(&url_decode(remote))
 }
 
 /// Normalizes a decoded path from a URI:
@@ -190,6 +195,14 @@ pub fn content_disposition(download: bool, filename: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn remote_names_gain_one_trailing_colon() {
+        assert_eq!(super::ensure_remote_colon("drive"), "drive:");
+        assert_eq!(super::ensure_remote_colon("drive:"), "drive:");
+        assert_eq!(super::ensure_remote_colon(""), ":");
+        assert_eq!(super::decode_remote_name("my%20drive"), "my drive:");
+    }
+
     #[test]
     fn parent_components_are_distinguished_from_valid_filenames() {
         for path in ["..", "../song.mp3", "/music/../song", r"C:\music\..\song"] {

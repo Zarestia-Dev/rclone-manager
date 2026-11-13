@@ -11,9 +11,11 @@ use serde_json::{Value, json};
 use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::commands::{
-    common::parse_common_config, job::JobMetadata, sync::submit_transfer_batch,
+    common::parse_common_config, job::JobMetadata, job_chain::ChainMode,
+    sync::submit_transfer_batch,
 };
 use crate::rclone::state::job::JobPoll;
+use crate::rclone::state::job_stats::check_reports;
 use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
 use crate::services::flow::workflow::engine::{
     RunContext,
@@ -21,7 +23,8 @@ use crate::services::flow::workflow::engine::{
 };
 use crate::services::flow::workflow::types::{NodeExecutionOutput, WorkflowNode};
 use crate::utils::format::format_file_size;
-use crate::utils::types::{jobs::JobType, origin::Origin, remotes::OperationType};
+use crate::utils::types::starter::Starter;
+use crate::utils::types::{jobs::JobType, remotes::OperationType};
 
 /// Helper RAII guard ensuring a job ID is removed from the active jobs set upon exit.
 struct ActiveJobGuard {
@@ -78,30 +81,13 @@ fn build_job_execution_output(
     error_msg: Option<&str>,
 ) -> Value {
     let stats = job.stats.as_ref();
-    let bytes = stats
-        .and_then(|s| s.get("bytes"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let total_bytes = stats
-        .and_then(|s| s.get("totalBytes"))
-        .and_then(Value::as_u64)
-        .unwrap_or(bytes);
-    let transfers = stats
-        .and_then(|s| s.get("transfers"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let total_transfers = stats
-        .and_then(|s| s.get("totalTransfers"))
-        .and_then(Value::as_u64)
-        .unwrap_or(transfers);
-    let errors = stats
-        .and_then(|s| s.get("errors"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
-    let checks = stats
-        .and_then(|s| s.get("checks"))
-        .and_then(Value::as_u64)
-        .unwrap_or(0);
+    let stat_u64 = |key: &str| stats.and_then(|s| s.get(key)).and_then(Value::as_u64);
+    let bytes = stat_u64("bytes").unwrap_or(0);
+    let total_bytes = stat_u64("totalBytes").unwrap_or(bytes);
+    let transfers = stat_u64("transfers").unwrap_or(0);
+    let total_transfers = stat_u64("totalTransfers").unwrap_or(transfers);
+    let errors = stat_u64("errors").unwrap_or(0);
+    let checks = stat_u64("checks").unwrap_or(0);
     let speed = stats
         .and_then(|s| s.get("speed"))
         .and_then(Value::as_f64)
@@ -110,28 +96,19 @@ fn build_job_execution_output(
 
     let is_check = matches!(job.job_type, JobType::Check | JobType::CryptCheck);
 
-    let check_obj = stats.and_then(|s| s.get("checkOutput")).or(stats);
-
-    let differ = check_obj
-        .and_then(|c| c.get("differ"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let missing_on_dst = check_obj
-        .and_then(|c| c.get("missingOnDst"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let missing_on_src = check_obj
-        .and_then(|c| c.get("missingOnSrc"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let matched = check_obj
-        .and_then(|c| c.get("match"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
-    let check_errors = check_obj
-        .and_then(|c| c.get("error"))
-        .map(|v| extract_string_list(Some(v)))
-        .unwrap_or_default();
+    // One result per source root of a batch, or the one result of a single check.
+    let reports = stats.map(check_reports).unwrap_or_default();
+    let check_list = |key: &str| -> Vec<String> {
+        reports
+            .iter()
+            .flat_map(|report| extract_string_list(report.get(key)))
+            .collect()
+    };
+    let differ = check_list("differ");
+    let missing_on_dst = check_list("missingOnDst");
+    let missing_on_src = check_list("missingOnSrc");
+    let matched = check_list("match");
+    let check_errors = check_list("error");
 
     let differ_count = differ.len();
     let missing_dst_count = missing_on_dst.len();
@@ -142,11 +119,11 @@ fn build_job_execution_output(
         checks as usize
     };
     let error_count = check_errors.len().max(errors as usize);
-    let has_differences = differ_count > 0 || missing_dst_count > 0 || missing_src_count > 0;
+    let total_diff = differ_count + missing_dst_count + missing_src_count;
+    let has_differences = total_diff > 0;
 
     let summary = if is_check {
         if has_differences {
-            let total_diff = differ_count + missing_dst_count + missing_src_count;
             crate::t!(
                 "backendErrors.workflow.summaryCheckDifferences",
                 "total" => total_diff,
@@ -203,7 +180,6 @@ fn build_job_execution_output(
             crate::t!("backendErrors.workflow.reportTitle")
         )];
         if has_differences {
-            let total_diff = differ_count + missing_dst_count + missing_src_count;
             report_lines.push(format!(
                 "- **{status_label}**: {}",
                 crate::t!("backendErrors.workflow.reportStatusDifferences", "count" => total_diff)
@@ -260,6 +236,12 @@ fn build_job_execution_output(
             obj.insert("missingOnSrc".to_string(), json!(missing_on_src));
             obj.insert("report".to_string(), json!(report));
         }
+    }
+
+    // The file reports of a sync, copy or move that asked for them, as `{{prev.reports.combined}}`.
+    if let (Some(report), Some(obj)) = (job.report.as_deref(), out.as_object_mut()) {
+        obj.insert("reports".to_string(), report.clone());
+        obj.insert("reportCounts".to_string(), json!(job.report_counts));
     }
 
     if let (Some(err), Some(obj)) = (error_msg, out.as_object_mut()) {
@@ -396,8 +378,7 @@ pub(crate) async fn quick_run_node(
         app.clone(),
         backend.clone(),
         qr,
-        Some(workflow.id.clone()),
-        Some(node.id.clone()),
+        Some(ctx.workflow_run(node)),
         None,
     )
     .await?;
@@ -408,6 +389,26 @@ pub(crate) async fn quick_run_node(
         Ok(NodeExecutionOutput::new(
             serde_json::to_value(res).unwrap_or(json!({"started": true})),
         ))
+    }
+}
+
+/// Resolves a node destination. Operations whose destination is relative to the node's remote
+/// (copyurl, cryptcheck, ...) get the remote prefixed; for sync-style operations a path without
+/// a remote is a local path and is passed through, otherwise a local destination would be read as
+/// a folder inside the source remote and rclone reports overlapping remotes.
+fn resolve_node_dest(op_type: OperationType, remote: &str, dest: &str) -> String {
+    let is_full_fs_dest = matches!(
+        op_type,
+        OperationType::Sync
+            | OperationType::Copy
+            | OperationType::Move
+            | OperationType::Bisync
+            | OperationType::Check
+    );
+    if remote.is_empty() || dest.contains(':') || is_full_fs_dest {
+        dest.to_string()
+    } else {
+        format!("{remote}:{dest}")
     }
 }
 
@@ -430,15 +431,7 @@ pub(crate) async fn transfer_node(
     let op = extract_node_op_config(config);
     let common = parse_common_config(op.config, &op.empty_settings)?;
 
-    let dest_resolved = if !op.remote.is_empty() && !common.dest.contains(':') {
-        if common.dest.is_empty() {
-            format!("{}:", op.remote)
-        } else {
-            format!("{}:{}", op.remote, common.dest)
-        }
-    } else {
-        common.dest.clone()
-    };
+    let dest_resolved = resolve_node_dest(op_type, op.remote, &common.dest);
 
     let target_pairs: Vec<(String, String)> = common
         .source
@@ -452,9 +445,7 @@ pub(crate) async fn transfer_node(
         common.source.clone(),
         dest_resolved,
     )
-    .with_origin(Some(Origin::Flow))
-    .with_workflow_id(Some(workflow.id.clone()))
-    .with_node_id(Some(node.id.clone()))
+    .with_starter(Some(Starter::Workflow(ctx.workflow_run(node))))
     .with_dry_run(*dry_run);
 
     let job_id_str = submit_transfer_batch(
@@ -463,7 +454,7 @@ pub(crate) async fn transfer_node(
         op_type,
         target_pairs,
         &common,
-        *dry_run,
+        ChainMode::Foreground,
         metadata,
     )
     .await?;
@@ -477,6 +468,8 @@ pub(crate) async fn transfer_node(
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::types::jobs::JobInfo;
+    use crate::utils::types::starter::WorkflowRun;
     use std::collections::HashSet;
     use std::sync::Arc;
 
@@ -491,29 +484,59 @@ mod tests {
 
     use crate::utils::types::jobs::{JobStatus, JobType};
 
-    fn check_job(job_type: JobType, stats: Value) -> crate::utils::types::jobs::JobInfo {
-        crate::utils::types::jobs::JobInfo {
-            stats_revision: 0,
+    #[test]
+    fn local_dest_of_sync_ops_is_not_prefixed_with_node_remote() {
+        for op in [
+            OperationType::Sync,
+            OperationType::Copy,
+            OperationType::Move,
+            OperationType::Bisync,
+            OperationType::Check,
+        ] {
+            assert_eq!(
+                resolve_node_dest(op, "db-myremote", "/mnt/data/dropbox"),
+                "/mnt/data/dropbox"
+            );
+            assert_eq!(
+                resolve_node_dest(op, "db-myremote", "other:dir"),
+                "other:dir"
+            );
+        }
+    }
+
+    #[test]
+    fn remote_relative_dest_is_prefixed_with_node_remote() {
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "backup-drive", "incoming"),
+            "backup-drive:incoming"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Cryptcheck, "secret-crypt", ""),
+            "secret-crypt:"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "", "incoming"),
+            "incoming"
+        );
+        assert_eq!(
+            resolve_node_dest(OperationType::Copyurl, "backup-drive", "x:incoming"),
+            "x:incoming"
+        );
+    }
+
+    fn check_job(job_type: JobType, stats: Value) -> JobInfo {
+        JobInfo {
             jobid: 5,
             job_type,
             remote_name: "drive:".to_string(),
             source: vec!["/local".to_string()],
             destination: "drive:backup".to_string(),
-            start_time: Utc::now(),
             end_time: Some(Utc::now()),
             status: JobStatus::Completed,
-            error: None,
             stats: Some(stats),
             group: "job-5".to_string(),
-            profile: None,
-            execute_id: None,
-            quick_run_id: None,
-            origin: None,
             backend_name: "local".to_string(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: None,
-            node_id: None,
+            ..JobInfo::for_test()
         }
     }
 
@@ -602,12 +625,19 @@ mod tests {
             vec!["src:".to_string()],
             "dst:".to_string(),
         )
-        .with_workflow_id(Some("wf-123".to_string()))
-        .with_node_id(Some("node-456".to_string()))
+        .with_starter(Some(Starter::Workflow(WorkflowRun::new(
+            "wf-123",
+            "Workflow",
+            "node-456",
+            vec![],
+        ))))
         .with_dry_run(dry_run);
 
-        assert_eq!(metadata.workflow_id.as_deref(), Some("wf-123"));
-        assert_eq!(metadata.node_id.as_deref(), Some("node-456"));
+        assert!(crate::utils::types::starter::is_workflow_node(
+            metadata.starter.as_ref(),
+            "wf-123",
+            "node-456"
+        ));
         assert!(metadata.dry_run);
     }
 
@@ -701,17 +731,14 @@ mod tests {
 
     #[test]
     fn test_build_job_execution_output_normalization() {
-        let job = crate::utils::types::jobs::JobInfo {
-            stats_revision: 0,
+        let job = JobInfo {
             jobid: 99,
             job_type: JobType::Check,
             remote_name: "drive:".to_string(),
             source: vec!["/local".to_string()],
             destination: "drive:backup".to_string(),
-            start_time: Utc::now(),
             end_time: Some(Utc::now()),
             status: JobStatus::Completed,
-            error: None,
             stats: Some(json!({
                 "bytes": 1048576,
                 "totalBytes": 1048576,
@@ -726,15 +753,8 @@ mod tests {
                 }
             })),
             group: "job-99".to_string(),
-            profile: None,
-            execute_id: None,
-            quick_run_id: None,
-            origin: None,
             backend_name: "local".to_string(),
-            dry_run: false,
-            parent_job_id: None,
-            workflow_id: None,
-            node_id: None,
+            ..JobInfo::for_test()
         };
 
         let output = build_job_execution_output(job.clone(), true, None);
@@ -751,6 +771,120 @@ mod tests {
                 .unwrap()
                 .contains("2 difference(s)")
         );
+    }
+
+    /// What rclone returned for a failed check of one source root, as the job kept it.
+    fn failed_check_job() -> JobInfo {
+        JobInfo {
+            jobid: 226,
+            job_type: JobType::Check,
+            remote_name: "dropbox:".to_string(),
+            source: vec!["dropbox:".to_string()],
+            destination: "/home/hakan/Downloads/test".to_string(),
+            end_time: Some(Utc::now()),
+            status: JobStatus::Failed,
+            stats: Some(json!({
+                "checks": 330,
+                "errors": 2,
+                "checkOutput": {
+                    "results": [{
+                        "differ": [],
+                        "error": [],
+                        "hashType": "dropbox",
+                        "missingOnDst": ["test/Arch Aur Keys.zip", "test/BITIRMEPROJESI.pdf"],
+                        "missingOnSrc": [],
+                        "status": "2 differences found",
+                        "success": false
+                    }]
+                }
+            })),
+            ..JobInfo::for_test()
+        }
+    }
+
+    #[test]
+    fn a_check_that_found_differences_reports_them_even_though_the_job_failed() {
+        let output = build_job_execution_output(
+            failed_check_job(),
+            false,
+            Some("dropbox:: 2 differences found"),
+        );
+        // A check that finds differences ends as a failed job; the files are still listed.
+        assert_eq!(output["success"], false);
+        assert_eq!(output["hasDifferences"], true);
+        assert_eq!(output["missingOnDstCount"], 2);
+        assert_eq!(
+            output["missingOnDst"],
+            json!(["test/Arch Aur Keys.zip", "test/BITIRMEPROJESI.pdf"])
+        );
+        assert_eq!(output["differCount"], 0);
+        assert_eq!(output["matchCount"], 330);
+        assert!(
+            output["report"]
+                .as_str()
+                .unwrap()
+                .contains("BITIRMEPROJESI.pdf")
+        );
+    }
+
+    #[test]
+    fn a_check_of_several_roots_adds_up_the_result_of_each() {
+        let mut job = failed_check_job();
+        job.stats = Some(json!({
+            "checks": 5,
+            "checkOutput": { "results": [
+                { "missingOnDst": ["a.txt"], "match": ["m1.txt"] },
+                { "differ": ["b.txt"], "missingOnSrc": ["c.txt"], "match": ["m2.txt", "m3.txt"] }
+            ]}
+        }));
+        let output = build_job_execution_output(job, false, Some("differences"));
+        assert_eq!(output["hasDifferences"], true);
+        assert_eq!(output["missingOnDst"], json!(["a.txt"]));
+        assert_eq!(output["differ"], json!(["b.txt"]));
+        assert_eq!(output["missingOnSrc"], json!(["c.txt"]));
+        assert_eq!(output["matchCount"], 3);
+    }
+
+    #[test]
+    fn a_check_with_nothing_different_has_no_differences() {
+        let mut job = failed_check_job();
+        job.status = JobStatus::Completed;
+        job.stats = Some(json!({
+            "checks": 2,
+            "checkOutput": { "results": [{ "match": ["a.txt", "b.txt"], "success": true }] }
+        }));
+        let output = build_job_execution_output(job, true, None);
+        assert_eq!(output["hasDifferences"], false);
+        assert_eq!(output["matchCount"], 2);
+    }
+
+    #[test]
+    fn a_job_output_carries_the_file_reports_only_when_the_job_kept_some() {
+        let mut job = JobInfo {
+            jobid: 5,
+            job_type: JobType::Copy,
+            remote_name: "drive:".to_string(),
+            source: vec!["/local".to_string()],
+            destination: "drive:backup".to_string(),
+            end_time: Some(Utc::now()),
+            status: JobStatus::Completed,
+            group: "job-5".to_string(),
+            backend_name: "local".to_string(),
+            ..JobInfo::for_test()
+        };
+
+        let plain = build_job_execution_output(job.clone(), true, None);
+        assert!(plain.get("reports").is_none());
+        assert!(plain.get("reportCounts").is_none());
+
+        let report = json!({"combined": ["+ a.txt", "+ b.txt"], "error": []});
+        job.report_counts = Some(crate::rclone::state::job_report::report_counts(&report));
+        job.report = Some(Arc::new(report));
+        let output = build_job_execution_output(job.clone(), false, Some("boom"));
+        assert_eq!(output["reports"]["combined"][1], "+ b.txt");
+        assert_eq!(output["reportCounts"]["combined"], 2);
+        assert_eq!(output["reportCounts"]["error"], 0);
+        assert_eq!(output["errorMessage"], "boom");
     }
 
     #[tokio::test]

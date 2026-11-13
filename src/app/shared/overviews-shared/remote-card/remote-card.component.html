@@ -7,7 +7,7 @@
   >
     <mat-icon svgIcon="drag-indicator" class="drag-handle"></mat-icon>
     <button
-      class="hide-btn"
+      class="action-button"
       [attr.title]="(isHidden() ? 'shared.actions.show' : 'shared.actions.hide') | translate"
       (click)="onToggleHidden($event)"
     >
@@ -16,7 +16,7 @@
   </div>
 }
 
-<div class="card-header" [ngClass]="'display-' + displayMode()">
+<div class="card-header" [class]="'display-' + displayMode()">
   <div class="card-info">
     <div class="icon-container">
       <mat-icon
@@ -33,14 +33,13 @@
   </div>
 
   <div class="card-status-indicators" aria-hidden="true">
-    @for (vm of statusIndicatorViewModels(); track $index) {
+    @for (vm of statusIndicatorViewModels(); track vm.op) {
       <div
-        [class]="
-          'app-pill ' +
-          vm.meta.pillClass +
-          (vm.meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[vm.op] : '')
-        "
-        [attr.title]="vm.tooltip"
+        appPill
+        size="sm"
+        [tone]="vm.meta.tone"
+        [class]="vm.meta.animateContainer ? ACTION_ANIMATION_CLASS[vm.op] : ''"
+        [attr.title]="(vm.meta.ariaKey | translate) + (vm.profiles ? ' (' + vm.profiles + ')' : '')"
       >
         <mat-icon
           [svgIcon]="vm.meta.icon"
@@ -55,23 +54,18 @@
 @if (displayMode() === 'compact') {
   <app-remote-card-actions
     [actionButtons]="actionButtons()"
-    [profilePickerGroupByOp]="profilePickerGroupByOp()"
+    [profilePickers]="profilePickers()"
     [openableFolders]="openableFolders()"
-    [folderBlossomStyle]="folderBlossomStyle()"
-    [isFolderOpening]="isFolderOpening()"
     (actionClick)="onActionButtonClick($event)"
-    (profilePickerClick)="onProfilePickerClick($event.operation, $event.profile, $event.event)"
-    (openFolderClick)="onOpenFolderClick($event.folder, $event.event)"
+    (profilePick)="onProfileToggle($event)"
+    (openFolder)="onOpenFolder($event)"
   />
 }
 
 @if (displayMode() === 'detailed') {
   <app-remote-card-profile-details
-    [detailedOperations]="detailedOperations()"
     [detailedOperationViewModels]="detailedOperationViewModels()"
-    (profileChipClick)="onProfileChipClick($event.operation, $event.profile, $event.event)"
-    (profileOpenInFiles)="
-      onProfileOpenInFiles($event.operation, $event.profile, $event.path, $event.event)
-    "
+    (profileToggle)="onProfileToggle($event)"
+    (profileOpenInFiles)="onProfileOpenInFiles($event)"
   />
 }

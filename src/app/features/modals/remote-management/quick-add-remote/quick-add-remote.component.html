@@ -103,7 +103,7 @@
             [attr.aria-label]="'modals.oauth.copyLink' | translate"
             [attr.title]="'modals.oauth.copyLink' | translate"
           >
-            <mat-icon svgIcon="copy" class="accent"></mat-icon>
+            <mat-icon svgIcon="copy" data-tone="accent"></mat-icon>
           </button>
         </div>
       </section>
@@ -135,7 +135,7 @@
       <button
         type="button"
         matButton="filled"
-        class="primary"
+        data-tone="primary"
         (click)="nextStep()"
         [disabled]="!isSetupStepValid()"
         [attr.title]="'common.next' | translate"
@@ -164,7 +164,7 @@
         <button
           type="button"
           matButton="text"
-          class="warn"
+          data-tone="warn"
           (click)="cancelAuth()"
           [attr.title]="'common.cancel' | translate"
           [attr.aria-label]="'common.cancel' | translate"
@@ -175,7 +175,7 @@
 
       <button
         matButton="filled"
-        class="primary"
+        data-tone="primary"
         type="button"
         (click)="onSubmit()"
         [disabled]="
@@ -199,7 +199,7 @@
 
       <button
         matButton="text"
-        class="warn"
+        data-tone="warn"
         type="button"
         (click)="cancelAuth()"
         [attr.title]="'common.cancel' | translate"
@@ -210,7 +210,7 @@
 
       <button
         matButton="filled"
-        class="primary"
+        data-tone="primary"
         (click)="onInteractiveContinue(flow.answer)"
         [disabled]="isInteractiveContinueDisabled()"
         [attr.aria-label]="continueLabel"

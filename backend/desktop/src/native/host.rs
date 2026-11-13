@@ -12,9 +12,7 @@ impl Host for NativeHost {
     }
     fn update_method(&self) -> crate::services::updates::policy::UpdateMethod {
         use crate::services::updates::policy::UpdateMethod;
-        if cfg!(target_os = "android") {
-            UpdateMethod::Android
-        } else if cfg!(feature = "portable") {
+        if cfg!(feature = "portable") {
             UpdateMethod::Binary
         } else if cfg!(feature = "updater") {
             UpdateMethod::Tauri
@@ -22,11 +20,22 @@ impl Host for NativeHost {
             UpdateMethod::Unavailable
         }
     }
+    #[cfg(all(feature = "updater", target_os = "linux"))]
+    fn native_bundle(&self) -> Option<crate::services::updates::policy::InstallationKind> {
+        use crate::services::updates::policy::InstallationKind;
+        use tauri::utils::config::BundleType;
+        match tauri::utils::platform::bundle_type()? {
+            BundleType::Deb => Some(InstallationKind::Deb),
+            BundleType::Rpm => Some(InstallationKind::Rpm),
+            BundleType::AppImage => Some(InstallationKind::Appimage),
+            _ => None,
+        }
+    }
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<crate::services::paths::AppPaths, String> {
         resolve_paths(&self.0)
     }
     fn restart(&self, _app: &CoreHandle) -> Result<(), String> {
-        super::lifecycle::restart(&self.0)
+        self.0.restart()
     }
     #[cfg(all(unix, feature = "portable"))]
     fn restart_updated_binary(
@@ -45,10 +54,6 @@ impl Host for NativeHost {
         )
     }
     fn exit(&self, code: i32) {
-        // Tauri 2.12 exits once the activity is destroyed, which keep-alive would otherwise
-        // turn into a preserved, config-change-like destruction.
-        #[cfg(target_os = "android")]
-        crate::rclone::backend::saf_bridge::request_quit();
         self.0.exit(code);
     }
     #[cfg(all(target_os = "windows", feature = "desktop"))]
@@ -71,11 +76,11 @@ impl Host for NativeHost {
         super::setup::prepare(&self.0, paths).map_err(|e| e.to_string())
     }
     fn init_theme(&self) {
-        #[cfg(not(feature = "web-server"))]
+        #[cfg(any(not(feature = "web-server"), feature = "tray"))]
         super::theme::init_system_theme();
     }
     fn monitor_theme(&self) {
-        #[cfg(not(feature = "web-server"))]
+        #[cfg(any(not(feature = "web-server"), feature = "tray"))]
         super::theme::monitor_theme_changes();
     }
     fn cleanup(&self) {
@@ -91,9 +96,8 @@ impl Host for NativeHost {
             use crate::context::BackendContext;
             use tauri::{Emitter, Manager};
             let locked = crate::services::settings::access::is_locked(self.0.backend());
-            // The locked UI only needs to know that confirmation is required, not
-            // private operation counts. This native control event never reaches SSE.
-            let summary = exit_notice_summary(_summary, locked);
+            // This native control event never reaches SSE.
+            let summary = _summary.redacted(locked);
             if self.0.get_webview_window("main").is_none() {
                 crate::services::lifecycle::exit::set_pending_app_exit_summary(
                     self.0.backend(),
@@ -129,7 +133,7 @@ impl Host for NativeHost {
             .0
             .backend_state::<crate::services::settings::AppSettingsManager>();
         let settings = manager.get_all().map_err(|e| e.to_string())?;
-        if !settings.general.tray_enabled && !args.tray {
+        if !settings.general.tray_enabled && !args.start_in_tray() {
             return Ok(());
         }
         self.0
@@ -148,9 +152,13 @@ impl Host for NativeHost {
     fn set_tray_visible(&self, enabled: bool) {
         crate::desktop::tray::events::handle_tray_visibility_change(&self.0, enabled);
     }
-    #[cfg(any(feature = "tauri-plugin-autostart", feature = "flatpak"))]
+    #[cfg(any(autostart_plugin, autostart_portal))]
     fn set_autostart(&self, enabled: bool) {
         crate::desktop::autostart::handle_autostart_change(&self.0, enabled);
+    }
+    #[cfg(autostart_plugin)]
+    fn sync_autostart(&self) {
+        crate::desktop::autostart::restore_missing_autostart(&self.0);
     }
     #[cfg(feature = "tauri-plugin-notification")]
     fn notify(
@@ -163,56 +171,8 @@ impl Host for NativeHost {
     async fn check_update(
         &self,
         release: &crate::utils::github_client::Release,
-        metadata: &mut crate::utils::types::updater::UpdateMetadata,
+        expected_version: &str,
     ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
-        super::updater::check_native_updater(&self.0, release, metadata).await
-    }
-}
-
-#[cfg(all(desktop, not(feature = "web-server")))]
-pub(super) fn exit_notice_summary(
-    mut summary: crate::services::lifecycle::exit::ActiveOperationsSummary,
-    locked: bool,
-) -> crate::services::lifecycle::exit::ActiveOperationsSummary {
-    if locked {
-        summary.active_jobs_count = 0;
-        summary.active_mounts_count = 0;
-        summary.active_serves_count = 0;
-    }
-    summary
-}
-
-#[cfg(all(test, desktop, not(feature = "web-server")))]
-mod exit_notice_tests {
-    use super::exit_notice_summary;
-    use crate::services::lifecycle::exit::ActiveOperationsSummary;
-
-    #[test]
-    fn locked_exit_notice_hides_counts_but_preserves_the_need_for_confirmation() {
-        let summary = ActiveOperationsSummary {
-            has_active_operations: true,
-            active_jobs_count: 2,
-            active_mounts_count: 3,
-            active_serves_count: 4,
-        };
-        let locked = exit_notice_summary(summary.clone(), true);
-        assert!(locked.has_active_operations);
-        assert_eq!(
-            (
-                locked.active_jobs_count,
-                locked.active_mounts_count,
-                locked.active_serves_count
-            ),
-            (0, 0, 0)
-        );
-        let unlocked = exit_notice_summary(summary, false);
-        assert_eq!(
-            (
-                unlocked.active_jobs_count,
-                unlocked.active_mounts_count,
-                unlocked.active_serves_count
-            ),
-            (2, 3, 4)
-        );
+        super::updater::check_native_updater(&self.0, release, expected_version).await
     }
 }

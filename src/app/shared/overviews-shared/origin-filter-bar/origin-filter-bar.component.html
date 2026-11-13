@@ -1,8 +1,8 @@
 <div class="origin-filter-row">
   <button
     type="button"
-    class="app-pill interactive"
-    [class.is-selected]="selected() === 'all'"
+    appPill
+    [selected]="selected() === 'all'"
     (click)="selected.set('all')"
     [attr.title]="'common.all' | translate"
   >
@@ -10,18 +10,18 @@
   </button>
   <button
     type="button"
-    class="app-pill interactive"
-    [class.is-selected]="selected() === 'flow'"
-    (click)="selected.set('flow')"
-    [attr.title]="'flow.title' | translate"
+    appPill
+    [selected]="selected() === 'workflow'"
+    (click)="selected.set('workflow')"
+    [attr.title]="'flow.tabs.workflow' | translate"
   >
     <mat-icon svgIcon="workflow"></mat-icon>
-    <span>{{ 'flow.title' | translate }}</span>
+    <span>{{ 'flow.tabs.workflow' | translate }}</span>
   </button>
   <button
     type="button"
-    class="app-pill interactive"
-    [class.is-selected]="selected() === 'quickrun'"
+    appPill
+    [selected]="selected() === 'quickrun'"
     (click)="selected.set('quickrun')"
     [attr.title]="'flow.tabs.quickRun' | translate"
   >
@@ -30,8 +30,8 @@
   </button>
   <button
     type="button"
-    class="app-pill interactive"
-    [class.is-selected]="selected() === 'dashboard'"
+    appPill
+    [selected]="selected() === 'dashboard'"
     (click)="selected.set('dashboard')"
     [attr.title]="'navigation.dashboard' | translate"
   >

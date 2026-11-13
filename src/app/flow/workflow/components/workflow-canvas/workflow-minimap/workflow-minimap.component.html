@@ -1,14 +1,9 @@
 <div
   #minimapCard
   class="workflow-minimap-card"
-  role="button"
-  tabindex="0"
   [style.width.px]="mapWidth"
   [style.height.px]="mapHeight"
-  (mousedown)="onMinimapMouseDown($event)"
-  (click)="onMinimapClick($event)"
-  (keydown.enter)="onMinimapClick($event)"
-  (keydown.space)="onMinimapClick($event)"
+  (pointerdown)="onMinimapPointerDown($event)"
 >
   <!-- Mini Wires Layer -->
   @if (scaledEdges().length > 0) {
@@ -25,11 +20,21 @@
     </svg>
   }
 
+  <!-- Viewport Camera Box. Top of the nodes so we can see the node names when we are hover the mini nodes -->
+  <div
+    class="mini-viewport"
+    [style.left.px]="viewportRect().x"
+    [style.top.px]="viewportRect().y"
+    [style.width.px]="viewportRect().width"
+    [style.height.px]="viewportRect().height"
+  ></div>
+
   <!-- Mini Nodes -->
   @for (n of scaledNodes(); track n.id) {
     <div
       class="mini-node"
-      [ngClass]="['color-' + n.colorClass, 'status-' + n.state]"
+      [attr.data-tone]="n.tone"
+      [attr.data-state]="n.state"
       [class.selected]="selectedNodeIds().has(n.id)"
       [style.left.px]="n.x"
       [style.top.px]="n.y"
@@ -38,13 +43,4 @@
       [attr.title]="n.title"
     ></div>
   }
-
-  <!-- Viewport Camera Box -->
-  <div
-    class="mini-viewport"
-    [style.left.px]="viewportRect().x"
-    [style.top.px]="viewportRect().y"
-    [style.width.px]="viewportRect().width"
-    [style.height.px]="viewportRect().height"
-  ></div>
 </div>

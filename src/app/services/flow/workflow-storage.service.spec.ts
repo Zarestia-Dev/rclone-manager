@@ -7,7 +7,7 @@ import { ApiClientService } from '../infrastructure/platform/api-client.service'
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { SettingsChangeEvent } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '../ui/notification.service';
 
 describe('WorkflowStorageService', () => {
@@ -94,7 +94,42 @@ describe('WorkflowStorageService', () => {
 
     const instantiated = service.instantiateTemplate(templates[0]);
     expect(instantiated.id).toMatch(/^wf-/);
-    expect(instantiated.name).toBe(templates[0].definition.name);
+    expect(instantiated.name).toBe(templates[0].nameKey);
+  });
+
+  it('names a copy of a template in the language of the interface', async () => {
+    const [template] = await service.loadPresetTemplates();
+    vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(key =>
+      key === template.nameKey ? 'Localized name' : String(key)
+    );
+
+    expect(service.instantiateTemplate(template).name).toBe('Localized name');
+  });
+
+  it('copies the text a template keeps as keys, in the language of the interface', async () => {
+    const templates = await service.loadPresetTemplates();
+    const template = templates.find(t => t.id === 'tpl-daily-backup-notify');
+    if (!template) throw new Error('template missing');
+    vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(key =>
+      String(key).startsWith('flow.workflow.recipes.') ? `T(${key})` : String(key)
+    );
+
+    const copy = service.instantiateTemplate(template);
+
+    const notify = copy.nodes.find(n => n.type === 'notification');
+    expect(notify?.config['title']).toMatch(/^T\(flow\.workflow\.recipes\.dailyBackup\.nodes\./);
+    expect(notify?.config['message']).toMatch(/^T\(/);
+    // settings that are not text for people stay as they are
+    expect(notify?.config['severity']).toBe(
+      template.definition.nodes.find(n => n.id === notify?.id)?.config['severity']
+    );
+    // a node is titled by its type, as a node taken from the palette is
+    expect(notify?.title).toBe(notify?.titleKey);
+    expect(copy.description).toBe(`T(${template.descriptionKey})`);
+    // the template itself is not changed
+    expect(
+      String(template.definition.nodes.find(n => n.id === notify?.id)?.config['title'])
+    ).toMatch(/^flow\.workflow\.recipes\./);
   });
 
   it('publishes the same templates for concurrent explicit loads', async () => {
@@ -225,42 +260,6 @@ describe('WorkflowStorageService', () => {
     expect(state.currentWorkflow()).toBe(canvas);
   });
 
-  it('cleans duplicate workflows with the same name', async () => {
-    backendWorkflows.length = 0;
-    backendWorkflows.push(
-      {
-        id: 'dup-1',
-        name: 'Daily Backup',
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        showOnTray: false,
-      },
-      {
-        id: 'dup-2',
-        name: 'Daily Backup',
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        showOnTray: false,
-      },
-      {
-        id: 'dup-3',
-        name: 'Other Flow',
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        showOnTray: false,
-      }
-    );
-    await service.loadAllWorkflows();
-    expect(service.workflows().length).toBe(3);
-
-    const removed = await service.cleanDuplicates();
-    expect(removed).toBe(1);
-    expect(service.workflows().length).toBe(2);
-  });
-
   it('duplicateWorkflowWithFeedback duplicates and loads workflow into state', async () => {
     const wf: WorkflowDefinition = {
       id: 'wf-orig',
@@ -357,5 +356,247 @@ describe('WorkflowStorageService', () => {
 
     await service.loadAllWorkflows();
     expect(stateService.currentWorkflow()).toBeNull();
+  });
+  describe('saving from the canvas', () => {
+    const workflow = (id = 'wf-canvas'): WorkflowDefinition => ({
+      id,
+      name: 'Canvas Flow',
+      nodes: [
+        {
+          id: 'n1',
+          type: 'delay',
+          category: 'logic',
+          title: 'Wait',
+          x: 0,
+          y: 0,
+          inputs: [],
+          outputs: [],
+          config: { delaySeconds: 1 },
+          state: 'success',
+          lastOutput: { waited: 1 },
+        },
+      ],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
+    });
+
+    it('stores the workflow without what its last run left on the nodes', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      state.loadWorkflow(workflow());
+
+      expect(await service.saveCurrentWorkflow()).toBe(true);
+
+      const stored = backendWorkflows.find(w => w.id === 'wf-canvas');
+      expect(stored?.nodes[0].config).toEqual({ delaySeconds: 1 });
+      expect('lastOutput' in (stored?.nodes[0] ?? {})).toBe(false);
+      expect('state' in (stored?.nodes[0] ?? {})).toBe(false);
+      // The canvas keeps what it shows.
+      expect(state.currentWorkflow()?.nodes[0].lastOutput).toEqual({ waited: 1 });
+    });
+
+    it('marks the canvas saved, and tells the user when saving fails', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      const notifications = TestBed.inject(NotificationService);
+      const showError = vi.spyOn(notifications, 'showError').mockImplementation(() => undefined);
+      state.loadWorkflow(workflow());
+      state.updateWorkflowMetadata({ name: 'Edited' });
+      expect(state.hasUnsavedChanges()).toBe(true);
+
+      await service.saveCurrentWorkflow();
+      expect(state.hasUnsavedChanges()).toBe(false);
+
+      state.updateWorkflowMetadata({ name: 'Edited again' });
+      mockApiClient.invoke.mockRejectedValueOnce(new Error('disk full'));
+      expect(await service.saveCurrentWorkflow()).toBe(false);
+      expect(showError).toHaveBeenCalledWith(expect.stringContaining('disk full'));
+      expect(state.hasUnsavedChanges()).toBe(true);
+      expect(service.isSaving()).toBe(false);
+    });
+
+    it('starts a blank workflow and stores it', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+
+      await service.createAndOpenWorkflow();
+
+      expect(state.currentWorkflow()).not.toBeNull();
+      expect(backendWorkflows.map(w => w.id)).toContain(state.currentWorkflow()?.id);
+    });
+
+    it('opens a template as a stored copy', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      const [template] = await service.loadPresetTemplates();
+
+      await service.openTemplate(template.id);
+
+      expect(state.currentWorkflow()?.name).toBe(template.nameKey);
+      expect(backendWorkflows.some(w => w.id === state.currentWorkflow()?.id)).toBe(true);
+    });
+
+    it('stores only the tray setting, leaving edits on the canvas unsaved', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      backendWorkflows = [workflow()];
+      await service.loadAllWorkflows();
+      state.loadWorkflow(workflow());
+      state.updateWorkflowMetadata({ name: 'Unsaved name' });
+
+      await service.saveShowOnTray('wf-canvas', true);
+
+      const stored = backendWorkflows.find(w => w.id === 'wf-canvas');
+      expect(stored?.showOnTray).toBe(true);
+      expect(stored?.name).toBe('Canvas Flow');
+      expect(state.hasUnsavedChanges()).toBe(true);
+    });
+
+    it('stores the view the canvas was left in', async () => {
+      const state = TestBed.inject(WorkflowStateService);
+      state.loadWorkflow(workflow());
+      state.setPan(30, -20);
+      state.setZoom(2);
+
+      await service.saveCurrentWorkflow();
+
+      const stored = backendWorkflows.find(w => w.id === 'wf-canvas');
+      expect(stored?.viewport).toEqual(state.viewport());
+    });
+  });
+
+  describe('replacing the workflow on the canvas', () => {
+    const stored = (id: string): WorkflowDefinition => ({
+      id,
+      name: id,
+      nodes: [],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
+    });
+    let state: WorkflowStateService;
+    let confirm: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      state = TestBed.inject(WorkflowStateService);
+      confirm = vi.spyOn(TestBed.inject(NotificationService), 'confirmModal');
+      state.loadWorkflow(stored('wf-a'));
+    });
+
+    it('opens another workflow without asking when nothing is unsaved', async () => {
+      expect(await service.openWorkflow(stored('wf-b'))).toBe(true);
+      expect(confirm).not.toHaveBeenCalled();
+      expect(state.currentWorkflowId()).toBe('wf-b');
+    });
+
+    it('asks first when there are unsaved changes, and keeps them when the user declines', async () => {
+      state.setWorkflowName('Edited');
+      confirm.mockResolvedValue(false);
+
+      expect(await service.openWorkflow(stored('wf-b'))).toBe(false);
+      expect(state.currentWorkflowId()).toBe('wf-a');
+      expect(state.currentWorkflow()?.name).toBe('Edited');
+    });
+
+    it('discards the unsaved changes when the user agrees', async () => {
+      state.setWorkflowName('Edited');
+      confirm.mockResolvedValue(true);
+
+      expect(await service.openWorkflow(stored('wf-b'))).toBe(true);
+      expect(state.currentWorkflowId()).toBe('wf-b');
+    });
+
+    it('leaves the open workflow and its edits alone when it is opened again', async () => {
+      state.setWorkflowName('Edited');
+
+      expect(await service.openWorkflow(stored('wf-a'))).toBe(true);
+      expect(confirm).not.toHaveBeenCalled();
+      expect(state.currentWorkflow()?.name).toBe('Edited');
+    });
+
+    it('asks before a new workflow, a template or a duplicate replaces unsaved edits', async () => {
+      state.setWorkflowName('Edited');
+      confirm.mockResolvedValue(false);
+      const [template] = await service.loadPresetTemplates();
+
+      await service.createAndOpenWorkflow();
+      await service.openTemplate(template.id);
+      expect(await service.duplicateWorkflowWithFeedback('wf-a')).toBeNull();
+
+      expect(confirm).toHaveBeenCalledTimes(3);
+      expect(state.currentWorkflowId()).toBe('wf-a');
+      expect(backendWorkflows).toEqual([]);
+    });
+  });
+
+  describe('the list of workflows after a change', () => {
+    const listCalls = (): number =>
+      mockApiClient.invoke.mock.calls.filter(c => c[0] === 'list_workflows').length;
+    const wf = (id: string, name: string): WorkflowDefinition => ({
+      id,
+      name,
+      nodes: [],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
+    });
+
+    beforeEach(async () => {
+      backendWorkflows = [wf('wf-a', 'Alpha'), wf('wf-c', 'charlie')];
+      await service.loadAllWorkflows();
+    });
+
+    it('takes a saved workflow in, kept in the backend order, without fetching the list again', async () => {
+      const before = listCalls();
+
+      await service.saveWorkflow(wf('wf-b', 'Bravo'));
+      await service.saveWorkflow({ ...wf('wf-a', 'Zulu') });
+
+      expect(service.workflows().map(w => w.name)).toEqual(['Bravo', 'charlie', 'Zulu']);
+      expect(listCalls()).toBe(before);
+    });
+
+    it('drops a deleted workflow and takes in a duplicate without fetching the list again', async () => {
+      const before = listCalls();
+
+      await service.deleteWorkflow('wf-c');
+      expect(service.workflows().map(w => w.id)).toEqual(['wf-a']);
+
+      const copy = await service.duplicateWorkflow('wf-a');
+      expect(service.workflows().map(w => w.id)).toEqual(['wf-a', copy?.id]);
+      expect(listCalls()).toBe(before);
+    });
+  });
+
+  describe('checking a workflow', () => {
+    it('asks the backend with the stored shape and returns its messages translated', async () => {
+      mockApiClient.invoke.mockImplementation((command: string) =>
+        command === 'validate_workflow'
+          ? Promise.resolve({ valid: false, errors: ['plain error'], warnings: ['plain warning'] })
+          : Promise.resolve([])
+      );
+      const checks = await service.validateWorkflow({
+        id: 'wf-x',
+        name: 'X',
+        nodes: [
+          {
+            id: 'n',
+            type: 'manual',
+            category: 'trigger',
+            title: 'Start',
+            x: 0,
+            y: 0,
+            inputs: [],
+            outputs: [],
+            config: {},
+            state: 'success',
+          },
+        ],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        showOnTray: false,
+      });
+
+      expect(checks).toEqual({ errors: ['plain error'], warnings: ['plain warning'] });
+      const call = mockApiClient.invoke.mock.calls.find(c => c[0] === 'validate_workflow');
+      expect(call).toBeDefined();
+      expect('state' in (call?.[1].workflow.nodes[0] ?? {})).toBe(false);
+    });
   });
 });

@@ -19,11 +19,15 @@ import {
   ServeListItem,
   StartJobEvent,
   StopJobEvent,
-  PanelConfig,
+  SavedPanelLayout,
+  applyPanelLayout,
+  defaultPanels,
+  panelLayoutOf,
   DashboardPanel,
   SCROLL_DELAY_MS,
   ALL_PANELS,
   OpenInFilesEvent,
+  profileOf,
 } from '@app/types';
 
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
@@ -33,7 +37,6 @@ import { SystemOverviewPanelComponent } from '../../../../shared/overviews-share
 import { JobsOverviewPanelComponent } from '../../../../shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
 import { ServesOverviewPanelComponent } from '../../../../shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
 import { AutomationsOverviewPanelComponent } from '../../../../shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
-import { AutomationService } from 'src/app/services/operations/automation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -66,7 +69,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 })
 export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
-  private readonly automationService = inject(AutomationService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly translate = inject(TranslateService);
   private readonly localStorage = inject(LocalStorageService);
@@ -97,9 +99,7 @@ export class GeneralOverviewComponent {
       serves: false,
     })
   );
-  readonly dashboardPanels = signal<DashboardPanel[]>(
-    ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
-  );
+  readonly dashboardPanels = signal<DashboardPanel[]>(defaultPanels(ALL_PANELS));
   readonly displayPanels = computed(() =>
     this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
   );
@@ -130,7 +130,7 @@ export class GeneralOverviewComponent {
       hidden: [],
     });
     void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
-    this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+    this.dashboardPanels.set(defaultPanels(ALL_PANELS));
     void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
@@ -163,11 +163,11 @@ export class GeneralOverviewComponent {
   }
 
   private persistLayout(): void {
-    const order = this.dashboardPanels().map(p => p.id);
-    const hidden = this.dashboardPanels()
-      .filter(p => !p.visible)
-      .map(p => p.id);
-    void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', { order, hidden });
+    void this.appSettingsService.saveSetting(
+      'runtime',
+      'dashboard_layout',
+      panelLayoutOf(this.dashboardPanels())
+    );
   }
 
   // --- Actions ---
@@ -178,22 +178,13 @@ export class GeneralOverviewComponent {
         type: 'serve',
         remoteName,
         serveId: serve.id,
-        profileName: serve.profile || '',
+        profileName: profileOf(serve) || '',
       });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
     this.navigationDispatcher.navigateToServe(serve);
     setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
-  }
-
-  async toggleAutomation(automationId: string): Promise<void> {
-    try {
-      await this.automationService.toggleAutomation(automationId);
-    } catch (error) {
-      console.error('Failed to toggle automation:', error);
-      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleAutomationFailed'));
-    }
   }
 
   onAutomationClick(automation: Automation): void {
@@ -208,33 +199,10 @@ export class GeneralOverviewComponent {
   // --- Private helpers ---
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const savedLayout = await this.appSettingsService.getSettingValue<
-        { order: string[]; hidden: string[] } | string[]
-      >('runtime.dashboard_layout');
-
-      if (savedLayout) {
-        const order: string[] = Array.isArray(savedLayout)
-          ? savedLayout
-          : (savedLayout.order ?? []);
-        const hiddenIds = new Set<string>(
-          Array.isArray(savedLayout) ? [] : (savedLayout.hidden ?? [])
-        );
-
-        if (order.length > 0) {
-          const ordered = order
-            .map(id => ALL_PANELS.find(p => p.id === id))
-            .filter((p): p is PanelConfig => !!p)
-            .map(p => ({ ...p, visible: !hiddenIds.has(p.id) }));
-
-          const seenIds = new Set(order);
-          const appended = ALL_PANELS.filter(p => !seenIds.has(p.id)).map(p => ({
-            ...p,
-            visible: p.defaultVisible,
-          }));
-
-          this.dashboardPanels.set([...ordered, ...appended]);
-        }
-      }
+      const saved = await this.appSettingsService.getSettingValue<SavedPanelLayout>(
+        'runtime.dashboard_layout'
+      );
+      this.dashboardPanels.set(applyPanelLayout(ALL_PANELS, saved));
     } catch {
       console.debug('Failed to load layout settings, using defaults');
     }

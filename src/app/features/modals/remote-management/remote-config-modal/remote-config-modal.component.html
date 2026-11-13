@@ -123,7 +123,7 @@
                   [attr.aria-label]="'modals.oauth.copyLink' | translate"
                   [attr.title]="'modals.oauth.copyLink' | translate"
                 >
-                  <mat-icon svgIcon="copy" class="accent"></mat-icon>
+                  <mat-icon svgIcon="copy" data-tone="accent"></mat-icon>
                 </button>
               </div>
             </section>
@@ -195,7 +195,7 @@
                               }}</span>
                             </mat-panel-title>
                             <mat-panel-description>
-                              <span class="app-pill p-primary">{{
+                              <span appPill tone="primary">{{
                                 'modals.remoteConfig.advancedProfiles.linked'
                                   | translate: { count: state.linkedProfileSelectFields().length }
                               }}</span>

@@ -8,7 +8,7 @@
         @for (p of availablePredefinedOptions(); track p.key) {
           <button
             type="button"
-            class="app-pill interactive"
+            appPill
             (click)="addPredefinedOption(p)"
             [attr.title]="p.description | translate"
           >
@@ -28,14 +28,7 @@
             <span class="option-key truncate" [attr.title]="opt.description | translate">{{
               opt.key
             }}</span>
-            <span
-              class="app-pill"
-              [class.p-primary]="opt.type === 'boolean'"
-              [class.p-accent]="opt.type === 'string'"
-              [class.p-orange]="opt.type === 'number'"
-              [class.p-purple]="opt.type === 'array'"
-              >{{ opt.type }}</span
-            >
+            <span appPill [tone]="optionTones[opt.type]">{{ opt.type }}</span>
           </div>
           <div class="option-controls">
             @switch (opt.type) {
@@ -69,7 +62,7 @@
               @case ('array') {
                 <div class="option-chip-field no-subscript">
                   @for (chip of opt.arrayValue; track $index; let ci = $index) {
-                    <div class="app-pill">
+                    <div appPill>
                       <span>{{ chip }}</span>
                       <button
                         type="button"

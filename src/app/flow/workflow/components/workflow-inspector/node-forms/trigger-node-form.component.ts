@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,13 +9,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { toString as cronstrue } from 'cronstrue';
-import { getCronstrueLocale } from '../../../../../services/i18n/cron-locale.mapper';
+import { describeCron } from '../../../../../services/i18n/cron-locale.mapper';
 import { WorkflowNode } from '../../../types/workflow.types';
 import { AlertBannerComponent } from '../../../../../shared/components/alert-banner/alert-banner.component';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { CronSummaryCardComponent } from './cron-summary-card.component';
 
+import { PillDirective } from '../../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-trigger-node-form',
   imports: [
@@ -29,6 +30,7 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
     TranslatePipe,
     AlertBannerComponent,
     CronSummaryCardComponent,
+    PillDirective,
   ],
   templateUrl: './trigger-node-form.component.html',
   styleUrl: '../workflow-inspector.component.scss',
@@ -36,7 +38,7 @@ import { CronSummaryCardComponent } from './cron-summary-card.component';
 })
 export class TriggerNodeFormComponent {
   private readonly translate = inject(TranslateService);
-  private readonly fileSystemService = inject(FileSystemService, { optional: true });
+  private readonly fileSystemService = inject(FileSystemService);
 
   readonly node = input.required<WorkflowNode>();
   readonly nodeConfig = input.required<Record<string, unknown>>();
@@ -45,36 +47,18 @@ export class TriggerNodeFormComponent {
   readonly configChange = output<{ key: string; value: unknown }>();
   readonly openDetailed = output<void>();
 
-  readonly isCronInvalid = computed(() => {
+  private readonly langChange = toSignal(this.translate.onLangChange);
+  private readonly cron = computed(() => {
+    this.langChange();
     const expr = String(this.nodeConfig()['cronExpression'] || '').trim();
-    if (!expr) return false;
-    try {
-      cronstrue(expr, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
-        throwExceptionOnParseError: true,
-      });
-      return false;
-    } catch {
-      return true;
-    }
+    return describeCron(expr, this.translate.getCurrentLang());
   });
-
-  readonly cronHumanReadable = computed(() => {
-    const expr = String(this.nodeConfig()['cronExpression'] || '').trim();
-    if (!expr) return '';
-    try {
-      return cronstrue(expr, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
-        throwExceptionOnParseError: true,
-      });
-    } catch {
-      return this.translate.instant('flow.workflow.inspector.invalidCron');
-    }
-  });
-
-  readonly cronTooltip = computed(() => {
-    return String(this.nodeConfig()['cronExpression'] || '').trim();
-  });
+  readonly isCronInvalid = computed(() => this.cron().isInvalid);
+  readonly cronHumanReadable = computed(() =>
+    this.cron().isInvalid
+      ? this.translate.instant('flow.workflow.inspector.invalidCron')
+      : this.cron().text
+  );
 
   readonly watchPath = computed(() => {
     const p = this.nodeConfig()['watchPaths'];
@@ -90,7 +74,6 @@ export class TriggerNodeFormComponent {
   }
 
   async browseWatchFolder(): Promise<void> {
-    if (!this.fileSystemService) return;
     try {
       const path = await this.fileSystemService.selectFolder();
       if (path) {
@@ -103,10 +86,6 @@ export class TriggerNodeFormComponent {
 
   applyAppStartPreset(seconds: number): void {
     this.onFieldChange('delaySeconds', seconds);
-  }
-
-  applyCronPreset(cronExpr: string): void {
-    this.onFieldChange('cronExpression', cronExpr);
   }
 
   applyDebouncePreset(seconds: number): void {

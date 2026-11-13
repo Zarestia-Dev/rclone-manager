@@ -107,6 +107,10 @@ export interface UpdatePolicy {
   method: 'unavailable' | 'tauri' | 'binary' | 'android';
   canInstall: boolean;
   reason?: string | null;
+  /** The AUR package that owns the executable. */
+  package?: string;
+  /** A command that updates an externally managed installation. */
+  command?: string;
 }
 
 export interface UpdateInfo {
@@ -121,6 +125,27 @@ export interface UpdateInfo {
   releaseDate?: string;
   releaseUrl?: string;
   channel?: string;
+  /** The release is a pre-release. */
+  prerelease?: boolean;
+}
+
+/** An update the supervisor rolled back because the new version did not start. */
+export interface RolledBackUpdate {
+  version: string;
+  reason: string;
+}
+
+/** The backend's updater state, complete enough to rebuild the view after a reload. */
+export interface UpdaterSnapshot {
+  update: UpdateInfo | null;
+  checking: boolean;
+  /** RFC 3339 time the last check finished. */
+  lastCheckedAt?: string | null;
+  /** Localized failure of the last check (rclone: or update). */
+  error?: string | null;
+  rolledBack?: RolledBackUpdate[];
+  /** Localized note that outlives the action that caused it. */
+  notice?: string;
 }
 
 export enum DownloadStateStatus {
@@ -144,8 +169,6 @@ export interface DownloadStatus {
 export interface UpdateResult {
   success: boolean;
   message?: string;
-  output?: string;
-  channel?: string;
   manual?: boolean;
 }
 

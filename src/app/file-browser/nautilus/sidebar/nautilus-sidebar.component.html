@@ -214,6 +214,9 @@
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
+        <button class="menu-item" cdkMenuItem (click)="requestIndex.emit(remote)">
+          <span class="item-label">{{ 'nautilus.contextMenu.generateIndex' | translate }}...</span>
+        </button>
         @if (hasFeature(remote, 'CleanUp')) {
           <button class="menu-item danger-item" cdkMenuItem (click)="requestCleanup.emit(remote)">
             <span class="item-label">{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>

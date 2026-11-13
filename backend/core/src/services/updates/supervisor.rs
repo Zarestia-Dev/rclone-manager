@@ -26,18 +26,16 @@ struct Trial {
 }
 
 impl Trial {
+    /// The receipt is written once and never removed, so readiness only starts
+    /// the stability window; the child staying alive through it commits.
     fn observe(&mut self, elapsed: Duration, ready: bool, stability: Duration) -> bool {
-        if self.committed {
+        if self.committed || (!ready && self.ready_since.is_none()) {
             return false;
         }
-        if ready {
-            let since = *self.ready_since.get_or_insert(elapsed);
-            if elapsed.saturating_sub(since) >= stability {
-                self.committed = true;
-                return true;
-            }
-        } else {
-            self.ready_since = None;
+        let since = *self.ready_since.get_or_insert(elapsed);
+        if elapsed.saturating_sub(since) >= stability {
+            self.committed = true;
+            return true;
         }
         false
     }
@@ -240,6 +238,11 @@ async fn monitor(
                     super::binary::write_private(&directory.join("committed"), version.as_bytes())
                         .map_err(|e| e.to_string())?;
                     log::info!("Update committed: version={version}, startup and stability checks passed");
+                    // The job kills its processes when its handle closes. After commitment
+                    // the helper only waits, and ending it (e.g. from Task Manager) must
+                    // not end the application. Explicit stops still terminate the job.
+                    #[cfg(windows)]
+                    tree.disarm().map_err(|e| e.to_string())?;
                     // Rollback is no longer possible after commitment.
                     if let Err(error) = std::fs::remove_file(directory.join("previous"))
                         && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed backup: {error}"); }
@@ -292,12 +295,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn readiness_must_remain_valid_through_the_stability_window() {
+    fn commitment_follows_the_stability_window_after_the_first_receipt() {
         let mut trial = Trial::default();
         assert!(!trial.observe(Duration::ZERO, false, STABILITY_WINDOW));
-        assert!(!trial.observe(Duration::from_secs(1), true, STABILITY_WINDOW));
-        assert!(!trial.observe(Duration::from_secs(5), false, STABILITY_WINDOW));
         assert!(!trial.observe(Duration::from_secs(6), true, STABILITY_WINDOW));
+        assert_eq!(trial.ready_since, Some(Duration::from_secs(6)));
+        // A failed read of the receipt does not restart the window.
+        assert!(!trial.observe(Duration::from_secs(10), false, STABILITY_WINDOW));
         assert!(!trial.observe(Duration::from_secs(15), true, STABILITY_WINDOW));
         assert!(trial.observe(Duration::from_secs(16), true, STABILITY_WINDOW));
         assert!(!trial.observe(Duration::from_secs(17), true, STABILITY_WINDOW));

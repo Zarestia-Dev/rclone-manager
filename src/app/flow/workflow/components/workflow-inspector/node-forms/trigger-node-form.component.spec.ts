@@ -61,16 +61,6 @@ describe('TriggerNodeFormComponent', () => {
     expect(component.cronHumanReadable()).toBe('flow.workflow.inspector.invalidCron');
   });
 
-  it('emits configChange when cron preset is applied', () => {
-    let emitted: { key: string; value: unknown } | null = null;
-    component.configChange.subscribe(val => {
-      emitted = val;
-    });
-
-    component.applyCronPreset('0 * * * *');
-    expect(emitted).toEqual({ key: 'cronExpression', value: '0 * * * *' });
-  });
-
   it('emits configChange when app_start preset is applied', () => {
     let emitted: { key: string; value: unknown } | null = null;
     component.configChange.subscribe(val => {

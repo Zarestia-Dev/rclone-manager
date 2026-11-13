@@ -7,21 +7,6 @@
   flex-direction: column;
   gap: var(--section-gap);
   padding: var(--panel-padding);
-
-  // ── MODE-SPECIFIC COLOR VARIABLES ──────────────────────────────────────────
-  &.mount,
-  &.serve {
-    --mode-primary-color: var(--accent-color);
-    --mode-primary-color-rgb: var(--accent-color-rgb);
-    --mode-light-color: var(--light-blue);
-  }
-
-  // sync and serve share the green palette
-  &.sync {
-    --mode-primary-color: var(--primary-color);
-    --mode-primary-color-rgb: var(--primary-color-rgb);
-    --mode-light-color: var(--light-green);
-  }
 }
 
 // =============================================

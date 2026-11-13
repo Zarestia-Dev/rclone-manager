@@ -2,7 +2,7 @@ use crate::context::AppHandle;
 use log::{error, info, warn};
 
 use crate::{
-    services::security::SafeEnvironmentManager,
+    services::security::rclone_env,
     utils::types::{
         events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
         state::RcApiEngine,
@@ -16,6 +16,10 @@ use crate::services::check_binaries::{MIN_RCLONE_VERSION, build_rclone_command};
 use crate::utils::types::state::RcloneState;
 
 use super::error::{EngineError, EngineResult};
+
+/// Decrypting the config for `listremotes` is local work, so a longer wait means a hung binary.
+#[cfg(not(feature = "librclone"))]
+const LISTREMOTES_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
 
 impl RcApiEngine {
     pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
@@ -68,9 +72,12 @@ impl RcApiEngine {
                     }
                 }
                 None => {
-                    return Err(EngineError::ConfigValidationFailed(crate::t!(
-                        "backendErrors.rclone.executionFailed"
-                    )));
+                    return Err(EngineError::ConfigValidationFailed(
+                        crate::localized_error!(
+                            "backendErrors.rclone.executionFailed",
+                            "error" => "Could not determine rclone version"
+                        ),
+                    ));
                 }
             }
         }
@@ -79,9 +86,12 @@ impl RcApiEngine {
             Ok(encrypted) => encrypted,
             Err(e) => {
                 error!("Failed to check configuration encryption status: {e}");
-                return Err(EngineError::ConfigValidationFailed(format!(
-                    "Failed to check encryption: {e}"
-                )));
+                return Err(EngineError::ConfigValidationFailed(
+                    crate::localized_error!(
+                        "backendErrors.rclone.encryptionCheckFailed",
+                        "error" => e
+                    ),
+                ));
             }
         };
 
@@ -92,12 +102,7 @@ impl RcApiEngine {
 
         info!("Configuration is encrypted, testing password");
 
-        let env_vars = if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
-            env_manager.get_env_vars()
-        } else {
-            warn!("SafeEnvironmentManager not available, using system environment");
-            std::env::vars().collect()
-        };
+        let env_vars = rclone_env::vars();
 
         if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
             warn!("No password available for encrypted configuration");
@@ -142,21 +147,27 @@ impl RcApiEngine {
         #[cfg(not(feature = "librclone"))]
         {
             let backend_manager = app.state::<BackendManager>();
-            let config_path_string =
-                backend_manager.get_local_config_path().await.map_err(|e| {
-                    EngineError::ConfigValidationFailed(format!("Local backend error: {e}"))
-                })?;
-
-            let output = build_rclone_command(app, None, config_path_string.as_deref(), None)
-                .args(["listremotes", "--ask-password=false"])
-                .envs(&env_vars)
-                .output()
+            let config_path_string = backend_manager
+                .get_local_config_path()
                 .await
-                .map_err(|e| {
-                    EngineError::ConfigValidationFailed(format!(
-                        "Failed to execute rclone command: {e}"
-                    ))
-                })?;
+                .map_err(EngineError::ConfigValidationFailed)?;
+
+            let execution_failed = |error: String| {
+                EngineError::ConfigValidationFailed(crate::localized_error!(
+                    "backendErrors.rclone.executionFailed",
+                    "error" => error
+                ))
+            };
+            let output = tokio::time::timeout(
+                LISTREMOTES_TIMEOUT,
+                build_rclone_command(app, None, config_path_string.as_deref(), None)
+                    .args(["listremotes", "--ask-password=false"])
+                    .envs(&env_vars)
+                    .output(),
+            )
+            .await
+            .map_err(|_| execution_failed(format!("timed out after {LISTREMOTES_TIMEOUT:?}")))?
+            .map_err(|e| execution_failed(e.to_string()))?;
 
             let stderr = String::from_utf8_lossy(&output.stderr);
 
@@ -176,9 +187,13 @@ impl RcApiEngine {
             }
 
             if stderr.contains("Failed to load config file") {
-                let msg = format!("Failed to load rclone config file: {}", stderr.trim());
-                error!("{msg}");
-                return Err(EngineError::ConfigValidationFailed(msg));
+                error!("Failed to load rclone config file: {}", stderr.trim());
+                return Err(EngineError::ConfigValidationFailed(
+                    crate::localized_error!(
+                        "backendErrors.rclone.configLoadFailed",
+                        "error" => stderr.trim()
+                    ),
+                ));
             }
 
             warn!(

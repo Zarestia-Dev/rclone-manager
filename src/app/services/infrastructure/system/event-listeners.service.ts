@@ -10,6 +10,7 @@ import {
   JOB_STATS_UPDATED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
+  APP_EVENT_STATUS,
   UPDATER_STATE_CHANGED,
   UpdaterStateChanged,
   APP_EXIT_REQUESTED,
@@ -169,21 +170,21 @@ export class EventListenersService extends TauriBaseService {
 
   listenToAppUpdateFound(): Observable<UpdateInfo> {
     return this.listenToAppEvents().pipe(
-      filter(event => event.status === 'update_found' && !!event.data),
+      filter(event => event.status === APP_EVENT_STATUS.updateFound && !!event.data),
       map(event => event.data as UpdateInfo)
     );
   }
 
   listenToAppDownloadProgress(): Observable<DownloadStatus> {
     return this.listenToAppEvents().pipe(
-      filter(event => event.status === 'download_progress' && !!event.data),
+      filter(event => event.status === APP_EVENT_STATUS.downloadProgress && !!event.data),
       map(event => event.data as DownloadStatus)
     );
   }
 
   listenToRcloneUpdateFound(): Observable<UpdateInfo> {
     return this.listenToAppEvents().pipe(
-      filter(event => event.status === 'rclone_update_found' && !!event.data),
+      filter(event => event.status === APP_EVENT_STATUS.rcloneUpdateFound && !!event.data),
       map(event => event.data as UpdateInfo)
     );
   }

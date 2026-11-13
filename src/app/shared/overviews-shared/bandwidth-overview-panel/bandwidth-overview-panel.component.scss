@@ -24,18 +24,18 @@
 
   .bandwidth-error {
     @include flex-center;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 16px;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-xs);
+    margin-top: var(--space-md);
     @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
   }
 
   .bandwidth-status {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-xs);
     transition: var(--transition-standard);
 
@@ -74,13 +74,13 @@
   .bandwidth-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
-    gap: 16px;
+    gap: var(--space-md);
   }
 
   .bw-preset-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .custom-bw-row {
@@ -93,10 +93,10 @@
 }
 
 .detail-item {
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-xxs);
+  padding: var(--space-sm);
   display: flex;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   flex-direction: column;
   margin-top: var(--space-xxs);
   box-shadow: var(--box-shadow);
@@ -111,7 +111,7 @@
   .value {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-xs);
     font-weight: 500;
     font-size: clamp(14px, 2.5vw, 16px);
     min-width: 0;

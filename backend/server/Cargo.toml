@@ -14,10 +14,9 @@ tauri-winres = "0.3"
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false, features = ["updater"] }
 axum = { version = "0.8", features = ["multipart"] }
-tower-http = { version = "0.7", features = ["cors", "fs", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "fs", "trace", "compression-gzip"] }
 async-stream = "0.3"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
-anyhow = "1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

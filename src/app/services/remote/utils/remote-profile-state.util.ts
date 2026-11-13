@@ -15,6 +15,7 @@ import {
   MountedRemote,
   ServeListItem,
   isProfileScoped,
+  profileOf,
 } from '@app/types';
 
 import { compareJobsNewestFirst } from 'src/app/shared/utils/job-query.util';
@@ -110,16 +111,11 @@ export function buildRemoteProfileStatus({
     mount: buildStatusEntry(
       profileMounts,
       profiles.operations.mount,
-      m => m.profile,
+      profileOf,
       m => m.mount_point
     ),
     serve: {
-      ...buildStatusEntry(
-        profileServes,
-        profiles.operations.serve,
-        s => s.profile,
-        s => s.id
-      ),
+      ...buildStatusEntry(profileServes, profiles.operations.serve, profileOf, s => s.id),
       count: profileServes.length,
       serves: profileServes,
     },
@@ -136,7 +132,7 @@ function buildOperationState(jobs: JobInfo[], profiles: ConfiguredProfiles): Rem
     if (!latest || compareJobsNewestFirst(job, latest) < 0) latest = job;
     const isRunning = job.status === JOB_STATUS.Running;
     if (isRunning && (!running || compareJobsNewestFirst(job, running) < 0)) running = job;
-    const profile = job.profile?.trim();
+    const profile = profileOf(job)?.trim();
     if (!profile || !configured.has(profile)) continue;
     const previous = lastRunProfiles.get(profile);
     if (!previous || compareJobsNewestFirst(job, previous) < 0) lastRunProfiles.set(profile, job);

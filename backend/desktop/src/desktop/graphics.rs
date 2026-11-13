@@ -7,7 +7,9 @@
 /// Keep workarounds scoped to their affected paths rather than disabling both
 /// DMABUF and compositing for every NVIDIA system.
 /// See https://v2.tauri.app/develop/debug/linux-graphics/.
-// Sound: invoked from main() single-threaded, before the async runtime spawns threads.
+// Sound only while the process is single-threaded: `main()` calls this through
+// `prepare_environment` before it builds the async runtime. `.clippy.toml` bans
+// `set_var` everywhere else for that reason.
 #[allow(clippy::disallowed_methods)]
 pub fn apply_linux_graphics_quirks() {
     if !nvidia_proprietary_driver_loaded() {
@@ -19,22 +21,22 @@ pub fn apply_linux_graphics_quirks() {
         std::env::var("WAYLAND_DISPLAY").is_ok(),
         std::env::var("GDK_BACKEND").ok().as_deref(),
     );
-    let strict_compositor = ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
+    let desktops: Vec<String> = ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
         .iter()
         .filter_map(|key| std::env::var(key).ok())
-        .any(|value| is_strict_wayland_compositor(&value));
+        .collect();
+    let strict_compositor = desktops
+        .iter()
+        .any(|value| is_strict_wayland_compositor(value));
     // The KWin version gate below only applies to KDE/Plasma sessions:
     // Hyprland has no kwin_wayland binary, and its version would be
     // meaningless if one happened to be installed.
-    let kde_plasma = ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
-        .iter()
-        .filter_map(|key| std::env::var(key).ok())
-        .any(|value| is_kde_plasma_compositor(&value));
+    let kde_plasma = desktops.iter().any(|value| is_kde_plasma_compositor(value));
     let kwin = if kde_plasma { kwin_version() } else { None };
 
     for key in webkit_workarounds(wayland, strict_compositor, nvidia_driver_version(), kwin) {
         if std::env::var_os(key).is_none() {
-            // SAFETY: runs single-threaded before GTK and the async runtime start.
+            // SAFETY: no other thread exists yet (see the note on this function).
             unsafe { std::env::set_var(key, "1") };
         }
     }
@@ -63,17 +65,11 @@ fn webkit_workarounds(
     // - Plasma 6.8.1 / webkit2gtk-4.1 2.54.2 / NVIDIA 615.78: quirk breaks
     //   mapping; a clean environment renders correctly.
     const KWIN_FIXED_SINCE: (u32, u32) = (6, 8);
-    if strict_compositor && kwin_version.is_some_and(|version| version >= KWIN_FIXED_SINCE) {
-        return if driver_major.is_some_and(|v| v < 515) {
-            &["WEBKIT_DISABLE_DMABUF_RENDERER"]
-        } else {
-            &[]
-        };
-    }
+    let compositing_quirk =
+        strict_compositor && !kwin_version.is_some_and(|version| version >= KWIN_FIXED_SINCE);
 
-    // Retain the existing Wayland behavior: compositing off for the explicit-sync
-    // failure on KWin/Hyprland, DMABUF off only for drivers older than 515.
-    match (strict_compositor, driver_major.is_some_and(|v| v < 515)) {
+    // DMABUF is off only for drivers older than 515, independently of the compositor.
+    match (compositing_quirk, driver_major.is_some_and(|v| v < 515)) {
         (true, true) => &[
             "WEBKIT_DISABLE_COMPOSITING_MODE",
             "WEBKIT_DISABLE_DMABUF_RENDERER",
@@ -116,20 +112,20 @@ fn is_wayland_session(
 /// Detection relies on `XDG_CURRENT_DESKTOP` and `XDG_SESSION_DESKTOP`, which the
 /// desktop environment sets in the user session environment.
 fn is_strict_wayland_compositor(value: &str) -> bool {
-    value.split(':').any(|entry| {
-        matches!(
-            entry.trim().to_ascii_lowercase().as_str(),
-            "kde" | "plasma" | "hyprland"
-        )
-    })
+    desktop_is_any_of(value, &["kde", "plasma", "hyprland"])
 }
 
 /// Returns true for KDE/Plasma desktop values. Used to scope the KWin
 /// version gate: only KWin itself reports a meaningful KWin version.
 fn is_kde_plasma_compositor(value: &str) -> bool {
+    desktop_is_any_of(value, &["kde", "plasma"])
+}
+
+/// `XDG_CURRENT_DESKTOP` is a colon-separated list (`ubuntu:GNOME`), compared case-insensitively.
+fn desktop_is_any_of(value: &str, names: &[&str]) -> bool {
     value
         .split(':')
-        .any(|entry| matches!(entry.trim().to_ascii_lowercase().as_str(), "kde" | "plasma"))
+        .any(|entry| names.contains(&entry.trim().to_ascii_lowercase().as_str()))
 }
 
 /// Returns the running KWin version as `(major, minor)`, or `None` when the

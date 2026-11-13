@@ -136,8 +136,7 @@ class MainActivity : TauriActivity() {
     // pausing JavaScript. Wry only does this for the WebView it created, not for one that
     // keep-alive carried over from an earlier activity.
     appWebView?.onPause()
-    // The frontend tells the service when to start, stop and what to show, so its timers have
-    // to keep running while the service does.
+    // Work the page started must not stall while the service keeps the process alive.
     if (!RcloneKeepAliveService.isRunning()) {
       appWebView?.pauseTimers()
     }
@@ -471,26 +470,6 @@ class MainActivity : TauriActivity() {
         Logger.error("Failed to open all files access settings: ${ex.message}")
       }
     }
-  }
-
-  @JavascriptInterface
-  fun startKeepAliveService(force: Boolean = false) {
-    RcloneKeepAliveService.startService(this, force)
-  }
-
-  @JavascriptInterface
-  fun stopKeepAliveService(force: Boolean = true) {
-    RcloneKeepAliveService.stopService(this, force)
-  }
-
-  @JavascriptInterface
-  fun isKeepAliveServiceRunning(): Boolean {
-    return RcloneKeepAliveService.isRunning()
-  }
-
-  @JavascriptInterface
-  fun updateKeepAliveNotification(title: String, text: String) {
-    RcloneKeepAliveService.updateNotification(this, title, text)
   }
 
   /**

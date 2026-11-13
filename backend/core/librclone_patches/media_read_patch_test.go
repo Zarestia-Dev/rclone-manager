@@ -89,3 +89,30 @@ func TestDuplicateReadTokenDoesNotDetachTheOriginalRead(t *testing.T) {
 		t.Fatal("original read was detached")
 	}
 }
+
+func TestReadWithoutTokenIsPassedThroughUnchanged(t *testing.T) {
+	var seen context.Context
+	read := cancellableMediaRead(func(ctx context.Context, _ rc.Params) (rc.Params, error) {
+		seen = ctx
+		return rc.Params{"result": "ok"}, nil
+	})
+	out, err := read(context.Background(), rc.Params{"fs": "/"})
+	if err != nil || out["result"] != "ok" {
+		t.Fatalf("unexpected result: %v %v", out, err)
+	}
+	if _, hasDeadline := seen.Deadline(); hasDeadline {
+		t.Fatal("untokenised reads must keep the upstream behavior")
+	}
+	if _, err := read(context.Background(), rc.Params{"readToken": ""}); err == nil {
+		t.Fatal("empty readToken was accepted")
+	}
+}
+
+func TestGetfileIsReplacedInPlace(t *testing.T) {
+	if rc.Calls.Get("operations/getfile") == nil || rc.Calls.Get("operations/cancelread") == nil {
+		t.Fatal("getfile or cancelread is not registered")
+	}
+	if rc.Calls.Get("operations/readfile") != nil {
+		t.Fatal("operations/readfile must not exist any more")
+	}
+}

@@ -18,9 +18,11 @@ describe('WorkflowWorkspaceComponent', () => {
   let storageService: WorkflowStorageService;
   let notificationService: NotificationService;
   let presets: ReturnType<typeof signal<WorkflowTemplate[]>>;
+  let executing: ReturnType<typeof signal<boolean>>;
 
   beforeEach(async () => {
     presets = signal<WorkflowTemplate[]>([]);
+    executing = signal(false);
     await TestBed.configureTestingModule({
       imports: [WorkflowWorkspaceComponent],
       providers: [
@@ -29,12 +31,13 @@ describe('WorkflowWorkspaceComponent', () => {
         {
           provide: WorkflowEngineService,
           useValue: {
-            isExecuting: (): boolean => false,
-            logs: (): unknown[] => [],
+            isExecuting: executing.asReadonly(),
+            runView: (): undefined => undefined,
+            isDryRun: (): boolean => false,
+            executionProgress: (): null => null,
             activeEdgeIds: (): Set<string> => new Set(),
             executeWorkflow: (): Promise<boolean> => Promise.resolve(true),
             stopWorkflow: vi.fn(),
-            clearLogs: vi.fn(),
           },
         },
         {
@@ -43,10 +46,30 @@ describe('WorkflowWorkspaceComponent', () => {
             workflows: (): WorkflowDefinition[] => [],
             presetTemplates: presets.asReadonly(),
             loadPresetTemplates: vi.fn().mockResolvedValue([]),
+            isSaving: signal(false),
             saveWorkflow: vi.fn().mockResolvedValue({}),
+            // The real behaviour is covered by the storage service spec; here it stands in for it.
+            saveCurrentWorkflow: vi.fn().mockImplementation(async () => {
+              const state = TestBed.inject(WorkflowStateService);
+              const storage = TestBed.inject(WorkflowStorageService);
+              const current = state.currentWorkflow();
+              if (!current) return false;
+              try {
+                await storage.saveWorkflow(current);
+                state.markSaved(current);
+                return true;
+              } catch {
+                TestBed.inject(NotificationService).showError('error');
+                return false;
+              }
+            }),
+            createAndOpenWorkflow: vi.fn().mockImplementation(async () => {
+              const created = TestBed.inject(WorkflowStateService).createNewWorkflow();
+              await TestBed.inject(WorkflowStorageService).saveWorkflow(created);
+            }),
+            openTemplate: vi.fn(),
             deleteWorkflow: vi.fn(),
             duplicateWorkflow: vi.fn(),
-            cleanDuplicates: vi.fn(),
             instantiateTemplate: (): WorkflowDefinition => ({
               id: 'wf-1',
               name: 'Init Flow',
@@ -86,7 +109,7 @@ describe('WorkflowWorkspaceComponent', () => {
 
   it('loads templates on opening and renders late results without loading on reads', async () => {
     expect(storageService.loadPresetTemplates).toHaveBeenCalledOnce();
-    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], name: 'Arşiv & 旅行', nameKey: undefined };
+    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], nameKey: 'Arşiv & 旅行' };
     presets.set([recipe]);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -94,7 +117,7 @@ describe('WorkflowWorkspaceComponent', () => {
     const pills = (fixture.nativeElement as HTMLElement).querySelector(
       '.workflow-empty-state-pill-group'
     );
-    expect(pills?.textContent).toContain(recipe.name);
+    expect(pills?.textContent).toContain(recipe.nameKey);
     fixture.detectChanges();
     expect(storageService.loadPresetTemplates).toHaveBeenCalledOnce();
   });
@@ -179,6 +202,35 @@ describe('WorkflowWorkspaceComponent', () => {
     expect(component.isInspectorOpen()).toBe(false);
     component.toggleInspector();
     expect(component.isInspectorOpen()).toBe(true);
+  });
+
+  it('toggles the summary of the latest run', () => {
+    stateService.createNewWorkflow('Test Flow');
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('app-workflow-run-summary')).toBeNull();
+
+    component.toggleRun();
+    fixture.detectChanges();
+    expect(el.querySelector('app-workflow-run-summary')).toBeTruthy();
+
+    component.toggleRun();
+    fixture.detectChanges();
+    expect(el.querySelector('app-workflow-run-summary')).toBeNull();
+  });
+
+  it('opens the summary when a run starts, and keeps the step that is selected', () => {
+    stateService.createNewWorkflow('Test Flow');
+    const node = stateService.addNode('manual', 'trigger', 'Start', 0, 0);
+    stateService.selectNode(node.id, false);
+    fixture.detectChanges();
+    expect(component.isRunOpen()).toBe(false);
+
+    executing.set(true);
+    fixture.detectChanges();
+
+    expect(component.isRunOpen()).toBe(true);
+    expect(stateService.selectedNode()?.id).toBe(node.id);
   });
 
   it('renders floating inspector-open-trigger when inspector is closed and clicking it opens inspector', () => {
@@ -318,44 +370,25 @@ describe('WorkflowWorkspaceComponent', () => {
     expect(el.querySelector('app-workflow-toolbar')).toBeTruthy();
   });
 
-  it('loads workflow by ID from empty state', () => {
-    const wf: WorkflowDefinition = {
-      id: 'wf-test',
-      name: 'Existing Flow',
-      nodes: [],
-      edges: [],
-      viewport: { x: 0, y: 0, zoom: 1 },
-      showOnTray: false,
-    };
-
-    vi.spyOn(storageService, 'workflows').mockReturnValue([wf]);
-    fixture.detectChanges();
-
-    component.loadWorkflowById('wf-test');
-    fixture.detectChanges();
-
-    expect(stateService.currentWorkflow()?.id).toBe('wf-test');
-  });
-
-  describe('getTemplatePillClass', () => {
-    it('returns p-primary for backup category', () => {
-      expect(component.getTemplatePillClass('backup')).toBe('p-primary');
+  describe('getTemplateTone', () => {
+    it('returns primary for backup category', () => {
+      expect(component.getTemplateTone('backup')).toBe('primary');
     });
 
-    it('returns p-orange for automation category', () => {
-      expect(component.getTemplatePillClass('automation')).toBe('p-orange');
+    it('returns orange for automation category', () => {
+      expect(component.getTemplateTone('automation')).toBe('orange');
     });
 
-    it('returns p-accent for sync category', () => {
-      expect(component.getTemplatePillClass('sync')).toBe('p-accent');
+    it('returns accent for sync category', () => {
+      expect(component.getTemplateTone('sync')).toBe('accent');
     });
 
-    it('returns p-purple for utility category', () => {
-      expect(component.getTemplatePillClass('utility')).toBe('p-purple');
+    it('returns purple for utility category', () => {
+      expect(component.getTemplateTone('utility')).toBe('purple');
     });
 
-    it('returns p-accent for unknown categories as fallback', () => {
-      expect(component.getTemplatePillClass('custom')).toBe('p-accent');
+    it('returns accent for unknown categories as fallback', () => {
+      expect(component.getTemplateTone('custom')).toBe('accent');
     });
   });
 

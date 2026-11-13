@@ -27,11 +27,43 @@ describe('remote profile state', () => {
 
   it('selects the latest job per profile independent of array order and excludes other execution scopes', () => {
     const jobs = [
-      { jobid: 3, profile: ' photos ', job_type: 'sync', status: 'Completed' },
-      { jobid: 9, profile: 'photos', job_type: 'sync', status: 'Failed' },
-      { jobid: 20, profile: 'photos', job_type: 'sync', status: 'Running', origin: 'quickrun' },
-      { jobid: 21, profile: 'photos', job_type: 'sync', status: 'Running', workflow_id: 'flow' },
-      { jobid: 10, profile: 'missing', job_type: 'copy', status: 'Running' },
+      {
+        jobid: 3,
+        starter: { kind: 'profile', name: ' photos ' },
+        job_type: 'sync',
+        status: 'Completed',
+      },
+      {
+        jobid: 9,
+        starter: { kind: 'profile', name: 'photos' },
+        job_type: 'sync',
+        status: 'Failed',
+      },
+      {
+        jobid: 20,
+        starter: { kind: 'profile', name: 'photos' },
+        job_type: 'sync',
+        status: 'Running',
+        origin: 'quickrun',
+      },
+      {
+        jobid: 21,
+        job_type: 'sync',
+        status: 'Running',
+        starter: {
+          kind: 'workflow',
+          workflowId: 'flow',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      },
+      {
+        jobid: 10,
+        starter: { kind: 'profile', name: 'missing' },
+        job_type: 'copy',
+        status: 'Running',
+      },
     ] as JobInfo[];
     const settings = { syncConfigs: { photos: {} } };
     const first = view(settings, jobs).status;
@@ -49,8 +81,18 @@ describe('remote profile state', () => {
       '{"__proto__":{"rclone":{"source":["drive:a","drive:a",null,""]}},"constructor":{}}'
     );
     const remote = view({ syncConfigs: profiles }, [
-      { jobid: 1, profile: '__proto__', job_type: 'sync', status: 'Running' },
-      { jobid: 2, profile: 'constructor', job_type: 'sync', status: 'Running' },
+      {
+        jobid: 1,
+        starter: { kind: 'profile', name: '__proto__' },
+        job_type: 'sync',
+        status: 'Running',
+      },
+      {
+        jobid: 2,
+        starter: { kind: 'profile', name: 'constructor' },
+        job_type: 'sync',
+        status: 'Running',
+      },
     ] as JobInfo[]);
     expect(remote.status.sync.activeProfiles?.['__proto__']).toBe(1);
     expect(remote.status.sync.activeProfiles?.['constructor']).toBe(2);
@@ -64,9 +106,14 @@ describe('remote profile state', () => {
       syncConfigs: { main: {}, invalid: null },
     };
     const remote = view(settings, [
-      { jobid: 2, profile: 'main', job_type: 'sync', status: 'Running' },
-      { jobid: 5, profile: 'main', job_type: 'sync', status: 'Running' },
-      { jobid: 8, profile: 'main', job_type: 'sync', status: 'Completed' },
+      { jobid: 2, starter: { kind: 'profile', name: 'main' }, job_type: 'sync', status: 'Running' },
+      { jobid: 5, starter: { kind: 'profile', name: 'main' }, job_type: 'sync', status: 'Running' },
+      {
+        jobid: 8,
+        starter: { kind: 'profile', name: 'main' },
+        job_type: 'sync',
+        status: 'Completed',
+      },
     ] as JobInfo[]);
     expect(remote.status.sync.jobId).toBe(5);
     expect(remote.status.sync.activeProfiles).toEqual({ main: 5 });
@@ -80,12 +127,21 @@ describe('remote profile state', () => {
       { mountConfigs: { main: {} }, serveConfigs: { web: {} } },
       [],
       [
-        { fs: 'drive:', mount_point: '/tmp/mount', profile: 'main' },
+        { fs: 'drive:', mount_point: '/tmp/mount', starter: { kind: 'profile', name: 'main' } },
         { fs: 'drive:', mount_point: '/tmp/quick', origin: 'quickrun' },
       ],
       [
-        { id: 'web', profile: 'web' },
-        { id: 'flow', workflow_id: 'workflow' },
+        { id: 'web', starter: { kind: 'profile', name: 'web' } },
+        {
+          id: 'flow',
+          starter: {
+            kind: 'workflow',
+            workflowId: 'workflow',
+            workflowName: 'Workflow',
+            nodeId: 'node',
+            ancestors: [],
+          },
+        },
       ] as ServeListItem[]
     );
     expect(remote.status.mount.activeProfiles).toEqual({ main: '/tmp/mount' });
@@ -119,7 +175,14 @@ describe('remote profile state', () => {
     const initial = buildRemoteProfileStatus({ profiles, jobs: [], mounts: [], serves: [] });
     const running = buildRemoteProfileStatus({
       profiles,
-      jobs: [{ jobid: 1, profile: 'photos', job_type: 'sync', status: 'Running' }] as JobInfo[],
+      jobs: [
+        {
+          jobid: 1,
+          starter: { kind: 'profile', name: 'photos' },
+          job_type: 'sync',
+          status: 'Running',
+        },
+      ] as JobInfo[],
       mounts: [],
       serves: [],
     });
@@ -130,8 +193,19 @@ describe('remote profile state', () => {
   });
   it('uses master jobs rather than batch child jobs for profile actions', () => {
     const remote = view({ syncConfigs: { main: {} } }, [
-      { jobid: 1, profile: 'main', job_type: 'sync', status: 'Completed' },
-      { jobid: 2, parent_job_id: 1, profile: 'main', job_type: 'sync', status: 'Running' },
+      {
+        jobid: 1,
+        starter: { kind: 'profile', name: 'main' },
+        job_type: 'sync',
+        status: 'Completed',
+      },
+      {
+        jobid: 2,
+        parent_job_id: 1,
+        starter: { kind: 'profile', name: 'main' },
+        job_type: 'sync',
+        status: 'Running',
+      },
     ] as JobInfo[]);
     expect(remote.status.sync.active).toBe(false);
     expect(remote.status.sync.jobId).toBe(1);
@@ -141,14 +215,14 @@ describe('remote profile state', () => {
     const remote = view({ syncConfigs: { main: {} } }, [
       {
         jobid: 500,
-        profile: 'main',
+        starter: { kind: 'profile', name: 'main' },
         job_type: 'sync',
         status: 'Completed',
         start_time: '2026-10-01T10:00:00Z',
       },
       {
         jobid: 1,
-        profile: 'main',
+        starter: { kind: 'profile', name: 'main' },
         job_type: 'sync',
         status: 'Running',
         start_time: '2026-10-02T10:00:00Z',

@@ -204,7 +204,7 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
             "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
             path_str.replace("'", "'\\''")
         );
-        let output = crate::utils::process::command::Command::new("osascript")
+        let output = crate::utils::process::command::command("osascript")
             .args(["-e", &script])
             .output()
             .await
@@ -237,7 +237,7 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
         ];
 
         // Try pwsh (PowerShell 7+), fall back to the legacy inbox powershell.exe
-        let output = match crate::utils::process::command::Command::new("pwsh")
+        let output = match crate::utils::process::command::command("pwsh")
             .args(args)
             .output()
             .await
@@ -245,7 +245,7 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
             Ok(out) => out,
             Err(_) => {
                 log::debug!("pwsh unavailable, falling back to powershell.exe");
-                crate::utils::process::command::Command::new("powershell")
+                crate::utils::process::command::command("powershell")
                     .args(args)
                     .output()
                     .await

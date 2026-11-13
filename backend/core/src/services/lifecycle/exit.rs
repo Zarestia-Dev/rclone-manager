@@ -10,6 +10,20 @@ pub struct ActiveOperationsSummary {
     pub active_serves_count: usize,
 }
 
+impl ActiveOperationsSummary {
+    /// A locked UI only needs to know that confirmation is required, not how many
+    /// private operations are running.
+    #[must_use]
+    pub fn redacted(mut self, locked: bool) -> Self {
+        if locked {
+            self.active_jobs_count = 0;
+            self.active_mounts_count = 0;
+            self.active_serves_count = 0;
+        }
+        self
+    }
+}
+
 #[derive(Default)]
 struct PendingExit(parking_lot::Mutex<Option<ActiveOperationsSummary>>);
 
@@ -68,12 +82,41 @@ mod exit_tests {
     use super::*;
     use crate::context::{AppHandle, ExitDecision, Host};
     use crate::rclone::backend::BackendManager;
-    use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
+    use crate::utils::types::jobs::{JobInfo, JobType};
     use futures::FutureExt;
     use std::sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
     };
+
+    #[test]
+    fn locked_summaries_hide_counts_but_keep_the_need_for_confirmation() {
+        let summary = ActiveOperationsSummary {
+            has_active_operations: true,
+            active_jobs_count: 2,
+            active_mounts_count: 3,
+            active_serves_count: 4,
+        };
+        let locked = summary.clone().redacted(true);
+        assert!(locked.has_active_operations);
+        assert_eq!(
+            (
+                locked.active_jobs_count,
+                locked.active_mounts_count,
+                locked.active_serves_count
+            ),
+            (0, 0, 0)
+        );
+        let open = summary.redacted(false);
+        assert_eq!(
+            (
+                open.active_jobs_count,
+                open.active_mounts_count,
+                open.active_serves_count
+            ),
+            (2, 3, 4)
+        );
+    }
 
     #[test]
     fn pending_confirmation_belongs_to_one_application_and_is_consumed_once() {
@@ -125,27 +168,12 @@ mod exit_tests {
             .job_cache()
             .await
             .add_job(JobInfo {
-                stats_revision: 0,
-                jobid: 1,
                 job_type: JobType::Copy,
                 remote_name: "remote".into(),
                 source: vec!["remote:file".into()],
                 destination: "/destination".into(),
-                start_time: chrono::Utc::now(),
-                end_time: None,
-                status: JobStatus::Running,
-                error: None,
-                stats: None,
                 group: "job/1".into(),
-                profile: None,
-                execute_id: None,
-                quick_run_id: None,
-                origin: None,
-                backend_name: crate::rclone::backend::types::default_backend_name(),
-                dry_run: false,
-                parent_job_id: None,
-                workflow_id: None,
-                node_id: None,
+                ..JobInfo::for_test()
             })
             .await;
         app.manage(manager);

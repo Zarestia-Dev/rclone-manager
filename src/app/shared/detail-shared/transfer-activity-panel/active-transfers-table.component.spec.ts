@@ -37,9 +37,9 @@ describe('live check rendering', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('.card-row-item')).toBe(originalRow);
-    const title = element.querySelector('.card-title-text');
-    expect(title?.textContent?.trim()).toBe('folder/Ünicode.txt');
-    expect(title?.getAttribute('title')).toBe('folder/Ünicode.txt');
+    expect(element.querySelector('.card-title-text')?.textContent?.trim()).toBe('Ünicode.txt');
+    expect(element.querySelector('.card-title')?.getAttribute('title')).toBe('folder/Ünicode.txt');
+    expect(element.querySelector('.file-dir')?.textContent?.trim()).toBe('folder/');
   });
 
   it('updates reused slots correctly when checks reorder, filter, and finish', () => {
@@ -63,7 +63,6 @@ describe('live check rendering', () => {
 
     fixture.componentRef.setInput('checks', []);
     fixture.detectChanges();
-    expect(element.querySelectorAll('.card-row-item')).toHaveLength(0);
     expect(element.querySelector('.empty-state')).not.toBeNull();
   });
 });

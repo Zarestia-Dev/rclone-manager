@@ -2,7 +2,7 @@
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    http::Method,
+    http::{HeaderValue, Method},
     middleware::from_fn_with_state,
     routing::{get, post},
 };
@@ -57,7 +57,7 @@ pub(super) fn build_app(state: WebServerState, host: &str, port: u16) -> Router 
     }
 
     #[cfg(debug_assertions)]
-    match super::paths::find_static_dir(&state.app_handle) {
+    match dev_frontend_dir(&state.app_handle) {
         Some(static_path) => {
             info!("📁 Serving static files from: {}", static_path.display());
             app = app.fallback_service(development_router(static_path));
@@ -71,27 +71,35 @@ pub(super) fn build_app(state: WebServerState, host: &str, port: u16) -> Router 
     app
 }
 
-fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
-    let mut allowed_origins = vec![
-        format!("http://localhost:{port}").parse().unwrap(),
-        format!("http://127.0.0.1:{port}").parse().unwrap(),
-    ];
+/// Port of the Angular development server, which calls this API cross-origin.
+#[cfg(debug_assertions)]
+pub(super) fn dev_server_port() -> u16 {
+    std::env::var("TAURI_DEV_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(1420)
+}
 
-    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost")
-        && let Ok(origin) = super::address::browser_origin(host, port, false).parse()
-    {
-        allowed_origins.push(origin);
-    }
+fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
+    let mut origins = vec![
+        format!("http://localhost:{port}"),
+        format!("http://127.0.0.1:{port}"),
+        super::address::browser_origin(host, port, false),
+    ];
 
     #[cfg(debug_assertions)]
     {
-        let dev_port = std::env::var("TAURI_DEV_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(1420);
-        allowed_origins.push(format!("http://localhost:{dev_port}").parse().unwrap());
-        allowed_origins.push(format!("http://127.0.0.1:{dev_port}").parse().unwrap());
+        let dev_port = dev_server_port();
+        origins.push(format!("http://localhost:{dev_port}"));
+        origins.push(format!("http://127.0.0.1:{dev_port}"));
     }
+
+    origins.sort_unstable();
+    origins.dedup();
+    let allowed_origins: Vec<_> = origins
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect();
 
     CorsLayer::new()
         .allow_origin(AllowOrigin::list(allowed_origins))
@@ -110,6 +118,19 @@ fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
         ])
         .expose_headers([axum::http::header::WWW_AUTHENTICATE])
         .allow_credentials(true)
+}
+
+/// Debug builds read the frontend from disk instead of the embedded copy.
+#[cfg(debug_assertions)]
+fn dev_frontend_dir(app: &rclone_manager_core::context::AppHandle) -> Option<std::path::PathBuf> {
+    [
+        app.state::<crate::services::paths::AppPaths>()
+            .resource_dir
+            .join("browser"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../dist/rclone-manager/browser"),
+    ]
+    .into_iter()
+    .find(|path| path.is_dir())
 }
 
 /// Disk-backed development builds use the same client-route policy as embedded releases.
@@ -153,7 +174,19 @@ mod tests {
         http::{Request, StatusCode},
     };
     use tower::ServiceExt;
-    #[cfg(debug_assertions)]
+
+    #[test]
+    fn client_routes_exclude_api_assets_files_and_traversal() {
+        for path in ["", "settings", "nautilus/dropbox"] {
+            assert!(is_client_route(path), "{path:?}");
+        }
+        for path in [
+            "api", "api/x", "assets", "assets/x", "main.js", "a/../b", "./a", "a\\b", "a\0b",
+        ] {
+            assert!(!is_client_route(path), "{path:?}");
+        }
+    }
+
     #[tokio::test]
     async fn development_routes_return_200_without_masking_missing_assets_or_api() {
         let directory = tempfile::tempdir().unwrap();

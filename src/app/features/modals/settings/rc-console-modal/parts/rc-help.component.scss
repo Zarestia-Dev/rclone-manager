@@ -1,0 +1,123 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg-color);
+  overflow-y: auto;
+  user-select: text;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .titles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .path {
+    font-weight: 700;
+  }
+
+  .title {
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.section-title {
+  margin: 0 0 var(--space-xs);
+}
+
+.params {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-sm);
+  align-items: center;
+}
+
+.param {
+  display: contents;
+
+  &-name {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  &-input {
+    min-width: 0;
+    padding: var(--space-xxs) var(--space-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--view-bg-color);
+    color: var(--window-fg-color);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    user-select: text;
+
+    &:focus {
+      outline: 0;
+      border-color: var(--accent-color);
+    }
+  }
+
+  &-desc {
+    grid-column: 2;
+    margin-top: calc(-1 * var(--space-xxs));
+    color: var(--dim-color);
+    font-size: var(--font-size-xs);
+  }
+}
+
+.build {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+
+  .build-note {
+    flex-shrink: 0;
+    color: var(--dim-color);
+    font-size: var(--font-size-xs);
+  }
+
+  .built {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-xs);
+    background: var(--bg-elevated);
+  }
+}
+
+.example {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xxs) 0;
+
+  &-line {
+    flex: 1;
+    min-width: 0;
+    word-break: break-all;
+  }
+}
+
+.note {
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}

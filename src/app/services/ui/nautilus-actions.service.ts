@@ -242,6 +242,21 @@ export class NautilusActionsService {
     if (changed) this._refresh(remote, path);
   }
 
+  /** Writes directory listings for `path` of `remote`, the open folder by default. */
+  async openIndex(
+    remote = this.tabSvc.activeRemote(),
+    path = this.tabSvc.activePath()
+  ): Promise<void> {
+    if (!remote) return;
+
+    const changed = await this.remoteFacadeSvc.generateIndex(
+      this.pathSvc.normalizeExplorerRoot(remote),
+      path,
+      'filemanager'
+    );
+    if (changed) this._refresh(remote, path);
+  }
+
   async openArchiveCreate(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
     const path = this.tabSvc.activePath();

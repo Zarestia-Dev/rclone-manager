@@ -1,4 +1,5 @@
 import { GlobalStats, JobStatus } from './jobs';
+import { Starter } from './starter';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
@@ -26,6 +27,12 @@ export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+/** `status` values of updater app events; see `app_event_status` in events.rs. */
+export const APP_EVENT_STATUS = {
+  updateFound: 'update_found',
+  rcloneUpdateFound: 'rclone_update_found',
+  downloadProgress: 'download_progress',
+} as const;
 export const UPDATER_STATE_CHANGED = 'updater_state_changed' as const;
 export const VAULT_STATE_CHANGED = 'vault_state_changed' as const;
 
@@ -35,8 +42,25 @@ export interface UpdaterStateChanged {
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
 
+/** Where a run is; `started` and `running` are live, the rest end the run. */
+export type WorkflowExecutionState = 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface WorkflowRunProgress {
+  total: number;
+  completed: number;
+  currentStepTitle: string;
+}
+
+/**
+ * `runId` and `seq` order the events of a run: a snapshot of the run contains every event up
+ * to its own `seq`, so a view that loaded one ignores the events at or below it.
+ */
 export interface WorkflowNodeStatePayload {
   workflowId: string;
+  runId: string;
+  seq: number;
+  /** RFC 3339 */
+  at: string;
   nodeId: string;
   state: WorkflowNodeExecutionState;
   errorMessage?: string;
@@ -46,13 +70,43 @@ export interface WorkflowNodeStatePayload {
 
 export interface WorkflowExecutionStatePayload {
   workflowId: string;
-  state: 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
-  progress?: {
-    total: number;
-    completed: number;
-    currentStepTitle: string;
-  };
+  runId: string;
+  seq: number;
+  /** RFC 3339 */
+  at: string;
+  state: WorkflowExecutionState;
+  dryRun: boolean;
+  progress?: WorkflowRunProgress;
   message?: string;
+}
+
+/** An event of a run as a snapshot keeps it for the log; node events come without their output. */
+export type WorkflowRunEvent =
+  | ({ kind: 'node' } & WorkflowNodeStatePayload)
+  | ({ kind: 'execution' } & WorkflowExecutionStatePayload);
+
+export interface WorkflowNodeSnapshot {
+  state: WorkflowNodeExecutionState;
+  errorMessage?: string;
+  durationMs?: number;
+  output?: unknown;
+}
+
+/** A run as it stands: live, or the last one that ended (`get_workflow_runs`). */
+export interface WorkflowRunSnapshot {
+  workflowId: string;
+  runId: string;
+  dryRun: boolean;
+  /** RFC 3339 */
+  startedAt: string;
+  state: WorkflowExecutionState;
+  /** The `seq` of the last event the snapshot contains. */
+  seq: number;
+  progress?: WorkflowRunProgress;
+  /** The latest state of each node that has reported, by node id. */
+  nodes: Record<string, WorkflowNodeSnapshot>;
+  /** What the log of the run is made of, oldest first. */
+  events: WorkflowRunEvent[];
 }
 
 export interface ActiveOperationsSummary {
@@ -87,10 +141,7 @@ export interface JobChangeEvent {
   source?: string;
   sources?: string[];
   destination?: string;
-  profile?: string;
-  quickRunId?: string;
-  workflowId?: string;
-  nodeId?: string;
+  starter?: Starter;
 }
 
 export interface JobStatsUpdatedEvent {

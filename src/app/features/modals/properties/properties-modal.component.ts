@@ -29,6 +29,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { generatePrefixedId, getShareInfo, ItemShareInfo } from '../../../shared/utils';
 
+import { PillDirective } from '../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-properties-modal',
   imports: [
@@ -43,6 +44,7 @@ import { generatePrefixedId, getShareInfo, ItemShareInfo } from '../../../shared
     FormatFileSizePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    PillDirective,
   ],
   templateUrl: './properties-modal.component.html',
   styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],

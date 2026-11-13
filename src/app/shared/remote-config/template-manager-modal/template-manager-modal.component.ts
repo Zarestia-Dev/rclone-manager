@@ -54,6 +54,7 @@ import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { matchesConfigSearchText } from 'src/app/services/remote/utils/remote-config.utils';
 
+import { PillDirective } from '../../directives/pill.directive';
 export interface TemplateManagerModalData {
   mode: 'save' | 'manage';
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
@@ -108,6 +109,7 @@ export interface ManageCategoryView {
     TranslatePipe,
     SearchContainerComponent,
     CodeEditorToolbarComponent,
+    PillDirective,
   ],
   templateUrl: './template-manager-modal.component.html',
   styleUrls: ['./template-manager-modal.component.scss', '../../../styles/_shared-modal.scss'],
