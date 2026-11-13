@@ -1358,5 +1358,69 @@
   "mount_type": {
     "title": "Tipo de montaje",
     "help": "Tipo de montaje a utilizar."
+  },
+  "allow_https_downgrade": {
+    "title": "Permitir degradación a HTTP",
+    "help": "Seguir redirecciones de HTTPS a HTTP (inseguro)"
+  },
+  "directory_markers": {
+    "title": "Marcadores de directorio",
+    "help": "Listar cada directorio como un objeto marcador de directorio"
+  },
+  "max_delete_renames_aware": {
+    "title": "Max Delete con detección de renombrados",
+    "help": "Excluir los renombrados rastreados de la comprobación de seguridad --max-delete (requiere --track-renames)."
+  },
+  "sftp_key": {
+    "title": "Clave de host",
+    "help": "Archivo de clave privada de host SSH (puede tener varios valores; dejar en blanco para generarla automáticamente)"
+  },
+  "bisync_max_delete": {
+    "title": "Borrado máximo (%)",
+    "help": "Anular la ejecución si se fuera a eliminar más de este porcentaje de archivos (0-100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "Sin limpieza",
+    "help": "Conservar los archivos de trabajo."
+  },
+  "dest_after": {
+    "title": "Destino después",
+    "help": "Informar de todos los archivos que existen en el destino después de la operación."
+  },
+  "index_output": {
+    "title": "Formatos de listado",
+    "help": "Qué listados se escriben en cada carpeta."
+  },
+  "index_max_depth": {
+    "title": "Profundidad máxima",
+    "help": "Solo escribe listados hasta este número de niveles, contando esta carpeta como 1. Deja -1 para no limitar."
+  },
+  "index_include_rule": {
+    "title": "Solo estas carpetas",
+    "help": "Solo escribe listados en las carpetas que coinciden con un patrón, por ejemplo /docs/**. Las demás carpetas no se tocan, pero siguen apareciendo en el listado de su carpeta superior."
+  },
+  "index_exclude_rule": {
+    "title": "Omitir estas carpetas",
+    "help": "No escribe ni borra nada en las carpetas que coinciden con un patrón, por ejemplo /private/**. Úsalo para proteger una carpeta con su propio índice."
+  },
+  "index_dir_time": {
+    "title": "Fecha de carpeta",
+    "help": "La fecha que se muestra junto a una carpeta."
+  },
+  "index_no_mod_time": {
+    "title": "Ocultar fechas de modificación",
+    "help": "No muestra ninguna fecha. Es la opción más barata en S3, Swift y Oracle, donde cada objeto necesitaría su propia petición."
+  },
+  "index_link_index": {
+    "title": "Enlazar al archivo de índice",
+    "help": "Enlaza las carpetas como dir/index.html en lugar de dir/, para servidores que no sirven documentos de índice (URL simples de S3, URL amigables de B2)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Usar la fecha de subida",
+    "help": "Muestra la fecha en que se subió un objeto en lugar de su fecha de modificación. Evita una petición por objeto en S3 y es la que el servidor web envía como Last-Modified."
+  },
+  "index_rewrite": {
+    "title": "Reescribir listados sin cambios",
+    "help": "Escribe todos los listados aunque no hayan cambiado, por ejemplo para aplicar nuevas cabeceras o metadatos."
   }
 }
