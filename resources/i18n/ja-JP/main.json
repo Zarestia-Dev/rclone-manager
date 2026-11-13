@@ -115,7 +115,9 @@
     "toggleCopyurl": "クイックアクションとしてURLコピーを切り替え",
     "toggleArchivecreate": "クイックアクションとして圧縮を切り替え",
     "successStart": "{{remote}} ({{profile}}) の {{type}} を正常に開始しました",
-    "failedStart": "{{remote}} の {{type}} の開始に失敗しました: {{error}}"
+    "failedStart": "{{remote}} の {{type}} の開始に失敗しました: {{error}}",
+    "indexActive": "ディレクトリ一覧 実行中",
+    "toggleIndex": "クイックアクションとしてディレクトリ一覧を切り替え"
   },
   "serve": {
     "noActive": "実行中の公開サーバーはありません",
@@ -144,6 +146,10 @@
       "disable": "自動化を無効化",
       "stopping": "自動化を停止しています..."
     },
+    "actions": {
+      "run": "今すぐ実行",
+      "stop": "実行中の処理を停止"
+    },
     "nextRun": {
       "disabled": "自動化は無効です",
       "stopping": "現在の実行完了後に無効化します",
@@ -156,6 +162,7 @@
       "realtime": "リアルタイム監視",
       "debounce": "デバウンス遅延",
       "watcherActive": "監視中",
+      "watchedFolder": "監視フォルダー",
       "seconds": "秒",
       "realtimeSchedule": "リアルタイムファイル監視",
       "changedOnlyShort": "サブディレクトリのみ",
@@ -177,7 +184,8 @@
     "cryptcheck": "暗号チェック",
     "serve": "公開サーバー",
     "start": "開始",
-    "stop": "停止"
+    "stop": "停止",
+    "index": "ディレクトリ一覧"
   },
   "sidebar": {
     "toggleSidebar": "サイドバーの切り替え",
@@ -196,10 +204,6 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "ジョブ情報",
-      "type": "ジョブタイプ",
-      "id": "ジョブID",
-      "status": "ジョブステータス",
       "started": "開始日時",
       "finished": "終了日時",
       "duration": "所要時間"
@@ -221,10 +225,6 @@
       "moving": "移動中",
       "copying": "コピー中",
       "serving": "公開中"
-    },
-    "stats": {
-      "emptyTitle": "利用可能な統計情報はありません",
-      "emptyMessage": "操作の実行時に統計情報が表示されます"
     },
     "pathDisplay": {
       "source": "転送元",
@@ -268,8 +268,7 @@
     "skipped": "Rclone バージョン {{version}} をスキップしました",
     "restored": "Rclone バージョン {{version}} を元に戻しました",
     "autoCheckEnabled": "Rcloneの自動アップデートチェックが有効になりました",
-    "autoCheckDisabled": "Rcloneの自動アップデートチェックが無効になりました",
-    "manualRestartRequired": "リモートサーバー上でRcloneが更新されました。新しいバージョンを適用するには、リモートのrcloneサービスを手動で再起動してください。"
+    "autoCheckDisabled": "Rcloneの自動アップデートチェックが無効になりました"
   },
   "alerts": {
     "title": "アラートと通知",
@@ -316,7 +315,7 @@
       "startup": "起動時",
       "update": "アップデート",
       "internal": "内部",
-      "flow": "フローワークスペース",
+      "workflow": "ワークフロー",
       "quickrun": "クイックラン"
     },
     "rule": {
@@ -471,7 +470,7 @@
       },
       "start_on_startup": {
         "label": "システム起動時に実行",
-        "description": "システム起動時にアプリを自動的に開始します。"
+        "description": "システム起動時にアプリを自動的に開始します。ロックされたボルトは、アプリを開くまでロックされたままです。"
       },
       "notifications": {
         "label": "通知を有効化",
@@ -491,12 +490,11 @@
       },
       "keep_alive": {
         "label": "バックグラウンドで実行",
-        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。",
-        "notification": {
-          "jobs": "実行中のジョブ: {{count}}",
-          "mounts": "マウント: {{count}}",
-          "serves": "サーブ: {{count}}"
-        }
+        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。"
+      },
+      "start_on_boot": {
+        "label": "端末の起動時に実行",
+        "description": "端末の起動時に RClone Manager をバックグラウンドで開始し、自動開始プロファイルとスケジュールを実行します。一部のメーカー（Xiaomi、Huawei、Oppo など）では、システム設定でこのアプリの自動起動を許可する必要もあります。ロックされたボルトは、アプリを開くまでロックされたままです。"
       }
     },
     "core": {
@@ -719,6 +717,7 @@
       "preferences": "環境設定",
       "advanced": "詳細設定",
       "flags": "Rcloneフラグ",
+      "rcConsole": "RC コンソール",
       "vault": "ボルト",
       "fileBrowser": "ファイルブラウザ",
       "flowWorkspace": "Flow ワークスペース",
@@ -747,6 +746,11 @@
         "content": "マウントプラグインを使用すると、クラウドストレージをローカルドライブとしてマウントできるようになります。このオプションコンポーネントでRcloneの利便性が向上します。",
         "skipMountTitle": "マウントを使用しない",
         "skipMountDesc": "ドライブをマウントしない場合は、ドライバーのインストールをスキップします。"
+      },
+      "androidAccess": {
+        "title": "Android の権限",
+        "content": "どちらも任意で、後から許可することもできます。RClone Manager がローカルフォルダを参照し、画面オフ中も転送やスケジュールを継続できるようになります。",
+        "allowed": "許可済み"
       },
       "selectConfig": {
         "title": "Rclone設定ファイルの選択",
@@ -800,7 +804,8 @@
       "installPlugin": "プラグインをインストール",
       "installingPlugin": "インストール中...",
       "unlock": "ロック解除",
-      "getStarted": "はじめる"
+      "getStarted": "はじめる",
+      "skip": "スキップ"
     },
     "validation": {
       "completeInstallation": "上記のインストールオプションを完了してください",
@@ -886,11 +891,20 @@
       "resetStats": "統計をリセット",
       "tabs": {
         "active": "実行中 ({{count}})",
-        "recent": "履歴 ({{count}})"
+        "recent": "履歴 ({{count}})",
+        "report": "ファイルレポート",
+        "conflicts": "競合 ({{count}})"
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み"
+        "transferred": "転送済み",
+        "file": "ファイル",
+        "direction": "方向",
+        "took": "所要時間",
+        "when": "日時",
+        "progress": "進捗",
+        "speed": "速度",
+        "eta": "残り時間"
       },
       "status": {
         "failed": "失敗",
@@ -909,10 +923,6 @@
       "actions": {
         "resolveToDst": "転送先へコピー",
         "resolveToSrc": "転送元へコピー",
-        "resolveOverwrite": "ファイルの不一致を解決",
-        "resolveOverwriteTitle": "ファイルの不一致を解決",
-        "resolveOverwriteMessage": "ファイル 「{{name}}」 は転送元と転送先の両方に存在しますが、内容が異なります。転送先のファイルを転送元のファイルで上書きしますか?",
-        "overwriteDst": "転送先を上書き",
         "copyUrl": "URLをコピー",
         "download": "ファイルをダウンロード",
         "successSync": "ファイル同期操作を正常に開始しました",
@@ -920,7 +930,8 @@
         "successCopyUrl": "ダウンロードURLをクリップボードにコピーしました",
         "failCopyUrl": "ダウンロードURLの生成に失敗しました",
         "successDownload": "ファイルを正常にダウンロードしました",
-        "failDownload": "ファイルのダウンロードに失敗しました"
+        "failDownload": "ファイルのダウンロードに失敗しました",
+        "resolveChoose": "残すバージョンを選択"
       },
       "messages": {
         "resolveStarted": "不一致の解決を開始しました",
@@ -948,7 +959,94 @@
       },
       "titleDelete": "削除のアクティビティ",
       "titleActivity": "アクティビティ",
-      "loadMore": "さらに表示"
+      "loadMore": "さらに表示",
+      "report": {
+        "tabs": {
+          "combined": "統合",
+          "missingOnDst": "転送先にない",
+          "differ": "相違",
+          "missingOnSrc": "転送元にない",
+          "match": "一致",
+          "error": "エラー",
+          "destAfter": "処理後の転送先"
+        },
+        "sigils": {
+          "missingOnDst": "転送先にない",
+          "missingOnSrc": "転送元にない",
+          "differ": "相違",
+          "match": "一致",
+          "error": "エラー"
+        },
+        "empty": "このレポートにファイルはありません。",
+        "loadFailed": "レポートを読み込めませんでした。",
+        "showMore": "さらに {{count}} 件を表示"
+      },
+      "direction": {
+        "toDestination": "ソースにのみ存在: 宛先へコピー",
+        "toSource": "宛先にのみ存在: ソースへコピー",
+        "choose": "両側で異なります: 残す側を選択",
+        "labelToDestination": "転送先へ",
+        "labelToSource": "転送元へ",
+        "labelChoose": "選択が必要"
+      },
+      "bulk": {
+        "title": "選択した差分",
+        "selectAll": "未解決の差分 {{count}} 件をすべて選択",
+        "selected": "{{count}} 件選択中",
+        "toDestination": "宛先へ {{count}} 件",
+        "toSource": "ソースへ {{count}} 件",
+        "choose": "要判断 {{count}} 件",
+        "clear": "選択解除",
+        "applyOneWay": "{{count}} 件のファイルをコピー",
+        "review": "{{count}} 件の競合を確認…",
+        "started": "{{count}} 件のファイルのコピーを開始しました",
+        "partial": "{{started}} 件のコピーを開始、{{failed}} 件は失敗しました"
+      },
+      "compare": {
+        "title": "ファイルが両側で変更されています",
+        "position": "{{index}} / {{total}}",
+        "source": "ソース",
+        "destination": "宛先",
+        "modified": "更新日時",
+        "unknown": "不明",
+        "larger": "サイズ大",
+        "newer": "新しい",
+        "missing": "このファイルはここには存在しません。",
+        "loadFailed": "ファイルを読み取れませんでした: {{error}}",
+        "which": "どちらのバージョンを残しますか?",
+        "keepSource": "ソース側のバージョンを残す",
+        "keepDestination": "宛先側のバージョンを残す",
+        "overwrites": "{{path}} が上書きされます。そのリモートが古いバージョンを保持している場合のみ復元できます。",
+        "recreates": "{{path}} は残すバージョンから作成されます。",
+        "hint": "バージョンを選択してください。適用するまで何も変更されません。",
+        "skip": "このファイルをスキップ",
+        "apply": "適用",
+        "applyNext": "適用して次へ",
+        "checksum": {
+          "verify": "チェックサムを比較",
+          "match": "{{type}} チェックサムは一致しています",
+          "differ": "{{type}} チェックサムが異なります",
+          "none": "これらのリモートに共通のチェックサム形式がありません",
+          "failed": "チェックサムを読み取れませんでした"
+        },
+        "path1": "Path1",
+        "path2": "Path2",
+        "keepPath1": "Path1 のバージョンを残す",
+        "keepPath2": "Path2 のバージョンを残す",
+        "titleBisync": "ファイルが両方のパスで変更されています",
+        "discards": "もう一方のバージョン({{path}})は、両方のパスにあるコピーとともに破棄されます。リモートが古いバージョンを保持している場合のみ復元できます。"
+      },
+      "export": {
+        "copy": "CSVとしてコピー",
+        "copied": "{{count}} 行をCSVとしてコピーしました"
+      },
+      "conflicts": {
+        "empty": "この実行に競合はありません。",
+        "loadFailed": "競合を読み込めませんでした。",
+        "resolved": "{{name}} を解決しました",
+        "keptPath1": "Path1 のバージョンを保持",
+        "keptPath2": "Path2 のバージョンを保持"
+      }
     },
     "inputModal": {
       "name": "名前",
@@ -1155,6 +1253,38 @@
     "validation": {
       "required": "この項目は必須です。",
       "min": "値は{{val}}以上である必要があります。"
+    },
+    "monitor": {
+      "status": {
+        "running": "実行中",
+        "completed": "完了",
+        "failed": "失敗",
+        "stopped": "停止"
+      },
+      "kpi": {
+        "progress": "進行状況",
+        "speed": "速度",
+        "avgSpeed": "平均速度",
+        "eta": "残り時間",
+        "took": "所要時間",
+        "files": "ファイル",
+        "checks": "チェック",
+        "errors": "エラー",
+        "avg": "平均",
+        "peak": "最大",
+        "total": "合計",
+        "left": "残り",
+        "speedHistory": "転送速度の推移",
+        "checked": "チェック済み",
+        "compared": "比較済み",
+        "matched": "一致",
+        "differences": "差分",
+        "unreadable": "読み取り不可",
+        "onlyOnSource": "ソースのみ",
+        "onlyOnDestination": "宛先のみ",
+        "differ": "相違",
+        "deleted": "削除済み"
+      }
     }
   },
   "wizards": {
@@ -1385,6 +1515,8 @@
       "yourSchedule": "設定されたスケジュール",
       "nextRun": "次回実行:",
       "timezoneNote": "時刻は使用しているローカルタイムゾーン (UTC{{timezone}}) で表示され、スケジュールのために自動的にUTCへ変換されます。",
+      "cronValidationFailed": "スケジュールを検証できませんでした",
+      "cronInvalid": "cron 式が無効です",
       "tabSimple": "簡易",
       "tabAdvanced": "高度",
       "days": {
@@ -1441,23 +1573,6 @@
       "aria": {
         "clear": "クリア",
         "cronFor": "{{name}} のCron式"
-      },
-      "relativeTime": {
-        "inPast": "過去の日時です ({{date}})",
-        "lessThanMinute": "1分未満",
-        "in": "{{time}}後",
-        "days": {
-          "one": "1 日",
-          "other": "{{count}} 日"
-        },
-        "hours": {
-          "one": "1 時間",
-          "other": "{{count}} 時間"
-        },
-        "minutes": {
-          "one": "1 分",
-          "other": "{{count}} 分"
-        }
       },
       "cronPlaceholder": "Cron式を入力してください (例: 0 0 * * *)"
     },
@@ -1518,6 +1633,7 @@
       "remoteConfigs": {
         "title": "リモート設定"
       },
+      "noRemoteDefinitions": "このバックアップには rclone.conf が含まれていないため、リモート自体は復元されず、アプリ側の設定（マウント、自動起動、オプション）のみ復元されます。リモートを再度追加するか、パスワード保護されたバックアップから復元してください。",
       "profiles": {
         "title": "プロファイル"
       },
@@ -1539,13 +1655,7 @@
       "restoreAction": "バックアップを復元",
       "errors": {
         "passwordRequired": "パスワードは必須です",
-        "passwordEmpty": "パスワードを空欄や空白のみにすることはできません",
-        "wrongPassword": "パスワードが正しくありません。再試行してください。",
-        "integrityFailed": "バックアップファイルが破損しているか改ざんされています。",
-        "verificationFailed": "ファイルの検証に失敗しました。バックアップが破損している可能性があります。",
-        "requiresPassword": "このバックアップの復号化にはパスワードが必要です。",
-        "decryptFailed": "バックアップの復号化に失敗しました。パスワードを確認してください。",
-        "generic": "復元中にエラーが発生しました: {{error}}"
+        "passwordEmpty": "パスワードを空欄や空白のみにすることはできません"
       }
     },
     "launchRestoreFailed": "復元フローの起動に失敗しました",
@@ -1557,7 +1667,7 @@
   "updates": {
     "discardDownload": "ダウンロードを破棄",
     "cancelFailed": "アップデートのダウンロードのキャンセルに失敗しました。",
-    "installSuccess": "アップデートがインストールされました。アプリを再起動してください。",
+    "downloadComplete": "アップデートをダウンロードしました。インストールの準備ができています。",
     "checkFailed": "アップデートの確認に失敗しました: {{error}}",
     "installFailed": "アップデートのインストールに失敗しました: {{error}}",
     "restartFailed": "アプリケーションの再起動に失敗しました: {{error}}",
@@ -1712,7 +1822,8 @@
         "check": "チェック",
         "upload": "アップロード",
         "archivecreate": "圧縮",
-        "archiveextract": "アーカイブを展開"
+        "archiveextract": "アーカイブを展開",
+        "index": "ディレクトリ一覧"
       }
     },
     "fileViewer": {
@@ -1838,7 +1949,10 @@
       "dryRunActive": "テスト実行が有効です - 変更は一切行われません",
       "resync": "再同期",
       "resyncActive": "再同期が有効です - 完全な再同期を実行しています",
-      "remoteSettings": "リモート設定"
+      "remoteSettings": "リモート設定",
+      "indexSettings": "ディレクトリ一覧設定",
+      "index": "ディレクトリ一覧",
+      "indexDesc": "静的ウェブサイト向けに閲覧用の一覧をフォルダーへ書き込みます"
     },
     "generalDetail": {
       "automations": "自動化",
@@ -1847,7 +1961,6 @@
       "cronExpression": "Cron式:",
       "nextRunLabel": "次回実行:",
       "lastRunLabel": "前回実行:",
-      "createdLabel": "作成日時:",
       "statistics": "統計情報",
       "successful": "成功",
       "failedCount": "失敗",
@@ -1877,6 +1990,7 @@
       "showShortcuts": "キーボードショートカットを表示",
       "openPreferences": "環境設定を開く",
       "openFlags": "Rcloneフラグを開く",
+      "openRcConsole": "RC コンソールを開く",
       "openVault": "ボルトを開く",
       "forceCheck": "マウントを強制チェック",
       "forceCheckServes": "公開中リモートを強制チェック",
@@ -1974,25 +2088,24 @@
       "title": "ジョブの詳細 #{{id}}",
       "sections": {
         "overview": "ジョブ情報",
-        "statistics": "統計情報",
         "paths": "パス",
         "errors": "エラー",
-        "profile": "プロファイル",
+        "execution": "実行",
         "serverSideFlags": "サーバー側とフラグ"
       },
       "fields": {
         "type": "ジョブタイプ",
         "profile": "プロファイル",
+        "quickRun": "クイック実行",
+        "workflow": "ワークフロー",
         "status": "ジョブステータス",
         "started": "開始日時",
         "finished": "終了日時",
         "duration": "所要時間",
-        "speed": "転送速度",
-        "eta": "完了見込み時間",
         "files": "ファイル",
-        "checks": "チェック数",
         "deleted": "削除数",
         "renamed": "名前変更数",
+        "updatedDirs": "更新ディレクトリ数",
         "listed": "一覧取得数",
         "errorsCount": "エラー数",
         "remoteSource": "リモートソース",
@@ -2004,9 +2117,7 @@
         "serverSideCopies": "サーバーサイドコピー",
         "serverSideMoves": "サーバーサイド移動",
         "retryError": "再試行エラー",
-        "fatalError": "致命的エラー",
-        "speedAvg": "平均速度",
-        "transferred": "転送量"
+        "fatalError": "致命的エラー"
       }
     },
     "about": {
@@ -2020,10 +2131,10 @@
       "wiki": "Wiki ページ",
       "reportIssues": "問題を報告",
       "rcloneWebsite": "Rclone 公式サイト",
-      "readyToRestart": "再起動が必要です",
-      "restartDescription": "アップデートがインストールされました。変更を適用するためアプリを再起動してください。",
-      "rcloneRestartRequired": "Rcloneの再起動が必要です",
-      "rcloneRestartDescription": "Rcloneのアップデートがインストールされました。変更を適用するためエンジンを再起動してください。",
+      "readyToRestart": "アップデートの準備完了",
+      "restartDescription": "アップデートをダウンロードしました。アプリを再起動してインストールしてください。",
+      "rcloneRestartRequired": "Rcloneのアップデートの準備完了",
+      "rcloneRestartDescription": "Rcloneのアップデートをダウンロードしました。エンジンを再起動してインストールしてください。",
       "restartNow": "今すぐ再起動",
       "updateAvailable": "アップデートが利用可能です",
       "version": "バージョン",
@@ -2115,7 +2226,8 @@
       "clear": "消去",
       "cacheCleared": "キャッシュを正常に消去しました",
       "cacheClearFailed": "キャッシュの消去に失敗しました",
-      "openAur": "Open AUR"
+      "openAur": "Open AUR",
+      "lastChecked": "最終確認: {{time}}"
     },
     "logs": {
       "fetchError": "アプリログの取得に失敗しました。",
@@ -2197,7 +2309,8 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
-      "noPasswordHint": "パスワードを設定しない場合、rclone.conf と保存済みのシークレットはバックアップに含まれません。クイック実行やワークフローに直接入力した認証情報は、そのままエクスポートされます。",
+      "noPasswordHint": "パスワードを設定しない場合、rclone.conf と保存済みのシークレットは含まれないため、別のマシンでリモートを再作成できません。クイック実行やワークフローに直接入力した認証情報は、そのままエクスポートされます。",
+      "remoteNeedsPassword": "単一のリモートはパスワード付きでのみエクスポートできます。rclone の設定は暗号化されたバックアップにのみ含まれるためです。",
       "vaultWarningTitle": "構成ボルトが開いています",
       "vaultWarningDesc": "エクスポートされたバックアップはボルトの暗号化を継承しません。機密の認証情報や設定をパスワードで保護するには、以下の暗号化オプションを使用してください。",
       "exportNow": "今すぐエクスポート",
@@ -2424,7 +2537,8 @@
         "filter": "フィルタ",
         "vfs": "VFS",
         "backend": "バックエンド",
-        "runtimeRemote": "実行時リモート"
+        "runtimeRemote": "実行時リモート",
+        "index": "ディレクトリ一覧"
       },
       "advancedProfiles": {
         "title": "高度なプロファイル",
@@ -2545,6 +2659,102 @@
         "RulesOpt": "ルールオプション",
         "MetricsAuth": "メトリクス認証",
         "MetricsHTTP": "メトリクスHTTP設定"
+      }
+    },
+    "rcConsole": {
+      "title": "RC コンソール",
+      "suggestions": "候補",
+      "clear": "コンソールをクリア",
+      "emptyTitle": "rclone RC コンソール",
+      "emptyHint": "rclone のリモートコントロール呼び出しを実行できます。入力すると候補が表示されます。構文は help と入力してください。",
+      "placeholder": "rc コマンド（例: core/version）",
+      "run": "実行",
+      "statusOk": "OK",
+      "statusError": "エラー",
+      "statusHttp": "HTTP {{status}}",
+      "truncated": "出力が切り詰められました。全文はコピーしてください",
+      "dangerous": "危険",
+      "confirmDanger": "{{command}} はデータを削除したり rclone の状態を変更したりする可能性があります。実行するにはもう一度 Enter、キャンセルするには Esc を押してください。",
+      "suggestionsUnavailable": "候補を表示できません: rclone からコマンド一覧を取得できませんでした。",
+      "helpText": "rclone のリモートコントロール (rc) 呼び出しを実行します。\n\n  core/version\n  operations/list fs=drive: remote=Photos\n  operations/list --json '{\"fs\":\"drive:\"}'\n  core/command -a ls -a drive: -o max-depth=1\n\nkey=value は \"rclone rc\" と同じく文字列として送信されます。\n-o name=value は \"opt\"、-a value は \"arg\" に入り、--json は JSON オブジェクトを受け取ります。\n_async=true を付けるとジョブとして実行し、_group=name で統計グループを指定できます。\n\nTab でコマンドを補完、↑/↓ で履歴を移動、Ctrl+L または \"clear\" でコンソールを消去します。\nhelp <コマンド> で呼び出しのドキュメントを開けます。左側の API 一覧からすべての呼び出しを閲覧できます。",
+      "errors": {
+        "empty": "先にコマンドを入力してください。",
+        "unclosedQuote": "引用符が閉じられていません。引用符の前のバックスラッシュはその引用符をエスケープするため、引用符で囲んだパスの末尾にはバックスラッシュを 2 つ付けてください (C:\\dir\\\\)。",
+        "missingEquals": "key=value の形式が必要ですが、'{{token}}' が指定されました。",
+        "missingValue": "{{flag}} には値が必要です。",
+        "badJson": "無効な JSON: {{error}}",
+        "jsonNotObject": "JSON パラメータはオブジェクトである必要があります。"
+      },
+      "backendHint": "これらの呼び出しを受け取るバックエンド",
+      "readOnly": "読み取り専用",
+      "readWrite": "読み書き",
+      "readOnlyHint": "読み取り専用モードでは、読み取りの呼び出しだけを通します。クリックで切り替えます。",
+      "masked": "シークレットを非表示",
+      "unmasked": "シークレットを表示",
+      "maskHint": "出力、コピー、表示される行のパスワードとトークンを隠します",
+      "readOnlyBlocked": "読み取り専用モードがオンのため、{{command}} は実行されませんでした。",
+      "allowWrites": "書き込みを許可",
+      "engine": {
+        "restart": "エンジンを再起動",
+        "restartConfirm": "もう一度クリックして再起動",
+        "restartHint": "rclone を停止し、アプリが同じパスから再び起動するため、新しいビルドが使われます。実行中のジョブとマウントは終了します。",
+        "restarting": "rclone を停止しました。アプリが再び起動しています。",
+        "failed": "rclone プロセスを停止できませんでした",
+        "noProcess": "停止する rclone プロセスがありません",
+        "info": "rclone のバージョンとプロセス ID",
+        "notRunning": "エンジンは停止しています"
+      },
+      "showHelp": "ヘルプを表示",
+      "edit": "編集して再実行",
+      "copyRcLine": "rclone rc コマンド",
+      "snippetSecret": "この行にはシークレットが含まれるため、保存されませんでした。",
+      "history": "履歴と保存した行",
+      "save": "この行を保存",
+      "historyEmpty": "まだありません。実行した行がここに表示されます。",
+      "output": {
+        "pretty": "整形",
+        "raw": "そのまま",
+        "table": "表",
+        "lines": "{{count}} 行",
+        "showMore": "さらに {{count}} 行を表示",
+        "showMoreRows": "さらに {{count}} 行を表示",
+        "collapse": "折りたたむ",
+        "rowsOmitted": "残り {{count}} 行は表示されていません"
+      },
+      "tree": {
+        "title": "API",
+        "filter": "呼び出しを絞り込む",
+        "empty": "一致する呼び出しはありません。"
+      },
+      "help": {
+        "parameters": "パラメータ",
+        "optional": "省略可",
+        "use": "使用",
+        "noParameters": "この呼び出しのヘルプにはパラメータが記載されていません。",
+        "examples": "例",
+        "insert": "挿入",
+        "run": "実行",
+        "fullDocs": "完全なドキュメント",
+        "required": "必須",
+        "requiredMissing": "必須項目があと {{count}} 件空です"
+      },
+      "job": {
+        "waiting": "ジョブ {{id}} を待っています…",
+        "running": "ジョブ {{id}} を実行中",
+        "done": "ジョブ {{id}} が完了しました",
+        "failed": "ジョブ {{id}} が失敗しました",
+        "lost": "ジョブが見つかりません",
+        "stop": "停止",
+        "transfers": "{{done}} / {{total}} 転送",
+        "checks": "{{count}} 件のチェック",
+        "errors": "{{count}} 件のエラー"
+      },
+      "quickStart": "次のいずれかを試してみましょう",
+      "hints": {
+        "complete": "補完",
+        "history": "履歴",
+        "newLine": "改行",
+        "clear": "クリア"
       }
     }
   },
@@ -2685,6 +2895,28 @@
         "statsChanged": "{{count}} 件の名前変更",
         "statsUnchanged": "{{count}} 件の未変更",
         "statsConflicts": "{{count}} 件の競合"
+      },
+      "index": {
+        "title": "ディレクトリ一覧を生成",
+        "description": "{{target}} とその下のすべてのフォルダーに、静的ウェブサイトとして公開できる閲覧用の一覧を書き込みます。",
+        "overwriteWarning": "選択した一覧と同じ名前の既存ファイル（既定では index.html）は、由来を確認せずに上書きされます。手書きのインデックスを守るには、下でそのフォルダーを除外してください。",
+        "confirm": "生成",
+        "sections": {
+          "output": "一覧",
+          "folders": "フォルダー",
+          "appearance": "表示",
+          "advanced": "詳細設定"
+        },
+        "formats": {
+          "html": "HTML ページ (index.html)",
+          "json": "rclone lsjson 形式の JSON (index.json)",
+          "caddy": "Caddy file_server browse 形式の JSON (caddy.json)"
+        },
+        "dirTime": {
+          "newest": "配下で最も新しいファイル",
+          "dir": "フォルダー自身の日時",
+          "none": "日時なし"
+        }
       }
     },
     "errors": {
@@ -2707,7 +2939,8 @@
       "archiveCreateFailed": "圧縮に失敗しました: {{error}}",
       "externalDropFailed": "外部ファイルのドロップ処理に失敗しました。",
       "sendToFailed": "ファイルマネージャーメニューの更新に失敗しました: {{error}}",
-      "noRemoteSelected": "最初にリモートに移動してください。"
+      "noRemoteSelected": "最初にリモートに移動してください。",
+      "indexFailed": "ディレクトリ一覧を書き込めませんでした: {{error}}"
     },
     "contextMenu": {
       "open": "開く",
@@ -2752,7 +2985,8 @@
       "switchPane": "ペインを切り替え",
       "copyPublicLink": "公開リンクをコピー",
       "createFolderWithItems": "選択項目から新しいフォルダを作成...",
-      "renameMultiple": "一括名前変更..."
+      "renameMultiple": "一括名前変更...",
+      "generateIndex": "ディレクトリ一覧を生成"
     },
     "view": {
       "iconSize": "アイコンサイズ",
@@ -2778,7 +3012,8 @@
       "getPublicLinkStarted": "公開リンクを生成中...",
       "archiveCreateStarted": "圧縮を開始しました...",
       "sendToAdded": "'{{remote}}{{path}}' をファイルマネージャーメニューに追加しました",
-      "sendToRemoved": "'{{remote}}{{path}}' をファイルマネージャーメニューから削除しました"
+      "sendToRemoved": "'{{remote}}{{path}}' をファイルマネージャーメニューから削除しました",
+      "indexStarted": "ディレクトリ一覧を書き込んでいます..."
     },
     "androidShare": {
       "uploadHere": "{{count}} 個の共有ファイルをこのフォルダにアップロード",
@@ -2807,6 +3042,7 @@
       "aboutRemote": "リモートについて",
       "emptyTrash": "ゴミ箱を空にする",
       "viewLogs": "ログを表示",
+      "inRcConsole": "RC コンソールで調べる",
       "cloneRemote": "リモートを複製",
       "exportConfig": "設定をエクスポート",
       "resetSettings": "設定をリセット",
@@ -2858,7 +3094,6 @@
       "save": "レイアウトを保存",
       "reset": "レイアウトをリセット",
       "resetSuccess": "レイアウトをデフォルトにリセットしました",
-      "toggleAutomationFailed": "自動化の切り替えに失敗しました",
       "showDetailed": "詳細カードを表示",
       "showCompact": "コンパクトカードを表示"
     },
@@ -2910,6 +3145,7 @@
       "errors": "エラー数:",
       "deletes": "削除数:",
       "renames": "名前変更数:",
+      "updatedDirs": "更新ディレクトリ数:",
       "serverCopies": "サーバーサイドコピー数:",
       "serverMoves": "サーバーサイド移動数:",
       "lastError": "最後のエラー:",
@@ -2930,11 +3166,6 @@
     }
   },
   "appOverview": {
-    "labels": {
-      "mount": "マウント",
-      "startOperations": "操作を開始",
-      "startServe": "公開サーバーを開始"
-    },
     "panelTitles": {
       "mountedRemotes": "マウント済みのリモート",
       "activeOperations": "実行中の操作",
@@ -2963,6 +3194,10 @@
       "validationSelfLoop": "ノードは自身に接続できません (自己ループ): {{id}}",
       "validationCycle": "グラフに循環依存があります (ワークフローは DAG である必要があります)",
       "validationDisconnected": "ノード '{{title}}' はワークフローから切り離されています",
+      "validationMissingPort": "ノード '{{title}}' に存在しないポートにワイヤーが接続されています: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' はワークフローに存在しない '{{node}}' の出力を読み取っています",
+      "validationTokenNotUpstream": "'{{title}}' は自身につながっていない '{{node}}' の出力を読み取っているため、値が空になる可能性があります",
+      "validationPrevWithoutInput": "'{{title}}' は前のノードの出力を読み取っていますが、何も接続されていません",
       "cancelled": "実行がキャンセルされました",
       "jobUntracked": "ジョブ {{id}} は追跡されなくなったため、結果は不明です",
       "jobStopped": "ジョブ {{id}} は停止されました",
@@ -3017,7 +3252,16 @@
       "reportAndMore": "... ほか {{count}} 件",
       "reportStatusErrors": "{{count}} 件のエラーで完了しました",
       "reportStatusMatched": "{{count}} 件のファイルすべてが完全に一致しました (差異 0)。",
-      "reportStatus": "ステータス"
+      "reportStatus": "ステータス",
+      "missingWorkflowId": "更新するワークフロー ID がありません",
+      "workflowNotFound": "ワークフロー '{{id}}' が見つかりません",
+      "saveFailed": "ワークフローを保存できませんでした: {{error}}",
+      "deleteFailed": "ワークフローを削除できませんでした: {{error}}",
+      "copyName": "{{name}} (コピー)"
+    },
+    "rcConsole": {
+      "emptyCommand": "RC コマンドが指定されていません。",
+      "transportFailed": "rclone に接続できませんでした: {{error}}"
     },
     "mount": {
       "pointEmpty": "マウントポイントを空欄にすることはできません",
@@ -3030,10 +3274,18 @@
       "macfuseMissing": "macFUSE / FUSE-T がインストールされていません。macOS でマウントするには macFUSE をインストールしてください。",
       "driveLetterInUse": "選択したドライブ文字は既にシステムで使用されています。",
       "permissionDenied": "マウント処理の権限が拒否されました。",
-      "deviceBusy": "ターゲットのマウントポイントまたはデバイスが使用中です。ディレクトリにアクセスしているファイル、ファイルマネージャー、またはターミナルを閉じて再試行してください。"
+      "deviceBusy": "ターゲットのマウントポイントまたはデバイスが使用中です。ディレクトリにアクセスしているファイル、ファイルマネージャー、またはターミナルを閉じて再試行してください。",
+      "profileNotMounted": "{{remote}} のプロファイル「{{profile}}」はマウントされていません"
     },
     "operations": {
-      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
+      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です",
+      "singleSourceOnly": "{{operation}} は単一のソースパスのみ対応しています",
+      "directoriesOnly": "{{operation}} はディレクトリのみ対応しており、ファイルには対応していません: {{source}}",
+      "sourcePathInvalid": "ソースパスを解析できませんでした: {{path}}",
+      "destinationPathInvalid": "宛先パスを解析できませんでした: {{path}}",
+      "filePathsInvalid": "ソース '{{source}}' または宛先 '{{destination}}' をファイルパスとして解析できませんでした。'remote:path/to/file' 形式かローカルパスを使用してください。",
+      "unsupportedOperation": "操作 {{operation}} は転送として実行できません",
+      "destinationMissing": "宛先が指定されていません"
     },
     "serve": {
       "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
@@ -3042,7 +3294,8 @@
       "privilegedPort": "1024 未満のポートには管理者権限が必要です。1024 以上のポートを選択してください。",
       "tlsError": "SSL/TLS 証明書の読み込みまたは解析に失敗しました。",
       "startFailed": "サーバーの起動に失敗しました: {{error}}",
-      "stopFailed": "サーバーの停止に失敗しました: {{error}}"
+      "stopFailed": "サーバーの停止に失敗しました: {{error}}",
+      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中のサーバーが見つかりません"
     },
     "request": {
       "failed": "リクエストに失敗しました: {{error}}"
@@ -3057,6 +3310,12 @@
       "fileLocked": "ファイルがロックされているか、別のプロセスで使用されています。",
       "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。",
       "ioError": "入出力(IO)エラー: {{error}}"
+    },
+    "upload": {
+      "legacyBatch": "このアップロードは古いページから開始されました。アプリケーションを再読み込みして、もう一度お試しください。",
+      "noFiles": "アップロードにファイルが含まれていません。",
+      "invalidPath": "アップロードに無効なファイルまたはフォルダーのパスが含まれています。",
+      "invalidModifiedTime": "アップロードに無効な更新日時が含まれています。"
     },
     "rclone": {
       "downloadCancelled": "ユーザーによってダウンロードがキャンセルされました",
@@ -3083,7 +3342,17 @@
       "invalidFlags": "無効なrcloneフラグが検出されました: {{error}}",
       "updateRemoteUnsupported": "このrcloneバージョンではリモート更新はサポートされていません",
       "backupFailed": "現在のrclone実行ファイルのバックアップに失敗しました: {{error}}",
-      "rcAuthFailed": "Rcloneリモートコントロール(RC)認証に失敗しました: {{error}}"
+      "rcAuthFailed": "Rcloneリモートコントロール(RC)認証に失敗しました: {{error}}",
+      "remoteAuthRejected": "リモートバックエンド {{name}}（{{address}}）が RC API の認証情報を拒否しました（HTTP 401）",
+      "remoteUnreachable": "リモートバックエンド {{name}}（{{address}}）に接続できません",
+      "portHeldByStaleProcess": "ポート {{port}} は停止できなかった rclone プロセスに占有されたままです（別のユーザーのプロセスか、終了済みでソケットだけが残っている可能性があります）。手動で停止するか、設定でバックエンドのポートを変更してください。",
+      "portInUse": "ポート {{port}} は別のプロセスまたはアプリケーションで既に使用されています",
+      "portBindFailed": "ポート {{port}} をバインドできませんでした（アドレスは既に使用中です）",
+      "exitedDuringStartup": "rclone プロセスが起動中に終了しました。rclone のログを確認してください。",
+      "startupTimeout": "rclone API の準備完了を待機中にタイムアウトしました（{{seconds}} 秒）",
+      "librcloneInitFailed": "librclone を初期化できませんでした: {{error}}",
+      "encryptionCheckFailed": "設定が暗号化されているか確認できませんでした: {{error}}",
+      "configLoadFailed": "rclone 設定ファイルを読み込めませんでした: {{error}}"
     },
     "security": {
       "passwordEmpty": "パスワードを空欄にすることはできません",
@@ -3101,10 +3370,13 @@
       "restoreFailed": "バックアップの復元に失敗しました: {{error}}",
       "exportFailed": "バックアップのエクスポートに失敗しました: {{error}}",
       "refreshFailed": "バックアップ復元後のシステム更新に失敗しました: {{error}}",
-      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}"
+      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}",
+      "wrongPassword": "パスワードが正しくありません。再試行してください。",
+      "passwordRequired": "このバックアップの復号化にはパスワードが必要です。"
     },
     "backend": {
       "nameEmpty": "バックエンド名を空欄にすることはできません",
+      "invalidName": "バックエンド名はドットで始めること、ドットや空白で終わること、/ \\ : < > \" | ? * を含むこと、CON などの予約名にすることはできません",
       "cannotAddLocal": "'Local' という名前のバックエンドを追加することはできません",
       "cannotRemoveLocal": "Local バックエンドを削除することはできません",
       "cannotRemoveActive": "アクティブなバックエンドを削除することはできません",
@@ -3119,7 +3391,11 @@
       "notFound": "JobInfoが見つかりません",
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
       "executionFailed": "ジョブの実行に失敗しました: {{error}}",
-      "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。"
+      "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。",
+      "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません",
+      "stopped": "ジョブが停止されました",
+      "failed": "ジョブが失敗しました",
+      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。"
     },
     "cache": {
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
@@ -3135,7 +3411,18 @@
       "startFailed": "自動化エンジンの開始に失敗しました: {{error}}",
       "stopFailed": "自動化エンジンの停止に失敗しました: {{error}}",
       "invalidCron": "無効なCron式です: {{error}}",
-      "automationNotFound": "自動化が見つかりません"
+      "cronRequired": "cron 式が必要です",
+      "cronFieldCount": "cron 式は 5 つのフィールド（分・時・日・月・曜日）で指定します",
+      "configChanged": "準備中にタスクの設定が変更されました。もう一度お試しください。",
+      "automationNotFound": "自動化が見つかりません",
+      "watcherPending": "まだ存在しないフォルダーを待機しています: {{paths}}",
+      "noLocalPaths": "監視するローカルパスがありません",
+      "alreadyExists": "ID {{id}} のオートメーションは既に存在します",
+      "noCronExpression": "オートメーションに cron 式がありません",
+      "schedulerNotInitialized": "スケジューラーが初期化されていません",
+      "profileNotFound": "'{{remote}}' の {{operation}} プロファイル '{{profile}}' が見つかりません",
+      "workflowNotFound": "ワークフロー '{{id}}' が見つかりません",
+      "quickRunNotFound": "クイック実行 '{{id}}' が見つかりません"
     },
     "system": {
       "unlockFailed": "ロック解除に失敗しました: {{error}}"
@@ -3149,13 +3436,11 @@
     },
     "updater": {
       "noPending": "保留中のアップデートはありません",
-      "invalidUrl": "無効なURLです: {{error}}",
       "github": "GitHub API エラー: {{error}}",
       "githubRateLimit": "GitHub APIのレート制限を超えました。後でもう一度お試しください。",
       "updateFailed": "アップデートに失敗しました: {{error}}",
       "updateUnavailable": "アップデートファイルは利用できなくなりました: {{error}}",
       "relaunchFailed": "再起動に失敗しました: {{error}}",
-      "restartFailed": "再起動に失敗しました: {{error}}",
       "notWritable": "アップデート先のパスに書き込み権限がありません",
       "rollback": {
         "exited": "更新後のアプリケーションは、起動を確認する前に終了しました (コード {{code}})。",
@@ -3170,24 +3455,54 @@
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
-      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
+      "noPrivilegePrompt": "このパッケージのインストールには管理者パスワードの入力手段（pkexec、zenity、kdialog）が必要ですが、見つかりませんでした。",
+      "verificationFailed": "アップデートを検証できませんでした。署名、チェックサム、またはメタデータが一致しません。",
+      "insecureDownload": "アップデートのダウンロードが HTTPS で提供されませんでした。",
+      "downloadTooLarge": "アップデートのダウンロードが想定より大きいです。",
+      "missingAsset": "このリリースには {{name}} という名前のアップデートファイルがありません。",
+      "unexpectedAsset": "このリリースに予期しない、または重複したアップデートファイルがあります。",
+      "argumentsTooLong": "起動引数が長すぎるため、アップデート後に引き継げません。",
+      "startupPending": "前回のアップデートの起動確認がまだ完了していません。数秒後にもう一度お試しください。",
+      "versionMustIncrease": "続けて適用するアップデートは、より新しいバージョンである必要があります。",
+      "invalidBundle": "ポータブルアプリが完全な macOS アプリバンドルではありません。",
+      "missingBackup": "現在のバージョンのバックアップが見つかりません。",
+      "invalidStagingDirectory": "アップデートの準備フォルダーが無効です。",
+      "helperFailed": "アップデートヘルパーを起動できず（{{error}}）、アプリの再起動にも失敗しました: {{restart}}",
+      "processUnavailable": "更新されたアプリのプロセスを監視できませんでした。",
+      "ownedByAnotherUser": "アプリのファイルは別のユーザーが所有しています。"
     },
     "settings": {
       "loadFailed": "設定の読み込みに失敗しました: {{error}}",
       "saveFailed": "設定の保存に失敗しました: {{error}}",
       "resetFailed": "設定のリセットに失敗しました: {{error}}",
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
-      "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
-      "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
+      "deleteFailed": "リモート設定の削除に失敗しました: {{error}}",
+      "taskFailed": "設定タスクが失敗しました: {{error}}",
+      "deleteEntryFailed": "設定エントリを削除できませんでした: {{error}}",
+      "managerInitFailed": "設定マネージャーを作成できませんでした: {{error}}"
     },
     "vault": {
       "passwordEmpty": "ボルトのパスワードを空にすることはできません",
       "notEnabled": "ボルトは有効になっていません",
       "invalidPassword": "ボルトのマスターパスワードが正しくありません",
-      "operationFailed": "ボルトの操作に失敗しました: {{error}}"
+      "operationFailed": "ボルトの操作に失敗しました: {{error}}",
+      "operationInProgress": "別のボールト操作が進行中です",
+      "workflowsActive": "ボールトを有効にする前に、実行中のワークフローが完了するまでお待ちください"
+    },
+    "notification": {
+      "toastFailed": "システム通知を表示できませんでした: {{error}}"
+    },
+    "bisyncConflict": {
+      "versionGone": "そのバージョンはもう存在しません: {{path}}。bisync を再実行して現在の競合を確認してください。",
+      "stepFailed": "{{path}} を更新できませんでした: {{error}}"
     }
   },
   "backendSuccess": {
+    "backup": {
+      "created": "バックアップを作成しました: {{path}}",
+      "restored": "設定を復元しました（{{count}} 件を復元）"
+    },
     "mount": {
       "unmounted": "{{mountPoint}} のマウント解除に成功しました",
       "allUnmounted": "全てのリモートを正常にマウント解除しました"
@@ -3206,7 +3521,8 @@
     },
     "rclone": {
       "updated": "Rcloneを正常に更新しました ({{channel}} チャンネル)",
-      "mountPluginInstalled": "マウントプラグインを正常にインストールしました"
+      "mountPluginInstalled": "マウントプラグインを正常にインストールしました",
+      "remoteRestartRequired": "リモートサーバー上でRcloneが更新されました。新しいバージョンを適用するには、リモートのrcloneサービスを手動で再起動してください。"
     },
     "job": {
       "stopped": "ジョブを正常に停止しました",
@@ -3273,7 +3589,9 @@
         "startArchivecreate": "圧縮 開始",
         "stopArchivecreate": "圧縮 停止",
         "startServe": "公開 開始",
-        "stopServe": "公開 停止"
+        "stopServe": "公開 停止",
+        "startIndex": "ディレクトリ一覧 開始",
+        "stopIndex": "ディレクトリ一覧 停止"
       },
       "browse": "ファイルを閲覧",
       "emptyState": {
@@ -3317,7 +3635,8 @@
     "tooltipMount": "マウント 1件",
     "tooltipMounts": "マウント {{count}}件",
     "tooltipServe": "公開サーバー 1件",
-    "tooltipServes": "公開サーバー {{count}}件"
+    "tooltipServes": "公開サーバー {{count}}件",
+    "indexCount": "ディレクトリ一覧 [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "アクティブな操作を実行中: {{details}}",
@@ -3342,6 +3661,7 @@
       "automationFailed": "{{type}} 自動化エラー",
       "automationStopped": "{{type}} 自動化停止",
       "allJobsStopped": "全ジョブ停止",
+      "automationUnavailable": "自動化を利用できません",
       "allServesStopped": "全サーバー停止",
       "allUnmounted": "全リモート切断",
       "updateFound": "新しいバージョンがあります",
@@ -3385,6 +3705,7 @@
       "serveFailed": "{{backend}} 上の {{remote}} での公開サーバーの開始に失敗しました: {{error}}",
       "serveStopped": "{{backend}} 上の {{remote}} のサーバーを停止しました。",
       "allJobsStopped": "全ての実行中のジョブを正常に終了しました。",
+      "automationUnavailable": "スケジュールとファイル監視を開始できませんでした: {{error}}",
       "allServesStopped": "全ての実行中のサーバーを正常に停止しました。",
       "allUnmounted": "全てのリモートマウントを正常に切断しました。",
       "automationStarted": "{{backend}} 上で {{type}} の自動化 「{{automation}}」 を実行中です。",
@@ -3640,6 +3961,8 @@
       "savedWorkflows": "保存されたワークフロー",
       "presetRecipes": "プリセットレシピ",
       "unsavedChanges": "未保存の変更",
+      "discardConfirm": "キャンバス上のワークフローに未保存の変更があります。破棄しますか？",
+      "discard": "破棄",
       "saving": "保存中...",
       "categories": {
         "all": "すべて"
@@ -3676,7 +3999,7 @@
         "resetZoom": "ズームをリセット",
         "fitToView": "画面に合わせる",
         "snapToGrid": "グリッドにスナップ",
-        "toggleLog": "実行ログの切り替え",
+        "showRun": "前回の実行を表示",
         "toggleInspector": "インスペクターの切り替え",
         "dryRun": "ドライラン",
         "dryRunTooltip": "データを変更したり実際のコマンドを実行したりせずにワークフローの実行をシミュレートします"
@@ -3691,6 +4014,8 @@
       },
       "inspector": {
         "general": "一般設定",
+        "checks": "チェック",
+        "warningsCount": "警告 ({{count}})",
         "parameters": "パラメーター & オプション",
         "nodeTitle": "ノード名",
         "nodeSubtitle": "サブタイトル / 説明",
@@ -3706,12 +4031,8 @@
         "destinationPath": "宛先パス (dstFs)",
         "mountPoint": "マウントポイント",
         "rcEndpoint": "RC エンドポイント",
+        "rcOffline": "rclone から呼び出しの一覧を取得できなかったため、よく使うものだけを表示しています。",
         "rcParameters": "RC パラメーター (JSON)",
-        "rcPresets": "プリセットエンドポイント",
-        "presetCategoryAll": "すべて",
-        "presetCategoryVfs": "VFS",
-        "presetCategoryOps": "ストレージ",
-        "presetCategoryCore": "コア",
         "insertVariable": "ノード出力変数の挿入",
         "insertTokenBtn": "トークンを挿入",
         "formatJson": "JSON 整形",
@@ -3832,18 +4153,19 @@
         "transfers": "転送",
         "errors": "エラー",
         "testRun": "テスト実行",
+        "testNeedsPlainJson": "テスト実行には通常の JSON が必要です。先に {{ }} の変数を実際の値に置き換えてください。",
         "testRunRcHint": "現在のパラメータでこのRCコマンドをテスト実行します",
-        "testSuccess": "テスト成功",
-        "testFailed": "テスト失敗",
         "useAsSampleSchema": "出力スキーマとして保存",
         "sampleOutputSchema": "サンプル出力スキーマ",
-        "sampleOutputSchemaDesc": "後続のカードで動的トークンフィールドを展開するためのJSONレスポンススキーマ",
+        "sampleOutputSchemaDesc": "テスト実行が成功すると自動で入力されます。レスポンスを貼り付けることもできます。そのフィールドは後続のステップで変数として使えます。",
         "sampleOutputPlaceholder": "ここにサンプルのJSONレスポンスを貼り付け...",
         "availableOutputKeys": "検出された変数キー",
         "upstreamOutputs": "上流の出力と変数",
         "nodeOutput": "ノード実行出力",
         "checkReport": "差分レポート",
         "rawOutputJson": "出力データ (JSON)",
+        "tabResult": "結果",
+        "tabSettings": "設定",
         "conditionPresets": "クイック条件プリセット",
         "condPresetHasDiff": "差分あり",
         "condPresetNoDiff": "差分なし",
@@ -3862,7 +4184,17 @@
         "opEndsWith": "で終わる",
         "opArrayNotEmpty": "配列に要素あり",
         "opArrayIsEmpty": "配列が空",
-        "preview": "メッセージプレビュー"
+        "preview": "メッセージプレビュー",
+        "presets": {
+          "checkReportTitle": "差分を検出しました（Check 監査）",
+          "checkReportMsg": "転送元と転送先に差分が見つかりました:\n\n{{prev.report}}",
+          "transferSummaryTitle": "転送が正常に完了しました",
+          "transferSummaryMsg": "転送が完了しました:\n転送量: {{prev.bytesFormatted}}\nファイル数: {{prev.transfers}}\n速度: {{prev.speedFormatted}}\nエラー: {{prev.errors}}",
+          "failureAlertTitle": "ワークフローのステップが失敗しました",
+          "failureAlertMsg": "ノードの実行に失敗しました。\n\nエラーの詳細:\n{{prev.error}}",
+          "healthStatusTitle": "ワークフロー実行レポート",
+          "healthStatusMsg": "ワークフローのステップがステータス {{prev.status}} で終了しました。\n転送量: {{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "マウント中",
@@ -3873,7 +4205,8 @@
         "success": "完了",
         "failed": "失敗",
         "skipped": "スキップ",
-        "idle": "待機中"
+        "idle": "待機中",
+        "queued": "待機中"
       },
       "ports": {
         "in": "入力",
@@ -3892,7 +4225,9 @@
         "branch2": "分岐 2",
         "in1": "入力 1",
         "in2": "入力 2",
-        "done": "完了"
+        "done": "完了",
+        "inN": "入力 {{n}}",
+        "branchN": "分岐 {{n}}"
       },
       "nodes": {
         "manualTrigger": "手動トリガー",
@@ -3936,29 +4271,26 @@
         "systemPower": "システム電源管理",
         "systemPowerDesc": "ホストシステムのスリープ、ロック、またはシャットダウン",
         "logAudit": "監査ログ",
-        "logAuditDesc": "ワークフロー実行ログにエントリを記録"
+        "logAuditDesc": "ワークフロー実行ログにエントリを記録",
+        "sync": "同期",
+        "copy": "コピー",
+        "check": "チェック",
+        "mount": "マウント"
       },
-      "logs": {
-        "stepRunning": "ステップ「{{title}}」を実行中...",
-        "stepCompleted": "ステップ「{{title}}」が {{duration}} ms で完了しました",
-        "stepFailed": "ステップ「{{title}}」が失敗しました: {{error}}",
-        "stepSkipped": "ステップ「{{title}}」をスキップしました (分岐が選択されませんでした)",
-        "unknownError": "不明なエラー",
-        "cancelRequested": "ワークフローの実行のキャンセルが要求されました",
-        "startExecution": "ワークフロー「{{name}}」の実行を開始しています",
-        "startSimulation": "ワークフロー「{{name}}」のシミュレーション (ドライラン) を開始しています",
-        "executionError": "ワークフローの実行エラー: {{error}}",
+      "run": {
+        "title": "前回の実行",
+        "copy": "概要をコピー",
+        "openStep": "ステップを開く",
+        "empty": "まだ実行されていません。ワークフローを実行すると、ここにステップが表示されます。",
         "running": "実行中...",
-        "title": "実行ログ",
-        "copy": "ログをコピー",
-        "clear": "ログをクリア",
-        "jumpToNode": "クリックしてキャンバス上のノードにフォーカス",
-        "empty": "実行ログはまだありません。ワークフローを実行してステップ出力を確認してください。",
-        "copied": "ログをクリップボードにコピーしました",
-        "filterAll": "すべて",
-        "filterErrors": "エラー",
-        "filterWarnings": "警告",
-        "filterSuccess": "成功"
+        "executionError": "ワークフローの実行エラー: {{error}}",
+        "state": {
+          "started": "開始中",
+          "running": "実行中",
+          "completed": "完了",
+          "failed": "失敗",
+          "cancelled": "キャンセル済み"
+        }
       },
       "tokens": {
         "prevNode": "前のノード",
@@ -3999,7 +4331,9 @@
           "resumedAt": "再開時刻",
           "command": "コマンド",
           "result": "コマンド結果",
-          "json": "整形済みJSON"
+          "json": "整形済みJSON",
+          "reports": "ファイルレポート",
+          "reportCounts": "ファイルレポート件数"
         }
       },
       "details": "ワークフロー詳細",
@@ -4008,8 +4342,6 @@
       "descriptionPlaceholder": "このワークフローの目的を入力...",
       "showInTray": "システムトレイに表示",
       "deleteConfirm": "このワークフローを削除してもよろしいですか？",
-      "cleanDuplicates": "重複を削除",
-      "cleanDuplicatesConfirm": "重複するワークフローを削除してもよろしいですか？",
       "stats": {
         "title": "概要",
         "nodes": "総ノード数",
@@ -4020,37 +4352,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "スマート差分チェック＆条件付き同期",
-          "description": "checkで差分を検証し、変更が検出された場合のみ同期して転送量の詳細を通知します。"
+          "description": "checkで差分を検証し、変更が検出された場合のみ同期して転送量の詳細を通知します。",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "差分は検出されませんでした",
+              "message": "転送元と転送先はすでに同一です。同期をスキップしました。"
+            },
+            "node-notify-sync-done": {
+              "title": "同期が完了しました",
+              "message": "差分を解消しました: {{prev.bytesFormatted}} を転送しました（{{prev.transfers}} ファイル）。"
+            },
+            "node-notify-check-failed": {
+              "title": "差分チェックに失敗しました",
+              "message": "チェックを完了できなかったため、何も同期されていません:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "データ整合性監査＆差分レポート",
-          "description": "定期的な整合性チェックを実行し、差分が存在する場合はMarkdownレポートでアラートを送信します。"
+          "description": "定期的な整合性チェックを実行し、差分が存在する場合はMarkdownレポートでアラートを送信します。",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "整合性を確認しました",
+              "message": "すべてのファイルが転送先と一致しています。差異はありません。"
+            },
+            "node-notify-drift": {
+              "title": "整合性監査の警告"
+            },
+            "node-notify-audit-failed": {
+              "title": "整合性監査に失敗しました",
+              "message": "監査を完了できませんでした:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "障害アラート付き安全同期",
-          "description": "同期を実行し、成功時は転送量を通知し、失敗時は詳細なエラー内容を転送します。"
+          "description": "同期を実行し、成功時は転送量を通知し、失敗時は詳細なエラー内容を転送します。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "同期に成功しました",
+              "message": "転送量: {{prev.bytesFormatted}}（速度: {{prev.speedFormatted}}）。すべてのファイルが最新です。"
+            },
+            "node-notify-fail": {
+              "title": "同期に失敗しました",
+              "message": "バックアップ中にエラーが発生しました:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "日次バックアップ＆通知",
-          "description": "毎日02:00に定期同期を実行し、成功または失敗時に通知します。"
+          "description": "毎日02:00に定期同期を実行し、成功または失敗時に通知します。",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "バックアップが完了しました",
+              "message": "毎日の同期が完了しました: {{prev.bytesFormatted}} を転送しました（速度: {{prev.speedFormatted}}）。"
+            },
+            "node-action-notify-fail": {
+              "title": "バックアップに失敗しました",
+              "message": "毎日のバックアップ中にエラーが発生しました:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "フォルダー監視＆自動アップロード",
-          "description": "ローカルフォルダーの変更を監視し、新規・変更ファイルをクラウドにコピーします。"
+          "description": "ローカルフォルダーの変更を監視し、新規・変更ファイルをクラウドにコピーします。",
+          "nodes": {
+            "node-action-notify": {
+              "title": "自動アップロードが完了しました",
+              "message": "自動アップロードが完了しました: {{prev.bytesFormatted}} を転送しました（{{prev.transfers}} ファイル）。"
+            }
+          }
         },
         "parallelMirror": {
           "name": "マルチクラウド並列ミラー",
-          "description": "2つの異なるクラウドプロバイダーへ同時に同期し、完了を検証します。"
+          "description": "2つの異なるクラウドプロバイダーへ同時に同期し、完了を検証します。",
+          "nodes": {
+            "node-notify-done": {
+              "title": "ミラーが完了しました",
+              "message": "すべての並列クラウド同期が完了しました。"
+            }
+          }
         },
         "mountOnDemand": {
           "name": "オンデマンドマウント＆通知",
-          "description": "リモートストレージパスをマウントし、ドライブの準備完了時にデスクトップへ通知します。"
+          "description": "リモートストレージパスをマウントし、ドライブの準備完了時にデスクトップへ通知します。",
+          "nodes": {
+            "node-notify": {
+              "title": "ドライブをマウントしました",
+              "message": "リモートストレージがマウントされ、使用できます。"
+            }
+          }
         },
         "manualTrigger": "手動",
         "manualTriggerDesc": "オンデマンドで手動トリガー",
         "vfsRefresh": {
           "name": "VFSキャッシュ更新自動化",
-          "description": "マウントされたドライブのディレクトリキャッシュを再読み込みするためにvfs/refresh RCコマンドを送信し、デスクトップへ通知します。"
+          "description": "マウントされたドライブのディレクトリキャッシュを再読み込みするためにvfs/refresh RCコマンドを送信し、デスクトップへ通知します。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS キャッシュを更新しました",
+              "message": "ディレクトリキャッシュの再読み込みが正常に完了しました。\nコマンド: {{prev.command}}\nステータス: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS の更新に失敗しました",
+              "message": "RC コマンドが失敗しました:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {
@@ -4060,7 +4467,8 @@
       "emptyState": {
         "title": "ワークフロービルダーへようこそ",
         "subtitle": "rclone 操作を自動化する新しいワークフローを作成するか、テンプレートを選択して開始してください。"
-      }
+      },
+      "copyName": "{{name}} (コピー)"
     },
     "shortcuts": {
       "title": "Flow キーボードショートカット"
