@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal, untracked } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
   CanvasViewport,
@@ -21,12 +21,11 @@ import {
   toPersistableWorkflow,
   withRuntimeFields,
 } from '../../flow/workflow/utils/workflow-persist.util';
+import { WorkflowNodeLayoutService } from './workflow-node-layout.service';
 import {
   GRID_SIZE,
   MIN_ZOOM,
   MAX_ZOOM,
-  NODE_WIDTH,
-  DEFAULT_NODE_HEIGHT,
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
 } from '../../flow/workflow/constants/workflow.constants';
@@ -34,6 +33,11 @@ import {
 /** Edits of the same field closer together than this are one undo step. */
 const COALESCE_WINDOW_MS = 1000;
 const MAX_UNDO_STEPS = 50;
+/** A join or fork keeps at least this many branches. */
+const MIN_BRANCH_PORTS = 2;
+
+/** What the last run left on a node. It describes a run, not the workflow, so it is never stored. */
+type NodeRunResult = Pick<WorkflowNode, 'state' | 'errorMessage' | 'lastDurationMs' | 'lastOutput'>;
 
 /** Cache of computed content hashes keyed by workflow reference to avoid redundant full-tree serializations */
 const contentHashCache = new WeakMap<WorkflowDefinition, string>();
@@ -85,6 +89,7 @@ function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
 @Injectable({ providedIn: 'root' })
 export class WorkflowStateService {
   private readonly translate = inject(TranslateService);
+  private readonly layoutService = inject(WorkflowNodeLayoutService);
 
   readonly currentWorkflow = signal<WorkflowDefinition | null>(null);
   readonly viewport = signal<CanvasViewport>({ x: 0, y: 0, zoom: 1 });
@@ -113,25 +118,45 @@ export class WorkflowStateService {
   /** True while a node is being dragged: the workflow is changing, so it is not compared with the saved one on every frame */
   readonly isDraggingNode = signal<boolean>(false);
 
-  /** Monotonic revision counters for O(1) dirty state tracking */
+  /** Id of the workflow on the canvas. Unlike the workflow, it does not change with every edit. */
+  readonly currentWorkflowId = computed(() => this.currentWorkflow()?.id);
+
+  /**
+   * Revision of the workflow on the canvas. Every edit takes a number nobody has had, so the
+   * revision of a saved state is only ever seen again when the workflow is that state again
+   * (undo or redo back to it).
+   */
   private readonly currentRevision = signal<number>(0);
   private readonly savedRevision = signal<number>(0);
+  private lastIssuedRevision = 0;
 
   /** Hash of the workflow as last loaded or saved */
   readonly lastSavedHash = signal<string>('');
 
-  /** Indicates whether the current workflow has unsaved changes compared to last saved state */
+  /**
+   * Indicates whether the current workflow has unsaved changes compared to last saved state.
+   * It follows the revision, not the workflow object: run results replace the object on
+   * every node event but change nothing that is saved.
+   */
   readonly hasUnsavedChanges = computed<boolean>(() => {
-    const current = this.currentWorkflow();
-    if (!current) return false;
+    if (this.currentWorkflowId() === undefined) return false;
     const baseline = this.lastSavedHash();
     if (!baseline) return false;
-    // O(1) fast-path: matching revisions guarantee clean state (e.g. undo back to baseline or transient state updates)
+    // O(1) fast-path: matching revisions guarantee clean state (e.g. undo back to baseline)
     if (this.currentRevision() === this.savedRevision()) return false;
     // Dragging changes the workflow on every frame; hashing it each time would cost more than it tells.
     if (this.isDraggingNode()) return true;
-    return getWorkflowContentHash(current) !== baseline;
+    return getWorkflowContentHash(untracked(this.currentWorkflow)) !== baseline;
   });
+
+  /** Changes when the workflow on the canvas is edited or another one is opened; not for run results. */
+  readonly editVersion = computed(
+    () => `${this.currentWorkflowId() ?? ''}:${this.currentRevision()}`
+  );
+
+  private nextRevision(): void {
+    this.currentRevision.set(++this.lastIssuedRevision);
+  }
 
   /** Active wire dragging state */
   readonly isConnecting = signal<{
@@ -163,13 +188,20 @@ export class WorkflowStateService {
    * Loads a workflow definition into the active canvas state.
    */
   loadWorkflow(workflow: WorkflowDefinition): void {
-    this.currentWorkflow.set(structuredClone(workflow));
+    const loaded = structuredClone(workflow);
+    const results = this.runResults.get(loaded.id);
+    this.currentWorkflow.set(
+      results
+        ? { ...loaded, nodes: loaded.nodes.map(n => ({ ...n, ...results.get(n.id) })) }
+        : loaded
+    );
     this.viewport.set(workflow.viewport ?? { x: 0, y: 0, zoom: 1 });
     this.clearSelection();
     this.undoStack.length = 0;
     this.undoRevisions.length = 0;
     this.redoStack.length = 0;
     this.redoRevisions.length = 0;
+    this.lastIssuedRevision = 0;
     this.currentRevision.set(0);
     this.savedRevision.set(0);
     this.updateUndoRedoSignals();
@@ -213,6 +245,14 @@ export class WorkflowStateService {
     this.edit(() => patch, `workflow:${Object.keys(patch).join(',')}`);
   }
 
+  /**
+   * Sets the tray flag on the canvas without an undo step. It is stored on its own, so a
+   * history step must neither hold it back nor bring it back.
+   */
+  setShowOnTray(showOnTray: boolean): void {
+    this.currentWorkflow.update(wf => (wf ? { ...wf, showOnTray } : null));
+  }
+
   setWorkflowName(name: string): void {
     this.updateWorkflowMetadata({ name });
   }
@@ -236,6 +276,9 @@ export class WorkflowStateService {
   }
 
   private lastSnapshot = { key: '', at: 0 };
+
+  /** Run results by workflow and node id; see `recordNodeRun`. */
+  private readonly runResults = new Map<string, Map<string, NodeRunResult>>();
 
   /** A copy for the undo history: what was edited, without the results of a run. */
   private cloneForHistory(workflow: WorkflowDefinition): WorkflowDefinition {
@@ -268,7 +311,7 @@ export class WorkflowStateService {
       this.redoRevisions.length = 0;
       this.updateUndoRedoSignals();
     }
-    this.currentRevision.update(r => r + 1);
+    this.nextRevision();
   }
 
   undo(): void {
@@ -303,8 +346,15 @@ export class WorkflowStateService {
   ): void {
     this.lastSnapshot = { key: '', at: 0 };
     this.currentRevision.set(revision);
+    // The tray setting is stored the moment it is changed, so it is not part of the history.
     this.currentWorkflow.set(
-      current ? { ...step, nodes: withRuntimeFields(step.nodes, current.nodes) } : step
+      current
+        ? {
+            ...step,
+            showOnTray: current.showOnTray,
+            nodes: withRuntimeFields(step.nodes, current.nodes),
+          }
+        : step
     );
     this.updateUndoRedoSignals();
   }
@@ -367,9 +417,10 @@ export class WorkflowStateService {
       titleKey: options?.titleKey,
       x: posX,
       y: posY,
-      inputs: defaultInputs,
-      outputs: defaultOutputs,
-      config: options?.config ?? {},
+      // Every node owns its ports and settings; the defaults and the template's are shared.
+      inputs: structuredClone(defaultInputs),
+      outputs: structuredClone(defaultOutputs),
+      config: structuredClone(options?.config ?? {}),
       state: 'idle',
     };
 
@@ -381,23 +432,10 @@ export class WorkflowStateService {
     return newNode;
   }
 
-  updateNodePosition(id: string, x: number, y: number): void {
-    const finalX = this.snapToGrid() ? Math.round(x / GRID_SIZE) * GRID_SIZE : x;
-    const finalY = this.snapToGrid() ? Math.round(y / GRID_SIZE) * GRID_SIZE : y;
-
-    this.currentRevision.update(r => r + 1);
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => (n.id === id ? { ...n, x: finalX, y: finalY } : n)),
-      };
-    });
-  }
-
+  /** Moves nodes, to the grid when snapping is on. Not an undo step: the caller takes one when a drag starts. */
   updateNodesPositions(updates: Map<string, { x: number; y: number }>): void {
     const snap = this.snapToGrid();
-    this.currentRevision.update(r => r + 1);
+    this.nextRevision();
     this.currentWorkflow.update(wf => {
       if (!wf) return null;
       return {
@@ -424,26 +462,6 @@ export class WorkflowStateService {
   }
 
   /**
-   * Sets settings of a node by dot-notated path (`config.rclone.srcFs`), creating the
-   * levels in between. All the paths change as one undoable step.
-   */
-  updateNodeConfigPaths(id: string, entries: Record<string, unknown>): void {
-    this.edit(
-      wf => ({
-        nodes: wf.nodes.map(n => {
-          if (n.id !== id) return n;
-          const config = structuredClone(n.config || {});
-          for (const [path, value] of Object.entries(entries)) {
-            this.setNestedKey(config, path, value);
-          }
-          return { ...n, config };
-        }),
-      }),
-      `config:${id}:${Object.keys(entries).join(',')}`
-    );
-  }
-
-  /**
    * Removes a specific field (or dot-notated nested path) from a node's config.
    */
   removeConfigField(nodeId: string, path: string): void {
@@ -455,17 +473,6 @@ export class WorkflowStateService {
         return { ...n, config };
       }),
     }));
-  }
-
-  private setNestedKey(obj: Record<string, unknown>, path: string, value: unknown): void {
-    const keys = path.split('.');
-    let current = obj;
-    for (const key of keys.slice(0, -1)) {
-      const next = current[key];
-      if (!next || typeof next !== 'object' || Array.isArray(next)) current[key] = {};
-      current = current[key] as Record<string, unknown>;
-    }
-    current[keys[keys.length - 1]] = value;
   }
 
   private deleteNestedKey(obj: Record<string, unknown>, path: string): void {
@@ -502,30 +509,68 @@ export class WorkflowStateService {
     );
   }
 
-  updateNodeExecutionState(
-    id: string,
+  /**
+   * Keeps what a run did to a node, for the workflow it belongs to. The workflow on the
+   * canvas shows it at once; any other shows it when it is opened again.
+   */
+  recordNodeRun(
+    workflowId: string,
+    nodeId: string,
     state: WorkflowNode['state'],
     errorMessage?: string,
     durationMs?: number,
     output?: unknown
   ): void {
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n =>
-          n.id === id
-            ? {
-                ...n,
-                state,
-                errorMessage,
-                lastDurationMs: durationMs ?? n.lastDurationMs,
-                lastOutput: output !== undefined ? output : n.lastOutput,
-              }
-            : n
-        ),
-      };
-    });
+    const byNode = this.runResults.get(workflowId) ?? new Map<string, NodeRunResult>();
+    const previous = byNode.get(nodeId);
+    const result: NodeRunResult = {
+      state,
+      errorMessage,
+      lastDurationMs: durationMs ?? previous?.lastDurationMs,
+      lastOutput: output !== undefined ? output : previous?.lastOutput,
+    };
+    byNode.set(nodeId, result);
+    this.runResults.set(workflowId, byNode);
+
+    if (this.currentWorkflowId() !== workflowId) return;
+    this.currentWorkflow.update(wf =>
+      wf ? { ...wf, nodes: wf.nodes.map(n => (n.id === nodeId ? { ...n, ...result } : n)) } : null
+    );
+  }
+
+  /** Drops what runs left for a workflow that no longer exists. */
+  forgetRunResults(workflowId: string): void {
+    this.runResults.delete(workflowId);
+  }
+
+  /** Clears the state, error and duration of the last run (its output stays for the token pickers). */
+  resetRunResults(workflowId: string): void {
+    const byNode = this.runResults.get(workflowId);
+    if (byNode) {
+      for (const [id, result] of byNode) {
+        byNode.set(id, { state: 'idle', lastOutput: result.lastOutput });
+      }
+    }
+    if (this.currentWorkflowId() !== workflowId) return;
+    this.currentWorkflow.update(wf =>
+      wf
+        ? {
+            ...wf,
+            nodes: wf.nodes.map(n => ({
+              ...n,
+              state: 'idle' as const,
+              errorMessage: undefined,
+              lastDurationMs: undefined,
+            })),
+          }
+        : null
+    );
+  }
+
+  /** The workflow on the canvas as it is stored: with the view the user left it in. */
+  workflowToStore(): WorkflowDefinition | null {
+    const wf = this.currentWorkflow();
+    return wf ? { ...wf, viewport: this.viewport() } : null;
   }
 
   duplicateNode(id: string): WorkflowNode | null {
@@ -609,17 +654,17 @@ export class WorkflowStateService {
 
   /** Removes a port (the last one by default), and the wires on it. A node keeps at least two. */
   private removePort(nodeId: string, side: 'inputs' | 'outputs', portId?: string): void {
+    const current = this.currentWorkflow()?.nodes.find(n => n.id === nodeId)?.[side];
+    if (!current || current.length <= MIN_BRANCH_PORTS) return;
+    const removedPortId = portId || current[current.length - 1].id;
+    const ports = current.filter(p => p.id !== removedPortId);
     this.snapshot();
     this.currentWorkflow.update(wf =>
-      updateNodePorts(wf, nodeId, node => {
-        const current = node[side];
-        if (!current || current.length <= 2) return null;
-        const removedPortId = portId || current[current.length - 1].id;
-        const ports = current.filter(p => p.id !== removedPortId);
-        return side === 'inputs'
+      updateNodePorts(wf, nodeId, () =>
+        side === 'inputs'
           ? { inputs: ports, removedPortId, isInput: true }
-          : { outputs: ports, removedPortId, isInput: false };
-      })
+          : { outputs: ports, removedPortId, isInput: false }
+      )
     );
   }
 
@@ -821,8 +866,9 @@ export class WorkflowStateService {
     for (const n of wf.nodes) {
       minX = Math.min(minX, n.x);
       minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + NODE_WIDTH);
-      maxY = Math.max(maxY, n.y + DEFAULT_NODE_HEIGHT);
+      const { width: nodeWidth, height: nodeHeight } = this.layoutService.sizeOf(n.id);
+      maxX = Math.max(maxX, n.x + nodeWidth);
+      maxY = Math.max(maxY, n.y + nodeHeight);
     }
 
     const contentWidth = maxX - minX + 100;

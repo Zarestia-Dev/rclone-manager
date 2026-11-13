@@ -10,7 +10,9 @@
           <span class="prop-value font-semibold">
             {{ inspectorRemote() }}
             @if (selectedRemoteItem()?.type; as rType) {
-              <span class="remote-type-tag">({{ rType }})</span>
+              @if (rType !== inspectorRemote()) {
+                <span class="remote-type-tag">({{ rType }})</span>
+              }
             }
           </span>
         </div>

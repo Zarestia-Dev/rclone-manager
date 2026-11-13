@@ -34,19 +34,6 @@ describe('LogicNodeFormComponent', () => {
     fixture.detectChanges();
   });
 
-  it('emits configChange when delay preset is applied', () => {
-    let emitted: { key: string; value: unknown } | null = null;
-    component.configChange.subscribe(val => {
-      emitted = val;
-    });
-
-    component.applyDelayPreset(60);
-    expect(emitted).toEqual({ key: 'delaySeconds', value: 60 });
-
-    component.applyDelayPreset(300);
-    expect(emitted).toEqual({ key: 'delaySeconds', value: 300 });
-  });
-
   it('computes delaySecondsValue correctly with delaySeconds key', () => {
     expect(component.delaySecondsValue()).toBe(5);
 
@@ -89,9 +76,6 @@ describe('LogicNodeFormComponent', () => {
     fixture.componentRef.setInput('nodeConfig', { joinMode: 'all_success' });
     fixture.detectChanges();
 
-    // canRemoveBranch is false when length is 2
-    expect(component.canRemoveBranch()).toBe(false);
-
     // emit joinMode change
     let emitted: { key: string; value: unknown } | null = null;
     component.configChange.subscribe(val => {
@@ -100,21 +84,19 @@ describe('LogicNodeFormComponent', () => {
     component.onFieldChange('joinMode', 'any_success');
     expect(emitted).toEqual({ key: 'joinMode', value: 'any_success' });
 
-    // When 3 inputs, canRemoveBranch is true
     const nodeWith3Inputs: WorkflowNode = {
       ...joinNode,
       inputs: [...joinNode.inputs, { id: 'in3', name: 'In 3', type: 'in' }],
     };
     fixture.componentRef.setInput('node', nodeWith3Inputs);
     fixture.detectChanges();
-    expect(component.canRemoveBranch()).toBe(true);
 
     // Call add and remove methods
     component.addInputBranch();
     component.removeInputBranch('in3');
   });
 
-  it('handles parallel_fork node branch additions, removals and canRemoveOutputBranch', () => {
+  it('handles parallel_fork node branch additions and removals', () => {
     const forkNode: WorkflowNode = {
       id: 'node-fork-1',
       type: 'parallel_fork',
@@ -134,17 +116,12 @@ describe('LogicNodeFormComponent', () => {
     fixture.componentRef.setInput('nodeConfig', {});
     fixture.detectChanges();
 
-    // canRemoveOutputBranch is false when length is 2
-    expect(component.canRemoveOutputBranch()).toBe(false);
-
-    // When 3 outputs, canRemoveOutputBranch is true
     const nodeWith3Outputs: WorkflowNode = {
       ...forkNode,
       outputs: [...forkNode.outputs, { id: 'branch3', name: 'Branch 3', type: 'out' }],
     };
     fixture.componentRef.setInput('node', nodeWith3Outputs);
     fixture.detectChanges();
-    expect(component.canRemoveOutputBranch()).toBe(true);
 
     // Call add and remove methods
     component.addOutputBranch();
@@ -199,7 +176,23 @@ describe('LogicNodeFormComponent', () => {
           },
           conditionNode,
         ],
-        edges: [],
+        // Both tasks lead into the condition, so both are upstream of it.
+        edges: [
+          {
+            id: 'e-sync',
+            sourceNodeId: 'node-sync-1',
+            sourcePortId: 'success',
+            targetNodeId: conditionNode.id,
+            targetPortId: 'in',
+          },
+          {
+            id: 'e-cmd',
+            sourceNodeId: 'node-cmd-1',
+            sourcePortId: 'success',
+            targetNodeId: conditionNode.id,
+            targetPortId: 'in',
+          },
+        ],
         viewport: { x: 0, y: 0, zoom: 1 },
         showOnTray: false,
       });
@@ -229,14 +222,14 @@ describe('LogicNodeFormComponent', () => {
       const syncFields = component.availableNodeFields();
       expect(syncFields.some(f => f.key === 'bytesFormatted')).toBe(true);
 
-      const emitted: { key: string; value: unknown }[] = [];
-      component.configChange.subscribe(val => emitted.push(val));
+      const patches: Record<string, unknown>[] = [];
+      component.configPatch.subscribe(patch => patches.push(patch));
 
       component.onConditionTargetNodeChange('node-cmd-1');
-      expect(emitted).toContainEqual({ key: 'leftNodeId', value: 'node-cmd-1' });
-      expect(emitted).toContainEqual({
-        key: 'leftValue',
-        value: '{{nodes.node-cmd-1.summary}}',
+      expect(patches.pop()).toEqual({
+        leftNodeId: 'node-cmd-1',
+        leftField: 'summary',
+        leftValue: '{{nodes.node-cmd-1.summary}}',
       });
 
       fixture.componentRef.setInput('nodeConfig', {
@@ -249,10 +242,10 @@ describe('LogicNodeFormComponent', () => {
       fixture.detectChanges();
 
       component.onConditionTargetFieldChange('stdout');
-      expect(emitted).toContainEqual({ key: 'leftField', value: 'stdout' });
-      expect(emitted).toContainEqual({
-        key: 'leftValue',
-        value: '{{nodes.node-cmd-1.stdout}}',
+      expect(patches.pop()).toEqual({
+        leftNodeId: 'node-cmd-1',
+        leftField: 'stdout',
+        leftValue: '{{nodes.node-cmd-1.stdout}}',
       });
     });
 
@@ -268,12 +261,16 @@ describe('LogicNodeFormComponent', () => {
 
       expect(component.conditionLeftValueMode()).toBe('custom');
 
-      const emitted: { key: string; value: unknown }[] = [];
-      component.configChange.subscribe(val => emitted.push(val));
+      const patches: Record<string, unknown>[] = [];
+      const changes: { key: string; value: unknown }[] = [];
+      component.configPatch.subscribe(patch => patches.push(patch));
+      component.configChange.subscribe(change => changes.push(change));
 
       component.setConditionLeftValueMode('node');
-      expect(emitted).toContainEqual({ key: 'leftMode', value: 'node' });
-      expect(emitted).toContainEqual({ key: 'leftNodeId', value: 'prev' });
+      expect(patches.pop()).toMatchObject({ leftMode: 'node', leftNodeId: 'prev' });
+
+      component.setConditionLeftValueMode('custom');
+      expect(changes).toEqual([{ key: 'leftMode', value: 'custom' }]);
     });
 
     it('hides right value input for unary operators and adjusts operator state', () => {
@@ -318,25 +315,28 @@ describe('LogicNodeFormComponent', () => {
       fixture.componentRef.setInput('nodeConfig', { operator: 'equals' });
       fixture.detectChanges();
 
-      const emitted: { key: string; value: unknown }[] = [];
-      component.configChange.subscribe(val => emitted.push(val));
+      const patches: Record<string, unknown>[] = [];
+      component.configPatch.subscribe(patch => patches.push(patch));
 
-      // 1. Has differences preset
+      // A preset is one change, so one undo step
       component.applyConditionPreset('has_diff');
-      expect(emitted.some(e => e.key === 'leftNodeId' && e.value === 'prev')).toBe(true);
-      expect(emitted.some(e => e.key === 'leftField' && e.value === 'hasDifferences')).toBe(true);
-      expect(
-        emitted.some(e => e.key === 'leftValue' && e.value === '{{prev.hasDifferences}}')
-      ).toBe(true);
-      expect(emitted.some(e => e.key === 'operator' && e.value === 'equals')).toBe(true);
-      expect(emitted.some(e => e.key === 'rightValue' && e.value === 'true')).toBe(true);
+      expect(patches).toEqual([
+        {
+          leftMode: 'node',
+          leftNodeId: 'prev',
+          leftField: 'hasDifferences',
+          leftValue: '{{prev.hasDifferences}}',
+          operator: 'equals',
+          rightValue: 'true',
+        },
+      ]);
 
-      // 2. Differ count preset
-      emitted.length = 0;
       component.applyConditionPreset('diff_count');
-      expect(emitted.some(e => e.key === 'leftField' && e.value === 'differCount')).toBe(true);
-      expect(emitted.some(e => e.key === 'operator' && e.value === 'greater_than')).toBe(true);
-      expect(emitted.some(e => e.key === 'rightValue' && e.value === '0')).toBe(true);
+      expect(patches.pop()).toMatchObject({
+        leftField: 'differCount',
+        operator: 'greater_than',
+        rightValue: '0',
+      });
 
       // 3. Array unary operator check
       fixture.componentRef.setInput('nodeConfig', { operator: 'array_not_empty' });

@@ -3194,6 +3194,10 @@
       "validationSelfLoop": "Düğüm kendine bağlanamaz (döngü): {{id}}",
       "validationCycle": "Grafikte döngüsel bağımlılıklar var (iş akışları DAG olmalıdır)",
       "validationDisconnected": "'{{title}}' düğümü iş akışından kopuk",
+      "validationMissingPort": "Bir bağlantı, '{{title}}' düğümünde olmayan bir porta bağlı: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}', iş akışında olmayan '{{node}}' düğümünün çıktısını okuyor",
+      "validationTokenNotUpstream": "'{{title}}', kendisine bağlanmayan '{{node}}' düğümünün çıktısını okuyor; değer boş olabilir",
+      "validationPrevWithoutInput": "'{{title}}', önceki düğümün çıktısını okuyor ama hiçbir şey ona bağlı değil",
       "cancelled": "Yürütme iptal edildi",
       "jobUntracked": "{{id}} numaralı iş artık izlenmiyor; sonucu bilinmiyor",
       "jobStopped": "{{id}} numaralı iş durduruldu",
@@ -3957,6 +3961,8 @@
       "savedWorkflows": "Kayıtlı İş Akışları",
       "presetRecipes": "Hazır Şablonlar & Tarifler",
       "unsavedChanges": "Kaydedilmemiş değişiklikler",
+      "discardConfirm": "Tuvaldaki iş akışında kaydedilmemiş değişiklikler var. Bunlar atılsın mı?",
+      "discard": "At",
       "saving": "Kaydediliyor...",
       "categories": {
         "all": "Tümü"
@@ -3993,7 +3999,7 @@
         "resetZoom": "Yakınlaştırmayı Sıfırla",
         "fitToView": "Ekrana Sığdır",
         "snapToGrid": "Izgaraya Hizala",
-        "toggleLog": "Çalıştırma Günlüğünü Aç/Kapat",
+        "showRun": "Son çalıştırmayı göster",
         "toggleInspector": "Denetleyiciyi Aç/Kapat",
         "dryRun": "Simülasyon (Dry Run)",
         "dryRunTooltip": "Verileri değiştirmeden veya gerçek komutlar çalıştırmadan iş akışını simüle et"
@@ -4008,6 +4014,8 @@
       },
       "inspector": {
         "general": "Genel Ayarlar",
+        "checks": "Denetimler",
+        "warningsCount": "Uyarılar ({{count}})",
         "parameters": "Parametreler ve Seçenekler",
         "nodeTitle": "Düğüm Başlığı",
         "nodeSubtitle": "Alt Başlık / Açıklama",
@@ -4156,6 +4164,8 @@
         "nodeOutput": "Düğüm Çalışma Çıktısı",
         "checkReport": "Fark Raporu",
         "rawOutputJson": "Çıktı Verisi (JSON)",
+        "tabResult": "Sonuç",
+        "tabSettings": "Ayarlar",
         "conditionPresets": "Hızlı Koşul Şablonları",
         "condPresetHasDiff": "Fark Varsa",
         "condPresetNoDiff": "Fark Yoksa",
@@ -4174,7 +4184,17 @@
         "opEndsWith": "İle Biter",
         "opArrayNotEmpty": "Liste / Dizi Dolu",
         "opArrayIsEmpty": "Liste / Dizi Boş",
-        "preview": "Mesaj Önizlemesi"
+        "preview": "Mesaj Önizlemesi",
+        "presets": {
+          "checkReportTitle": "Fark Tespit Edildi (Check Denetimi)",
+          "checkReportMsg": "Kaynak ve hedef arasında farklar bulundu:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Aktarım Başarıyla Tamamlandı",
+          "transferSummaryMsg": "Aktarım tamamlandı:\nAktarılan: {{prev.bytesFormatted}}\nDosya: {{prev.transfers}}\nHız: {{prev.speedFormatted}}\nHata: {{prev.errors}}",
+          "failureAlertTitle": "İş Akışı Adımı Başarısız Oldu",
+          "failureAlertMsg": "Düğüm çalıştırılırken hata oluştu.\n\nHata ayrıntıları:\n{{prev.error}}",
+          "healthStatusTitle": "İş Akışı Çalıştırma Raporu",
+          "healthStatusMsg": "İş akışı adımı şu durumla bitti: {{prev.status}}.\nAktarılan: {{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "Bağlı",
@@ -4185,7 +4205,8 @@
         "success": "Tamamlandı",
         "failed": "Başarısız",
         "skipped": "Atlandı",
-        "idle": "Beklemede"
+        "idle": "Beklemede",
+        "queued": "Sırada"
       },
       "ports": {
         "in": "Giriş",
@@ -4256,27 +4277,20 @@
         "check": "Denetle",
         "mount": "Bağla"
       },
-      "logs": {
-        "stepRunning": "\"{{title}}\" adımı çalışıyor...",
-        "stepCompleted": "\"{{title}}\" adımı {{duration}} ms içinde tamamlandı",
-        "stepFailed": "\"{{title}}\" adımı başarısız oldu: {{error}}",
-        "stepSkipped": "\"{{title}}\" adımı atlandı (dal seçilmedi)",
-        "unknownError": "Bilinmeyen hata",
-        "cancelRequested": "İş akışı yürütmesi için iptal istendi",
-        "startExecution": "\"{{name}}\" iş akışının yürütmesi başlatılıyor",
-        "startSimulation": "\"{{name}}\" iş akışının simülasyonu (deneme çalıştırması) başlatılıyor",
-        "executionError": "İş akışı yürütme hatası: {{error}}",
+      "run": {
+        "title": "Son çalıştırma",
+        "copy": "Özeti kopyala",
+        "openStep": "Adımı aç",
+        "empty": "Henüz çalıştırılmadı. Adımları burada görmek için workflow'u çalıştırın.",
         "running": "Çalışıyor...",
-        "title": "Çalıştırma Günlüğü",
-        "copy": "Günlükleri Kopyala",
-        "clear": "Günlükleri Temizle",
-        "jumpToNode": "Düğümü tuval üzerinde vurgula",
-        "empty": "Henüz çalıştırma günlüğü yok. Adım çıktılarını görmek için bir iş akışı çalıştırın.",
-        "copied": "Günlükler panoya kopyalandı",
-        "filterAll": "Tümü",
-        "filterErrors": "Hatalar",
-        "filterWarnings": "Uyarılar",
-        "filterSuccess": "Başarılı"
+        "executionError": "İş akışı yürütme hatası: {{error}}",
+        "state": {
+          "started": "Başlatılıyor",
+          "running": "Çalışıyor",
+          "completed": "Tamamlandı",
+          "failed": "Başarısız",
+          "cancelled": "İptal edildi"
+        }
       },
       "tokens": {
         "prevNode": "Önceki Düğüm",
@@ -4328,8 +4342,6 @@
       "descriptionPlaceholder": "Bu iş akışının amacını açıklayın...",
       "showInTray": "Sistem tepsisinde göster",
       "deleteConfirm": "Bu iş akışını silmek istediğinizden emin misiniz?",
-      "cleanDuplicates": "Yinelenenleri Temizle",
-      "cleanDuplicatesConfirm": "Yinelenen iş akışlarını temizlemek istediğinizden emin misiniz?",
       "stats": {
         "title": "Genel Bakış",
         "nodes": "Toplam Düğüm",
@@ -4340,37 +4352,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Akıllı Fark Kontrolü ve Şartlı Senkronizasyon",
-          "description": "Check ile farkları doğrular; yalnızca fark tespit edildiğinde eşitler ve hacim detaylarıyla bildirir."
+          "description": "Check ile farkları doğrular; yalnızca fark tespit edildiğinde eşitler ve hacim detaylarıyla bildirir.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "Fark Bulunmadı",
+              "message": "Kaynak ve hedef zaten aynı. Senkronizasyon atlandı."
+            },
+            "node-notify-sync-done": {
+              "title": "Senkronizasyon Tamamlandı",
+              "message": "Fark giderildi: {{prev.bytesFormatted}} aktarıldı ({{prev.transfers}} dosya)."
+            },
+            "node-notify-check-failed": {
+              "title": "Fark Denetimi Başarısız",
+              "message": "Denetim tamamlanamadı, bu yüzden hiçbir şey senkronize edilmedi:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Veri Bütünlüğü Denetimi ve Fark Raporu",
-          "description": "Zamanlanmış bütünlük kontrolü çalıştırır; fark varsa biçimlendirilmiş Markdown fark raporuyla uyarı gönderir."
+          "description": "Zamanlanmış bütünlük kontrolü çalıştırır; fark varsa biçimlendirilmiş Markdown fark raporuyla uyarı gönderir.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Bütünlük Doğrulandı",
+              "message": "Tüm dosyalar hedefle eşleşiyor. Fark bulunmadı."
+            },
+            "node-notify-drift": {
+              "title": "Bütünlük Denetimi Uyarısı"
+            },
+            "node-notify-audit-failed": {
+              "title": "Bütünlük Denetimi Başarısız",
+              "message": "Denetim tamamlanamadı:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Hata Bildirimli Güvenli Senkronizasyon",
-          "description": "Eşitleme işlemini çalıştırır, başarıda aktarılan veri miktarını, hatada ise kesin hata detayını iletir."
+          "description": "Eşitleme işlemini çalıştırır, başarıda aktarılan veri miktarını, hatada ise kesin hata detayını iletir.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Senkronizasyon Başarılı",
+              "message": "Aktarılan: {{prev.bytesFormatted}} (Hız: {{prev.speedFormatted}}). Tüm dosyalar güncel."
+            },
+            "node-notify-fail": {
+              "title": "Senkronizasyon Başarısız",
+              "message": "Yedekleme sırasında hata oluştu:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Günlük Yedekleme ve Bildirim",
-          "description": "Her gün saat 02:00'de zamanlanmış eşitleme çalıştırır, başarı ve hatalarda sizi bilgilendirir."
+          "description": "Her gün saat 02:00'de zamanlanmış eşitleme çalıştırır, başarı ve hatalarda sizi bilgilendirir.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Yedekleme Tamamlandı",
+              "message": "Günlük senkronizasyon tamamlandı: {{prev.bytesFormatted}} aktarıldı (Hız: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Yedekleme Başarısız",
+              "message": "Günlük yedekleme sırasında hata oluştu:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Klasör İzleyici ve Otomatik Yükleme",
-          "description": "Yerel klasörü değişiklikler için izler ve yeni/düzenlenen dosyaları buluta kopyalar."
+          "description": "Yerel klasörü değişiklikler için izler ve yeni/düzenlenen dosyaları buluta kopyalar.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Otomatik Yükleme Bitti",
+              "message": "Otomatik yükleme tamamlandı: {{prev.bytesFormatted}} aktarıldı ({{prev.transfers}} dosya)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Çoklu Bulut Paralel Aynalama",
-          "description": "Verileri aynı anda iki farklı bulut sağlayıcısına eşitler ve tamamlanmayı doğrular."
+          "description": "Verileri aynı anda iki farklı bulut sağlayıcısına eşitler ve tamamlanmayı doğrular.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Yansıtma Tamamlandı",
+              "message": "Tüm paralel bulut senkronizasyon işlemleri bitti."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "İsteğe Bağlı Bağlama ve Bildirim",
-          "description": "Uzak depolama yolunu bağlar ve sürücü hazır olduğunda masaüstüne bildirir."
+          "description": "Uzak depolama yolunu bağlar ve sürücü hazır olduğunda masaüstüne bildirir.",
+          "nodes": {
+            "node-notify": {
+              "title": "Sürücü Bağlandı",
+              "message": "Uzak depolamanız bağlandı ve kullanıma hazır."
+            }
+          }
         },
         "manualTrigger": "Manuel",
         "manualTriggerDesc": "İsteğe bağlı manuel olarak tetiklenir",
         "vfsRefresh": {
           "name": "VFS Önbellek Yenileme Otomasyonu",
-          "description": "Bağlı sürücülerde dizin önbelleğini yeniden yüklemek için vfs/refresh RC komutu gönderir ve masaüstünü bilgilendirir."
+          "description": "Bağlı sürücülerde dizin önbelleğini yeniden yüklemek için vfs/refresh RC komutu gönderir ve masaüstünü bilgilendirir.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS Önbelleği Yenilendi",
+              "message": "Dizin önbelleği başarıyla yeniden yüklendi.\nKomut: {{prev.command}}\nDurum: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS Yenileme Başarısız",
+              "message": "RC komutu başarısız oldu:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

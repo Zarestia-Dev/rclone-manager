@@ -178,6 +178,8 @@ All changes proposed by AI agents must pass the checks enforced by our GitHub Ac
 
 The commands below mirror the exact validation checks executed in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
+The root [justfile](justfile) runs the same commands: `just ci` runs everything below, and `just frontend`, `just rust`, `just clippy`, `just rust-test` or `just scripts` run one group (`just` lists them). It holds no logic of its own; when a command here changes, change the matching recipe too.
+
 ### 1. Frontend (Angular / TypeScript)
 
 ```bash

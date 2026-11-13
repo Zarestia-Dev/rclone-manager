@@ -22,12 +22,10 @@ import { generateCubicBezierPath } from '../../utils/bezier.util';
 import { WorkflowNode, WorkflowEdge } from '../../types/workflow.types';
 import { ModalService } from '../../../../services/ui/modal.service';
 import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag-drop.service';
+import { WorkflowNodeLayoutService } from '../../../../services/flow/workflow-node-layout.service';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import {
-  NODE_WIDTH,
-  PORT_ROW_START_Y,
-  PORT_ROW_HEIGHT,
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
   MIN_ZOOM,
@@ -39,6 +37,13 @@ import {
   isKeyboardEventInScope,
   matchesShortcut,
 } from '../../../../shared/utils/keyboard-utils';
+
+/** Zoom per unit of wheel travel; a notch of about 100 zooms by roughly an eighth. */
+const WHEEL_ZOOM_SPEED = 0.0012;
+/** The most one wheel event zooms by, so a fast flick does not leap. */
+const WHEEL_ZOOM_MAX_STEP = 100;
+/** Firefox reports the wheel in lines, about three to a notch. */
+const WHEEL_LINE_PX = 33;
 
 export interface RenderedWire {
   edge: WorkflowEdge;
@@ -64,6 +69,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
   readonly stateService = inject(WorkflowStateService);
   readonly dragDropService = inject(WorkflowDragDropService);
   readonly engineService = inject(WorkflowEngineService);
+  private readonly layoutService = inject(WorkflowNodeLayoutService);
   private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -71,31 +77,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
   readonly minZoom = MIN_ZOOM;
   readonly maxZoom = MAX_ZOOM;
   readonly showMinimap = signal<boolean>(true);
-  readonly isMobile = signal<boolean>(false);
   readonly zoomPercentage = computed(() => Math.round(this.viewport().zoom * 100));
-
-  readonly navigationActionIcon = computed(() => {
-    if (this.isMobile()) {
-      return this.stateService.isMobileFocusMode() ? 'caret-up' : 'caret-down';
-    }
-    return 'detailed';
-  });
-
-  readonly navigationActionTitle = computed(() => {
-    if (this.isMobile()) {
-      return this.stateService.isMobileFocusMode()
-        ? 'flow.workflow.canvas.exitFocusMode'
-        : 'flow.workflow.canvas.enterFocusMode';
-    }
-    return 'flow.workflow.canvas.toggleMinimap';
-  });
-
-  readonly isNavigationActionActive = computed(() => {
-    if (this.isMobile()) {
-      return this.stateService.isMobileFocusMode();
-    }
-    return this.showMinimap();
-  });
 
   readonly canvasContainer = viewChild<ElementRef<HTMLElement>>('canvasContainer');
   readonly inspectNode = output<string>();
@@ -104,6 +86,11 @@ export class WorkflowCanvasComponent implements OnDestroy {
   private panStart = { x: 0, y: 0 };
   private initialViewport = { x: 0, y: 0 };
 
+  /** The pointer that owns the pan, node drag or wire being made; others are ignored. */
+  private activePointerId: number | null = null;
+  /** Touches on the canvas, for the pinch. */
+  private readonly touches = new Map<number, { x: number; y: number }>();
+
   // Node Dragging State (supports multi-node group movements with RAF throttling)
   readonly draggingNodeId = signal<string | null>(null);
   private initialNodePositions = new Map<string, { x: number; y: number }>();
@@ -111,12 +98,17 @@ export class WorkflowCanvasComponent implements OnDestroy {
   private hasDraggedNode = false;
   private dragRafId: number | null = null;
   private pendingDragCoords: { clientX: number; clientY: number } | null = null;
-  private ignoreNextClick = false;
 
   // Wire Connection State
   readonly isConnecting = this.stateService.isConnecting;
   private highlightedPortEl: HTMLElement | null = null;
   private connectStartScreen = { x: 0, y: 0 };
+
+  // Pinch State
+  private isPinching = false;
+  private initialPinchDist = 0;
+  private initialPinchZoom = 1;
+  private pinchMidpoint = { x: 0, y: 0 };
 
   readonly activeWorkflow = this.stateService.currentWorkflow;
   readonly viewport = this.stateService.viewport;
@@ -138,46 +130,68 @@ export class WorkflowCanvasComponent implements OnDestroy {
     return map;
   });
 
+  /** The wires drawn last time; a wire whose ends did not move keeps its object, and with it its path. */
+  private wireCache = new Map<string, RenderedWire>();
+
   /** Precomputed wire coordinates to avoid O(E * N) template evaluations and object allocations */
   readonly renderedWires = computed<RenderedWire[]>(() => {
     const wf = this.activeWorkflow();
-    if (!wf || !wf.edges.length) return [];
+    if (!wf || !wf.edges.length) {
+      this.wireCache = new Map();
+      return [];
+    }
     const map = this.nodeMap();
+    const previous = this.wireCache;
+    const next = new Map<string, RenderedWire>();
 
-    return wf.edges.map(edge => {
-      const sourceNode = map.get(edge.sourceNodeId);
-      const targetNode = map.get(edge.targetNodeId);
-
-      return {
-        edge,
-        sourcePos: this.calculatePortCoordinate(sourceNode, edge.sourcePortId, true),
-        targetPos: this.calculatePortCoordinate(targetNode, edge.targetPortId, false),
-      };
-    });
+    const wires: RenderedWire[] = [];
+    for (const edge of wf.edges) {
+      const sourcePos = this.layoutService.portPosition(
+        map.get(edge.sourceNodeId),
+        edge.sourcePortId,
+        true
+      );
+      const targetPos = this.layoutService.portPosition(
+        map.get(edge.targetNodeId),
+        edge.targetPortId,
+        false
+      );
+      // A node is measured once it has been drawn; its wires follow in the same frame.
+      if (!sourcePos || !targetPos) continue;
+      const before = previous.get(edge.id);
+      const wire =
+        before &&
+        before.edge === edge &&
+        before.sourcePos.x === sourcePos.x &&
+        before.sourcePos.y === sourcePos.y &&
+        before.targetPos.x === targetPos.x &&
+        before.targetPos.y === targetPos.y
+          ? before
+          : { edge, sourcePos, targetPos };
+      next.set(edge.id, wire);
+      wires.push(wire);
+    }
+    this.wireCache = next;
+    return wires;
   });
 
   constructor() {
     afterNextRender(() => {
       this.updateContainerDimensions();
-      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-        const mql = window.matchMedia('(max-width: 599.98px)');
-        this.isMobile.set(mql.matches);
-        const handler = (e: MediaQueryListEvent): void => this.isMobile.set(e.matches);
-        mql.addEventListener('change', handler);
-        this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
+      // The panels beside the canvas open and close without the window changing size.
+      const container = this.canvasContainer()?.nativeElement;
+      if (container && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => this.updateContainerDimensions());
+        observer.observe(container);
+        this.destroyRef.onDestroy(() => observer.disconnect());
       }
     });
   }
 
-  @HostListener('window:resize')
-  onResize(): void {
-    this.updateContainerDimensions();
-  }
-
   ngOnDestroy(): void {
+    this.stateService.isMobileFocusMode.set(false);
     this.flushPendingDrag();
     this.clearPortCandidateHighlight();
-    this.stateService.isMobileFocusMode.set(false);
   }
 
   private updateContainerDimensions(): void {
@@ -193,11 +207,13 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const conn = this.isConnecting();
     if (!conn) return '';
 
-    const { x: portX, y: portY } = this.getPortCoordinate(
-      conn.sourceNodeId,
+    const port = this.layoutService.portPosition(
+      this.nodeMap().get(conn.sourceNodeId),
       conn.sourcePortId,
       conn.isSourceOutput
     );
+    if (!port) return '';
+    const { x: portX, y: portY } = port;
 
     const vp = this.viewport();
     const mouseX = (conn.currentX - vp.x) / vp.zoom;
@@ -210,45 +226,149 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
   });
 
-  private calculatePortCoordinate(
-    node: WorkflowNode | undefined,
-    portId: string,
-    isOutput: boolean
-  ): { x: number; y: number } {
-    if (!node) return { x: 0, y: 0 };
+  // ── Pointer Input (mouse, pen and touch) ────────────────────────────────
 
-    const ports = isOutput ? node.outputs : node.inputs;
-    const portIndex = Math.max(
-      0,
-      ports.findIndex(p => p.id === portId)
-    );
+  onPointerDown(event: PointerEvent): void {
+    const target = event.target as HTMLElement | null;
+    const isTouch = event.pointerType === 'touch';
 
-    const x = isOutput ? node.x + NODE_WIDTH : node.x;
-    const y = node.y + PORT_ROW_START_Y + portIndex * PORT_ROW_HEIGHT;
+    if (isTouch) {
+      this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (this.touches.size === 2) {
+        this.startPinch();
+        return;
+      }
+    }
+    if (this.activePointerId !== null && this.activePointerId !== event.pointerId) return;
 
-    return { x, y };
-  }
+    // A wire waiting for its second end (tap-to-connect) ends on a port, or is dropped.
+    const portHandle = target?.closest<HTMLElement>('.port-handle') ?? null;
+    if (this.isConnecting() && event.button === 0) {
+      if (portHandle) this.finishConnectingAt(portHandle);
+      else this.stateService.cancelConnecting();
+      this.clearPortCandidateHighlight();
+      if (portHandle) return;
+    }
 
-  // Calculate socket coordinates for rendering edges
-  getPortCoordinate(nodeId: string, portId: string, isOutput: boolean): { x: number; y: number } {
-    return this.calculatePortCoordinate(this.nodeMap().get(nodeId), portId, isOutput);
-  }
+    if (portHandle && event.button === 0) {
+      this.beginConnecting(portHandle, event);
+      return;
+    }
 
-  // ── Canvas Pan (Mouse Drag) ──────────────────────────────────────────────
+    const nodeEl = target?.closest<HTMLElement>('.workflow-node-positioned') ?? null;
+    if (nodeEl && event.button === 0) {
+      if (target?.closest('.action-button')) return;
+      const node = this.nodeMap().get(nodeEl.dataset['nodeId'] ?? '');
+      if (node) this.beginNodeDrag(node, event);
+      return;
+    }
 
-  onCanvasMouseDown(event: MouseEvent): void {
-    // Only pan on left-click background, middle click, or right click
-    if (
-      event.button === 1 ||
-      event.button === 2 ||
-      (event.button === 0 && event.target === event.currentTarget)
-    ) {
+    // Left button on the background, or the middle or right button anywhere, pans.
+    if (event.button === 1 || event.button === 2 || target === event.currentTarget) {
       event.preventDefault();
+      this.activePointerId = event.pointerId;
       this.isPanning.set(true);
-      this.panStart = { x: event.clientX, y: event.clientY };
-      this.initialViewport = { ...this.viewport() };
+      this.startPan(event.clientX, event.clientY);
       this.stateService.clearSelection();
     }
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  onWindowPointerMove(event: PointerEvent): void {
+    if (this.touches.has(event.pointerId)) {
+      this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (this.isPinching) {
+      this.updatePinch();
+      return;
+    }
+
+    const ownsGesture = event.pointerId === this.activePointerId;
+    if (ownsGesture && this.isPanning()) {
+      this.stateService.setPan(
+        this.initialViewport.x + event.clientX - this.panStart.x,
+        this.initialViewport.y + event.clientY - this.panStart.y
+      );
+    } else if (ownsGesture && this.draggingNodeId()) {
+      this.scheduleDragDelta(event.clientX, event.clientY);
+    } else if (this.isConnecting() && (ownsGesture || event.pointerType !== 'touch')) {
+      const rect = this.canvasContainer()?.nativeElement.getBoundingClientRect();
+      if (!rect) return;
+      this.stateService.updateConnecting(event.clientX - rect.left, event.clientY - rect.top);
+      this.updatePortCandidateHighlight(event.clientX, event.clientY);
+    }
+  }
+
+  @HostListener('window:pointerup', ['$event'])
+  onWindowPointerUp(event: PointerEvent): void {
+    this.touches.delete(event.pointerId);
+    if (this.isPinching) {
+      if (this.touches.size < 2) this.endPinch();
+      return;
+    }
+    if (event.pointerId !== this.activePointerId) return;
+    this.activePointerId = null;
+
+    if (this.isPanning()) this.isPanning.set(false);
+    this.endNodeDrag();
+    if (this.isConnecting()) this.completeConnecting(event);
+  }
+
+  @HostListener('window:pointercancel', ['$event'])
+  onWindowPointerCancel(event: PointerEvent): void {
+    this.touches.delete(event.pointerId);
+    if (this.isPinching) {
+      if (this.touches.size < 2) this.endPinch();
+      return;
+    }
+    if (event.pointerId !== this.activePointerId) return;
+    this.activePointerId = null;
+
+    if (this.isPanning()) this.isPanning.set(false);
+    this.endNodeDrag();
+    this.abortConnecting();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
+    if (isInputFocused(event)) return;
+
+    if (event.key === 'Escape') {
+      if (this.isConnecting()) {
+        event.preventDefault();
+        this.abortConnecting();
+        this.activePointerId = null;
+        return;
+      }
+      if (this.isPanning()) {
+        event.preventDefault();
+        this.isPanning.set(false);
+        this.activePointerId = null;
+        return;
+      }
+      const selectedNodes = this.stateService.selectedNodeIds();
+      const selectedEdges = this.stateService.selectedEdgeIds();
+      if (selectedNodes.size > 0 || selectedEdges.size > 0) {
+        event.preventDefault();
+        this.stateService.clearSelection();
+        return;
+      }
+    }
+
+    if (matchesShortcut('Delete / Backspace', event)) {
+      const selectedNodes = this.stateService.selectedNodeIds();
+      const selectedEdges = this.stateService.selectedEdgeIds();
+      if (selectedNodes.size > 0 || selectedEdges.size > 0) {
+        event.preventDefault();
+        this.stateService.removeSelected();
+      }
+    }
+  }
+
+  private startPan(clientX: number, clientY: number): void {
+    this.panStart = { x: clientX, y: clientY };
+    this.initialViewport = { ...this.viewport() };
   }
 
   // ── Node Drag Delta & RAF Throttling ─────────────────────────────────────
@@ -275,19 +395,11 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
 
     if (this.hasDraggedNode) {
-      if (this.initialNodePositions.size > 1) {
-        const updates = new Map<string, { x: number; y: number }>();
-        for (const [id, initialPos] of this.initialNodePositions) {
-          updates.set(id, {
-            x: initialPos.x + deltaX,
-            y: initialPos.y + deltaY,
-          });
-        }
-        this.stateService.updateNodesPositions(updates);
-      } else {
-        const initialPos = this.initialNodePositions.get(dragId) ?? { x: 0, y: 0 };
-        this.stateService.updateNodePosition(dragId, initialPos.x + deltaX, initialPos.y + deltaY);
+      const updates = new Map<string, { x: number; y: number }>();
+      for (const [id, initialPos] of this.initialNodePositions) {
+        updates.set(id, { x: initialPos.x + deltaX, y: initialPos.y + deltaY });
       }
+      this.stateService.updateNodesPositions(updates);
     }
   }
 
@@ -321,89 +433,6 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
   }
 
-  @HostListener('window:mousemove', ['$event'])
-  onWindowMouseMove(event: MouseEvent): void {
-    if (this.isPanning()) {
-      const dx = event.clientX - this.panStart.x;
-      const dy = event.clientY - this.panStart.y;
-      this.stateService.setPan(this.initialViewport.x + dx, this.initialViewport.y + dy);
-      return;
-    }
-
-    const dragId = this.draggingNodeId();
-    if (dragId) {
-      this.scheduleDragDelta(event.clientX, event.clientY);
-      return;
-    }
-
-    if (this.isConnecting()) {
-      const container = this.canvasContainer()?.nativeElement;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      this.stateService.updateConnecting(event.clientX - rect.left, event.clientY - rect.top);
-      this.updatePortCandidateHighlight(event.clientX, event.clientY);
-    }
-  }
-
-  @HostListener('window:mouseup')
-  onWindowMouseUp(): void {
-    if (this.isPanning()) {
-      this.isPanning.set(false);
-    }
-    this.endNodeDrag(true);
-    if (this.isConnecting()) {
-      this.clearPortCandidateHighlight();
-      this.stateService.cancelConnecting();
-    }
-  }
-
-  @HostListener('window:touchcancel')
-  onWindowTouchCancel(): void {
-    if (this.isPanning()) {
-      this.isPanning.set(false);
-    }
-    this.endNodeDrag(false);
-    if (this.isConnecting()) {
-      this.clearPortCandidateHighlight();
-      this.stateService.cancelConnecting();
-    }
-  }
-
-  @HostListener('window:keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent): void {
-    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
-    if (isInputFocused(event)) return;
-
-    if (event.key === 'Escape') {
-      if (this.isConnecting()) {
-        event.preventDefault();
-        this.stateService.cancelConnecting();
-        return;
-      }
-      if (this.isPanning()) {
-        event.preventDefault();
-        this.isPanning.set(false);
-        return;
-      }
-      const selectedNodes = this.stateService.selectedNodeIds();
-      const selectedEdges = this.stateService.selectedEdgeIds();
-      if (selectedNodes.size > 0 || selectedEdges.size > 0) {
-        event.preventDefault();
-        this.stateService.clearSelection();
-        return;
-      }
-    }
-
-    if (matchesShortcut('Delete / Backspace', event)) {
-      const selectedNodes = this.stateService.selectedNodeIds();
-      const selectedEdges = this.stateService.selectedEdgeIds();
-      if (selectedNodes.size > 0 || selectedEdges.size > 0) {
-        event.preventDefault();
-        this.stateService.removeSelected();
-      }
-    }
-  }
-
   // ── Canvas Zoom (Mouse Wheel) ────────────────────────────────────────────
 
   onCanvasWheel(event: WheelEvent): void {
@@ -415,12 +444,22 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    const zoomFactor = event.deltaY < 0 ? 1.12 : 0.88;
-    this.stateService.setZoom(this.viewport().zoom * zoomFactor, mouseX, mouseY);
+    // The zoom follows how far the wheel turned; a trackpad sends many small steps.
+    const lines = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? WHEEL_LINE_PX : 1;
+    const delta = Math.max(
+      -WHEEL_ZOOM_MAX_STEP,
+      Math.min(WHEEL_ZOOM_MAX_STEP, event.deltaY * lines)
+    );
+    this.stateService.setZoom(
+      this.viewport().zoom * Math.exp(-delta * WHEEL_ZOOM_SPEED),
+      mouseX,
+      mouseY
+    );
   }
 
-  // ── Node Interactions ────────────────────────────────────────────────────
+  // ── Wires ────────────────────────────────────────────────────────────────
 
+  /** Whether a press ended where the wire started: the port itself, to be followed by a click on another. */
   private isNearConnectStart(clientX: number, clientY: number): boolean {
     const dx = Math.abs(clientX - this.connectStartScreen.x);
     const dy = Math.abs(clientY - this.connectStartScreen.y);
@@ -456,48 +495,68 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
   }
 
-  onNodeMouseDown(node: WorkflowNode, event: MouseEvent): void {
-    if (event.button !== 0) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
-      return;
-    }
-    event.stopPropagation();
-
-    this.beginNodeDrag(node, event.clientX, event.clientY, event.shiftKey || event.ctrlKey);
+  private beginConnecting(portHandle: HTMLElement, event: PointerEvent): void {
+    const container = this.canvasContainer()?.nativeElement;
+    const nodeId = portHandle.dataset['nodeId'];
+    const portId = portHandle.dataset['portId'];
+    if (!container || !nodeId || !portId) return;
+    const rect = container.getBoundingClientRect();
+    this.activePointerId = event.pointerId;
+    this.connectStartScreen = { x: event.clientX, y: event.clientY };
+    this.stateService.startConnecting(
+      nodeId,
+      portId,
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      portHandle.dataset['isOutput'] === 'true'
+    );
   }
 
-  onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
-    if (event.touches.length !== 1) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
-      return;
-    }
-    event.stopPropagation();
-
-    // A touch selects just the node it lands on.
-    this.stateService.selectNode(node.id, false);
-    const touch = event.touches[0];
-    this.beginNodeDrag(node, touch.clientX, touch.clientY, false);
+  private finishConnectingAt(portHandle: HTMLElement): boolean {
+    const nodeId = portHandle.dataset['nodeId'];
+    const portId = portHandle.dataset['portId'];
+    if (!nodeId || !portId) return false;
+    return this.stateService.finishConnecting(
+      nodeId,
+      portId,
+      portHandle.dataset['isOutput'] === 'true'
+    );
   }
+
+  /** The pointer that drew a wire is up: connect it to the port below, or drop it. */
+  private completeConnecting(event: PointerEvent): void {
+    const candidate = this.highlightedPortEl;
+    this.clearPortCandidateHighlight();
+
+    // A click or tap on the start port is not a drag: the wire waits for a click on the other
+    // end, and is dropped by a click anywhere else or Escape.
+    if (this.isNearConnectStart(event.clientX, event.clientY)) return;
+    const portHandle = this.findPortHandleAt(event.clientX, event.clientY) ?? candidate;
+    if (portHandle && this.finishConnectingAt(portHandle)) return;
+    this.stateService.cancelConnecting();
+  }
+
+  private abortConnecting(): void {
+    if (!this.isConnecting()) return;
+    this.clearPortCandidateHighlight();
+    this.stateService.cancelConnecting();
+  }
+
+  // ── Node Interactions ────────────────────────────────────────────────────
 
   /**
    * Selects the node, unless it is part of the selection already, and prepares to move it
    * together with the rest of the selection. Nothing moves before the pointer travels
    * past the drag threshold.
    */
-  private beginNodeDrag(
-    node: WorkflowNode,
-    clientX: number,
-    clientY: number,
-    additive: boolean
-  ): void {
-    if (additive) {
+  private beginNodeDrag(node: WorkflowNode, event: PointerEvent): void {
+    if (event.shiftKey || event.ctrlKey) {
       this.stateService.selectNode(node.id, true);
     } else if (!this.stateService.selectedNodeIds().has(node.id)) {
       this.stateService.selectNode(node.id, false);
     }
 
+    this.activePointerId = event.pointerId;
     this.draggingNodeId.set(node.id);
     this.hasDraggedNode = false;
 
@@ -506,8 +565,8 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const rect = container.getBoundingClientRect();
     const vp = this.viewport();
     this.dragStartCanvasPos = {
-      x: (clientX - rect.left - vp.x) / vp.zoom,
-      y: (clientY - rect.top - vp.y) / vp.zoom,
+      x: (event.clientX - rect.left - vp.x) / vp.zoom,
+      y: (event.clientY - rect.top - vp.y) / vp.zoom,
     };
 
     this.initialNodePositions.clear();
@@ -525,183 +584,58 @@ export class WorkflowCanvasComponent implements OnDestroy {
     }
   }
 
-  /** Ends a node drag. A click that follows a real drag is ignored, unless the drag was cancelled. */
-  private endNodeDrag(ignoreFollowingClick: boolean): void {
+  private endNodeDrag(): void {
     if (!this.draggingNodeId()) return;
     this.flushPendingDrag();
     this.stateService.isDraggingNode.set(false);
     this.draggingNodeId.set(null);
-    if (ignoreFollowingClick && this.hasDraggedNode) {
-      this.ignoreNextClick = true;
-      setTimeout(() => {
-        this.ignoreNextClick = false;
-      }, 100);
-    }
     this.hasDraggedNode = false;
     this.initialNodePositions.clear();
   }
 
-  // ── Touch Gestures (Canvas Pan & Pinch-to-Zoom) ───────────────────────────
+  // ── Pinch-to-Zoom ────────────────────────────────────────────────────────
 
-  private isPinching = false;
-  private initialPinchDist = 0;
-  private initialPinchZoom = 1;
-  private pinchMidpoint = { x: 0, y: 0 };
+  /** A second finger came down: whatever the first one was doing stops, and the two zoom. */
+  private startPinch(): void {
+    this.isPanning.set(false);
+    this.activePointerId = null;
+    this.endNodeDrag();
+    this.abortConnecting();
 
-  onCanvasTouchStart(event: TouchEvent): void {
-    const touches = event.touches;
-    if (touches.length === 1) {
-      const target = event.target as HTMLElement | null;
-      const isInteractive =
-        target?.closest('.workflow-node-positioned') ||
-        target?.closest('.workflow-wire-group') ||
-        target?.closest('.canvas-navigation-hub') ||
-        target?.closest('.workflow-unsaved-banner') ||
-        target?.closest('.palette-open-trigger') ||
-        target?.closest('.inspector-open-trigger');
-
-      if (!isInteractive) {
-        if (this.stateService.isConnecting()) {
-          this.clearPortCandidateHighlight();
-          this.stateService.cancelConnecting();
-        }
-        this.isPanning.set(true);
-        this.isPinching = false;
-        this.panStart = { x: touches[0].clientX, y: touches[0].clientY };
-        this.initialViewport = { ...this.viewport() };
-        this.stateService.clearSelection();
-      }
-    } else if (touches.length === 2) {
-      this.isPanning.set(false);
-      this.isPinching = true;
-      const container = this.canvasContainer()?.nativeElement;
-      const rect = container?.getBoundingClientRect();
-      const t1 = touches[0];
-      const t2 = touches[1];
-      this.initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      this.initialPinchZoom = this.viewport().zoom;
-      if (rect) {
-        this.pinchMidpoint = {
-          x: (t1.clientX + t2.clientX) / 2 - rect.left,
-          y: (t1.clientY + t2.clientY) / 2 - rect.top,
-        };
-      }
-    }
+    const [first, second] = [...this.touches.values()];
+    const rect = this.canvasContainer()?.nativeElement.getBoundingClientRect();
+    this.isPinching = true;
+    this.initialPinchDist = Math.hypot(first.x - second.x, first.y - second.y);
+    this.initialPinchZoom = this.viewport().zoom;
+    this.pinchMidpoint = {
+      x: (first.x + second.x) / 2 - (rect?.left ?? 0),
+      y: (first.y + second.y) / 2 - (rect?.top ?? 0),
+    };
   }
 
-  onCanvasTouchMove(event: TouchEvent): void {
-    const touches = event.touches;
-
-    if (this.isConnecting() && touches.length === 1) {
-      event.preventDefault();
-      const container = this.canvasContainer()?.nativeElement;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const touch = touches[0];
-      this.stateService.updateConnecting(touch.clientX - rect.left, touch.clientY - rect.top);
-      this.updatePortCandidateHighlight(touch.clientX, touch.clientY);
-      return;
-    }
-
-    if (this.isPinching && touches.length === 2) {
-      event.preventDefault();
-      const t1 = touches[0];
-      const t2 = touches[1];
-      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      if (this.initialPinchDist > 0) {
-        const scale = dist / this.initialPinchDist;
-        this.stateService.setZoom(
-          this.initialPinchZoom * scale,
-          this.pinchMidpoint.x,
-          this.pinchMidpoint.y
-        );
-      }
-      return;
-    }
-
-    if (this.isPanning() && touches.length === 1) {
-      event.preventDefault();
-      const dx = touches[0].clientX - this.panStart.x;
-      const dy = touches[0].clientY - this.panStart.y;
-      this.stateService.setPan(this.initialViewport.x + dx, this.initialViewport.y + dy);
-      return;
-    }
-
-    const dragId = this.draggingNodeId();
-    if (dragId && touches.length === 1) {
-      event.preventDefault();
-      this.scheduleDragDelta(touches[0].clientX, touches[0].clientY);
-      return;
-    }
-  }
-
-  onCanvasTouchEnd(event: TouchEvent): void {
-    if (this.isConnecting()) {
-      const candidateEl = this.highlightedPortEl;
-      this.clearPortCandidateHighlight();
-      const touch = event.changedTouches?.[0];
-      if (touch) {
-        const portHandle = this.findPortHandleAt(touch.clientX, touch.clientY) || candidateEl;
-        if (portHandle) {
-          const targetNodeId = portHandle.getAttribute('data-node-id');
-          const targetPortId = portHandle.getAttribute('data-port-id');
-          const isOutput = portHandle.getAttribute('data-is-output') === 'true';
-          if (targetNodeId && targetPortId) {
-            const finished = this.stateService.finishConnecting(
-              targetNodeId,
-              targetPortId,
-              isOutput
-            );
-            if (finished) return;
-          }
-        }
-        if (this.isNearConnectStart(touch.clientX, touch.clientY)) {
-          // Tap-to-connect gesture on start port: keep connection preview active
-          return;
-        }
-      }
-      this.stateService.cancelConnecting();
-      return;
-    }
-
-    if (event.touches.length === 0) {
-      this.isPanning.set(false);
-      this.isPinching = false;
-      this.endNodeDrag(true);
-    } else if (event.touches.length === 1 && this.isPinching) {
-      this.isPinching = false;
-      this.isPanning.set(true);
-      this.panStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-      this.initialViewport = { ...this.viewport() };
-    }
-  }
-
-  onStartConnecting(
-    sourceNodeId: string,
-    portId: string,
-    isOutput: boolean,
-    event: MouseEvent | PointerEvent
-  ): void {
-    const container = this.canvasContainer()?.nativeElement;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    this.connectStartScreen = { x: event.clientX, y: event.clientY };
-    this.stateService.startConnecting(
-      sourceNodeId,
-      portId,
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-      isOutput
+  private updatePinch(): void {
+    const [first, second] = [...this.touches.values()];
+    if (!first || !second || this.initialPinchDist <= 0) return;
+    const dist = Math.hypot(first.x - second.x, first.y - second.y);
+    this.stateService.setZoom(
+      this.initialPinchZoom * (dist / this.initialPinchDist),
+      this.pinchMidpoint.x,
+      this.pinchMidpoint.y
     );
   }
 
-  onPortMouseUp(targetNodeId: string, portId: string, isOutput: boolean): void {
-    this.clearPortCandidateHighlight();
-    this.stateService.finishConnecting(targetNodeId, portId, isOutput);
+  /** One finger is left: it carries on as a pan. */
+  private endPinch(): void {
+    this.isPinching = false;
+    const remaining = [...this.touches.entries()][0];
+    if (!remaining) return;
+    const [pointerId, point] = remaining;
+    this.activePointerId = pointerId;
+    this.isPanning.set(true);
+    this.startPan(point.x, point.y);
   }
 
   onNodeSelected(nodeId: string): void {
-    if (this.ignoreNextClick) return;
     if (!this.stateService.selectedNodeIds().has(nodeId)) {
       this.stateService.selectNode(nodeId);
     }
@@ -727,12 +661,8 @@ export class WorkflowCanvasComponent implements OnDestroy {
     this.showMinimap.update(v => !v);
   }
 
-  toggleNavigationAction(): void {
-    if (this.isMobile()) {
-      this.stateService.isMobileFocusMode.update(v => !v);
-    } else {
-      this.toggleMinimap();
-    }
+  toggleFocusMode(): void {
+    this.stateService.isMobileFocusMode.update(v => !v);
   }
 
   zoomIn(): void {

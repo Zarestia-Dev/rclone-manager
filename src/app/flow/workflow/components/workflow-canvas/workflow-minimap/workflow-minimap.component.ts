@@ -8,20 +8,29 @@ import {
   viewChild,
   ElementRef,
   HostListener,
+  inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { CanvasViewport, WorkflowEdge, WorkflowNode } from '../../../types/workflow.types';
 import { getNodeStyleMeta } from '../../../utils/node-style.util';
-import { NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../../../constants/workflow.constants';
+import { WorkflowNodeLayoutService } from '../../../../../services/flow/workflow-node-layout.service';
+
+/** The part of the canvas the map shows, in canvas units. */
+interface MapBounds {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+}
 
 @Component({
   selector: 'app-workflow-minimap',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './workflow-minimap.component.html',
   styleUrl: './workflow-minimap.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkflowMinimapComponent {
+  private readonly layoutService = inject(WorkflowNodeLayoutService);
   readonly minimapCard = viewChild<ElementRef<HTMLElement>>('minimapCard');
 
   readonly nodes = input<WorkflowNode[]>([]);
@@ -34,11 +43,31 @@ export class WorkflowMinimapComponent {
   readonly panTo = output<{ x: number; y: number }>();
 
   readonly isDragging = signal<boolean>(false);
+  private dragPointerId: number | null = null;
 
   readonly mapWidth = 160;
   readonly mapHeight = 110;
 
-  readonly bounds = computed(() => {
+  /** The part of the canvas the view shows, in canvas units. */
+  private readonly visibleArea = computed(() => {
+    const vp = this.viewport();
+    return {
+      left: -vp.x / vp.zoom,
+      top: -vp.y / vp.zoom,
+      width: this.containerWidth() / vp.zoom,
+      height: this.containerHeight() / vp.zoom,
+    };
+  });
+
+  /**
+   * The bounds while the view is being dragged from the map. The map follows the view, so
+   * without this the point under the pointer would change as the view moves, and it would run away.
+   */
+  private readonly frozenBounds = signal<MapBounds | null>(null);
+
+  readonly bounds = computed(() => this.frozenBounds() ?? this.computeBounds());
+
+  private computeBounds(): MapBounds {
     const nodes = this.nodes();
     if (nodes.length === 0) {
       return { minX: -200, minY: -200, width: 1400, height: 1000 };
@@ -49,11 +78,19 @@ export class WorkflowMinimapComponent {
     let maxY = -Infinity;
 
     for (const n of nodes) {
+      const { width, height } = this.layoutService.sizeOf(n.id);
       minX = Math.min(minX, n.x);
       minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + NODE_WIDTH);
-      maxY = Math.max(maxY, n.y + DEFAULT_NODE_HEIGHT);
+      maxX = Math.max(maxX, n.x + width);
+      maxY = Math.max(maxY, n.y + height);
     }
+
+    // The view is part of the map, so its box does not leave it when the canvas is panned away.
+    const view = this.visibleArea();
+    minX = Math.min(minX, view.left);
+    minY = Math.min(minY, view.top);
+    maxX = Math.max(maxX, view.left + view.width);
+    maxY = Math.max(maxY, view.top + view.height);
 
     const padding = 200;
     minX -= padding;
@@ -67,7 +104,7 @@ export class WorkflowMinimapComponent {
       width: Math.max(800, maxX - minX),
       height: Math.max(600, maxY - minY),
     };
-  });
+  }
 
   readonly scale = computed(() => {
     const b = this.bounds();
@@ -79,6 +116,7 @@ export class WorkflowMinimapComponent {
     const s = this.scale();
     return this.nodes().map(n => {
       const meta = getNodeStyleMeta(n.type);
+      const size = this.layoutService.sizeOf(n.id);
       return {
         id: n.id,
         title: n.title,
@@ -87,8 +125,8 @@ export class WorkflowMinimapComponent {
         state: n.state || 'idle',
         x: (n.x - b.minX) * s,
         y: (n.y - b.minY) * s,
-        width: Math.max(8, NODE_WIDTH * s),
-        height: Math.max(4, 90 * s),
+        width: Math.max(8, size.width * s),
+        height: Math.max(4, size.height * s),
       };
     });
   });
@@ -104,64 +142,59 @@ export class WorkflowMinimapComponent {
         const tgt = nodeMap.get(edge.targetNodeId);
         if (!src || !tgt) return null;
 
-        const midY = DEFAULT_NODE_HEIGHT / 2;
+        // A node that is not measured yet has no wire, as on the canvas.
+        const from = this.layoutService.portPosition(src, edge.sourcePortId, true);
+        const to = this.layoutService.portPosition(tgt, edge.targetPortId, false);
+        if (!from || !to) return null;
         return {
           id: edge.id,
-          x1: (src.x + NODE_WIDTH - b.minX) * s,
-          y1: (src.y + midY - b.minY) * s,
-          x2: (tgt.x - b.minX) * s,
-          y2: (tgt.y + midY - b.minY) * s,
+          x1: (from.x - b.minX) * s,
+          y1: (from.y - b.minY) * s,
+          x2: (to.x - b.minX) * s,
+          y2: (to.y - b.minY) * s,
         };
       })
       .filter((e): e is { id: string; x1: number; y1: number; x2: number; y2: number } => !!e);
   });
 
   readonly viewportRect = computed(() => {
-    const vp = this.viewport();
+    const view = this.visibleArea();
     const b = this.bounds();
     const s = this.scale();
 
-    const visibleLeft = -vp.x / vp.zoom;
-    const visibleTop = -vp.y / vp.zoom;
-    const visibleWidth = this.containerWidth() / vp.zoom;
-    const visibleHeight = this.containerHeight() / vp.zoom;
-
     return {
-      x: (visibleLeft - b.minX) * s,
-      y: (visibleTop - b.minY) * s,
-      width: Math.max(10, visibleWidth * s),
-      height: Math.max(8, visibleHeight * s),
+      x: (view.left - b.minX) * s,
+      y: (view.top - b.minY) * s,
+      width: Math.max(10, view.width * s),
+      height: Math.max(8, view.height * s),
     };
   });
 
-  onMinimapMouseDown(event: MouseEvent): void {
+  onMinimapPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return;
-    event.stopPropagation();
+    this.dragPointerId = event.pointerId;
+    this.frozenBounds.set(this.bounds());
     this.isDragging.set(true);
     this.handleMinimapNavigation(event);
   }
 
-  @HostListener('window:mousemove', ['$event'])
-  onWindowMouseMove(event: MouseEvent): void {
-    if (this.isDragging()) {
+  @HostListener('window:pointermove', ['$event'])
+  onWindowPointerMove(event: PointerEvent): void {
+    if (this.isDragging() && event.pointerId === this.dragPointerId) {
       this.handleMinimapNavigation(event);
     }
   }
 
-  @HostListener('window:mouseup')
-  onWindowMouseUp(): void {
-    if (this.isDragging()) {
+  @HostListener('window:pointerup', ['$event'])
+  @HostListener('window:pointercancel', ['$event'])
+  onWindowPointerEnd(event: PointerEvent): void {
+    if (this.isDragging() && event.pointerId === this.dragPointerId) {
       this.isDragging.set(false);
+      this.frozenBounds.set(null);
     }
   }
 
-  onMinimapClick(event?: Event): void {
-    if (event && 'clientX' in event) {
-      this.handleMinimapNavigation(event as MouseEvent);
-    }
-  }
-
-  private handleMinimapNavigation(event: MouseEvent): void {
+  private handleMinimapNavigation(event: PointerEvent): void {
     const rect = this.minimapCard()?.nativeElement.getBoundingClientRect();
     if (!rect) return;
 

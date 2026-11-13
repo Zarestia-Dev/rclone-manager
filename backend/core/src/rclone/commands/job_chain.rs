@@ -13,7 +13,8 @@ use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::state::job::JobPoll;
 
-/// How often a running link of the chain is checked.
+/// The longest a running link of the chain goes unchecked. A link is normally noticed the
+/// moment it finishes (the cache wakes the chain); this only covers a wake-up that was missed.
 const POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 pub(crate) struct ChainJob {
@@ -150,8 +151,14 @@ async fn wait_for_job(
     id: u64,
 ) -> Result<(), JobOutcome> {
     loop {
+        // Registered before the look, so a job that finishes in between wakes the wait.
+        let changed = cache.changed.notified();
+        tokio::pin!(changed);
+        changed.as_mut().enable();
         match cache.poll_job(id).await {
-            JobPoll::Running => tokio::time::sleep(POLL_INTERVAL).await,
+            JobPoll::Running => {
+                let _ = tokio::time::timeout(POLL_INTERVAL, changed).await;
+            }
             JobPoll::Completed(_) => return Ok(()),
             JobPoll::Failed(job) => return Err(failure(job.error)),
             JobPoll::Stopped => {
@@ -206,6 +213,24 @@ mod tests {
         }
         .unwrap();
         cache
+    }
+
+    #[tokio::test]
+    async fn the_chain_notices_a_finished_job_without_waiting_out_the_poll_interval() {
+        let cache = std::sync::Arc::new(cache_with(JobStatus::Running, None).await);
+        let finisher = cache.clone();
+        let started = std::time::Instant::now();
+        crate::utils::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            finisher.complete_job(1, true, None).await.unwrap();
+        });
+
+        assert!(wait_for_job(&cache, 1).await.is_ok());
+        assert!(
+            started.elapsed() < POLL_INTERVAL,
+            "took {:?}",
+            started.elapsed()
+        );
     }
 
     #[tokio::test]

@@ -3194,6 +3194,10 @@
       "validationSelfLoop": "Node cannot connect to itself (self-loop): {{id}}",
       "validationCycle": "Graph contains cyclic dependencies (workflows must be DAGs)",
       "validationDisconnected": "Node '{{title}}' is disconnected from the workflow",
+      "validationMissingPort": "A wire is attached to a port that node '{{title}}' does not have: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' reads the output of '{{node}}', which is not in the workflow",
+      "validationTokenNotUpstream": "'{{title}}' reads the output of '{{node}}', which does not lead into it, so the value may be empty",
+      "validationPrevWithoutInput": "'{{title}}' reads the output of the previous node, but nothing is connected to it",
       "cancelled": "Execution cancelled",
       "jobUntracked": "Job {{id}} is no longer tracked; its result is unknown",
       "jobStopped": "Job {{id}} was stopped",
@@ -3957,6 +3961,8 @@
       "savedWorkflows": "Saved Workflows",
       "presetRecipes": "Preset Recipes",
       "unsavedChanges": "Unsaved changes",
+      "discardConfirm": "The workflow on the canvas has unsaved changes. Discard them?",
+      "discard": "Discard",
       "saving": "Saving...",
       "categories": {
         "all": "All"
@@ -3993,7 +3999,7 @@
         "resetZoom": "Reset Zoom",
         "fitToView": "Fit to Screen",
         "snapToGrid": "Snap to Grid",
-        "toggleLog": "Toggle Execution Log",
+        "showRun": "Show last run",
         "toggleInspector": "Toggle Inspector",
         "dryRun": "Dry Run",
         "dryRunTooltip": "Simulate workflow execution without modifying files or executing real commands"
@@ -4008,6 +4014,8 @@
       },
       "inspector": {
         "general": "General Settings",
+        "checks": "Checks",
+        "warningsCount": "Warnings ({{count}})",
         "parameters": "Parameters & Options",
         "nodeTitle": "Node Title",
         "nodeSubtitle": "Subtitle / Description",
@@ -4156,6 +4164,8 @@
         "nodeOutput": "Node Execution Output",
         "checkReport": "Check Difference Report",
         "rawOutputJson": "Output Data (JSON)",
+        "tabResult": "Result",
+        "tabSettings": "Settings",
         "conditionPresets": "Quick Condition Presets",
         "condPresetHasDiff": "Has Differences",
         "condPresetNoDiff": "No Differences",
@@ -4174,7 +4184,17 @@
         "opEndsWith": "Ends With",
         "opArrayNotEmpty": "Array Has Items",
         "opArrayIsEmpty": "Array Is Empty",
-        "preview": "Message Preview"
+        "preview": "Message Preview",
+        "presets": {
+          "checkReportTitle": "Difference Detected (Check Audit)",
+          "checkReportMsg": "Differences found between source and destination:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Transfer Completed Successfully",
+          "transferSummaryMsg": "Transfer finished:\nTransferred: {{prev.bytesFormatted}}\nFiles: {{prev.transfers}}\nSpeed: {{prev.speedFormatted}}\nErrors: {{prev.errors}}",
+          "failureAlertTitle": "Workflow Step Failed",
+          "failureAlertMsg": "Execution failed on node.\n\nError details:\n{{prev.error}}",
+          "healthStatusTitle": "Workflow Execution Report",
+          "healthStatusMsg": "Workflow step finished with status: {{prev.status}}.\nTransferred: {{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "Mounted",
@@ -4185,7 +4205,8 @@
         "success": "Completed",
         "failed": "Failed",
         "skipped": "Skipped",
-        "idle": "Idle"
+        "idle": "Idle",
+        "queued": "Waiting"
       },
       "ports": {
         "in": "In",
@@ -4256,27 +4277,20 @@
         "check": "Check",
         "mount": "Mount"
       },
-      "logs": {
-        "stepRunning": "Step \"{{title}}\" is executing...",
-        "stepCompleted": "Step \"{{title}}\" completed in {{duration}}ms",
-        "stepFailed": "Step \"{{title}}\" failed: {{error}}",
-        "stepSkipped": "Step \"{{title}}\" skipped (branch not taken)",
-        "unknownError": "Unknown error",
-        "cancelRequested": "Workflow execution cancellation requested",
-        "startExecution": "Starting execution of workflow \"{{name}}\"",
-        "startSimulation": "Starting simulation (dry run) of workflow \"{{name}}\"",
-        "executionError": "Workflow execution error: {{error}}",
+      "run": {
+        "title": "Last run",
+        "copy": "Copy summary",
+        "openStep": "Open step",
+        "empty": "No run yet. Run the workflow to see its steps here.",
         "running": "Running...",
-        "title": "Execution Log",
-        "copy": "Copy Logs",
-        "clear": "Clear Logs",
-        "jumpToNode": "Click to focus node on canvas",
-        "empty": "No execution logs yet. Run a workflow to view step output.",
-        "copied": "Logs copied to clipboard",
-        "filterAll": "All",
-        "filterErrors": "Errors",
-        "filterWarnings": "Warnings",
-        "filterSuccess": "Success"
+        "executionError": "Workflow execution error: {{error}}",
+        "state": {
+          "started": "Starting",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        }
       },
       "tokens": {
         "prevNode": "Previous Node",
@@ -4328,8 +4342,6 @@
       "descriptionPlaceholder": "Describe the purpose of this workflow...",
       "showInTray": "Show in system tray",
       "deleteConfirm": "Are you sure you want to delete this workflow?",
-      "cleanDuplicates": "Clean Duplicates",
-      "cleanDuplicatesConfirm": "Are you sure you want to remove duplicate workflows?",
       "stats": {
         "title": "Overview",
         "nodes": "Total Nodes",
@@ -4340,37 +4352,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Smart Drift Check & Conditional Sync",
-          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details."
+          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "No Drift Detected",
+              "message": "Source and destination are already identical. Sync was skipped."
+            },
+            "node-notify-sync-done": {
+              "title": "Sync Completed",
+              "message": "Drift resolved: {{prev.bytesFormatted}} transferred ({{prev.transfers}} files)."
+            },
+            "node-notify-check-failed": {
+              "title": "Drift Check Failed",
+              "message": "The check could not finish, so nothing was synced:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Data Integrity Audit & Drift Report",
-          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist."
+          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Integrity Verified",
+              "message": "All files match destination. No discrepancies found."
+            },
+            "node-notify-drift": {
+              "title": "Integrity Audit Alert"
+            },
+            "node-notify-audit-failed": {
+              "title": "Integrity Audit Failed",
+              "message": "The audit could not finish:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Safe Sync with Failure Alert",
-          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure."
+          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Sync Succeeded",
+              "message": "Transferred: {{prev.bytesFormatted}} (Speed: {{prev.speedFormatted}}). All files up to date."
+            },
+            "node-notify-fail": {
+              "title": "Sync Failed",
+              "message": "Backup encountered an error:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Daily Backup & Notification",
-          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure."
+          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Backup Complete",
+              "message": "Daily sync completed: {{prev.bytesFormatted}} transferred (Speed: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Backup Failed",
+              "message": "Daily backup encountered an error:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Folder Watcher & Auto Upload",
-          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage."
+          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Auto Upload Finished",
+              "message": "Auto upload completed: {{prev.bytesFormatted}} transferred ({{prev.transfers}} files)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Multi-Cloud Parallel Mirror",
-          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion."
+          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Mirror Complete",
+              "message": "All parallel cloud sync operations finished."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "Mount on Demand & Notify",
-          "description": "Mounts a remote storage path and notifies desktop when drive is ready."
+          "description": "Mounts a remote storage path and notifies desktop when drive is ready.",
+          "nodes": {
+            "node-notify": {
+              "title": "Drive Mounted",
+              "message": "Your remote storage is mounted and ready to use."
+            }
+          }
         },
         "manualTrigger": "Manual",
         "manualTriggerDesc": "Triggered manually on demand",
         "vfsRefresh": {
           "name": "VFS Cache Refresh Automation",
-          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop."
+          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS Cache Refreshed",
+              "message": "Directory cache reload finished successfully.\nCommand: {{prev.command}}\nStatus: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS Refresh Failed",
+              "message": "RC command failed:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

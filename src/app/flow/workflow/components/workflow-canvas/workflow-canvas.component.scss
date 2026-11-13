@@ -22,7 +22,7 @@
   // Razor-Sharp Infinite Dot Grid
   background-color: var(--view-bg-color);
   background-image: radial-gradient(
-    color-mix(in srgb, var(--border-color) 40%, transparent) 1px,
+    color-mix(in srgb, var(--window-fg-color) 20%, transparent) 1px,
     transparent 1px
   );
   background-size: 24px 24px;
@@ -123,13 +123,17 @@
       pointer-events: auto;
       border-radius: var(--radius-md);
       box-shadow: var(--box-shadow);
-
-      @media (max-width: 600px) {
-        display: none;
-      }
     }
 
     .floating-zoom-toolbar {
+      .focus-toggle {
+        display: none;
+
+        @media (max-width: 599.98px) {
+          display: inline-flex;
+        }
+      }
+
       pointer-events: auto;
       display: inline-flex;
       align-items: center;

@@ -3,20 +3,22 @@ import {
   ChangeDetectionStrategy,
   inject,
   computed,
-  signal,
-  effect,
   output,
+  signal,
 } from '@angular/core';
+import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, debounceTime, defer, from, of, switchMap } from 'rxjs';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { BackendTranslationService } from '../../../../services/i18n/backend-translation.service';
 import { UiStateService } from '../../../../services/ui/state/ui-state.service';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
@@ -51,9 +53,18 @@ import { TriggerNodeFormComponent } from './node-forms/trigger-node-form.compone
 import { TaskNodeFormComponent } from './node-forms/task-node-form.component';
 import { LogicNodeFormComponent } from './node-forms/logic-node-form.component';
 import { ActionNodeFormComponent } from './node-forms/action-node-form.component';
+import { WorkflowChecks } from '../../types/workflow.types';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 
 import { PillDirective } from '../../../../shared/directives/pill.directive';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+/** How long the workflow rests before it is checked, so typing does not ask the backend on every key. */
+const CHECK_DELAY_MS = 400;
+/** More warnings than this are folded behind one button, so a loose workflow does not fill the panel. */
+const COLLAPSE_WARNINGS_FROM = 3;
+
+type InspectorTab = 'result' | 'settings';
+
 @Component({
   selector: 'app-workflow-inspector',
   imports: [
@@ -75,6 +86,11 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
     ActionNodeFormComponent,
     AlertBannerComponent,
     PillDirective,
+    CopyToClipboardDirective,
+  ],
+  // Fields stack with the panel's own spacing; none keeps a gap for an error line it never shows.
+  providers: [
+    { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { subscriptSizing: 'dynamic' } },
   ],
   templateUrl: './workflow-inspector.component.html',
   styleUrl: './workflow-inspector.component.scss',
@@ -88,19 +104,25 @@ export class WorkflowInspectorComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly modalService = inject(ModalService);
   private readonly jobService = inject(JobManagementService);
-  private readonly quickRunService = inject(QuickRunService, { optional: true });
+  private readonly quickRunService = inject(QuickRunService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly uiStateService = inject(UiStateService);
 
   readonly closeInspector = output<void>();
 
   readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
   readonly selectedNode = this.stateService.selectedNode;
+  /** The error of the selected step, translated when it is shown. */
+  readonly nodeError = computed(() => {
+    const error = this.selectedNode()?.errorMessage;
+    return error ? this.backendTranslation.translateBackendMessage(error) : '';
+  });
   readonly activeWorkflow = this.stateService.currentWorkflow;
   readonly remotes = this.remoteFacade.orderedVisibleRemotes;
-  readonly quickRuns = computed(() => this.quickRunService?.quickRuns() ?? []);
+  readonly quickRuns = this.quickRunService.quickRuns;
 
   readonly allProfiles = computed(() => {
     const profiles = new Set<string>();
@@ -146,16 +168,23 @@ export class WorkflowInspectorComponent {
     return node ? ALL_PRIMARY_ACTIONS.includes(node.type as PrimaryActionType) : false;
   });
 
-  // Form local state signals for selected node
-  readonly nodeTitle = signal<string>('');
-  readonly nodeSubtitle = signal<string>('');
+  readonly nodeTitle = computed(() => {
+    const node = this.selectedNode();
+    if (!node) return '';
+    return node.titleKey ? this.translate.instant(node.titleKey) : node.title;
+  });
+  readonly nodeSubtitle = computed(() => this.selectedNode()?.subtitle ?? '');
   /** The settings of the selected node, as the workflow holds them. */
   readonly nodeConfig = computed<Record<string, unknown>>(() => this.selectedNode()?.config ?? {});
 
-  // Form local state signals for active workflow
-  readonly workflowName = signal<string>('');
-  readonly workflowDescription = signal<string>('');
-  readonly workflowShowOnTray = signal<boolean>(false);
+  readonly workflowName = computed(() => this.activeWorkflow()?.name ?? '');
+  readonly workflowDescription = computed(() => this.activeWorkflow()?.description ?? '');
+  readonly workflowShowOnTray = computed(() => this.activeWorkflow()?.showOnTray ?? false);
+
+  /** What the backend finds wrong with, or worth a look in, the workflow on the canvas. */
+  readonly checks = signal<WorkflowChecks | null>(null);
+  readonly collapseWarningsFrom = COLLAPSE_WARNINGS_FROM;
+  readonly warningsOpen = signal(false);
 
   readonly triggerNodesCount = computed(
     () => this.activeWorkflow()?.nodes.filter(n => n.category === 'trigger').length ?? 0
@@ -184,6 +213,39 @@ export class WorkflowInspectorComponent {
     return (obj['report'] as string) || null;
   });
 
+  /** The summary and the report already say what the output means; the raw JSON waits behind a button. */
+  readonly hasOutputOverview = computed(
+    () => !!this.formattedNodeOutputSummary() || !!this.nodeCheckReport()
+  );
+  readonly rawOutputOpen = signal(false);
+  readonly rawOutputVisible = computed(() => this.rawOutputOpen() || !this.hasOutputOverview());
+
+  /** Whether the node has anything to show beyond its settings: a run, an output, a job or a live service. */
+  readonly hasResult = computed(() => {
+    const node = this.selectedNode();
+    if (!node) return false;
+    return (
+      (!!node.state && node.state !== 'idle') ||
+      !!node.lastOutput ||
+      !!this.selectedNodeJob() ||
+      !!this.activeMount() ||
+      !!this.activeServe()
+    );
+  });
+
+  /** The tab the user picked, kept with the node it was picked for. */
+  private readonly pickedTab = signal<{ nodeId: string; tab: InspectorTab } | null>(null);
+  readonly activeTab = computed<InspectorTab>(() => {
+    if (!this.hasResult()) return 'settings';
+    const picked = this.pickedTab();
+    return picked && picked.nodeId === this.selectedNode()?.id ? picked.tab : 'result';
+  });
+
+  selectTab(tab: InspectorTab): void {
+    const node = this.selectedNode();
+    if (node) this.pickedTab.set({ nodeId: node.id, tab });
+  }
+
   readonly formattedNodeOutputJson = computed(() => {
     const output = this.selectedNode()?.lastOutput;
     if (output === undefined || output === null) return '';
@@ -194,51 +256,26 @@ export class WorkflowInspectorComponent {
     }
   });
 
-  async copyCheckReport(report: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(report);
-    } catch {
-      // ignore
-    }
-  }
-
-  async copyRawOutput(output: unknown): Promise<void> {
-    try {
-      const text = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // ignore
-    }
-  }
-
   constructor() {
-    effect(() => {
-      const node = this.selectedNode();
-      if (node) {
-        const title = node.titleKey ? this.translate.instant(node.titleKey) : node.title;
-        this.nodeTitle.set(title);
-        this.nodeSubtitle.set(node.subtitle ?? '');
-      }
-    });
-
-    effect(() => {
-      const wf = this.activeWorkflow();
-      if (wf) {
-        this.workflowName.set(wf.name);
-        this.workflowDescription.set(wf.description ?? '');
-        this.workflowShowOnTray.set(wf.showOnTray);
-      }
-    });
+    toObservable(this.stateService.editVersion)
+      .pipe(
+        debounceTime(CHECK_DELAY_MS),
+        switchMap(() => {
+          const workflow = this.stateService.workflowToStore();
+          if (!workflow) return of(null);
+          return defer(() => from(this.storageService.validateWorkflow(workflow))).pipe(
+            catchError(() => of(null))
+          );
+        }),
+        takeUntilDestroyed()
+      )
+      .subscribe(checks => this.checks.set(checks));
   }
 
+  /** The `rclone` settings of the selected node, wherever the workflow keeps them. */
   readonly resolvedRcloneConfig = computed<Record<string, unknown>>(() => {
     const cfg = this.nodeConfig();
-    return (
-      getRcloneCfg(cfg['config'] ?? cfg) ??
-      ((cfg['config'] as Record<string, unknown> | undefined)?.['rclone'] as
-        Record<string, unknown> | undefined) ??
-      (cfg as Record<string, unknown>)
-    );
+    return getRcloneCfg(cfg['config'] ?? cfg) ?? (cfg['rclone'] as Record<string, unknown>) ?? cfg;
   });
 
   readonly inspectorRemote = computed(() => {
@@ -343,56 +380,6 @@ export class WorkflowInspectorComponent {
     extractActiveConfigEntries(this.nodeConfig())
   );
 
-  /** Sets settings of the selected node by path; only those paths change in its config. */
-  private setNodeConfigPaths(entries: Record<string, unknown>): void {
-    const node = this.selectedNode();
-    if (!node) return;
-    this.stateService.updateNodeConfigPaths(node.id, entries);
-  }
-
-  updateNodeRclonePath(key: string, value: unknown): void {
-    this.setNodeConfigPaths({ [`config.rclone.${key}`]: value });
-  }
-
-  onInspectorRemoteChange(val: string): void {
-    this.setNodeConfigPaths({ remoteName: val });
-  }
-
-  onInspectorSourceChange(val: string): void {
-    const node = this.selectedNode();
-    if (!node) return;
-    const type = node.type;
-    const key =
-      type === 'mount' || type === 'serve'
-        ? 'fs'
-        : type === 'bisync'
-          ? 'path1'
-          : type === 'copyurl'
-            ? 'url'
-            : 'srcFs';
-    this.updateNodeRclonePath(key, val);
-  }
-
-  onInspectorDestChange(val: string): void {
-    const node = this.selectedNode();
-    if (!node) return;
-    const type = node.type;
-    const key = type === 'mount' ? 'mountPoint' : type === 'bisync' ? 'path2' : 'dstFs';
-    this.updateNodeRclonePath(key, val);
-  }
-
-  onServeTypeChange(val: string): void {
-    this.setNodeConfigPaths({ 'config.rclone.serveType': val, 'config.rclone.type': val });
-  }
-
-  onServeAddrChange(val: string): void {
-    this.updateNodeRclonePath('addr', val ? [val] : []);
-  }
-
-  onRcloneFieldChange(key: string, value: unknown): void {
-    this.updateNodeRclonePath(key, value);
-  }
-
   async unmountActive(): Promise<void> {
     const mount = this.activeMount();
     if (!mount) return;
@@ -410,21 +397,24 @@ export class WorkflowInspectorComponent {
   onTitleChange(newTitle: string): void {
     const node = this.selectedNode();
     if (!node) return;
-    this.nodeTitle.set(newTitle);
     this.stateService.updateNode(node.id, { title: newTitle, titleKey: undefined });
   }
 
   onSubtitleChange(newSubtitle: string): void {
     const node = this.selectedNode();
     if (!node) return;
-    this.nodeSubtitle.set(newSubtitle);
     this.stateService.updateNode(node.id, { subtitle: newSubtitle });
   }
 
   onConfigFieldChange(key: string, value: unknown): void {
+    this.onConfigPatch({ [key]: value });
+  }
+
+  /** Changes several settings of the selected node as one undo step. */
+  onConfigPatch(patch: Record<string, unknown>): void {
     const node = this.selectedNode();
     if (!node) return;
-    this.stateService.updateNodeConfig(node.id, { [key]: value });
+    this.stateService.updateNodeConfig(node.id, patch);
   }
 
   removeConfigItem(path: string): void {
@@ -440,18 +430,15 @@ export class WorkflowInspectorComponent {
   }
 
   onWorkflowNameChange(newName: string): void {
-    this.workflowName.set(newName);
     this.stateService.setWorkflowName(newName);
   }
 
   onWorkflowDescriptionChange(newDesc: string): void {
-    this.workflowDescription.set(newDesc);
     this.stateService.setWorkflowDescription(newDesc);
   }
 
   onWorkflowShowOnTrayChange(checked: boolean): void {
-    this.workflowShowOnTray.set(checked);
-    this.stateService.updateWorkflowMetadata({ showOnTray: checked });
+    this.stateService.setShowOnTray(checked);
     const wf = this.stateService.currentWorkflow();
     if (wf) void this.storageService.saveShowOnTray(wf.id, checked);
   }

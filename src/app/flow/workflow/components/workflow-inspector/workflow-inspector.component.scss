@@ -67,6 +67,19 @@
     }
   }
 
+  // Stays in view while the sections scroll, so the other tab is always one tap away.
+  .inspector-tabs {
+    position: sticky;
+    top: calc(-1 * var(--space-md));
+    z-index: 1;
+    display: flex;
+    gap: var(--space-xs);
+    margin: calc(-1 * var(--space-md)) calc(-1 * var(--space-md)) 0;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--window-bg-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
   .inspector-content {
     flex: 1;
     overflow-y: auto;
@@ -161,8 +174,9 @@
         }
 
         .output-pre {
-          max-height: 140px;
+          max-height: 240px;
           overflow-y: auto;
+          user-select: text;
           font-family: var(--font-mono);
           font-size: 11px;
           background: rgba(0, 0, 0, 0.25);
@@ -282,11 +296,21 @@
   }
 
   .section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
     font-size: var(--font-size-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--dim-color);
+
+    mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
   }
 
   .form-field-full {
@@ -300,8 +324,8 @@
   }
 
   .code-font {
-    font-family: var(--font-mono, monospace);
-    font-size: var(--font-size-sm, 12px);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
   }
 
   .cron-preview-box {
@@ -326,19 +350,6 @@
       height: var(--icon-size-sm);
       font-size: var(--icon-size-sm);
     }
-
-    .cron-preview-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-
-  .presets-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: var(--space-xxs);
   }
 }
 
@@ -398,7 +409,7 @@
       color: var(--window-fg-color);
 
       &.code-font {
-        font-family: var(--font-mono, monospace);
+        font-family: var(--font-mono);
         font-size: 11.5px;
       }
 
@@ -448,94 +459,22 @@
       font-size: var(--font-size-xs);
       box-sizing: border-box;
 
-      .category-tag {
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        padding: 1px var(--space-xxs);
-        border-radius: 3px;
-        background: rgba(var(--accent-color-rgb), 0.12);
-        color: var(--accent-color);
-        letter-spacing: 0.03em;
-      }
-
       .chip-key {
+        flex: 1 1 auto;
+        min-width: 0;
         font-weight: 600;
         color: var(--window-fg-color);
+        overflow-wrap: anywhere;
       }
 
       .chip-val {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        flex: 0 1 auto;
+        max-width: 45%;
+        overflow-wrap: anywhere;
+        text-align: end;
         color: var(--dim-color);
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
-
-      .chip-delete-btn {
-        background: none;
-        border: none;
-        padding: 2px;
-        cursor: pointer;
-        color: var(--dim-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 2px;
-        transition:
-          color 0.15s,
-          background-color 0.15s;
-
-        mat-icon {
-          width: 14px;
-          height: 14px;
-          font-size: 14px;
-        }
-
-        &:hover {
-          color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), 0.1);
-        }
-      }
-
-      &.chip-filter .category-tag {
-        background: rgba(var(--primary-color-rgb), 0.15);
-        color: var(--primary-color);
-      }
-
-      &.chip-vfs .category-tag {
-        background: rgba(var(--yellow-rgb), 0.15);
-        color: var(--yellow);
-      }
-
-      &.chip-backend .category-tag {
-        background: rgba(var(--accent-color-rgb), 0.15);
-        color: var(--accent-color);
-      }
-    }
-  }
-
-  .empty-config-box {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
-    padding: var(--space-sm);
-    background: var(--bg-elevated-1);
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-xs);
-    text-align: center;
-
-    .empty-text {
-      font-size: var(--font-size-xs);
-      color: var(--dim-color);
-      font-weight: 500;
-    }
-
-    .empty-hint {
-      font-size: 11px;
-      color: var(--dim-color);
-      opacity: 0.75;
     }
   }
 }
@@ -598,7 +537,7 @@
 
       &.delete-btn {
         background: var(--destructive-bg-color);
-        color: #ffffff;
+        color: var(--accent-fg-color);
 
         &:hover {
           background: var(--gnome-red-4);
@@ -633,17 +572,6 @@
       display: flex;
       align-items: center;
       gap: 6px;
-
-      .job-type-pill {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--window-fg-color);
-      }
-
-      .dry-run-pill {
-        font-size: 10px;
-        padding: 1px 5px;
-      }
     }
 
     .job-status-tag {
@@ -733,4 +661,10 @@
       }
     }
   }
+}
+
+.checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }

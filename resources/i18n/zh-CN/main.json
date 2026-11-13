@@ -3153,6 +3153,10 @@
       "validationSelfLoop": "节点不能连接到自身（自环）：{{id}}",
       "validationCycle": "图包含循环依赖（工作流必须是 DAG）",
       "validationDisconnected": "节点“{{title}}”与工作流断开连接",
+      "validationMissingPort": "连线接到了节点 '{{title}}' 上不存在的端口：{{port}}",
+      "validationTokenUnknownNode": "'{{title}}' 读取了不在工作流中的 '{{node}}' 的输出",
+      "validationTokenNotUpstream": "'{{title}}' 读取了未连接到它的 '{{node}}' 的输出，值可能为空",
+      "validationPrevWithoutInput": "'{{title}}' 读取了上一个节点的输出，但没有任何节点连接到它",
       "cancelled": "执行已取消",
       "jobUntracked": "作业 {{id}} 已不再被跟踪，结果未知",
       "jobStopped": "作业 {{id}} 已停止",
@@ -3916,6 +3920,8 @@
       "savedWorkflows": "已保存工作流",
       "presetRecipes": "预设配方",
       "unsavedChanges": "未保存的更改",
+      "discardConfirm": "画布上的工作流有未保存的更改。要放弃吗？",
+      "discard": "放弃",
       "saving": "正在保存...",
       "categories": {
         "all": "全部"
@@ -3952,7 +3958,7 @@
         "resetZoom": "重置缩放",
         "fitToView": "适应屏幕",
         "snapToGrid": "对齐网格",
-        "toggleLog": "切换运行日志",
+        "showRun": "显示上次运行",
         "toggleInspector": "切换检查器",
         "dryRun": "模拟运行",
         "dryRunTooltip": "模拟工作流执行，不修改数据或执行真实命令"
@@ -3967,6 +3973,8 @@
       },
       "inspector": {
         "general": "常规设置",
+        "checks": "检查",
+        "warningsCount": "警告（{{count}}）",
         "parameters": "参数与选项",
         "nodeTitle": "节点标题",
         "nodeSubtitle": "副标题 / 描述",
@@ -4115,6 +4123,8 @@
         "nodeOutput": "节点运行输出",
         "checkReport": "检查差异报告",
         "rawOutputJson": "输出数据 (JSON)",
+        "tabResult": "结果",
+        "tabSettings": "设置",
         "conditionPresets": "快速条件预设",
         "condPresetHasDiff": "存在差异",
         "condPresetNoDiff": "无差异",
@@ -4133,14 +4143,25 @@
         "opEndsWith": "结尾为",
         "opArrayNotEmpty": "数组非空",
         "opArrayIsEmpty": "数组为空",
-        "preview": "消息预览"
+        "preview": "消息预览",
+        "presets": {
+          "checkReportTitle": "检测到差异（Check 审计）",
+          "checkReportMsg": "源与目标之间存在差异：\n\n{{prev.report}}",
+          "transferSummaryTitle": "传输已成功完成",
+          "transferSummaryMsg": "传输完成：\n已传输：{{prev.bytesFormatted}}\n文件数：{{prev.transfers}}\n速度：{{prev.speedFormatted}}\n错误：{{prev.errors}}",
+          "failureAlertTitle": "工作流步骤失败",
+          "failureAlertMsg": "节点执行失败。\n\n错误详情：\n{{prev.error}}",
+          "healthStatusTitle": "工作流执行报告",
+          "healthStatusMsg": "工作流步骤已结束，状态：{{prev.status}}。\n已传输：{{prev.bytesFormatted}}"
+        }
       },
       "status": {
         "running": "运行中",
         "success": "已完成",
         "failed": "失败",
         "skipped": "已跳过",
-        "idle": "空闲"
+        "idle": "空闲",
+        "queued": "等待中"
       },
       "ports": {
         "in": "输入",
@@ -4211,27 +4232,20 @@
         "check": "检查",
         "mount": "挂载"
       },
-      "logs": {
-        "stepRunning": "步骤“{{title}}”正在执行...",
-        "stepCompleted": "步骤“{{title}}”已在 {{duration}} 毫秒内完成",
-        "stepFailed": "步骤“{{title}}”失败：{{error}}",
-        "stepSkipped": "步骤“{{title}}”已跳过（未选择该分支）",
-        "unknownError": "未知错误",
-        "cancelRequested": "已请求取消工作流执行",
-        "startExecution": "正在开始执行工作流“{{name}}”",
-        "startSimulation": "正在开始模拟（试运行）工作流“{{name}}”",
-        "executionError": "工作流执行错误：{{error}}",
+      "run": {
+        "title": "上次运行",
+        "copy": "复制摘要",
+        "openStep": "打开步骤",
+        "empty": "尚未运行。运行工作流后，步骤将显示在这里。",
         "running": "运行中...",
-        "title": "执行日志",
-        "copy": "复制日志",
-        "clear": "清空日志",
-        "jumpToNode": "点击以在画布上聚焦节点",
-        "empty": "暂无执行日志。运行工作流以查看步骤输出。",
-        "copied": "日志已复制到剪贴板",
-        "filterAll": "全部",
-        "filterErrors": "错误",
-        "filterWarnings": "警告",
-        "filterSuccess": "成功"
+        "executionError": "工作流执行错误：{{error}}",
+        "state": {
+          "started": "正在启动",
+          "running": "运行中",
+          "completed": "已完成",
+          "failed": "失败",
+          "cancelled": "已取消"
+        }
       },
       "tokens": {
         "prevNode": "上一个节点",
@@ -4282,8 +4296,6 @@
       "description": "工作流描述",
       "descriptionPlaceholder": "描述此工作流的用途...",
       "deleteConfirm": "确定要删除此工作流吗？",
-      "cleanDuplicates": "清理重复项",
-      "cleanDuplicatesConfirm": "确定要删除重复的工作流吗？",
       "stats": {
         "title": "概览",
         "nodes": "节点总数",
@@ -4298,37 +4310,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "智能差异检查与条件同步",
-          "description": "使用 check 验证差异；仅在检测到偏差时才执行同步，并通知传输量详情。"
+          "description": "使用 check 验证差异；仅在检测到偏差时才执行同步，并通知传输量详情。",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "未检测到差异",
+              "message": "源与目标已经一致，已跳过同步。"
+            },
+            "node-notify-sync-done": {
+              "title": "同步完成",
+              "message": "差异已解决：已传输 {{prev.bytesFormatted}}（{{prev.transfers}} 个文件）。"
+            },
+            "node-notify-check-failed": {
+              "title": "差异检查失败",
+              "message": "检查未能完成，因此没有同步任何内容：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "数据完整性审计与差异报告",
-          "description": "执行定期完整性检查；如果存在差异，则发送带有 Markdown 格式差异报告的告警。"
+          "description": "执行定期完整性检查；如果存在差异，则发送带有 Markdown 格式差异报告的告警。",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "完整性已验证",
+              "message": "所有文件均与目标一致，未发现差异。"
+            },
+            "node-notify-drift": {
+              "title": "完整性审计警报"
+            },
+            "node-notify-audit-failed": {
+              "title": "完整性审计失败",
+              "message": "审计未能完成：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "带失败告警的安全同步",
-          "description": "执行同步操作，成功时通知传输量，失败时转发详细错误信息。"
+          "description": "执行同步操作，成功时通知传输量，失败时转发详细错误信息。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "同步成功",
+              "message": "已传输：{{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。所有文件均为最新。"
+            },
+            "node-notify-fail": {
+              "title": "同步失败",
+              "message": "备份时出错：\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "每日备份与通知",
-          "description": "在每天 02:00 运行预定的每日同步，成功或失败时均会通知。"
+          "description": "在每天 02:00 运行预定的每日同步，成功或失败时均会通知。",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "备份完成",
+              "message": "每日同步完成：已传输 {{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。"
+            },
+            "node-action-notify-fail": {
+              "title": "备份失败",
+              "message": "每日备份时出错：\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "文件夹监视与自动上传",
-          "description": "监视本地文件夹的更改，并将新文件/修改后的文件复制到云端存储。"
+          "description": "监视本地文件夹的更改，并将新文件/修改后的文件复制到云端存储。",
+          "nodes": {
+            "node-action-notify": {
+              "title": "自动上传完成",
+              "message": "自动上传完成：已传输 {{prev.bytesFormatted}}（{{prev.transfers}} 个文件）。"
+            }
+          }
         },
         "parallelMirror": {
           "name": "多云并行镜像",
-          "description": "同时同步数据到两个不同的云服务商，并验证完成情况。"
+          "description": "同时同步数据到两个不同的云服务商，并验证完成情况。",
+          "nodes": {
+            "node-notify-done": {
+              "title": "镜像完成",
+              "message": "所有并行云同步操作已完成。"
+            }
+          }
         },
         "mountOnDemand": {
           "name": "按需挂载与通知",
-          "description": "挂载远程存储路径，并在驱动器就绪时向桌面发送通知。"
+          "description": "挂载远程存储路径，并在驱动器就绪时向桌面发送通知。",
+          "nodes": {
+            "node-notify": {
+              "title": "驱动器已挂载",
+              "message": "您的远程存储已挂载，可以使用。"
+            }
+          }
         },
         "manualTrigger": "手动",
         "manualTriggerDesc": "按需手动触发",
         "vfsRefresh": {
           "name": "VFS 缓存刷新自动化",
-          "description": "发送 vfs/refresh 远程控制 (RC) 命令以重新加载已挂载驱动器上的目录缓存，并向桌面发送通知。"
+          "description": "发送 vfs/refresh 远程控制 (RC) 命令以重新加载已挂载驱动器上的目录缓存，并向桌面发送通知。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS 缓存已刷新",
+              "message": "目录缓存已成功重新加载。\n命令：{{prev.command}}\n状态：{{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS 刷新失败",
+              "message": "RC 命令失败：\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

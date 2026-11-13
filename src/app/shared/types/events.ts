@@ -42,8 +42,25 @@ export interface UpdaterStateChanged {
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
 
+/** Where a run is; `started` and `running` are live, the rest end the run. */
+export type WorkflowExecutionState = 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface WorkflowRunProgress {
+  total: number;
+  completed: number;
+  currentStepTitle: string;
+}
+
+/**
+ * `runId` and `seq` order the events of a run: a snapshot of the run contains every event up
+ * to its own `seq`, so a view that loaded one ignores the events at or below it.
+ */
 export interface WorkflowNodeStatePayload {
   workflowId: string;
+  runId: string;
+  seq: number;
+  /** RFC 3339 */
+  at: string;
   nodeId: string;
   state: WorkflowNodeExecutionState;
   errorMessage?: string;
@@ -53,13 +70,43 @@ export interface WorkflowNodeStatePayload {
 
 export interface WorkflowExecutionStatePayload {
   workflowId: string;
-  state: 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
-  progress?: {
-    total: number;
-    completed: number;
-    currentStepTitle: string;
-  };
+  runId: string;
+  seq: number;
+  /** RFC 3339 */
+  at: string;
+  state: WorkflowExecutionState;
+  dryRun: boolean;
+  progress?: WorkflowRunProgress;
   message?: string;
+}
+
+/** An event of a run as a snapshot keeps it for the log; node events come without their output. */
+export type WorkflowRunEvent =
+  | ({ kind: 'node' } & WorkflowNodeStatePayload)
+  | ({ kind: 'execution' } & WorkflowExecutionStatePayload);
+
+export interface WorkflowNodeSnapshot {
+  state: WorkflowNodeExecutionState;
+  errorMessage?: string;
+  durationMs?: number;
+  output?: unknown;
+}
+
+/** A run as it stands: live, or the last one that ended (`get_workflow_runs`). */
+export interface WorkflowRunSnapshot {
+  workflowId: string;
+  runId: string;
+  dryRun: boolean;
+  /** RFC 3339 */
+  startedAt: string;
+  state: WorkflowExecutionState;
+  /** The `seq` of the last event the snapshot contains. */
+  seq: number;
+  progress?: WorkflowRunProgress;
+  /** The latest state of each node that has reported, by node id. */
+  nodes: Record<string, WorkflowNodeSnapshot>;
+  /** What the log of the run is made of, oldest first. */
+  events: WorkflowRunEvent[];
 }
 
 export interface ActiveOperationsSummary {

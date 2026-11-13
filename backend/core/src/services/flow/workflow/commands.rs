@@ -6,7 +6,9 @@ use crate::context::AppHandle;
 use chrono::Utc;
 use log::info;
 
-use super::types::{NodeKind, WorkflowDefinition, WorkflowExecutionResult, WorkflowInput};
+use super::types::{
+    NodeKind, WorkflowDefinition, WorkflowExecutionResult, WorkflowInput, WorkflowValidationResult,
+};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::SUB_WORKFLOWS;
 
@@ -16,19 +18,18 @@ pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, S
     get_all_workflows(&manager)
 }
 
-/// Ids of the workflows running on the active backend. Run state is only announced
-/// by events, so a view opened after a run began (an auto-start, a schedule or a
-/// file watcher) asks for it here.
-pub async fn get_active_workflows(app: AppHandle) -> Result<Vec<String>, String> {
+/// The latest run of every workflow on the active backend: the ones under way and the
+/// last that ended. Run state lives in the backend and is only announced by events, so
+/// a view opened after a run began (an auto-start, a schedule, a file watcher, or a
+/// reload of the interface) starts from these and then follows the events.
+pub async fn get_workflow_runs(
+    app: AppHandle,
+) -> Result<Vec<super::engine::record::WorkflowRunSnapshot>, String> {
     let backend = app
         .state::<crate::rclone::backend::BackendManager>()
         .get_active_name()
         .await;
-    let mut ids: Vec<_> = super::engine::get_active_workflow_ids(&backend)
-        .into_iter()
-        .collect();
-    ids.sort();
-    Ok(ids)
+    Ok(super::engine::run_snapshots(&backend))
 }
 
 /// Creates a new workflow record.
@@ -98,6 +99,7 @@ pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), 
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_workflow_by_id(&manager, &workflow_id)?;
+    super::engine::forget_workflow_runs(&workflow_id);
     refresh_after_change(&app, &workflow_id).await?;
     Ok(())
 }
@@ -157,6 +159,26 @@ pub async fn execute_workflow(
         super::engine::RunTrigger::Manual,
     )
     .await
+}
+
+/// Checks a workflow the way a run would, without storing it, so the canvas can show what
+/// would stop a run (errors) or probably is not meant (warnings) before one is started.
+pub async fn validate_workflow(
+    workflow: WorkflowInput,
+) -> Result<WorkflowValidationResult, String> {
+    let definition = WorkflowDefinition {
+        id: workflow.id.unwrap_or_default(),
+        name: workflow.name,
+        description: workflow.description,
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        viewport: workflow.viewport,
+        show_on_tray: workflow.show_on_tray,
+        created_at: None,
+        updated_at: None,
+        last_executed_at: None,
+    };
+    Ok(super::dag::validate_workflow(&definition))
 }
 
 /// Stops an actively running workflow.
@@ -288,37 +310,97 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn active_workflows_lists_runs_on_the_active_backend_only() {
+    async fn validating_a_workflow_reports_what_a_run_would_reject_without_storing_it() {
+        let node = |id: &str, title: &str| WorkflowNode {
+            id: id.into(),
+            title: title.into(),
+            ..Default::default()
+        };
+        let input = WorkflowInput {
+            id: None,
+            name: "Unsaved".into(),
+            description: None,
+            nodes: vec![node("a", "Alpha"), node("b", "Beta")],
+            edges: vec![WorkflowEdge {
+                id: "e1".into(),
+                source_node_id: "a".into(),
+                source_port_id: "out".into(),
+                target_node_id: "ghost".into(),
+                target_port_id: "in".into(),
+                is_active: None,
+            }],
+            viewport: CanvasViewport::default(),
+            show_on_tray: false,
+        };
+
+        let result = validate_workflow(input).await.unwrap();
+
+        assert!(!result.valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| e.contains("backendErrors.workflow.validationMissingTarget"))
+        );
+        assert!(
+            result
+                .warnings
+                .iter()
+                .any(|w| w.contains("backendErrors.workflow.validationDisconnected"))
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_runs_list_the_active_backend_only_and_keep_the_last_run() {
+        use std::sync::Arc;
+
         use crate::rclone::backend::{BackendManager, types::Backend};
         use crate::services::flow::workflow::engine::{
             active::{ActiveWorkflowState, register_active_run},
             cancel::CancelToken,
+            record::RunHandle,
         };
 
         let app = AppHandle::default();
         app.manage(BackendManager::new());
         let active = app.state::<BackendManager>().get_active_name().await;
-        let state = |backend: &str| ActiveWorkflowState {
-            backend: Backend::new_local(backend),
-            cancel: CancelToken::new(),
-            active_job_ids: Default::default(),
-            run_id: "test-run".into(),
+        let register = |backend: &str, id: &str| {
+            let state = ActiveWorkflowState {
+                backend: Backend::new_local(backend),
+                cancel: CancelToken::new(),
+                active_job_ids: Default::default(),
+            };
+            register_active_run(
+                id,
+                id,
+                state,
+                Arc::new(RunHandle::new(id, "test-run", false)),
+            )
+            .unwrap()
         };
-        let own = register_active_run("Own", "wf-active-b", state(&active)).unwrap();
-        let first = register_active_run("First", "wf-active-a", state(&active)).unwrap();
-        let _elsewhere =
-            register_active_run("Else", "wf-active-other", state("another-backend")).unwrap();
+        let own = register(&active, "wf-runs-b");
+        let first = register(&active, "wf-runs-a");
+        let elsewhere = register("another-backend", "wf-runs-other");
 
-        let ids = get_active_workflows(app.clone()).await.unwrap();
-        let ours: Vec<_> = ids
-            .iter()
-            .filter(|id| id.starts_with("wf-active-"))
-            .collect();
-        assert_eq!(ours, ["wf-active-a", "wf-active-b"]);
+        let ours = |runs: Vec<super::super::engine::record::WorkflowRunSnapshot>| {
+            runs.into_iter()
+                .filter(|run| run.workflow_id.starts_with("wf-runs-"))
+                .map(|run| run.workflow_id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            ours(get_workflow_runs(app.clone()).await.unwrap()),
+            ["wf-runs-a", "wf-runs-b"]
+        );
 
-        drop((own, first));
-        let ids = get_active_workflows(app).await.unwrap();
-        assert!(!ids.iter().any(|id| id.starts_with("wf-active-")));
+        // A run that ended stays listed, as the last run of its workflow.
+        own.release();
+        first.release();
+        assert_eq!(
+            ours(get_workflow_runs(app.clone()).await.unwrap()),
+            ["wf-runs-a", "wf-runs-b"]
+        );
+        elsewhere.release();
     }
 
     #[test]

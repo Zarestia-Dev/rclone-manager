@@ -24,8 +24,8 @@ import { RemoteFacadeService } from '../../../../services/facade/remote-facade.s
 import {
   extractFieldsFromObject,
   getAvailableUpstreamNodes,
+  getPreviousNodeFields,
   getNodeFields,
-  getNodeFieldsForType,
   NodeVariableField,
 } from '../../utils/node-fields.util';
 import { RC_PRESETS } from '../../constants/rc-presets.constant';
@@ -84,8 +84,8 @@ export interface RcEditorModalData {
 export class RcEditorModalComponent {
   private readonly dialogRef = inject(MatDialogRef<RcEditorModalComponent>);
   readonly data: RcEditorModalData = inject(MAT_DIALOG_DATA);
-  private readonly workflowState = inject(WorkflowStateService, { optional: true });
-  private readonly remoteFacade = inject(RemoteFacadeService, { optional: true });
+  private readonly workflowState = inject(WorkflowStateService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly rcConsole = inject(RcConsoleService);
 
   private readonly hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -129,7 +129,7 @@ export class RcEditorModalComponent {
   );
   readonly offline = computed(() => this.commandsLoaded() && this.knownCommands().length === 0);
 
-  readonly remotes = computed(() => this.remoteFacade?.orderedVisibleRemotes() ?? []);
+  readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes() ?? []);
 
   readonly endpointSuggestions = computed(() => {
     const typed = this.command().trim();
@@ -156,17 +156,14 @@ export class RcEditorModalComponent {
   });
 
   readonly availableUpstreamNodes = computed<WorkflowNode[]>(() => {
-    return getAvailableUpstreamNodes(
-      this.workflowState?.currentWorkflow()?.nodes,
-      this.data?.node?.id
-    );
+    return getAvailableUpstreamNodes(this.workflowState.currentWorkflow(), this.data?.node?.id);
   });
 
   readonly availableFieldsForSelectedNode = computed<NodeVariableField[]>(() => {
     const targetId = this.activeVariableNodeId();
     if (!targetId) return [];
     if (targetId === 'prev') {
-      return getNodeFieldsForType('prev');
+      return getPreviousNodeFields(this.workflowState.currentWorkflow(), this.data?.node?.id ?? '');
     }
     const target = this.availableUpstreamNodes().find(n => n.id === targetId);
     if (!target) return [];

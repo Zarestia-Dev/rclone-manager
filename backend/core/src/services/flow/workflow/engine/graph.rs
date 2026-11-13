@@ -4,12 +4,11 @@ use std::collections::{HashMap, VecDeque};
 
 use serde_json::Value;
 
-use crate::services::flow::workflow::engine::RunTrigger;
+use crate::services::flow::workflow::engine::{RunTrigger, record::RunHandle};
 use crate::services::flow::workflow::types::{
     NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowEdge, WorkflowNode,
-    WorkflowNodeExecutionState, WorkflowNodeStateEvent, WorkflowPortType,
+    WorkflowNodeExecutionState, WorkflowPortType,
 };
-use crate::utils::types::events::WORKFLOW_NODE_STATE_CHANGED;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EdgeState {
@@ -168,14 +167,14 @@ impl RunState {
         &mut self,
         graph: &RunGraph,
         workflow: &WorkflowDefinition,
-        workflow_id: &str,
+        run: &RunHandle,
         finished: usize,
     ) {
         let pending = graph.outgoing[finished]
             .iter()
             .map(|&(_, target)| target)
             .collect();
-        self.settle(graph, workflow, workflow_id, pending);
+        self.settle(graph, workflow, run, pending);
     }
 
     /// Skips the entry points the run was not started by, so what only they lead to
@@ -184,24 +183,24 @@ impl RunState {
         &mut self,
         graph: &RunGraph,
         workflow: &WorkflowDefinition,
-        workflow_id: &str,
+        run: &RunHandle,
     ) {
         let mut pending = VecDeque::new();
         for idx in std::mem::take(&mut self.unstarted) {
-            self.skip(workflow_id, idx, &workflow.nodes[idx]);
+            self.skip(run, idx, &workflow.nodes[idx]);
             for &(edge_idx, target) in &graph.outgoing[idx] {
                 self.edges[edge_idx] = EdgeState::Disabled;
                 pending.push_back(target);
             }
         }
-        self.settle(graph, workflow, workflow_id, pending);
+        self.settle(graph, workflow, run, pending);
     }
 
     fn settle(
         &mut self,
         graph: &RunGraph,
         workflow: &WorkflowDefinition,
-        workflow_id: &str,
+        run: &RunHandle,
         mut pending: VecDeque<usize>,
     ) {
         while let Some(candidate) = pending.pop_front() {
@@ -230,7 +229,7 @@ impl RunState {
             if reached || joins_always {
                 self.queue(candidate);
             } else {
-                self.skip(workflow_id, candidate, candidate_node);
+                self.skip(run, candidate, candidate_node);
                 for &(edge_idx, target) in &graph.outgoing[candidate] {
                     self.edges[edge_idx] = EdgeState::Disabled;
                     pending.push_back(target);
@@ -240,19 +239,18 @@ impl RunState {
     }
 
     /// Marks everything that never started as skipped, once the run is over.
-    pub(crate) fn skip_unreached(&mut self, workflow: &WorkflowDefinition, workflow_id: &str) {
+    pub(crate) fn skip_unreached(&mut self, workflow: &WorkflowDefinition, run: &RunHandle) {
         for idx in 0..self.nodes.len() {
             if matches!(self.nodes[idx], NodeStatus::Pending | NodeStatus::Queued) {
-                self.skip(workflow_id, idx, &workflow.nodes[idx]);
+                self.skip(run, idx, &workflow.nodes[idx]);
             }
         }
     }
 
-    fn skip(&mut self, workflow_id: &str, idx: usize, node: &WorkflowNode) {
+    fn skip(&mut self, run: &RunHandle, idx: usize, node: &WorkflowNode) {
         self.skipped += 1;
         self.nodes[idx] = NodeStatus::Skipped;
-        emit_node_state(
-            workflow_id,
+        run.node_state(
             &node.id,
             WorkflowNodeExecutionState::Skipped,
             None,
@@ -307,27 +305,6 @@ fn edge_activation(
     } else {
         EdgeState::Disabled
     }
-}
-
-pub(crate) fn emit_node_state(
-    workflow_id: &str,
-    node_id: &str,
-    state: WorkflowNodeExecutionState,
-    error_message: Option<&str>,
-    duration_ms: Option<u64>,
-    output: Option<&Value>,
-) {
-    crate::services::bridge::emit(
-        WORKFLOW_NODE_STATE_CHANGED,
-        WorkflowNodeStateEvent {
-            workflow_id,
-            node_id,
-            state,
-            error_message,
-            duration_ms,
-            output,
-        },
-    );
 }
 
 #[cfg(test)]
@@ -647,18 +624,18 @@ mod tests {
 
         state.activate_edges(&graph, &workflow, 0, &ok(None));
         state.succeeded(0);
-        state.queue_downstream(&graph, &workflow, "wf", 0);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 0);
         assert_eq!(state.start_next(), Some(1));
         assert_eq!(state.start_next(), Some(2));
 
         state.activate_edges(&graph, &workflow, 1, &ok(None));
         state.succeeded(1);
-        state.queue_downstream(&graph, &workflow, "wf", 1);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 1);
         assert_eq!(state.start_next(), None, "d still waits for c");
 
         state.activate_edges(&graph, &workflow, 2, &ok(None));
         state.succeeded(2);
-        state.queue_downstream(&graph, &workflow, "wf", 2);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 2);
         assert_eq!(state.start_next(), Some(3));
         assert_eq!((state.completed, state.failed, state.skipped), (3, 0, 0));
     }
@@ -696,7 +673,7 @@ mod tests {
 
         state.activate_edges(&graph, &workflow, 0, &ok(Some("true")));
         state.succeeded(0);
-        state.queue_downstream(&graph, &workflow, "wf", 0);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 0);
 
         assert_eq!(state.start_next(), Some(1), "the taken branch runs");
         assert_eq!(
@@ -720,7 +697,7 @@ mod tests {
         let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
         state.start_next();
         state.failed(0, false);
-        state.skip_unreached(&workflow, "wf");
+        state.skip_unreached(&workflow, &RunHandle::new("wf", "run", false));
         assert_eq!((state.completed, state.failed, state.skipped), (0, 0, 1));
     }
 
@@ -750,7 +727,7 @@ mod tests {
         let workflow = two_trigger_workflow();
         let graph = RunGraph::new(&workflow);
         let mut state = RunState::new(&graph, &workflow, &RunTrigger::Cron);
-        state.skip_unstarted(&graph, &workflow, "wf");
+        state.skip_unstarted(&graph, &workflow, &RunHandle::new("wf", "run", false));
 
         assert_eq!(state.start_next(), Some(0));
         assert_eq!(
@@ -763,12 +740,12 @@ mod tests {
 
         state.activate_edges(&graph, &workflow, 0, &ok(None));
         state.succeeded(0);
-        state.queue_downstream(&graph, &workflow, "wf", 0);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 0);
         assert_eq!(state.start_next(), Some(2));
 
         state.activate_edges(&graph, &workflow, 2, &ok(None));
         state.succeeded(2);
-        state.queue_downstream(&graph, &workflow, "wf", 2);
+        state.queue_downstream(&graph, &workflow, &RunHandle::new("wf", "run", false), 2);
         assert_eq!(
             state.start_next(),
             Some(4),
@@ -781,7 +758,7 @@ mod tests {
         let workflow = two_trigger_workflow();
         let graph = RunGraph::new(&workflow);
         let mut state = RunState::new(&graph, &workflow, &RunTrigger::Manual);
-        state.skip_unstarted(&graph, &workflow, "wf");
+        state.skip_unstarted(&graph, &workflow, &RunHandle::new("wf", "run", false));
 
         assert_eq!(state.start_next(), Some(0));
         assert_eq!(state.start_next(), Some(1));
@@ -804,12 +781,12 @@ mod tests {
             ancestors: vec![],
         };
         let mut state = RunState::new(&graph, &workflow, &trigger);
-        state.skip_unstarted(&graph, &workflow, "wf");
+        state.skip_unstarted(&graph, &workflow, &RunHandle::new("wf", "run", false));
 
         assert_eq!(state.start_next(), Some(1));
         assert_eq!(state.start_next(), None);
         // A node nothing leads to does not run beside the triggers.
-        state.skip_unreached(&workflow, "wf");
+        state.skip_unreached(&workflow, &RunHandle::new("wf", "run", false));
         assert_eq!(state.skipped, 2);
     }
 

@@ -4769,7 +4769,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rclone-manager"
-version = "0.3.6-beta.1"
+version = "0.3.6"
 dependencies = [
  "async-trait",
  "clap",
@@ -4808,7 +4808,7 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-core"
-version = "0.3.6-beta.1"
+version = "0.3.6"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -4861,7 +4861,7 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager-server"
-version = "0.3.6-beta.1"
+version = "0.3.6"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -4890,7 +4890,9 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.2.7"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b29d61b7cec183643c0e226469ac54869062b97333017f25b5785b1900bef45e"
 dependencies = [
  "aes-gcm",
  "android-native-keyring-store",
@@ -4922,7 +4924,9 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.2.7"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3c51b2c0a3ce20c5a024fbd76fa1c757f313afe96b43f16be5ae64abe89b0d9"
 dependencies = [
  "proc-macro2",
  "quote",

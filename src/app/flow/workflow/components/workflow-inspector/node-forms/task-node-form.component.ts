@@ -12,7 +12,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../../types/workflow.types';
 import { QuickRun, isSourceOnlyOperation } from '@app/types';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
-import { SUPPORTED_ARCHIVE_FORMATS } from '../../../../../services/remote/flag-definitions';
 import { hasDetailedConfig } from '../../../utils/node-style.util';
 
 import { PillDirective } from '../../../../../shared/directives/pill.directive';
@@ -41,12 +40,15 @@ interface RemoteItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskNodeFormComponent {
-  private readonly fileSystemService = inject(FileSystemService, { optional: true });
+  private readonly fileSystemService = inject(FileSystemService);
 
   readonly node = input.required<WorkflowNode>();
   readonly nodeConfig = input.required<Record<string, unknown>>();
   readonly remotes = input<RemoteItem[]>([]);
   readonly quickRuns = input<QuickRun[]>([]);
+
+  /** The `rclone` settings of the node, wherever the workflow keeps them. */
+  readonly rcloneConfig = input<Record<string, unknown>>({});
 
   readonly inspectorRemote = input<string>('');
   readonly inspectorSource = input<string>('');
@@ -58,15 +60,8 @@ export class TaskNodeFormComponent {
   readonly hasDestination = computed(() => !isSourceOnlyOperation(this.node().type));
 
   readonly openDetailed = output<void>();
-  readonly remoteChange = output<string>();
-  readonly sourceChange = output<string>();
-  readonly destChange = output<string>();
-  readonly serveTypeChange = output<string>();
-  readonly serveAddrChange = output<string>();
   readonly configChange = output<{ key: string; value: unknown }>();
-  readonly rcloneFieldChange = output<{ key: string; value: unknown }>();
 
-  readonly isDetailedConfigNode = computed(() => hasDetailedConfig(this.node().type));
   readonly isPrimaryOperationNode = computed(() => {
     const t = this.node().type;
     return t !== 'rc_command' && t !== 'cron' && hasDetailedConfig(t);
@@ -86,56 +81,15 @@ export class TaskNodeFormComponent {
     return this.remotes().find(r => r.name === name);
   });
 
-  readonly archiveFormats = SUPPORTED_ARCHIVE_FORMATS;
-
-  readonly archiveFormat = computed(() => {
-    const cfg = this.nodeConfig();
-    const rclone =
-      ((cfg['config'] as Record<string, unknown> | undefined)?.['rclone'] as
-        Record<string, unknown> | undefined) ??
-      (cfg['rclone'] as Record<string, unknown> | undefined) ??
-      cfg;
-    return (rclone?.['format'] as string) || 'zip';
-  });
-
-  readonly archivePrefix = computed(() => {
-    const cfg = this.nodeConfig();
-    const rclone =
-      ((cfg['config'] as Record<string, unknown> | undefined)?.['rclone'] as
-        Record<string, unknown> | undefined) ??
-      (cfg['rclone'] as Record<string, unknown> | undefined) ??
-      cfg;
-    return (rclone?.['prefix'] as string) || '';
-  });
-
-  onArchiveFormatChange(val: string): void {
-    this.rcloneFieldChange.emit({ key: 'format', value: val });
-  }
-
-  onArchivePrefixChange(val: string): void {
-    this.rcloneFieldChange.emit({ key: 'prefix', value: val });
-  }
-
-  readonly autoFilename = computed(() => {
-    const cfg = this.nodeConfig();
-    const rclone =
-      ((cfg['config'] as Record<string, unknown> | undefined)?.['rclone'] as
-        Record<string, unknown> | undefined) ??
-      (cfg['rclone'] as Record<string, unknown> | undefined) ??
-      cfg;
-    return rclone?.['autoFilename'] !== false;
-  });
-
-  onAutoFilenameChange(val: boolean): void {
-    this.rcloneFieldChange.emit({ key: 'autoFilename', value: val });
-  }
+  readonly archiveFormat = computed(() => (this.rcloneConfig()['format'] as string) || 'zip');
+  readonly archivePrefix = computed(() => (this.rcloneConfig()['prefix'] as string) || '');
+  readonly autoFilename = computed(() => this.rcloneConfig()['autoFilename'] !== false);
 
   onFieldChange(key: string, value: unknown): void {
     this.configChange.emit({ key, value });
   }
 
   async browseScriptCommand(): Promise<void> {
-    if (!this.fileSystemService) return;
     try {
       const path = await this.fileSystemService.selectFile();
       if (path) {
@@ -147,23 +101,10 @@ export class TaskNodeFormComponent {
   }
 
   async browseWorkingDir(): Promise<void> {
-    if (!this.fileSystemService) return;
     try {
       const path = await this.fileSystemService.selectFolder();
       if (path) {
         this.onFieldChange('workingDir', path);
-      }
-    } catch {
-      // user cancelled
-    }
-  }
-
-  async browseMountPoint(): Promise<void> {
-    if (!this.fileSystemService) return;
-    try {
-      const path = await this.fileSystemService.selectFolder();
-      if (path) {
-        this.destChange.emit(path);
       }
     } catch {
       // user cancelled

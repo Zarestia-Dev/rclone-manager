@@ -124,8 +124,24 @@ pub struct WorkflowPort {
     pub description: Option<String>,
 }
 
+#[cfg(test)]
+impl WorkflowPort {
+    /// A port with nothing but what a wire needs, for tests.
+    pub(crate) fn new(id: &str, port_type: WorkflowPortType) -> Self {
+        Self {
+            id: id.into(),
+            name: id.into(),
+            port_type,
+            label: None,
+            label_key: None,
+            label_params: None,
+            description: None,
+        }
+    }
+}
+
 /// Execution lifecycle state for an individual node.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum WorkflowNodeExecutionState {
     Idle,
@@ -419,21 +435,27 @@ pub struct WorkflowValidationResult {
     pub warnings: Vec<String>,
 }
 
-/// Tauri event payload for node execution state transitions.
+/// Node execution state transition of one run.
 ///
-/// Borrows its fields: node outputs can be large and are already held by the run.
+/// `run_id` and `seq` order the events of a run: a view that loaded a snapshot of
+/// the run ignores every event the snapshot already contains.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct WorkflowNodeStateEvent<'a> {
-    pub workflow_id: &'a str,
-    pub node_id: &'a str,
+pub struct WorkflowNodeStateEvent {
+    pub workflow_id: String,
+    pub run_id: String,
+    pub seq: u64,
+    /// RFC 3339, millisecond precision.
+    pub at: String,
+    pub node_id: String,
     pub state: WorkflowNodeExecutionState,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_message: Option<&'a str>,
+    pub error_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    /// Left out of the history a snapshot carries; the snapshot lists the latest output of each node.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output: Option<&'a Value>,
+    pub output: Option<Value>,
 }
 
 /// Progress details for live workflow execution.
@@ -445,15 +467,38 @@ pub struct WorkflowProgress {
     pub current_step_title: String,
 }
 
-/// Tauri event payload for workflow-level state updates.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Where a run is. `Started` and `Running` are live; the rest end the run.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkflowExecutionState {
+    Started,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+impl WorkflowExecutionState {
+    #[must_use]
+    pub fn is_live(self) -> bool {
+        matches!(self, Self::Started | Self::Running)
+    }
+}
+
+/// Workflow-level state transition of one run.
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowExecutionStateEvent {
     pub workflow_id: String,
-    pub state: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: String,
+    pub seq: u64,
+    /// RFC 3339, millisecond precision.
+    pub at: String,
+    pub state: WorkflowExecutionState,
+    pub dry_run: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<WorkflowProgress>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
 

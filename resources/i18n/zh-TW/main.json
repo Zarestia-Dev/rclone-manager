@@ -3194,6 +3194,10 @@
       "validationSelfLoop": "節點不能連接到自身（自環）：{{id}}",
       "validationCycle": "圖包含循環相依（工作流程必須是 DAG）",
       "validationDisconnected": "節點「{{title}}」與工作流程斷開連接",
+      "validationMissingPort": "連線接到了節點 '{{title}}' 上不存在的連接埠：{{port}}",
+      "validationTokenUnknownNode": "'{{title}}' 讀取了不在工作流程中的 '{{node}}' 的輸出",
+      "validationTokenNotUpstream": "'{{title}}' 讀取了未連接到它的 '{{node}}' 的輸出，值可能為空",
+      "validationPrevWithoutInput": "'{{title}}' 讀取了上一個節點的輸出，但沒有任何節點連接到它",
       "cancelled": "執行已取消",
       "jobUntracked": "工作 {{id}} 已不再被追蹤，結果未知",
       "jobStopped": "工作 {{id}} 已停止",
@@ -3957,6 +3961,8 @@
       "savedWorkflows": "已儲存工作流",
       "presetRecipes": "預設配方",
       "unsavedChanges": "未儲存的更改",
+      "discardConfirm": "畫布上的工作流程有未儲存的變更。要捨棄嗎？",
+      "discard": "捨棄",
       "saving": "正在儲存...",
       "categories": {
         "all": "全部"
@@ -3993,7 +3999,7 @@
         "resetZoom": "重設縮放",
         "fitToView": "適應螢幕",
         "snapToGrid": "對齊網格",
-        "toggleLog": "切換執行日誌",
+        "showRun": "顯示上次執行",
         "toggleInspector": "切換檢查器",
         "dryRun": "模擬執行",
         "dryRunTooltip": "模擬工作流執行，不修改數據或執行真實命令"
@@ -4008,6 +4014,8 @@
       },
       "inspector": {
         "general": "常規設置",
+        "checks": "檢查",
+        "warningsCount": "警告（{{count}}）",
         "parameters": "引數與選項",
         "nodeTitle": "節點標題",
         "nodeSubtitle": "副標題 / 描述",
@@ -4156,6 +4164,8 @@
         "nodeOutput": "節點執行輸出",
         "checkReport": "檢查差異報告",
         "rawOutputJson": "輸出資料 (JSON)",
+        "tabResult": "結果",
+        "tabSettings": "設定",
         "conditionPresets": "快速條件預設",
         "condPresetHasDiff": "存在差異",
         "condPresetNoDiff": "無差異",
@@ -4174,7 +4184,17 @@
         "opEndsWith": "結尾為",
         "opArrayNotEmpty": "陣列非空",
         "opArrayIsEmpty": "陣列為空",
-        "preview": "訊息預覽"
+        "preview": "訊息預覽",
+        "presets": {
+          "checkReportTitle": "偵測到差異（Check 稽核）",
+          "checkReportMsg": "來源與目的地之間存在差異：\n\n{{prev.report}}",
+          "transferSummaryTitle": "傳輸已成功完成",
+          "transferSummaryMsg": "傳輸完成：\n已傳輸：{{prev.bytesFormatted}}\n檔案數：{{prev.transfers}}\n速度：{{prev.speedFormatted}}\n錯誤：{{prev.errors}}",
+          "failureAlertTitle": "工作流程步驟失敗",
+          "failureAlertMsg": "節點執行失敗。\n\n錯誤詳情：\n{{prev.error}}",
+          "healthStatusTitle": "工作流程執行報告",
+          "healthStatusMsg": "工作流程步驟已結束，狀態：{{prev.status}}。\n已傳輸：{{prev.bytesFormatted}}"
+        }
       },
       "liveStatus": {
         "mounted": "已掛載",
@@ -4185,7 +4205,8 @@
         "success": "已完成",
         "failed": "失敗",
         "skipped": "已略過",
-        "idle": "空閒"
+        "idle": "空閒",
+        "queued": "等待中"
       },
       "ports": {
         "in": "輸入",
@@ -4256,27 +4277,20 @@
         "check": "檢查",
         "mount": "掛載"
       },
-      "logs": {
-        "stepRunning": "步驟「{{title}}」正在執行...",
-        "stepCompleted": "步驟「{{title}}」已在 {{duration}} 毫秒內完成",
-        "stepFailed": "步驟「{{title}}」失敗：{{error}}",
-        "stepSkipped": "步驟「{{title}}」已略過（未選擇該分支）",
-        "unknownError": "未知錯誤",
-        "cancelRequested": "已要求取消工作流程執行",
-        "startExecution": "正在開始執行工作流程「{{name}}」",
-        "startSimulation": "正在開始模擬（試執行）工作流程「{{name}}」",
-        "executionError": "工作流程執行錯誤：{{error}}",
+      "run": {
+        "title": "上次執行",
+        "copy": "複製摘要",
+        "openStep": "開啟步驟",
+        "empty": "尚未執行。執行工作流程後，步驟將顯示在這裡。",
         "running": "執行中...",
-        "title": "執行日誌",
-        "copy": "複製日誌",
-        "clear": "清空日誌",
-        "jumpToNode": "點擊以在畫布上聚焦節點",
-        "empty": "暫無執行日誌。執行工作流以檢視步驟輸出。",
-        "copied": "日誌已複製到剪貼板",
-        "filterAll": "全部",
-        "filterErrors": "錯誤",
-        "filterWarnings": "警告",
-        "filterSuccess": "成功"
+        "executionError": "工作流程執行錯誤：{{error}}",
+        "state": {
+          "started": "正在啟動",
+          "running": "執行中",
+          "completed": "已完成",
+          "failed": "失敗",
+          "cancelled": "已取消"
+        }
       },
       "tokens": {
         "prevNode": "上一個節點",
@@ -4327,8 +4341,6 @@
       "description": "工作流描述",
       "descriptionPlaceholder": "描述此工作流的用途...",
       "deleteConfirm": "確定要刪除此工作流嗎？",
-      "cleanDuplicates": "清理重複項",
-      "cleanDuplicatesConfirm": "確定要刪除重複的工作流嗎？",
       "stats": {
         "title": "概覽",
         "nodes": "節點總數",
@@ -4339,37 +4351,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "智慧差異檢查與條件同步",
-          "description": "使用 check 驗證差異；僅在檢測到偏差時才執行同步，並通知傳輸量詳情。"
+          "description": "使用 check 驗證差異；僅在檢測到偏差時才執行同步，並通知傳輸量詳情。",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "未偵測到差異",
+              "message": "來源與目的地已經一致，已略過同步。"
+            },
+            "node-notify-sync-done": {
+              "title": "同步完成",
+              "message": "差異已解決：已傳輸 {{prev.bytesFormatted}}（{{prev.transfers}} 個檔案）。"
+            },
+            "node-notify-check-failed": {
+              "title": "差異檢查失敗",
+              "message": "檢查未能完成，因此沒有同步任何內容：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "資料完整性審計與差異報告",
-          "description": "執行定期完整性檢查；如果存在差異，則發送帶有 Markdown 格式差異報告的告警。"
+          "description": "執行定期完整性檢查；如果存在差異，則發送帶有 Markdown 格式差異報告的告警。",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "完整性已驗證",
+              "message": "所有檔案均與目的地一致，未發現差異。"
+            },
+            "node-notify-drift": {
+              "title": "完整性稽核警示"
+            },
+            "node-notify-audit-failed": {
+              "title": "完整性稽核失敗",
+              "message": "稽核未能完成：\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "帶失敗告警的安全同步",
-          "description": "執行同步操作，成功時通知傳輸量，失敗時轉發詳細錯誤資訊。"
+          "description": "執行同步操作，成功時通知傳輸量，失敗時轉發詳細錯誤資訊。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "同步成功",
+              "message": "已傳輸：{{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。所有檔案均為最新。"
+            },
+            "node-notify-fail": {
+              "title": "同步失敗",
+              "message": "備份時發生錯誤：\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "每日備份與通知",
-          "description": "在每天 02:00 執行排程的每日同步，成功或失敗時均會通知。"
+          "description": "在每天 02:00 執行排程的每日同步，成功或失敗時均會通知。",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "備份完成",
+              "message": "每日同步完成：已傳輸 {{prev.bytesFormatted}}（速度：{{prev.speedFormatted}}）。"
+            },
+            "node-action-notify-fail": {
+              "title": "備份失敗",
+              "message": "每日備份時發生錯誤：\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "資料夾監視與自動上傳",
-          "description": "監視本機資料夾的變更，並將新檔案/修改後的檔案複製到雲端儲存。"
+          "description": "監視本機資料夾的變更，並將新檔案/修改後的檔案複製到雲端儲存。",
+          "nodes": {
+            "node-action-notify": {
+              "title": "自動上傳完成",
+              "message": "自動上傳完成：已傳輸 {{prev.bytesFormatted}}（{{prev.transfers}} 個檔案）。"
+            }
+          }
         },
         "parallelMirror": {
           "name": "多雲平行鏡像",
-          "description": "同時同步資料到兩個不同的雲端服務商，並驗證完成情況。"
+          "description": "同時同步資料到兩個不同的雲端服務商，並驗證完成情況。",
+          "nodes": {
+            "node-notify-done": {
+              "title": "鏡像完成",
+              "message": "所有平行雲端同步作業已完成。"
+            }
+          }
         },
         "mountOnDemand": {
           "name": "按需掛載與通知",
-          "description": "掛載遠端儲存路徑，並在磁碟機就緒時向桌面發送通知。"
+          "description": "掛載遠端儲存路徑，並在磁碟機就緒時向桌面發送通知。",
+          "nodes": {
+            "node-notify": {
+              "title": "磁碟機已掛載",
+              "message": "您的遠端儲存已掛載，可以使用。"
+            }
+          }
         },
         "manualTrigger": "手動",
         "manualTriggerDesc": "按需手動觸發",
         "vfsRefresh": {
           "name": "VFS 快取重新整理自動化",
-          "description": "傳送 vfs/refresh 遠端控制 (RC) 命令以重新載入已掛載磁碟機上的目錄快取，並向桌面發送通知。"
+          "description": "傳送 vfs/refresh 遠端控制 (RC) 命令以重新載入已掛載磁碟機上的目錄快取，並向桌面發送通知。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS 快取已更新",
+              "message": "目錄快取已成功重新載入。\n指令：{{prev.command}}\n狀態：{{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS 更新失敗",
+              "message": "RC 指令失敗：\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

@@ -3153,6 +3153,10 @@
       "validationSelfLoop": "Un nodo no puede conectarse consigo mismo (bucle): {{id}}",
       "validationCycle": "El grafo contiene dependencias cíclicas (los flujos de trabajo deben ser DAG)",
       "validationDisconnected": "El nodo '{{title}}' está desconectado del flujo de trabajo",
+      "validationMissingPort": "Un cable está conectado a un puerto que el nodo '{{title}}' no tiene: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' lee la salida de '{{node}}', que no está en el flujo de trabajo",
+      "validationTokenNotUpstream": "'{{title}}' lee la salida de '{{node}}', que no conduce hasta él, por lo que el valor puede estar vacío",
+      "validationPrevWithoutInput": "'{{title}}' lee la salida del nodo anterior, pero no hay nada conectado a él",
       "cancelled": "Ejecución cancelada",
       "jobUntracked": "El trabajo {{id}} ya no se sigue; su resultado es desconocido",
       "jobStopped": "El trabajo {{id}} se detuvo",
@@ -3916,6 +3920,8 @@
       "savedWorkflows": "Flujos guardados",
       "presetRecipes": "Recetas predefinidas",
       "unsavedChanges": "Cambios no guardados",
+      "discardConfirm": "El flujo de trabajo del lienzo tiene cambios sin guardar. ¿Descartarlos?",
+      "discard": "Descartar",
       "saving": "Guardando...",
       "categories": {
         "all": "Todos"
@@ -3952,7 +3958,7 @@
         "resetZoom": "Restablecer zoom",
         "fitToView": "Ajustar a pantalla",
         "snapToGrid": "Ajustar a la cuadrícula",
-        "toggleLog": "Registro de ejecución",
+        "showRun": "Mostrar la última ejecución",
         "toggleInspector": "Alternar inspector",
         "dryRun": "Modo de prueba",
         "dryRunTooltip": "Simular la ejecución del flujo de trabajo sin modificar datos ni ejecutar comandos reales"
@@ -3967,6 +3973,8 @@
       },
       "inspector": {
         "general": "Configuración general",
+        "checks": "Comprobaciones",
+        "warningsCount": "Advertencias ({{count}})",
         "parameters": "Parámetros y opciones",
         "nodeTitle": "Título del nodo",
         "nodeSubtitle": "Subtítulo / Descripción",
@@ -4115,6 +4123,8 @@
         "nodeOutput": "Salida de ejecución del nodo",
         "checkReport": "Informe de diferencias de comprobación",
         "rawOutputJson": "Datos de salida (JSON)",
+        "tabResult": "Resultado",
+        "tabSettings": "Ajustes",
         "conditionPresets": "Ajustes rápidos de condición",
         "condPresetHasDiff": "Hay diferencias",
         "condPresetNoDiff": "Sin diferencias",
@@ -4133,14 +4143,25 @@
         "opEndsWith": "Termina Con",
         "opArrayNotEmpty": "La Matriz Contiene Elementos",
         "opArrayIsEmpty": "La Matriz Está Vacía",
-        "preview": "Vista Previa del Mensaje"
+        "preview": "Vista Previa del Mensaje",
+        "presets": {
+          "checkReportTitle": "Diferencias detectadas (auditoría Check)",
+          "checkReportMsg": "Se encontraron diferencias entre origen y destino:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Transferencia completada correctamente",
+          "transferSummaryMsg": "Transferencia finalizada:\nTransferido: {{prev.bytesFormatted}}\nArchivos: {{prev.transfers}}\nVelocidad: {{prev.speedFormatted}}\nErrores: {{prev.errors}}",
+          "failureAlertTitle": "Falló un paso del flujo de trabajo",
+          "failureAlertMsg": "La ejecución falló en el nodo.\n\nDetalles del error:\n{{prev.error}}",
+          "healthStatusTitle": "Informe de ejecución del flujo de trabajo",
+          "healthStatusMsg": "El paso del flujo de trabajo terminó con el estado: {{prev.status}}.\nTransferido: {{prev.bytesFormatted}}"
+        }
       },
       "status": {
         "running": "En ejecución",
         "success": "Completado",
         "failed": "Fallido",
         "skipped": "Omitido",
-        "idle": "Inactivo"
+        "idle": "Inactivo",
+        "queued": "En espera"
       },
       "ports": {
         "in": "Entrada",
@@ -4211,27 +4232,20 @@
         "check": "Verificar",
         "mount": "Montar"
       },
-      "logs": {
-        "stepRunning": "El paso \"{{title}}\" se está ejecutando...",
-        "stepCompleted": "El paso \"{{title}}\" se completó en {{duration}} ms",
-        "stepFailed": "El paso \"{{title}}\" falló: {{error}}",
-        "stepSkipped": "El paso \"{{title}}\" se omitió (rama no seguida)",
-        "unknownError": "Error desconocido",
-        "cancelRequested": "Se solicitó cancelar la ejecución del flujo de trabajo",
-        "startExecution": "Iniciando la ejecución del flujo de trabajo \"{{name}}\"",
-        "startSimulation": "Iniciando la simulación (ejecución de prueba) del flujo de trabajo \"{{name}}\"",
-        "executionError": "Error en la ejecución del flujo de trabajo: {{error}}",
+      "run": {
+        "title": "Última ejecución",
+        "copy": "Copiar resumen",
+        "openStep": "Abrir paso",
+        "empty": "Aún no hay ejecuciones. Ejecuta el flujo para ver aquí sus pasos.",
         "running": "Ejecutando...",
-        "title": "Registro de ejecución",
-        "copy": "Copiar registros",
-        "clear": "Borrar registros",
-        "jumpToNode": "Haga clic para enfocar el nodo en el lienzo",
-        "empty": "Sin registros de ejecución todavía. Ejecute un flujo de trabajo.",
-        "copied": "Registros copiados al portapapeles",
-        "filterAll": "Todos",
-        "filterErrors": "Errores",
-        "filterWarnings": "Advertencias",
-        "filterSuccess": "Éxito"
+        "executionError": "Error en la ejecución del flujo de trabajo: {{error}}",
+        "state": {
+          "started": "Iniciando",
+          "running": "En ejecución",
+          "completed": "Completado",
+          "failed": "Fallido",
+          "cancelled": "Cancelado"
+        }
       },
       "tokens": {
         "prevNode": "Nodo Anterior",
@@ -4282,8 +4296,6 @@
       "description": "Descripción del flujo",
       "descriptionPlaceholder": "Describa el propósito de este flujo de trabajo...",
       "deleteConfirm": "¿Está seguro de que desea eliminar este flujo de trabajo?",
-      "cleanDuplicates": "Limpiar duplicados",
-      "cleanDuplicatesConfirm": "¿Está seguro de que desea eliminar los flujos duplicados?",
       "stats": {
         "title": "Resumen",
         "nodes": "Nodos totales",
@@ -4298,37 +4310,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Comprobación Inteligente de Desviación y Sincronización Condicional",
-          "description": "Verifica diferencias con check; sincroniza solo si se detectan diferencias y notifica con detalles de volumen."
+          "description": "Verifica diferencias con check; sincroniza solo si se detectan diferencias y notifica con detalles de volumen.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "No se detectaron diferencias",
+              "message": "El origen y el destino ya son idénticos. Se omitió la sincronización."
+            },
+            "node-notify-sync-done": {
+              "title": "Sincronización completada",
+              "message": "Diferencias resueltas: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} archivos)."
+            },
+            "node-notify-check-failed": {
+              "title": "Falló la comprobación de diferencias",
+              "message": "La comprobación no pudo terminar, así que no se sincronizó nada:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Auditoría de Integridad de Datos e Informe de Desviación",
-          "description": "Ejecuta una comprobación de integridad programada; envía una alerta con informe Markdown si existen diferencias."
+          "description": "Ejecuta una comprobación de integridad programada; envía una alerta con informe Markdown si existen diferencias.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Integridad verificada",
+              "message": "Todos los archivos coinciden con el destino. No hay discrepancias."
+            },
+            "node-notify-drift": {
+              "title": "Alerta de auditoría de integridad"
+            },
+            "node-notify-audit-failed": {
+              "title": "Falló la auditoría de integridad",
+              "message": "La auditoría no pudo terminar:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Sincronización Segura con Alerta de Fallo",
-          "description": "Ejecuta una sincronización, notificando el volumen transferido en éxito o los detalles exactos del error en fallo."
+          "description": "Ejecuta una sincronización, notificando el volumen transferido en éxito o los detalles exactos del error en fallo.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Sincronización correcta",
+              "message": "Transferido: {{prev.bytesFormatted}} (velocidad: {{prev.speedFormatted}}). Todos los archivos están al día."
+            },
+            "node-notify-fail": {
+              "title": "Falló la sincronización",
+              "message": "La copia de seguridad encontró un error:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Copia de Seguridad Diaria y Notificación",
-          "description": "Ejecuta una sincronización diaria programada a las 02:00, notificando el éxito o alertando en caso de fallo."
+          "description": "Ejecuta una sincronización diaria programada a las 02:00, notificando el éxito o alertando en caso de fallo.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Copia de seguridad completada",
+              "message": "Sincronización diaria completada: {{prev.bytesFormatted}} transferidos (velocidad: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Falló la copia de seguridad",
+              "message": "La copia de seguridad diaria encontró un error:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Vigilante de Carpeta y Carga Automática",
-          "description": "Supervisa una carpeta local en busca de cambios y copia archivos nuevos/modificados a la nube."
+          "description": "Supervisa una carpeta local en busca de cambios y copia archivos nuevos/modificados a la nube.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Subida automática terminada",
+              "message": "Subida automática completada: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} archivos)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Espejo Paralelo Multi-Nube",
-          "description": "Sincroniza datos simultáneamente en dos proveedores en la nube y luego verifica la finalización."
+          "description": "Sincroniza datos simultáneamente en dos proveedores en la nube y luego verifica la finalización.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Réplica completada",
+              "message": "Todas las sincronizaciones paralelas en la nube han terminado."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "Montaje a Demanda y Notificación",
-          "description": "Monta una ruta de almacenamiento remoto y notifica al escritorio cuando la unidad esté lista."
+          "description": "Monta una ruta de almacenamiento remoto y notifica al escritorio cuando la unidad esté lista.",
+          "nodes": {
+            "node-notify": {
+              "title": "Unidad montada",
+              "message": "Su almacenamiento remoto está montado y listo para usar."
+            }
+          }
         },
         "manualTrigger": "Manual",
         "manualTriggerDesc": "Activado manualmente a demanda",
         "vfsRefresh": {
           "name": "Automatización de Actualización de Caché VFS",
-          "description": "Envía un comando RC vfs/refresh para recargar la caché de directorios en unidades montadas y notifica al escritorio."
+          "description": "Envía un comando RC vfs/refresh para recargar la caché de directorios en unidades montadas y notifica al escritorio.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Caché VFS actualizada",
+              "message": "La recarga de la caché de directorios terminó correctamente.\nComando: {{prev.command}}\nEstado: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "Falló la actualización de VFS",
+              "message": "El comando RC falló:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

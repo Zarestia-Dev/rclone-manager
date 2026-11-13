@@ -4,12 +4,12 @@ default-members = ["server"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.6-beta.1"
+version = "0.3.6"
 edition = "2024"
 
 [workspace.dependencies]
 # Versions shared by core, server and desktop; members add their own features.
-rcman = { path = "../../rcman", default-features = false }
+rcman = { version = "0.2", default-features = false }
 async-trait = "0.1"
 base64 = "0.23"
 clap = { version = "4", features = ["derive", "env"] }

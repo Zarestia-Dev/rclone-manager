@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.3.6] - 2026-10-13
 
 ### Added
 
@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Directory Listings**: Writes a browsable listing into every folder of a remote with rclone's `index` command, so a bucket or a folder can be served as a static website. Choose **Generate directory listings…** from the file manager's path menu or a remote's menu there, or from a remote's menu on the dashboard and in Quick Run. The dialog picks the formats (an HTML page, `index.json` as `lsjson` writes it, or a Caddy-style `caddy.json`), how deep to go, which folders to list or skip, the time shown for a folder, whether to show modification times or the upload time (which saves a request per object on S3), and whether links point to `dir/index.html`. Listings that did not change are not written again, and a file with the name of a listing is overwritten, which the dialog says. Directory listings are also an operation of a remote's profiles, like Copy URL, with a schedule, auto start and, for a local folder on a local backend, a folder watcher that writes the listings again when something in it changes, and a card on the dashboard. It is also in Quick Run and a node in workflows, so a workflow can write the listings after a sync.
 
 ### Changed
-
+- Some UI/UX improvements.
 - **Workflow RC Editor**: The RC call editor now has the same call list, suggestions, and parameter hints as the RC Console, and test runs only read until you allow writes.
 - **Count Badges**: Counters in sidebars and panels have a minimum width and aligned digits, so one- and two-digit counts look the same.
 - **Background Service Runs Without the Window (Android)**: The backend now starts and runs the keep-alive service on its own, so jobs, mounts, and schedules keep working while the app window is closed.

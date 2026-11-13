@@ -167,20 +167,20 @@
     />
   </mat-form-field>
 
-  <div class="presets-row">
-    <button type="button" appPill (click)="applyDelayPreset(5)">
+  <div class="pill-group">
+    <button type="button" appPill (click)="onFieldChange('delaySeconds', 5)">
       {{ 'flow.workflow.inspector.delayPreset5s' | translate }}
     </button>
-    <button type="button" appPill (click)="applyDelayPreset(15)">
+    <button type="button" appPill (click)="onFieldChange('delaySeconds', 15)">
       {{ 'flow.workflow.inspector.delayPreset15s' | translate }}
     </button>
-    <button type="button" appPill (click)="applyDelayPreset(30)">
+    <button type="button" appPill (click)="onFieldChange('delaySeconds', 30)">
       {{ 'flow.workflow.inspector.delayPreset30s' | translate }}
     </button>
-    <button type="button" appPill (click)="applyDelayPreset(60)">
+    <button type="button" appPill (click)="onFieldChange('delaySeconds', 60)">
       {{ 'flow.workflow.inspector.delayPreset1m' | translate }}
     </button>
-    <button type="button" appPill (click)="applyDelayPreset(300)">
+    <button type="button" appPill (click)="onFieldChange('delaySeconds', 300)">
       {{ 'flow.workflow.inspector.delayPreset5m' | translate }}
     </button>
   </div>
@@ -202,7 +202,7 @@
     <span class="section-sub-title">{{
       'flow.workflow.inspector.conditionPresets' | translate
     }}</span>
-    <div class="presets-row">
+    <div class="pill-group">
       <button type="button" appPill (click)="applyConditionPreset('has_diff')">
         {{ 'flow.workflow.inspector.condPresetHasDiff' | translate }}
       </button>

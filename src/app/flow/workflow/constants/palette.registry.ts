@@ -221,15 +221,13 @@ export const PALETTE_ITEMS: NodePaletteItem[] = [
   createPaletteItem('join', 'logic', JOIN_BRANCH_INPUTS, SINGLE_DONE_OUTPUT, {
     joinMode: 'all_success',
   }),
+  // The backend words an empty message and title itself, in its language.
   createPaletteItem('stop', 'logic', STANDARD_TASK_INPUTS, [], {
     status: 'success',
-    message: 'Workflow stopped',
   }),
 
   // ── Actions & Output ─────────────────────────────────────────────────────
   createPaletteItem('notification', 'action', STANDARD_TASK_INPUTS, SINGLE_DONE_OUTPUT, {
-    title: 'Notification',
-    message: 'Workflow step completed',
     severity: 'info',
   }),
   createPaletteItem('unmount', 'action', STANDARD_TASK_INPUTS, SINGLE_DONE_OUTPUT, {

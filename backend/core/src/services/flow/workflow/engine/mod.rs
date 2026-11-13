@@ -8,6 +8,7 @@
 //! - [`graph`] holds the per-run node and edge state and the edge rules.
 //! - [`nodes`] executes a single node; each kind has its own handler.
 //! - [`active`] tracks running workflows and stops them.
+//! - [`record`] keeps what each run has done, so a view that opens late can catch up.
 //! - [`triggers`] starts workflows when a job finishes.
 //! - [`cancel`] is the cancellation token every wait respects.
 
@@ -15,6 +16,7 @@ pub(crate) mod active;
 pub(crate) mod cancel;
 pub(crate) mod graph;
 pub(crate) mod nodes;
+pub(crate) mod record;
 pub(crate) mod run;
 pub(crate) mod triggers;
 
@@ -30,7 +32,10 @@ use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::types::{NodeKind, WorkflowNode};
 use crate::utils::types::starter::WorkflowRun;
 
-pub use active::{get_active_workflow_ids, has_active_workflows, stop_workflow};
+pub use active::{
+    forget_workflow_runs, get_active_workflow_ids, has_active_workflows, run_snapshots,
+    stop_workflow,
+};
 pub use run::execute_workflow;
 pub(crate) use run::execute_workflow_snapshot;
 pub use triggers::{job_event_matches_job, trigger_workflows_for_job_finish};

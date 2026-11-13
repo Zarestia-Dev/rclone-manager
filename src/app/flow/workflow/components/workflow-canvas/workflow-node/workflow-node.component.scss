@@ -74,11 +74,10 @@ $badge-states: (
   // ── Header ───────────────────────────────────────────────────────────────
 
   .node-header {
-    height: 34px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-xs) 0 10px;
+    padding: var(--space-xxs) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-elevated-1);
     border-top-left-radius: inherit;
@@ -115,7 +114,7 @@ $badge-states: (
     .node-actions {
       display: flex;
       align-items: center;
-      gap: 2px;
+      gap: var(--space-xxs);
 
       .job-btn {
         color: var(--accent-color);
@@ -127,7 +126,6 @@ $badge-states: (
 
         &.is-running {
           color: var(--primary-color);
-          animation: pulseBlue 2s infinite ease-in-out;
         }
       }
     }
@@ -249,11 +247,13 @@ $badge-states: (
 
         &.port-slot-in {
           justify-content: flex-start;
+          padding-inline-start: var(--space-xxs);
         }
 
         &.port-slot-out {
           justify-content: flex-end;
           margin-left: auto;
+          padding-inline-end: var(--space-xxs);
         }
       }
 

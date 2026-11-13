@@ -18,7 +18,7 @@ import { WorkflowToolbarComponent } from '../workflow-toolbar/workflow-toolbar.c
 import { WorkflowPaletteComponent } from '../workflow-palette/workflow-palette.component';
 import { WorkflowCanvasComponent } from '../workflow-canvas/workflow-canvas.component';
 import { WorkflowInspectorComponent } from '../workflow-inspector/workflow-inspector.component';
-import { WorkflowExecutionLogComponent } from '../workflow-execution-log/workflow-execution-log.component';
+import { WorkflowRunSummaryComponent } from '../workflow-run-summary/workflow-run-summary.component';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowEngineService } from '../../../../services/flow/workflow-engine.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
@@ -44,7 +44,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
     WorkflowPaletteComponent,
     WorkflowCanvasComponent,
     WorkflowInspectorComponent,
-    WorkflowExecutionLogComponent,
+    WorkflowRunSummaryComponent,
     PillDirective,
   ],
   templateUrl: './workflow-workspace.component.html',
@@ -63,12 +63,11 @@ export class WorkflowWorkspaceComponent {
   readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
 
   readonly isPaletteOpen = signal<boolean>(true);
-  readonly isLogOpen = signal<boolean>(false);
+  readonly isRunOpen = signal<boolean>(false);
   readonly isInspectorOpen = signal<boolean>(true);
   readonly isSaving = this.storageService.isSaving;
 
   readonly hasWorkflow = computed(() => !!this.stateService.currentWorkflow());
-  readonly hasSelectedNode = computed(() => !!this.stateService.selectedNode());
 
   readonly isAnyDrawerOpenOnMobile = computed(() => {
     return this.isSidebarOver() && (this.isPaletteOpen() || this.isInspectorOpen());
@@ -87,11 +86,9 @@ export class WorkflowWorkspaceComponent {
       }
     });
 
-    // Auto-open execution console when workflow run starts
+    // A run that starts shows its summary.
     effect(() => {
-      if (this.engineService.isExecuting()) {
-        this.isLogOpen.set(true);
-      }
+      if (this.engineService.isExecuting()) this.isRunOpen.set(true);
     });
 
     // Synchronize mobile drawer state to stateService so FlowContainer can auto-hide bottom tabs
@@ -134,8 +131,8 @@ export class WorkflowWorkspaceComponent {
     }
   }
 
-  toggleLog(): void {
-    this.isLogOpen.update(v => !v);
+  toggleRun(): void {
+    this.isRunOpen.update(v => !v);
   }
 
   onNodeAdded(): void {
@@ -154,13 +151,6 @@ export class WorkflowWorkspaceComponent {
 
   loadTemplate(tpl: WorkflowTemplate): void {
     void this.storageService.openTemplate(tpl);
-  }
-
-  loadWorkflowById(id: string): void {
-    const wf = this.storageService.workflows().find(w => w.id === id);
-    if (wf) {
-      this.stateService.loadWorkflow(wf);
-    }
   }
 
   getTemplateTone(category: string): PillTone {

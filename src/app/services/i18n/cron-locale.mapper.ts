@@ -64,17 +64,35 @@ export function getCronstrueLocale(appLocale: string): string {
   return lang;
 }
 
+/** The locale to describe with now: English until the wanted one has loaded, then descriptions recompute. */
+function usableCronLocale(lang: string | null | undefined): string {
+  const locale = getCronstrueLocale(lang ?? 'en-US');
+  loadedVersion();
+  if (!loadedLocales.has(locale)) {
+    // The version moves after the import, never while a computed is still evaluating.
+    void ensureCronLocaleLoaded(locale).then(() => loadedVersion.update(version => version + 1));
+  }
+  return loadedLocales.has(locale) ? locale : 'en';
+}
+
 export function formatCronHumanReadable(cron: string, lang: string | null | undefined): string {
   if (!cron) return '';
   try {
-    const locale = getCronstrueLocale(lang ?? 'en-US');
-    loadedVersion();
-    if (!loadedLocales.has(locale)) {
-      // The version moves after the import, never while a computed is still evaluating.
-      void ensureCronLocaleLoaded(locale).then(() => loadedVersion.update(version => version + 1));
-    }
-    return cronstrue(cron, { locale: loadedLocales.has(locale) ? locale : 'en' });
+    return cronstrue(cron, { locale: usableCronLocale(lang) });
   } catch {
     return cron;
+  }
+}
+
+/** A cron expression in words, or `isInvalid` when it does not parse. An empty one is neither. */
+export function describeCron(
+  cron: string,
+  lang: string | null | undefined
+): { text: string; isInvalid: boolean } {
+  if (!cron) return { text: '', isInvalid: false };
+  try {
+    return { text: cronstrue(cron, { locale: usableCronLocale(lang) }), isInvalid: false };
+  } catch {
+    return { text: '', isInvalid: true };
   }
 }

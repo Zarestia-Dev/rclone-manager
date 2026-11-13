@@ -60,7 +60,7 @@
         </mat-form-field>
 
         @if (endpointSuggestions().length > 0) {
-          <div class="pill-row">
+          <div class="pill-group">
             @for (suggestion of endpointSuggestions(); track suggestion.Path) {
               <button
                 type="button"
@@ -143,7 +143,7 @@
         </div>
 
         @if (endpointParams().length > 0) {
-          <div class="pill-row">
+          <div class="pill-group">
             @for (param of endpointParams(); track param.name) {
               <button
                 type="button"
@@ -330,7 +330,7 @@
             <span class="section-title"
               >{{ 'flow.workflow.inspector.availableOutputKeys' | translate }}:</span
             >
-            <div class="pill-row">
+            <div class="pill-group">
               @for (field of sampleOutputKeys(); track field.key) {
                 <span
                   appPill

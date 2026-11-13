@@ -3,9 +3,9 @@
     <!-- Top Toolbar -->
     <app-workflow-toolbar
       [isPaletteOpen]="isPaletteOpen()"
-      [isLogOpen]="isLogOpen()"
+      [isRunOpen]="isRunOpen()"
       (togglePalette)="togglePalette()"
-      (toggleLog)="toggleLog()"
+      (toggleRun)="toggleRun()"
     ></app-workflow-toolbar>
 
     <!-- Middle Content (Palette Sidenav + Canvas + Inspector Sidenav) -->
@@ -82,6 +82,13 @@
             (inspectNode)="openInspector()"
           ></app-workflow-canvas>
 
+          <!-- Floating summary of the latest run -->
+          @if (isRunOpen()) {
+            <app-workflow-run-summary
+              (closePanel)="isRunOpen.set(false)"
+            ></app-workflow-run-summary>
+          }
+
           <!-- Floating Unsaved Changes / Save Bar at Bottom Center -->
           @if (stateService.hasUnsavedChanges()) {
             <div class="workflow-unsaved-banner" role="status" aria-live="polite">
@@ -112,13 +119,6 @@
         </div>
       </mat-sidenav-content>
     </mat-sidenav-container>
-
-    <!-- Bottom: Execution Log Console -->
-    @if (isLogOpen()) {
-      <app-workflow-execution-log
-        (closeConsole)="isLogOpen.set(false)"
-      ></app-workflow-execution-log>
-    }
   } @else {
     <!-- Empty State: No workflow loaded -->
     <div class="workflow-empty-state">
@@ -159,12 +159,10 @@
                   appPill
                   [tone]="getTemplateTone(tpl.category)"
                   (click)="loadTemplate(tpl)"
-                  [attr.title]="
-                    tpl.descriptionKey ? (tpl.descriptionKey | translate) : tpl.description
-                  "
+                  [attr.title]="tpl.descriptionKey | translate"
                 >
                   <mat-icon [svgIcon]="tpl.icon"></mat-icon>
-                  <span>{{ tpl.nameKey ? (tpl.nameKey | translate) : tpl.name }}</span>
+                  <span>{{ tpl.nameKey | translate }}</span>
                 </button>
               }
             </div>

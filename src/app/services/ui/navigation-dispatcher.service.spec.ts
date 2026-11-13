@@ -5,7 +5,6 @@ import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
-import { WorkflowStateService } from '../flow/workflow-state.service';
 import { Remote, ServeListItem, Automation, QuickRun } from '@app/types';
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
@@ -26,9 +25,7 @@ describe('NavigationDispatcherService', () => {
   };
   let mockWorkflowStorageService: {
     workflows: ReturnType<typeof vi.fn>;
-  };
-  let mockWorkflowStateService: {
-    loadWorkflow: ReturnType<typeof vi.fn>;
+    openWorkflow: ReturnType<typeof vi.fn>;
   };
 
   const mockRemote = {
@@ -73,9 +70,7 @@ describe('NavigationDispatcherService', () => {
     };
     mockWorkflowStorageService = {
       workflows: vi.fn().mockReturnValue([mockWorkflow]),
-    };
-    mockWorkflowStateService = {
-      loadWorkflow: vi.fn(),
+      openWorkflow: vi.fn().mockResolvedValue(true),
     };
 
     TestBed.configureTestingModule({
@@ -86,7 +81,6 @@ describe('NavigationDispatcherService', () => {
         { provide: PathService, useValue: mockPathService },
         { provide: QuickRunService, useValue: mockQuickRunService },
         { provide: WorkflowStorageService, useValue: mockWorkflowStorageService },
-        { provide: WorkflowStateService, useValue: mockWorkflowStateService },
       ],
     });
 
@@ -105,14 +99,14 @@ describe('NavigationDispatcherService', () => {
       service.navigateToWorkflow(id, name);
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
-      expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
+      expect(mockWorkflowStorageService.openWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
     it('opens the builder without replacing the canvas when no workflow matches', () => {
       service.navigateToWorkflow('missing');
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
-      expect(mockWorkflowStateService.loadWorkflow).not.toHaveBeenCalled();
+      expect(mockWorkflowStorageService.openWorkflow).not.toHaveBeenCalled();
     });
   });
 
@@ -199,7 +193,7 @@ describe('NavigationDispatcherService', () => {
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
-      expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
+      expect(mockWorkflowStorageService.openWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
     it('should open the Quick Run by id, not the remote it works on', (): void => {

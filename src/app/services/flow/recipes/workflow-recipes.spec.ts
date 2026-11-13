@@ -94,4 +94,57 @@ describe('BUILTIN_WORKFLOW_TEMPLATES', () => {
       }
     });
   });
+
+  describe('wiring', () => {
+    const templates = BUILTIN_WORKFLOW_TEMPLATES.map(t => [t.id, t.definition] as const);
+
+    it.each(templates)('%s wires only ports that its nodes have', (_id, definition) => {
+      const node = (id: string): (typeof definition.nodes)[number] | undefined =>
+        definition.nodes.find(n => n.id === id);
+      const missing = definition.edges.flatMap(edge => [
+        ...(node(edge.sourceNodeId)?.outputs.some(p => p.id === edge.sourcePortId)
+          ? []
+          : [`${edge.id}: ${edge.sourceNodeId}.${edge.sourcePortId}`]),
+        ...(node(edge.targetNodeId)?.inputs.some(p => p.id === edge.targetPortId)
+          ? []
+          : [`${edge.id}: ${edge.targetNodeId}.${edge.targetPortId}`]),
+      ]);
+      expect(missing).toEqual([]);
+    });
+
+    it.each(templates)(
+      '%s reads only outputs of nodes that lead into the reader',
+      (_id, definition) => {
+        const sources = (id: string): string[] =>
+          definition.edges.filter(e => e.targetNodeId === id).map(e => e.sourceNodeId);
+        const ancestors = (id: string): Set<string> => {
+          const seen = new Set<string>();
+          const pending = [id];
+          while (pending.length > 0) {
+            for (const source of sources(pending.pop() as string)) {
+              if (!seen.has(source)) {
+                seen.add(source);
+                pending.push(source);
+              }
+            }
+          }
+          return seen;
+        };
+        const problems: string[] = [];
+        for (const node of definition.nodes) {
+          const text = JSON.stringify(node.config);
+          for (const [, token] of text.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
+            if (/^prev(ious)?(\.|$)/.test(token) && sources(node.id).length === 0) {
+              problems.push(`${node.id} reads prev without an input`);
+            }
+            const named = /^(?:nodes|steps)\.([^.]+)\./.exec(token)?.[1];
+            if (named && !ancestors(node.id).has(named)) {
+              problems.push(`${node.id} reads ${named}, which does not lead into it`);
+            }
+          }
+        }
+        expect(problems).toEqual([]);
+      }
+    );
+  });
 });

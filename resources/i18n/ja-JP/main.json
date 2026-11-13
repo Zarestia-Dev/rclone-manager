@@ -3153,6 +3153,10 @@
       "validationSelfLoop": "ノードは自身に接続できません (自己ループ): {{id}}",
       "validationCycle": "グラフに循環依存があります (ワークフローは DAG である必要があります)",
       "validationDisconnected": "ノード '{{title}}' はワークフローから切り離されています",
+      "validationMissingPort": "ノード '{{title}}' に存在しないポートにワイヤーが接続されています: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' はワークフローに存在しない '{{node}}' の出力を読み取っています",
+      "validationTokenNotUpstream": "'{{title}}' は自身につながっていない '{{node}}' の出力を読み取っているため、値が空になる可能性があります",
+      "validationPrevWithoutInput": "'{{title}}' は前のノードの出力を読み取っていますが、何も接続されていません",
       "cancelled": "実行がキャンセルされました",
       "jobUntracked": "ジョブ {{id}} は追跡されなくなったため、結果は不明です",
       "jobStopped": "ジョブ {{id}} は停止されました",
@@ -3916,6 +3920,8 @@
       "savedWorkflows": "保存されたワークフロー",
       "presetRecipes": "プリセットレシピ",
       "unsavedChanges": "未保存の変更",
+      "discardConfirm": "キャンバス上のワークフローに未保存の変更があります。破棄しますか？",
+      "discard": "破棄",
       "saving": "保存中...",
       "categories": {
         "all": "すべて"
@@ -3952,7 +3958,7 @@
         "resetZoom": "ズームをリセット",
         "fitToView": "画面に合わせる",
         "snapToGrid": "グリッドにスナップ",
-        "toggleLog": "実行ログの切り替え",
+        "showRun": "前回の実行を表示",
         "toggleInspector": "インスペクターの切り替え",
         "dryRun": "ドライラン",
         "dryRunTooltip": "データを変更したり実際のコマンドを実行したりせずにワークフローの実行をシミュレートします"
@@ -3967,6 +3973,8 @@
       },
       "inspector": {
         "general": "一般設定",
+        "checks": "チェック",
+        "warningsCount": "警告 ({{count}})",
         "parameters": "パラメーター & オプション",
         "nodeTitle": "ノード名",
         "nodeSubtitle": "サブタイトル / 説明",
@@ -4115,6 +4123,8 @@
         "nodeOutput": "ノード実行出力",
         "checkReport": "差分レポート",
         "rawOutputJson": "出力データ (JSON)",
+        "tabResult": "結果",
+        "tabSettings": "設定",
         "conditionPresets": "クイック条件プリセット",
         "condPresetHasDiff": "差分あり",
         "condPresetNoDiff": "差分なし",
@@ -4133,14 +4143,25 @@
         "opEndsWith": "で終わる",
         "opArrayNotEmpty": "配列に要素あり",
         "opArrayIsEmpty": "配列が空",
-        "preview": "メッセージプレビュー"
+        "preview": "メッセージプレビュー",
+        "presets": {
+          "checkReportTitle": "差分を検出しました（Check 監査）",
+          "checkReportMsg": "転送元と転送先に差分が見つかりました:\n\n{{prev.report}}",
+          "transferSummaryTitle": "転送が正常に完了しました",
+          "transferSummaryMsg": "転送が完了しました:\n転送量: {{prev.bytesFormatted}}\nファイル数: {{prev.transfers}}\n速度: {{prev.speedFormatted}}\nエラー: {{prev.errors}}",
+          "failureAlertTitle": "ワークフローのステップが失敗しました",
+          "failureAlertMsg": "ノードの実行に失敗しました。\n\nエラーの詳細:\n{{prev.error}}",
+          "healthStatusTitle": "ワークフロー実行レポート",
+          "healthStatusMsg": "ワークフローのステップがステータス {{prev.status}} で終了しました。\n転送量: {{prev.bytesFormatted}}"
+        }
       },
       "status": {
         "running": "実行中",
         "success": "完了",
         "failed": "失敗",
         "skipped": "スキップ",
-        "idle": "待機中"
+        "idle": "待機中",
+        "queued": "待機中"
       },
       "ports": {
         "in": "入力",
@@ -4211,27 +4232,20 @@
         "check": "チェック",
         "mount": "マウント"
       },
-      "logs": {
-        "stepRunning": "ステップ「{{title}}」を実行中...",
-        "stepCompleted": "ステップ「{{title}}」が {{duration}} ms で完了しました",
-        "stepFailed": "ステップ「{{title}}」が失敗しました: {{error}}",
-        "stepSkipped": "ステップ「{{title}}」をスキップしました (分岐が選択されませんでした)",
-        "unknownError": "不明なエラー",
-        "cancelRequested": "ワークフローの実行のキャンセルが要求されました",
-        "startExecution": "ワークフロー「{{name}}」の実行を開始しています",
-        "startSimulation": "ワークフロー「{{name}}」のシミュレーション (ドライラン) を開始しています",
-        "executionError": "ワークフローの実行エラー: {{error}}",
+      "run": {
+        "title": "前回の実行",
+        "copy": "概要をコピー",
+        "openStep": "ステップを開く",
+        "empty": "まだ実行されていません。ワークフローを実行すると、ここにステップが表示されます。",
         "running": "実行中...",
-        "title": "実行ログ",
-        "copy": "ログをコピー",
-        "clear": "ログをクリア",
-        "jumpToNode": "クリックしてキャンバス上のノードにフォーカス",
-        "empty": "実行ログはまだありません。ワークフローを実行してステップ出力を確認してください。",
-        "copied": "ログをクリップボードにコピーしました",
-        "filterAll": "すべて",
-        "filterErrors": "エラー",
-        "filterWarnings": "警告",
-        "filterSuccess": "成功"
+        "executionError": "ワークフローの実行エラー: {{error}}",
+        "state": {
+          "started": "開始中",
+          "running": "実行中",
+          "completed": "完了",
+          "failed": "失敗",
+          "cancelled": "キャンセル済み"
+        }
       },
       "tokens": {
         "prevNode": "前のノード",
@@ -4282,8 +4296,6 @@
       "description": "ワークフローの説明",
       "descriptionPlaceholder": "このワークフローの目的を入力...",
       "deleteConfirm": "このワークフローを削除してもよろしいですか？",
-      "cleanDuplicates": "重複を削除",
-      "cleanDuplicatesConfirm": "重複するワークフローを削除してもよろしいですか？",
       "stats": {
         "title": "概要",
         "nodes": "総ノード数",
@@ -4298,37 +4310,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "スマート差分チェック＆条件付き同期",
-          "description": "checkで差分を検証し、変更が検出された場合のみ同期して転送量の詳細を通知します。"
+          "description": "checkで差分を検証し、変更が検出された場合のみ同期して転送量の詳細を通知します。",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "差分は検出されませんでした",
+              "message": "転送元と転送先はすでに同一です。同期をスキップしました。"
+            },
+            "node-notify-sync-done": {
+              "title": "同期が完了しました",
+              "message": "差分を解消しました: {{prev.bytesFormatted}} を転送しました（{{prev.transfers}} ファイル）。"
+            },
+            "node-notify-check-failed": {
+              "title": "差分チェックに失敗しました",
+              "message": "チェックを完了できなかったため、何も同期されていません:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "データ整合性監査＆差分レポート",
-          "description": "定期的な整合性チェックを実行し、差分が存在する場合はMarkdownレポートでアラートを送信します。"
+          "description": "定期的な整合性チェックを実行し、差分が存在する場合はMarkdownレポートでアラートを送信します。",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "整合性を確認しました",
+              "message": "すべてのファイルが転送先と一致しています。差異はありません。"
+            },
+            "node-notify-drift": {
+              "title": "整合性監査の警告"
+            },
+            "node-notify-audit-failed": {
+              "title": "整合性監査に失敗しました",
+              "message": "監査を完了できませんでした:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "障害アラート付き安全同期",
-          "description": "同期を実行し、成功時は転送量を通知し、失敗時は詳細なエラー内容を転送します。"
+          "description": "同期を実行し、成功時は転送量を通知し、失敗時は詳細なエラー内容を転送します。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "同期に成功しました",
+              "message": "転送量: {{prev.bytesFormatted}}（速度: {{prev.speedFormatted}}）。すべてのファイルが最新です。"
+            },
+            "node-notify-fail": {
+              "title": "同期に失敗しました",
+              "message": "バックアップ中にエラーが発生しました:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "日次バックアップ＆通知",
-          "description": "毎日02:00に定期同期を実行し、成功または失敗時に通知します。"
+          "description": "毎日02:00に定期同期を実行し、成功または失敗時に通知します。",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "バックアップが完了しました",
+              "message": "毎日の同期が完了しました: {{prev.bytesFormatted}} を転送しました（速度: {{prev.speedFormatted}}）。"
+            },
+            "node-action-notify-fail": {
+              "title": "バックアップに失敗しました",
+              "message": "毎日のバックアップ中にエラーが発生しました:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "フォルダー監視＆自動アップロード",
-          "description": "ローカルフォルダーの変更を監視し、新規・変更ファイルをクラウドにコピーします。"
+          "description": "ローカルフォルダーの変更を監視し、新規・変更ファイルをクラウドにコピーします。",
+          "nodes": {
+            "node-action-notify": {
+              "title": "自動アップロードが完了しました",
+              "message": "自動アップロードが完了しました: {{prev.bytesFormatted}} を転送しました（{{prev.transfers}} ファイル）。"
+            }
+          }
         },
         "parallelMirror": {
           "name": "マルチクラウド並列ミラー",
-          "description": "2つの異なるクラウドプロバイダーへ同時に同期し、完了を検証します。"
+          "description": "2つの異なるクラウドプロバイダーへ同時に同期し、完了を検証します。",
+          "nodes": {
+            "node-notify-done": {
+              "title": "ミラーが完了しました",
+              "message": "すべての並列クラウド同期が完了しました。"
+            }
+          }
         },
         "mountOnDemand": {
           "name": "オンデマンドマウント＆通知",
-          "description": "リモートストレージパスをマウントし、ドライブの準備完了時にデスクトップへ通知します。"
+          "description": "リモートストレージパスをマウントし、ドライブの準備完了時にデスクトップへ通知します。",
+          "nodes": {
+            "node-notify": {
+              "title": "ドライブをマウントしました",
+              "message": "リモートストレージがマウントされ、使用できます。"
+            }
+          }
         },
         "manualTrigger": "手動",
         "manualTriggerDesc": "オンデマンドで手動トリガー",
         "vfsRefresh": {
           "name": "VFSキャッシュ更新自動化",
-          "description": "マウントされたドライブのディレクトリキャッシュを再読み込みするためにvfs/refresh RCコマンドを送信し、デスクトップへ通知します。"
+          "description": "マウントされたドライブのディレクトリキャッシュを再読み込みするためにvfs/refresh RCコマンドを送信し、デスクトップへ通知します。",
+          "nodes": {
+            "node-notify-success": {
+              "title": "VFS キャッシュを更新しました",
+              "message": "ディレクトリキャッシュの再読み込みが正常に完了しました。\nコマンド: {{prev.command}}\nステータス: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "VFS の更新に失敗しました",
+              "message": "RC コマンドが失敗しました:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

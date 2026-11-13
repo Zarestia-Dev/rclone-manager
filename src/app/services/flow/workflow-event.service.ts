@@ -5,37 +5,68 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
-import type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload } from '@app/types';
+import { CoalescedTask } from '../../shared/utils/coalesced-task.util';
+import type {
+  WorkflowNodeStatePayload,
+  WorkflowExecutionStatePayload,
+  WorkflowRunSnapshot,
+} from '@app/types';
 
+/**
+ * Keeps the interface's picture of workflow runs equal to the backend's.
+ *
+ * The backend owns every run and reports each change as an event with a run id and a
+ * sequence number. A picture built from events alone dies with the page, so it is also
+ * rebuilt from a snapshot of the runs: at start, after the engine or the connection
+ * came back, after a backend switch, and whenever an event shows a run was missed.
+ * The sequence numbers let events and snapshots meet without applying anything twice.
+ */
 @Injectable({ providedIn: 'root' })
 export class WorkflowEventService extends TauriBaseService {
   private readonly stateService = inject(WorkflowStateService);
   private readonly engineService = inject(WorkflowEngineService);
   private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
-  private executionEvents = 0;
+  private readonly syncTask = new CoalescedTask(() => this.syncRuns());
+  /** Events applied so far; a snapshot that was fetched while this moved may be older than the events. */
+  private appliedEvents = 0;
 
   constructor() {
     super();
     this.setupEventListeners();
-    void this.syncActiveWorkflows();
+    void this.resync();
   }
 
-  /**
-   * Run state is only announced by events, so a run that began before this service
-   * existed (an auto-start, a schedule, a file watcher) or while the engine was
-   * restarting is invisible until asked for. This only ever turns the state on:
-   * clearing it stays with the completion events and the local run that set it.
-   */
-  private async syncActiveWorkflows(): Promise<void> {
-    const eventsBefore = this.executionEvents;
+  /** Rebuilds the picture of the runs from the backend. Concurrent calls share one request. */
+  resync(): Promise<void> {
+    return this.syncTask.run();
+  }
+
+  private async syncRuns(): Promise<void> {
+    const appliedBefore = this.appliedEvents;
     try {
-      const active = (await this.invokeCommand<string[] | null>('get_active_workflows')) ?? [];
-      // An event that arrived meanwhile is newer than this answer.
-      if (this.executionEvents !== eventsBefore) return;
-      active.forEach(id => this.engineService.beginRun(id));
+      const snapshots =
+        (await this.invokeCommand<WorkflowRunSnapshot[] | null>('get_workflow_runs')) ?? [];
+      snapshots.forEach(snapshot => this.applySnapshot(snapshot));
+      // A run the backend does not have is over. An event that arrived while the answer was on
+      // its way may have begun one the answer does not know yet, so then nothing is dropped.
+      if (this.appliedEvents === appliedBefore) {
+        this.engineService.retainOnly(new Set(snapshots.map(s => s.workflowId)));
+      }
     } catch (error) {
-      console.error('[WorkflowEventService] Failed to load active workflows:', error);
+      console.error('[WorkflowEventService] Failed to load workflow runs:', error);
+    }
+  }
+
+  private applySnapshot(snapshot: WorkflowRunSnapshot): void {
+    const id = snapshot.workflowId;
+    const sameRun = this.engineService.runView(id)?.runId === snapshot.runId;
+    if (!this.engineService.adopt(snapshot)) return;
+
+    // A different run replaces what the last one left on the steps.
+    if (!sameRun) this.stateService.resetRunResults(id);
+    for (const [nodeId, node] of Object.entries(snapshot.nodes)) {
+      this.recordNode(id, nodeId, node.state, node.errorMessage, node.durationMs, node.output);
     }
   }
 
@@ -48,13 +79,6 @@ export class WorkflowEventService extends TauriBaseService {
         this.handleNodeStateChanged(payload);
       });
 
-    merge(
-      this.eventListeners.listenToRcloneEngineReady(),
-      this.eventListeners.listenToBackendSwitched()
-    )
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.syncActiveWorkflows());
-
     this.eventListeners
       .listenToWorkflowExecutionStateChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -62,125 +86,89 @@ export class WorkflowEventService extends TauriBaseService {
         if (!payload) return;
         this.handleExecutionStateChanged(payload);
       });
+
+    // Events are lost while the engine restarts, the backend changes or the connection is down.
+    merge(
+      this.eventListeners.listenToRcloneEngineReady(),
+      this.eventListeners.listenToBackendSwitched(),
+      this.eventListeners.listenToServerConnection()
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.resync());
   }
 
   private handleNodeStateChanged(payload: WorkflowNodeStatePayload): void {
-    // Backend errors arrive as translation keys; the interface shows them translated.
-    const errorMessage = payload.errorMessage
-      ? this.backendTranslation.translateBackendMessage(payload.errorMessage)
-      : undefined;
-    // Workflows of the same copy share node ids, so a node only counts on the canvas of its own workflow.
-    const canvas = this.stateService.currentWorkflow();
-    const onCanvas = canvas?.id === payload.workflowId ? canvas : null;
-    if (onCanvas) {
-      this.stateService.updateNodeExecutionState(
-        payload.nodeId,
-        payload.state,
-        errorMessage,
-        payload.durationMs,
-        payload.output
-      );
+    const verdict = this.engineService.judge(payload.workflowId, payload, false);
+    if (verdict === 'unknown') {
+      void this.resync();
+      return;
     }
+    if (verdict === 'stale') return;
 
-    const targetNode = onCanvas?.nodes.find(n => n.id === payload.nodeId);
-    const nodeTitle = targetNode ? targetNode.title : payload.nodeId;
-
-    // Update active edges leading to / from this node for animated wire pulse flow
-    if (onCanvas) {
-      if (payload.state === 'running') {
-        this.engineService.updateActiveEdges(payload.workflowId, edges => {
-          for (const e of onCanvas.edges) {
-            if (e.targetNodeId === payload.nodeId || e.sourceNodeId === payload.nodeId) {
-              edges.add(e.id);
-            }
-          }
-        });
-      } else if (
-        payload.state === 'success' ||
-        payload.state === 'failed' ||
-        payload.state === 'skipped'
-      ) {
-        this.engineService.updateActiveEdges(payload.workflowId, edges => {
-          for (const e of onCanvas.edges) {
-            if (e.targetNodeId === payload.nodeId) edges.delete(e.id);
-          }
-        });
-      }
-    }
-
-    if (payload.state === 'running') {
-      this.engineService.log(
-        payload.workflowId,
-        this.translate.instant('flow.workflow.logs.stepRunning', { title: nodeTitle }),
-        'info',
-        targetNode
-      );
-    } else if (payload.state === 'success') {
-      this.engineService.log(
-        payload.workflowId,
-        this.translate.instant('flow.workflow.logs.stepCompleted', {
-          title: nodeTitle,
-          duration: payload.durationMs ?? 0,
-        }),
-        'success',
-        targetNode
-      );
-    } else if (payload.state === 'failed') {
-      this.engineService.log(
-        payload.workflowId,
-        this.translate.instant('flow.workflow.logs.stepFailed', {
-          title: nodeTitle,
-          error: errorMessage ?? this.translate.instant('flow.workflow.logs.unknownError'),
-        }),
-        'error',
-        targetNode,
-        errorMessage
-      );
-    } else if (payload.state === 'skipped') {
-      this.engineService.log(
-        payload.workflowId,
-        this.translate.instant('flow.workflow.logs.stepSkipped', { title: nodeTitle }),
-        'info',
-        targetNode
-      );
-    }
+    this.appliedEvents++;
+    this.engineService.advanceRun(payload.workflowId, {
+      seq: payload.seq,
+      stepId: payload.nodeId,
+    });
+    this.recordNode(
+      payload.workflowId,
+      payload.nodeId,
+      payload.state,
+      payload.errorMessage,
+      payload.durationMs,
+      payload.output
+    );
   }
 
   private handleExecutionStateChanged(payload: WorkflowExecutionStatePayload): void {
-    this.executionEvents++;
-    if (payload.state === 'started' || payload.state === 'running') {
-      this.engineService.beginRun(payload.workflowId);
-    } else if (
-      payload.state === 'completed' ||
-      payload.state === 'failed' ||
-      payload.state === 'cancelled'
-    ) {
-      this.engineService.endRun(payload.workflowId);
+    const id = payload.workflowId;
+    const verdict = this.engineService.judge(id, payload, payload.state === 'started');
+    if (verdict === 'unknown') {
+      void this.resync();
+      return;
     }
+    if (verdict === 'stale') return;
 
-    if (payload.progress && this.engineService.isRunning(payload.workflowId)) {
-      this.engineService.setProgress(payload.workflowId, {
-        ...payload.progress,
-        currentStepTitle: this.backendTranslation.translateBackendMessage(
-          payload.progress.currentStepTitle
-        ),
+    this.appliedEvents++;
+    if (this.engineService.runView(id)?.runId !== payload.runId) {
+      // A run the view has not followed: the steps start from nothing.
+      this.stateService.resetRunResults(id);
+      this.engineService.beginRun(id, {
+        runId: payload.runId,
+        dryRun: payload.dryRun,
+        state: payload.state,
+        startedAt: payload.at,
+        seq: payload.seq,
+        progress: payload.progress ?? null,
+        steps: [],
+        message: payload.message,
+      });
+    } else {
+      this.engineService.advanceRun(id, {
+        seq: payload.seq,
+        state: payload.state,
+        ...(payload.progress && { progress: payload.progress }),
+        ...(payload.message && { message: payload.message }),
       });
     }
+  }
 
-    if (payload.message) {
-      const severity =
-        payload.state === 'completed'
-          ? 'success'
-          : payload.state === 'failed'
-            ? 'error'
-            : payload.state === 'cancelled'
-              ? 'warn'
-              : 'info';
-      this.engineService.log(
-        payload.workflowId,
-        this.backendTranslation.translateBackendMessage(payload.message),
-        severity
-      );
-    }
+  private recordNode(
+    workflowId: string,
+    nodeId: string,
+    state: WorkflowNodeStatePayload['state'],
+    errorMessage?: string,
+    durationMs?: number,
+    output?: unknown
+  ): void {
+    this.stateService.recordNodeRun(
+      workflowId,
+      nodeId,
+      state,
+      // Backend errors arrive as translation keys; they are translated where they are shown.
+      errorMessage,
+      durationMs,
+      output
+    );
   }
 }

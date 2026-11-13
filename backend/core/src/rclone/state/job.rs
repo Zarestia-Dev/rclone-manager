@@ -71,6 +71,7 @@ impl JobCache {
         Self {
             jobs: RwLock::new(HashMap::new()),
             uploads: parking_lot::Mutex::new(HashMap::new()),
+            changed: tokio::sync::Notify::new(),
         }
     }
 
@@ -233,6 +234,7 @@ impl JobCache {
         let status = jobs[&jobid].status.clone();
 
         drop(jobs);
+        self.changed.notify_waiters();
 
         if let Some(parent_event) = parent_change {
             crate::services::bridge::emit(JOB_CACHE_CHANGED, parent_event);

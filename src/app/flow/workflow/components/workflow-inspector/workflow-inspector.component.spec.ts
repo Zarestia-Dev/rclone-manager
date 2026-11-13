@@ -33,6 +33,8 @@ describe('WorkflowInspectorComponent', () => {
     duplicateWorkflow: ReturnType<typeof vi.fn>;
     deleteWorkflow: ReturnType<typeof vi.fn>;
     workflows: ReturnType<typeof vi.fn>;
+    saveShowOnTray: ReturnType<typeof vi.fn>;
+    validateWorkflow: ReturnType<typeof vi.fn>;
   };
   let notificationServiceSpy: {
     showSuccess: ReturnType<typeof vi.fn>;
@@ -60,6 +62,8 @@ describe('WorkflowInspectorComponent', () => {
         .mockResolvedValue({ id: 'wf-2', name: 'Inspector Test (Copy)', nodes: [], edges: [] }),
       deleteWorkflow: vi.fn().mockResolvedValue(undefined),
       workflows: vi.fn().mockReturnValue([]),
+      saveShowOnTray: vi.fn().mockResolvedValue(true),
+      validateWorkflow: vi.fn().mockResolvedValue({ errors: [], warnings: [] }),
     };
     notificationServiceSpy = {
       showSuccess: vi.fn(),
@@ -297,6 +301,34 @@ describe('WorkflowInspectorComponent', () => {
     expect(component.workflowName()).toBe('Inspector Test');
   });
 
+  it('changes the tray flag without an undo step', () => {
+    stateService.clearSelection();
+    fixture.detectChanges();
+    const undoSteps = stateService.canUndo();
+
+    component.onWorkflowShowOnTrayChange(true);
+
+    expect(stateService.currentWorkflow()?.showOnTray).toBe(true);
+    expect(component.workflowShowOnTray()).toBe(true);
+    expect(stateService.canUndo()).toBe(undoSteps);
+    expect(storageServiceSpy.saveShowOnTray).toHaveBeenCalledWith(
+      stateService.currentWorkflow()?.id,
+      true
+    );
+  });
+
+  it('shows the title and subtitle of the selected node as the workflow holds them', () => {
+    const node = stateService.addNode('delay', 'logic', 'Wait', 0, 0);
+    stateService.selectNode(node.id);
+    expect(component.nodeTitle()).toBe('Wait');
+
+    component.onTitleChange('Pause');
+    component.onSubtitleChange('ten seconds');
+
+    expect(component.nodeTitle()).toBe('Pause');
+    expect(component.nodeSubtitle()).toBe('ten seconds');
+  });
+
   it('updates workflow name and description from inspector', () => {
     stateService.clearSelection();
     fixture.detectChanges();
@@ -418,5 +450,166 @@ describe('WorkflowInspectorComponent', () => {
 
     expect(stateService.selectedNode()).toBeNull();
     expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('checks', () => {
+    // The wait is real: the check is debounced by a timer of RxJS, which the fake clock does not drive.
+    const wait = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+    const edit = (name: string): void => {
+      stateService.setWorkflowName(name);
+      fixture.detectChanges();
+    };
+    const rest = async (): Promise<void> => {
+      await wait(600);
+      fixture.detectChanges();
+    };
+
+    it('shows what the backend finds once the workflow has rested, errors before warnings', async () => {
+      stateService.clearSelection();
+      storageServiceSpy.validateWorkflow.mockResolvedValue({
+        errors: ['Cycle found'],
+        warnings: ['Node "Wait" is not connected'],
+      });
+
+      edit('Checked');
+      await rest();
+
+      const banners = Array.from(
+        fixture.nativeElement.querySelectorAll('.checks-list app-alert-banner')
+      ) as HTMLElement[];
+      expect(banners.map(b => b.className)).toEqual([
+        expect.stringContaining('error'),
+        expect.stringContaining('warning'),
+      ]);
+      expect(banners[0].textContent).toContain('Cycle found');
+      expect(banners[1].textContent).toContain('is not connected');
+    });
+
+    it('folds a long list of warnings behind one button, errors stay in view', async () => {
+      stateService.clearSelection();
+      storageServiceSpy.validateWorkflow.mockResolvedValue({
+        errors: ['Cycle found'],
+        warnings: ['a', 'b', 'c', 'd', 'e'],
+      });
+
+      edit('Many');
+      await rest();
+
+      const banners = (): HTMLElement[] =>
+        Array.from(fixture.nativeElement.querySelectorAll('.checks-list app-alert-banner'));
+      expect(banners().length).toBe(1);
+      const fold = fixture.nativeElement.querySelector('.checks-list button') as HTMLButtonElement;
+      expect(fold.textContent).toContain('flow.workflow.inspector.warningsCount');
+
+      fold.click();
+      fixture.detectChanges();
+      expect(banners().length).toBe(6);
+    });
+
+    it('asks once for a burst of edits, and shows nothing when all is well', async () => {
+      stateService.clearSelection();
+      storageServiceSpy.validateWorkflow.mockClear();
+
+      edit('A');
+      await wait(100);
+      edit('AB');
+      await rest();
+
+      expect(storageServiceSpy.validateWorkflow).toHaveBeenCalledTimes(1);
+      expect(fixture.nativeElement.querySelector('.checks-list')).toBeNull();
+    });
+
+    it('shows nothing when the backend cannot be asked', async () => {
+      stateService.clearSelection();
+      storageServiceSpy.validateWorkflow.mockRejectedValue(new Error('offline'));
+
+      edit('Offline');
+      await rest();
+
+      expect(component.checks()).toBeNull();
+    });
+  });
+
+  it('gives every active setting a title with its full key and value, for what is cut short', () => {
+    const node = stateService.addNode('sync', 'task', 'Sync', 0, 0, {
+      config: {
+        config: {
+          rclone: {
+            remotes: { gdrive: { acknowledge_abuse_of_the_files: true } },
+            filter: { includeFrom: '/very/long/path/to/an/include/list.txt' },
+          },
+        },
+      },
+    });
+    stateService.selectNode(node.id);
+    fixture.detectChanges();
+
+    const titles = Array.from(
+      fixture.nativeElement.querySelectorAll('.config-chip') as NodeListOf<HTMLElement>
+    ).map(chip => chip.title);
+    expect(titles).toEqual([
+      'includeFrom: /very/long/path/to/an/include/list.txt',
+      'gdrive / acknowledge_abuse_of_the_files: true',
+    ]);
+  });
+
+  describe('result and settings tabs', () => {
+    it('shows only the settings for a node that has not run', () => {
+      const node = stateService.addNode('sync', 'task', 'Sync', 0, 0, {});
+      stateService.selectNode(node.id);
+      fixture.detectChanges();
+
+      expect(component.hasResult()).toBe(false);
+      expect(component.activeTab()).toBe('settings');
+      expect(fixture.nativeElement.querySelector('.inspector-tabs')).toBeNull();
+    });
+
+    it('opens on the result of a node that has run and switches to the settings', () => {
+      const node = stateService.addNode('sync', 'task', 'Sync', 0, 0, {});
+      stateService.updateNode(node.id, { state: 'success', lastOutput: { summary: 'Done' } });
+      stateService.selectNode(node.id);
+      fixture.detectChanges();
+
+      expect(component.activeTab()).toBe('result');
+      expect(fixture.nativeElement.querySelector('.execution-output-section')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.active-config-section')).toBeNull();
+
+      component.selectTab('settings');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.execution-output-section')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.active-config-section')).toBeTruthy();
+    });
+
+    it('forgets the picked tab when another node is selected', () => {
+      const first = stateService.addNode('sync', 'task', 'A', 0, 0, {});
+      const second = stateService.addNode('copy', 'task', 'B', 0, 0, {});
+      stateService.updateNode(first.id, { state: 'success' });
+      stateService.updateNode(second.id, { state: 'success' });
+      stateService.selectNode(first.id);
+      component.selectTab('settings');
+      expect(component.activeTab()).toBe('settings');
+
+      stateService.selectNode(second.id);
+      expect(component.activeTab()).toBe('result');
+    });
+
+    it('keeps the raw output behind a button when a summary or report explains it', () => {
+      const node = stateService.addNode('check', 'task', 'Check', 0, 0, {});
+      stateService.updateNode(node.id, { state: 'success', lastOutput: { summary: 'Passed' } });
+      stateService.selectNode(node.id);
+
+      expect(component.rawOutputVisible()).toBe(false);
+      component.rawOutputOpen.set(true);
+      expect(component.rawOutputVisible()).toBe(true);
+    });
+
+    it('shows the raw output at once when nothing else describes it', () => {
+      const node = stateService.addNode('check', 'task', 'Check', 0, 0, {});
+      stateService.updateNode(node.id, { state: 'success', lastOutput: { count: 1 } });
+      stateService.selectNode(node.id);
+
+      expect(component.hasOutputOverview()).toBe(false);
+      expect(component.rawOutputVisible()).toBe(true);
+    });
   });
 });

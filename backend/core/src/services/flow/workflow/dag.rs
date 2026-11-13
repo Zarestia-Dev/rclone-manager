@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use super::interpolation::{TokenSource, find_node, token_sources};
 use super::types::{WorkflowDefinition, WorkflowEdge, WorkflowNode, WorkflowValidationResult};
 
 /// Detects whether the graph formed by `nodes` and `edges` contains cycles.
@@ -66,6 +67,102 @@ pub fn has_cycles(nodes: &[WorkflowNode], edges: &[WorkflowEdge]) -> bool {
     visited_count < nodes.len()
 }
 
+/// The errors of a wire attached to a port its node does not have. Such a wire is drawn
+/// nowhere and is read as the node's success port, so it would fire when it should not.
+fn missing_port_errors(workflow: &WorkflowDefinition, edge: &WorkflowEdge) -> Vec<String> {
+    let node = |id: &str| workflow.nodes.iter().find(|n| n.id == id);
+    let mut errors = Vec::new();
+    if let Some(source) = node(&edge.source_node_id)
+        && !source.outputs.iter().any(|p| p.id == edge.source_port_id)
+    {
+        errors.push(crate::localized_error!(
+            "backendErrors.workflow.validationMissingPort",
+            "title" => source.title,
+            "port" => edge.source_port_id
+        ));
+    }
+    if let Some(target) = node(&edge.target_node_id)
+        && !target.inputs.iter().any(|p| p.id == edge.target_port_id)
+    {
+        errors.push(crate::localized_error!(
+            "backendErrors.workflow.validationMissingPort",
+            "title" => target.title,
+            "port" => edge.target_port_id
+        ));
+    }
+    errors
+}
+
+/// Warnings for settings that read the output of a node that has not run when the node does:
+/// one that does not exist, one that does not lead into this node, or `prev` without a wire in.
+/// Such a token is left as typed in the result, which is rarely meant.
+fn unreachable_token_warnings(workflow: &WorkflowDefinition) -> Vec<String> {
+    let mut sources: HashMap<&str, Vec<&str>> = HashMap::new();
+    for edge in &workflow.edges {
+        sources
+            .entry(edge.target_node_id.as_str())
+            .or_default()
+            .push(edge.source_node_id.as_str());
+    }
+
+    let mut warnings = Vec::new();
+    for node in &workflow.nodes {
+        let mut ancestors: Option<HashSet<&str>> = None;
+        for token in token_sources(&node.config) {
+            let warning = match token {
+                TokenSource::Previous if !sources.contains_key(node.id.as_str()) => {
+                    Some(crate::localized_error!(
+                        "backendErrors.workflow.validationPrevWithoutInput",
+                        "title" => node.title
+                    ))
+                }
+                TokenSource::Previous => None,
+                TokenSource::Node(identifier) => match find_node(workflow, identifier) {
+                    None => Some(crate::localized_error!(
+                        "backendErrors.workflow.validationTokenUnknownNode",
+                        "title" => node.title,
+                        "node" => identifier
+                    )),
+                    Some(named) => {
+                        let reaching =
+                            ancestors.get_or_insert_with(|| ancestors_of(&sources, node));
+                        (!reaching.contains(named.id.as_str())).then(|| {
+                            crate::localized_error!(
+                                "backendErrors.workflow.validationTokenNotUpstream",
+                                "title" => node.title,
+                                "node" => named.title
+                            )
+                        })
+                    }
+                },
+            };
+            if let Some(warning) = warning
+                && !warnings.contains(&warning)
+            {
+                warnings.push(warning);
+            }
+        }
+    }
+    warnings
+}
+
+/// The ids of the nodes a path of wires leads from into `node`.
+fn ancestors_of<'a>(
+    sources: &HashMap<&'a str, Vec<&'a str>>,
+    node: &'a WorkflowNode,
+) -> HashSet<&'a str> {
+    let mut seen = HashSet::new();
+    let mut pending = vec![node.id.as_str()];
+    while let Some(id) = pending.pop() {
+        for &source in sources.get(id).into_iter().flatten() {
+            if seen.insert(source) {
+                pending.push(source);
+            }
+        }
+    }
+    seen
+}
+
 /// Performs a comprehensive structural validation of a workflow graph.
 #[must_use]
 pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationResult {
@@ -120,6 +217,7 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
                 "id" => edge.source_node_id
             ));
         }
+        errors.extend(missing_port_errors(workflow, edge));
     }
 
     // Check for cycles
@@ -147,6 +245,8 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
         }
     }
 
+    warnings.extend(unreachable_token_warnings(workflow));
+
     let valid = errors.is_empty();
     WorkflowValidationResult {
         valid,
@@ -171,6 +271,8 @@ mod tests {
             },
             category,
             title: title.to_string(),
+            inputs: vec![WorkflowPort::new("in", WorkflowPortType::In)],
+            outputs: vec![WorkflowPort::new("out", WorkflowPortType::Out)],
             ..Default::default()
         }
     }
@@ -381,5 +483,139 @@ mod tests {
         assert!(result.warnings.contains(&crate::localized_error!(
             "backendErrors.workflow.validationNoTrigger"
         )));
+    }
+
+    fn workflow(nodes: Vec<WorkflowNode>, edges: Vec<WorkflowEdge>) -> WorkflowDefinition {
+        WorkflowDefinition {
+            id: "wf-check".to_string(),
+            name: "Check".to_string(),
+            nodes,
+            edges,
+            ..Default::default()
+        }
+    }
+
+    fn with_config(mut node: WorkflowNode, config: serde_json::Value) -> WorkflowNode {
+        node.config = config;
+        node
+    }
+
+    #[test]
+    fn a_wire_on_a_port_its_node_does_not_have_is_an_error() {
+        let mut wf = workflow(
+            vec![
+                create_test_node("n1", "Trigger", WorkflowNodeCategory::Trigger),
+                create_test_node("n2", "Task", WorkflowNodeCategory::Task),
+            ],
+            vec![create_test_edge("n1", "n2")],
+        );
+        wf.edges[0].source_port_id = "success".to_string();
+        wf.edges[0].target_port_id = "gone".to_string();
+
+        let result = validate_workflow(&wf);
+
+        assert!(!result.valid);
+        assert_eq!(result.errors.len(), 2);
+        assert!(result.errors[0].contains("validationMissingPort"));
+        assert!(result.errors[0].contains("success"));
+        assert!(result.errors[1].contains("gone"));
+    }
+
+    #[test]
+    fn a_wire_on_a_missing_node_reports_the_node_and_not_a_port_as_well() {
+        let wf = workflow(
+            vec![create_test_node(
+                "n1",
+                "Trigger",
+                WorkflowNodeCategory::Trigger,
+            )],
+            vec![create_test_edge("n1", "ghost")],
+        );
+
+        let result = validate_workflow(&wf);
+
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].contains("validationMissingTarget"));
+    }
+
+    #[test]
+    fn a_token_naming_a_node_that_leads_into_the_reader_is_not_warned_about() {
+        // a -> b -> c; c reads a (far) and b (by title, ignoring case and spaces) and its own prev
+        let wf = workflow(
+            vec![
+                create_test_node("a", "First", WorkflowNodeCategory::Trigger),
+                create_test_node("b", "Second Step", WorkflowNodeCategory::Task),
+                with_config(
+                    create_test_node("c", "Third", WorkflowNodeCategory::Action),
+                    serde_json::json!({
+                        "message": "{{nodes.a.summary}} {{ nodes[\"second step\"].error }} {{prev.status}} {{profile}}"
+                    }),
+                ),
+            ],
+            vec![create_test_edge("a", "b"), create_test_edge("b", "c")],
+        );
+
+        let result = validate_workflow(&wf);
+
+        assert!(result.valid);
+        assert!(result.warnings.is_empty(), "{:?}", result.warnings);
+    }
+
+    #[test]
+    fn a_token_naming_a_node_that_does_not_lead_into_the_reader_is_a_warning() {
+        // a -> c, and b is unconnected to c; d comes after c
+        let wf = workflow(
+            vec![
+                create_test_node("a", "First", WorkflowNodeCategory::Trigger),
+                create_test_node("b", "Other", WorkflowNodeCategory::Task),
+                with_config(
+                    create_test_node("c", "Third", WorkflowNodeCategory::Action),
+                    serde_json::json!({
+                        "title": "{{nodes.b.summary}}",
+                        "message": "{{nodes.b.error}} {{nodes.d.error}} {{nodes.c.error}}"
+                    }),
+                ),
+                create_test_node("d", "Later", WorkflowNodeCategory::Task),
+            ],
+            vec![create_test_edge("a", "c"), create_test_edge("c", "d")],
+        );
+
+        let result = validate_workflow(&wf);
+
+        assert!(result.valid, "a token is a warning, not an error");
+        let not_upstream: Vec<_> = result
+            .warnings
+            .iter()
+            .filter(|w| w.contains("validationTokenNotUpstream"))
+            .collect();
+        // b once (named twice), d, and c itself
+        assert_eq!(not_upstream.len(), 3, "{:?}", result.warnings);
+    }
+
+    #[test]
+    fn a_token_naming_no_node_and_prev_without_an_input_are_warnings() {
+        let wf = workflow(
+            vec![with_config(
+                create_test_node("a", "Lonely", WorkflowNodeCategory::Trigger),
+                serde_json::json!({ "message": "{{nodes.nobody.x}} {{prev.y}}" }),
+            )],
+            vec![],
+        );
+
+        let result = validate_workflow(&wf);
+
+        assert!(result.valid);
+        assert!(
+            result
+                .warnings
+                .iter()
+                .any(|w| w.contains("validationTokenUnknownNode"))
+        );
+        assert!(
+            result
+                .warnings
+                .iter()
+                .any(|w| w.contains("validationPrevWithoutInput"))
+        );
     }
 }

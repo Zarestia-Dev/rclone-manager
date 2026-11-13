@@ -205,6 +205,8 @@ pub struct JobInfo {
 pub struct JobCache {
     pub jobs: tokio::sync::RwLock<HashMap<u64, JobInfo>>,
     pub(crate) uploads: parking_lot::Mutex<HashMap<u64, UploadCancellation>>,
+    /// Woken whenever a job changes, so that waiting for a job to finish need not poll.
+    pub(crate) changed: tokio::sync::Notify,
 }
 
 #[derive(Debug, Clone)]

@@ -24,8 +24,6 @@ export class WorkflowDragDropService {
   readonly draggedItem = signal<NodePaletteItem | null>(null);
 
   private _dragGhostEl: HTMLElement | null = null;
-  private _moveRafId: number | null = null;
-  private _lastMovePoint: { x: number; y: number } | null = null;
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -65,18 +63,6 @@ export class WorkflowDragDropService {
   updateDrag(point: { x: number; y: number }): void {
     if (!this._isDragging()) return;
     this._updateDragGhostPosition(point.x + 12, point.y + 12);
-    this._scheduleMove(point);
-  }
-
-  private _scheduleMove(point: { x: number; y: number }): void {
-    this._lastMovePoint = point;
-    if (this._moveRafId !== null) return;
-    this._moveRafId = requestAnimationFrame(() => {
-      this._moveRafId = null;
-      if (this._lastMovePoint) {
-        this._updateDragGhostPosition(this._lastMovePoint.x + 12, this._lastMovePoint.y + 12);
-      }
-    });
   }
 
   commitDrag(point: { x: number; y: number }): WorkflowDropResult | null {
@@ -128,11 +114,6 @@ export class WorkflowDragDropService {
   }
 
   cancelDrag(): void {
-    if (this._moveRafId !== null) {
-      cancelAnimationFrame(this._moveRafId);
-      this._moveRafId = null;
-    }
-    this._lastMovePoint = null;
     this._isDragging.set(false);
     this.draggedItem.set(null);
     this._dragGhostEl?.remove();
@@ -150,8 +131,8 @@ export class WorkflowDragDropService {
 
     const card = document.createElement('div');
     card.style.cssText = `
-      width: 100%; height: 100%; display: flex; align-items: center; gap: 10px;
-      padding: 0 12px; border-radius: var(--card-border-radius);
+      width: 100%; height: 100%; display: flex; align-items: center; gap: var(--space-sm);
+      padding: 0 var(--space-sm); border-radius: var(--card-border-radius);
       background: var(--popover-bg-color);
       border: 1.5px solid var(--accent-color);
       box-sizing: border-box; overflow: hidden;
@@ -169,8 +150,6 @@ export class WorkflowDragDropService {
       const clone = svgIcon.cloneNode(true) as SVGElement;
       clone.style.cssText = 'width: 18px; height: 18px; display: block; fill: currentColor;';
       iconBox.appendChild(clone);
-    } else {
-      iconBox.textContent = '⚡';
     }
     card.appendChild(iconBox);
 
@@ -179,7 +158,7 @@ export class WorkflowDragDropService {
 
     const titleEl = document.createElement('span');
     titleEl.style.cssText = `
-      font-size: 13px; font-weight: 600; color: var(--window-fg-color);
+      font-size: var(--font-size-sm); font-weight: 600; color: var(--window-fg-color);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     `;
     titleEl.textContent = this.translate.instant(item.titleKey);
@@ -187,8 +166,8 @@ export class WorkflowDragDropService {
 
     const catEl = document.createElement('span');
     catEl.style.cssText = `
-      font-size: 10px; font-weight: 500; color: var(--dim-color);
-      text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px;
+      font-size: var(--font-size-xs); font-weight: 500; color: var(--dim-color);
+      text-transform: uppercase; letter-spacing: 0.5px;
     `;
     catEl.textContent = item.category;
     textCol.appendChild(catEl);

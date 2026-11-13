@@ -38,6 +38,16 @@ export interface WorkflowNode {
   finishedAt?: string;
 }
 
+/**
+ * A node as the browser laid it out, in canvas units (zoom does not change it): its size and where
+ * the centre of each port sits, measured from the node's top-left corner. Keys come from `portKey`.
+ */
+export interface NodeLayout {
+  width: number;
+  height: number;
+  ports: Record<string, { x: number; y: number }>;
+}
+
 export interface WorkflowEdge {
   id: string;
   sourceNodeId: string;
@@ -66,28 +76,26 @@ export interface WorkflowDefinition {
   lastExecutedAt?: string;
 }
 
-export interface WorkflowTemplate {
-  id: string;
-  name: string;
-  nameKey?: string;
-  description: string;
-  descriptionKey?: string;
-  category: 'backup' | 'automation' | 'sync' | 'utility';
-  icon: string;
-  definition: Omit<WorkflowDefinition, 'id' | 'createdAt' | 'updatedAt' | 'showOnTray'>;
+/** What checking a workflow found: `errors` stop a run, `warnings` are worth a look. Both are shown as is. */
+export interface WorkflowChecks {
+  errors: string[];
+  warnings: string[];
 }
 
-export type WorkflowLogSeverity = 'info' | 'success' | 'warn' | 'error';
+/** A node of a template: titled by its key, in the language of whoever opens the template. */
+export type TemplateNode = Omit<WorkflowNode, 'title' | 'titleKey'> & { titleKey: string };
 
-export interface WorkflowLogEntry {
+/** A built-in workflow to start from. What a user reads is a translation key, never text. */
+export interface WorkflowTemplate {
   id: string;
-  workflowId: string;
-  nodeId?: string;
-  nodeTitle?: string;
-  timestamp: Date;
-  severity: WorkflowLogSeverity;
-  message: string;
-  details?: unknown;
+  nameKey: string;
+  descriptionKey: string;
+  category: 'backup' | 'automation' | 'sync' | 'utility';
+  icon: string;
+  definition: Omit<
+    WorkflowDefinition,
+    'id' | 'name' | 'description' | 'nodes' | 'createdAt' | 'updatedAt' | 'showOnTray'
+  > & { nodes: TemplateNode[] };
 }
 
 export interface NodePaletteItem {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { provideTranslateService } from '@ngx-translate/core';
 import { SidebarComponent } from './sidebar.component';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -94,13 +94,13 @@ describe('SidebarComponent', () => {
   const mockSelectedQuickRunId = signal<string | null>(null);
   const mockCurrentWorkflow = signal<WorkflowDefinition | null>(null);
   const mockRunningIds = signal<ReadonlySet<string>>(new Set());
-  const mockLoadWorkflow = vi.fn();
+  const mockOpenWorkflow = vi.fn();
 
   beforeEach(async () => {
     mockSelectedQuickRunId.set(null);
     mockCurrentWorkflow.set(null);
     mockRunningIds.set(new Set());
-    mockLoadWorkflow.mockClear();
+    mockOpenWorkflow.mockClear().mockResolvedValue(true);
 
     await TestBed.configureTestingModule({
       imports: [SidebarComponent],
@@ -154,13 +154,14 @@ describe('SidebarComponent', () => {
           useValue: {
             workflows: mockWorkflows,
             isLoading: signal(false),
+            openWorkflow: mockOpenWorkflow,
           },
         },
         {
           provide: WorkflowStateService,
           useValue: {
             currentWorkflow: mockCurrentWorkflow,
-            loadWorkflow: mockLoadWorkflow,
+            currentWorkflowId: computed(() => mockCurrentWorkflow()?.id),
           },
         },
         {
@@ -197,18 +198,31 @@ describe('SidebarComponent', () => {
     expect(component.filteredWorkflows().length).toBe(0);
   });
 
-  it('selects workflow and emits events', () => {
+  it('selects workflow and emits events', async () => {
     const wf = mockWorkflows()[0];
     const wfSpy = vi.fn();
     const itemSpy = vi.fn();
     component.workflowSelected.subscribe(wfSpy);
     component.itemSelected.subscribe(itemSpy);
 
-    component.selectWorkflow(wf);
+    await component.selectWorkflow(wf);
 
-    expect(mockLoadWorkflow).toHaveBeenCalledWith(wf);
+    expect(mockOpenWorkflow).toHaveBeenCalledWith(wf);
     expect(wfSpy).toHaveBeenCalledWith(wf);
     expect(itemSpy).toHaveBeenCalled();
+  });
+
+  it('stays on the current workflow when the user keeps its unsaved changes', async () => {
+    mockOpenWorkflow.mockResolvedValue(false);
+    const wfSpy = vi.fn();
+    const itemSpy = vi.fn();
+    component.workflowSelected.subscribe(wfSpy);
+    component.itemSelected.subscribe(itemSpy);
+
+    await component.selectWorkflow(mockWorkflows()[0]);
+
+    expect(wfSpy).not.toHaveBeenCalled();
+    expect(itemSpy).not.toHaveBeenCalled();
   });
 
   it('detects watcher node properly with hasWatcherNode', () => {

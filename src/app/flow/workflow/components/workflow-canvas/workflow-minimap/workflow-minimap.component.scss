@@ -5,6 +5,7 @@
   box-shadow: var(--shadow-popover);
   overflow: hidden;
   cursor: crosshair;
+  touch-action: none;
 
   .mini-wires-layer {
     position: absolute;
@@ -26,7 +27,6 @@
     border-radius: 2px;
     background: var(--tone);
     box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.2);
-    transition: transform 0.1s ease;
 
     &.selected {
       outline: 1.5px solid var(--accent-fg-color);
@@ -34,24 +34,59 @@
       z-index: 2;
     }
 
-    &.status-running {
+    // How its run went: a dot, as the badge on the node. The fill stays the tone, because a
+    // success colour taken from the fill is the colour of every green node.
+    &::after {
+      content: "";
+      display: none;
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-circle);
+      box-shadow: 0 0 0 1px var(--card-bg-color);
+    }
+
+    &[data-state="queued"]::after,
+    &[data-state="running"]::after,
+    &[data-state="success"]::after,
+    &[data-state="failed"]::after,
+    &[data-state="skipped"]::after {
+      display: block;
+    }
+
+    &[data-state="queued"]::after,
+    &[data-state="skipped"]::after {
+      background: var(--dim-color);
+    }
+
+    &[data-state="running"]::after {
+      background: var(--accent-color);
+    }
+
+    &[data-state="success"]::after {
+      background: var(--primary-color);
+    }
+
+    &[data-state="failed"]::after {
+      background: var(--warn-color);
+    }
+
+    &[data-state="running"] {
       animation: miniNodePulse 1.2s infinite ease-in-out;
     }
 
-    &.status-failed {
-      background: var(--destructive-bg-color);
-    }
-
-    &.status-success {
-      background: var(--success-bg-color);
+    // A skipped node did not run, as on the canvas.
+    &[data-state="skipped"] {
+      opacity: 0.6;
     }
   }
 
   .mini-viewport {
     position: absolute;
-    box-shadow: 0 0 0 1px var(--accent-color);
-    background: rgba(var(--accent-color-rgb), 0.15);
-    border-radius: var(--radius-md);
+    background: rgba(var(--accent-color-rgb), 0.2);
+    border-radius: var(--radius-xs);
   }
 }
 

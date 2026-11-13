@@ -6,7 +6,7 @@ import {
   getNodeFieldsForType,
   PREVIOUS_NODE_PSEUDO,
 } from './node-fields.util';
-import { WorkflowNode } from '../types/workflow.types';
+import { WorkflowEdge, WorkflowNode } from '../types/workflow.types';
 
 describe('node-fields.util', () => {
   it('returns stdout, exitCode, success, stderr, summary, output for script and command nodes', () => {
@@ -190,54 +190,68 @@ describe('node-fields.util', () => {
       expect(PREVIOUS_NODE_PSEUDO.titleKey).toBe('flow.workflow.tokens.prevNode');
     });
 
-    it('always prepends PREVIOUS_NODE_PSEUDO even if node list is empty or undefined', () => {
+    it('always prepends PREVIOUS_NODE_PSEUDO even if there is no workflow', () => {
       expect(getAvailableUpstreamNodes(undefined)).toEqual([PREVIOUS_NODE_PSEUDO]);
-      expect(getAvailableUpstreamNodes([])).toEqual([PREVIOUS_NODE_PSEUDO]);
+      expect(getAvailableUpstreamNodes({ nodes: [], edges: [] }, 'x')).toEqual([
+        PREVIOUS_NODE_PSEUDO,
+      ]);
     });
 
-    it('filters out current node and includes other upstream nodes', () => {
-      const nodes: WorkflowNode[] = [
-        {
-          id: 'node-1',
-          title: 'First Node',
-          type: 'check',
-          category: 'task',
-          x: 0,
-          y: 0,
-          inputs: [],
-          outputs: [],
-          config: {},
-        },
-        {
-          id: 'node-2',
-          title: 'Current Node',
-          type: 'condition',
-          category: 'logic',
-          x: 100,
-          y: 0,
-          inputs: [],
-          outputs: [],
-          config: {},
-        },
-        {
-          id: 'node-3',
-          title: 'Third Node',
-          type: 'sync',
-          category: 'task',
-          x: 200,
-          y: 0,
-          inputs: [],
-          outputs: [],
-          config: {},
-        },
-      ];
+    const node = (id: string): WorkflowNode => ({
+      id,
+      title: id,
+      type: 'sync',
+      category: 'task',
+      x: 0,
+      y: 0,
+      inputs: [],
+      outputs: [],
+      config: {},
+    });
+    const wire = (from: string, to: string): WorkflowEdge => ({
+      id: `${from}-${to}`,
+      sourceNodeId: from,
+      sourcePortId: 'success',
+      targetNodeId: to,
+      targetPortId: 'in',
+    });
 
-      const result = getAvailableUpstreamNodes(nodes, 'node-2');
-      expect(result.length).toBe(3);
+    it('offers only the nodes that lead into the current one, near or far', () => {
+      // a -> b -> current; c is unconnected and d comes after current
+      const workflow = {
+        nodes: ['a', 'b', 'c', 'current', 'd'].map(node),
+        edges: [wire('a', 'b'), wire('b', 'current'), wire('current', 'd')],
+      };
+
+      const result = getAvailableUpstreamNodes(workflow, 'current');
+
       expect(result[0]).toBe(PREVIOUS_NODE_PSEUDO);
-      expect(result[1].id).toBe('node-1');
-      expect(result[2].id).toBe('node-3');
-      expect(result.some(n => n.id === 'node-2')).toBe(false);
+      expect(result.slice(1).map(n => n.id)).toEqual(['a', 'b']);
+    });
+
+    it('lists a node once when several paths lead from it, and survives a loop', () => {
+      const workflow = {
+        nodes: ['a', 'b', 'c', 'current'].map(node),
+        edges: [
+          wire('a', 'b'),
+          wire('a', 'c'),
+          wire('b', 'current'),
+          wire('c', 'current'),
+          wire('current', 'a'),
+        ],
+      };
+
+      expect(
+        getAvailableUpstreamNodes(workflow, 'current')
+          .slice(1)
+          .map(n => n.id)
+      ).toEqual(['a', 'b', 'c']);
+    });
+
+    it('offers nothing but prev without a current node', () => {
+      expect(getAvailableUpstreamNodes({ nodes: [node('a')], edges: [] })).toEqual([
+        PREVIOUS_NODE_PSEUDO,
+      ]);
     });
   });
 });

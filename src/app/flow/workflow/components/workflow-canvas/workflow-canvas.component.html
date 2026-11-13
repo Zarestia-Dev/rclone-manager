@@ -6,12 +6,8 @@
   [style.--pan-x.px]="viewport().x"
   [style.--pan-y.px]="viewport().y"
   [style.--zoom]="viewport().zoom"
-  (mousedown)="onCanvasMouseDown($event)"
+  (pointerdown)="onPointerDown($event)"
   (wheel)="onCanvasWheel($event)"
-  (touchstart)="onCanvasTouchStart($event)"
-  (touchmove)="onCanvasTouchMove($event)"
-  (touchend)="onCanvasTouchEnd($event)"
-  (touchcancel)="onCanvasTouchEnd($event)"
   (contextmenu)="$event.preventDefault()"
 >
   <!-- Dot Grid & Scalable Plane -->
@@ -46,18 +42,13 @@
             [isSelected]="stateService.selectedNodeIds().has(node.id)"
             [style.left.px]="node.x"
             [style.top.px]="node.y"
+            [attr.data-node-id]="node.id"
             class="workflow-node-positioned"
             [class.is-dragging]="draggingNodeId() === node.id"
-            (mousedown)="onNodeMouseDown(node, $event)"
-            (touchstart)="onNodeTouchStart(node, $event)"
             (selectNode)="onNodeSelected($event)"
             (deleteNode)="stateService.removeNode($event)"
             (duplicateNode)="stateService.duplicateNode($event)"
             (inspectNode)="onInspectNode($event)"
-            (startConnecting)="
-              onStartConnecting(node.id, $event.portId, $event.isOutput, $event.event)
-            "
-            (portMouseUp)="onPortMouseUp(node.id, $event.portId, $event.isOutput)"
           ></app-workflow-node>
         }
       }
@@ -65,9 +56,9 @@
   </div>
 
   <!-- Floating Canvas Navigation Hub (Minimap + Floating Zoom Pill) -->
-  <div class="canvas-navigation-hub" (touchstart)="$event.stopPropagation()">
+  <div class="canvas-navigation-hub" (pointerdown)="$event.stopPropagation()">
     @if (showMinimap()) {
-      <div class="minimap-container" (touchstart)="$event.stopPropagation()">
+      <div class="minimap-container">
         <app-workflow-minimap
           [nodes]="activeWorkflow()?.nodes || []"
           [edges]="activeWorkflow()?.edges || []"
@@ -83,8 +74,6 @@
     <!-- Floating Zoom Toolbar Pill -->
     <div
       class="floating-zoom-toolbar"
-      (mousedown)="$event.stopPropagation()"
-      (touchstart)="$event.stopPropagation()"
       (wheel)="$event.stopPropagation()"
       role="toolbar"
       [attr.aria-label]="'flow.workflow.canvas.navigation' | translate"
@@ -130,11 +119,28 @@
       <button
         type="button"
         class="action-button"
-        [class.active-btn]="isNavigationActionActive()"
-        (click)="toggleNavigationAction()"
-        [attr.title]="navigationActionTitle() | translate"
+        [class.active-btn]="showMinimap()"
+        (click)="toggleMinimap()"
+        [attr.title]="'flow.workflow.canvas.toggleMinimap' | translate"
       >
-        <mat-icon [svgIcon]="navigationActionIcon()"></mat-icon>
+        <mat-icon svgIcon="detailed"></mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="action-button focus-toggle"
+        [class.active-btn]="stateService.isMobileFocusMode()"
+        (click)="toggleFocusMode()"
+        [attr.title]="
+          (stateService.isMobileFocusMode()
+            ? 'flow.workflow.canvas.exitFocusMode'
+            : 'flow.workflow.canvas.enterFocusMode'
+          ) | translate
+        "
+      >
+        <mat-icon
+          [svgIcon]="stateService.isMobileFocusMode() ? 'caret-up' : 'caret-down'"
+        ></mat-icon>
       </button>
     </div>
   </div>

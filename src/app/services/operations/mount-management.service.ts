@@ -39,6 +39,11 @@ export class MountManagementService extends TauriBaseService {
   constructor() {
     super();
     this.initializeEventListeners();
+    // Like the jobs and serves, the mounts are loaded by the service itself: what the interface
+    // shows of a running mount (a Quick Run's state) must not wait for another service to ask.
+    this.getMountedRemotes().catch(err =>
+      console.error('[MountManagementService] Failed to load mounts:', err)
+    );
   }
 
   private initializeEventListeners(): void {

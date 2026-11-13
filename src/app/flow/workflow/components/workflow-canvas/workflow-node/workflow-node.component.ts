@@ -1,15 +1,33 @@
-import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  afterRenderEffect,
+  input,
+  output,
+  computed,
+  inject,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { WorkflowNode, WorkflowPort } from '../../../types/workflow.types';
+import { NodeLayout, WorkflowNode, WorkflowPort } from '../../../types/workflow.types';
 import { getNodeStyleMeta, getNotificationIcon } from '../../../utils/node-style.util';
 import { formatCronHumanReadable } from '../../../../../services/i18n/cron-locale.mapper';
 import { MountManagementService } from '../../../../../services/operations/mount-management.service';
 import { ServeManagementService } from '../../../../../services/operations/serve-management.service';
 import { JobManagementService } from '../../../../../services/operations/job-management.service';
+import { BackendTranslationService } from '../../../../../services/i18n/backend-translation.service';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
+import {
+  WorkflowNodeLayoutService,
+  portKey,
+} from '../../../../../services/flow/workflow-node-layout.service';
 import { ModalService } from '../../../../../services/ui/modal.service';
 import { JobInfo, isWorkflowNode } from '@app/types';
 
@@ -38,10 +56,20 @@ export class WorkflowNodeComponent {
   private readonly modalService = inject(ModalService);
   private readonly stateService = inject(WorkflowStateService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly langChange = toSignal(this.translate.onLangChange);
+  private readonly layoutService = inject(WorkflowNodeLayoutService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly card = viewChild<ElementRef<HTMLElement>>('card');
 
   readonly node = input.required<WorkflowNode>();
   readonly isSelected = input<boolean>(false);
+
+  /** The error of the step, translated when it is shown: the node keeps what the backend sent. */
+  readonly errorText = computed(() => {
+    const error = this.node().errorMessage;
+    return error ? this.backendTranslation.translateBackendMessage(error) : '';
+  });
 
   readonly displayTitle = computed(() => {
     this.langChange();
@@ -54,7 +82,7 @@ export class WorkflowNodeComponent {
 
   readonly nodeJob = computed<JobInfo | null>(() => {
     const n = this.node();
-    const currentWfId = this.stateService.currentWorkflow()?.id;
+    const currentWfId = this.stateService.currentWorkflowId();
     if (!currentWfId) return null;
     const qrId = n.config?.['quickRunId'] as string | undefined;
     return this.jobService.getLatestJobForWorkflowNode(currentWfId, n.id, qrId);
@@ -64,6 +92,8 @@ export class WorkflowNodeComponent {
     this.langChange();
     const n = this.node();
     if (n.subtitle) return n.subtitle;
+    // A notification is told apart from the others by what it says.
+    if (n.type === 'notification') return String(n.config?.['title'] || '');
     if (n.type === 'cron') {
       const expr = String(n.config?.['cronExpression'] || '').trim();
       if (expr) {
@@ -77,8 +107,6 @@ export class WorkflowNodeComponent {
   readonly deleteNode = output<string>();
   readonly duplicateNode = output<string>();
   readonly inspectNode = output<string>();
-  readonly startConnecting = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
-  readonly portMouseUp = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
 
   readonly styleMeta = computed(() => getNodeStyleMeta(this.node().type));
   readonly nodeIcon = computed(() => {
@@ -96,7 +124,7 @@ export class WorkflowNodeComponent {
   readonly isLiveMounted = computed(() => {
     const n = this.node();
     if (n.type !== 'mount') return false;
-    const currentWfId = this.stateService.currentWorkflow()?.id;
+    const currentWfId = this.stateService.currentWorkflowId();
     if (!currentWfId) return false;
 
     const mounts = this.mountService.mountedRemotes();
@@ -106,7 +134,7 @@ export class WorkflowNodeComponent {
   readonly isLiveServing = computed(() => {
     const n = this.node();
     if (n.type !== 'serve') return false;
-    const currentWfId = this.stateService.currentWorkflow()?.id;
+    const currentWfId = this.stateService.currentWorkflowId();
     if (!currentWfId) return false;
 
     const serves = this.serveService.runningServes();
@@ -125,6 +153,59 @@ export class WorkflowNodeComponent {
     const s = this.node().state || 'idle';
     return `status-${s}`;
   });
+
+  private readonly ports = computed(
+    () => ({ inputs: this.node().inputs, outputs: this.node().outputs }),
+    { equal: (a, b) => a.inputs === b.inputs && a.outputs === b.outputs }
+  );
+
+  constructor() {
+    // The card sizes itself from its content, so its size and its ports are read back from the page.
+    afterNextRender(() => {
+      const card = this.card()?.nativeElement;
+      if (card && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => this.measure());
+        observer.observe(card);
+        this.destroyRef.onDestroy(() => observer.disconnect());
+      }
+    });
+    // Ports can change without the card changing size. Moving the node changes neither, so a
+    // drag, which replaces the node on every frame, does not measure it again.
+    afterRenderEffect(() => {
+      this.ports();
+      untracked(() => this.measure());
+    });
+    this.destroyRef.onDestroy(() => this.layoutService.remove(this.node().id));
+  }
+
+  /**
+   * Reads the card's size and the centre of every port handle, in canvas units: the canvas is
+   * scaled by the zoom, so screen distances are divided by the scale the card is drawn at.
+   */
+  private measure(): void {
+    const card = this.card()?.nativeElement;
+    if (!card || card.offsetWidth === 0) return; // not laid out (hidden tab)
+    const box = card.getBoundingClientRect();
+    const scale = box.width / card.offsetWidth;
+    if (!scale) return;
+    const unit = (value: number): number => Math.round((value / scale) * 100) / 100;
+
+    const ports: NodeLayout['ports'] = {};
+    for (const handle of card.querySelectorAll<HTMLElement>('.port-handle')) {
+      const portId = handle.dataset['portId'];
+      if (!portId) continue;
+      const rect = handle.getBoundingClientRect();
+      ports[portKey(portId, handle.dataset['isOutput'] === 'true')] = {
+        x: unit(rect.left + rect.width / 2 - box.left),
+        y: unit(rect.top + rect.height / 2 - box.top),
+      };
+    }
+    this.layoutService.set(this.node().id, {
+      width: card.offsetWidth,
+      height: card.offsetHeight,
+      ports,
+    });
+  }
 
   readonly portRows = computed<NodePortRow[]>(() => {
     const inputs = this.node().inputs || [];
@@ -172,40 +253,5 @@ export class WorkflowNodeComponent {
     if (this.nodeJob()) {
       this.onInspectJob(event);
     }
-  }
-
-  onPortTouchStart(port: WorkflowPort, isOutput: boolean, event: TouchEvent): void {
-    event.stopPropagation();
-    event.preventDefault();
-    if (event.touches.length !== 1) return;
-    if (this.stateService.isConnecting()) {
-      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
-      return;
-    }
-    const touch = event.touches[0];
-    const mouseLikeEvent = {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      button: 0,
-      stopPropagation: () => event.stopPropagation(),
-      preventDefault: () => event.preventDefault(),
-    } as unknown as MouseEvent;
-    this.startConnecting.emit({ portId: port.id, isOutput, event: mouseLikeEvent });
-  }
-
-  onPortMouseDown(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    if (this.stateService.isConnecting()) {
-      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
-      return;
-    }
-    this.startConnecting.emit({ portId: port.id, isOutput, event });
-  }
-
-  onPortMouseUp(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    this.portMouseUp.emit({ portId: port.id, isOutput, event });
   }
 }

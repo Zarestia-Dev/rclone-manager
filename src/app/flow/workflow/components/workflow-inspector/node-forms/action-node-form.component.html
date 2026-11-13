@@ -25,7 +25,7 @@
         <div class="summary-header">
           <mat-icon [svgIcon]="getActionIcon(action.kind)"></mat-icon>
           <span class="action-name truncate">{{ action.name }}</span>
-          <span class="action-kind-pill">{{ action.kind }}</span>
+          <span appPill size="xs" tone="accent">{{ action.kind }}</span>
         </div>
         @if (getActionDetail(action); as detail) {
           <div class="summary-detail truncate" [attr.title]="detail">{{ detail }}</div>
@@ -53,7 +53,7 @@
     <span class="section-sub-title">{{
       'flow.workflow.inspector.notificationPresets' | translate
     }}</span>
-    <div class="presets-row">
+    <div class="pill-group">
       <button type="button" appPill (click)="applyNotificationPreset('check_report')">
         <mat-icon svgIcon="shield"></mat-icon>
         <span>{{ 'flow.workflow.inspector.notifPresetCheckReport' | translate }}</span>
@@ -109,7 +109,7 @@
     <span class="section-sub-title">{{
       'flow.workflow.inspector.upstreamOutputs' | translate
     }}</span>
-    <div class="tags-row">
+    <div class="pill-group">
       @for (tok of quickOutputTokens(); track tok) {
         <button
           type="button"
@@ -167,12 +167,12 @@
     severity="info"
     [title]="'flow.workflow.inspector.templateVariables' | translate"
   >
-    <div class="tags-row">
+    <div class="pill-group">
       @for (key of templateKeys(); track key) {
         <button
           type="button"
           appPill
-          (click)="insertTemplateVariable(key)"
+          (click)="insertVariableToken(key)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >
           <code>{{ '{{' }}{{ key }}{{ '}}' }}</code>

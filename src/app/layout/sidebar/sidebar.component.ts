@@ -123,7 +123,7 @@ export class SidebarComponent {
 
   // ── Workflow state ────────────────────────────────────────────────────────
   readonly workflows = this.workflowStorage.workflows;
-  readonly selectedWorkflowId = computed(() => this.workflowState.currentWorkflow()?.id ?? null);
+  readonly selectedWorkflowId = computed(() => this.workflowState.currentWorkflowId() ?? null);
 
   // ── Search & Filter state ─────────────────────────────────────────────────
   readonly searchTerm = signal('');
@@ -199,8 +199,8 @@ export class SidebarComponent {
   }
 
   // ── Workflow actions & helpers ───────────────────────────────────────────
-  selectWorkflow(wf: WorkflowDefinition): void {
-    this.workflowState.loadWorkflow(wf);
+  async selectWorkflow(wf: WorkflowDefinition): Promise<void> {
+    if (!(await this.workflowStorage.openWorkflow(wf))) return;
     this.workflowSelected.emit(wf);
     this.itemSelected.emit();
   }

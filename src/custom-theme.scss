@@ -1088,6 +1088,11 @@ mat-accordion:not(.dull) {
   text-overflow: ellipsis;
 }
 
+// Pushes an item to the end of a flex row.
+.ml-auto {
+  margin-left: auto;
+}
+
 .origin-mini-badge {
   display: inline-flex;
   align-items: center;
@@ -1321,6 +1326,13 @@ mat-accordion:not(.dull) {
     height: var(--icon-size-2xl);
     width: var(--icon-size-2xl);
   }
+}
+
+// A wrapping row of pills (presets, tokens, filters). Pills are never laid out without it.
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .empty-state {

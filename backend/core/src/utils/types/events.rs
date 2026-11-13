@@ -130,7 +130,16 @@ pub const AUTOMATIONS_CACHE_CHANGED: &str = "automations_cache_changed";
 
 // --- Workflow Events ---
 
+/// Emitted when a step of a workflow run changes state. Carries the run's `runId` and a
+/// `seq` that orders the events of the run; the same events make up the snapshots
+/// `get_workflow_runs` returns.
+/// - Emitted by: `services::flow::workflow::engine::record::RunHandle`
+/// - Handled by: `WorkflowEventService`
 pub const WORKFLOW_NODE_STATE_CHANGED: &str = "workflow_node_state_changed";
+
+/// Emitted when a workflow run starts, makes progress or ends (completed, failed or cancelled).
+/// - Emitted by: `services::flow::workflow::engine::record::RunHandle`
+/// - Handled by: `WorkflowEventService`, and the tray (re-render)
 pub const WORKFLOW_EXECUTION_STATE_CHANGED: &str = "workflow_execution_state_changed";
 
 // --- Alert Events ---

@@ -229,11 +229,12 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // WORKFLOWS (FLOW WORKSPACE)
             (list_workflows, $crate::services::flow::workflow::commands::list_workflows, []);
-            (get_active_workflows, $crate::services::flow::workflow::commands::get_active_workflows, []);
+            (get_workflow_runs, $crate::services::flow::workflow::commands::get_workflow_runs, []);
             (create_workflow, $crate::services::flow::workflow::commands::create_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (update_workflow, $crate::services::flow::workflow::commands::update_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (delete_workflow, $crate::services::flow::workflow::commands::delete_workflow, [workflow_id: String]);
             (duplicate_workflow, $crate::services::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
+            (validate_workflow, $crate::services::flow::workflow::commands::validate_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput], [no_app]);
             (execute_workflow, $crate::services::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
             (stop_workflow, $crate::services::flow::workflow::commands::stop_workflow, [workflow_id: String]);
 

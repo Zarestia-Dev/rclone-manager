@@ -1,0 +1,89 @@
+<section class="run-panel">
+  <div class="run-header">
+    <mat-icon svgIcon="clock-rotate-left"></mat-icon>
+    <span class="run-title truncate">{{ 'flow.workflow.run.title' | translate }}</span>
+    <div class="run-actions ml-auto">
+      @if (run()) {
+        <button
+          type="button"
+          class="action-button"
+          [appCopyToClipboard]="summaryText()"
+          [attr.title]="'flow.workflow.run.copy' | translate"
+        >
+          <mat-icon svgIcon="copy"></mat-icon>
+        </button>
+      }
+      <button
+        type="button"
+        class="action-button"
+        (click)="closePanel.emit()"
+        [attr.title]="'common.close' | translate"
+      >
+        <mat-icon svgIcon="close"></mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (run(); as run) {
+    <div class="run-head">
+      <span appPill [tone]="runLook[run.state].tone">
+        <mat-icon [svgIcon]="runLook[run.state].icon"></mat-icon>
+        {{ 'flow.workflow.run.state.' + run.state | translate }}
+      </span>
+      @if (run.dryRun) {
+        <span appPill size="xs" tone="purple">{{
+          'flow.workflow.toolbar.dryRun' | translate
+        }}</span>
+      }
+      @if (run.progress; as progress) {
+        <span appPill size="xs" tone="dim">{{ progress.completed }}/{{ progress.total }}</span>
+      }
+      <span class="run-started ml-auto">{{ run.startedAt | date: 'mediumTime' }}</span>
+    </div>
+
+    @if (message() && run.state === 'failed') {
+      <app-alert-banner severity="error" [title]="message()"></app-alert-banner>
+    }
+
+    @if (counts().length > 0) {
+      <div class="run-counts">
+        @for (item of counts(); track item.state) {
+          <span appPill size="xs" [tone]="stepLook[item.state].tone">
+            {{ item.count }} {{ 'flow.workflow.status.' + item.state | translate }}
+          </span>
+        }
+      </div>
+    }
+
+    <div class="run-steps">
+      @for (step of steps(); track step.id) {
+        <button
+          type="button"
+          class="run-step"
+          [attr.data-tone]="stepLook[step.state].tone"
+          [attr.title]="'flow.workflow.run.openStep' | translate"
+          (click)="openStep(step.id)"
+        >
+          <mat-icon
+            class="step-icon"
+            [svgIcon]="stepLook[step.state].icon"
+            [attr.title]="'flow.workflow.status.' + step.state | translate"
+          ></mat-icon>
+          <span class="step-title truncate">{{
+            step.titleKey ? (step.titleKey | translate) : step.title
+          }}</span>
+          @if (step.durationMs !== undefined) {
+            <span appPill size="xs" tone="dim" class="ml-auto">{{ step.durationMs }}ms</span>
+          }
+          @if (step.error) {
+            <span class="step-error truncate" [attr.title]="step.error">{{ step.error }}</span>
+          }
+        </button>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <span>{{ 'flow.workflow.run.empty' | translate }}</span>
+    </div>
+  }
+</section>

@@ -3153,6 +3153,10 @@
       "validationSelfLoop": "Um nó não pode se conectar a si mesmo (laço): {{id}}",
       "validationCycle": "O grafo contém dependências cíclicas (fluxos de trabalho devem ser DAGs)",
       "validationDisconnected": "O nó '{{title}}' está desconectado do fluxo de trabalho",
+      "validationMissingPort": "Um fio está ligado a uma porta que o nó '{{title}}' não tem: {{port}}",
+      "validationTokenUnknownNode": "'{{title}}' lê a saída de '{{node}}', que não está no fluxo de trabalho",
+      "validationTokenNotUpstream": "'{{title}}' lê a saída de '{{node}}', que não leva até ele, então o valor pode estar vazio",
+      "validationPrevWithoutInput": "'{{title}}' lê a saída do nó anterior, mas nada está conectado a ele",
       "cancelled": "Execução cancelada",
       "jobUntracked": "A tarefa {{id}} não é mais acompanhada; seu resultado é desconhecido",
       "jobStopped": "A tarefa {{id}} foi interrompida",
@@ -3916,6 +3920,8 @@
       "savedWorkflows": "Fluxos Salvos",
       "presetRecipes": "Modelos Prontos",
       "unsavedChanges": "Alterações não salvas",
+      "discardConfirm": "O fluxo de trabalho na tela tem alterações não salvas. Descartá-las?",
+      "discard": "Descartar",
       "saving": "Salvando...",
       "categories": {
         "all": "Todos"
@@ -3952,7 +3958,7 @@
         "resetZoom": "Redefinir Zoom",
         "fitToView": "Ajustar à Tela",
         "snapToGrid": "Alinhar à Grade",
-        "toggleLog": "Registro de Execução",
+        "showRun": "Mostrar a última execução",
         "toggleInspector": "Alternar Inspetor",
         "dryRun": "Simulação",
         "dryRunTooltip": "Simular a execução do fluxo de trabalho sem modificar dados ou executar comandos reais"
@@ -3967,6 +3973,8 @@
       },
       "inspector": {
         "general": "Configurações Gerais",
+        "checks": "Verificações",
+        "warningsCount": "Avisos ({{count}})",
         "parameters": "Parâmetros e Opções",
         "nodeTitle": "Título do Nó",
         "nodeSubtitle": "Subtítulo / Descrição",
@@ -4115,6 +4123,8 @@
         "nodeOutput": "Saída da Execução do Nó",
         "checkReport": "Relatório de Diferenças de Verificação",
         "rawOutputJson": "Dados de Saída (JSON)",
+        "tabResult": "Resultado",
+        "tabSettings": "Configurações",
         "conditionPresets": "Predefinições de condição rápida",
         "condPresetHasDiff": "Possui diferenças",
         "condPresetNoDiff": "Sem diferenças",
@@ -4133,14 +4143,25 @@
         "opEndsWith": "Termina Com",
         "opArrayNotEmpty": "Lista Contém Itens",
         "opArrayIsEmpty": "Lista Está Vazia",
-        "preview": "Prévia da Mensagem"
+        "preview": "Prévia da Mensagem",
+        "presets": {
+          "checkReportTitle": "Diferenças detectadas (auditoria Check)",
+          "checkReportMsg": "Diferenças encontradas entre origem e destino:\n\n{{prev.report}}",
+          "transferSummaryTitle": "Transferência concluída com sucesso",
+          "transferSummaryMsg": "Transferência finalizada:\nTransferido: {{prev.bytesFormatted}}\nArquivos: {{prev.transfers}}\nVelocidade: {{prev.speedFormatted}}\nErros: {{prev.errors}}",
+          "failureAlertTitle": "Falha em uma etapa do fluxo de trabalho",
+          "failureAlertMsg": "A execução falhou no nó.\n\nDetalhes do erro:\n{{prev.error}}",
+          "healthStatusTitle": "Relatório de execução do fluxo de trabalho",
+          "healthStatusMsg": "A etapa do fluxo de trabalho terminou com o status: {{prev.status}}.\nTransferido: {{prev.bytesFormatted}}"
+        }
       },
       "status": {
         "running": "Executando",
         "success": "Concluído",
         "failed": "Falhou",
         "skipped": "Ignorado",
-        "idle": "Ocioso"
+        "idle": "Ocioso",
+        "queued": "Aguardando"
       },
       "ports": {
         "in": "Entrada",
@@ -4211,27 +4232,20 @@
         "check": "Verificar",
         "mount": "Montar"
       },
-      "logs": {
-        "stepRunning": "A etapa \"{{title}}\" está em execução...",
-        "stepCompleted": "A etapa \"{{title}}\" foi concluída em {{duration}} ms",
-        "stepFailed": "A etapa \"{{title}}\" falhou: {{error}}",
-        "stepSkipped": "A etapa \"{{title}}\" foi ignorada (ramo não seguido)",
-        "unknownError": "Erro desconhecido",
-        "cancelRequested": "Cancelamento da execução do fluxo de trabalho solicitado",
-        "startExecution": "Iniciando a execução do fluxo de trabalho \"{{name}}\"",
-        "startSimulation": "Iniciando a simulação (execução de teste) do fluxo de trabalho \"{{name}}\"",
-        "executionError": "Erro na execução do fluxo de trabalho: {{error}}",
+      "run": {
+        "title": "Última execução",
+        "copy": "Copiar resumo",
+        "openStep": "Abrir etapa",
+        "empty": "Nenhuma execução ainda. Execute o fluxo para ver as etapas aqui.",
         "running": "Em execução...",
-        "title": "Registro de Execução",
-        "copy": "Copiar Registros",
-        "clear": "Limpar Registros",
-        "jumpToNode": "Clique para focar o nó no painel",
-        "empty": "Ainda não há registros. Execute um fluxo para ver o resultado.",
-        "copied": "Logs copiados para a área de transferência",
-        "filterAll": "Todos",
-        "filterErrors": "Erros",
-        "filterWarnings": "Avisos",
-        "filterSuccess": "Sucesso"
+        "executionError": "Erro na execução do fluxo de trabalho: {{error}}",
+        "state": {
+          "started": "Iniciando",
+          "running": "Em execução",
+          "completed": "Concluído",
+          "failed": "Falhou",
+          "cancelled": "Cancelado"
+        }
       },
       "tokens": {
         "prevNode": "Nó Anterior",
@@ -4282,8 +4296,6 @@
       "description": "Descrição do Fluxo",
       "descriptionPlaceholder": "Descreva o propósito deste fluxo de trabalho...",
       "deleteConfirm": "Tem certeza de que deseja excluir este fluxo de trabalho?",
-      "cleanDuplicates": "Limpar Duplicados",
-      "cleanDuplicatesConfirm": "Tem certeza de que deseja remover os fluxos duplicados?",
       "stats": {
         "title": "Visão Geral",
         "nodes": "Total de Nós",
@@ -4298,37 +4310,112 @@
       "recipes": {
         "driftCheckSync": {
           "name": "Verificação Inteligente de Divergência e Sincronização Condicional",
-          "description": "Verifica diferenças com check; sincroniza apenas quando divergências são detectadas e notifica com detalhes de volume."
+          "description": "Verifica diferenças com check; sincroniza apenas quando divergências são detectadas e notifica com detalhes de volume.",
+          "nodes": {
+            "node-notify-in-sync": {
+              "title": "Nenhuma diferença detectada",
+              "message": "Origem e destino já são idênticos. A sincronização foi ignorada."
+            },
+            "node-notify-sync-done": {
+              "title": "Sincronização concluída",
+              "message": "Diferenças resolvidas: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} arquivos)."
+            },
+            "node-notify-check-failed": {
+              "title": "Falha na verificação de diferenças",
+              "message": "A verificação não pôde terminar, então nada foi sincronizado:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "integrityAudit": {
           "name": "Auditoria de Integridade de Dados e Relatório de Divergência",
-          "description": "Executa verificação agendada de integridade; envia alerta com relatório Markdown caso existam diferenças."
+          "description": "Executa verificação agendada de integridade; envia alerta com relatório Markdown caso existam diferenças.",
+          "nodes": {
+            "node-notify-clean": {
+              "title": "Integridade verificada",
+              "message": "Todos os arquivos correspondem ao destino. Nenhuma discrepância encontrada."
+            },
+            "node-notify-drift": {
+              "title": "Alerta de auditoria de integridade"
+            },
+            "node-notify-audit-failed": {
+              "title": "Falha na auditoria de integridade",
+              "message": "A auditoria não pôde terminar:\n{{nodes.node-task-check.error}}"
+            }
+          }
         },
         "safeSyncAlert": {
           "name": "Sincronização Segura com Alerta de Falha",
-          "description": "Executa sincronização, notificando o volume transferido em caso de sucesso ou o erro exato em falha."
+          "description": "Executa sincronização, notificando o volume transferido em caso de sucesso ou o erro exato em falha.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Sincronização bem-sucedida",
+              "message": "Transferido: {{prev.bytesFormatted}} (velocidade: {{prev.speedFormatted}}). Todos os arquivos estão atualizados."
+            },
+            "node-notify-fail": {
+              "title": "Falha na sincronização",
+              "message": "O backup encontrou um erro:\n{{prev.error}}"
+            }
+          }
         },
         "dailyBackup": {
           "name": "Backup Diário e Notificação",
-          "description": "Executa sincronização diária agendada às 02:00, notificando o sucesso ou alertando sobre falhas."
+          "description": "Executa sincronização diária agendada às 02:00, notificando o sucesso ou alertando sobre falhas.",
+          "nodes": {
+            "node-action-notify-success": {
+              "title": "Backup concluído",
+              "message": "Sincronização diária concluída: {{prev.bytesFormatted}} transferidos (velocidade: {{prev.speedFormatted}})."
+            },
+            "node-action-notify-fail": {
+              "title": "Falha no backup",
+              "message": "O backup diário encontrou um erro:\n{{prev.error}}"
+            }
+          }
         },
         "watchUpload": {
           "name": "Monitor de Pasta e Envio Automático",
-          "description": "Monitora pasta local por alterações e copia arquivos novos/modificados para o armazenamento em nuvem."
+          "description": "Monitora pasta local por alterações e copia arquivos novos/modificados para o armazenamento em nuvem.",
+          "nodes": {
+            "node-action-notify": {
+              "title": "Envio automático concluído",
+              "message": "Envio automático concluído: {{prev.bytesFormatted}} transferidos ({{prev.transfers}} arquivos)."
+            }
+          }
         },
         "parallelMirror": {
           "name": "Espelhamento Paralelo Multi-Nuvem",
-          "description": "Sincroniza dados simultaneamente para dois provedores de nuvem e verifica a conclusão."
+          "description": "Sincroniza dados simultaneamente para dois provedores de nuvem e verifica a conclusão.",
+          "nodes": {
+            "node-notify-done": {
+              "title": "Espelhamento concluído",
+              "message": "Todas as sincronizações paralelas na nuvem foram concluídas."
+            }
+          }
         },
         "mountOnDemand": {
           "name": "Montagem Sob Demanda e Notificação",
-          "description": "Monta um caminho remoto e notifica na área de trabalho quando a unidade estiver pronta."
+          "description": "Monta um caminho remoto e notifica na área de trabalho quando a unidade estiver pronta.",
+          "nodes": {
+            "node-notify": {
+              "title": "Unidade montada",
+              "message": "Seu armazenamento remoto está montado e pronto para uso."
+            }
+          }
         },
         "manualTrigger": "Manual",
         "manualTriggerDesc": "Disparado manualmente sob demanda",
         "vfsRefresh": {
           "name": "Automação de Atualização de Cache VFS",
-          "description": "Envia comando RC vfs/refresh para recarregar o cache de diretórios em discos montados e notifica a área de trabalho."
+          "description": "Envia comando RC vfs/refresh para recarregar o cache de diretórios em discos montados e notifica a área de trabalho.",
+          "nodes": {
+            "node-notify-success": {
+              "title": "Cache VFS atualizado",
+              "message": "O recarregamento do cache de diretórios foi concluído com sucesso.\nComando: {{prev.command}}\nStatus: {{prev.status}}"
+            },
+            "node-notify-fail": {
+              "title": "Falha na atualização do VFS",
+              "message": "O comando RC falhou:\n{{prev.error}}"
+            }
+          }
         }
       },
       "editor": {

@@ -5,7 +5,6 @@ import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
-import { WorkflowStateService } from '../flow/workflow-state.service';
 
 /**
  * Dispatches centralized UI navigation requests across main views, tabs,
@@ -20,7 +19,6 @@ export class NavigationDispatcherService {
   private readonly pathService = inject(PathService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly workflowStorage = inject(WorkflowStorageService);
-  private readonly workflowState = inject(WorkflowStateService);
 
   /**
    * Navigates directly to a workflow on the Flow canvas.
@@ -31,9 +29,7 @@ export class NavigationDispatcherService {
     const wf = this.workflowStorage
       .workflows()
       .find(w => (workflowId && w.id === workflowId) || (workflowName && w.name === workflowName));
-    if (wf) {
-      this.workflowState.loadWorkflow(wf);
-    }
+    if (wf) void this.workflowStorage.openWorkflow(wf);
   }
 
   /**
