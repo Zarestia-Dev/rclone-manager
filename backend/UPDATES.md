@@ -159,7 +159,9 @@ successful restore fails, the helper reports the durability error but still
 launches the restored executable.
 
 The installed build must provide a private receipt containing its version and a
-random attempt token within 90 seconds, then remain alive for 10 more seconds.
+random attempt token within 90 seconds. The update is committed as soon as the
+receipt is verified; there is no further waiting period. A build that exits or
+never reports before that is rolled back.
 Core readiness requires successful local initialization and bootstrap, or a ready
 locked-vault entry. Remote Rclone connectivity does not gate readiness. Server
 readiness requires the HTTP/TLS listener to bind. A visible portable window waits
@@ -171,17 +173,30 @@ Debug logs identify the installation policy, selected release and target,
 manifest verification, payload cache use, ZIP and binary verification, and staging
 paths. The update helper initializes file logging before normal application setup
 and writes to the same application log directory. Its info logs record binary
-replacement, startup receipt verification, `Update committed` after the stability
-window, and the reason for any rollback. Startup tokens are never logged.
+replacement, startup receipt verification, `Update committed` once the receipt is
+verified, and the reason for any rollback. Startup tokens are never logged.
 
 Trial processes have an isolated Unix process group or a Windows Job Object.
 Windows startup is gated until the process has been assigned to its job. A failed
 trial or administrative stop cleans up its process tree before recovery. A normal
-close during the trial restores the original without reopening it. After commit,
+close or service stop before the receipt restores the original without reopening
+it; after the receipt the update is kept. After commit,
 a clean ordinary exit allows a platform-spawned restart process to survive, and on
 Windows ending the waiting helper no longer ends the application. The trial
 application removes the receipt directory and token from its environment at
 startup, so rclone, scripts and restarted processes never inherit them.
+
+Removing a variable does not erase the block the process was started with, so on
+Linux `/proc/<pid>/environ` keeps showing `RCMAN_UPDATE_ARGS` (in the supervisor)
+and the receipt directory and token (in the updated application) for the life of
+the process. That file is readable only by the process owner and root, the same
+audience as the service's own environment (for example `RCLONE_MANAGER_PASS`
+from an `EnvironmentFile`). The updated application's command line, which
+`ps` shows to every user, carries the launch arguments as well, so credentials
+belong in the environment or an owner-only file rather than on the command line.
+The block is not overwritten: the attempt token only separates a stale receipt
+from a current one, and scrubbing the environment would not close the wider
+command-line exposure.
 
 Consecutive updates hand the next private staging directory to the same helper
 after the current child exits cleanly. The helper validates the product, target,
@@ -216,6 +231,47 @@ download for retry. Android completion or cancellation remains controlled by the
 system installer. This is for direct APK distribution; Play in-app updates are
 not implemented here.
 
+### Supervisor lifetime on Unix
+
+The original process enters the helper with `exec`, so the supervisor keeps the
+original PID and the updated application runs as its child. The supervisor does
+not exit when the update commits: it keeps waiting until the application exits.
+This is deliberate. Whatever launched the service tracks that PID:
+
+- systemd (`Type=simple`) treats the main PID exiting as the service stopping
+  and, with the default `KillMode=control-group`, ends the rest of the control
+  group, including the updated child;
+- a container ends when its main process exits;
+- a terminal's job control and Ctrl+C address the foreground process.
+
+After commit the supervisor only waits (about 10 MB resident) and forwards
+SIGTERM and SIGINT to the child. It exits, and removes its staging directory,
+when the application exits cleanly, when the service is stopped, or when it hands
+over to a consecutive update. While the application runs, the `.rcman-update-*`
+directory stays next to the executable. It holds no payload or backup after
+commit, only a few small files: the lock that marks an active supervisor, the
+receipt, `committed`, `target.json`, the manifest and its signature, and the
+`next.json` handoff when one is pending. A rolled-back attempt keeps its directory
+(with `failure.txt`) until the failure has been shown to the user.
+
+Alternatives that would remove the resident supervisor were considered and not
+taken:
+
+- Exit after commit. This breaks the PID tracking above, so it would need
+  detection of every launcher (systemd, containers, terminals) and fails silently
+  when the guess is wrong.
+- Replace in place and `exec` the new build, with a guard at the next start that
+  restores the backup when the previous trial never committed. It keeps the PID
+  and leaves no extra process, but a crash is only reversed on the next start, so
+  it relies on a restart policy (for example systemd `Restart=`) or a manual
+  start, and a pre-start self-check would be needed for builds that cannot load.
+- Replace and restart without rollback, as `rclone selfupdate` does. A bad
+  release would take unattended servers down.
+
+Moving the post-commit state out of the installation directory would hide the
+directory but not the process; it also touches the same-directory validation in
+`validate_stage` and `prune_completed`, so it is not done either.
+
 ## Operational limits
 
 The custom installer does not collect root/admin passwords or provision a
@@ -229,7 +285,8 @@ and keeps the verified download for a retry.
 The startup trial covers the direct portable/server installer. Native Tauri
 installers and Android's package installer do not acquire this supervisor or a
 new rollback guarantee. Startup confirmation covers required local initialization and the listener/render
-path, not every feature or future responsiveness.
+path, not every feature or future responsiveness. A build that crashes after its
+receipt is not rolled back.
 
 Rollback restores only the executable. It is not a transactional configuration,
 vault, or database rollback. Releases with irreversible data migrations need an

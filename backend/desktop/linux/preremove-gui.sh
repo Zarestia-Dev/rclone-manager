@@ -10,7 +10,7 @@ for user_home in /root /home/*; do
         rm -f "$user_home/.local/share/nautilus/scripts/"*" (RClone Manager)"
         
         # 2. Nautilus Python extensions
-        rm -f "$user_home/.local/share/nautilus-python/extensions/"*"_rclone_manager.py"
+        rm -f "$user_home/.local/share/nautilus-python/extensions/"*" (RClone Manager).py"
         
         # 3. Dolphin service menus
         rm -f "$user_home/.local/share/kio/servicemenus/"*" (RClone Manager).desktop"

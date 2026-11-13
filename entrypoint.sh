@@ -96,17 +96,18 @@ RCLONE_DIR=$(dirname "$RCLONE_BIN")
 export PATH="${RCLONE_DIR}:${PATH}"
 
 # =============================================================================
-# 6. Command Argument Assembly
+# 6. Environment Cleanup
 # =============================================================================
-# Convert passed environment variables into the explicit CLI arg strings required
-# by the backend binary.
-ARGS=()
-[ -n "$RCLONE_MANAGER_HOST" ] && ARGS+=("--host" "$RCLONE_MANAGER_HOST")
-[ -n "$RCLONE_MANAGER_PORT" ] && ARGS+=("--port" "$RCLONE_MANAGER_PORT")
-[ -n "$RCLONE_MANAGER_USER" ] && ARGS+=("--user" "$RCLONE_MANAGER_USER")
-[ -n "$RCLONE_MANAGER_PASS" ] && ARGS+=("--pass" "$RCLONE_MANAGER_PASS")
-[ -n "$RCLONE_MANAGER_TLS_CERT" ] && ARGS+=("--tls-cert" "$RCLONE_MANAGER_TLS_CERT")
-[ -n "$RCLONE_MANAGER_TLS_KEY" ] && ARGS+=("--tls-key" "$RCLONE_MANAGER_TLS_KEY")
+# The server reads RCLONE_MANAGER_* itself, so nothing is turned into command-line
+# arguments: those are visible to every user through ps and /proc/<pid>/cmdline,
+# the password included. Empty values (e.g. Compose `${UNSET_VAR}`) are dropped so
+# they count as unset instead of being parsed as an empty host, port or path.
+for name in RCLONE_MANAGER_HOST RCLONE_MANAGER_PORT RCLONE_MANAGER_USER \
+            RCLONE_MANAGER_PASS RCLONE_MANAGER_TLS_CERT RCLONE_MANAGER_TLS_KEY; do
+    if [ -z "${!name}" ]; then
+        unset "$name"
+    fi
+done
 
 # =============================================================================
 # 7. Handover
@@ -122,8 +123,8 @@ if [ "$(id -u)" -eq 0 ]; then
         --regid="$PGID" \
         --groups="$SUP_GROUPS" \
         --inh-caps=-all \
-        /usr/local/bin/rclone-manager-server "${ARGS[@]}" "$@"
+        /usr/local/bin/rclone-manager-server "$@"
 else
     echo "Starting rclone-manager-server as unprivileged user (UID $(id -u))..."
-    exec /usr/local/bin/rclone-manager-server "${ARGS[@]}" "$@"
+    exec /usr/local/bin/rclone-manager-server "$@"
 fi

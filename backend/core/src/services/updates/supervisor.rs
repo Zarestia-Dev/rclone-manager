@@ -4,7 +4,6 @@ use super::{binary::StagedUpdate, health};
 use std::{path::Path, time::Duration};
 
 const STARTUP_DEADLINE: Duration = Duration::from_secs(90);
-const STABILITY_WINDOW: Duration = Duration::from_secs(10);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Completion {
@@ -19,36 +18,16 @@ enum Decision {
     Rollback { restart: bool, reason: String },
 }
 
-#[derive(Default)]
-struct Trial {
-    ready_since: Option<Duration>,
-    committed: bool,
-}
-
-impl Trial {
-    /// The receipt is written once and never removed, so readiness only starts
-    /// the stability window; the child staying alive through it commits.
-    fn observe(&mut self, elapsed: Duration, ready: bool, stability: Duration) -> bool {
-        if self.committed || (!ready && self.ready_since.is_none()) {
-            return false;
-        }
-        let since = *self.ready_since.get_or_insert(elapsed);
-        if elapsed.saturating_sub(since) >= stability {
-            self.committed = true;
-            return true;
-        }
-        false
-    }
-
-    fn exited(&self, code: i32) -> Decision {
-        if self.committed {
-            Decision::Exit(code)
-        } else {
-            Decision::Rollback {
-                // A normal close is respected; don't reopen a deliberately closed app.
-                restart: code != 0,
-                reason: crate::localized_error!("backendErrors.updater.rollback.exited", "code" => code),
-            }
+/// What the end of the updated application means: after commitment its exit
+/// code stands, before it the previous version is restored. A normal close is
+/// respected; a deliberately closed app is not reopened.
+fn exited(committed: bool, code: i32) -> Decision {
+    if committed {
+        Decision::Exit(code)
+    } else {
+        Decision::Rollback {
+            restart: code != 0,
+            reason: crate::localized_error!("backendErrors.updater.rollback.exited", "code" => code),
         }
     }
 }
@@ -104,8 +83,8 @@ pub(super) fn run(
                 });
             }
         };
-        log::info!("Started updated application: version={version}, pid={:?}; startup deadline={}s, stability window={}s",
-            child.id(), STARTUP_DEADLINE.as_secs(), STABILITY_WINDOW.as_secs());
+        log::info!("Started updated application: version={version}, pid={:?}; startup deadline={}s",
+            child.id(), STARTUP_DEADLINE.as_secs());
         match monitor(
             &mut child,
             directory,
@@ -113,7 +92,6 @@ pub(super) fn run(
             version,
             stop,
             STARTUP_DEADLINE,
-            STABILITY_WINDOW,
         )
         .await
         {
@@ -182,6 +160,24 @@ pub(super) fn recover(
     }
 }
 
+/// Rollback is no longer possible after commitment, so the backup goes.
+fn commit(directory: &Path, version: &str) -> Result<(), String> {
+    super::binary::write_private(&directory.join("committed"), version.as_bytes())
+        .map_err(|e| e.to_string())?;
+    log::info!("Update committed: version={version}, startup confirmed");
+    if let Err(error) = std::fs::remove_file(directory.join("previous"))
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        log::warn!("Could not remove committed backup: {error}");
+    }
+    if let Err(error) = std::fs::remove_dir_all(directory.join("previous.app"))
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        log::warn!("Could not remove committed app bundle backup: {error}");
+    }
+    Ok(())
+}
+
 async fn monitor(
     child: &mut tokio::process::Child,
     directory: &Path,
@@ -189,7 +185,6 @@ async fn monitor(
     version: &str,
     stop: impl std::future::Future<Output = i32>,
     deadline: Duration,
-    stability: Duration,
 ) -> Result<Decision, String> {
     let mut tree = super::process_tree::ProcessTree::attach(child).map_err(|e| e.to_string())?;
     #[cfg(windows)]
@@ -197,24 +192,36 @@ async fn monitor(
         .await
         .map_err(|e| e.to_string())?;
     let started = tokio::time::Instant::now();
-    let mut trial = Trial::default();
+    let mut committed = false;
     tokio::pin!(stop);
     let mut tick = tokio::time::interval(Duration::from_millis(100));
     loop {
         tokio::select! {
             biased;
             signal = &mut stop => {
-                log::info!("Update supervisor received shutdown: signal={signal}, committed={}", trial.committed);
+                log::info!("Update supervisor received shutdown: signal={signal}, committed={committed}");
+                // A confirmed startup means the update works; stopping the service
+                // right after it is not a failure of the update.
+                let verified = committed || health::confirmed(directory, token, version);
                 stop_child(child, &tree, signal).await?;
-                return Ok(if trial.committed { Decision::Exit(0) } else {
+                if verified && !committed {
+                    commit(directory, version)?;
+                }
+                return Ok(if verified { Decision::Exit(0) } else {
                     Decision::Rollback { restart: false, reason: crate::localized_error!("backendErrors.updater.rollback.interrupted") }
                 });
             }
             status = child.wait() => {
                 let status = status.map_err(|e| e.to_string())?;
                 let code = status.code().unwrap_or(1);
-                log::info!("Updated application exited: code={code}, committed={}", trial.committed);
-                if trial.committed && code == 0 {
+                log::info!("Updated application exited: code={code}, committed={committed}");
+                // A clean exit right after the startup receipt, before the next
+                // tick saw it, is a deliberate quit, not a failed update.
+                if !committed && code == 0 && health::confirmed(directory, token, version) {
+                    commit(directory, version)?;
+                    committed = true;
+                }
+                if committed && code == 0 {
                     match std::fs::read(directory.join("next.json")) {
                         Ok(bytes) => return serde_json::from_slice(&bytes).map(Decision::Next).map_err(|e| e.to_string()),
                         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -226,30 +233,19 @@ async fn monitor(
                         Err(error) => return Err(error.to_string()),
                     }
                 }
-                return Ok(trial.exited(code));
+                return Ok(exited(committed, code));
             }
-            _ = tick.tick(), if !trial.committed => {
-                let elapsed = started.elapsed();
-                let ready = health::confirmed(directory, token, version);
-                if ready && trial.ready_since.is_none() {
-                    log::info!("Startup receipt verified for {version}; observing stability window");
-                }
-                if trial.observe(elapsed, ready, stability) {
-                    super::binary::write_private(&directory.join("committed"), version.as_bytes())
-                        .map_err(|e| e.to_string())?;
-                    log::info!("Update committed: version={version}, startup and stability checks passed");
+            _ = tick.tick(), if !committed => {
+                if health::confirmed(directory, token, version) {
+                    log::info!("Startup receipt verified for {version}");
+                    commit(directory, version)?;
+                    committed = true;
                     // The job kills its processes when its handle closes. After commitment
                     // the helper only waits, and ending it (e.g. from Task Manager) must
                     // not end the application. Explicit stops still terminate the job.
                     #[cfg(windows)]
                     tree.disarm().map_err(|e| e.to_string())?;
-                    // Rollback is no longer possible after commitment.
-                    if let Err(error) = std::fs::remove_file(directory.join("previous"))
-                        && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed backup: {error}"); }
-                    if let Err(error) = std::fs::remove_dir_all(directory.join("previous.app"))
-                        && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed app bundle backup: {error}"); }
-                }
-                if !trial.committed && trial.ready_since.is_none() && elapsed >= deadline {
+                } else if started.elapsed() >= deadline {
                     // Kill the isolated trial tree before restoring and reopening the old build.
                     tree.terminate().map_err(|e| e.to_string())?;
                     child.wait().await.map_err(|e| e.to_string())?;
@@ -295,28 +291,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn commitment_follows_the_stability_window_after_the_first_receipt() {
-        let mut trial = Trial::default();
-        assert!(!trial.observe(Duration::ZERO, false, STABILITY_WINDOW));
-        assert!(!trial.observe(Duration::from_secs(6), true, STABILITY_WINDOW));
-        assert_eq!(trial.ready_since, Some(Duration::from_secs(6)));
-        // A failed read of the receipt does not restart the window.
-        assert!(!trial.observe(Duration::from_secs(10), false, STABILITY_WINDOW));
-        assert!(!trial.observe(Duration::from_secs(15), true, STABILITY_WINDOW));
-        assert!(trial.observe(Duration::from_secs(16), true, STABILITY_WINDOW));
-        assert!(!trial.observe(Duration::from_secs(17), true, STABILITY_WINDOW));
-        assert_eq!(trial.exited(5), Decision::Exit(5));
-    }
-
-    #[test]
     fn early_exits_restore_but_only_failures_reopen_the_app() {
-        let trial = Trial::default();
         assert!(matches!(
-            trial.exited(1),
+            exited(false, 1),
             Decision::Rollback { restart: true, .. }
         ));
         assert!(matches!(
-            trial.exited(0),
+            exited(false, 0),
             Decision::Rollback { restart: false, .. }
         ));
     }
@@ -338,11 +319,93 @@ mod tests {
             "1.2.3",
             std::future::pending(),
             STARTUP_DEADLINE,
-            STABILITY_WINDOW,
         )
         .await
         .unwrap();
         assert!(matches!(decision, Decision::Rollback { restart: true, .. }));
+    }
+
+    #[cfg(unix)]
+    async fn run_trial(
+        script: &str,
+        receipt: bool,
+        stop: impl std::future::Future<Output = i32>,
+    ) -> (tempfile::TempDir, Decision) {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("previous"), b"old").unwrap();
+        if receipt {
+            std::fs::write(
+                directory.path().join("ready.json"),
+                r#"{"token":"token","version":"1.2.3"}"#,
+            )
+            .unwrap();
+        }
+        let mut child = tokio::process::Command::new("/bin/sh")
+            .args(["-c", script])
+            .kill_on_drop(true)
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let decision = monitor(
+            &mut child,
+            directory.path(),
+            "token",
+            "1.2.3",
+            stop,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        (directory, decision)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn quitting_after_the_startup_receipt_keeps_the_update() {
+        let (directory, decision) =
+            run_trial("sleep 0.3; exit 0", true, std::future::pending()).await;
+        assert_eq!(decision, Decision::Exit(0));
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join("committed")).unwrap(),
+            "1.2.3"
+        );
+        assert!(!directory.path().join("previous").exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn quitting_before_the_startup_receipt_rolls_back() {
+        let (directory, decision) =
+            run_trial("sleep 0.3; exit 0", false, std::future::pending()).await;
+        assert!(matches!(
+            decision,
+            Decision::Rollback { restart: false, .. }
+        ));
+        assert!(!directory.path().join("committed").exists());
+        assert!(directory.path().join("previous").exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn crashing_before_the_startup_receipt_rolls_back() {
+        let (directory, decision) =
+            run_trial("sleep 0.3; exit 7", false, std::future::pending()).await;
+        assert!(matches!(decision, Decision::Rollback { restart: true, .. }));
+        assert!(!directory.path().join("committed").exists());
+        assert!(directory.path().join("previous").exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn stopping_the_service_after_the_startup_receipt_keeps_the_update() {
+        let stop = async {
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            libc::SIGTERM
+        };
+        let (directory, decision) = run_trial("exec sleep 60", true, stop).await;
+        assert_eq!(decision, Decision::Exit(0));
+        assert!(directory.path().join("committed").is_file());
+        assert!(!directory.path().join("previous").exists());
     }
 
     #[cfg(unix)]
@@ -362,7 +425,6 @@ mod tests {
             "1.2.3",
             async { libc::SIGTERM },
             STARTUP_DEADLINE,
-            STABILITY_WINDOW,
         )
         .await
         .unwrap();
@@ -394,7 +456,6 @@ mod tests {
                 "1.2.3",
                 std::future::pending(),
                 Duration::from_millis(100),
-                Duration::ZERO,
             )
             .await
             .unwrap();
@@ -429,7 +490,6 @@ mod tests {
                 libc::SIGTERM
             },
             Duration::from_secs(1),
-            Duration::ZERO,
         )
         .await
         .unwrap();
@@ -464,7 +524,6 @@ mod tests {
             "1.2.3",
             std::future::pending(),
             Duration::from_millis(200),
-            Duration::ZERO,
         )
         .await
         .unwrap();
@@ -513,7 +572,6 @@ mod tests {
                 "1.2.3",
                 stop,
                 Duration::from_secs(2),
-                Duration::ZERO,
             )
             .await
             .unwrap();
@@ -559,7 +617,6 @@ mod tests {
             "1.2.3",
             std::future::pending(),
             Duration::from_secs(2),
-            Duration::ZERO,
         )
         .await
         .unwrap();
