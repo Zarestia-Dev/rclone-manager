@@ -1358,5 +1358,69 @@
   "mount_type": {
     "title": "Type de montage",
     "help": "Type de montage à utiliser."
+  },
+  "allow_https_downgrade": {
+    "title": "Autoriser la rétrogradation HTTPS",
+    "help": "Suivre les redirections de HTTPS vers HTTP (non sécurisé)"
+  },
+  "directory_markers": {
+    "title": "Marqueurs de répertoire",
+    "help": "Lister chaque répertoire comme un objet marqueur de répertoire"
+  },
+  "max_delete_renames_aware": {
+    "title": "Max Delete tenant compte des renommages",
+    "help": "Exclure les renommages suivis de la vérification de sécurité --max-delete (nécessite --track-renames)."
+  },
+  "sftp_key": {
+    "title": "Clé d'hôte",
+    "help": "Fichier de clé privée d'hôte SSH (peut avoir plusieurs valeurs ; laisser vide pour la générer automatiquement)"
+  },
+  "bisync_max_delete": {
+    "title": "Suppressions max (%)",
+    "help": "Annuler l'exécution si plus de ce pourcentage de fichiers allait être supprimé (0-100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "Pas de nettoyage",
+    "help": "Conserver les fichiers de travail."
+  },
+  "dest_after": {
+    "title": "Destination après",
+    "help": "Signaler tous les fichiers présents sur la destination après l'opération."
+  },
+  "index_output": {
+    "title": "Formats de liste",
+    "help": "Les listes écrites dans chaque dossier."
+  },
+  "index_max_depth": {
+    "title": "Profondeur maximale",
+    "help": "N'écrit des listes que jusqu'à ce nombre de niveaux, ce dossier comptant pour 1. Gardez -1 pour ne pas limiter."
+  },
+  "index_include_rule": {
+    "title": "Seulement ces dossiers",
+    "help": "N'écrit des listes que dans les dossiers correspondant à un motif, par exemple /docs/**. Les autres dossiers ne sont pas modifiés mais apparaissent toujours dans la liste de leur parent."
+  },
+  "index_exclude_rule": {
+    "title": "Ignorer ces dossiers",
+    "help": "N'écrit ni ne supprime rien dans les dossiers correspondant à un motif, par exemple /private/**. Utile pour protéger un dossier qui a son propre index."
+  },
+  "index_dir_time": {
+    "title": "Date du dossier",
+    "help": "La date affichée à côté d'un dossier."
+  },
+  "index_no_mod_time": {
+    "title": "Masquer les dates de modification",
+    "help": "N'affiche aucune date. C'est l'option la moins coûteuse sur S3, Swift et Oracle, où chaque objet demanderait sinon sa propre requête."
+  },
+  "index_link_index": {
+    "title": "Lier au fichier d'index",
+    "help": "Lie les dossiers en dir/index.html au lieu de dir/, pour les hébergeurs qui ne servent pas de documents d'index (URL S3 simples, URL conviviales B2)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Utiliser la date d'envoi",
+    "help": "Affiche la date d'envoi d'un objet au lieu de sa date de modification. Évite une requête par objet sur S3 et correspond à ce que le serveur web envoie en Last-Modified."
+  },
+  "index_rewrite": {
+    "title": "Réécrire les listes inchangées",
+    "help": "Écrit toutes les listes même si elles n'ont pas changé, par exemple pour appliquer de nouveaux en-têtes ou métadonnées."
   }
 }
