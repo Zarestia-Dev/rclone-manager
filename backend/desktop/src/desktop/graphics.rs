@@ -34,7 +34,14 @@ pub fn apply_linux_graphics_quirks() {
     let kde_plasma = desktops.iter().any(|value| is_kde_plasma_compositor(value));
     let kwin = if kde_plasma { kwin_version() } else { None };
 
-    for key in webkit_workarounds(wayland, strict_compositor, nvidia_driver_version(), kwin) {
+    let nvidia_boot_gpu = nvidia_is_boot_gpu(&drm_cards());
+    for key in webkit_workarounds(
+        wayland,
+        strict_compositor,
+        nvidia_driver_version(),
+        kwin,
+        nvidia_boot_gpu,
+    ) {
         if std::env::var_os(key).is_none() {
             // SAFETY: no other thread exists yet (see the note on this function).
             unsafe { std::env::set_var(key, "1") };
@@ -48,11 +55,16 @@ pub fn apply_linux_graphics_quirks() {
 /// `kwin_version` is `Some` only on KDE/Plasma sessions where `kwin_wayland
 /// --version` could be parsed; it is `None` everywhere else (Hyprland,
 /// unparseable output, binary absent), which keeps the previous behavior.
+///
+/// `nvidia_boot_gpu` is `Some(false)` only when the boot GPU is known not to be
+/// NVIDIA (a hybrid laptop where the integrated GPU draws the window); `None`
+/// means unknown and keeps the previous behavior.
 fn webkit_workarounds(
     wayland: bool,
     strict_compositor: bool,
     driver_major: Option<u32>,
     kwin_version: Option<(u32, u32)>,
+    nvidia_boot_gpu: Option<bool>,
 ) -> &'static [&'static str] {
     if !wayland {
         return &[];
@@ -65,8 +77,12 @@ fn webkit_workarounds(
     // - Plasma 6.8.1 / webkit2gtk-4.1 2.54.2 / NVIDIA 615.78: quirk breaks
     //   mapping; a clean environment renders correctly.
     const KWIN_FIXED_SINCE: (u32, u32) = (6, 8);
-    let compositing_quirk =
-        strict_compositor && !kwin_version.is_some_and(|version| version >= KWIN_FIXED_SINCE);
+    // The explicit-sync failure is specific to NVIDIA's EGL, so it does not apply
+    // when another GPU draws the window; there the quirk only breaks repainting
+    // (issue #344).
+    let compositing_quirk = strict_compositor
+        && !kwin_version.is_some_and(|version| version >= KWIN_FIXED_SINCE)
+        && nvidia_boot_gpu != Some(false);
 
     // DMABUF is off only for drivers older than 515, independently of the compositor.
     match (compositing_quirk, driver_major.is_some_and(|v| v < 515)) {
@@ -153,6 +169,43 @@ fn parse_kwin_version(output: &str) -> Option<(u32, u32)> {
     })
 }
 
+/// PCI vendor ID of NVIDIA, as `/sys/class/drm/card*/device/vendor` prints it.
+const NVIDIA_VENDOR_ID: &str = "0x10de";
+
+/// Reads `(vendor, boot_vga)` for every `/sys/class/drm/card<N>` GPU. Connector
+/// entries such as `card0-DP-1` have neither file and are skipped. Flatpak with
+/// `--device=dri` exposes these files.
+fn drm_cards() -> Vec<(String, String)> {
+    let Ok(entries) = std::fs::read_dir("/sys/class/drm") else {
+        return Vec::new();
+    };
+    entries
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .strip_prefix("card")
+                .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()))
+        })
+        .filter_map(|entry| {
+            let device = entry.path().join("device");
+            let vendor = std::fs::read_to_string(device.join("vendor")).ok()?;
+            let boot_vga = std::fs::read_to_string(device.join("boot_vga")).ok()?;
+            Some((vendor.trim().to_owned(), boot_vga.trim().to_owned()))
+        })
+        .collect()
+}
+
+/// Whether the boot GPU (the one the firmware and, usually, the compositor use)
+/// is NVIDIA. `None` when no card reports `boot_vga=1`.
+fn nvidia_is_boot_gpu(cards: &[(String, String)]) -> Option<bool> {
+    cards
+        .iter()
+        .find(|(_, boot_vga)| boot_vga == "1")
+        .map(|(vendor, _)| vendor.eq_ignore_ascii_case(NVIDIA_VENDOR_ID))
+}
+
 /// Returns the major version number of the loaded NVIDIA driver, parsed from
 /// `/proc/driver/nvidia/version`.
 ///
@@ -189,7 +242,7 @@ fn nvidia_proprietary_driver_loaded() -> bool {
 mod graphics_quirks_tests {
     use super::{
         is_kde_plasma_compositor, is_strict_wayland_compositor, is_wayland_session,
-        parse_kwin_version, webkit_workarounds,
+        nvidia_is_boot_gpu, parse_kwin_version, webkit_workarounds,
     };
 
     #[test]
@@ -230,7 +283,7 @@ mod graphics_quirks_tests {
         for strict in [false, true] {
             for driver in [None, Some(470), Some(514), Some(515), Some(580)] {
                 for kwin in [None, Some((6, 7)), Some((6, 8))] {
-                    assert!(webkit_workarounds(false, strict, driver, kwin).is_empty());
+                    assert!(webkit_workarounds(false, strict, driver, kwin, None).is_empty());
                 }
             }
         }
@@ -239,19 +292,19 @@ mod graphics_quirks_tests {
     #[test]
     fn wayland_retains_existing_workarounds_and_driver_boundary() {
         for driver in [None, Some(515), Some(580)] {
-            assert!(webkit_workarounds(true, false, driver, None).is_empty());
+            assert!(webkit_workarounds(true, false, driver, None, None).is_empty());
             assert_eq!(
-                webkit_workarounds(true, true, driver, None),
+                webkit_workarounds(true, true, driver, None, None),
                 &["WEBKIT_DISABLE_COMPOSITING_MODE"]
             );
         }
         for driver in [Some(470), Some(514)] {
             assert_eq!(
-                webkit_workarounds(true, false, driver, None),
+                webkit_workarounds(true, false, driver, None, None),
                 &["WEBKIT_DISABLE_DMABUF_RENDERER"]
             );
             assert_eq!(
-                webkit_workarounds(true, true, driver, None),
+                webkit_workarounds(true, true, driver, None, None),
                 &[
                     "WEBKIT_DISABLE_COMPOSITING_MODE",
                     "WEBKIT_DISABLE_DMABUF_RENDERER"
@@ -287,27 +340,66 @@ mod graphics_quirks_tests {
         // mapping, while a clean environment renders correctly.
         for driver in [None, Some(515), Some(615)] {
             assert!(
-                webkit_workarounds(true, true, driver, Some((6, 8))).is_empty(),
+                webkit_workarounds(true, true, driver, Some((6, 8)), None).is_empty(),
                 "KWin 6.8 must not force software compositing"
             );
             assert!(
-                webkit_workarounds(true, true, driver, Some((6, 9))).is_empty(),
+                webkit_workarounds(true, true, driver, Some((6, 9)), None).is_empty(),
                 "newer KWin must not force software compositing"
             );
         }
         // Older KWin keeps the existing workaround.
         assert_eq!(
-            webkit_workarounds(true, true, Some(615), Some((6, 7))),
+            webkit_workarounds(true, true, Some(615), Some((6, 7)), None),
             &["WEBKIT_DISABLE_COMPOSITING_MODE"]
         );
         // Unknown version keeps the conservative workaround.
         assert_eq!(
-            webkit_workarounds(true, true, Some(615), None),
+            webkit_workarounds(true, true, Some(615), None, None),
             &["WEBKIT_DISABLE_COMPOSITING_MODE"]
         );
         // The old-driver DMABUF rule is orthogonal to the KWin gate.
         assert_eq!(
-            webkit_workarounds(true, true, Some(470), Some((6, 8))),
+            webkit_workarounds(true, true, Some(470), Some((6, 8)), None),
+            &["WEBKIT_DISABLE_DMABUF_RENDERER"]
+        );
+    }
+
+    #[test]
+    fn boot_gpu_vendor_is_read_from_the_card_marked_boot_vga() {
+        let card = |vendor: &str, boot_vga: &str| (vendor.to_owned(), boot_vga.to_owned());
+        // Hybrid laptop from issue #344: Intel is the boot GPU.
+        assert_eq!(
+            nvidia_is_boot_gpu(&[card("0x10de", "0"), card("0x8086", "1")]),
+            Some(false)
+        );
+        // Desktop with a single NVIDIA card, or NVIDIA-only (MUX) mode.
+        assert_eq!(nvidia_is_boot_gpu(&[card("0x10de", "1")]), Some(true));
+        assert_eq!(
+            nvidia_is_boot_gpu(&[card("0x8086", "0"), card("0x10DE", "1")]),
+            Some(true)
+        );
+        // Nothing reports boot_vga=1 (or nothing is readable): unknown.
+        assert_eq!(nvidia_is_boot_gpu(&[card("0x10de", "0")]), None);
+        assert_eq!(nvidia_is_boot_gpu(&[]), None);
+    }
+
+    #[test]
+    fn compositing_quirk_skipped_when_a_non_nvidia_gpu_draws_the_window() {
+        // Hybrid laptop on KDE older than 6.8 (issue #344): no quirk.
+        for kwin in [None, Some((6, 6)), Some((6, 7))] {
+            assert!(webkit_workarounds(true, true, Some(580), kwin, Some(false)).is_empty());
+        }
+        // NVIDIA boot GPU or unknown keeps the existing workaround.
+        for nvidia_boot_gpu in [Some(true), None] {
+            assert_eq!(
+                webkit_workarounds(true, true, Some(580), None, nvidia_boot_gpu),
+                &["WEBKIT_DISABLE_COMPOSITING_MODE"]
+            );
+        }
+        // The old-driver DMABUF rule is unaffected by the boot GPU.
+        assert_eq!(
+            webkit_workarounds(true, true, Some(470), None, Some(false)),
             &["WEBKIT_DISABLE_DMABUF_RENDERER"]
         );
     }
