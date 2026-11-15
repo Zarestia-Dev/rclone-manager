@@ -104,6 +104,33 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.6" date="2026-11-13">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>RC Console: Run any rclone remote-control call with suggestions, help, and job following. It starts read-only and asks before dangerous calls.</li>
+          <li>Job Monitor: One card shows the progress, speed, time, and file counts that matter for each kind of job.</li>
+          <li>Resolve Check Differences and BiSync Conflicts: Copy a file with one click or choose which version to keep.</li>
+          <li>File Report: Finished sync, copy, and move jobs list new, different, missing, matching, and failed files.</li>
+          <li>Directory Listings: Write browsable HTML or JSON listings into every folder of a remote.</li>
+          <li>Android: Start on boot, a live status chip, notification actions, and optional permissions in the first-run wizard.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Update checks and downloads no longer have a total time limit, and use fewer requests.</li>
+          <li>Updater errors are translated in all ten languages.</li>
+          <li>The Android background service keeps jobs, mounts, and schedules running while the window is closed.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>The tray icon now appears when the app is started by KDE Plasma autostart before the compositor is ready.</li>
+          <li>DEB and RPM installations update in the app again.</li>
+          <li>A failed rclone update no longer leaves the engine stopped.</li>
+          <li>Start on startup is restored when the autostart entry went missing.</li>
+          <li>Quick Run jobs show their own name instead of "Default".</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.5" date="2026-10-29">
       <description>
         <p>Added</p>

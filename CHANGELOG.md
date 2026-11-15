@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Docker Password on the Command Line**: The container entrypoint turned `RCLONE_MANAGER_PASS` (and the other `RCLONE_MANAGER_*` variables) into command-line arguments, so the password was visible to every user on the host through `ps` and `/proc/<pid>/cmdline`. The server now reads the variables from its environment; empty values are still treated as unset.
 - **Update Rolled Back After Quitting Right Away**: Closing or stopping the updated app within 10 seconds of its start undid the update, even though it had started correctly. The update is now kept as soon as the new version confirms its startup, without the extra 10-second wait; a version that crashes or never confirms its startup (90 seconds) still restores the previous one.
 
-## [0.3.6] - 2026-10-13
+## [0.3.6] - 2026-11-13
 
 ### Added
 
