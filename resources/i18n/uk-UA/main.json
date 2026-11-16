@@ -44,7 +44,14 @@
     "actions": "Дії",
     "savedSuccessfully": "Успішно збережено",
     "deletedSuccessfully": "Успішно видалено",
-    "notConfigured": "Не налаштовано"
+    "notConfigured": "Не налаштовано",
+    "unknown": "Невідомо",
+    "notAvailable": "Н/Д",
+    "unlimited": "Без обмежень",
+    "limitedTo": "Обмежено: {{rate}}",
+    "none": "Немає",
+    "add": "Додати",
+    "select": "Вибрати"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,10 @@
       "empty": "Завдань не знайдено"
     },
     "settings": {
-      "metrics": "Налаштувань: {{count}}",
+      "metrics": {
+        "one": "{{count}} налаштування",
+        "other": "{{count}} налаштування"
+      },
       "notConfigured": "Не налаштовано",
       "noData": "Дані конфігурації відсутні",
       "edit": "Редагувати налаштування",
@@ -831,7 +841,8 @@
       "destination": "Призначення",
       "openViewer": "Відкрити у переглядачі",
       "openViewerTooltip": "Відкрити повний попередній перегляд медіа",
-      "inferredFromUrl": "Визначено з URL"
+      "inferredFromUrl": "Визначено з URL",
+      "imageAlt": "Попередній перегляд"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +957,10 @@
         "waitingActivity": "Очікування активності файлів. Деякі операції не надають даних про окремі файли."
       },
       "time": {
-        "daysAgo": "{{count}} дн. тому",
+        "daysAgo": {
+          "one": "{{count}} день тому",
+          "other": "{{count}} дня тому"
+        },
         "hoursAgo": "{{count}} год тому",
         "minutesAgo": "{{count}} хв тому",
         "justNow": "Щойно",
@@ -991,15 +1005,30 @@
       },
       "bulk": {
         "title": "Вибрані відмінності",
-        "selectAll": "Вибрати всі відкриті відмінності ({{count}})",
+        "selectAll": {
+          "one": "Вибрати {{count}} відкриту відмінність",
+          "other": "Вибрати {{count}} відкритої відмінності"
+        },
         "selected": "Вибрано: {{count}}",
         "toDestination": "До призначення: {{count}}",
         "toSource": "До джерела: {{count}}",
-        "choose": "Потребують рішення: {{count}}",
+        "choose": {
+          "one": "{{count}} потребує рішення",
+          "other": "{{count}} потребує рішення"
+        },
         "clear": "Скинути",
-        "applyOneWay": "Копіювати файлів: {{count}}",
-        "review": "Переглянути конфлікти: {{count}}…",
-        "started": "Копіювання файлів розпочато: {{count}}",
+        "applyOneWay": {
+          "one": "Копіювати {{count}} файл",
+          "other": "Копіювати {{count}} файла"
+        },
+        "review": {
+          "one": "Переглянути {{count}} конфлікт…",
+          "other": "Переглянути {{count}} конфлікту…"
+        },
+        "started": {
+          "one": "Розпочато копіювання {{count}} файлу",
+          "other": "Розпочато копіювання {{count}} файлу"
+        },
         "partial": "Розпочато копіювань: {{started}}, зі збоєм: {{failed}}"
       },
       "compare": {
@@ -1038,7 +1067,10 @@
       },
       "export": {
         "copy": "Копіювати як CSV",
-        "copied": "Скопійовано рядків у CSV: {{count}}"
+        "copied": {
+          "one": "Скопійовано {{count}} рядок у CSV",
+          "other": "Скопійовано {{count}} рядка у CSV"
+        }
       },
       "conflicts": {
         "empty": "У цьому запуску немає конфліктів.",
@@ -1115,7 +1147,7 @@
       "loadingStats": "Завантаження статистики VFS...",
       "fetchingQueue": "Отримання черги вивантаження...",
       "vfsInstance": "Екземпляр VFS",
-      "queued": "у черзі",
+      "queued": "{{count}} у черзі",
       "controlsUnavailable": "Керування VFS недоступне",
       "indexedWarning": "Цей екземпляр VFS має індексний суфікс (наприклад, {{suffix}}), який не підтримується VFS API rclone. Це відоме обмеження, коли для одного сховища існує кілька монтувань.",
       "stats": {
@@ -1195,7 +1227,10 @@
           "actionFailed": "Дія не вдалася: {{error}}",
           "removed": "Вилучено «{{path}}»",
           "removeFailed": "Файл неможливо вилучити",
-          "cleared": "Очищено елементів: {{count}}",
+          "cleared": {
+            "one": "Очищено {{count}} елемент",
+            "other": "Очищено {{count}} елемента"
+          },
           "directoryRefreshed": "Каталог оновлено",
           "intervalSet": "Інтервал встановлено на {{val}}",
           "error": "Помилка: {{error}}"
@@ -1238,9 +1273,13 @@
       "cliArgumentWithSuggestion": "Прапорець у стилі CLI «{{key}}» буде автоматично перетворено на «{{suggestion}}» під час виконання.",
       "camelCaseSuggestionWarning": "Параметр «{{key}}» недійсний у цьому форматі. Можливо, ви мали на увазі «{{suggestion}}»?",
       "fixSuggestion": "Змінити на «{{suggestion}}»",
-      "wrongBlockWarning": "Параметр(и) {{keys}} належать до блоку конфігурації «{{block}}» і можуть не працювати тут.",
-      "unknownWarning": "Невідомий(і) параметр(и): {{keys}}. Їх може бути проігноровано rclone.",
-      "invalidArrayPath": "Властивість «{{key}}» не підтримує кілька шляхів. Вкажіть один рядковий шлях."
+      "wrongBlockWarning": "Параметр {{keys}} належить до блоку конфігурації «{{block}}» і може не працювати тут.",
+      "unknownWarning": {
+        "one": "{{count}} невідомий параметр: {{keys}}. Rclone може його проігнорувати.",
+        "other": "{{count}} невідомого параметра: {{keys}}. Rclone може його проігнорувати."
+      },
+      "invalidArrayPath": "Властивість «{{key}}» не підтримує кілька шляхів. Вкажіть один рядковий шлях.",
+      "fieldsOverview": "Огляд полів конфігурації"
     },
     "passwordManager": {
       "placeholder": "Введіть пароль конфігурації rclone",
@@ -1321,7 +1360,11 @@
       "importDestPath": "Імпортувати шлях призначення",
       "importMountPoint": "Імпортувати точку монтування",
       "applyToTask": "Застосувати до завдання",
-      "appliedToast": "Успішно імпортовано параметрів: {{count}}"
+      "appliedToast": {
+        "one": "Успішно імпортовано {{count}} параметр",
+        "other": "Успішно імпортовано {{count}} параметра"
+      },
+      "profileNamePlaceholder": "наприклад, daily-backup"
     },
     "obscure": {
       "title": "Замаскувати пароль",
@@ -1568,7 +1611,10 @@
         "middle": "15 (Середина)",
         "every2Days": "*/2 (Кожні 2 дні)",
         "everyMonth": "* (Щомісяця)",
-        "intervalN": "{{count}} годин"
+        "intervalN": {
+          "one": "{{count}} година",
+          "other": "{{count}} години"
+        }
       },
       "aria": {
         "clear": "Очистити",
@@ -1617,7 +1663,10 @@
       "encrypted": "Зашифровано",
       "notEncrypted": "Не зашифровано",
       "contents": "Вміст резервної копії",
-      "itemCount": "Елементів: {{count}}",
+      "itemCount": {
+        "one": "{{count}} елемент",
+        "other": "{{count}} елемента"
+      },
       "settings": {
         "title": "Налаштування застосунку",
         "description": "Ваші вподобання та конфігурація застосунку"
@@ -1808,7 +1857,10 @@
         "processedFiles": "Оброблені файли"
       },
       "running": "Виконується",
-      "filesCount": "{{count}} файлів",
+      "filesCount": {
+        "one": "{{count}} файл",
+        "other": "{{count}} файла"
+      },
       "types": {
         "copy": "Копіювати",
         "copyurl": "Копіювати URL",
@@ -1835,7 +1887,10 @@
       "videoLabel": "Відео: {{name}}",
       "audioLabel": "Аудіо: {{name}}",
       "calculatingFolderSize": "Обчислення розміру теки...",
-      "containsFiles": "Містить файлів: {{count}}",
+      "containsFiles": {
+        "one": "Містить {{count}} файл",
+        "other": "Містить {{count}} файла"
+      },
       "totalSize": "Загальний розмір: {{size}}",
       "binaryFile": "Двійковий файл",
       "previewNotAvailable": "Попередній перегляд недоступний для цього типу файлу",
@@ -1878,7 +1933,10 @@
       "monitoring": "Моніторинг",
       "configuration": "Конфігурація",
       "selectedProfile": "Вибраний профіль",
-      "profilesCount": "Профілів: {{count}}",
+      "profilesCount": {
+        "one": "{{count}} профіль",
+        "other": "{{count}} профілю"
+      },
       "addProfile": "Додати профіль",
       "activeServes": "Активні роздачі",
       "sharedSettings": "Спільні налаштування",
@@ -2292,7 +2350,10 @@
         "folderPathFor": "Шлях до теки для {{name}}",
         "scrollToPending": "Прокрутити до розділу незбережених змін"
       },
-      "pendingChangesTooltip": "У вас є незбережені зміни ({{count}}), що потребують перезапуску рушія. Натисніть, щоб прокрутити до них."
+      "pendingChangesTooltip": {
+        "one": "Є {{count}} незбережена зміна, що потребує перезапуску рушія. Натисніть, щоб прокрутити до неї.",
+        "other": "Є {{count}} незбереженої зміни, що потребує перезапуску рушія. Натисніть, щоб прокрутити до них."
+      }
     },
     "export": {
       "title": "Експорт налаштувань",
@@ -2598,7 +2659,10 @@
         "emptyResult": "Flags Rclone не знайдено",
         "emptySettings": "Flags не знайдено",
         "adjustTerms": "Спробуйте змінити пошуковий запит",
-        "showing": "Показано {{count}} з {{total}} flags"
+        "showing": {
+          "one": "Показано {{shown}} з {{count}} прапорця",
+          "other": "Показано {{shown}} з {{count}} прапорця"
+        }
       },
       "pageTitle": {
         "home": "Flags Rclone",
@@ -2716,11 +2780,23 @@
         "pretty": "Форматований",
         "raw": "Як є",
         "table": "Таблиця",
-        "lines": "Рядків: {{count}}",
-        "showMore": "Показати ще рядків: {{count}}",
-        "showMoreRows": "Показати ще рядків: {{count}}",
+        "lines": {
+          "one": "{{count}} рядок",
+          "other": "{{count}} рядка"
+        },
+        "showMore": {
+          "one": "Показати ще {{count}} рядок",
+          "other": "Показати ще {{count}} рядка"
+        },
+        "showMoreRows": {
+          "one": "Показати ще {{count}} рядок",
+          "other": "Показати ще {{count}} рядка"
+        },
         "collapse": "Згорнути",
-        "rowsOmitted": "Ще рядків не показано: {{count}}"
+        "rowsOmitted": {
+          "one": "Не показано ще {{count}} рядок",
+          "other": "Не показано ще {{count}} рядка"
+        }
       },
       "tree": {
         "title": "API",
@@ -2746,9 +2822,18 @@
         "failed": "Завдання {{id}} не вдалося",
         "lost": "Завдання не знайдено",
         "stop": "Зупинити",
-        "transfers": "Передач: {{done}} / {{total}}",
-        "checks": "Перевірок: {{count}}",
-        "errors": "Помилок: {{count}}"
+        "transfers": {
+          "one": "{{done}} / {{count}} передача",
+          "other": "{{done}} / {{count}} передачі"
+        },
+        "checks": {
+          "one": "{{count}} перевірка",
+          "other": "{{count}} перевірки"
+        },
+        "errors": {
+          "one": "{{count}} помилка",
+          "other": "{{count}} помилки"
+        }
       },
       "quickStart": "Спробуйте один із варіантів",
       "hints": {
@@ -2815,16 +2900,23 @@
     },
     "selection": {
       "selected": "вибрано",
-      "folder": "тека",
-      "folders": "теки",
-      "item": "елемент",
-      "items": "елементи"
+      "folders": {
+        "one": "Вибрано {{count}} теку",
+        "other": "Вибрано {{count}} теки"
+      },
+      "items": {
+        "one": "Вибрано {{count}} елемент ({{size}})",
+        "other": "Вибрано {{count}} елемента ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "Видалити елементи",
         "messageSingle": "Справді видалити «{{name}}»?",
-        "messageMultiple": "Справді видалити елементів: {{count}}?"
+        "messageMultiple": {
+          "one": "Справді видалити {{count}} елемент?",
+          "other": "Справді видалити {{count}} елемента?"
+        }
       },
       "newFolder": {
         "title": "Нова тека",
@@ -2860,7 +2952,10 @@
         "compress": "Стиснути"
       },
       "multiRename": {
-        "title": "Перейменувати {{count}} файлів",
+        "title": {
+          "one": "Перейменувати {{count}} файл",
+          "other": "Перейменувати {{count}} файла"
+        },
         "templateMode": "Перейменувати за шаблоном",
         "replaceMode": "Знайти та замінити текст",
         "templateInput": "Шаблон",
@@ -2895,7 +2990,12 @@
         "suffix": "Суфікс",
         "statsChanged": "{{count}} для перейменування",
         "statsUnchanged": "{{count}} без змін",
-        "statsConflicts": "{{count}} конфлікт(ів)"
+        "statsConflicts": {
+          "one": "{{count}} конфлікт",
+          "other": "{{count}} конфлікту"
+        },
+        "findPlaceholder": "текст для пошуку",
+        "replacePlaceholder": "текст заміни"
       },
       "index": {
         "title": "Створення списків каталогів",
@@ -2925,17 +3025,35 @@
       "connectionFailed": "Не вдалося підключитися",
       "bookmarkRemoteNotFound": "Сховище «{{remote}}» для закладки не знайдено",
       "loadFailed": "Не вдалося завантажити каталог",
-      "deleteFailed": "Не вдалося видалити елементів: {{count}}",
-      "copyFailed": "Не вдалося скопіювати елементів: {{count}}",
-      "moveFailed": "Не вдалося перемістити елементів: {{count}}",
-      "undoFailed": "Не вдалося скасувати дію для елементів: {{count}}",
-      "redoFailed": "Не вдалося повторити дію для елементів: {{count}}",
+      "deleteFailed": {
+        "one": "Не вдалося видалити {{count}} елемент",
+        "other": "Не вдалося видалити {{count}} елемента"
+      },
+      "copyFailed": {
+        "one": "Не вдалося скопіювати {{count}} елемент",
+        "other": "Не вдалося скопіювати {{count}} елемента"
+      },
+      "moveFailed": {
+        "one": "Не вдалося перемістити {{count}} елемент",
+        "other": "Не вдалося перемістити {{count}} елемента"
+      },
+      "undoFailed": {
+        "one": "Не вдалося скасувати дію для {{count}} елемента",
+        "other": "Не вдалося скасувати дію для {{count}} елемента"
+      },
+      "redoFailed": {
+        "one": "Не вдалося повторити дію для {{count}} елемента",
+        "other": "Не вдалося повторити дію для {{count}} елемента"
+      },
       "rmdirsFailed": "Не вдалося вилучити порожні теки в «{{name}}»: {{error}}",
       "createFolderFailed": "Не вдалося створити теку «{{name}}»: {{error}}",
       "renameFailed": "Не вдалося перейменувати «{{name}}»: {{error}}",
       "emptyTrashFailed": "Не вдалося очистити кошик у {{remote}}: {{error}}",
       "openFileFailed": "Неможливо відкрити файл: відсутній контекст віддаленого сервера",
-      "minSelection": "Виберіть щонайменше {{min}} елемент{{s}}.",
+      "minSelection": {
+        "one": "Виберіть щонайменше {{count}} елемент.",
+        "other": "Виберіть щонайменше {{count}} елемента."
+      },
       "copyUrlFailed": "Не вдалося завантажити з URL: {{error}}",
       "archiveCreateFailed": "Не вдалося створити архів: {{error}}",
       "externalDropFailed": "Не вдалося обробити перетягнутий зовнішній файл.",
@@ -2999,13 +3117,28 @@
       "increaseIconSize": "Збільшити розмір значків"
     },
     "notifications": {
-      "uploadSuccess": "Успішно вивантажено файлів: {{count}}.",
-      "uploadFailed": "Не вдалося вивантажити файлів: {{count}}.",
+      "uploadSuccess": {
+        "one": "Успішно вивантажено {{count}} файл.",
+        "other": "Успішно вивантажено {{count}} файла."
+      },
+      "uploadFailed": {
+        "one": "Не вдалося вивантажити {{count}} файл.",
+        "other": "Не вдалося вивантажити {{count}} файла."
+      },
       "trashEmptied": "Операцію очищення завершено",
       "rmdirsStarted": "Вилучення порожніх тек у «{{name}}»...",
-      "deleteStarted": "Видалення елементів: {{count}}...",
-      "copyStarted": "Копіювання елементів: {{count}}...",
-      "moveStarted": "Переміщення елементів: {{count}}...",
+      "deleteStarted": {
+        "one": "Видалення {{count}} елемента...",
+        "other": "Видалення {{count}} елемента..."
+      },
+      "copyStarted": {
+        "one": "Копіювання {{count}} елемента...",
+        "other": "Копіювання {{count}} елемента..."
+      },
+      "moveStarted": {
+        "one": "Переміщення {{count}} елемента...",
+        "other": "Переміщення {{count}} елемента..."
+      },
       "renameStarted": "Операцію перейменування розпочато",
       "undoComplete": "Дію успішно скасовано",
       "redoComplete": "Дію успішно повторено",
@@ -3017,7 +3150,10 @@
       "indexStarted": "Запис списків каталогів..."
     },
     "androidShare": {
-      "uploadHere": "Завантажити {{count}} спільних файл(ів) до цієї папки",
+      "uploadHere": {
+        "one": "Завантажити {{count}} спільний файл до цієї папки",
+        "other": "Завантажити {{count}} спільного файлу до цієї папки"
+      },
       "confirm": "Завантажити сюди"
     },
     "toolbar": {
@@ -3131,7 +3267,10 @@
       "error": "Помилка"
     },
     "jobs": {
-      "activeCount": "Активних завдань: {{count}}{{s}}",
+      "activeCount": {
+        "one": "{{count}} активне завдання",
+        "other": "{{count}} активного завдання"
+      },
       "noActive": "Немає активних завдань",
       "loading": "Завантаження інформації про завдання...",
       "aria": {
@@ -3161,7 +3300,10 @@
       "nextRun": "Наступний запуск:"
     },
     "serves": {
-      "activeCount": "Активних роздач: {{count}}{{s}}",
+      "activeCount": {
+        "one": "{{count}} активна роздача",
+        "other": "{{count}} активної роздачі"
+      },
       "noActive": "Немає активних роздач",
       "noRunning": "Немає активних роздач. Почніть роздавати сховище, щоб зробити його доступним через мережеві протоколи, як-от HTTP, WebDAV, FTP або SFTP."
     }
@@ -3503,7 +3645,10 @@
   "backendSuccess": {
     "backup": {
       "created": "Резервну копію створено: {{path}}",
-      "restored": "Налаштування успішно відновлено (відновлено елементів: {{count}})"
+      "restored": {
+        "one": "Налаштування успішно відновлено (відновлено {{count}} елемент)",
+        "other": "Налаштування успішно відновлено (відновлено {{count}} елемента)"
+      }
     },
     "mount": {
       "unmounted": "Успішно демонтовано {{mountPoint}}",
@@ -3642,9 +3787,9 @@
   },
   "powerInhibitor": {
     "reason": "Виконуються активні операції: {{details}}",
-    "mounts": "{{count}} монтування(нь)",
-    "jobs": "{{count}} завдання(нь)",
-    "serves": "{{count}} сервер(ів)"
+    "mounts": "Монтування: {{count}}",
+    "jobs": "Завдання: {{count}}",
+    "serves": "Сервери: {{count}}"
   },
   "notification": {
     "title": {
@@ -4507,8 +4652,10 @@
     "keyPlaceholder": "напр., dir_cache_time",
     "valuePlaceholder": "напр., 10m",
     "selectedCount": "{{selected}} / {{total}} вибрано",
-    "keyCount": "{{count}} ключ",
-    "keysCount": "{{count}} ключів",
+    "keyCount": {
+      "one": "{{count}} ключ",
+      "other": "{{count}} ключа"
+    },
     "zeroKeys": "0 ключів",
     "applySuccess": "Шаблон \"{{name}}\" успішно застосовано.",
     "savedSuccess": "Шаблон \"{{name}}\" успішно збережено.",
