@@ -1423,8 +1423,8 @@
           "description": "パスワードはすでに難読化されています - 難読化ステップをスキップします"
         },
         "nonInteractive": {
-          "label": "非対話型 (Non-Interactive)",
-          "description": "プロンプトを表示せずJSON形式の質問データを返します（アプリ主導の設定フロー用）"
+          "label": "ステップごとの設定",
+          "description": "rcloneの質問を既定値で自動回答せず、1つずつ表示します"
         },
         "all": {
           "label": "全ての質問 (All Questions)",
@@ -2559,6 +2559,7 @@
         "noProfiles": "プロファイルが設定されていません",
         "placeholder": "プロファイルを選択",
         "inUseWarning": "プロファイル 「{{name}}」 を削除できません - 実行中の {{count}} 個の {{type}} で使用されています",
+        "nameExists": "「{{name}}」という名前のプロファイルは既に存在します",
         "disabledReason": {
           "inUse": "プロファイルは実行中の {{operation}} で使用されています。先に停止してください。"
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "ロック解除に失敗しました: {{error}}"
     },
     "remote": {
-      "configFailed": "リモートの設定に失敗しました: {{error}}",
+      "oauthFailed": "OAuth認証に失敗したか、完了しませんでした",
+      "oauthPortInUse": "OAuthサインイン用のポートは既に使用されています",
       "authExpired": "リモート認証の有効期限が切れたか無効です。設定で再認証してください。",
       "quotaExceeded": "リモートストレージの API レート制限またはストレージ容量上限を超過しました。しばらく待ってから再試行してください。",
       "networkError": "リモートサーバーに接続できません。ネットワーク接続とリモートアドレスを確認してください。",
