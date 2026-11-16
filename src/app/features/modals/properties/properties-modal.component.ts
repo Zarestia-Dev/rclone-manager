@@ -9,7 +9,7 @@ import {
   ChangeDetectionStrategy,
   DestroyRef,
 } from '@angular/core';
-import { UpperCasePipe, DecimalPipe, DatePipe } from '@angular/common';
+import { UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,7 +25,7 @@ import { PathService } from '../../../services/infrastructure/platform/path.serv
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption } from '@app/types';
-import { FormatFileSizePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatDatePipe, FormatNumberPipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { generatePrefixedId, getShareInfo, ItemShareInfo } from '../../../shared/utils';
 
@@ -34,8 +34,8 @@ import { PillDirective } from '../../../shared/directives/pill.directive';
   selector: 'app-properties-modal',
   imports: [
     UpperCasePipe,
-    DecimalPipe,
-    DatePipe,
+    FormatNumberPipe,
+    FormatDatePipe,
     MatIconModule,
     MatButtonModule,
     MatDividerModule,

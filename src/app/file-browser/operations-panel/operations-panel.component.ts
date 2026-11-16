@@ -1,6 +1,5 @@
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,7 +19,7 @@ import {
   DELETE_OPERATIONS,
   JOB_STATUS,
 } from '@app/types';
-import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe, FormatDatePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
@@ -68,7 +67,7 @@ interface JobViewModel {
     MatExpansionModule,
     CdkMenuModule,
     MatDividerModule,
-    DatePipe,
+    FormatDatePipe,
     FormatFileSizePipe,
     FormatEtaPipe,
     FormatRateValuePipe,

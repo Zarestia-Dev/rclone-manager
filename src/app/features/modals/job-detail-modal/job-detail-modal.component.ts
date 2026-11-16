@@ -1,6 +1,6 @@
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
+import { TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,7 +16,7 @@ import {
   Starter,
 } from '@app/types';
 import { jobReportOf } from 'src/app/shared/utils/job-report.util';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatTimePipe, FormatDatePipe } from '@app/pipes';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
@@ -52,7 +52,7 @@ function describeStarter(starter: Starter | undefined): { label: string; name: s
     TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
-    DatePipe,
+    FormatDatePipe,
     TitleCasePipe,
     UpperCasePipe,
     JobMonitorComponent,

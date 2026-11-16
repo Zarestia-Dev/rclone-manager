@@ -213,7 +213,7 @@
       @if (hasSearchQuery()) {
         <small class="search-results-info">{{
           'modals.rcloneFlags.search.showing'
-            | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
+            | translate: { shown: filteredOptionsCount(), count: totalOptionsCount() }
         }}</small>
       }
 

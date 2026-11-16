@@ -55,12 +55,12 @@
         </div>
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.started' | translate }}</span>
-          <span class="value">{{ jobData().start_time | date: 'medium' }}</span>
+          <span class="value">{{ jobData().start_time | formatDate: 'medium' }}</span>
         </div>
         @if (jobData().end_time) {
           <div class="grid-item">
             <span class="label">{{ 'modals.jobDetail.fields.finished' | translate }}</span>
-            <span class="value">{{ jobData().end_time | date: 'medium' }}</span>
+            <span class="value">{{ jobData().end_time | formatDate: 'medium' }}</span>
           </div>
         }
         <div class="grid-item">

@@ -9,6 +9,11 @@ const args = new Set(process.argv.slice(2));
 const strictMode = args.has('--strict');
 const jsonMode = args.has('--json');
 
+// Keep in sync with PLURAL_FORMS and isPluralGroup in src/app/services/i18n/plural.ts.
+const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
+// The Rust backend resolves these sections itself and cannot pick a plural form.
+const RUST_SECTIONS = ['tray', 'notification', 'powerInhibitor', 'alerts', 'backendErrors'];
+
 const backendFiles = ['core', 'server', 'desktop'].flatMap(crate =>
   collectFiles(path.join(repoRoot, 'backend', crate, 'src'), ['.rs'])
 );
@@ -18,6 +23,7 @@ const localeFiles = collectLocaleFiles(i18nRoot);
 const englishLocalePath = path.join(i18nRoot, 'en-US', 'main.json');
 const englishTree = readJson(englishLocalePath);
 const englishKeys = flattenKeys(englishTree);
+const englishPluralGroups = collectPluralGroups(englishTree);
 
 // Build the set of all internal JSON node paths (prefixes) for validating indirect refs
 const englishPrefixes = flattenPrefixes(englishTree);
@@ -39,6 +45,7 @@ const report = {
 let missingCount = 0;
 let unusedCount = 0;
 let codeUnusedCount = 0;
+let pluralCount = 0;
 
 for (const localeFile of localeFiles) {
   const localeName = path.basename(path.dirname(localeFile));
@@ -49,6 +56,9 @@ for (const localeFile of localeFiles) {
   const localeUnused = localeName === 'en-US' ? [] : diff(localeKeys, englishKeys);
   const localeCodeUnused = findCodeUnused(localeKeys, usage);
 
+  const localePlural = findPluralProblems(localeName, localeTree, englishPluralGroups);
+
+  pluralCount += localePlural.length;
   missingCount += localeMissing.length;
   unusedCount += localeUnused.length;
   codeUnusedCount += localeCodeUnused.length;
@@ -57,6 +67,7 @@ for (const localeFile of localeFiles) {
     missing: localeMissing,
     unused: localeUnused,
     codeUnused: localeCodeUnused,
+    plural: localePlural,
   };
 }
 
@@ -66,7 +77,7 @@ if (jsonMode) {
   printReport(report);
 }
 
-if (strictMode && (missingCount > 0 || unusedCount > 0 || codeUnusedCount > 0)) {
+if (strictMode && (missingCount > 0 || unusedCount > 0 || codeUnusedCount > 0 || pluralCount > 0)) {
   process.exitCode = 1;
 }
 
@@ -119,7 +130,7 @@ function flattenKeys(value, prefix = '', result = new Set()) {
 
   for (const [key, child] of Object.entries(value)) {
     const nextKey = prefix ? `${prefix}.${key}` : key;
-    if (child && typeof child === 'object' && !Array.isArray(child)) {
+    if (child && typeof child === 'object' && !Array.isArray(child) && !isPluralGroup(child)) {
       flattenKeys(child, nextKey, result);
     } else {
       result.add(nextKey);
@@ -142,13 +153,111 @@ function flattenPrefixes(value, prefix = '', result = new Set()) {
 
   for (const [key, child] of Object.entries(value)) {
     const nextKey = prefix ? `${prefix}.${key}` : key;
-    if (child && typeof child === 'object' && !Array.isArray(child)) {
+    if (child && typeof child === 'object' && !Array.isArray(child) && !isPluralGroup(child)) {
       result.add(nextKey);
       flattenPrefixes(child, nextKey, result);
     }
   }
 
   return result;
+}
+
+// ── Plural groups ─────────────────────────────────────────────────────────────
+
+/**
+ * A plural string is an object of plural forms that has `other`:
+ * {"one": "{{count}} file", "other": "{{count}} files"}.
+ * It is one key (`PluralCompiler` in the app picks the form), not a prefix of several.
+ */
+function isPluralGroup(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  return (
+    keys.includes('other') &&
+    keys.every(key => PLURAL_FORMS.includes(key) && typeof value[key] === 'string')
+  );
+}
+
+function collectPluralGroups(value, prefix = '', result = new Map()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return result;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+    if (isPluralGroup(child)) {
+      result.set(nextKey, child);
+    } else {
+      collectPluralGroups(child, nextKey, result);
+    }
+  }
+  return result;
+}
+
+/** The forms a language needs for whole numbers (`many` is only used by some languages). */
+function requiredPluralForms(locale) {
+  let rules;
+  try {
+    rules = new Intl.PluralRules(locale);
+  } catch {
+    rules = new Intl.PluralRules('en-US');
+  }
+  const forms = new Set(['other']); // `other` is also the fallback of every form
+  for (let count = 0; count <= 1000; count++) {
+    forms.add(rules.select(count));
+  }
+  return forms;
+}
+
+function placeholders(text) {
+  return [
+    ...new Set([...text.matchAll(/\{\{\s*([^{}\s]+)\s*\}\}/g)].map(match => match[1])),
+  ].sort();
+}
+
+function getAtPath(tree, dottedPath) {
+  return dottedPath.split('.').reduce((node, part) => (node ? node[part] : undefined), tree);
+}
+
+/**
+ * Plural strings of English that the locale does not translate as a plural, that lack a form
+ * the language uses, or whose forms drop or add a `{{placeholder}}`.
+ */
+function findPluralProblems(localeName, localeTree, englishPluralGroups) {
+  const required = requiredPluralForms(localeName);
+  const problems = [];
+  for (const [key, english] of englishPluralGroups) {
+    if (localeName === 'en-US') {
+      if (RUST_SECTIONS.includes(key.split('.')[0])) {
+        problems.push(`${key} (Rust cannot pick a plural form; use "Label: {{count}}")`);
+      }
+      if (!placeholders(english.other).includes('count')) {
+        problems.push(`${key} (the number must be {{count}})`);
+      }
+    }
+    const group = getAtPath(localeTree, key);
+    if (group === undefined) {
+      continue; // reported as a missing key
+    }
+    if (!isPluralGroup(group)) {
+      problems.push(`${key} (not a plural)`);
+      continue;
+    }
+    for (const form of required) {
+      if (!(form in group)) {
+        problems.push(`${key}.${form}`);
+      }
+    }
+    // Every form shows the same values as English, `{{count}}` included.
+    const expected = placeholders(english.other).join(',');
+    for (const [form, text] of Object.entries(group)) {
+      if (placeholders(text).join(',') !== expected) {
+        problems.push(`${key}.${form} (placeholders)`);
+      }
+    }
+  }
+  return problems.sort();
 }
 
 // ── Usage collection ──────────────────────────────────────────────────────────
@@ -388,12 +497,13 @@ function printReport(reportData) {
       locale.missing,
       MAX_INLINE
     );
+    printKeyList('Plural forms missing', locale.plural || [], MAX_INLINE);
     printKeyList('Unused vs English', locale.unused, MAX_INLINE);
     printKeyList('Unused vs code', locale.codeUnused || [], MAX_INLINE);
   }
 
   console.log(
-    `\nTotals: missing=${missingCount}, unusedVsEnglish=${unusedCount}, unusedVsCode=${codeUnusedCount}`
+    `\nTotals: missing=${missingCount}, pluralForms=${pluralCount}, unusedVsEnglish=${unusedCount}, unusedVsCode=${codeUnusedCount}`
   );
 
   const hasLong = Object.values(reportData.locales).some(

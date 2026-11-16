@@ -17,11 +17,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormatFileSizePipe, FormatRelativeDatePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatRelativeDatePipe, FormatNumberPipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NgTemplateOutlet, DecimalPipe } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
@@ -51,7 +51,7 @@ renderer.link = ({ href, title, text }): string => {
 @Component({
   selector: 'app-about-modal',
   imports: [
-    DecimalPipe,
+    FormatNumberPipe,
     NgTemplateOutlet,
     MatDividerModule,
     MatIconModule,

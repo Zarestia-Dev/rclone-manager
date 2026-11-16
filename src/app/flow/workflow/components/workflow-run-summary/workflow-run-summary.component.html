@@ -38,7 +38,7 @@
       @if (run.progress; as progress) {
         <span appPill size="xs" tone="dim">{{ progress.completed }}/{{ progress.total }}</span>
       }
-      <span class="run-started ml-auto">{{ run.startedAt | date: 'mediumTime' }}</span>
+      <span class="run-started ml-auto">{{ run.startedAt | formatDate: 'time' }}</span>
     </div>
 
     @if (message() && run.state === 'failed') {

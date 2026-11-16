@@ -1,5 +1,6 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { DatePipe, NgClass } from '@angular/common';
+import { FormatDatePipe } from '@app/pipes';
+import { NgClass } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,7 +19,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
   selector: 'app-alert-rules',
   imports: [
     NgClass,
-    DatePipe,
+    FormatDatePipe,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
@@ -104,7 +105,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
                   @if (rule.last_fired) {
                     <span class="last-fired">
                       {{ 'alerts.lastFired' | translate }}
-                      {{ rule.last_fired | date: 'short' }}
+                      {{ rule.last_fired | formatDate: 'short' }}
                     </span>
                   }
                 </div>

@@ -15,8 +15,7 @@
       <span appPill [tone]="activeJobs > 0 ? 'primary' : 'dim'">
         {{
           activeJobs > 0
-            ? ('generalOverview.jobs.activeCount'
-              | translate: { count: activeJobs, s: activeJobs !== 1 ? 's' : '' })
+            ? ('generalOverview.jobs.activeCount' | translate: { count: activeJobs })
             : ('generalOverview.jobs.noActive' | translate)
         }}
       </span>
@@ -43,7 +42,7 @@
         <div class="job-progress-section">
           <div class="progress-header">
             <span class="label">{{ 'generalOverview.jobs.progress' | translate }}</span>
-            <span class="value">{{ jobCompletionPercentage() | number: '1.0-1' }}%</span>
+            <span class="value">{{ jobCompletionPercentage() | formatNumber: 1 }}%</span>
           </div>
           <mat-progress-bar
             mode="determinate"
@@ -179,7 +178,7 @@
 
                     @if (hasTotal) {
                       <span class="percentage-badge"
-                        >{{ vm.progressPercentage | number: '1.0-1' }}%</span
+                        >{{ vm.progressPercentage | formatNumber: 1 }}%</span
                       >
                     }
                   </div>

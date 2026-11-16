@@ -113,7 +113,7 @@
             (click)="toggleDetails(log)"
             (keydown.enter)="toggleDetails(log)"
           >
-            <span class="timestamp">{{ log.timestamp | date: 'HH:mm:ss.SSS' }}</span>
+            <span class="timestamp">{{ log.timestamp | formatDate: 'clockMs' }}</span>
             <span class="level-tag">{{ log.level | uppercase }}</span>
 
             @let translatedMessage = translateLogMessage(log.message);

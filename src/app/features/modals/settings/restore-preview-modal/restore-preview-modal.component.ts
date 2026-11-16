@@ -1,4 +1,5 @@
 import { Component, inject, signal, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { FormatDatePipe } from '@app/pipes';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
-import { DatePipe, UpperCasePipe } from '@angular/common';
+import { UpperCasePipe } from '@angular/common';
 import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
 import { BackupAnalysis } from '@app/types';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -25,7 +26,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
     MatRadioModule,
     MatSelectModule,
     FormsModule,
-    DatePipe,
+    FormatDatePipe,
     UpperCasePipe,
     TranslatePipe,
     AlertBannerComponent,

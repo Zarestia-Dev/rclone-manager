@@ -155,7 +155,7 @@
                   @if (loadingSize()) {
                     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else {
-                    {{ sizeInfo()?.count || 0 | number }}
+                    {{ sizeInfo()?.count || 0 | formatNumber }}
                   }
                 </span>
               </div>

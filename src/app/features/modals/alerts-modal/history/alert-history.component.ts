@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { FormatDatePipe } from '@app/pipes';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
@@ -14,7 +15,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
 @Component({
   selector: 'app-alert-history',
   imports: [
-    DatePipe,
+    FormatDatePipe,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
@@ -191,8 +192,8 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
             <ng-container matColumnDef="time">
               <th mat-header-cell *matHeaderCellDef>{{ 'common.time' | translate }}</th>
               <td mat-cell *matCellDef="let alert">
-                <span class="date">{{ alert.timestamp | date: 'MMM d, y' }}</span>
-                <span class="time-val">{{ alert.timestamp | date: 'HH:mm:ss' }}</span>
+                <span class="date">{{ alert.timestamp | formatDate: 'date' }}</span>
+                <span class="time-val">{{ alert.timestamp | formatDate: 'clock' }}</span>
               </td>
             </ng-container>
 

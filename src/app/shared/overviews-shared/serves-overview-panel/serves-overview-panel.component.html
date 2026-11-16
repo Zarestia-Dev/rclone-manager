@@ -16,8 +16,7 @@
       <span appPill [tone]="servesList.length > 0 ? 'primary' : 'dim'">
         {{
           servesList.length > 0
-            ? ('generalOverview.serves.activeCount'
-              | translate: { count: servesList.length, s: servesList.length !== 1 ? 's' : '' })
+            ? ('generalOverview.serves.activeCount' | translate: { count: servesList.length })
             : ('generalOverview.serves.noActive' | translate)
         }}
       </span>

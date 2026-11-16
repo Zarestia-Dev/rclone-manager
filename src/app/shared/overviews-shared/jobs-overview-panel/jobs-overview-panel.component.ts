@@ -7,7 +7,6 @@ import {
   linkedSignal,
   model,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +22,12 @@ import {
   JOB_ICON_MAP,
   getExecutionOrigin,
 } from '@app/types';
-import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
+import {
+  FormatEtaPipe,
+  FormatFileSizePipe,
+  FormatRateValuePipe,
+  FormatNumberPipe,
+} from '@app/pipes';
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
 import { ModalService } from '../../../services/ui/modal.service';
@@ -49,7 +53,7 @@ export interface RunningJobViewModel {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DecimalPipe,
+    FormatNumberPipe,
     MatExpansionModule,
     MatIconModule,
     MatButtonModule,

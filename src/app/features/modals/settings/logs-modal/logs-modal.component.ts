@@ -17,11 +17,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
-import { DatePipe, UpperCasePipe } from '@angular/common';
+import { UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService } from 'src/app/services/infrastructure/platform/logging.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
-import { AnsiToHtmlPipe } from '@app/pipes';
+import { AnsiToHtmlPipe, FormatDatePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
@@ -41,7 +41,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
     MatSnackBarModule,
     MatButtonModule,
     AnsiToHtmlPipe,
-    DatePipe,
+    FormatDatePipe,
     UpperCasePipe,
     TranslatePipe,
     CopyToClipboardDirective,

@@ -1,13 +1,16 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 
 @Pipe({
   name: 'formatEta',
-  pure: true,
+  pure: false,
 })
 export class FormatEtaPipe implements PipeTransform {
+  private readonly translate = inject(TranslateService);
+
   transform(eta: number | string): string {
     if (typeof eta === 'string') return eta;
-    if (eta <= 0 || !isFinite(eta)) return 'Unknown';
+    if (eta <= 0 || !isFinite(eta)) return this.translate.instant('common.unknown');
     return this.formatDuration(eta);
   }
 

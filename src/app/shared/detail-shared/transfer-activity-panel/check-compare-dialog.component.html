@@ -68,7 +68,7 @@
             <dt>{{ 'shared.transferActivity.compare.modified' | translate }}</dt>
             <dd>
               @if (version.modTime) {
-                {{ version.modTime | date: 'medium' }}
+                {{ version.modTime | formatDate: 'medium' }}
               } @else {
                 {{ 'shared.transferActivity.compare.unknown' | translate }}
               }

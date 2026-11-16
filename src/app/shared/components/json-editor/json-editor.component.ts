@@ -597,6 +597,7 @@ export class JsonEditorComponent {
                       )
                     : this.translateService.instant('shared.jsonEditor.unknownWarning', {
                         keys: `'${kText}'`,
+                        count: 1,
                       });
                   const actions = suggestion
                     ? [
@@ -871,7 +872,10 @@ export class JsonEditorComponent {
     } else if (valRes.unknown && valRes.unknown.length > 0) {
       this.parseWarning.set({
         key: 'shared.jsonEditor.unknownWarning',
-        params: { keys: valRes.unknown.map(k => `'${k}'`).join(', ') },
+        params: {
+          keys: valRes.unknown.map(k => `'${k}'`).join(', '),
+          count: valRes.unknown.length,
+        },
       });
     } else {
       this.parseWarning.set(null);

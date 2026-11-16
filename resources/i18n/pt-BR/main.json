@@ -44,7 +44,14 @@
     "actions": "Ações",
     "savedSuccessfully": "Salvo com sucesso",
     "deletedSuccessfully": "Excluído com sucesso",
-    "notConfigured": "Não configurado"
+    "notConfigured": "Não configurado",
+    "unknown": "Desconhecido",
+    "notAvailable": "N/D",
+    "unlimited": "Ilimitado",
+    "limitedTo": "Limitado a {{rate}}",
+    "none": "Nenhum",
+    "add": "Adicionar",
+    "select": "Selecionar"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -123,7 +130,7 @@
     "noActive": "Sem servidos ativos",
     "serving": "Servindo",
     "servingWithProfile": "Servindo {{profile}}: {{type}} em {{addr}}",
-    "servingMultiple": "Serviço(s) ({{count}}): {{profiles}}",
+    "servingMultiple": "Serviços ({{count}}): {{profiles}}",
     "serveSummary": "Servindo ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Alternar Servir como Ação Rápida",
@@ -248,7 +255,10 @@
       "empty": "Nenhum tarefa encontrado"
     },
     "settings": {
-      "metrics": "{{count}} configurações",
+      "metrics": {
+        "one": "{{count}} configuração",
+        "other": "{{count}} configurações"
+      },
       "notConfigured": "Não configurado",
       "noData": "Sem dados de configuração disponíveis",
       "edit": "Editar Definições",
@@ -831,7 +841,8 @@
       "destination": "Destino",
       "openViewer": "Abrir no visualizador",
       "openViewerTooltip": "Abrir pré-visualização completa de mídia",
-      "inferredFromUrl": "Inferido a partir da URL"
+      "inferredFromUrl": "Inferido a partir da URL",
+      "imageAlt": "Pré-visualização"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +957,10 @@
         "waitingActivity": "Aguardando atividade de arquivos. Algumas operações não informam arquivos individuais."
       },
       "time": {
-        "daysAgo": "{{count}} dias atrás",
+        "daysAgo": {
+          "one": "{{count}} dia atrás",
+          "other": "{{count}} dias atrás"
+        },
         "hoursAgo": "há {{count}}h",
         "minutesAgo": "há {{count}}m",
         "justNow": "Agora mesmo",
@@ -991,15 +1005,30 @@
       },
       "bulk": {
         "title": "Diferenças selecionadas",
-        "selectAll": "Selecionar as {{count}} diferenças abertas",
+        "selectAll": {
+          "one": "Selecionar a {{count}} diferença aberta",
+          "other": "Selecionar as {{count}} diferenças abertas"
+        },
         "selected": "{{count}} selecionadas",
         "toDestination": "{{count}} para o destino",
         "toSource": "{{count}} para a origem",
-        "choose": "{{count}} precisam de decisão",
+        "choose": {
+          "one": "{{count}} precisa de decisão",
+          "other": "{{count}} precisam de decisão"
+        },
         "clear": "Limpar",
-        "applyOneWay": "Copiar {{count}} arquivos",
-        "review": "Revisar {{count}} conflitos…",
-        "started": "Cópia de {{count}} arquivos iniciada",
+        "applyOneWay": {
+          "one": "Copiar {{count}} arquivo",
+          "other": "Copiar {{count}} arquivos"
+        },
+        "review": {
+          "one": "Revisar {{count}} conflito…",
+          "other": "Revisar {{count}} conflitos…"
+        },
+        "started": {
+          "one": "Cópia de {{count}} arquivo iniciada",
+          "other": "Cópia de {{count}} arquivos iniciada"
+        },
         "partial": "{{started}} cópias iniciadas, {{failed}} falharam"
       },
       "compare": {
@@ -1038,7 +1067,10 @@
       },
       "export": {
         "copy": "Copiar como CSV",
-        "copied": "{{count}} linhas copiadas como CSV"
+        "copied": {
+          "one": "{{count}} linha copiada como CSV",
+          "other": "{{count}} linhas copiadas como CSV"
+        }
       },
       "conflicts": {
         "empty": "Nenhum conflito nesta execução.",
@@ -1050,7 +1082,7 @@
     },
     "inputModal": {
       "name": "Nome",
-      "required": "O(A) {{field}} é necessário(a)",
+      "required": "{{field}} é obrigatório",
       "alreadyExists": "{{name}} já existe",
       "forbiddenChars": "{{name}} contém caracteres proibidos ('/' ou ':')",
       "create": "Criar"
@@ -1115,7 +1147,7 @@
       "loadingStats": "Carregando estatísticas do VFS...",
       "fetchingQueue": "Fazendo o carregamento da fila de uploads...",
       "vfsInstance": "Instância VFS",
-      "queued": "em fila",
+      "queued": "{{count}} em fila",
       "controlsUnavailable": "Controles VFS Indisponíveis",
       "indexedWarning": "Essa instância do VFS tem uma sufixo de índice (por exemplo, {{suffix}}) que não é suportado pela API VFS do rclone. Este é um limite conhecido quando existem múltiplas montagens para o mesmo remoto.",
       "stats": {
@@ -1195,7 +1227,10 @@
           "actionFailed": "Ação falhou: {{error}}}",
           "removed": "Removido '{{path}}'",
           "removeFailed": "O arquivo não pode ser removido",
-          "cleared": "{{count}} itens foram removidos",
+          "cleared": {
+            "one": "{{count}} item foi removido",
+            "other": "{{count}} itens foram removidos"
+          },
           "directoryRefreshed": "Diretório atualizado",
           "intervalSet": "Conjunto de intervalo definido como {{val}}",
           "error": "Erro: {{error}}"
@@ -1238,9 +1273,13 @@
       "cliArgumentWithSuggestion": "O parâmetro no estilo CLI '{{key}}' será mapeado automaticamente para '{{suggestion}}' na execução.",
       "camelCaseSuggestionWarning": "A opção '{{key}}' não é válida neste formato. Você quis dizer '{{suggestion}}'?",
       "fixSuggestion": "Alterar para '{{suggestion}}'",
-      "wrongBlockWarning": "A(s) opção(s) {{keys}} pertence(m) ao bloco de configuração '{{block}}' e pode não funcionar aqui.",
-      "unknownWarning": "Opção(s) desconhecida(s): {{keys}}. Isso pode ser ignorado pelo rclone.",
-      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso."
+      "wrongBlockWarning": "A opção {{keys}} pertence ao bloco de configuração '{{block}}' e pode não funcionar aqui.",
+      "unknownWarning": {
+        "one": "{{count}} opção desconhecida: {{keys}}. Isso pode ser ignorado pelo rclone.",
+        "other": "{{count}} opções desconhecidas: {{keys}}. Isso pode ser ignorado pelo rclone."
+      },
+      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso.",
+      "fieldsOverview": "Visão geral dos campos de configuração"
     },
     "passwordManager": {
       "placeholder": "Insira sua senha de configuração do rclone",
@@ -1313,15 +1352,19 @@
       "remote": "Remoto",
       "invalidCommand": "Comando de rclone inválido. Por favor forneça um comando com uma operação suportada (por exemplo, sincronizar, copiar, montar) ou bandeiras.",
       "patch": "Aplicar ao Ativo",
-      "patchProfile": "Aplicar Perfil Ativo(s)",
-      "patchInfo": "Nenhuma operação (sincronizar, servir ou montar) foi especificada. As bandeiras importadas serão aplicadas como uma patch diretamente ao seu perfil de configuração ativo(s).",
+      "patchProfile": "Aplicar aos perfis ativos",
+      "patchInfo": "Nenhuma operação (sincronizar, servir ou montar) foi especificada. As bandeiras importadas serão aplicadas como um patch diretamente aos seus perfis de configuração ativos.",
       "patchInfoRemoteStep": "Nenhuma operação (sincronizar, servir ou montar) foi especificada. Para aplicar essas bandeiras como patch, navegue até uma etapa de configuração específica (por exemplo, Sincronizar, Montar ou Servir) em vez da etapa Remota.",
       "applyPatch": "Aplicar Correção",
       "importSourcePath": "Caminho de Origem do Arquivo",
       "importDestPath": "Caminho de Destino de Importação",
       "importMountPoint": "Importar Ponto de Montagem",
       "applyToTask": "Aplicar à Tarefa",
-      "appliedToast": "{{count}} opção(ões) importada(s) com sucesso"
+      "appliedToast": {
+        "one": "{{count}} opção importada com sucesso",
+        "other": "{{count}} opções importadas com sucesso"
+      },
+      "profileNamePlaceholder": "p. ex. daily-backup"
     },
     "obscure": {
       "title": "Senha Obscura",
@@ -1565,7 +1608,10 @@
         "middle": "Quinze (Metade)",
         "every2Days": "*/2 (Cada 2 dias)",
         "everyMonth": "* (Cada mês)",
-        "intervalN": "{{count}} horas"
+        "intervalN": {
+          "one": "{{count}} hora",
+          "other": "{{count}} horas"
+        }
       },
       "aria": {
         "clear": "Limpar",
@@ -1617,7 +1663,10 @@
       "encrypted": "Criptografado",
       "notEncrypted": "Não Encriptado",
       "contents": "Conteúdo de Backup",
-      "itemCount": "{{count}} itens",
+      "itemCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} itens"
+      },
       "settings": {
         "title": "Configurações de Aplicativo",
         "description": "Preferências e configurações do seu aplicativo"
@@ -1808,7 +1857,10 @@
         "processedFiles": "Arquivos processados"
       },
       "running": "Em execução",
-      "filesCount": "{{count}} arquivos",
+      "filesCount": {
+        "one": "{{count}} arquivo",
+        "other": "{{count}} arquivos"
+      },
       "types": {
         "copy": "Copiar",
         "copyurl": "Copiar URL",
@@ -1835,7 +1887,10 @@
       "videoLabel": "Vídeo: {{name}}",
       "audioLabel": "Áudio: {{name}}",
       "calculatingFolderSize": "Calculando o tamanho do diretório...",
-      "containsFiles": "Contém {{count}} arquivos",
+      "containsFiles": {
+        "one": "Contém {{count}} arquivo",
+        "other": "Contém {{count}} arquivos"
+      },
       "totalSize": "Tamanho total: {{size}}",
       "binaryFile": "Arquivo binário",
       "previewNotAvailable": "Este pré-visualização não está disponível para esse tipo de arquivo",
@@ -1878,7 +1933,10 @@
       "monitoring": "Monitoramento",
       "configuration": "Configuração",
       "selectedProfile": "Perfil Selecionado",
-      "profilesCount": "{{count}} perfis",
+      "profilesCount": {
+        "one": "{{count}} perfil",
+        "other": "{{count}} perfis"
+      },
       "addProfile": "Adicione o Perfil",
       "activeServes": "Serviços Ativos",
       "sharedSettings": "Configurações Compartilhadas",
@@ -2062,7 +2120,7 @@
         "finished": "Concluído",
         "duration": "Duração",
         "files": "Arquivos",
-        "deleted": "Excluído(a)",
+        "deleted": "Excluído",
         "renamed": "Renomeado",
         "updatedDirs": "Pastas atualizadas",
         "listed": "Listados",
@@ -2251,7 +2309,10 @@
         "folderPathFor": "Caminho de diretório para {{name}}",
         "scrollToPending": "Acesse seção de alterações pendentes"
       },
-      "pendingChangesTooltip": "Você tem {{count}} alterações não salvas que requerem reinicialização do motor. Clique para rolar até elas."
+      "pendingChangesTooltip": {
+        "one": "Você tem {{count}} alteração não salva que requer reinicialização do motor. Clique para rolar até ela.",
+        "other": "Você tem {{count}} alterações não salvas que requerem reinicialização do motor. Clique para rolar até elas."
+      }
     },
     "export": {
       "title": "Configurações de Exportação",
@@ -2517,7 +2578,7 @@
         "cancel": "Cancelar",
         "noProfiles": "Nenhum perfil configurado",
         "placeholder": "Selecione o Perfil",
-        "inUseWarning": "Não é possível excluir o perfil \"{{name}}\" - ele está em uso por {{count}} perfil(s) ativo(s) de {{type}}(s).",
+        "inUseWarning": "Não é possível excluir o perfil \"{{name}}\" - ele ainda está em uso ({{type}}: {{count}} ativos)",
         "nameExists": "Já existe um perfil chamado \"{{name}}\"",
         "disabledReason": {
           "inUse": "O perfil está em uso por um processo corrente {{operation}}. Pare-o primeiro."
@@ -2557,7 +2618,10 @@
         "emptyResult": "Nenhuma flag RClone encontrada",
         "emptySettings": "Nenhuma flag encontrada",
         "adjustTerms": "Tente ajustar seus termos de pesquisa",
-        "showing": "Mostrando {{count}} de {{total}} flags"
+        "showing": {
+          "one": "Mostrando {{shown}} de {{count}} flag",
+          "other": "Mostrando {{shown}} de {{count}} flags"
+        }
       },
       "pageTitle": {
         "home": "Flags do Rclone",
@@ -2675,11 +2739,23 @@
         "pretty": "Formatado",
         "raw": "Bruto",
         "table": "Tabela",
-        "lines": "{{count}} linhas",
-        "showMore": "Mostrar mais {{count}} linhas",
-        "showMoreRows": "Mostrar mais {{count}} linhas",
+        "lines": {
+          "one": "{{count}} linha",
+          "other": "{{count}} linhas"
+        },
+        "showMore": {
+          "one": "Mostrar mais {{count}} linha",
+          "other": "Mostrar mais {{count}} linhas"
+        },
+        "showMoreRows": {
+          "one": "Mostrar mais {{count}} linha",
+          "other": "Mostrar mais {{count}} linhas"
+        },
         "collapse": "Recolher",
-        "rowsOmitted": "Mais {{count}} linhas não são exibidas"
+        "rowsOmitted": {
+          "one": "Mais {{count}} linha não é exibida",
+          "other": "Mais {{count}} linhas não são exibidas"
+        }
       },
       "tree": {
         "title": "API",
@@ -2705,9 +2781,18 @@
         "failed": "Job {{id}} falhou",
         "lost": "Job não encontrado",
         "stop": "Parar",
-        "transfers": "{{done}} / {{total}} transferências",
-        "checks": "{{count}} verificações",
-        "errors": "{{count}} erros"
+        "transfers": {
+          "one": "{{done}} / {{count}} transferência",
+          "other": "{{done}} / {{count}} transferências"
+        },
+        "checks": {
+          "one": "{{count}} verificação",
+          "other": "{{count}} verificações"
+        },
+        "errors": {
+          "one": "{{count}} erro",
+          "other": "{{count}} erros"
+        }
       },
       "quickStart": "Experimente uma destas",
       "hints": {
@@ -2774,16 +2859,23 @@
     },
     "selection": {
       "selected": "selecionado",
-      "folder": "pasta",
-      "folders": "diretórios",
-      "item": "item",
-      "items": "itens"
+      "folders": {
+        "one": "{{count}} pasta selecionada",
+        "other": "{{count}} pastas selecionadas"
+      },
+      "items": {
+        "one": "{{count}} item selecionado ({{size}})",
+        "other": "{{count}} itens selecionados ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "Excluir Itens",
         "messageSingle": "Você tem certeza de que deseja excluir \"{{name}}\"?",
-        "messageMultiple": "Tem certeza que deseja excluir {{count}} itens?"
+        "messageMultiple": {
+          "one": "Tem certeza que deseja excluir {{count}} item?",
+          "other": "Tem certeza que deseja excluir {{count}} itens?"
+        }
       },
       "newFolder": {
         "title": "Nova Pasta",
@@ -2819,7 +2911,10 @@
         "compress": "Compactar"
       },
       "multiRename": {
-        "title": "Renomear {{count}} Arquivos",
+        "title": {
+          "one": "Renomear {{count}} arquivo",
+          "other": "Renomear {{count}} arquivos"
+        },
         "templateMode": "Renomear usando um modelo",
         "replaceMode": "Encontre e substitua o texto",
         "templateInput": "Modelo",
@@ -2854,7 +2949,12 @@
         "suffix": "Sufixo",
         "statsChanged": "{{count}} para renomear",
         "statsUnchanged": "{{count}} inalterados",
-        "statsConflicts": "{{count}} conflito(s)"
+        "statsConflicts": {
+          "one": "{{count}} conflito",
+          "other": "{{count}} conflitos"
+        },
+        "findPlaceholder": "texto a localizar",
+        "replacePlaceholder": "texto de substituição"
       },
       "index": {
         "title": "Gerar listagens de diretório",
@@ -2884,17 +2984,35 @@
       "connectionFailed": "Conexão falhou",
       "bookmarkRemoteNotFound": "Bookmark remoto '{{remote}}' não encontrado",
       "loadFailed": "Falha ao carregar diretório",
-      "deleteFailed": "Falha ao deletar {{count}} itens",
-      "copyFailed": "Falha ao copiar {{count}} itens",
-      "moveFailed": "Falha ao mover {{count}} itens",
-      "undoFailed": "A ação de desfazer falhou para {{count}} itens",
-      "redoFailed": "A operação de refazer falhou para {{count}} itens",
+      "deleteFailed": {
+        "one": "Falha ao deletar {{count}} item",
+        "other": "Falha ao deletar {{count}} itens"
+      },
+      "copyFailed": {
+        "one": "Falha ao copiar {{count}} item",
+        "other": "Falha ao copiar {{count}} itens"
+      },
+      "moveFailed": {
+        "one": "Falha ao mover {{count}} item",
+        "other": "Falha ao mover {{count}} itens"
+      },
+      "undoFailed": {
+        "one": "A ação de desfazer falhou para {{count}} item",
+        "other": "A ação de desfazer falhou para {{count}} itens"
+      },
+      "redoFailed": {
+        "one": "A operação de refazer falhou para {{count}} item",
+        "other": "A operação de refazer falhou para {{count}} itens"
+      },
       "rmdirsFailed": "Falha ao remover pastas vazias em \"{{name}}\": {{error}}",
       "createFolderFailed": "Falha ao criar pasta \"{{name}}\": {{error}}",
       "renameFailed": "Falha ao renomear '{{name}}': {{error}}",
       "emptyTrashFailed": "Falha em esvaziar lixo em {{remote}}: {{error}}",
       "openFileFailed": "Não é possível abrir o arquivo: falta contexto de servidor remoto",
-      "minSelection": "Por favor, selecione pelo menos {{min}} item{{s}}.",
+      "minSelection": {
+        "one": "Por favor, selecione pelo menos {{count}} item.",
+        "other": "Por favor, selecione pelo menos {{count}} itens."
+      },
       "copyUrlFailed": "Falha ao baixar do URL: {{error}}",
       "archiveCreateFailed": "Falha ao criar arquivo: {{error}}",
       "externalDropFailed": "Falha ao processar arquivo externo de exclusão.",
@@ -2958,13 +3076,28 @@
       "increaseIconSize": "Aumentar tamanho do ícone"
     },
     "notifications": {
-      "uploadSuccess": "{{count}} arquivos carregados com sucesso.",
-      "uploadFailed": "Falha de upload de {{count}} arquivos.",
+      "uploadSuccess": {
+        "one": "{{count}} arquivo carregado com sucesso.",
+        "other": "{{count}} arquivos carregados com sucesso."
+      },
+      "uploadFailed": {
+        "one": "Falha de upload de {{count}} arquivo.",
+        "other": "Falha de upload de {{count}} arquivos."
+      },
       "trashEmptied": "Operação de limpeza concluída",
       "rmdirsStarted": "Removendo diretórios vazios em \"{{name}}\"...",
-      "deleteStarted": "Removendo {{count}} itens...",
-      "copyStarted": "Copiando {{count}} itens...",
-      "moveStarted": "Movendo {{count}} itens...",
+      "deleteStarted": {
+        "one": "Removendo {{count}} item...",
+        "other": "Removendo {{count}} itens..."
+      },
+      "copyStarted": {
+        "one": "Copiando {{count}} item...",
+        "other": "Copiando {{count}} itens..."
+      },
+      "moveStarted": {
+        "one": "Movendo {{count}} item...",
+        "other": "Movendo {{count}} itens..."
+      },
       "renameStarted": "Operação de renomeação iniciada",
       "undoComplete": "Desfazer bem-sucedido",
       "redoComplete": "A operação de refazer foi bem-sucedida",
@@ -2976,7 +3109,10 @@
       "indexStarted": "Gravando listagens de diretório..."
     },
     "androidShare": {
-      "uploadHere": "Enviar {{count}} arquivo(s) compartilhado(s) para esta pasta",
+      "uploadHere": {
+        "one": "Enviar {{count}} arquivo compartilhado para esta pasta",
+        "other": "Enviar {{count}} arquivos compartilhados para esta pasta"
+      },
       "confirm": "Enviar aqui"
     },
     "toolbar": {
@@ -3090,7 +3226,10 @@
       "error": "Erro"
     },
     "jobs": {
-      "activeCount": "{{count}} atividade{{s}} em andamento",
+      "activeCount": {
+        "one": "{{count}} atividade em andamento",
+        "other": "{{count}} atividades em andamento"
+      },
       "noActive": "Nenhuma tarefa ativa",
       "loading": "Carregando informações de tarefa...",
       "aria": {
@@ -3120,7 +3259,10 @@
       "nextRun": "Próxima Execução:"
     },
     "serves": {
-      "activeCount": "{{count}} serviço{{s}} ativos",
+      "activeCount": {
+        "one": "{{count}} serviço ativo",
+        "other": "{{count}} serviços ativos"
+      },
       "noActive": "Sem servidos ativos",
       "noRunning": "Nenhum servidor ativo está rodando. Inicie o serviço remoto para torná-lo acessível através de protocolos de rede como HTTP, WebDAV, FTP ou SFTP."
     }
@@ -3193,25 +3335,25 @@
       "completedSimulation": "Fluxo de trabalho '{{name}}' concluído com sucesso (simulação)",
       "completedViaStop": "Fluxo de trabalho '{{name}}' concluído pelo nó de parada",
       "stoppedByUser": "A execução do fluxo de trabalho foi interrompida pelo usuário",
-      "finishedWithFailures": "O fluxo de trabalho '{{name}}' terminou com {{count}} etapa(s) com falha",
-      "stepsFailed": "{{count}} etapa(s) com falha",
+      "finishedWithFailures": "O fluxo de trabalho '{{name}}' terminou com etapas com falha: {{count}}",
+      "stepsFailed": "Etapas com falha: {{count}}",
       "executionCancelled": "Execução do fluxo de trabalho cancelada",
-      "summaryCheckDifferences": "A verificação encontrou {{total}} diferença(s): {{differ}} diferentes, {{dst}} ausentes no destino, {{src}} ausentes na origem.",
-      "summaryCheckErrors": "A verificação terminou com {{count}} erro(s).",
-      "summaryCheckPassed": "Verificação aprovada: todos os {{count}} arquivo(s) coincidem, sem diferenças.",
-      "summaryTransferred": "{{transfers}} arquivo(s) ({{size}}) transferido(s) com sucesso, {{errors}} erro(s).",
-      "summaryNothingTransferred": "Transferência concluída com sucesso (0 arquivos transferidos, {{errors}} erros).",
+      "summaryCheckDifferences": "A verificação encontrou diferenças: {{total}} ({{differ}} diferentes, {{dst}} ausentes no destino, {{src}} ausentes na origem).",
+      "summaryCheckErrors": "A verificação terminou com erros: {{count}}.",
+      "summaryCheckPassed": "Verificação aprovada: todos os arquivos coincidem, sem diferenças (arquivos: {{count}}).",
+      "summaryTransferred": "Arquivos transferidos com sucesso: {{transfers}} ({{size}}), erros: {{errors}}.",
+      "summaryNothingTransferred": "Transferência concluída com sucesso (0 arquivos transferidos, erros: {{errors}}).",
       "summaryJobFailed": "A tarefa falhou: {{error}}",
       "unknownError": "Erro desconhecido",
       "reportTitle": "Relatório de verificação",
-      "reportStatusDifferences": "Diferenças detectadas ({{count}} arquivo(s))",
+      "reportStatusDifferences": "Diferenças detectadas (arquivos: {{count}})",
       "reportMatchedFiles": "Arquivos coincidentes",
       "reportDiffering": "Arquivos diferentes ({{count}})",
       "reportMissingOnDestination": "Ausentes no destino ({{count}})",
       "reportMissingOnSource": "Ausentes na origem ({{count}})",
       "reportAndMore": "... e mais {{count}}",
-      "reportStatusErrors": "Concluído com {{count}} erro(s)",
-      "reportStatusMatched": "Todos os {{count}} arquivo(s) coincidem exatamente (0 diferenças).",
+      "reportStatusErrors": "Concluído com erros: {{count}}",
+      "reportStatusMatched": "Todos os arquivos coincidem exatamente (0 diferenças, arquivos: {{count}}).",
       "reportStatus": "Status",
       "missingWorkflowId": "ID do fluxo de trabalho ausente para atualização",
       "workflowNotFound": "Fluxo de trabalho '{{id}}' não encontrado",
@@ -3462,7 +3604,10 @@
   "backendSuccess": {
     "backup": {
       "created": "Backup criado em: {{path}}",
-      "restored": "Configurações restauradas com sucesso ({{count}} itens restaurados)"
+      "restored": {
+        "one": "Configurações restauradas com sucesso ({{count}} item restaurado)",
+        "other": "Configurações restauradas com sucesso ({{count}} itens restaurados)"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} desmontado com sucesso",
@@ -3591,19 +3736,19 @@
     "quickRunsCount": "Execuções Rápidas [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Tarefa",
-    "tooltipTasks": "{{count}} Tarefas",
+    "tooltipTasks": "Tarefas: {{count}}",
     "tooltipMount": "1 Montagem",
-    "tooltipMounts": "{{count}} Montagens",
+    "tooltipMounts": "Montagens: {{count}}",
     "tooltipServe": "1 Serviço",
-    "tooltipServes": "{{count}} Serviços",
+    "tooltipServes": "Serviços: {{count}}",
     "workflowsCount": "Fluxos de Trabalho [{{active}}/{{total}}]",
     "indexCount": "Listagens de diretório [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Operações ativas em andamento: {{details}}",
-    "mounts": "{{count}} ponto(s) de montagem",
-    "jobs": "{{count}} tarefa(s)",
-    "serves": "{{count}} servidor(es)"
+    "mounts": "Pontos de montagem: {{count}}",
+    "jobs": "Tarefas: {{count}}",
+    "serves": "Servidores: {{count}}"
   },
   "notification": {
     "title": {
@@ -4466,8 +4611,10 @@
     "keyPlaceholder": "ex.: dir_cache_time",
     "valuePlaceholder": "ex.: 10m",
     "selectedCount": "{{selected}} / {{total}} selecionados",
-    "keyCount": "{{count}} chave",
-    "keysCount": "{{count}} chaves",
+    "keyCount": {
+      "one": "{{count}} chave",
+      "other": "{{count}} chaves"
+    },
     "zeroKeys": "0 chaves",
     "applySuccess": "Modelo \"{{name}}\" aplicado com sucesso.",
     "savedSuccess": "Modelo \"{{name}}\" salvo com sucesso.",

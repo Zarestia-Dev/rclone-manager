@@ -356,10 +356,7 @@
                       <mat-panel-description>
                         <span appPill size="xs" [tone]="cat.totalCount > 0 ? 'primary' : 'dim'">
                           @if (cat.totalCount > 0) {
-                            {{
-                              (cat.totalCount === 1 ? 'templates.keyCount' : 'templates.keysCount')
-                                | translate: { count: cat.totalCount }
-                            }}
+                            {{ 'templates.keyCount' | translate: { count: cat.totalCount } }}
                           } @else {
                             {{ 'templates.zeroKeys' | translate }}
                           }

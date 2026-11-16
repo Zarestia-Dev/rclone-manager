@@ -1,4 +1,4 @@
-import { DecimalPipe, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,7 +22,7 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { FormatFileSizePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatNumberPipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FsInfo, RemoteAboutData, RemoteProvider } from '@app/types';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
@@ -49,7 +49,7 @@ export interface MetadataGroup {
   selector: 'app-remote-about-modal',
   imports: [
     TitleCasePipe,
-    DecimalPipe,
+    FormatNumberPipe,
     MatIconModule,
     MatButtonModule,
     MatTabsModule,

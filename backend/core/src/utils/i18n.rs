@@ -266,7 +266,7 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
-/// Translated "N mount(s)", "N job(s)" and "N server(s)" for the counts above zero.
+/// Translated "Mounts: N", "Jobs: N" and "Servers: N" for the counts above zero.
 pub fn localized_operation_counts(
     mounts_count: usize,
     jobs_count: usize,

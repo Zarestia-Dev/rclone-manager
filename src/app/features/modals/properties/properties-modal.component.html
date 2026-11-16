@@ -76,7 +76,7 @@
       @if (currentItem?.ModTime) {
         <div class="prop-row">
           <span class="label">{{ 'fileBrowser.properties.modified' | translate }}</span>
-          <span class="value">{{ currentItem!.ModTime | date: 'medium' }}</span>
+          <span class="value">{{ currentItem!.ModTime | formatDate: 'medium' }}</span>
         </div>
       }
       @if (currentItem && !currentItem.IsDir) {
@@ -131,7 +131,7 @@
         } @else if (size()) {
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.containedFiles' | translate }}</span>
-            <span class="value">{{ size()!.count | number }}</span>
+            <span class="value">{{ size()!.count | formatNumber }}</span>
           </div>
           <div class="prop-row">
             <span class="label">{{ 'fileBrowser.properties.totalSize' | translate }}</span>

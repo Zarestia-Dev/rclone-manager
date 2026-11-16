@@ -44,7 +44,14 @@
     "actions": "操作",
     "savedSuccessfully": "儲存成功",
     "deletedSuccessfully": "刪除成功",
-    "notConfigured": "未設定"
+    "notConfigured": "未設定",
+    "unknown": "未知",
+    "notAvailable": "不適用",
+    "unlimited": "無限制",
+    "limitedTo": "限制為 {{rate}}",
+    "none": "無",
+    "add": "新增",
+    "select": "選取"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,9 @@
       "empty": "未找到任務"
     },
     "settings": {
-      "metrics": "{{count}} 項設定",
+      "metrics": {
+        "other": "{{count}} 項設定"
+      },
       "notConfigured": "未設定",
       "noData": "無設定資料",
       "edit": "編輯設定",
@@ -831,7 +840,8 @@
       "destination": "目標路徑",
       "openViewer": "在檢視器中開啟",
       "openViewerTooltip": "開啟完整媒體預覽",
-      "inferredFromUrl": "由 URL 推斷"
+      "inferredFromUrl": "由 URL 推斷",
+      "imageAlt": "預覽"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +956,9 @@
         "waitingActivity": "正在等待檔案活動。某些操作不會回報個別檔案的資訊。"
       },
       "time": {
-        "daysAgo": "{{count}} 天前",
+        "daysAgo": {
+          "other": "{{count}} 天前"
+        },
         "hoursAgo": "{{count}} 小時前",
         "minutesAgo": "{{count}} 分鐘前",
         "justNow": "剛剛",
@@ -991,15 +1003,25 @@
       },
       "bulk": {
         "title": "已選差異",
-        "selectAll": "全選 {{count}} 項未處理差異",
+        "selectAll": {
+          "other": "全選 {{count}} 項未處理差異"
+        },
         "selected": "已選 {{count}} 項",
         "toDestination": "{{count}} 項到目的地",
         "toSource": "{{count}} 項到來源端",
-        "choose": "{{count}} 項需要決定",
+        "choose": {
+          "other": "{{count}} 項需要決定"
+        },
         "clear": "清除",
-        "applyOneWay": "複製 {{count}} 個檔案",
-        "review": "檢視 {{count}} 個衝突…",
-        "started": "已開始複製 {{count}} 個檔案",
+        "applyOneWay": {
+          "other": "複製 {{count}} 個檔案"
+        },
+        "review": {
+          "other": "檢視 {{count}} 個衝突…"
+        },
+        "started": {
+          "other": "已開始複製 {{count}} 個檔案"
+        },
         "partial": "已開始 {{started}} 個複製工作,{{failed}} 個失敗"
       },
       "compare": {
@@ -1038,7 +1060,9 @@
       },
       "export": {
         "copy": "複製為 CSV",
-        "copied": "已將 {{count}} 列複製為 CSV"
+        "copied": {
+          "other": "已將 {{count}} 列複製為 CSV"
+        }
       },
       "conflicts": {
         "empty": "本次執行沒有衝突。",
@@ -1115,7 +1139,7 @@
       "loadingStats": "載入 VFS 統計資訊...",
       "fetchingQueue": "取得上傳佇列...",
       "vfsInstance": "VFS 執行個體",
-      "queued": "已排隊",
+      "queued": "{{count}} 已排隊",
       "controlsUnavailable": "VFS 控制不可用",
       "indexedWarning": "此 VFS 執行個體包含索引字尾（如 {{suffix}}），該字尾不被 rclone 的 VFS API 支援。這是同一遠端存在多個掛載時的已知限制。",
       "stats": {
@@ -1195,7 +1219,9 @@
           "actionFailed": "操作失敗：{{error}}",
           "removed": "'{{path}}' 已移除",
           "removeFailed": "檔案無法移除",
-          "cleared": "已清除 {{count}} 項",
+          "cleared": {
+            "other": "已清除 {{count}} 項"
+          },
           "directoryRefreshed": "目錄已重新整理",
           "intervalSet": "間隔已設為 {{val}}",
           "error": "錯誤：{{error}}"
@@ -1239,8 +1265,11 @@
       "camelCaseSuggestionWarning": "選項 '{{key}}' 在此格式下無效。您是指 '{{suggestion}}' 嗎？",
       "fixSuggestion": "更改為 '{{suggestion}}'",
       "wrongBlockWarning": "選項 {{keys}} 屬於 '{{block}}' 設定塊，在此處可能無法正常工作。",
-      "unknownWarning": "未知選項：{{keys}}。這些選項可能被 rclone 忽略。",
-      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。"
+      "unknownWarning": {
+        "other": "{{count}} 個未知選項：{{keys}}。這些選項可能被 rclone 忽略。"
+      },
+      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。",
+      "fieldsOverview": "設定欄位概覽"
     },
     "passwordManager": {
       "placeholder": "輸入 rclone 設定密碼",
@@ -1321,7 +1350,10 @@
       "importDestPath": "匯入目標路徑",
       "importMountPoint": "匯入掛載點",
       "applyToTask": "應用到任務",
-      "appliedToast": "已成功匯入 {{count}} 個設定專案"
+      "appliedToast": {
+        "other": "已成功匯入 {{count}} 個設定專案"
+      },
+      "profileNamePlaceholder": "例如：daily-backup"
     },
     "obscure": {
       "title": "混淆密碼",
@@ -1568,7 +1600,9 @@
         "middle": "15（月中）",
         "every2Days": "*/2（每2天）",
         "everyMonth": "*（每月）",
-        "intervalN": "{{count}} 小時"
+        "intervalN": {
+          "other": "{{count}} 小時"
+        }
       },
       "aria": {
         "clear": "清除",
@@ -1617,7 +1651,9 @@
       "encrypted": "已加密",
       "notEncrypted": "未加密",
       "contents": "備份內容",
-      "itemCount": "{{count}} 項",
+      "itemCount": {
+        "other": "{{count}} 項"
+      },
       "settings": {
         "title": "應用程式設定",
         "description": "你的應用偏好與設定"
@@ -1808,7 +1844,9 @@
         "processedFiles": "已處理檔案"
       },
       "running": "執行中",
-      "filesCount": "{{count}} 個檔案",
+      "filesCount": {
+        "other": "{{count}} 個檔案"
+      },
       "types": {
         "copy": "複製",
         "copyurl": "複製 URL",
@@ -1835,7 +1873,9 @@
       "videoLabel": "影片：{{name}}",
       "audioLabel": "音訊：{{name}}",
       "calculatingFolderSize": "正在計算資料夾大小...",
-      "containsFiles": "包含 {{count}} 個檔案",
+      "containsFiles": {
+        "other": "包含 {{count}} 個檔案"
+      },
       "totalSize": "總大小：{{size}}",
       "binaryFile": "二進位制檔案",
       "previewNotAvailable": "此類檔案不支援預覽",
@@ -1878,7 +1918,9 @@
       "monitoring": "監控",
       "configuration": "設定",
       "selectedProfile": "已選設定檔案",
-      "profilesCount": "{{count}} 個設定檔案",
+      "profilesCount": {
+        "other": "{{count}} 個設定檔案"
+      },
       "addProfile": "新增設定檔案",
       "activeServes": "正在執行的服務",
       "sharedSettings": "共享設定",
@@ -2292,7 +2334,9 @@
         "folderPathFor": "{{name}} 的資料夾路徑",
         "scrollToPending": "捲動到未儲存更改區域"
       },
-      "pendingChangesTooltip": "你有 {{count}} 項未儲存更改，需要重新啟動引擎才能生效。點選捲動到該處。"
+      "pendingChangesTooltip": {
+        "other": "你有 {{count}} 項未儲存更改，需要重新啟動引擎才能生效。點選捲動到該處。"
+      }
     },
     "export": {
       "title": "匯出設定",
@@ -2598,7 +2642,9 @@
         "emptyResult": "未找到 Rclone 旗標",
         "emptySettings": "未找到旗標",
         "adjustTerms": "請調整搜尋關鍵詞",
-        "showing": "顯示 {{count}} / 共 {{total}} 項旗標"
+        "showing": {
+          "other": "顯示 {{shown}} / 共 {{count}} 項旗標"
+        }
       },
       "pageTitle": {
         "home": "Rclone 旗標",
@@ -2716,11 +2762,19 @@
         "pretty": "格式化",
         "raw": "原始",
         "table": "表格",
-        "lines": "{{count}} 行",
-        "showMore": "再顯示 {{count}} 行",
-        "showMoreRows": "再顯示 {{count}} 行",
+        "lines": {
+          "other": "{{count}} 行"
+        },
+        "showMore": {
+          "other": "再顯示 {{count}} 行"
+        },
+        "showMoreRows": {
+          "other": "再顯示 {{count}} 行"
+        },
         "collapse": "收合",
-        "rowsOmitted": "另有 {{count}} 行未顯示"
+        "rowsOmitted": {
+          "other": "另有 {{count}} 行未顯示"
+        }
       },
       "tree": {
         "title": "API",
@@ -2746,9 +2800,15 @@
         "failed": "工作 {{id}} 失敗",
         "lost": "找不到工作",
         "stop": "停止",
-        "transfers": "{{done}} / {{total}} 個傳輸",
-        "checks": "{{count}} 項檢查",
-        "errors": "{{count}} 個錯誤"
+        "transfers": {
+          "other": "{{done}} / {{count}} 個傳輸"
+        },
+        "checks": {
+          "other": "{{count}} 項檢查"
+        },
+        "errors": {
+          "other": "{{count}} 個錯誤"
+        }
       },
       "quickStart": "試試這些",
       "hints": {
@@ -2815,16 +2875,20 @@
     },
     "selection": {
       "selected": "已選擇",
-      "folder": "個資料夾",
-      "folders": "個資料夾",
-      "item": "項",
-      "items": "項"
+      "folders": {
+        "other": "已選取 {{count}} 個資料夾"
+      },
+      "items": {
+        "other": "已選取 {{count}} 個項目（{{size}}）"
+      }
     },
     "modals": {
       "delete": {
         "title": "刪除專案",
         "messageSingle": "確定要刪除 \"{{name}}\" 嗎？",
-        "messageMultiple": "確定要刪除 {{count}} 項嗎？"
+        "messageMultiple": {
+          "other": "確定要刪除 {{count}} 項嗎？"
+        }
       },
       "newFolder": {
         "title": "新增資料夾",
@@ -2860,7 +2924,9 @@
         "compress": "壓縮"
       },
       "multiRename": {
-        "title": "重新命名 {{count}} 個檔案",
+        "title": {
+          "other": "重新命名 {{count}} 個檔案"
+        },
         "templateMode": "使用模板重新命名",
         "replaceMode": "查詢和替換文字",
         "templateInput": "模板",
@@ -2895,7 +2961,11 @@
         "suffix": "後綴",
         "statsChanged": "{{count}} 個待重新命名",
         "statsUnchanged": "{{count}} 個未變更",
-        "statsConflicts": "{{count}} 個衝突"
+        "statsConflicts": {
+          "other": "{{count}} 個衝突"
+        },
+        "findPlaceholder": "要尋找的文字",
+        "replacePlaceholder": "取代文字"
       },
       "index": {
         "title": "產生目錄清單",
@@ -2925,17 +2995,29 @@
       "connectionFailed": "連線失敗",
       "bookmarkRemoteNotFound": "未找到書籤對應的遠端連線 '{{remote}}'",
       "loadFailed": "載入目錄失敗",
-      "deleteFailed": "{{count}} 項刪除失敗",
-      "copyFailed": "{{count}} 項複製失敗",
-      "moveFailed": "{{count}} 項移動失敗",
-      "undoFailed": "{{count}} 項復原失敗",
-      "redoFailed": "{{count}} 項重做失敗",
+      "deleteFailed": {
+        "other": "{{count}} 項刪除失敗"
+      },
+      "copyFailed": {
+        "other": "{{count}} 項複製失敗"
+      },
+      "moveFailed": {
+        "other": "{{count}} 項移動失敗"
+      },
+      "undoFailed": {
+        "other": "{{count}} 項復原失敗"
+      },
+      "redoFailed": {
+        "other": "{{count}} 項重做失敗"
+      },
       "rmdirsFailed": "刪除 \"{{name}}\" 空資料夾失敗：{{error}}",
       "createFolderFailed": "建立資料夾 \"{{name}}\" 失敗：{{error}}",
       "renameFailed": "重新命名 '{{name}}' 失敗：{{error}}",
       "emptyTrashFailed": "清除 {{remote}} 回收站失敗：{{error}}",
       "openFileFailed": "無法開啟檔案：缺少遠端伺服器上下文",
-      "minSelection": "請至少選擇 {{min}} 個項目{{s}}。",
+      "minSelection": {
+        "other": "請至少選擇 {{count}} 個項目。"
+      },
       "copyUrlFailed": "從 URL 下載失敗: {{error}}",
       "archiveCreateFailed": "建立封存失敗: {{error}}",
       "externalDropFailed": "處理外部檔案拖放失敗。",
@@ -2999,13 +3081,23 @@
       "increaseIconSize": "放大圖示大小"
     },
     "notifications": {
-      "uploadSuccess": "成功上傳 {{count}} 個檔案。",
-      "uploadFailed": "上傳 {{count}} 個檔案失敗。",
+      "uploadSuccess": {
+        "other": "成功上傳 {{count}} 個檔案。"
+      },
+      "uploadFailed": {
+        "other": "上傳 {{count}} 個檔案失敗。"
+      },
       "trashEmptied": "清理操作完成",
       "rmdirsStarted": "正在刪除 \"{{name}}\" 中的空資料夾...",
-      "deleteStarted": "正在刪除 {{count}} 項...",
-      "copyStarted": "正在複製 {{count}} 項...",
-      "moveStarted": "正在移動 {{count}} 項...",
+      "deleteStarted": {
+        "other": "正在刪除 {{count}} 項..."
+      },
+      "copyStarted": {
+        "other": "正在複製 {{count}} 項..."
+      },
+      "moveStarted": {
+        "other": "正在移動 {{count}} 項..."
+      },
       "renameStarted": "重新命名操作已開始",
       "undoComplete": "復原成功",
       "redoComplete": "重做成功",
@@ -3017,7 +3109,9 @@
       "indexStarted": "正在寫入目錄清單..."
     },
     "androidShare": {
-      "uploadHere": "將 {{count}} 個共享檔案上傳至此資料夾",
+      "uploadHere": {
+        "other": "將 {{count}} 個共享檔案上傳至此資料夾"
+      },
       "confirm": "上傳至此處"
     },
     "toolbar": {
@@ -3131,7 +3225,9 @@
       "error": "錯誤"
     },
     "jobs": {
-      "activeCount": "{{count}} 個進行中的任務{{s}}",
+      "activeCount": {
+        "other": "{{count}} 個進行中的任務"
+      },
       "noActive": "暫無活動任務",
       "loading": "正在載入任務資訊...",
       "aria": {
@@ -3161,7 +3257,9 @@
       "nextRun": "下次執行："
     },
     "serves": {
-      "activeCount": "{{count}} 個運作中的服務{{s}}",
+      "activeCount": {
+        "other": "{{count}} 個運作中的服務"
+      },
       "noActive": "暫無活動服務",
       "noRunning": "暫無執行中的服務。啟動一個遠端連線服務，即可透過 HTTP、WebDAV、FTP 或 SFTP 訪問。"
     }
@@ -3503,7 +3601,9 @@
   "backendSuccess": {
     "backup": {
       "created": "備份已建立：{{path}}",
-      "restored": "設定已成功還原（已還原 {{count}} 項）"
+      "restored": {
+        "other": "設定已成功還原（已還原 {{count}} 項）"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} 解除安裝成功",
@@ -4507,8 +4607,9 @@
     "keyPlaceholder": "例如：dir_cache_time",
     "valuePlaceholder": "例如：10m",
     "selectedCount": "已選 {{selected}} / {{total}} 項",
-    "keyCount": "{{count}} 個鍵",
-    "keysCount": "{{count}} 個鍵",
+    "keyCount": {
+      "other": "{{count}} 個鍵"
+    },
     "zeroKeys": "0 個鍵",
     "applySuccess": "已成功應用模板 \"{{name}}\"。",
     "savedSuccess": "已成功儲存模板 \"{{name}}\"。",

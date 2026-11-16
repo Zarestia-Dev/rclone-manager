@@ -1,25 +1,20 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
+import { formatDate } from 'src/app/services/i18n/locale-format';
+import { LocaleService } from 'src/app/services/i18n/locale.service';
 
 /**
- * Formats an ISO date string as a localized relative date.
- * Pure pipe: only recomputes when the input string reference changes,
- * so per-row template usage stays cheap across change-detection cycles.
+ * Formats an ISO date string as a date and time in the language of the interface.
+ * Impure so it follows a language change; the `Intl` formatter is cached, so a call per
+ * visible row stays cheap.
  */
 @Pipe({
   name: 'formatRelativeDate',
-  pure: true,
+  pure: false,
 })
 export class FormatRelativeDatePipe implements PipeTransform {
-  private readonly _formatter = new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  private readonly locale = inject(LocaleService);
 
   transform(dateString: string): string {
-    if (!dateString) return '';
-    return this._formatter.format(new Date(dateString));
+    return formatDate(this.locale.locale(), dateString, 'compact');
   }
 }

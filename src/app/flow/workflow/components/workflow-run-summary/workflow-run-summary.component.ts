@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { FormatDatePipe } from '@app/pipes';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { PillTone, WorkflowExecutionState } from '@app/types';
@@ -54,7 +54,7 @@ const COUNTED: readonly WorkflowNodeExecutionState[] = ['failed', 'running', 'su
 @Component({
   selector: 'app-workflow-run-summary',
   imports: [
-    DatePipe,
+    FormatDatePipe,
     MatIconModule,
     TranslatePipe,
     AlertBannerComponent,

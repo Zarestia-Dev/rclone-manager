@@ -44,7 +44,14 @@
     "actions": "Akcie",
     "savedSuccessfully": "Úspešne uložené",
     "deletedSuccessfully": "Úspešne odstránené",
-    "notConfigured": "Nenakonfigurované"
+    "notConfigured": "Nenakonfigurované",
+    "unknown": "Neznáme",
+    "notAvailable": "Nedostupné",
+    "unlimited": "Bez obmedzenia",
+    "limitedTo": "Obmedzené na {{rate}}",
+    "none": "Žiadne",
+    "add": "Pridať",
+    "select": "Vybrať"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,11 @@
       "empty": "Nenašli sa žiadne úlohy"
     },
     "settings": {
-      "metrics": "Nastavenia: {{count}}",
+      "metrics": {
+        "one": "{{count}} nastavenie",
+        "few": "{{count}} nastavenia",
+        "other": "{{count}} nastavení"
+      },
       "notConfigured": "Nenakonfigurované",
       "noData": "Nie sú k dispozícii žiadne údaje o konfigurácii",
       "edit": "Upraviť nastavenia",
@@ -831,7 +842,8 @@
       "destination": "Cieľ",
       "openViewer": "Otvoriť v prehliadači",
       "openViewerTooltip": "Otvoriť úplný náhľad média",
-      "inferredFromUrl": "Odvodené z URL"
+      "inferredFromUrl": "Odvodené z URL",
+      "imageAlt": "Náhľad"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +958,11 @@
         "waitingActivity": "Čaká sa na aktivitu súborov. Niektoré operácie nehlásia jednotlivé súbory."
       },
       "time": {
-        "daysAgo": "pred {{count}} d",
+        "daysAgo": {
+          "one": "pred {{count}} dňom",
+          "few": "pred {{count}} dňami",
+          "other": "pred {{count}} dňami"
+        },
         "hoursAgo": "pred {{count}} h",
         "minutesAgo": "pred {{count}} min",
         "justNow": "Práve teraz",
@@ -991,15 +1007,35 @@
       },
       "bulk": {
         "title": "Vybrané rozdiely",
-        "selectAll": "Vybrať všetky otvorené rozdiely ({{count}})",
+        "selectAll": {
+          "one": "Vybrať {{count}} otvorený rozdiel",
+          "few": "Vybrať všetky {{count}} otvorené rozdiely",
+          "other": "Vybrať všetkých {{count}} otvorených rozdielov"
+        },
         "selected": "Vybrané: {{count}}",
         "toDestination": "Do cieľa: {{count}}",
         "toSource": "Do zdroja: {{count}}",
-        "choose": "Vyžaduje rozhodnutie: {{count}}",
+        "choose": {
+          "one": "{{count}} vyžaduje rozhodnutie",
+          "few": "{{count}} vyžadujú rozhodnutie",
+          "other": "{{count}} vyžaduje rozhodnutie"
+        },
         "clear": "Vymazať",
-        "applyOneWay": "Kopírovať súbory ({{count}})",
-        "review": "Skontrolovať konflikty ({{count}})…",
-        "started": "Spustilo sa kopírovanie súborov: {{count}}",
+        "applyOneWay": {
+          "one": "Kopírovať {{count}} súbor",
+          "few": "Kopírovať {{count}} súbory",
+          "other": "Kopírovať {{count}} súborov"
+        },
+        "review": {
+          "one": "Skontrolovať {{count}} konflikt…",
+          "few": "Skontrolovať {{count}} konflikty…",
+          "other": "Skontrolovať {{count}} konfliktov…"
+        },
+        "started": {
+          "one": "Spustilo sa kopírovanie {{count}} súboru",
+          "few": "Spustilo sa kopírovanie {{count}} súborov",
+          "other": "Spustilo sa kopírovanie {{count}} súborov"
+        },
         "partial": "Spustené kópie: {{started}}, zlyhané: {{failed}}"
       },
       "compare": {
@@ -1038,7 +1074,11 @@
       },
       "export": {
         "copy": "Kopírovať ako CSV",
-        "copied": "Riadky skopírované ako CSV: {{count}}"
+        "copied": {
+          "one": "Skopírovaný {{count}} riadok ako CSV",
+          "few": "Skopírované {{count}} riadky ako CSV",
+          "other": "Skopírovaných {{count}} riadkov ako CSV"
+        }
       },
       "conflicts": {
         "empty": "V tomto behu nie sú žiadne konflikty.",
@@ -1115,7 +1155,7 @@
       "loadingStats": "Načítavajú sa štatistiky VFS...",
       "fetchingQueue": "Načítava sa front nahrávania...",
       "vfsInstance": "Inštancia VFS",
-      "queued": "vo fronte",
+      "queued": "{{count}} vo fronte",
       "controlsUnavailable": "Ovládanie VFS nie je dostupné",
       "indexedWarning": "Táto inštancia VFS má indexovú príponu (napr. {{suffix}}), ktorú VFS API rclone nepodporuje. Ide o známe obmedzenie, keď pre to isté vzdialené úložisko existuje viacero pripojení.",
       "stats": {
@@ -1195,7 +1235,11 @@
           "actionFailed": "Akcia zlyhala: {{error}}",
           "removed": "Odstránené: '{{path}}'",
           "removeFailed": "Súbor nie je možné odstrániť",
-          "cleared": "Vymazané položky: {{count}}",
+          "cleared": {
+            "one": "Vymazaná {{count}} položka",
+            "few": "Vymazané {{count}} položky",
+            "other": "Vymazaných {{count}} položiek"
+          },
           "directoryRefreshed": "Priečinok bol obnovený",
           "intervalSet": "Interval nastavený na {{val}}",
           "error": "Chyba: {{error}}"
@@ -1238,9 +1282,14 @@
       "cliArgumentWithSuggestion": "Prepínač v štýle CLI '{{key}}' sa pri spustení automaticky namapuje na '{{suggestion}}'.",
       "camelCaseSuggestionWarning": "Možnosť '{{key}}' nie je v tomto formáte platná. Mysleli ste '{{suggestion}}'?",
       "fixSuggestion": "Zmeniť na '{{suggestion}}'",
-      "wrongBlockWarning": "Možnosti {{keys}} patria do konfiguračného bloku '{{block}}' a tu nemusia fungovať.",
-      "unknownWarning": "Neznáme možnosti: {{keys}}. Rclone ich môže ignorovať.",
-      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec."
+      "wrongBlockWarning": "Možnosť {{keys}} patrí do konfiguračného bloku '{{block}}' a tu nemusí fungovať.",
+      "unknownWarning": {
+        "one": "{{count}} neznáma možnosť: {{keys}}. Rclone ju môže ignorovať.",
+        "few": "{{count}} neznáme možnosti: {{keys}}. Rclone ich môže ignorovať.",
+        "other": "{{count}} neznámych možností: {{keys}}. Rclone ich môže ignorovať."
+      },
+      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec.",
+      "fieldsOverview": "Prehľad konfiguračných polí"
     },
     "passwordManager": {
       "placeholder": "Zadajte heslo ku konfigurácii rclone",
@@ -1321,7 +1370,12 @@
       "importDestPath": "Importovať cieľovú cestu",
       "importMountPoint": "Importovať bod pripojenia",
       "applyToTask": "Použiť na úlohu",
-      "appliedToast": "Úspešne importované možnosti: {{count}}"
+      "appliedToast": {
+        "one": "Úspešne importovaná {{count}} možnosť",
+        "few": "Úspešne importované {{count}} možnosti",
+        "other": "Úspešne importovaných {{count}} možností"
+      },
+      "profileNamePlaceholder": "napr. daily-backup"
     },
     "obscure": {
       "title": "Zamaskovať heslo",
@@ -1568,7 +1622,11 @@
         "middle": "15 (polovica mesiaca)",
         "every2Days": "*/2 (každé 2 dni)",
         "everyMonth": "* (každý mesiac)",
-        "intervalN": "{{count}} h"
+        "intervalN": {
+          "one": "{{count}} hodina",
+          "few": "{{count}} hodiny",
+          "other": "{{count}} hodín"
+        }
       },
       "aria": {
         "clear": "Vymazať",
@@ -1617,7 +1675,11 @@
       "encrypted": "Zašifrované",
       "notEncrypted": "Nezašifrované",
       "contents": "Obsah zálohy",
-      "itemCount": "Položky: {{count}}",
+      "itemCount": {
+        "one": "{{count}} položka",
+        "few": "{{count}} položky",
+        "other": "{{count}} položiek"
+      },
       "settings": {
         "title": "Nastavenia aplikácie",
         "description": "Vaše predvoľby a konfigurácia aplikácie"
@@ -1808,7 +1870,11 @@
         "processedFiles": "Spracované súbory"
       },
       "running": "Beží",
-      "filesCount": "Súbory: {{count}}",
+      "filesCount": {
+        "one": "{{count}} súbor",
+        "few": "{{count}} súbory",
+        "other": "{{count}} súborov"
+      },
       "types": {
         "copy": "Kopírovanie",
         "copyurl": "Kopírovanie URL",
@@ -1835,7 +1901,11 @@
       "videoLabel": "Video: {{name}}",
       "audioLabel": "Zvuk: {{name}}",
       "calculatingFolderSize": "Počíta sa veľkosť priečinka...",
-      "containsFiles": "Obsahuje súbory: {{count}}",
+      "containsFiles": {
+        "one": "Obsahuje {{count}} súbor",
+        "few": "Obsahuje {{count}} súbory",
+        "other": "Obsahuje {{count}} súborov"
+      },
       "totalSize": "Celková veľkosť: {{size}}",
       "binaryFile": "Binárny súbor",
       "previewNotAvailable": "Pre tento typ súboru nie je náhľad k dispozícii",
@@ -1878,7 +1948,11 @@
       "monitoring": "Sledovanie",
       "configuration": "Konfigurácia",
       "selectedProfile": "Vybraný profil",
-      "profilesCount": "Profily: {{count}}",
+      "profilesCount": {
+        "one": "{{count}} profil",
+        "few": "{{count}} profily",
+        "other": "{{count}} profilov"
+      },
       "addProfile": "Pridať profil",
       "activeServes": "Aktívne servery",
       "sharedSettings": "Spoločné nastavenia",
@@ -2292,7 +2366,11 @@
         "folderPathFor": "Cesta k priečinku pre {{name}}",
         "scrollToPending": "Posunúť na sekciu čakajúcich zmien"
       },
-      "pendingChangesTooltip": "Neuložené zmeny vyžadujúce reštart jadra: {{count}}. Kliknutím sa na ne posuniete."
+      "pendingChangesTooltip": {
+        "one": "Máte {{count}} neuloženú zmenu, ktorá vyžaduje reštart jadra. Kliknutím sa na ňu posuniete.",
+        "few": "Máte {{count}} neuložené zmeny, ktoré vyžadujú reštart jadra. Kliknutím sa na ne posuniete.",
+        "other": "Máte {{count}} neuložených zmien, ktoré vyžadujú reštart jadra. Kliknutím sa na ne posuniete."
+      }
     },
     "export": {
       "title": "Exportovať nastavenia",
@@ -2598,7 +2676,11 @@
         "emptyResult": "Nenašli sa žiadne prepínače rclone",
         "emptySettings": "Nenašli sa žiadne prepínače",
         "adjustTerms": "Skúste upraviť hľadané výrazy",
-        "showing": "Zobrazuje sa {{count}} z {{total}} prepínačov"
+        "showing": {
+          "one": "Zobrazuje sa {{shown}} z {{count}} prepínača",
+          "few": "Zobrazuje sa {{shown}} z {{count}} prepínačov",
+          "other": "Zobrazuje sa {{shown}} z {{count}} prepínačov"
+        }
       },
       "pageTitle": {
         "home": "Prepínače rclone",
@@ -2716,11 +2798,27 @@
         "pretty": "Formátovaný",
         "raw": "Surový",
         "table": "Tabuľka",
-        "lines": "Riadky: {{count}}",
-        "showMore": "Zobraziť ďalšie riadky ({{count}})",
-        "showMoreRows": "Zobraziť ďalšie riadky tabuľky ({{count}})",
+        "lines": {
+          "one": "{{count}} riadok",
+          "few": "{{count}} riadky",
+          "other": "{{count}} riadkov"
+        },
+        "showMore": {
+          "one": "Zobraziť ďalší {{count}} riadok",
+          "few": "Zobraziť ďalšie {{count}} riadky",
+          "other": "Zobraziť ďalších {{count}} riadkov"
+        },
+        "showMoreRows": {
+          "one": "Zobraziť ďalší {{count}} riadok",
+          "few": "Zobraziť ďalšie {{count}} riadky",
+          "other": "Zobraziť ďalších {{count}} riadkov"
+        },
         "collapse": "Zbaliť",
-        "rowsOmitted": "Ďalšie nezobrazené riadky: {{count}}"
+        "rowsOmitted": {
+          "one": "Nezobrazený ďalší {{count}} riadok",
+          "few": "Nezobrazené ďalšie {{count}} riadky",
+          "other": "Nezobrazených ďalších {{count}} riadkov"
+        }
       },
       "tree": {
         "title": "API",
@@ -2746,9 +2844,21 @@
         "failed": "Úloha {{id}} zlyhala",
         "lost": "Úloha sa nenašla",
         "stop": "Zastaviť",
-        "transfers": "Prenosy: {{done}} / {{total}}",
-        "checks": "Kontroly: {{count}}",
-        "errors": "Chyby: {{count}}"
+        "transfers": {
+          "one": "{{done}} / {{count}} prenos",
+          "few": "{{done}} / {{count}} prenosy",
+          "other": "{{done}} / {{count}} prenosov"
+        },
+        "checks": {
+          "one": "{{count}} kontrola",
+          "few": "{{count}} kontroly",
+          "other": "{{count}} kontrol"
+        },
+        "errors": {
+          "one": "{{count}} chyba",
+          "few": "{{count}} chyby",
+          "other": "{{count}} chýb"
+        }
       },
       "quickStart": "Vyskúšajte niektorý z týchto",
       "hints": {
@@ -2815,16 +2925,26 @@
     },
     "selection": {
       "selected": "– vybrané",
-      "folder": "priečinok",
-      "folders": "priečinkov",
-      "item": "položka",
-      "items": "položiek"
+      "folders": {
+        "one": "Vybraný {{count}} priečinok",
+        "few": "Vybrané {{count}} priečinky",
+        "other": "Vybraných {{count}} priečinkov"
+      },
+      "items": {
+        "one": "Vybraná {{count}} položka ({{size}})",
+        "few": "Vybrané {{count}} položky ({{size}})",
+        "other": "Vybraných {{count}} položiek ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "Odstrániť položky",
         "messageSingle": "Naozaj chcete odstrániť „{{name}}“?",
-        "messageMultiple": "Naozaj chcete odstrániť vybrané položky ({{count}})?"
+        "messageMultiple": {
+          "one": "Naozaj chcete odstrániť {{count}} položka?",
+          "few": "Naozaj chcete odstrániť {{count}} položky?",
+          "other": "Naozaj chcete odstrániť {{count}} položiek?"
+        }
       },
       "newFolder": {
         "title": "Nový priečinok",
@@ -2860,7 +2980,11 @@
         "compress": "Komprimovať"
       },
       "multiRename": {
-        "title": "Premenovať súbory ({{count}})",
+        "title": {
+          "one": "Premenovať {{count}} súbor",
+          "few": "Premenovať {{count}} súbory",
+          "other": "Premenovať {{count}} súborov"
+        },
         "templateMode": "Premenovať pomocou šablóny",
         "replaceMode": "Nájsť a nahradiť text",
         "templateInput": "Šablóna",
@@ -2895,7 +3019,13 @@
         "suffix": "Prípona",
         "statsChanged": "Na premenovanie: {{count}}",
         "statsUnchanged": "Bez zmeny: {{count}}",
-        "statsConflicts": "Konflikty: {{count}}"
+        "statsConflicts": {
+          "one": "{{count}} konflikt",
+          "few": "{{count}} konflikty",
+          "other": "{{count}} konfliktov"
+        },
+        "findPlaceholder": "hľadaný text",
+        "replacePlaceholder": "nahradzujúci text"
       },
       "index": {
         "title": "Generovať výpisy priečinkov",
@@ -2925,17 +3055,41 @@
       "connectionFailed": "Pripojenie zlyhalo",
       "bookmarkRemoteNotFound": "Vzdialené úložisko '{{remote}}' pre záložku sa nenašlo",
       "loadFailed": "Načítanie priečinka zlyhalo",
-      "deleteFailed": "Odstránenie položiek zlyhalo: {{count}}",
-      "copyFailed": "Kopírovanie položiek zlyhalo: {{count}}",
-      "moveFailed": "Presun položiek zlyhal: {{count}}",
-      "undoFailed": "Vrátenie späť zlyhalo pre položky: {{count}}",
-      "redoFailed": "Zopakovanie zlyhalo pre položky: {{count}}",
+      "deleteFailed": {
+        "one": "Nepodarilo sa odstrániť {{count}} položka",
+        "few": "Nepodarilo sa odstrániť {{count}} položky",
+        "other": "Nepodarilo sa odstrániť {{count}} položiek"
+      },
+      "copyFailed": {
+        "one": "Nepodarilo sa skopírovať {{count}} položka",
+        "few": "Nepodarilo sa skopírovať {{count}} položky",
+        "other": "Nepodarilo sa skopírovať {{count}} položiek"
+      },
+      "moveFailed": {
+        "one": "Nepodarilo sa presunúť {{count}} položka",
+        "few": "Nepodarilo sa presunúť {{count}} položky",
+        "other": "Nepodarilo sa presunúť {{count}} položiek"
+      },
+      "undoFailed": {
+        "one": "Nepodarilo sa vrátiť späť zmeny pre {{count}} položku",
+        "few": "Nepodarilo sa vrátiť späť zmeny pre {{count}} položky",
+        "other": "Nepodarilo sa vrátiť späť zmeny pre {{count}} položiek"
+      },
+      "redoFailed": {
+        "one": "Nepodarilo sa zopakovať zmeny pre {{count}} položku",
+        "few": "Nepodarilo sa zopakovať zmeny pre {{count}} položky",
+        "other": "Nepodarilo sa zopakovať zmeny pre {{count}} položiek"
+      },
       "rmdirsFailed": "Odstránenie prázdnych priečinkov v „{{name}}“ zlyhalo: {{error}}",
       "createFolderFailed": "Vytvorenie priečinka „{{name}}“ zlyhalo: {{error}}",
       "renameFailed": "Premenovanie '{{name}}' zlyhalo: {{error}}",
       "emptyTrashFailed": "Vyprázdnenie koša v {{remote}} zlyhalo: {{error}}",
       "openFileFailed": "Súbor nie je možné otvoriť: chýba kontext vzdialeného servera",
-      "minSelection": "Počet vybraných položiek musí byť aspoň {{min}}.",
+      "minSelection": {
+        "one": "Vyberte aspoň {{count}} položku.",
+        "few": "Vyberte aspoň {{count}} položky.",
+        "other": "Vyberte aspoň {{count}} položiek."
+      },
       "copyUrlFailed": "Stiahnutie z URL zlyhalo: {{error}}",
       "archiveCreateFailed": "Vytvorenie archívu zlyhalo: {{error}}",
       "externalDropFailed": "Spracovanie externe pretiahnutých súborov zlyhalo.",
@@ -2999,13 +3153,33 @@
       "increaseIconSize": "Zväčšiť ikony"
     },
     "notifications": {
-      "uploadSuccess": "Úspešne nahraté súbory: {{count}}.",
-      "uploadFailed": "Nahrávanie súborov zlyhalo: {{count}}.",
+      "uploadSuccess": {
+        "one": "Úspešne nahraný {{count}} súbor.",
+        "few": "Úspešne nahrané {{count}} súbory.",
+        "other": "Úspešne nahraných {{count}} súborov."
+      },
+      "uploadFailed": {
+        "one": "Nepodarilo sa nahrať {{count}} súbor.",
+        "few": "Nepodarilo sa nahrať {{count}} súbory.",
+        "other": "Nepodarilo sa nahrať {{count}} súborov."
+      },
       "trashEmptied": "Čistenie bolo dokončené",
       "rmdirsStarted": "Odstraňujú sa prázdne priečinky v „{{name}}“...",
-      "deleteStarted": "Odstraňujú sa položky ({{count}})...",
-      "copyStarted": "Kopírujú sa položky ({{count}})...",
-      "moveStarted": "Presúvajú sa položky ({{count}})...",
+      "deleteStarted": {
+        "one": "Odstraňuje sa {{count}} položka...",
+        "few": "Odstraňujú sa {{count}} položky...",
+        "other": "Odstraňuje sa {{count}} položiek..."
+      },
+      "copyStarted": {
+        "one": "Kopíruje sa {{count}} položka...",
+        "few": "Kopírujú sa {{count}} položky...",
+        "other": "Kopíruje sa {{count}} položiek..."
+      },
+      "moveStarted": {
+        "one": "Presúva sa {{count}} položka...",
+        "few": "Presúvajú sa {{count}} položky...",
+        "other": "Presúva sa {{count}} položiek..."
+      },
       "renameStarted": "Premenovanie bolo spustené",
       "undoComplete": "Vrátenie späť bolo úspešné",
       "redoComplete": "Zopakovanie bolo úspešné",
@@ -3017,7 +3191,11 @@
       "indexStarted": "Zapisujú sa výpisy priečinkov..."
     },
     "androidShare": {
-      "uploadHere": "Nahrať zdieľané súbory ({{count}}) do tohto priečinka",
+      "uploadHere": {
+        "one": "Nahrať {{count}} zdieľaný súbor do tohto priečinka",
+        "few": "Nahrať {{count}} zdieľané súbory do tohto priečinka",
+        "other": "Nahrať {{count}} zdieľaných súborov do tohto priečinka"
+      },
       "confirm": "Nahrať sem"
     },
     "toolbar": {
@@ -3131,7 +3309,11 @@
       "error": "Chyba"
     },
     "jobs": {
-      "activeCount": "Aktívne úlohy: {{count}}",
+      "activeCount": {
+        "one": "{{count}} aktívna úloha",
+        "few": "{{count}} aktívne úlohy",
+        "other": "{{count}} aktívnych úloh"
+      },
       "noActive": "Žiadne aktívne úlohy",
       "loading": "Načítavajú sa informácie o úlohách...",
       "aria": {
@@ -3161,7 +3343,11 @@
       "nextRun": "Ďalšie spustenie:"
     },
     "serves": {
-      "activeCount": "Aktívne servery: {{count}}",
+      "activeCount": {
+        "one": "{{count}} aktívny server",
+        "few": "{{count}} aktívne servery",
+        "other": "{{count}} aktívnych serverov"
+      },
       "noActive": "Žiadne aktívne servery",
       "noRunning": "Nebežia žiadne aktívne servery. Spustením servera sprístupníte vzdialené úložisko cez sieťové protokoly ako HTTP, WebDAV, FTP alebo SFTP."
     }
@@ -3503,7 +3689,11 @@
   "backendSuccess": {
     "backup": {
       "created": "Záloha bola vytvorená v: {{path}}",
-      "restored": "Nastavenia boli úspešne obnovené (obnovené položky: {{count}})"
+      "restored": {
+        "one": "Nastavenia boli úspešne obnovené (obnovená {{count}} položka)",
+        "few": "Nastavenia boli úspešne obnovené (obnovené {{count}} položky)",
+        "other": "Nastavenia boli úspešne obnovené (obnovených {{count}} položiek)"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} bolo úspešne odpojené",
@@ -4507,8 +4697,11 @@
     "keyPlaceholder": "napr. dir_cache_time",
     "valuePlaceholder": "napr. 10m",
     "selectedCount": "Vybrané: {{selected}} / {{total}}",
-    "keyCount": "Kľúče: {{count}}",
-    "keysCount": "Kľúče: {{count}}",
+    "keyCount": {
+      "one": "{{count}} kľúč",
+      "few": "{{count}} kľúče",
+      "other": "{{count}} kľúčov"
+    },
     "zeroKeys": "Kľúče: 0",
     "applySuccess": "Šablóna „{{name}}“ bola úspešne použitá.",
     "savedSuccess": "Šablóna „{{name}}“ bola úspešne uložená.",

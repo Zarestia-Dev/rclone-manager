@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Slovak Translation**: The interface is available in Slovak (`sk-SK`). Thanks to [@Vaso73](https://github.com/Vaso73) ([#345](https://github.com/Zarestia-Dev/rclone-manager/pull/345)).
+
+### Changed
+
+- **Plural Forms in Translations**: Texts that count things now have one form per plural form of the language, so "1 job" and "3 jobs" read correctly and Slovak, Russian and Ukrainian get their own forms ("1 úloha", "3 úlohy", "5 úloh"). This replaces the English `{{s}}` suffix and `(s)` endings, which produced "5s" in Russian and Ukrainian and a stray `{{s}}` in Traditional Chinese. `npm run audit:i18n` reports a language that lacks a form it needs.
+
 ### Fixed
 
 - **Interface Drawn Only Under the Mouse on Hybrid Laptops (Linux)**: On a Wayland session with KDE Plasma older than 6.8 or Hyprland, the app turned off WebKitGTK compositing whenever an NVIDIA driver was loaded, even when the Intel or AMD GPU draws the window. With WebKitGTK 2.54 this made buttons and text appear only while hovered. The workaround, which exists for an NVIDIA-specific explicit-sync crash, is now skipped when the boot GPU is not NVIDIA; if the boot GPU cannot be read it is applied as before. Setting `WEBKIT_DISABLE_COMPOSITING_MODE` yourself still takes precedence. Fixes [#344](https://github.com/Zarestia-Dev/rclone-manager/issues/344).

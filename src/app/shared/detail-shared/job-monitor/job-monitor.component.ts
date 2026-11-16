@@ -9,12 +9,12 @@ import {
   output,
   untracked,
 } from '@angular/core';
-import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatTimePipe, FormatDatePipe, FormatNumberPipe } from '@app/pipes';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
@@ -46,8 +46,8 @@ const STATUS_PILLS: Readonly<Record<JobStatus, { tone: PillTone; textKey: string
   selector: 'app-job-monitor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
-    DecimalPipe,
+    FormatDatePipe,
+    FormatNumberPipe,
     NgTemplateOutlet,
     MatCardModule,
     MatIconModule,

@@ -29,7 +29,7 @@
           <span class="label">{{ 'backup.restore.created' | translate }}</span>
           <span class="value">
             @if (analysis.createdAt) {
-              {{ analysis.createdAt | date: 'medium' }}
+              {{ analysis.createdAt | formatDate: 'medium' }}
             } @else {
               {{ 'backup.restore.unknown' | translate }}
             }

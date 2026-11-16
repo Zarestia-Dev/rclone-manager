@@ -44,7 +44,14 @@
     "actions": "操作",
     "savedSuccessfully": "保存成功",
     "deletedSuccessfully": "删除成功",
-    "notConfigured": "未配置"
+    "notConfigured": "未配置",
+    "unknown": "未知",
+    "notAvailable": "不适用",
+    "unlimited": "无限制",
+    "limitedTo": "限制为 {{rate}}",
+    "none": "无",
+    "add": "添加",
+    "select": "选择"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,9 @@
       "empty": "未找到任务"
     },
     "settings": {
-      "metrics": "{{count}} 项设置",
+      "metrics": {
+        "other": "{{count}} 项设置"
+      },
       "notConfigured": "未配置",
       "noData": "无配置数据",
       "edit": "编辑设置",
@@ -831,7 +840,8 @@
       "destination": "目标路径",
       "openViewer": "在查看器中打开",
       "openViewerTooltip": "打开完整媒体预览",
-      "inferredFromUrl": "从URL推断"
+      "inferredFromUrl": "从URL推断",
+      "imageAlt": "预览"
     },
     "installationOptions": {
       "tabs": {
@@ -942,7 +952,9 @@
         "waitingActivity": "正在等待文件活动。某些操作不会报告单个文件的信息。"
       },
       "time": {
-        "daysAgo": "{{count}} 天前",
+        "daysAgo": {
+          "other": "{{count}} 天前"
+        },
         "hoursAgo": "{{count}} 小时前",
         "minutesAgo": "{{count}} 分钟前",
         "justNow": "刚刚",
@@ -991,15 +1003,25 @@
       },
       "bulk": {
         "title": "已选差异",
-        "selectAll": "全选 {{count}} 项未处理差异",
+        "selectAll": {
+          "other": "全选 {{count}} 项未处理差异"
+        },
         "selected": "已选 {{count}} 项",
         "toDestination": "{{count}} 项到目标",
         "toSource": "{{count}} 项到源端",
-        "choose": "{{count}} 项需要决定",
+        "choose": {
+          "other": "{{count}} 项需要决定"
+        },
         "clear": "清除",
-        "applyOneWay": "复制 {{count}} 个文件",
-        "review": "查看 {{count}} 个冲突…",
-        "started": "已开始复制 {{count}} 个文件",
+        "applyOneWay": {
+          "other": "复制 {{count}} 个文件"
+        },
+        "review": {
+          "other": "查看 {{count}} 个冲突…"
+        },
+        "started": {
+          "other": "已开始复制 {{count}} 个文件"
+        },
         "partial": "已开始 {{started}} 个复制任务,{{failed}} 个失败"
       },
       "compare": {
@@ -1038,7 +1060,9 @@
       },
       "export": {
         "copy": "复制为 CSV",
-        "copied": "已将 {{count}} 行复制为 CSV"
+        "copied": {
+          "other": "已将 {{count}} 行复制为 CSV"
+        }
       },
       "conflicts": {
         "empty": "本次运行没有冲突。",
@@ -1115,7 +1139,7 @@
       "loadingStats": "加载 VFS 统计信息...",
       "fetchingQueue": "获取上传队列...",
       "vfsInstance": "VFS 实例",
-      "queued": "已排队",
+      "queued": "{{count}} 已排队",
       "controlsUnavailable": "VFS 控制不可用",
       "indexedWarning": "此 VFS 实例包含索引后缀（如 {{suffix}}），该后缀不被 rclone 的 VFS API 支持。这是同一远程存在多个挂载时的已知限制。",
       "stats": {
@@ -1195,7 +1219,9 @@
           "actionFailed": "操作失败：{{error}}",
           "removed": "'{{path}}' 已移除",
           "removeFailed": "文件无法移除",
-          "cleared": "已清除 {{count}} 项",
+          "cleared": {
+            "other": "已清除 {{count}} 项"
+          },
           "directoryRefreshed": "目录已刷新",
           "intervalSet": "间隔已设为 {{val}}",
           "error": "错误：{{error}}"
@@ -1239,8 +1265,11 @@
       "camelCaseSuggestionWarning": "选项 '{{key}}' 在此格式下无效。您是指 '{{suggestion}}' 吗？",
       "fixSuggestion": "更改为 '{{suggestion}}'",
       "wrongBlockWarning": "选项 {{keys}} 属于 '{{block}}' 配置块，在此处可能无法正常工作。",
-      "unknownWarning": "未知选项：{{keys}}。这些选项可能被 rclone 忽略。",
-      "invalidArrayPath": "属性 '{{key}}' 不支持多路径，请提供单个字符串路径。"
+      "unknownWarning": {
+        "other": "{{count}} 个未知选项：{{keys}}。这些选项可能被 rclone 忽略。"
+      },
+      "invalidArrayPath": "属性 '{{key}}' 不支持多路径，请提供单个字符串路径。",
+      "fieldsOverview": "配置字段概览"
     },
     "passwordManager": {
       "placeholder": "输入 rclone 配置密码",
@@ -1321,7 +1350,10 @@
       "importDestPath": "导入目标路径",
       "importMountPoint": "导入挂载点",
       "applyToTask": "应用到任务",
-      "appliedToast": "已成功导入 {{count}} 个配置项"
+      "appliedToast": {
+        "other": "已成功导入 {{count}} 个配置项"
+      },
+      "profileNamePlaceholder": "例如：daily-backup"
     },
     "obscure": {
       "title": "混淆密码",
@@ -1565,7 +1597,9 @@
         "middle": "15（月中）",
         "every2Days": "*/2（每2天）",
         "everyMonth": "*（每月）",
-        "intervalN": "{{count}} 小时"
+        "intervalN": {
+          "other": "{{count}} 小时"
+        }
       },
       "aria": {
         "clear": "清除",
@@ -1617,7 +1651,9 @@
       "encrypted": "已加密",
       "notEncrypted": "未加密",
       "contents": "备份内容",
-      "itemCount": "{{count}} 项",
+      "itemCount": {
+        "other": "{{count}} 项"
+      },
       "settings": {
         "title": "应用设置",
         "description": "你的应用偏好与配置"
@@ -1808,7 +1844,9 @@
         "processedFiles": "已处理文件"
       },
       "running": "运行中",
-      "filesCount": "{{count}} 个文件",
+      "filesCount": {
+        "other": "{{count}} 个文件"
+      },
       "types": {
         "copy": "复制",
         "copyurl": "复制 URL",
@@ -1835,7 +1873,9 @@
       "videoLabel": "视频：{{name}}",
       "audioLabel": "音频：{{name}}",
       "calculatingFolderSize": "正在计算文件夹大小...",
-      "containsFiles": "包含 {{count}} 个文件",
+      "containsFiles": {
+        "other": "包含 {{count}} 个文件"
+      },
       "totalSize": "总大小：{{size}}",
       "binaryFile": "二进制文件",
       "previewNotAvailable": "此类文件不支持预览",
@@ -1878,7 +1918,9 @@
       "monitoring": "监控",
       "configuration": "配置",
       "selectedProfile": "已选配置文件",
-      "profilesCount": "{{count}} 个配置文件",
+      "profilesCount": {
+        "other": "{{count}} 个配置文件"
+      },
       "addProfile": "添加配置文件",
       "activeServes": "正在运行的服务",
       "sharedSettings": "共享设置",
@@ -2251,7 +2293,9 @@
         "folderPathFor": "{{name}} 的文件夹路径",
         "scrollToPending": "滚动到未保存更改区域"
       },
-      "pendingChangesTooltip": "你有 {{count}} 项未保存更改，需要重启引擎才能生效。点击滚动到该处。"
+      "pendingChangesTooltip": {
+        "other": "你有 {{count}} 项未保存更改，需要重启引擎才能生效。点击滚动到该处。"
+      }
     },
     "export": {
       "title": "导出设置",
@@ -2557,7 +2601,9 @@
         "emptyResult": "未找到 Rclone 标志",
         "emptySettings": "未找到标志",
         "adjustTerms": "请调整搜索关键词",
-        "showing": "显示 {{count}} / 共 {{total}} 项标志"
+        "showing": {
+          "other": "显示 {{shown}} / 共 {{count}} 项标志"
+        }
       },
       "pageTitle": {
         "home": "Rclone 标志",
@@ -2675,11 +2721,19 @@
         "pretty": "格式化",
         "raw": "原始",
         "table": "表格",
-        "lines": "{{count}} 行",
-        "showMore": "再显示 {{count}} 行",
-        "showMoreRows": "再显示 {{count}} 行",
+        "lines": {
+          "other": "{{count}} 行"
+        },
+        "showMore": {
+          "other": "再显示 {{count}} 行"
+        },
+        "showMoreRows": {
+          "other": "再显示 {{count}} 行"
+        },
         "collapse": "收起",
-        "rowsOmitted": "另有 {{count}} 行未显示"
+        "rowsOmitted": {
+          "other": "另有 {{count}} 行未显示"
+        }
       },
       "tree": {
         "title": "API",
@@ -2705,9 +2759,15 @@
         "failed": "任务 {{id}} 失败",
         "lost": "找不到任务",
         "stop": "停止",
-        "transfers": "{{done}} / {{total}} 个传输",
-        "checks": "{{count}} 项检查",
-        "errors": "{{count}} 个错误"
+        "transfers": {
+          "other": "{{done}} / {{count}} 个传输"
+        },
+        "checks": {
+          "other": "{{count}} 项检查"
+        },
+        "errors": {
+          "other": "{{count}} 个错误"
+        }
       },
       "quickStart": "试试这些",
       "hints": {
@@ -2774,16 +2834,20 @@
     },
     "selection": {
       "selected": "已选择",
-      "folder": "个文件夹",
-      "folders": "个文件夹",
-      "item": "项",
-      "items": "项"
+      "folders": {
+        "other": "已选择 {{count}} 个文件夹"
+      },
+      "items": {
+        "other": "已选择 {{count}} 个项目（{{size}}）"
+      }
     },
     "modals": {
       "delete": {
         "title": "删除项目",
         "messageSingle": "确定要删除 \"{{name}}\" 吗？",
-        "messageMultiple": "确定要删除 {{count}} 项吗？"
+        "messageMultiple": {
+          "other": "确定要删除 {{count}} 项吗？"
+        }
       },
       "newFolder": {
         "title": "新建文件夹",
@@ -2819,7 +2883,9 @@
         "compress": "压缩"
       },
       "multiRename": {
-        "title": "重命名 {{count}} 个文件",
+        "title": {
+          "other": "重命名 {{count}} 个文件"
+        },
         "templateMode": "使用模板重命名",
         "replaceMode": "查找和替换文本",
         "templateInput": "模板",
@@ -2854,7 +2920,11 @@
         "suffix": "后缀",
         "statsChanged": "{{count}} 个待重命名",
         "statsUnchanged": "{{count}} 个未更改",
-        "statsConflicts": "{{count}} 个冲突"
+        "statsConflicts": {
+          "other": "{{count}} 个冲突"
+        },
+        "findPlaceholder": "要查找的文本",
+        "replacePlaceholder": "替换文本"
       },
       "index": {
         "title": "生成目录列表",
@@ -2884,17 +2954,29 @@
       "connectionFailed": "连接失败",
       "bookmarkRemoteNotFound": "未找到书签对应的远程存储 '{{remote}}'",
       "loadFailed": "加载目录失败",
-      "deleteFailed": "{{count}} 项删除失败",
-      "copyFailed": "{{count}} 项复制失败",
-      "moveFailed": "{{count}} 项移动失败",
-      "undoFailed": "{{count}} 项撤销失败",
-      "redoFailed": "{{count}} 项重做失败",
+      "deleteFailed": {
+        "other": "{{count}} 项删除失败"
+      },
+      "copyFailed": {
+        "other": "{{count}} 项复制失败"
+      },
+      "moveFailed": {
+        "other": "{{count}} 项移动失败"
+      },
+      "undoFailed": {
+        "other": "{{count}} 项撤销失败"
+      },
+      "redoFailed": {
+        "other": "{{count}} 项重做失败"
+      },
       "rmdirsFailed": "删除 \"{{name}}\" 空文件夹失败：{{error}}",
       "createFolderFailed": "创建文件夹 \"{{name}}\" 失败：{{error}}",
       "renameFailed": "重命名 '{{name}}' 失败：{{error}}",
       "emptyTrashFailed": "清空 {{remote}} 回收站失败：{{error}}",
       "openFileFailed": "无法打开文件：缺少远程服务器上下文",
-      "minSelection": "请至少选择 {{min}} 项。",
+      "minSelection": {
+        "other": "请至少选择 {{count}} 项。"
+      },
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
       "archiveCreateFailed": "创建归档失败: {{error}}",
       "externalDropFailed": "处理外部文件拖放失败。",
@@ -2958,13 +3040,23 @@
       "increaseIconSize": "放大图标大小"
     },
     "notifications": {
-      "uploadSuccess": "成功上传 {{count}} 个文件。",
-      "uploadFailed": "上传 {{count}} 个文件失败。",
+      "uploadSuccess": {
+        "other": "成功上传 {{count}} 个文件。"
+      },
+      "uploadFailed": {
+        "other": "上传 {{count}} 个文件失败。"
+      },
       "trashEmptied": "清理操作完成",
       "rmdirsStarted": "正在删除 \"{{name}}\" 中的空文件夹...",
-      "deleteStarted": "正在删除 {{count}} 项...",
-      "copyStarted": "正在复制 {{count}} 项...",
-      "moveStarted": "正在移动 {{count}} 项...",
+      "deleteStarted": {
+        "other": "正在删除 {{count}} 项..."
+      },
+      "copyStarted": {
+        "other": "正在复制 {{count}} 项..."
+      },
+      "moveStarted": {
+        "other": "正在移动 {{count}} 项..."
+      },
       "renameStarted": "重命名操作已开始",
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
@@ -2976,7 +3068,9 @@
       "indexStarted": "正在写入目录列表..."
     },
     "androidShare": {
-      "uploadHere": "将 {{count}} 个共享文件上传至此文件夹",
+      "uploadHere": {
+        "other": "将 {{count}} 个共享文件上传至此文件夹"
+      },
       "confirm": "上传至此处"
     },
     "toolbar": {
@@ -3090,7 +3184,9 @@
       "error": "错误"
     },
     "jobs": {
-      "activeCount": "{{count}} 个活动任务",
+      "activeCount": {
+        "other": "{{count}} 个活动任务"
+      },
       "noActive": "暂无活动任务",
       "loading": "正在加载任务信息...",
       "aria": {
@@ -3120,7 +3216,9 @@
       "nextRun": "下次运行："
     },
     "serves": {
-      "activeCount": "{{count}} 个活动服务",
+      "activeCount": {
+        "other": "{{count}} 个活动服务"
+      },
       "noActive": "暂无活动服务",
       "noRunning": "暂无运行中的服务。启动一个远程存储服务，即可通过 HTTP、WebDAV、FTP 或 SFTP 访问。"
     }
@@ -3462,7 +3560,9 @@
   "backendSuccess": {
     "backup": {
       "created": "备份已创建：{{path}}",
-      "restored": "设置已成功恢复（已恢复 {{count}} 项）"
+      "restored": {
+        "other": "设置已成功恢复（已恢复 {{count}} 项）"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} 卸载成功",
@@ -4466,8 +4566,9 @@
     "keyPlaceholder": "例如：dir_cache_time",
     "valuePlaceholder": "例如：10m",
     "selectedCount": "已选 {{selected}} / {{total}} 项",
-    "keyCount": "{{count}} 个键",
-    "keysCount": "{{count}} 个键",
+    "keyCount": {
+      "other": "{{count}} 个键"
+    },
     "zeroKeys": "0 个键",
     "applySuccess": "已成功应用模板 \"{{name}}\"。",
     "savedSuccess": "已成功保存模板 \"{{name}}\"。",

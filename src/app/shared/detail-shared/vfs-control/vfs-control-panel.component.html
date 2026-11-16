@@ -26,7 +26,9 @@
                 {{ vfs.name }}
                 @if (vfs.queue.length > 0) {
                   <span class="option-badge"
-                    >({{ vfs.queue.length }} {{ 'shared.vfsControl.queued' | translate }})</span
+                    >({{
+                      'shared.vfsControl.queued' | translate: { count: vfs.queue.length }
+                    }})</span
                   >
                 }
               </mat-option>

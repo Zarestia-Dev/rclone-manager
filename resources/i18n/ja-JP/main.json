@@ -44,7 +44,14 @@
     "actions": "アクション",
     "savedSuccessfully": "正常に保存されました",
     "deletedSuccessfully": "正常に削除されました",
-    "notConfigured": "未設定"
+    "notConfigured": "未設定",
+    "unknown": "不明",
+    "notAvailable": "該当なし",
+    "unlimited": "無制限",
+    "limitedTo": "{{rate}} に制限",
+    "none": "なし",
+    "add": "追加",
+    "select": "選択"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,9 @@
       "empty": "ジョブが見つかりません"
     },
     "settings": {
-      "metrics": "{{count}} 個の設定",
+      "metrics": {
+        "other": "{{count}} 個の設定"
+      },
       "notConfigured": "未設定",
       "noData": "利用可能な設定データがありません",
       "edit": "設定を編集",
@@ -831,7 +840,8 @@
       "destination": "宛先",
       "openViewer": "ビューアで開く",
       "openViewerTooltip": "全画面メディアプレビューを開く",
-      "inferredFromUrl": "URLから推測"
+      "inferredFromUrl": "URLから推測",
+      "imageAlt": "プレビュー"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +956,9 @@
         "waitingActivity": "ファイルのアクティビティを待機しています。一部の操作では個別のファイル情報が報告されません。"
       },
       "time": {
-        "daysAgo": "{{count}} 日前",
+        "daysAgo": {
+          "other": "{{count}} 日前"
+        },
         "hoursAgo": "{{count}} 時間前",
         "minutesAgo": "{{count}} 分前",
         "justNow": "たった今",
@@ -991,15 +1003,25 @@
       },
       "bulk": {
         "title": "選択した差分",
-        "selectAll": "未解決の差分 {{count}} 件をすべて選択",
+        "selectAll": {
+          "other": "未解決の差分 {{count}} 件をすべて選択"
+        },
         "selected": "{{count}} 件選択中",
         "toDestination": "宛先へ {{count}} 件",
         "toSource": "ソースへ {{count}} 件",
-        "choose": "要判断 {{count}} 件",
+        "choose": {
+          "other": "要判断 {{count}} 件"
+        },
         "clear": "選択解除",
-        "applyOneWay": "{{count}} 件のファイルをコピー",
-        "review": "{{count}} 件の競合を確認…",
-        "started": "{{count}} 件のファイルのコピーを開始しました",
+        "applyOneWay": {
+          "other": "{{count}} 件のファイルをコピー"
+        },
+        "review": {
+          "other": "{{count}} 件の競合を確認…"
+        },
+        "started": {
+          "other": "{{count}} 件のファイルのコピーを開始しました"
+        },
         "partial": "{{started}} 件のコピーを開始、{{failed}} 件は失敗しました"
       },
       "compare": {
@@ -1038,7 +1060,9 @@
       },
       "export": {
         "copy": "CSVとしてコピー",
-        "copied": "{{count}} 行をCSVとしてコピーしました"
+        "copied": {
+          "other": "{{count}} 行をCSVとしてコピーしました"
+        }
       },
       "conflicts": {
         "empty": "この実行に競合はありません。",
@@ -1115,7 +1139,7 @@
       "loadingStats": "VFS統計情報を読み込み中...",
       "fetchingQueue": "アップロードキューを取得中...",
       "vfsInstance": "VFSインスタンス",
-      "queued": "キューに追加済み",
+      "queued": "{{count}} キューに追加済み",
       "controlsUnavailable": "VFSコントロール利用不可",
       "indexedWarning": "このVFSインスタンスには、rcloneのVFS APIでサポートされていないインデックスサフィックス（例: {{suffix}}）があります。同一リモートに対して複数のマウントが存在する場合の既知の制限です。",
       "stats": {
@@ -1195,7 +1219,9 @@
           "actionFailed": "アクションに失敗しました: {{error}}",
           "removed": "「{{path}}」 を削除しました",
           "removeFailed": "ファイルを削除できません",
-          "cleared": "{{count}} 個の項目を消去しました",
+          "cleared": {
+            "other": "{{count}} 個の項目を消去しました"
+          },
           "directoryRefreshed": "ディレクトリを更新しました",
           "intervalSet": "間隔を {{val}} に設定しました",
           "error": "エラー: {{error}}"
@@ -1239,8 +1265,11 @@
       "camelCaseSuggestionWarning": "オプション 「{{key}}」 はこの形式では無効です。もしかして: 「{{suggestion}}」",
       "fixSuggestion": "「{{suggestion}}」 に変更",
       "wrongBlockWarning": "オプション {{keys}} は 「{{block}}」 設定ブロックに属しているため、ここでは動作しない可能性があります。",
-      "unknownWarning": "不明なオプション: {{keys}}。これらはrcloneによって無視される可能性があります。",
-      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。"
+      "unknownWarning": {
+        "other": "{{count}} 件の不明なオプション: {{keys}}。これらはrcloneによって無視される可能性があります。"
+      },
+      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。",
+      "fieldsOverview": "設定フィールドの概要"
     },
     "passwordManager": {
       "placeholder": "rclone設定のパスワードを入力",
@@ -1321,7 +1350,10 @@
       "importDestPath": "転送先パスをインポート",
       "importMountPoint": "マウントポイントをインポート",
       "applyToTask": "タスクに適用",
-      "appliedToast": "{{count}} 件の設定を正常にインポートしました"
+      "appliedToast": {
+        "other": "{{count}} 件の設定を正常にインポートしました"
+      },
+      "profileNamePlaceholder": "例: daily-backup"
     },
     "obscure": {
       "title": "パスワードの難読化",
@@ -1565,7 +1597,9 @@
         "middle": "15 (15日)",
         "every2Days": "*/2 (2日おき)",
         "everyMonth": "* (毎月)",
-        "intervalN": "{{count}} 時間おき"
+        "intervalN": {
+          "other": "{{count}} 時間おき"
+        }
       },
       "aria": {
         "clear": "クリア",
@@ -1617,7 +1651,9 @@
       "encrypted": "暗号化済み",
       "notEncrypted": "暗号化されていません",
       "contents": "バックアップ内容",
-      "itemCount": "{{count}} 個の項目",
+      "itemCount": {
+        "other": "{{count}} 個の項目"
+      },
       "settings": {
         "title": "アプリケーション設定",
         "description": "アプリの環境設定と構成"
@@ -1808,7 +1844,9 @@
         "processedFiles": "処理されたファイル"
       },
       "running": "実行中",
-      "filesCount": "{{count}} 件のファイル",
+      "filesCount": {
+        "other": "{{count}} 件のファイル"
+      },
       "types": {
         "copy": "コピー",
         "copyurl": "URLをコピー",
@@ -1835,7 +1873,9 @@
       "videoLabel": "動画: {{name}}",
       "audioLabel": "音声: {{name}}",
       "calculatingFolderSize": "フォルダサイズを計算中...",
-      "containsFiles": "{{count}} 個のファイルが含まれています",
+      "containsFiles": {
+        "other": "{{count}} 個のファイルが含まれています"
+      },
       "totalSize": "合計サイズ: {{size}}",
       "binaryFile": "バイナリファイル",
       "previewNotAvailable": "このファイル形式のプレビューは利用できません",
@@ -1878,7 +1918,9 @@
       "monitoring": "監視",
       "configuration": "設定",
       "selectedProfile": "選択中のプロファイル",
-      "profilesCount": "{{count}} 個のプロファイル",
+      "profilesCount": {
+        "other": "{{count}} 個のプロファイル"
+      },
       "addProfile": "プロファイルを追加",
       "activeServes": "実行中の公開サーバー",
       "sharedSettings": "共有設定",
@@ -2251,7 +2293,9 @@
         "folderPathFor": "{{name}} のフォルダパス",
         "scrollToPending": "変更保留中セクションへスクロール"
       },
-      "pendingChangesTooltip": "エンジンの再起動が必要な未保存の変更が {{count}} 件あります。クリックして移動します。"
+      "pendingChangesTooltip": {
+        "other": "エンジンの再起動が必要な未保存の変更が {{count}} 件あります。クリックして移動します。"
+      }
     },
     "export": {
       "title": "設定のエクスポート",
@@ -2557,7 +2601,9 @@
         "emptyResult": "Rcloneフラグが見つかりません",
         "emptySettings": "フラグが見つかりません",
         "adjustTerms": "検索条件を変更してください",
-        "showing": "{{total}} 個中 {{count}} 個のフラグを表示"
+        "showing": {
+          "other": "{{count}} 個中 {{shown}} 個のフラグを表示"
+        }
       },
       "pageTitle": {
         "home": "Rcloneフラグ",
@@ -2675,11 +2721,19 @@
         "pretty": "整形",
         "raw": "そのまま",
         "table": "表",
-        "lines": "{{count}} 行",
-        "showMore": "さらに {{count}} 行を表示",
-        "showMoreRows": "さらに {{count}} 行を表示",
+        "lines": {
+          "other": "{{count}} 行"
+        },
+        "showMore": {
+          "other": "さらに {{count}} 行を表示"
+        },
+        "showMoreRows": {
+          "other": "さらに {{count}} 行を表示"
+        },
         "collapse": "折りたたむ",
-        "rowsOmitted": "残り {{count}} 行は表示されていません"
+        "rowsOmitted": {
+          "other": "残り {{count}} 行は表示されていません"
+        }
       },
       "tree": {
         "title": "API",
@@ -2705,9 +2759,15 @@
         "failed": "ジョブ {{id}} が失敗しました",
         "lost": "ジョブが見つかりません",
         "stop": "停止",
-        "transfers": "{{done}} / {{total}} 転送",
-        "checks": "{{count}} 件のチェック",
-        "errors": "{{count}} 件のエラー"
+        "transfers": {
+          "other": "{{done}} / {{count}} 転送"
+        },
+        "checks": {
+          "other": "{{count}} 件のチェック"
+        },
+        "errors": {
+          "other": "{{count}} 件のエラー"
+        }
       },
       "quickStart": "次のいずれかを試してみましょう",
       "hints": {
@@ -2774,16 +2834,20 @@
     },
     "selection": {
       "selected": "選択済み",
-      "folder": "個のフォルダ",
-      "folders": "個のフォルダ",
-      "item": "個の項目",
-      "items": "個の項目"
+      "folders": {
+        "other": "{{count}} 個のフォルダーを選択"
+      },
+      "items": {
+        "other": "{{count}} 個の項目を選択 ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "項目の削除",
         "messageSingle": "「{{name}}」を削除してもよろしいですか?",
-        "messageMultiple": "{{count}} 個の項目を削除してもよろしいですか?"
+        "messageMultiple": {
+          "other": "{{count}} 個の項目を削除してもよろしいですか?"
+        }
       },
       "newFolder": {
         "title": "新しいフォルダ",
@@ -2819,7 +2883,9 @@
         "compress": "圧縮"
       },
       "multiRename": {
-        "title": "{{count}} 個のファイル名を一括変更",
+        "title": {
+          "other": "{{count}} 個のファイル名を一括変更"
+        },
         "templateMode": "テンプレートによる変更",
         "replaceMode": "文字列の置換",
         "templateInput": "テンプレート",
@@ -2854,7 +2920,11 @@
         "suffix": "接尾辞",
         "statsChanged": "{{count}} 件の名前変更",
         "statsUnchanged": "{{count}} 件の未変更",
-        "statsConflicts": "{{count}} 件の競合"
+        "statsConflicts": {
+          "other": "{{count}} 件の競合"
+        },
+        "findPlaceholder": "検索するテキスト",
+        "replacePlaceholder": "置換後のテキスト"
       },
       "index": {
         "title": "ディレクトリ一覧を生成",
@@ -2884,17 +2954,29 @@
       "connectionFailed": "接続に失敗しました",
       "bookmarkRemoteNotFound": "ブックマークのリモート 「{{remote}}」 が見つかりません",
       "loadFailed": "ディレクトリの読み込みに失敗しました",
-      "deleteFailed": "{{count}} 個の項目の削除に失敗しました",
-      "copyFailed": "{{count}} 個の項目のコピーに失敗しました",
-      "moveFailed": "{{count}} 個の項目の移動に失敗しました",
-      "undoFailed": "{{count}} 個の項目の取り消しに失敗しました",
-      "redoFailed": "{{count}} 個の項目のやり直しに失敗しました",
+      "deleteFailed": {
+        "other": "{{count}} 個の項目の削除に失敗しました"
+      },
+      "copyFailed": {
+        "other": "{{count}} 個の項目のコピーに失敗しました"
+      },
+      "moveFailed": {
+        "other": "{{count}} 個の項目の移動に失敗しました"
+      },
+      "undoFailed": {
+        "other": "{{count}} 個の項目の取り消しに失敗しました"
+      },
+      "redoFailed": {
+        "other": "{{count}} 個の項目のやり直しに失敗しました"
+      },
       "rmdirsFailed": "「{{name}}」内の空フォルダの削除に失敗しました: {{error}}",
       "createFolderFailed": "フォルダ「{{name}}」の作成に失敗しました: {{error}}",
       "renameFailed": "「{{name}}」 の名前変更に失敗しました: {{error}}",
       "emptyTrashFailed": "{{remote}} のゴミ箱を空にする処理に失敗しました: {{error}}",
       "openFileFailed": "ファイルを開けません: リモートサーバーコンテキストが見つかりません",
-      "minSelection": "少なくとも {{min}} 個の項目を選択してください。",
+      "minSelection": {
+        "other": "少なくとも {{count}} 個の項目を選択してください。"
+      },
       "copyUrlFailed": "URLからのダウンロードに失敗しました: {{error}}",
       "archiveCreateFailed": "圧縮に失敗しました: {{error}}",
       "externalDropFailed": "外部ファイルのドロップ処理に失敗しました。",
@@ -2958,13 +3040,23 @@
       "increaseIconSize": "アイコンサイズを拡大"
     },
     "notifications": {
-      "uploadSuccess": "{{count}} 個のファイルのアップロードに成功しました。",
-      "uploadFailed": "{{count}} 個のファイルのアップロードに失敗しました。",
+      "uploadSuccess": {
+        "other": "{{count}} 個のファイルのアップロードに成功しました。"
+      },
+      "uploadFailed": {
+        "other": "{{count}} 個のファイルのアップロードに失敗しました。"
+      },
       "trashEmptied": "クリーンアップ操作が完了しました",
       "rmdirsStarted": "「{{name}}」内の空フォルダを削除中...",
-      "deleteStarted": "{{count}} 個の項目を削除中...",
-      "copyStarted": "{{count}} 個の項目をコピー中...",
-      "moveStarted": "{{count}} 個の項目を移動中...",
+      "deleteStarted": {
+        "other": "{{count}} 個の項目を削除中..."
+      },
+      "copyStarted": {
+        "other": "{{count}} 個の項目をコピー中..."
+      },
+      "moveStarted": {
+        "other": "{{count}} 個の項目を移動中..."
+      },
       "renameStarted": "名前変更操作を開始しました",
       "undoComplete": "取り消しました",
       "redoComplete": "やり直しました",
@@ -2976,7 +3068,9 @@
       "indexStarted": "ディレクトリ一覧を書き込んでいます..."
     },
     "androidShare": {
-      "uploadHere": "{{count}} 個の共有ファイルをこのフォルダにアップロード",
+      "uploadHere": {
+        "other": "{{count}} 個の共有ファイルをこのフォルダにアップロード"
+      },
       "confirm": "ここにアップロード"
     },
     "toolbar": {
@@ -3090,7 +3184,9 @@
       "error": "エラー"
     },
     "jobs": {
-      "activeCount": "{{count}} 個の実行中のジョブ",
+      "activeCount": {
+        "other": "{{count}} 個の実行中のジョブ"
+      },
       "noActive": "実行中のジョブはありません",
       "loading": "ジョブ情報を読み込み中...",
       "aria": {
@@ -3120,7 +3216,9 @@
       "nextRun": "次回実行:"
     },
     "serves": {
-      "activeCount": "{{count}} 件の実行中の公開サーバー",
+      "activeCount": {
+        "other": "{{count}} 件の実行中の公開サーバー"
+      },
       "noActive": "実行中の公開サーバーはありません",
       "noRunning": "実行中の公開サーバーはありません。リモートの公開を開始すると、HTTP, WebDAV, FTP, SFTP などのネットワークプロトコル経由でアクセス可能になります。"
     }
@@ -3462,7 +3560,9 @@
   "backendSuccess": {
     "backup": {
       "created": "バックアップを作成しました: {{path}}",
-      "restored": "設定を復元しました（{{count}} 件を復元）"
+      "restored": {
+        "other": "設定を復元しました（{{count}} 件を復元）"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} のマウント解除に成功しました",
@@ -4466,8 +4566,9 @@
     "keyPlaceholder": "例: dir_cache_time",
     "valuePlaceholder": "例: 10m",
     "selectedCount": "{{selected}} / {{total}} 件選択中",
-    "keyCount": "{{count}} 個のキー",
-    "keysCount": "{{count}} 個のキー",
+    "keyCount": {
+      "other": "{{count}} 個のキー"
+    },
     "zeroKeys": "0 個のキー",
     "applySuccess": "テンプレート \"{{name}}\" を正常に適用しました。",
     "savedSuccess": "テンプレート \"{{name}}\" を正常に保存しました。",

@@ -163,6 +163,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 - **Use native language names** for the language selector (e.g., "Deutsch" not "German")
 - **Keep placeholders intact** — Don't translate `{{variable}}` placeholders
 - **Maintain JSON structure** — Only translate string values, not keys
+- **Write every plural form your language has** — A text that counts things is an object with one entry per plural form, such as `{ "one": "{{count}} file", "other": "{{count}} files" }`. Add the forms your language uses (`few` for Slovak, `few` and `many` for Russian and Ukrainian, only `other` for Japanese and Chinese), keep every `{{placeholder}}` of the English text in each form, and make the word agree with the number in each one. Do not translate the form names (`one`, `few`, `many`, `other`), and never add an "s" or "(s)" to a number. `npm run audit:i18n` lists the forms your language still needs.
 - **Test special characters** — Ensure UTF-8 encoding works correctly
 - **Use formal/informal consistently** — Choose one register and stick to it
 

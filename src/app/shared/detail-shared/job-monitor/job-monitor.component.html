@@ -1,7 +1,7 @@
 <ng-template #figure let-value="value" let-format="format" let-total="total">
   @switch (format) {
     @case ('percent') {
-      {{ value | number: '1.0-1' }}<small>%</small>
+      {{ value | formatNumber: 1 }}<small>%</small>
     }
     @case ('rate') {
       {{ value | formatFileSize }}<small>/s</small>
@@ -17,10 +17,10 @@
       }
     }
     @case ('fraction') {
-      {{ value | number }}<small> / {{ total | number }}</small>
+      {{ value | formatNumber }}<small> / {{ total | formatNumber }}</small>
     }
     @default {
-      {{ value | number }}
+      {{ value | formatNumber }}
     }
   }
 </ng-template>
@@ -50,13 +50,13 @@
       @if (config().startTime) {
         <div>
           <dt>{{ 'detailShared.jobInfo.started' | translate }}</dt>
-          <dd>{{ config().startTime | date: 'medium' }}</dd>
+          <dd>{{ config().startTime | formatDate: 'medium' }}</dd>
         </div>
       }
       @if (config().endTime) {
         <div>
           <dt>{{ 'detailShared.jobInfo.finished' | translate }}</dt>
-          <dd>{{ config().endTime | date: 'medium' }}</dd>
+          <dd>{{ config().endTime | formatDate: 'medium' }}</dd>
         </div>
       }
       @if (config().duration && config().running) {

@@ -229,7 +229,7 @@
           <span class="detail-label">{{
             'fileBrowser.operations.details.startTime' | translate
           }}</span>
-          <span class="value">{{ vm.job.start_time | date: 'shortTime' }}</span>
+          <span class="value">{{ vm.job.start_time | formatDate: 'timeShort' }}</span>
         </div>
 
         @if ((vm.job.status === 'Failed' || vm.job.status === 'Running') && vm.job.error) {

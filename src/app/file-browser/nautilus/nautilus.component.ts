@@ -302,21 +302,20 @@ export class NautilusComponent implements OnInit {
     const parts: string[] = [];
     const folderItems = selected.filter(i => i.entry.IsDir);
     const fileItems = selected.filter(i => !i.entry.IsDir);
-    const sel = this.translate.instant('nautilus.selection.selected');
 
     if (folderItems.length) {
-      const label = this.translate.instant(
-        folderItems.length > 1 ? 'nautilus.selection.folders' : 'nautilus.selection.folder'
+      parts.push(
+        this.translate.instant('nautilus.selection.folders', { count: folderItems.length })
       );
-      parts.push(`${folderItems.length} ${label} ${sel}`);
     }
     if (fileItems.length) {
       const totalSize = fileItems.reduce((sum, i) => sum + i.entry.Size, 0);
-      const formattedSize = this.formatFileSizePipe.transform(totalSize);
-      const label = this.translate.instant(
-        fileItems.length > 1 ? 'nautilus.selection.items' : 'nautilus.selection.item'
+      parts.push(
+        this.translate.instant('nautilus.selection.items', {
+          count: fileItems.length,
+          size: this.formatFileSizePipe.transform(totalSize),
+        })
       );
-      parts.push(`${fileItems.length} ${label} ${sel} (${formattedSize})`);
     }
 
     return parts.join(', ');
@@ -1034,10 +1033,7 @@ export class NautilusComponent implements OnInit {
     const minSel = this.pickerOptions().minSelection ?? 0;
     if (this.isPickerMode() && items.length < minSel) {
       this.notificationService.showError(
-        this.translate.instant('nautilus.errors.minSelection', {
-          min: minSel,
-          s: minSel > 1 ? 's' : '',
-        })
+        this.translate.instant('nautilus.errors.minSelection', { count: minSel })
       );
       return;
     }

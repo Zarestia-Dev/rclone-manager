@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FormatFileSizePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatDatePipe } from '@app/pipes';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 import {
@@ -57,7 +56,7 @@ type ChecksumStatus = 'idle' | 'loading' | 'none' | 'failed' | 'done';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TransferOperationsService],
   imports: [
-    DatePipe,
+    FormatDatePipe,
     MatIconModule,
     MatButtonModule,
     TranslatePipe,

@@ -10,7 +10,7 @@
           {{ prog.downloadedBytes | formatFileSize }} /
           {{ prog.totalBytes ?? 0 | formatFileSize }}
           @if (percentage() !== null) {
-            ({{ percentage() | number: '1.0-0' }}%)
+            ({{ percentage() | formatNumber: 0 }}%)
           }
         }
       </span>

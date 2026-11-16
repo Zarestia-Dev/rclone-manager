@@ -8,7 +8,7 @@
       (click)="select(tab.key)"
     >
       {{ 'shared.transferActivity.report.tabs.' + tab.key | translate }}
-      <span appPill size="xs" tone="dim">{{ tab.count | number }}</span>
+      <span appPill size="xs" tone="dim">{{ tab.count | formatNumber }}</span>
     </button>
   }
 </div>

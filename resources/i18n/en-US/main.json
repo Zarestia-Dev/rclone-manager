@@ -44,7 +44,14 @@
     "actions": "Actions",
     "savedSuccessfully": "Saved successfully",
     "deletedSuccessfully": "Deleted successfully",
-    "notConfigured": "Not Configured"
+    "notConfigured": "Not Configured",
+    "unknown": "Unknown",
+    "notAvailable": "N/A",
+    "unlimited": "Unlimited",
+    "limitedTo": "Limited to {{rate}}",
+    "none": "None",
+    "add": "Add",
+    "select": "Select"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,10 @@
       "empty": "No jobs found"
     },
     "settings": {
-      "metrics": "{{count}} settings",
+      "metrics": {
+        "one": "{{count}} setting",
+        "other": "{{count}} settings"
+      },
       "notConfigured": "Not configured",
       "noData": "No configuration data available",
       "edit": "Edit Settings",
@@ -831,7 +841,8 @@
       "destination": "Destination",
       "openViewer": "Open in Viewer",
       "openViewerTooltip": "Open full media preview",
-      "inferredFromUrl": "Inferred from URL"
+      "inferredFromUrl": "Inferred from URL",
+      "imageAlt": "Preview"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +957,10 @@
         "waitingActivity": "Waiting for file activity. Some operations do not report individual files."
       },
       "time": {
-        "daysAgo": "{{count}} days ago",
+        "daysAgo": {
+          "one": "{{count}} day ago",
+          "other": "{{count}} days ago"
+        },
         "hoursAgo": "{{count}}h ago",
         "minutesAgo": "{{count}}m ago",
         "justNow": "Just now",
@@ -991,15 +1005,30 @@
       },
       "bulk": {
         "title": "Selected differences",
-        "selectAll": "Select all {{count}} open differences",
+        "selectAll": {
+          "one": "Select the {{count}} open difference",
+          "other": "Select all {{count}} open differences"
+        },
         "selected": "{{count}} selected",
         "toDestination": "{{count}} to destination",
         "toSource": "{{count}} to source",
-        "choose": "{{count}} need a decision",
+        "choose": {
+          "one": "{{count}} needs a decision",
+          "other": "{{count}} need a decision"
+        },
         "clear": "Clear",
-        "applyOneWay": "Copy {{count}} files",
-        "review": "Review {{count}} conflicts…",
-        "started": "Started copying {{count}} files",
+        "applyOneWay": {
+          "one": "Copy {{count}} file",
+          "other": "Copy {{count}} files"
+        },
+        "review": {
+          "one": "Review {{count}} conflict…",
+          "other": "Review {{count}} conflicts…"
+        },
+        "started": {
+          "one": "Started copying {{count}} file",
+          "other": "Started copying {{count}} files"
+        },
         "partial": "Started {{started}} copies, {{failed}} failed"
       },
       "compare": {
@@ -1038,7 +1067,10 @@
       },
       "export": {
         "copy": "Copy as CSV",
-        "copied": "{{count}} rows copied as CSV"
+        "copied": {
+          "one": "{{count}} row copied as CSV",
+          "other": "{{count}} rows copied as CSV"
+        }
       },
       "conflicts": {
         "empty": "No conflicts in this run.",
@@ -1115,7 +1147,7 @@
       "loadingStats": "Loading VFS statistics...",
       "fetchingQueue": "Fetching upload queue...",
       "vfsInstance": "VFS Instance",
-      "queued": "queued",
+      "queued": "{{count}} queued",
       "controlsUnavailable": "VFS Controls Unavailable",
       "indexedWarning": "This VFS instance has an index suffix (e.g., {{suffix}}) which is not supported by rclone's VFS API. This is a known limitation when multiple mounts exist for the same remote.",
       "stats": {
@@ -1195,7 +1227,10 @@
           "actionFailed": "Action failed: {{error}}",
           "removed": "Removed '{{path}}'",
           "removeFailed": "File cannot be removed",
-          "cleared": "Cleared {{count}} items",
+          "cleared": {
+            "one": "Cleared {{count}} item",
+            "other": "Cleared {{count}} items"
+          },
           "directoryRefreshed": "Directory refreshed",
           "intervalSet": "Interval set to {{val}}",
           "error": "Error: {{error}}"
@@ -1238,9 +1273,13 @@
       "cliArgumentWithSuggestion": "CLI-style flag '{{key}}' will be automatically mapped to '{{suggestion}}' on execution.",
       "camelCaseSuggestionWarning": "Option '{{key}}' is not valid in this format. Did you mean '{{suggestion}}'?",
       "fixSuggestion": "Change to '{{suggestion}}'",
-      "wrongBlockWarning": "Option(s) {{keys}} belong to the '{{block}}' configuration block and may not work here.",
-      "unknownWarning": "Unknown option(s): {{keys}}. These might be ignored by rclone.",
-      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead."
+      "wrongBlockWarning": "Option {{keys}} belongs to the '{{block}}' configuration block and may not work here.",
+      "unknownWarning": {
+        "one": "{{count}} unknown option: {{keys}}. It might be ignored by rclone.",
+        "other": "{{count}} unknown options: {{keys}}. These might be ignored by rclone."
+      },
+      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead.",
+      "fieldsOverview": "Config fields overview"
     },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
@@ -1313,15 +1352,19 @@
       "remote": "Remote",
       "invalidCommand": "Invalid rclone command. Please provide a command with a supported operation (e.g. sync, copy, mount) or flags.",
       "patch": "Patch / Apply to Active",
-      "patchProfile": "Patch Active Profile(s)",
-      "patchInfo": "No operation (sync, serve, or mount) was specified. The imported flags will be applied as a patch directly to your active configuration profile(s).",
+      "patchProfile": "Patch Active Profiles",
+      "patchInfo": "No operation (sync, serve, or mount) was specified. The imported flags will be applied as a patch directly to your active configuration profiles.",
       "patchInfoRemoteStep": "No operation (sync, serve, or mount) was specified. To apply these flags as a patch, please navigate to a specific configuration step (e.g., Sync, Mount, or Serve) instead of the Remote step.",
       "applyPatch": "Apply Patch",
       "importSourcePath": "Import Source Path",
       "importDestPath": "Import Destination Path",
       "importMountPoint": "Import Mount Point",
       "applyToTask": "Apply to Task",
-      "appliedToast": "Successfully imported {{count}} option(s)"
+      "appliedToast": {
+        "one": "Successfully imported {{count}} option",
+        "other": "Successfully imported {{count}} options"
+      },
+      "profileNamePlaceholder": "e.g. daily-backup"
     },
     "obscure": {
       "title": "Obscure Password",
@@ -1568,7 +1611,10 @@
         "middle": "15 (Middle)",
         "every2Days": "*/2 (Every 2 days)",
         "everyMonth": "* (Every month)",
-        "intervalN": "{{count}} hours"
+        "intervalN": {
+          "one": "{{count}} hour",
+          "other": "{{count}} hours"
+        }
       },
       "aria": {
         "clear": "Clear",
@@ -1617,7 +1663,10 @@
       "encrypted": "Encrypted",
       "notEncrypted": "Not Encrypted",
       "contents": "Backup Contents",
-      "itemCount": "{{count}} items",
+      "itemCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} items"
+      },
       "settings": {
         "title": "Application Settings",
         "description": "Your app preferences and configuration"
@@ -1808,7 +1857,10 @@
         "processedFiles": "Processed files"
       },
       "running": "Running",
-      "filesCount": "{{count}} files",
+      "filesCount": {
+        "one": "{{count}} file",
+        "other": "{{count}} files"
+      },
       "types": {
         "copy": "Copy",
         "copyurl": "Copy URL",
@@ -1835,7 +1887,10 @@
       "videoLabel": "Video: {{name}}",
       "audioLabel": "Audio: {{name}}",
       "calculatingFolderSize": "Calculating folder size...",
-      "containsFiles": "Contains {{count}} files",
+      "containsFiles": {
+        "one": "Contains {{count}} file",
+        "other": "Contains {{count}} files"
+      },
       "totalSize": "Total size: {{size}}",
       "binaryFile": "Binary file",
       "previewNotAvailable": "Preview not available for this file type",
@@ -1878,7 +1933,10 @@
       "monitoring": "Monitoring",
       "configuration": "Configuration",
       "selectedProfile": "Selected Profile",
-      "profilesCount": "{{count}} profiles",
+      "profilesCount": {
+        "one": "{{count}} profile",
+        "other": "{{count}} profiles"
+      },
       "addProfile": "Add Profile",
       "activeServes": "Active Serves",
       "sharedSettings": "Shared Settings",
@@ -2292,7 +2350,10 @@
         "folderPathFor": "Folder path for {{name}}",
         "scrollToPending": "Scroll to pending changes section"
       },
-      "pendingChangesTooltip": "You have {{count}} unsaved changes that require engine restart. Click to scroll to them."
+      "pendingChangesTooltip": {
+        "one": "You have {{count}} unsaved change that requires an engine restart. Click to scroll to it.",
+        "other": "You have {{count}} unsaved changes that require an engine restart. Click to scroll to them."
+      }
     },
     "export": {
       "title": "Export Settings",
@@ -2558,7 +2619,7 @@
         "cancel": "Cancel",
         "noProfiles": "No profiles configured",
         "placeholder": "Select Profile",
-        "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
+        "inUseWarning": "Cannot delete profile \"{{name}}\" - it is still in use ({{type}}: {{count}} active)",
         "nameExists": "A profile named \"{{name}}\" already exists",
         "disabledReason": {
           "inUse": "Profile is in use by a running {{operation}}. Stop it first."
@@ -2598,7 +2659,10 @@
         "emptyResult": "No Rclone flags found",
         "emptySettings": "No flags found",
         "adjustTerms": "Try adjusting your search terms",
-        "showing": "Showing {{count}} of {{total}} flags"
+        "showing": {
+          "one": "Showing {{shown}} of {{count}} flag",
+          "other": "Showing {{shown}} of {{count}} flags"
+        }
       },
       "pageTitle": {
         "home": "Rclone Flags",
@@ -2716,11 +2780,23 @@
         "pretty": "Pretty",
         "raw": "Raw",
         "table": "Table",
-        "lines": "{{count}} lines",
-        "showMore": "Show {{count}} more lines",
-        "showMoreRows": "Show {{count}} more rows",
+        "lines": {
+          "one": "{{count}} line",
+          "other": "{{count}} lines"
+        },
+        "showMore": {
+          "one": "Show {{count}} more line",
+          "other": "Show {{count}} more lines"
+        },
+        "showMoreRows": {
+          "one": "Show {{count}} more row",
+          "other": "Show {{count}} more rows"
+        },
         "collapse": "Collapse",
-        "rowsOmitted": "{{count}} more rows are not shown"
+        "rowsOmitted": {
+          "one": "{{count}} more row is not shown",
+          "other": "{{count}} more rows are not shown"
+        }
       },
       "tree": {
         "title": "API",
@@ -2746,9 +2822,18 @@
         "failed": "Job {{id}} failed",
         "lost": "Job not found",
         "stop": "Stop",
-        "transfers": "{{done}} / {{total}} transfers",
-        "checks": "{{count}} checks",
-        "errors": "{{count}} errors"
+        "transfers": {
+          "one": "{{done}} / {{count}} transfer",
+          "other": "{{done}} / {{count}} transfers"
+        },
+        "checks": {
+          "one": "{{count}} check",
+          "other": "{{count}} checks"
+        },
+        "errors": {
+          "one": "{{count}} error",
+          "other": "{{count}} errors"
+        }
       },
       "quickStart": "Try one of these",
       "hints": {
@@ -2815,16 +2900,23 @@
     },
     "selection": {
       "selected": "selected",
-      "folder": "folder",
-      "folders": "folders",
-      "item": "item",
-      "items": "items"
+      "folders": {
+        "one": "{{count}} folder selected",
+        "other": "{{count}} folders selected"
+      },
+      "items": {
+        "one": "{{count}} item selected ({{size}})",
+        "other": "{{count}} items selected ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "Delete Items",
         "messageSingle": "Are you sure you want to delete \"{{name}}\"?",
-        "messageMultiple": "Are you sure you want to delete {{count}} items?"
+        "messageMultiple": {
+          "one": "Are you sure you want to delete {{count}} item?",
+          "other": "Are you sure you want to delete {{count}} items?"
+        }
       },
       "newFolder": {
         "title": "New Folder",
@@ -2860,7 +2952,10 @@
         "compress": "Compress"
       },
       "multiRename": {
-        "title": "Rename {{count}} Files",
+        "title": {
+          "one": "Rename {{count}} File",
+          "other": "Rename {{count}} Files"
+        },
         "templateMode": "Rename using a template",
         "replaceMode": "Find and replace text",
         "templateInput": "Template",
@@ -2895,7 +2990,12 @@
         "suffix": "Suffix",
         "statsChanged": "{{count}} to rename",
         "statsUnchanged": "{{count}} unchanged",
-        "statsConflicts": "{{count}} conflict(s)"
+        "statsConflicts": {
+          "one": "{{count}} conflict",
+          "other": "{{count}} conflicts"
+        },
+        "findPlaceholder": "text to find",
+        "replacePlaceholder": "replacement text"
       },
       "index": {
         "title": "Generate Directory Listings",
@@ -2925,17 +3025,35 @@
       "connectionFailed": "Connection Failed",
       "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
       "loadFailed": "Failed to load directory",
-      "deleteFailed": "Failed to delete {{count}} items",
-      "copyFailed": "Failed to copy {{count}} items",
-      "moveFailed": "Failed to move {{count}} items",
-      "undoFailed": "Undo failed for {{count}} items",
-      "redoFailed": "Redo failed for {{count}} items",
+      "deleteFailed": {
+        "one": "Failed to delete {{count}} item",
+        "other": "Failed to delete {{count}} items"
+      },
+      "copyFailed": {
+        "one": "Failed to copy {{count}} item",
+        "other": "Failed to copy {{count}} items"
+      },
+      "moveFailed": {
+        "one": "Failed to move {{count}} item",
+        "other": "Failed to move {{count}} items"
+      },
+      "undoFailed": {
+        "one": "Undo failed for {{count}} item",
+        "other": "Undo failed for {{count}} items"
+      },
+      "redoFailed": {
+        "one": "Redo failed for {{count}} item",
+        "other": "Redo failed for {{count}} items"
+      },
       "rmdirsFailed": "Failed to remove empty folders in \"{{name}}\": {{error}}",
       "createFolderFailed": "Failed to create folder \"{{name}}\": {{error}}",
       "renameFailed": "Failed to rename '{{name}}': {{error}}",
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
-      "minSelection": "Please select at least {{min}} item{{s}}.",
+      "minSelection": {
+        "one": "Please select at least {{count}} item.",
+        "other": "Please select at least {{count}} items."
+      },
       "copyUrlFailed": "Failed to download from URL: {{error}}",
       "archiveCreateFailed": "Failed to create archive: {{error}}",
       "externalDropFailed": "Failed to process external file drop.",
@@ -2999,13 +3117,28 @@
       "increaseIconSize": "Increase icon size"
     },
     "notifications": {
-      "uploadSuccess": "Successfully uploaded {{count}} files.",
-      "uploadFailed": "Failed to upload {{count}} files.",
+      "uploadSuccess": {
+        "one": "Successfully uploaded {{count}} file.",
+        "other": "Successfully uploaded {{count}} files."
+      },
+      "uploadFailed": {
+        "one": "Failed to upload {{count}} file.",
+        "other": "Failed to upload {{count}} files."
+      },
       "trashEmptied": "Cleanup operation completed",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
-      "deleteStarted": "Deleting {{count}} items...",
-      "copyStarted": "Copying {{count}} items...",
-      "moveStarted": "Moving {{count}} items...",
+      "deleteStarted": {
+        "one": "Deleting {{count}} item...",
+        "other": "Deleting {{count}} items..."
+      },
+      "copyStarted": {
+        "one": "Copying {{count}} item...",
+        "other": "Copying {{count}} items..."
+      },
+      "moveStarted": {
+        "one": "Moving {{count}} item...",
+        "other": "Moving {{count}} items..."
+      },
       "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",
       "redoComplete": "Redo successful",
@@ -3017,7 +3150,10 @@
       "indexStarted": "Writing directory listings..."
     },
     "androidShare": {
-      "uploadHere": "Upload {{count}} shared file(s) to this folder",
+      "uploadHere": {
+        "one": "Upload {{count}} shared file to this folder",
+        "other": "Upload {{count}} shared files to this folder"
+      },
       "confirm": "Upload here"
     },
     "toolbar": {
@@ -3131,7 +3267,10 @@
       "error": "Error"
     },
     "jobs": {
-      "activeCount": "{{count}} active job{{s}}",
+      "activeCount": {
+        "one": "{{count}} active job",
+        "other": "{{count}} active jobs"
+      },
       "noActive": "No active jobs",
       "loading": "Loading job information...",
       "aria": {
@@ -3161,7 +3300,10 @@
       "nextRun": "Next Run:"
     },
     "serves": {
-      "activeCount": "{{count}} active serve{{s}}",
+      "activeCount": {
+        "one": "{{count}} active serve",
+        "other": "{{count}} active serves"
+      },
       "noActive": "No active serves",
       "noRunning": "No active serves running. Start serving a remote to make it accessible via network protocols like HTTP, WebDAV, FTP, or SFTP."
     }
@@ -3234,25 +3376,25 @@
       "completedSimulation": "Workflow '{{name}}' completed successfully (Simulation)",
       "completedViaStop": "Workflow '{{name}}' completed via stop node",
       "stoppedByUser": "Workflow execution was stopped by user",
-      "finishedWithFailures": "Workflow '{{name}}' finished with {{count}} failed step(s)",
-      "stepsFailed": "{{count}} step(s) failed",
+      "finishedWithFailures": "Workflow '{{name}}' finished with failed steps: {{count}}",
+      "stepsFailed": "Failed steps: {{count}}",
       "executionCancelled": "Workflow execution cancelled",
-      "summaryCheckDifferences": "Check found {{total}} difference(s): {{differ}} differ, {{dst}} missing on destination, {{src}} missing on source.",
-      "summaryCheckErrors": "Check completed with {{count}} error(s).",
-      "summaryCheckPassed": "Check passed: all {{count}} file(s) matched with 0 differences.",
-      "summaryTransferred": "{{transfers}} file(s) ({{size}}) transferred successfully, {{errors}} error(s).",
-      "summaryNothingTransferred": "Transfer completed successfully (0 files transferred, {{errors}} errors).",
+      "summaryCheckDifferences": "Check found differences: {{total}} ({{differ}} differ, {{dst}} missing on destination, {{src}} missing on source).",
+      "summaryCheckErrors": "Check completed with errors: {{count}}.",
+      "summaryCheckPassed": "Check passed: all files matched with 0 differences (files: {{count}}).",
+      "summaryTransferred": "Files transferred successfully: {{transfers}} ({{size}}), errors: {{errors}}.",
+      "summaryNothingTransferred": "Transfer completed successfully (0 files transferred, errors: {{errors}}).",
       "summaryJobFailed": "Job failed: {{error}}",
       "unknownError": "Unknown error",
       "reportTitle": "Check Report",
-      "reportStatusDifferences": "Differences detected ({{count}} file(s))",
+      "reportStatusDifferences": "Differences detected (files: {{count}})",
       "reportMatchedFiles": "Matched Files",
       "reportDiffering": "Differing Files ({{count}})",
       "reportMissingOnDestination": "Missing on Destination ({{count}})",
       "reportMissingOnSource": "Missing on Source ({{count}})",
       "reportAndMore": "... and {{count}} more",
-      "reportStatusErrors": "Completed with {{count}} error(s)",
-      "reportStatusMatched": "All {{count}} file(s) matched identically (0 differences).",
+      "reportStatusErrors": "Completed with errors: {{count}}",
+      "reportStatusMatched": "All files matched identically (0 differences, files: {{count}}).",
       "reportStatus": "Status",
       "missingWorkflowId": "Missing workflow ID for update",
       "workflowNotFound": "Workflow '{{id}}' not found",
@@ -3503,7 +3645,10 @@
   "backendSuccess": {
     "backup": {
       "created": "Backup created at: {{path}}",
-      "restored": "Settings restored successfully ({{count}} items restored)"
+      "restored": {
+        "one": "Settings restored successfully ({{count}} item restored)",
+        "other": "Settings restored successfully ({{count}} items restored)"
+      }
     },
     "mount": {
       "unmounted": "Successfully unmounted {{mountPoint}}",
@@ -3633,18 +3778,18 @@
     "workflowsCount": "Workflows [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Job",
-    "tooltipTasks": "{{count}} Jobs",
+    "tooltipTasks": "Jobs: {{count}}",
     "tooltipMount": "1 Mount",
-    "tooltipMounts": "{{count}} Mounts",
+    "tooltipMounts": "Mounts: {{count}}",
     "tooltipServe": "1 Serve",
-    "tooltipServes": "{{count}} Serves",
+    "tooltipServes": "Serves: {{count}}",
     "indexCount": "Directory Listings [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Active operations running: {{details}}",
-    "mounts": "{{count}} mount(s)",
-    "jobs": "{{count}} job(s)",
-    "serves": "{{count}} server(s)"
+    "mounts": "Mounts: {{count}}",
+    "jobs": "Jobs: {{count}}",
+    "serves": "Servers: {{count}}"
   },
   "notification": {
     "title": {
@@ -4507,8 +4652,10 @@
     "keyPlaceholder": "e.g. dir_cache_time",
     "valuePlaceholder": "e.g. 10m",
     "selectedCount": "{{selected}} / {{total}} selected",
-    "keyCount": "{{count}} key",
-    "keysCount": "{{count}} keys",
+    "keyCount": {
+      "one": "{{count}} key",
+      "other": "{{count}} keys"
+    },
     "zeroKeys": "0 keys",
     "applySuccess": "Template \"{{name}}\" applied successfully.",
     "savedSuccess": "Template \"{{name}}\" saved successfully.",

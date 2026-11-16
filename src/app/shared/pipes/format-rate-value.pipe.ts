@@ -1,13 +1,19 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { formatNumber } from 'src/app/services/i18n/locale-format';
+import { LocaleService } from 'src/app/services/i18n/locale.service';
 
 @Pipe({
   name: 'formatRateValue',
-  pure: true,
+  pure: false,
 })
 export class FormatRateValuePipe implements PipeTransform {
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LocaleService);
+
   transform(rate: number | string | null | undefined): string {
     if (rate === null || rate === undefined || rate === 'off' || rate === '') {
-      return 'Unlimited';
+      return this.unlimited();
     }
 
     if (typeof rate === 'number') {
@@ -22,11 +28,11 @@ export class FormatRateValuePipe implements PipeTransform {
       if (upload) parts.push(`↑ ${this.parseRateString(upload)}`);
       return parts.join(' ');
     }
-    return `Limited to ${this.parseRateString(rate)}`;
+    return this.translate.instant('common.limitedTo', { rate: this.parseRateString(rate) });
   }
 
   private parseRateString(rateStr: string): string {
-    if (!rateStr || rateStr === 'off') return 'Unlimited';
+    if (!rateStr || rateStr === 'off') return this.unlimited();
     const match = rateStr.match(/^(\d+(?:\.\d+)?)\s*([KMGT]?i?)$/i);
     if (!match) return rateStr;
     const [, value, unit] = match;
@@ -47,6 +53,10 @@ export class FormatRateValuePipe implements PipeTransform {
     if (bytes <= 0) return '0 B/s';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${units[i]}/s`;
+    return `${formatNumber(this.locale.locale(), bytes / Math.pow(1024, i), 2)} ${units[i]}/s`;
+  }
+
+  private unlimited(): string {
+    return this.translate.instant('common.unlimited');
   }
 }

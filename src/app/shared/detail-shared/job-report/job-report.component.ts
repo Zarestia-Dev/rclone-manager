@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { FormatNumberPipe } from '@app/pipes';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -27,7 +27,7 @@ export const REPORT_PAGE_SIZE = 200;
   selector: 'app-job-report',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DecimalPipe,
+    FormatNumberPipe,
     MatIconModule,
     MatProgressBarModule,
     TranslatePipe,
