@@ -1420,8 +1420,8 @@
           "description": "密码已经通过模糊处理——跳过模糊处理步骤"
         },
         "nonInteractive": {
-          "label": "非交互式",
-          "description": "返回 JSON 问题块而不是提示；用于应用程序驱动的配置流"
+          "label": "分步设置",
+          "description": "逐个询问 rclone 的问题，而不是用默认值自动回答"
         },
         "all": {
           "label": "所有问题",
@@ -2518,6 +2518,7 @@
         "noProfiles": "未配置配置文件",
         "placeholder": "选择配置文件",
         "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
+        "nameExists": "已存在名为 \"{{name}}\" 的配置文件",
         "disabledReason": {
           "inUse": "配置文件正在被运行中的 {{operation}} 使用，请先停止它。"
         },
@@ -3387,7 +3388,8 @@
       "unlockFailed": "解锁失败：{{error}}"
     },
     "remote": {
-      "configFailed": "配置远程存储失败：{{error}}",
+      "oauthFailed": "OAuth 认证失败或未完成",
+      "oauthPortInUse": "OAuth 登录端口已被占用",
       "authExpired": "远程认证已过期或无效。请在设置中重新授权。",
       "quotaExceeded": "远程存储 API 速率限制或配额已超限。请稍后重试。",
       "networkError": "无法连接到远程服务器。请检查网络连接及远程地址。",

@@ -31,7 +31,8 @@ import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status
 import { NotificationService } from '../ui/notification.service';
 import { ModalService } from '../ui/modal.service';
 import { TranslateService } from '@ngx-translate/core';
-import { findUniqueName } from '../remote/utils/unique-name.util';
+import { BackendTranslationService } from '../i18n/backend-translation.service';
+import { findCloneName } from '../remote/utils/unique-name.util';
 import { retargetProfilesRemote } from '../remote/utils/profile-mapper.utils';
 import {
   ConfigValue,
@@ -92,6 +93,7 @@ export class RemoteFacadeService {
   private readonly notificationService = inject(NotificationService);
   private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
   private readonly vault = inject(VaultService);
   private readonly canLoad = this.vault.isAccessible;
@@ -460,7 +462,8 @@ export class RemoteFacadeService {
     } catch (e) {
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.emptyTrashFailed', {
-          error: (e as Error).message,
+          remote: remote.name,
+          error: this.backendTranslation.translateBackendMessage(e),
         })
       );
       return false;
@@ -494,7 +497,7 @@ export class RemoteFacadeService {
     } catch (e) {
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.indexFailed', {
-          error: (e as Error).message || String(e),
+          error: this.backendTranslation.translateBackendMessage(e),
         })
       );
       return false;
@@ -525,8 +528,8 @@ export class RemoteFacadeService {
       // automation store listen to; AppSettingsService shows the success toast.
       await this.appSettingsService.resetRemoteSettings(remoteName);
     } catch (error) {
+      // The settings service has already told the user.
       console.error('Reset settings failed:', error);
-      this.notificationService.showError(error);
     }
   }
 
@@ -741,16 +744,11 @@ export class RemoteFacadeService {
     }
   }
 
-  private generateUniqueCloneName(baseName: string): string {
-    const cleanBase = baseName.replace(/-(?:clone|\d+)+$/, '');
-    return findUniqueName(`${cleanBase}-clone`, Array.from(this.remoteStates.keys()));
-  }
-
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
     const base = this.remoteStates.get(remoteName)?.config();
     if (!base) return null;
 
-    const newName = this.generateUniqueCloneName(base.name);
+    const newName = findCloneName(base.name, this.remoteStates.keys());
     const settings = structuredClone(this.getRemoteSettings(remoteName)) as RemoteSettings;
     const retargetedSettings = retargetProfilesRemote(settings, remoteName, newName);
 

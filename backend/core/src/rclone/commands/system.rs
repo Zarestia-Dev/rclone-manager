@@ -68,8 +68,8 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
 /// Cancel an in-progress OAuth flow.
 ///
 /// Sends `config/oauthstop` over the active transport. Works for both
-/// desktop (rcd) and mobile (librclone) — rclone v1.75+ runs the OAuth
-/// server in-process and exposes this endpoint to stop it.
+/// desktop (rcd) and mobile (librclone) — rclone runs the OAuth server
+/// in-process and exposes this endpoint to stop it.
 pub async fn cancel_oauth(app: AppHandle) -> Result<(), String> {
     info!("Cancelling in-progress OAuth flow");
     let transport = app.state::<RcloneState>().transport.clone();

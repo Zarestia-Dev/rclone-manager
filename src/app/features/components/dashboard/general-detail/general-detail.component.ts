@@ -7,6 +7,7 @@ import {
   output,
   effect,
   untracked,
+  resource,
   DestroyRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
@@ -41,6 +42,7 @@ import { OriginFilterBarComponent } from '../../../../shared/overviews-shared/or
 import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -84,6 +86,7 @@ export class GeneralDetailComponent {
   private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly quickRunService = inject(QuickRunService);
+  private readonly workflowStorage = inject(WorkflowStorageService);
   private readonly pathService = inject(PathService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -156,12 +159,18 @@ export class GeneralDetailComponent {
   readonly jobs = computed(() =>
     this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
   );
-  /** This remote's automations, plus workflows: a workflow has no remote, so it is listed on every one. */
+  /**
+   * This remote's automations, plus the workflows that mention it. A workflow has no remote of its
+   * own, so the backend, which reads the workflows, says which ones use this remote.
+   */
   private readonly scopedAutomations = computed(() => {
     const remote = this.selectedRemote();
     if (!remote) return [];
+    const workflows = this.remoteWorkflowIds();
     return this.allAutomations().filter(
-      automation => automation.remoteName === remote.name || automation.args?.source === 'workflow'
+      automation =>
+        automation.remoteName === remote.name ||
+        (automation.args?.source === 'workflow' && workflows.has(automation.id))
     );
   });
 
@@ -234,6 +243,20 @@ export class GeneralDetailComponent {
   }));
 
   private readonly selectedRemoteName = computed(() => this.selectedRemote().name);
+
+  /** The workflows that mention this remote; asked again when workflows or Quick Runs change. */
+  private readonly remoteWorkflows = resource({
+    params: () => ({
+      remote: this.selectedRemoteName(),
+      workflows: this.workflowStorage.workflows(),
+      quickRuns: this.quickRunService.quickRuns(),
+    }),
+    loader: ({ params }) => this.workflowStorage.listWorkflowsUsingRemote(params.remote),
+  });
+  private readonly remoteWorkflowIds = computed(
+    () =>
+      new Set((this.remoteWorkflows.hasValue() ? this.remoteWorkflows.value() : []).map(w => w.id))
+  );
 
   constructor() {
     effect(() => {

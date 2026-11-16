@@ -13,7 +13,7 @@ import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.s
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { Automation, JobInfo, MountedRemote, QuickRun, Remote, ServeListItem } from '@app/types';
-import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
+import { WorkflowRef } from 'src/app/flow/workflow/types/workflow.types';
 
 describe('DeleteRemoteModalComponent', () => {
   let fixture: ComponentFixture<DeleteRemoteModalComponent>;
@@ -35,12 +35,10 @@ describe('DeleteRemoteModalComponent', () => {
     automations: ReturnType<typeof signal<Automation[]>>;
   };
   let workflowStorageSpy: {
-    workflows: ReturnType<typeof signal<WorkflowDefinition[]>>;
-    loadAllWorkflows: ReturnType<typeof vi.fn>;
+    listWorkflowsUsingRemote: ReturnType<typeof vi.fn>;
   };
   let pathServiceSpy: {
     getRemoteNameFromFs: ReturnType<typeof vi.fn>;
-    normalizeRemoteName: ReturnType<typeof vi.fn>;
   };
   let iconServiceSpy: {
     getIconName: ReturnType<typeof vi.fn>;
@@ -77,12 +75,10 @@ describe('DeleteRemoteModalComponent', () => {
       automations: signal<Automation[]>([]),
     };
     workflowStorageSpy = {
-      workflows: signal<WorkflowDefinition[]>([]),
-      loadAllWorkflows: vi.fn(),
+      listWorkflowsUsingRemote: vi.fn().mockResolvedValue([]),
     };
     pathServiceSpy = {
       getRemoteNameFromFs: vi.fn((fs: string) => (fs ? fs.split(':')[0] : '')),
-      normalizeRemoteName: vi.fn((name?: string) => (name ? name.replace(/:$/, '').trim() : '')),
     };
     iconServiceSpy = {
       getIconName: vi.fn((type: string) => `icon-${type}`),
@@ -208,101 +204,45 @@ describe('DeleteRemoteModalComponent', () => {
     expect(component.automationsList()[0].id).toBe('auto-1');
   });
 
-  it('should filter associated workflows referencing the remote through various node configs', () => {
-    quickRunServiceSpy.quickRuns.set([
-      {
-        id: 'qr-matched',
-        name: 'Matched QR',
-        remoteName: 'test-remote',
-      } as unknown as QuickRun,
-      {
-        id: 'qr-other',
-        name: 'Other QR',
-        remoteName: 'other',
-      } as unknown as QuickRun,
-    ]);
+  describe('workflows that use the remote', () => {
+    const used: WorkflowRef[] = [
+      { id: 'wf-1', name: 'Nightly backup', description: 'Copies the photos' },
+      { id: 'wf-2', name: 'Cleanup' },
+    ];
 
-    workflowStorageSpy.workflows.set([
-      {
-        id: 'wf-direct',
-        name: 'Direct Remote Workflow',
-        nodes: [
-          {
-            id: 'n1',
-            type: 'sync',
-            config: { remoteName: 'test-remote' },
-          },
-        ],
-      } as unknown as WorkflowDefinition,
-      {
-        id: 'wf-path',
-        name: 'Path Remote Workflow',
-        nodes: [
-          {
-            id: 'n2',
-            type: 'copy',
-            config: {
-              config: {
-                rclone: { srcFs: 'test-remote:photos', dstFs: '/local/backup' },
-              },
-            },
-          },
-        ],
-      } as unknown as WorkflowDefinition,
-      {
-        id: 'wf-quickrun',
-        name: 'QuickRun Remote Workflow',
-        nodes: [
-          {
-            id: 'n3',
-            type: 'quick_run',
-            config: { quickRunId: 'qr-matched' },
-          },
-        ],
-      } as unknown as WorkflowDefinition,
-      {
-        id: 'wf-other',
-        name: 'Unrelated Workflow',
-        nodes: [
-          {
-            id: 'n4',
-            type: 'sync',
-            config: { remoteName: 'other' },
-          },
-          {
-            id: 'n5',
-            type: 'quick_run',
-            config: { quickRunId: 'qr-other' },
-          },
-        ],
-      } as unknown as WorkflowDefinition,
-      {
-        id: 'wf-empty',
-        name: 'Empty Workflow',
-        nodes: [],
-      } as unknown as WorkflowDefinition,
-    ]);
+    async function openWith(list: Promise<WorkflowRef[]>): Promise<void> {
+      workflowStorageSpy.listWorkflowsUsingRemote.mockReturnValue(list);
+      fixture = TestBed.createComponent(DeleteRemoteModalComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
 
-    const matching = component.workflowsList();
-    expect(matching.length).toBe(3);
-    const ids = matching.map(w => w.id);
-    expect(ids).toContain('wf-direct');
-    expect(ids).toContain('wf-path');
-    expect(ids).toContain('wf-quickrun');
-    expect(ids).not.toContain('wf-other');
-    expect(ids).not.toContain('wf-empty');
-  });
+    it('asks the backend, which reads nodes the way the engine does, instead of guessing from node settings', async () => {
+      await openWith(Promise.resolve(used));
+      expect(workflowStorageSpy.listWorkflowsUsingRemote).toHaveBeenLastCalledWith('test-remote');
+    });
 
-  it('should return empty workflowsList when no workflows reference the remote', () => {
-    workflowStorageSpy.workflows.set([
-      {
-        id: 'wf-unrelated',
-        name: 'Unrelated',
-        nodes: [{ id: 'n1', type: 'manual', config: {} }],
-      } as unknown as WorkflowDefinition,
-    ]);
+    it('lists what the backend answers', async () => {
+      await openWith(Promise.resolve(used));
+      expect(component.workflowsList()).toEqual(used);
+    });
 
-    expect(component.workflowsList().length).toBe(0);
+    it('lists nothing before the answer arrives and when nothing uses the remote', async () => {
+      let answer!: (list: WorkflowRef[]) => void;
+      await openWith(new Promise<WorkflowRef[]>(resolve => (answer = resolve)));
+      expect(component.workflowsList()).toEqual([]);
+      answer([]);
+      await fixture.whenStable();
+      expect(component.workflowsList()).toEqual([]);
+    });
+
+    it('still opens when the lookup fails', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      await openWith(Promise.reject(new Error('locked')));
+      expect(component.workflowsList()).toEqual([]);
+      expect(error).toHaveBeenCalled();
+    });
   });
 
   it('should close dialog with true on confirm', () => {
@@ -315,23 +255,10 @@ describe('DeleteRemoteModalComponent', () => {
     expect(dialogRefSpy.close).toHaveBeenCalledWith(false);
   });
 
-  it('should handle escape key when not deleting', () => {
-    const event = new KeyboardEvent('keydown', { key: 'Escape' });
-    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-
-    component.onEscapeKey(event);
-    expect(preventDefaultSpy).toHaveBeenCalled();
-    expect(dialogRefSpy.close).toHaveBeenCalledWith(false);
-  });
-
-  it('should not handle escape key when deleting is in progress', () => {
-    component.isDeleting.set(true);
-    const event = new KeyboardEvent('keydown', { key: 'Escape' });
-    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-
-    component.onEscapeKey(event);
-    expect(preventDefaultSpy).not.toHaveBeenCalled();
-    expect(dialogRefSpy.close).not.toHaveBeenCalled();
+  it('closes without deleting on Escape, through the shared modal directive', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(dialogRefSpy.close).toHaveBeenCalledOnce();
+    expect(dialogRefSpy.close).not.toHaveBeenCalledWith(true);
   });
 
   it('should return correct operation icon and pill class', () => {

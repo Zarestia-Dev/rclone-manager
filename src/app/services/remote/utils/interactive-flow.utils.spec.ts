@@ -136,7 +136,7 @@ describe('interactive-flow.utils', () => {
       expect(getDefaultAnswerFromQuestion(q)).toBe('drive.readonly');
     });
 
-    it('should handle option with Examples and 1-based index', () => {
+    it('keeps a default that looks like an index: rclone defaults are values, not positions', () => {
       const q = createMockQuestion({
         Name: 'storage_class',
         Type: 'string',
@@ -144,10 +144,24 @@ describe('interactive-flow.utils', () => {
         Examples: [
           { Value: 'STANDARD', Help: 'Standard' },
           { Value: 'NEARLINE', Help: 'Nearline' },
-          { Value: 'COLDLINE', Help: 'Coldline' },
         ],
       });
-      expect(getDefaultAnswerFromQuestion(q)).toBe('NEARLINE');
+      expect(getDefaultAnswerFromQuestion(q)).toBe('2');
+    });
+
+    it('uses the first example rclone lists as the default of a choice (jottacloud config_type)', () => {
+      const q = createMockQuestion({
+        Name: 'config_type',
+        Type: 'string',
+        Default: 'standard',
+        DefaultStr: 'standard',
+        Exclusive: true,
+        Examples: [
+          { Value: 'standard', Help: 'Standard authentication.' },
+          { Value: 'traditional', Help: 'Traditional authentication.' },
+        ],
+      });
+      expect(getDefaultAnswerFromQuestion(q)).toBe('standard');
     });
 
     it('should handle option with Examples and direct matching value', () => {

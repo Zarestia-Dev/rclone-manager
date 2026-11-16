@@ -32,29 +32,6 @@
   display: block;
 }
 
-// =============================================
-// MESSAGE BAR
-// =============================================
-.message-area {
-  .message {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-md);
-    margin: var(--space-md);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-
-    &.info {
-      color: var(--accent-color);
-      background: color-mix(in srgb, var(--accent-color) 10%, transparent);
-      box-shadow: var(--box-shadow);
-    }
-
-    &.warning {
-      color: var(--warn-color);
-      background: color-mix(in srgb, var(--warn-color) 10%, transparent);
-      box-shadow: var(--box-shadow);
-    }
-  }
+app-alert-banner {
+  margin: var(--space-sm);
 }

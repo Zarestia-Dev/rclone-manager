@@ -3,12 +3,13 @@ import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideTranslateService, TranslatePipe } from '@ngx-translate/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionState, Remote } from '@app/types';
 import { GeneralDetailComponent } from './general-detail.component';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PillDirective } from 'src/app/shared/directives/pill.directive';
@@ -21,6 +22,8 @@ describe('GeneralDetailComponent controls', () => {
     { id: 'first', remoteName: 'remote', profileName: 'First' },
     { id: 'second', remoteName: 'remote', profileName: 'Second' },
   ]);
+  const workflows = signal<unknown[]>([]);
+  const listWorkflowsUsingRemote = vi.fn();
 
   beforeEach(() => {
     selectedRemote.set({
@@ -31,6 +34,8 @@ describe('GeneralDetailComponent controls', () => {
       status: { diskUsage: {}, mount: { active: false, configuredProfiles: ['default'] } },
     } as Remote);
     actionInProgress.set({});
+    workflows.set([]);
+    listWorkflowsUsingRemote.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({
       imports: [GeneralDetailComponent],
       providers: [
@@ -40,6 +45,7 @@ describe('GeneralDetailComponent controls', () => {
           useValue: { selectedRemote, actionInProgress, jobs: signal([]) },
         },
         { provide: AutomationService, useValue: { automations } },
+        { provide: WorkflowStorageService, useValue: { workflows, listWorkflowsUsingRemote } },
         {
           provide: QuickRunService,
           useValue: { quickRuns: signal([]), runningIds: signal(new Set()) },
@@ -122,34 +128,92 @@ describe('GeneralDetailComponent controls', () => {
     expect(buttons[1].getAttribute('aria-current')).toBe('true');
   });
 
-  it('lists workflows on every remote and narrows the card with the origin chips', async (): Promise<void> => {
+  describe('workflows', () => {
     const original = automations();
-    automations.set([
-      ...original,
-      { id: 'wf', remoteName: 'Workflow', profileName: 'Nightly', args: { source: 'workflow' } },
-      { id: 'other', remoteName: 'elsewhere', profileName: 'Other' },
-    ] as unknown as typeof original);
-    const component = fixture.componentInstance;
-    const ids = (): string[] => component.remoteAutomations().map(a => a.id);
+    const workflowAutomation = (id: string): unknown => ({
+      id,
+      remoteName: '',
+      profileName: id,
+      args: { source: 'workflow' },
+    });
 
-    expect(ids()).toEqual(['first', 'second', 'wf']);
+    /** Gives the page time to ask the backend again after the workflows changed. */
+    async function refreshWorkflows(): Promise<void> {
+      workflows.update(list => [...list, {}]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
 
-    component.currentAutomationCardIndex.set(2);
-    component.automationOriginFilter.set('workflow');
-    fixture.detectChanges();
-    expect(ids()).toEqual(['wf']);
-    expect(component.currentAutomationCardIndex()).toBe(0);
+    beforeEach(() => {
+      automations.set([
+        ...original,
+        workflowAutomation('wf-drive'),
+        workflowAutomation('wf-elsewhere'),
+        { id: 'other', remoteName: 'elsewhere', profileName: 'Other' },
+      ] as unknown as typeof original);
+    });
 
-    component.automationOriginFilter.set('dashboard');
-    expect(ids()).toEqual(['first', 'second']);
+    afterEach(() => automations.set(original));
 
-    // A chip with no match keeps the card and its chips, so the user can pick another one.
-    component.automationOriginFilter.set('quickrun');
-    fixture.detectChanges();
-    expect(ids()).toEqual([]);
-    expect(component.hasAutomations()).toBe(true);
-    expect(fixture.nativeElement.querySelector('.automations-card .empty-state')).not.toBeNull();
+    it('lists only the workflows the backend says mention this remote', async (): Promise<void> => {
+      listWorkflowsUsingRemote.mockResolvedValue([{ id: 'wf-drive', name: 'Nightly' }]);
+      await refreshWorkflows();
 
-    automations.set(original);
+      expect(listWorkflowsUsingRemote).toHaveBeenLastCalledWith('remote');
+      expect(fixture.componentInstance.remoteAutomations().map(a => a.id)).toEqual([
+        'first',
+        'second',
+        'wf-drive',
+      ]);
+    });
+
+    it('lists no workflow when none of them mentions the remote', async (): Promise<void> => {
+      await refreshWorkflows();
+
+      expect(fixture.componentInstance.remoteAutomations().map(a => a.id)).toEqual([
+        'first',
+        'second',
+      ]);
+    });
+
+    it('asks again for the new remote when another one is selected', async (): Promise<void> => {
+      selectedRemote.update(remote => ({ ...remote, name: 'second-remote' }) as Remote);
+      await fixture.whenStable();
+
+      expect(listWorkflowsUsingRemote).toHaveBeenLastCalledWith('second-remote');
+    });
+
+    it('keeps the remote automations when the lookup fails', async (): Promise<void> => {
+      listWorkflowsUsingRemote.mockRejectedValue(new Error('locked'));
+      await refreshWorkflows();
+
+      expect(fixture.componentInstance.remoteAutomations().map(a => a.id)).toEqual([
+        'first',
+        'second',
+      ]);
+    });
+
+    it('narrows the card with the origin chips', async (): Promise<void> => {
+      listWorkflowsUsingRemote.mockResolvedValue([{ id: 'wf-drive', name: 'Nightly' }]);
+      await refreshWorkflows();
+      const component = fixture.componentInstance;
+      const ids = (): string[] => component.remoteAutomations().map(a => a.id);
+
+      component.currentAutomationCardIndex.set(2);
+      component.automationOriginFilter.set('workflow');
+      fixture.detectChanges();
+      expect(ids()).toEqual(['wf-drive']);
+      expect(component.currentAutomationCardIndex()).toBe(0);
+
+      component.automationOriginFilter.set('dashboard');
+      expect(ids()).toEqual(['first', 'second']);
+
+      // A chip with no match keeps the card and its chips, so the user can pick another one.
+      component.automationOriginFilter.set('quickrun');
+      fixture.detectChanges();
+      expect(ids()).toEqual([]);
+      expect(component.hasAutomations()).toBe(true);
+      expect(fixture.nativeElement.querySelector('.automations-card .empty-state')).not.toBeNull();
+    });
   });
 });

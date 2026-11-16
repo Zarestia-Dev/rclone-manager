@@ -1420,8 +1420,8 @@
           "description": "As senhas já estão ocultadas - pule o passo de obscurecimento"
         },
         "nonInteractive": {
-          "label": "Não Interativo",
-          "description": "Devolva um blob de pergunta JSON em vez de um prompt; para fluxos de configuração orientados por aplicativos"
+          "label": "Configuração passo a passo",
+          "description": "Fazer cada pergunta do rclone uma a uma em vez de respondê-las com os valores padrão"
         },
         "all": {
           "label": "Todas as Questões",
@@ -2518,6 +2518,7 @@
         "noProfiles": "Nenhum perfil configurado",
         "placeholder": "Selecione o Perfil",
         "inUseWarning": "Não é possível excluir o perfil \"{{name}}\" - ele está em uso por {{count}} perfil(s) ativo(s) de {{type}}(s).",
+        "nameExists": "Já existe um perfil chamado \"{{name}}\"",
         "disabledReason": {
           "inUse": "O perfil está em uso por um processo corrente {{operation}}. Pare-o primeiro."
         },
@@ -3387,7 +3388,8 @@
       "unlockFailed": "Falha ao desbloquear: {{error}}"
     },
     "remote": {
-      "configFailed": "Falha ao configurar remoto: {{error}}",
+      "oauthFailed": "A autenticação OAuth falhou ou não foi concluída",
+      "oauthPortInUse": "A porta de login OAuth já está em uso",
       "authExpired": "A autenticação do remoto expirou ou é inválida. Reautentique o remoto nas configurações.",
       "quotaExceeded": "Limite de requisições de API ou cota de armazenamento remoto excedida. Tente novamente mais tarde.",
       "networkError": "Não foi possível conectar ao servidor remoto. Verifique sua conexão e o endereço remoto.",

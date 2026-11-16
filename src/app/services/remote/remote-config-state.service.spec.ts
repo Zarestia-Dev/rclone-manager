@@ -21,7 +21,12 @@ import { RemotePresetsService } from './remote-presets';
 import { RemoteCreationOrchestrator } from './remote-creation-orchestrator.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { createDefaultRemoteFeatures, createDefaultRemoteStatus, RcConfigOption } from '@app/types';
+import {
+  createDefaultRemoteFeatures,
+  createDefaultRemoteStatus,
+  RcConfigOption,
+  RemoteSettings,
+} from '@app/types';
 import { ImportResult } from './cli-flag-mapper.service';
 
 describe('RemoteConfigStateService', () => {
@@ -426,7 +431,7 @@ describe('RemoteConfigStateService', () => {
       }
     );
 
-    it('does not rename over an existing profile', () => {
+    it('does not rename over an existing profile, and says why', () => {
       service.updateProfileConfig('vfs', 'Existing', { vfs_cache_mode: 'full' });
       service.startEditProfile('vfs');
       service.setProfileTempName('vfs', 'Existing');
@@ -435,6 +440,57 @@ describe('RemoteConfigStateService', () => {
       service.saveProfile('vfs');
 
       expect(service.profiles()).toBe(profiles);
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledOnce();
+      expect(service.profileState().vfs.mode).toBe('edit');
+    });
+
+    it('does not add a profile over an existing one: the existing profile keeps its settings', () => {
+      service.updateProfileConfig('vfs', 'Existing', { vfs_cache_mode: 'full' });
+      service.startAddProfile('vfs');
+      service.setProfileTempName('vfs', 'Existing');
+      const profiles = service.profiles();
+
+      service.saveProfile('vfs');
+
+      expect(service.profiles()).toBe(profiles);
+      expect(service.profiles().vfs['Existing']).toEqual({ vfs_cache_mode: 'full' });
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledWith(
+        'modals.remoteConfig.profile.nameExists'
+      );
+      expect(service.profileState().vfs.mode).toBe('add');
+    });
+
+    it('treats the Default profile that is only displayed as an existing name', () => {
+      service.startAddProfile('filter');
+      service.setProfileTempName('filter', 'Default');
+
+      service.saveProfile('filter');
+
+      expect(service.profiles().filter).toEqual({});
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledOnce();
+    });
+
+    it('adds a profile with a free name without a warning', () => {
+      service.startAddProfile('vfs');
+      service.setProfileTempName('vfs', 'Photos');
+
+      service.saveProfile('vfs');
+
+      expect(service.profiles().vfs).toEqual({ Photos: {} });
+      expect(TestBed.inject(NotificationService).showWarning).not.toHaveBeenCalled();
+      expect(service.profileState().vfs.mode).toBe('view');
+    });
+
+    it('leaves rename mode without a warning when the name did not change', () => {
+      service.updateProfileConfig('vfs', 'Same', { vfs_cache_mode: 'full' });
+      service.selectedProfileName.update(names => ({ ...names, vfs: 'Same' }));
+      service.startEditProfile('vfs');
+      service.setProfileTempName('vfs', 'Same');
+
+      service.saveProfile('vfs');
+
+      expect(service.profileState().vfs.mode).toBe('view');
+      expect(TestBed.inject(NotificationService).showWarning).not.toHaveBeenCalled();
     });
 
     it('preserves unsaved paths, automation settings and other flags when applying a template', async () => {
@@ -569,21 +625,19 @@ describe('RemoteConfigStateService', () => {
     });
   });
 
-  describe('generateNewCloneName', () => {
-    it('should append -clone to base remote name without double suffixing', () => {
-      service.remoteForm.get('name')?.setValue('Google Drive');
-      service.existingRemotes.set(['Google Drive']);
+  describe('cloning a remote', () => {
+    it('renames the copy when the name the facade proposed is already taken', async () => {
+      const facade = TestBed.inject(RemoteFacadeService);
+      vi.mocked(facade.cloneRemote).mockResolvedValue({
+        name: 'Google Drive-clone',
+        config: { name: 'Google Drive-clone', type: 'drive' },
+      } as RemoteSettings);
+      vi.mocked(TestBed.inject(RemoteManagementService).getRemotes).mockResolvedValue([
+        'Google Drive',
+        'Google Drive-clone',
+      ]);
 
-      service.generateNewCloneName();
-
-      expect(service.remoteForm.get('name')?.value).toBe('Google Drive-clone');
-    });
-
-    it('should not accumulate multiple -clone suffixes', () => {
-      service.remoteForm.get('name')?.setValue('Google Drive-clone');
-      service.existingRemotes.set(['Google Drive', 'Google Drive-clone']);
-
-      service.generateNewCloneName();
+      await service.init({ cloneFrom: 'Google Drive', remoteType: 'drive' });
 
       expect(service.remoteForm.get('name')?.value).toBe('Google Drive-clone-1');
     });
@@ -645,7 +699,7 @@ describe('RemoteConfigStateService', () => {
   });
 
   describe('init error handling on clone failure', () => {
-    it('should notify and throw error when cloneRemote returns null', async () => {
+    it('should throw and leave the notification to the modal that opened the state', async () => {
       const notificationService = TestBed.inject(NotificationService);
 
       await expect(
@@ -655,7 +709,7 @@ describe('RemoteConfigStateService', () => {
         })
       ).rejects.toThrow('Failed to clone remote: NonExistentRemote');
 
-      expect(notificationService.showError).toHaveBeenCalled();
+      expect(notificationService.showError).not.toHaveBeenCalled();
     });
   });
   it('blocks save and navigation until initialization finishes', () => {

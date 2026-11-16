@@ -149,6 +149,17 @@ describe('WorkflowStorageService', () => {
     expect(service.presetTemplates()).toEqual([]);
   });
 
+  it('asks the backend which workflows use a remote, by the remote name', async () => {
+    const used = [{ id: 'wf-1', name: 'Backup' }];
+    mockApiClient.invoke.mockImplementation((command: string) =>
+      Promise.resolve(command === 'list_workflows_using_remote' ? used : [])
+    );
+    expect(await service.listWorkflowsUsingRemote('drive')).toEqual(used);
+    expect(mockApiClient.invoke).toHaveBeenCalledWith('list_workflows_using_remote', {
+      remoteName: 'drive',
+    });
+  });
+
   it('reloads workflows when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
     const loadSpy = vi.spyOn(service, 'loadAllWorkflows');
     systemSettingsChanged$.next({ category: '*', key: '*', value: null });

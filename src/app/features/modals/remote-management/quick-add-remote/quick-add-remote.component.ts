@@ -59,6 +59,7 @@ interface SetupFormValue {
   [key: string]: unknown;
 }
 
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
 
 @Component({
@@ -75,6 +76,7 @@ import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config
     OperationConfigComponent,
     TranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   providers: [RemoteCreationOrchestrator],
   templateUrl: './quick-add-remote.component.html',
@@ -345,10 +347,7 @@ export class QuickAddRemoteComponent {
   async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
     if (this.interactiveFlowState().isProcessing) return;
     this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
-    const completed = await this.orchestrator.submitInteractiveAnswer(
-      answer,
-      this.commandOptions()
-    );
+    const completed = await this.orchestrator.submitInteractiveAnswer(answer);
     if (completed) this.dialogRef.close(true);
   }
 

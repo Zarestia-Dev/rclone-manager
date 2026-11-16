@@ -158,37 +158,43 @@ pub(super) async fn upsert_remote_from_config(
         config = nested.clone();
     }
 
-    if let Some(obj) = config.as_object_mut() {
-        obj.insert("config_is_local".to_string(), json!("false"));
-    }
-
     let config_map: HashMap<String, Value> =
         serde_json::from_value(config).map_err(|e| e.to_string())?;
 
     info!("Upserting remote '{remote_name}'...");
 
-    if let Err(e) = update_remote(
+    // The backup already holds the whole remote. With `nonInteractive` rclone stores it as it is
+    // and stops at its first question, which is not answered. Without it rclone answers its own
+    // questions: for OneDrive that picks the first drive of the account in place of the saved one,
+    // and it never returns while the saved token is rejected.
+    let opt = Some(json!({ "nonInteractive": true }));
+
+    let Err(e) = update_remote(
         app_handle.clone(),
         remote_name.to_string(),
         config_map.clone(),
-        None,
+        opt.clone(),
         None,
     )
     .await
-    {
-        debug!("Update failed (likely remote doesn't exist), attempting create: {e}");
-        create_remote(
-            app_handle.clone(),
-            remote_name.to_string(),
-            config_map,
-            None,
-            None,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
+    else {
+        return Ok(());
+    };
+    debug!("Update failed (likely remote doesn't exist), attempting create: {e}");
+    // Without a type there is nothing to create; the update error says why.
+    let Some(rclone_type) = config_map.get("type").and_then(Value::as_str) else {
+        return Err(e);
+    };
+    create_remote(
+        app_handle.clone(),
+        remote_name.to_string(),
+        rclone_type.to_string(),
+        config_map,
+        opt,
+        None,
+    )
+    .await
+    .map(|_| ())
 }
 
 #[cfg(test)]
@@ -234,5 +240,207 @@ mod tests {
             parse_deferred_remote(&deferred("rclone.conf", b"{}")).unwrap_err(),
             "rclone.conf"
         );
+    }
+
+    type Calls = std::sync::Arc<std::sync::Mutex<Vec<(String, Value)>>>;
+
+    /// A stand-in for rclone's daemon: answers every call and records the path and body of each.
+    /// `config/update` is refused with "no such remote" when `missing_remote` is set.
+    async fn fake_rclone(missing_remote: bool) -> (u16, Calls, tokio::task::JoinHandle<()>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let calls: Calls = Default::default();
+        let recorded = calls.clone();
+        let server = crate::utils::spawn(async move {
+            loop {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let recorded = recorded.clone();
+                crate::utils::spawn(async move {
+                    let mut request = Vec::new();
+                    let header_end = loop {
+                        if let Some(at) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                            break at + 4;
+                        }
+                        let mut chunk = [0; 1024];
+                        let read = stream.read(&mut chunk).await.unwrap();
+                        assert!(read > 0, "the request ended before its headers");
+                        request.extend_from_slice(&chunk[..read]);
+                    };
+                    let head = String::from_utf8_lossy(&request[..header_end]).to_string();
+                    let path = head
+                        .lines()
+                        .next()
+                        .and_then(|line| line.split_whitespace().nth(1))
+                        .unwrap_or_default()
+                        .to_string();
+                    let length = head
+                        .lines()
+                        .find_map(|line| {
+                            let (name, value) = line.split_once(':')?;
+                            name.eq_ignore_ascii_case("content-length")
+                                .then(|| value.trim().parse::<usize>().ok())
+                                .flatten()
+                        })
+                        .unwrap_or(0);
+                    while request.len() < header_end + length {
+                        let mut chunk = [0; 1024];
+                        let read = stream.read(&mut chunk).await.unwrap();
+                        assert!(read > 0, "the request ended before its body");
+                        request.extend_from_slice(&chunk[..read]);
+                    }
+                    let body = serde_json::from_slice(&request[header_end..header_end + length])
+                        .unwrap_or(Value::Null);
+                    let (status, reply) = match path.as_str() {
+                        "/config/update" if missing_remote => (
+                            "500 Internal Server Error",
+                            r#"{"error":"couldn't find type field in config"}"#,
+                        ),
+                        "/config/oauthstatus" => ("200 OK", r#"{"running":false}"#),
+                        _ => ("200 OK", "{}"),
+                    };
+                    recorded.lock().unwrap().push((path, body));
+                    let response = format!(
+                        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+                        reply.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes()).await;
+                });
+            }
+        });
+        (port, calls, server)
+    }
+
+    async fn restore_app(port: u16) -> (AppHandle, tempfile::TempDir) {
+        use crate::rclone::backend::{
+            BackendManager, CopySources, routing_transport::RoutingTransport, types::Backend,
+        };
+        use crate::utils::types::state::RcloneState;
+        let directory = tempfile::tempdir().unwrap();
+        let settings: AppSettingsManager =
+            rcman::SettingsManager::builder("restore-contract", "1.0.0")
+                .with_config_dir(directory.path())
+                .with_schema::<crate::services::settings::schema::AppSettings>()
+                .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
+                .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_QUICK_RUNS)
+                        .with_profiles(),
+                )
+                .with_sub_settings(
+                    rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_WORKFLOWS)
+                        .with_profiles(),
+                )
+                .build()
+                .unwrap();
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("A", "127.0.0.1", port),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        manager.switch_to(&settings, "A").await.unwrap();
+        let app = AppHandle::default();
+        app.manage(manager);
+        app.manage(settings);
+        app.manage(RcloneState::new(
+            reqwest::Client::new(),
+            std::sync::Arc::new(RoutingTransport::new(app.clone())),
+        ));
+        (app, directory)
+    }
+
+    /// What a OneDrive backup holds: the saved token and the drive the user chose.
+    fn onedrive_backup() -> Value {
+        json!({"od": {
+            "type": "onedrive",
+            "token": "{\"access_token\":\"saved\"}",
+            "drive_id": "B!MY-BUSINESS-DRIVE",
+            "drive_type": "business"
+        }})
+    }
+
+    /// The calls that carry a config, without the status polling that runs beside them.
+    fn config_calls(calls: &Calls) -> Vec<(String, Value)> {
+        calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(path, _)| path.starts_with("/config/") && path != "/config/oauthstatus")
+            .cloned()
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn a_restored_remote_is_stored_as_the_backup_has_it_and_rclone_asks_nothing() {
+        let (port, calls, server) = fake_rclone(false).await;
+        let (app, _directory) = restore_app(port).await;
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            upsert_remote_from_config("od", onedrive_backup(), &app),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        let calls = config_calls(&calls);
+        assert_eq!(calls.len(), 1, "{calls:?}");
+        let (path, body) = &calls[0];
+        assert_eq!(path, "/config/update");
+        // Without this rclone answers its own questions: it would pick the first OneDrive of the
+        // account in place of the saved one, and never return while the token is rejected.
+        assert_eq!(body["opt"], json!({"nonInteractive": true}));
+        assert_eq!(body["name"], "od");
+        assert_eq!(
+            body["parameters"],
+            json!({
+                "type": "onedrive",
+                "token": "{\"access_token\":\"saved\"}",
+                "drive_id": "B!MY-BUSINESS-DRIVE",
+                "drive_type": "business"
+            })
+        );
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn a_remote_that_does_not_exist_yet_is_created_the_same_way() {
+        let (port, calls, server) = fake_rclone(true).await;
+        let (app, _directory) = restore_app(port).await;
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            upsert_remote_from_config("od", onedrive_backup(), &app),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        let calls = config_calls(&calls);
+        let paths: Vec<&str> = calls.iter().map(|(path, _)| path.as_str()).collect();
+        assert_eq!(paths, ["/config/update", "/config/create"]);
+        let (_, create) = &calls[1];
+        assert_eq!(create["type"], "onedrive");
+        assert_eq!(create["opt"], json!({"nonInteractive": true}));
+        assert_eq!(create["parameters"]["drive_id"], "B!MY-BUSINESS-DRIVE");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn a_backup_without_a_type_cannot_be_created_and_says_why() {
+        let (port, calls, server) = fake_rclone(true).await;
+        let (app, _directory) = restore_app(port).await;
+
+        let error = upsert_remote_from_config("od", json!({"od": {"drive_id": "x"}}), &app)
+            .await
+            .unwrap_err();
+
+        assert!(error.contains("couldn't find type field"), "{error}");
+        assert_eq!(config_calls(&calls).len(), 1);
+        server.abort();
     }
 }

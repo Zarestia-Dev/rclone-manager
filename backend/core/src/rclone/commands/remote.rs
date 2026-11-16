@@ -1,6 +1,6 @@
 use crate::context::AppHandle;
 use log::{info, warn};
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -112,19 +112,6 @@ async fn call_config(
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }
 
-fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
-    let mut map = Map::new();
-
-    if let Some(Value::Object(user)) = user_opt {
-        map.extend(user);
-    }
-    if let Value::Object(protocol) = protocol_keys {
-        map.extend(protocol);
-    }
-
-    Value::Object(map)
-}
-
 async fn add_oauth_template(
     app: &AppHandle,
     is_local: bool,
@@ -164,59 +151,44 @@ async fn add_oauth_template(
     Ok(())
 }
 
-pub async fn create_remote_interactive(
-    app: AppHandle,
-    name: String,
-    rclone_type: String,
-    parameters: Option<HashMap<String, Value>>,
-    opt: Option<Value>,
-    backend_name: Option<String>,
-) -> Result<Value, String> {
-    let backend = app
-        .state::<BackendManager>()
-        .get_active_checked(backend_name.as_deref())
-        .await?;
-    let is_local = backend.is_local;
-    let transport = RoutingTransport::for_backend(app.clone(), backend);
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Interactive remote creation".to_string()),
-        "Starting interactive config flow".to_string(),
-        Some(json!({ "type": rclone_type })),
-    );
-
-    let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
-
-    let mut params_map = parameters.unwrap_or_default();
-    add_oauth_template(&app, is_local, &mut params_map).await?;
-
-    let body = json!({
-        "name": name,
-        "type": rclone_type,
-        "opt":  build_opt(opt, json!({ "nonInteractive": true })),
-        "parameters": params_map,
-    });
-
-    let value = call_config(transport.as_ref(), config::CREATE, body).await?;
-
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Interactive remote creation".to_string()),
-        "Config step completed".to_string(),
-        None,
-    );
-
-    Ok(value)
+/// The OAuth failures users hit most get their own message; anything else is returned unchanged.
+fn config_error(error: String) -> String {
+    if error.contains("failed to get oauth token") {
+        crate::localized_error!("backendErrors.remote.oauthFailed")
+    } else if error.contains("bind: address already in use") {
+        crate::localized_error!("backendErrors.remote.oauthPortInUse")
+    } else {
+        error
+    }
 }
 
-pub async fn continue_create_remote_interactive(
+fn config_body(
+    name: &str,
+    rclone_type: Option<String>,
+    parameters: HashMap<String, Value>,
+    opt: Option<Value>,
+) -> Value {
+    let mut body = json!({ "name": name, "parameters": parameters });
+    if let Some(rclone_type) = rclone_type {
+        body["type"] = json!(rclone_type);
+    }
+    if let Some(opt) = opt {
+        body["opt"] = opt;
+    }
+    body
+}
+
+/// Runs `config/create` (when `rclone_type` is set) or `config/update` and returns rclone's answer.
+///
+/// `opt` is rclone's own option block, so the caller decides how the call behaves. With
+/// `nonInteractive` rclone answers with the next question (its `State` is empty once the remote
+/// is complete) and `continue`, `state` and `result` answer it. Without `nonInteractive` rclone
+/// answers every question with its default.
+async fn configure_remote(
     app: AppHandle,
     name: String,
-    state_token: String,
-    result: Value,
-    parameters: Option<HashMap<String, Value>>,
+    rclone_type: Option<String>,
+    mut parameters: HashMap<String, Value>,
     opt: Option<Value>,
     backend_name: Option<String>,
 ) -> Result<Value, String> {
@@ -226,203 +198,79 @@ pub async fn continue_create_remote_interactive(
         .await?;
     let is_local = backend.is_local;
     let transport = RoutingTransport::for_backend(app.clone(), backend);
+    add_oauth_template(&app, is_local, &mut parameters).await?;
+
+    let (endpoint, operation) = if rclone_type.is_some() {
+        (config::CREATE, "Remote creation")
+    } else {
+        (config::UPDATE, "Remote update")
+    };
+    let body = config_body(&name, rclone_type, parameters, opt);
+
     log_operation(
         LogLevel::Info,
         Some(name.clone()),
-        Some("Interactive remote creation".to_string()),
-        "Continuing config flow".to_string(),
-        Some(json!({ "state": state_token })),
+        Some(operation.to_string()),
+        "Configuring remote".to_string(),
+        Some(json!({ "arguments": redact_value(&body, &app) })),
     );
 
     let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
 
-    let mut params_map = parameters.unwrap_or_default();
-    add_oauth_template(&app, is_local, &mut params_map).await?;
-
-    let body = json!({
-        "name": name,
-        "opt": build_opt(opt, json!({
-            "continue":       true,
-            "state":          state_token,
-            "result":         result,
-            "nonInteractive": true,
-        })),
-        "parameters": params_map,
-    });
-
-    let value = call_config(transport.as_ref(), config::UPDATE, body).await?;
+    let value = call_config(transport.as_ref(), endpoint, body)
+        .await
+        .map_err(|error| {
+            log_operation(
+                LogLevel::Error,
+                Some(name.clone()),
+                Some(operation.to_string()),
+                "Failed to configure remote".to_string(),
+                Some(json!({ "error": error })),
+            );
+            config_error(error)
+        })?;
 
     if let Err(e) = transport
         .rpc(crate::rclone::endpoints::fscache::CLEAR, None)
         .await
     {
-        warn!("Failed to clear fscache after interactive remote update: {e}");
+        warn!("Failed to clear fscache after remote config: {e}");
     }
-
     crate::services::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     log_operation(
         LogLevel::Info,
-        Some(name.clone()),
-        Some("Interactive remote creation".to_string()),
-        "Config step answered".to_string(),
+        Some(name),
+        Some(operation.to_string()),
+        "Remote config step completed".to_string(),
         None,
     );
 
     Ok(value)
 }
 
+/// Starts `config/create`; see [`configure_remote`] for how `opt` drives rclone.
 pub async fn create_remote(
     app: AppHandle,
     name: String,
+    rclone_type: String,
     parameters: HashMap<String, Value>,
     opt: Option<Value>,
     backend_name: Option<String>,
-) -> Result<(), String> {
-    let backend = app
-        .state::<BackendManager>()
-        .get_active_checked(backend_name.as_deref())
-        .await?;
-    let is_local = backend.is_local;
-    let transport = RoutingTransport::for_backend(app.clone(), backend);
-    let Some(remote_type) = parameters
-        .get("type")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-    else {
-        return Err("Missing remote type".into());
-    };
-
-    let mut params_map = parameters;
-    add_oauth_template(&app, is_local, &mut params_map).await?;
-
-    let mut body = json!({
-        "name":       name,
-        "type":       remote_type,
-        "parameters": params_map,
-    });
-
-    if let Some(ref extra) = opt {
-        body["opt"] = extra.clone();
-    }
-
-    let redacted_payload = redact_value(&body, &app);
-
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Remote creation".to_string()),
-        "Creating remote".to_string(),
-        Some(json!({
-            "arguments": redacted_payload,
-        })),
-    );
-
-    let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
-
-    call_config(transport.as_ref(), config::CREATE, body)
-        .await
-        .map_err(|e| {
-            log_operation(
-                LogLevel::Error,
-                Some(name.clone()),
-                Some("Remote creation".to_string()),
-                "Failed to create remote".to_string(),
-                Some(json!({ "error": e })),
-            );
-            match e {
-                ref s if s.contains("failed to get oauth token") => {
-                    "OAuth authentication failed or was not completed".into()
-                }
-                ref s if s.contains("bind: address already in use") => "Port already in use".into(),
-                _ => e,
-            }
-        })?;
-
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Remote creation".to_string()),
-        "Remote created successfully".to_string(),
-        None,
-    );
-
-    crate::services::bridge::emit(REMOTE_CACHE_CHANGED, &name);
-
-    Ok(())
+) -> Result<Value, String> {
+    configure_remote(app, name, Some(rclone_type), parameters, opt, backend_name).await
 }
 
+/// Runs `config/update`, which keeps the keys it is not given. It also answers the questions of
+/// a `config/create` that stopped early (`continue`, `state` and `result` in `opt`).
 pub async fn update_remote(
     app: AppHandle,
     name: String,
     parameters: HashMap<String, Value>,
     opt: Option<Value>,
     backend_name: Option<String>,
-) -> Result<(), String> {
-    let backend = app
-        .state::<BackendManager>()
-        .get_active_checked(backend_name.as_deref())
-        .await?;
-    let is_local = backend.is_local;
-    let transport = RoutingTransport::for_backend(app.clone(), backend);
-    let Some(_remote_type) = parameters.get("type").and_then(|v| v.as_str()) else {
-        return Err("Missing remote type".into());
-    };
-
-    let mut params_map = parameters;
-    add_oauth_template(&app, is_local, &mut params_map).await?;
-
-    let mut body = json!({ "name": name, "parameters": params_map });
-
-    if let Some(ref extra) = opt {
-        body["opt"] = extra.clone();
-    }
-
-    let redacted_payload = redact_value(&body, &app);
-
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Remote update".to_string()),
-        "Updating remote".to_string(),
-        Some(json!({
-            "arguments": redacted_payload,
-        })),
-    );
-
-    let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
-
-    call_config(transport.as_ref(), config::UPDATE, body)
-        .await
-        .map_err(|e| {
-            log_operation(
-                LogLevel::Error,
-                Some(name.clone()),
-                Some("Remote update".to_string()),
-                "Failed to update remote".to_string(),
-                Some(json!({ "error": e })),
-            );
-            e
-        })?;
-
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Remote update".to_string()),
-        "Remote updated successfully".to_string(),
-        None,
-    );
-
-    crate::services::bridge::emit(REMOTE_CACHE_CHANGED, &name);
-
-    if let Err(e) = transport
-        .rpc(crate::rclone::endpoints::fscache::CLEAR, None)
-        .await
-    {
-        warn!("Failed to clear fscache after remote update: {e}");
-    }
-
-    Ok(())
+) -> Result<Value, String> {
+    configure_remote(app, name, None, parameters, opt, backend_name).await
 }
 
 pub async fn delete_remote(
@@ -491,6 +339,50 @@ pub async fn delete_remote(
 mod tests {
     use super::*;
 
+    #[test]
+    fn config_body_passes_rclones_option_block_through() {
+        let parameters = HashMap::from([("host".to_string(), json!("example.com"))]);
+        let opt = json!({
+            "nonInteractive": true,
+            "continue": true,
+            "state": "password",
+            "result": "a@b.c"
+        });
+        let create = config_body(
+            "probe",
+            Some("sugarsync".into()),
+            parameters.clone(),
+            Some(opt.clone()),
+        );
+        assert_eq!(
+            create,
+            json!({
+                "name": "probe",
+                "type": "sugarsync",
+                "parameters": { "host": "example.com" },
+                "opt": opt
+            })
+        );
+        let update = config_body("probe", None, parameters, None);
+        assert_eq!(
+            update,
+            json!({ "name": "probe", "parameters": { "host": "example.com" } })
+        );
+    }
+
+    #[test]
+    fn oauth_failures_get_their_own_message_and_other_errors_pass_through() {
+        assert_eq!(
+            config_error("loopback: failed to get oauth token: EOF".into()),
+            "backendErrors.remote.oauthFailed"
+        );
+        assert_eq!(
+            config_error("listen tcp: bind: address already in use".into()),
+            "backendErrors.remote.oauthPortInUse"
+        );
+        assert_eq!(config_error("no region set".into()), "no region set");
+    }
+
     #[tokio::test]
     async fn oauth_templates_preserve_explicit_settings_and_missing_paths() {
         let app = AppHandle::default();
@@ -556,6 +448,18 @@ mod tests {
         let expected = Some("another-backend".to_string());
         assert!(
             create_remote(
+                app.clone(),
+                "drive".into(),
+                "drive".into(),
+                HashMap::new(),
+                None,
+                expected.clone()
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            update_remote(
                 app.clone(),
                 "drive".into(),
                 HashMap::new(),

@@ -1423,8 +1423,8 @@
           "description": "Heslá sú už zamaskované – krok maskovania sa preskočí"
         },
         "nonInteractive": {
-          "label": "Neinteraktívne",
-          "description": "Namiesto výzvy vráti blok otázky vo formáte JSON; pre konfiguračné postupy riadené aplikáciou"
+          "label": "Postupné nastavenie",
+          "description": "Pýtať sa na každú otázku rclone samostatne namiesto odpovedania predvolenými hodnotami"
         },
         "all": {
           "label": "Všetky otázky",
@@ -2559,6 +2559,7 @@
         "noProfiles": "Nie sú nakonfigurované žiadne profily",
         "placeholder": "Vybrať profil",
         "inUseWarning": "Profil „{{name}}“ nie je možné odstrániť – používa ho aktívnych operácií ({{type}}): {{count}}",
+        "nameExists": "Profil s názvom \"{{name}}\" už existuje",
         "disabledReason": {
           "inUse": "Profil používa spustená operácia ({{operation}}). Najprv ju zastavte."
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "Odomknutie zlyhalo: {{error}}"
     },
     "remote": {
-      "configFailed": "Konfigurácia vzdialeného úložiska zlyhala: {{error}}",
+      "oauthFailed": "Overenie OAuth zlyhalo alebo nebolo dokončené",
+      "oauthPortInUse": "Port na prihlásenie cez OAuth sa už používa",
       "authExpired": "Overenie vzdialeného úložiska vypršalo alebo je neplatné. Overte vzdialené úložisko znova.",
       "quotaExceeded": "Prekročený limit požiadaviek API alebo kvóta úložiska vzdialeného úložiska. Skúste to neskôr.",
       "networkError": "Vzdialený server je nedostupný. Skontrolujte sieťové pripojenie a adresu vzdialeného úložiska.",

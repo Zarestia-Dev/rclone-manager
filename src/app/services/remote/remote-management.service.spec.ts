@@ -267,6 +267,68 @@ describe('RemoteManagementService', () => {
     expect(pathService.isLocalPath('stale:')).toBe(true);
   });
 
+  describe('remote configuration', () => {
+    const question = { State: '', Option: null, Error: '', Result: '' };
+
+    it('creates a remote with the options the caller chose and returns rclone’s answer', async () => {
+      const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+      api.mockResolvedValueOnce(question);
+      const result = await service.createRemote(
+        'my-drive',
+        'drive',
+        { client_id: 'abc' },
+        { obscure: true, nonInteractive: true },
+        'Local'
+      );
+      expect(result).toBe(question);
+      expect(api).toHaveBeenCalledExactlyOnceWith('create_remote', {
+        name: 'my-drive',
+        rcloneType: 'drive',
+        parameters: { client_id: 'abc' },
+        opt: { obscure: true, nonInteractive: true },
+        backendName: 'Local',
+      });
+    });
+
+    it('does not add nonInteractive on its own: without it rclone answers its questions itself', async () => {
+      const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+      api.mockResolvedValue({});
+      await service.createRemote('r', 'drive', {});
+      await service.updateRemote('r', {});
+      expect(api.mock.calls.map(([, args]) => args)).toEqual([
+        { name: 'r', rcloneType: 'drive', parameters: {} },
+        { name: 'r', parameters: {} },
+      ]);
+    });
+
+    it('updates a remote and answers questions through rclone continue/state/result', async () => {
+      const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+      api.mockResolvedValueOnce(question);
+      await service.updateRemote(
+        'my-drive',
+        { root_folder_id: 'x' },
+        { nonInteractive: true, continue: true, state: 'password', result: 'a@b.c' }
+      );
+      expect(api).toHaveBeenCalledExactlyOnceWith('update_remote', {
+        name: 'my-drive',
+        parameters: { root_folder_id: 'x' },
+        opt: { nonInteractive: true, continue: true, state: 'password', result: 'a@b.c' },
+      });
+    });
+
+    it('knows which remote types ask questions that need the user', () => {
+      expect(service.isInteractiveRemote('OneDrive')).toBe(true);
+      expect(service.isInteractiveRemote('drive')).toBe(false);
+    });
+
+    it('leaves error presentation to the caller instead of toasting twice', async () => {
+      const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+      api.mockRejectedValueOnce(new Error('offline'));
+      await expect(service.createRemote('r', 's3', {})).rejects.toThrow('offline');
+      expect(TestBed.inject(NotificationService).showError).not.toHaveBeenCalled();
+    });
+  });
+
   it('shares catalogue requests from different screens', async () => {
     const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
     api.mockResolvedValueOnce({ gdrive: { type: 'drive' } });

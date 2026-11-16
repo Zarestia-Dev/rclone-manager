@@ -35,7 +35,7 @@ import {
 import { ConfigResourceState } from './utils/config-resource-state';
 import { ConfigEditorTools } from '../../shared/remote-config/config-editor-tools';
 import { INITIAL_COMMAND_OPTIONS } from './utils/command-options.util';
-import { findUniqueName } from './utils/unique-name.util';
+import { findCloneName, findUniqueName } from './utils/unique-name.util';
 import {
   buildProfileChanges,
   createProfileBaseline,
@@ -136,8 +136,8 @@ export class RemoteConfigStateService {
 
   readonly remoteConfigForm = this.createRemoteConfigForm();
 
-  readonly stepStatuses = Object.fromEntries(
-    [...FLAG_TYPES, 'runtimeRemote'].map(type => {
+  private readonly stepStatuses = Object.fromEntries(
+    PROFILE_TYPES.map(type => {
       const fg =
         type === 'runtimeRemote'
           ? this.runtimeRemoteConfigGroup
@@ -161,7 +161,7 @@ export class RemoteConfigStateService {
       startWith(this.remoteForm.controls['type'].value as string)
     )
   );
-  readonly remoteNameSignal = toSignal(
+  private readonly remoteNameSignal = toSignal(
     this.remoteForm.controls['name'].valueChanges.pipe(
       startWith(this.remoteForm.controls['name'].value as string)
     )
@@ -219,9 +219,6 @@ export class RemoteConfigStateService {
     ) as unknown as Record<FlagType, RcConfigOption[]>;
   }
 
-  readonly PROFILE_TYPES: readonly SharedProfileType[] = PROFILE_TYPES;
-  readonly JOB_TYPES: ReadonlySet<SharedProfileType> = JOB_TYPES;
-
   readonly profileState = signal(
     this.profileRecord(() => ({ mode: 'view' as 'view' | 'edit' | 'add', tempName: '' }))
   );
@@ -268,7 +265,7 @@ export class RemoteConfigStateService {
   });
 
   private profileRecord<T>(factory: (type: SharedProfileType) => T): Record<SharedProfileType, T> {
-    return Object.fromEntries(this.PROFILE_TYPES.map(t => [t, factory(t)] as const)) as Record<
+    return Object.fromEntries(PROFILE_TYPES.map(t => [t, factory(t)] as const)) as Record<
       SharedProfileType,
       T
     >;
@@ -633,15 +630,8 @@ export class RemoteConfigStateService {
 
     if (dialogData?.cloneFrom) {
       this.initialConfig = await this.remoteFacade.cloneRemote(dialogData.cloneFrom);
-      if (!this.initialConfig) {
-        const errorMsg = this.translate.instant('modals.remoteConfig.errors.loadFailed');
-        this.notificationService.showError(
-          errorMsg !== 'modals.remoteConfig.errors.loadFailed'
-            ? errorMsg
-            : `Failed to load remote configuration for cloning: ${dialogData.cloneFrom}`
-        );
-        throw new Error(`Failed to clone remote: ${dialogData.cloneFrom}`);
-      }
+      // The modal that opened this state tells the user when init fails.
+      if (!this.initialConfig) throw new Error(`Failed to clone remote: ${dialogData.cloneFrom}`);
     } else if (dialogData?.name !== undefined && dialogData?.name !== null) {
       this.initialConfig = {
         config: this.remoteFacade.getRemote(dialogData.name)?.config,
@@ -658,32 +648,18 @@ export class RemoteConfigStateService {
   }
 
   private async loadExistingRemotes(): Promise<void> {
-    await this.safeLoad(
-      () => this.remoteManagementService.getRemotes(),
-      value => {
-        this.existingRemotes.set(value);
-        this.refreshRemoteNameValidator();
-      }
-    );
+    const remotes = await this.remoteManagementService.getRemotes();
+    if (this.destroyRef.destroyed) return;
+    this.existingRemotes.set(remotes);
+    this.refreshRemoteNameValidator();
   }
 
   private async loadRemoteTypes(): Promise<void> {
-    await this.safeLoad(
-      () => this.remoteManagementService.getRemoteTypes(),
-      value => {
-        this.remoteTypes.set(
-          value.map(p => ({ value: p.name, label: p.description, overview: p.overview }))
-        );
-      }
+    const providers = await this.remoteManagementService.getRemoteTypes();
+    if (this.destroyRef.destroyed) return;
+    this.remoteTypes.set(
+      providers.map(p => ({ value: p.name, label: p.description, overview: p.overview }))
     );
-  }
-
-  private async safeLoad<T>(
-    loader: () => Promise<T>,
-    onSuccess: (value: T) => void
-  ): Promise<void> {
-    const value = await loader();
-    if (!this.destroyRef.destroyed) onSuccess(value);
   }
 
   private async ensureFlagFields(type: Exclude<FlagType, 'serve'>): Promise<boolean> {
@@ -793,7 +769,7 @@ export class RemoteConfigStateService {
     this.currentStep.set(idx !== -1 ? idx + 1 : 1);
   }
 
-  isNewRemoteCreation(): boolean {
+  private isNewRemoteCreation(): boolean {
     return (
       !this.dialogData().name &&
       !this.dialogData().cloneFrom &&
@@ -878,7 +854,7 @@ export class RemoteConfigStateService {
     this.profileBaseline = createProfileBaseline(this.initialConfig);
     const newProfiles = { ...this.profiles() },
       newSelected = { ...this.selectedProfileName() };
-    for (const type of this.PROFILE_TYPES) {
+    for (const type of PROFILE_TYPES) {
       newProfiles[type] = structuredClone(this.profileBaseline[type] ?? {});
       newSelected[type] =
         dialogData?.targetProfile &&
@@ -888,7 +864,7 @@ export class RemoteConfigStateService {
     }
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelected);
-    for (const type of this.PROFILE_TYPES) {
+    for (const type of PROFILE_TYPES) {
       const name = newSelected[type];
       if (name && !Object.hasOwn(newProfiles[type], name)) this.profileFormOwners.set(type, name);
     }
@@ -901,7 +877,7 @@ export class RemoteConfigStateService {
       autoAddProfile &&
       editTarget &&
       editTarget !== 'remote' &&
-      this.PROFILE_TYPES.includes(editTarget)
+      PROFILE_TYPES.includes(editTarget)
     )
       this.startAddProfile(editTarget);
   }
@@ -912,7 +888,7 @@ export class RemoteConfigStateService {
     action: 'rename' | 'delete'
   ): { disabled: boolean; reason: string } {
     const t = type as SharedProfileType;
-    const isJob = this.JOB_TYPES.has(t);
+    const isJob = JOB_TYPES.has(t);
     const isInUseCheckable =
       (action === 'rename' && isJob) ||
       (action === 'delete' &&
@@ -956,7 +932,7 @@ export class RemoteConfigStateService {
       return { inUse: count > 0, count, opType: 'profile' };
     }
     const r = this.currentRemoteName();
-    if (this.JOB_TYPES.has(type)) {
+    if (JOB_TYPES.has(type)) {
       const j = this.jobManagementService.getActiveJobsForRemote(r, name);
       return { inUse: j.length > 0, count: j.length, opType: 'job' };
     }
@@ -1017,20 +993,26 @@ export class RemoteConfigStateService {
       newName = state.tempName.trim();
     if (!newName) return;
 
+    const oldName = this.selectedProfileName()[t];
+    // Keeping the name while renaming is not a clash; any other existing name would be overwritten.
+    if (
+      !(state.mode === 'edit' && newName === oldName) &&
+      this.profileNamesMap()[t].includes(newName)
+    ) {
+      this.notificationService.showWarning(
+        this.translate.instant('modals.remoteConfig.profile.nameExists', { name: newName })
+      );
+      return;
+    }
+
     if (state.mode === 'add') {
       this.profiles.update(p => ({ ...p, [t]: { ...p[t], [newName]: {} } }));
       void this.selectProfile(t, newName);
     } else if (state.mode === 'edit') {
-      const oldName = this.selectedProfileName()[t];
-      if (!oldName) {
+      if (!oldName || oldName === newName) {
         this.cancelProfileEdit(t);
         return;
       }
-      if (oldName === newName) {
-        this.cancelProfileEdit(t);
-        return;
-      }
-      if (this.profiles()[t][newName] !== undefined) return;
       this.saveCurrentProfile(t);
       const data = this.displayedProfiles()[t][oldName];
       this.profiles.update(p => {
@@ -1190,8 +1172,7 @@ export class RemoteConfigStateService {
     const remote = targetRemote || this.currentRemoteName();
     if (!remote) {
       this.notificationService.showWarning(
-        this.translate.instant('modals.remoteConfig.warnings.selectRemoteToSave') ||
-          'Please select a remote to save profiles.'
+        this.translate.instant('modals.remoteConfig.warnings.selectRemoteToSave')
       );
       return false;
     }
@@ -1201,7 +1182,7 @@ export class RemoteConfigStateService {
       if (this.loadFailed()) return false;
       this.saveCurrentProfile(activeType, true);
     } else {
-      this.PROFILE_TYPES.filter(t => this.remoteConfigForm.get(`${t}Config`)?.dirty).forEach(t =>
+      PROFILE_TYPES.filter(t => this.remoteConfigForm.get(`${t}Config`)?.dirty).forEach(t =>
         this.saveCurrentProfile(t)
       );
     }
@@ -1225,8 +1206,7 @@ export class RemoteConfigStateService {
       const selName =
         (activeType && this.selectedProfileName()[activeType]) || DEFAULT_PROFILE_NAME;
       this.notificationService.showSuccess(
-        this.translate.instant('modals.remoteConfig.profileSaved', { profile: selName, remote }) ||
-          `Profile "${selName}" saved for remote "${remote}"`
+        this.translate.instant('modals.remoteConfig.profileSaved', { profile: selName, remote })
       );
       return true;
     } catch (e) {
@@ -1249,17 +1229,11 @@ export class RemoteConfigStateService {
     this.profileFormOwners.set(t, n);
   }
 
-  private saveCurrentTargetProfile(target: NonNullable<EditTarget>): void {
-    if (target !== 'remote') {
-      this.saveCurrentProfile(target);
-    }
-  }
-
   navigateToShared(type: EditTarget): void {
     if (!type) return;
     const curr = this.editTarget();
     if (curr) {
-      this.saveCurrentTargetProfile(curr);
+      this.saveCurrentProfile(curr);
       this.editStack.update(s => [...s, curr]);
     }
     this.editTarget.set(type);
@@ -1277,7 +1251,7 @@ export class RemoteConfigStateService {
     const target = stack[stack.length - 1];
     if (target === undefined) return;
     const curr = this.editTarget();
-    if (curr) this.saveCurrentTargetProfile(curr);
+    if (curr) this.saveCurrentProfile(curr);
     this.editStack.update(s => s.slice(0, -1));
     this.editTarget.set(target);
     const idx = this.stepConfigs().findIndex(s => s.type === target);
@@ -1658,10 +1632,8 @@ export class RemoteConfigStateService {
     patchConfigOptions(options, { ...defaults, ...incoming }, fields);
   }
 
-  generateNewCloneName(): void {
+  private generateNewCloneName(): void {
     const currentName = this.remoteForm.get('name')?.value || '';
-    const cleanBase = currentName.replace(/-(?:clone|\d+)+$/, '');
-    const name = findUniqueName(`${cleanBase || 'remote'}-clone`, this.existingRemotes());
-    this.remoteForm.get('name')?.setValue(name);
+    this.remoteForm.get('name')?.setValue(findCloneName(currentName, this.existingRemotes()));
   }
 }

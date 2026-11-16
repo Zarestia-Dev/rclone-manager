@@ -18,6 +18,39 @@ pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, S
     get_all_workflows(&manager)
 }
 
+/// A workflow as a list of what uses a remote shows it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct WorkflowRef {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// The workflows that have a node using `remote_name`: what deleting the remote would break.
+pub async fn list_workflows_using_remote(
+    app: AppHandle,
+    remote_name: String,
+) -> Result<Vec<WorkflowRef>, String> {
+    let manager = app.state::<AppSettingsManager>();
+    let quick_run_remotes: std::collections::HashMap<String, String> =
+        crate::services::flow::quick_run::commands::get_all_quick_runs(&manager)?
+            .into_iter()
+            .map(|quick_run| (quick_run.id, quick_run.remote_name))
+            .collect();
+    Ok(get_all_workflows(&manager)?
+        .into_iter()
+        .filter(|workflow| {
+            workflow.mentions_remote(&remote_name, &|id| quick_run_remotes.get(id).cloned())
+        })
+        .map(|workflow| WorkflowRef {
+            id: workflow.id,
+            name: workflow.name,
+            description: workflow.description,
+        })
+        .collect())
+}
+
 /// The latest run of every workflow on the active backend: the ones under way and the
 /// last that ended. Run state lives in the backend and is only announced by events, so
 /// a view opened after a run began (an auto-start, a schedule, a file watcher, or a

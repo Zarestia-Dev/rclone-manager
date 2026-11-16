@@ -73,21 +73,8 @@ export class InteractiveConfigStepComponent {
     const current = this.answer();
     if (current === null || current === undefined) return null;
 
-    // 1. Direct value match
-    let idx = examples.findIndex(ex => ex.Value === current);
-    if (idx >= 0) return idx;
-
-    // 2. Loose stringified match
-    idx = examples.findIndex(ex => String(ex.Value) === String(current));
-    if (idx >= 0) return idx;
-
-    // 3. 1-based numeric index fallback
-    const num = parseInt(String(current), 10);
-    if (!isNaN(num) && num >= 1 && num <= examples.length) {
-      return num - 1;
-    }
-
-    return null;
+    const idx = examples.findIndex(ex => String(ex.Value) === String(current));
+    return idx >= 0 ? idx : null;
   });
 
   readonly selectedDisplayValue = computed(() =>

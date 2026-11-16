@@ -8,6 +8,7 @@ use crate::rclone::queries::get_rclone_config_file;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
+use rcman::backup::ExternalConfig;
 use std::path::PathBuf;
 
 // BACKUP COMMAND
@@ -74,7 +75,7 @@ pub async fn backup_settings(
             options = options.include_sub_settings(category);
         }
         if category == "remotes" && encrypted {
-            options = options.external(rclone_conf(rclone_config_path(&app_handle).await?));
+            options = with_external(options, rclone_conf(rclone_config_path(&app_handle).await?));
         }
         options = options.filename_suffix(category);
     }
@@ -94,9 +95,12 @@ pub async fn backup_settings(
 
         let all_configs = backend_manager.remote_cache().await.get_configs().await;
         if let Some(remote_config) = all_configs.get(name) {
-            options = options.external(remote_definition(name, remote_config).map_err(
-                |e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string()),
-            )?);
+            options = with_external(
+                options,
+                remote_definition(name, remote_config).map_err(
+                    |e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string()),
+                )?,
+            );
         }
     }
 
@@ -134,6 +138,14 @@ pub async fn backup_settings(
         "backendSuccess.backup.created",
         "path" => backup_path.display()
     ))
+}
+
+/// Supplies `config` to an export that is not a full one, and names it in the allow-list.
+///
+/// rcman gathers external configs for a full export, or when the export names some: a config
+/// supplied alone is dropped without a word, and the archive has no rclone side at all.
+fn with_external(options: rcman::BackupOptions, config: ExternalConfig) -> rcman::BackupOptions {
+    options.include_external(config.id.clone()).external(config)
 }
 
 pub(super) async fn rclone_config_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
@@ -306,6 +318,80 @@ mod tests {
         let mut expected: Vec<_> = stores.iter().map(|store| (*store).to_owned()).collect();
         expected.sort();
         assert_eq!(exported, expected);
+    }
+
+    fn exported_external_ids(manager: &AppSettingsManager, path: &std::path::Path) -> Vec<String> {
+        manager
+            .backup()
+            .analyze(path)
+            .unwrap()
+            .manifest
+            .contents
+            .external_configs
+    }
+
+    // rcman drops an external config that is supplied to an export which is not a full one
+    // unless the export also names it, and the archive then has no rclone side without any error.
+    // The password makes this export slow, so its manager has a name of its own: managers of one
+    // name share an operation lock, and the other tests would meet it busy.
+    #[test]
+    fn exports_that_supply_an_rclone_side_keep_it_in_the_archive() {
+        let directory = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let manager: AppSettingsManager =
+            rcman::SettingsManager::builder("rclone-side-export-contract", "1.0.0")
+                .with_config_dir(directory.path())
+                .with_schema::<crate::services::settings::schema::AppSettings>()
+                .with_sub_settings(rcman::SubSettingsConfig::new(SUB_REMOTES).with_profiles())
+                .build()
+                .unwrap();
+        manager
+            .sub_settings(SUB_REMOTES)
+            .unwrap()
+            .set("onedrive", &serde_json::json!({"name": "onedrive"}))
+            .unwrap();
+        let config_file = directory.path().join("rclone.conf");
+        std::fs::write(&config_file, "[onedrive]\ntype = onedrive\n").unwrap();
+        let encrypted = || {
+            rcman::BackupOptions::new()
+                .output_dir(output.path())
+                .include_settings(false)
+                .secret_policy(rcman::SecretBackupPolicy::EncryptedOnly)
+                .password("correct horse battery")
+        };
+
+        // One remote: its definition from rclone goes with its profiles.
+        let single = manager
+            .backup()
+            .create(&with_external(
+                encrypted().export_type(rcman::ExportType::Single {
+                    settings_type: "remotes".into(),
+                    name: "onedrive".into(),
+                }),
+                remote_definition(
+                    "onedrive",
+                    &serde_json::json!({"type": "onedrive", "drive_id": "B!MY-DRIVE"}),
+                )
+                .unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(
+            exported_external_ids(&manager, &single),
+            ["remote:onedrive"]
+        );
+
+        // The remotes category: the whole rclone config goes with the profiles.
+        let category = manager
+            .backup()
+            .create(&with_external(
+                encrypted()
+                    .export_type(rcman::ExportType::SettingsOnly)
+                    .include_sub_settings(SUB_REMOTES)
+                    .filename_suffix(SUB_REMOTES),
+                rclone_conf(config_file),
+            ))
+            .unwrap();
+        assert_eq!(exported_external_ids(&manager, &category), ["rclone.conf"]);
     }
 
     #[test]

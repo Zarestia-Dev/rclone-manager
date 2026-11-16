@@ -1423,8 +1423,8 @@
           "description": "Passwords are already obscured - skip the obscuring step"
         },
         "nonInteractive": {
-          "label": "Non-Interactive",
-          "description": "Return a JSON question blob instead of prompting; for app-driven config flows"
+          "label": "Step-by-step setup",
+          "description": "Ask each rclone question one by one instead of answering with the defaults"
         },
         "all": {
           "label": "All Questions",
@@ -2559,6 +2559,7 @@
         "noProfiles": "No profiles configured",
         "placeholder": "Select Profile",
         "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
+        "nameExists": "A profile named \"{{name}}\" already exists",
         "disabledReason": {
           "inUse": "Profile is in use by a running {{operation}}. Stop it first."
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "Unlock failed: {{error}}"
     },
     "remote": {
-      "configFailed": "Failed to configure remote: {{error}}",
+      "oauthFailed": "OAuth authentication failed or was not completed",
+      "oauthPortInUse": "The OAuth sign-in port is already in use",
       "authExpired": "Remote authentication expired or invalid. Please re-authenticate the remote.",
       "quotaExceeded": "Remote storage API rate limit or storage quota exceeded. Please try again later.",
       "networkError": "Unable to reach the remote server. Please check your network connection and remote address.",

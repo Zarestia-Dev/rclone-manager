@@ -89,9 +89,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (list_serves, $crate::rclone::queries::list_serves, []);
 
             // REMOTE MANAGEMENT
-            (create_remote_interactive, $crate::rclone::commands::remote::create_remote_interactive, [name: String, rclone_type: String, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
-            (continue_create_remote_interactive, $crate::rclone::commands::remote::continue_create_remote_interactive, [name: String, state_token: String, result: serde_json::Value, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
-            (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
+            (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, rclone_type: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
             (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
             (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String, backend_name: Option<String>]);
             (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
@@ -229,6 +227,7 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // WORKFLOWS (FLOW WORKSPACE)
             (list_workflows, $crate::services::flow::workflow::commands::list_workflows, []);
+            (list_workflows_using_remote, $crate::services::flow::workflow::commands::list_workflows_using_remote, [remote_name: String]);
             (get_workflow_runs, $crate::services::flow::workflow::commands::get_workflow_runs, []);
             (create_workflow, $crate::services::flow::workflow::commands::create_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);
             (update_workflow, $crate::services::flow::workflow::commands::update_workflow, [workflow: $crate::services::flow::workflow::types::WorkflowInput]);

@@ -5,6 +5,7 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
 import {
   WorkflowChecks,
   WorkflowDefinition,
+  WorkflowRef,
   WorkflowTemplate,
 } from '../../flow/workflow/types/workflow.types';
 import { toPersistableWorkflow } from '../../flow/workflow/utils/workflow-persist.util';
@@ -44,6 +45,11 @@ export class WorkflowStorageService extends TauriBaseService {
       .subscribe(() => {
         void this.loadAllWorkflows();
       });
+  }
+
+  /** The workflows with a node that uses `remoteName`: what deleting that remote would break. */
+  listWorkflowsUsingRemote(remoteName: string): Promise<WorkflowRef[]> {
+    return this.invokeCommand<WorkflowRef[]>('list_workflows_using_remote', { remoteName });
   }
 
   /**

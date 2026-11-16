@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
@@ -33,6 +34,7 @@ import { RcloneOptionTranslatePipe } from '@app/pipes';
 })
 export class ObscureToolComponent {
   private readonly remoteService = inject(RemoteManagementService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   readonly translate = inject(TranslateService);
 
   // Inputs & Outputs
@@ -70,7 +72,7 @@ export class ObscureToolComponent {
       this.obscuredText.set(res);
     } catch (e) {
       console.error('Failed to obscure string:', e);
-      this.error.set(e instanceof Error ? e.message : 'Failed to obscure value');
+      this.error.set(this.backendTranslation.translateBackendMessage(e));
       this.obscuredText.set('');
     } finally {
       this.isProcessing.set(false);

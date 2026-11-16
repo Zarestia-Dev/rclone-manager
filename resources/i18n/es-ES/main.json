@@ -1420,8 +1420,8 @@
           "description": "Las contraseñas ya están oscurecidas: omita el paso de oscurecimiento"
         },
         "nonInteractive": {
-          "label": "No interactivo",
-          "description": "Devuelve un bloque de preguntas JSON en lugar de solicitarlo; para flujos de configuración controlados por la aplicación"
+          "label": "Configuración paso a paso",
+          "description": "Hacer cada pregunta de rclone una por una en lugar de responder con los valores predeterminados"
         },
         "all": {
           "label": "Todas las preguntas",
@@ -2518,6 +2518,7 @@
         "noProfiles": "Sin perfiles configurados",
         "placeholder": "Seleccionar perfil",
         "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
+        "nameExists": "Ya existe un perfil llamado \"{{name}}\"",
         "disabledReason": {
           "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero."
         },
@@ -3387,7 +3388,8 @@
       "unlockFailed": "Desbloqueo fallido: {{error}}"
     },
     "remote": {
-      "configFailed": "Error al configurar el remoto: {{error}}",
+      "oauthFailed": "La autenticación OAuth falló o no se completó",
+      "oauthPortInUse": "El puerto de inicio de sesión OAuth ya está en uso",
       "authExpired": "La autenticación remota ha expirado o no es válida. Vuelva a autenticar el almacenamiento remoto.",
       "quotaExceeded": "Límite de tasa de API o cuota de almacenamiento excedida. Inténtelo más tarde.",
       "networkError": "No se puede conectar con el servidor remoto. Verifique su red y dirección remota.",

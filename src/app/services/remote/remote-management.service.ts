@@ -48,12 +48,6 @@ interface RemoteMetadataState {
   request?: { controller: AbortController; promise: Promise<FsInfo> };
 }
 
-interface WriteRemoteOptions {
-  successKey: string;
-  successParams?: Record<string, string>;
-  errorKey: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
   private readonly remoteOpsService = inject(RemoteFileOperationsService);
@@ -275,63 +269,45 @@ export class RemoteManagementService extends TauriBaseService {
     return request;
   }
 
+  /**
+   * Runs `config/create`. `opt` is rclone's own option block (`obscure`, `all`, ...): without
+   * `nonInteractive` rclone answers every question with its default and returns an empty
+   * object; with it, the answer is the next question, or an empty `State` once the remote is
+   * complete.
+   */
   async createRemote(
     name: string,
+    type: string,
     parameters: ConfigRecord,
     opt?: Record<string, unknown>,
     backendName?: string
-  ): Promise<void> {
-    await this.writeRemote(
-      'create_remote',
+  ): Promise<RcConfigQuestionResponse> {
+    return this.invokeCommand('create_remote', {
       name,
+      rcloneType: type,
       parameters,
-      opt,
-      {
-        successKey: 'backendSuccess.remote.created',
-        successParams: { name },
-        errorKey: 'backendErrors.remote.configFailed',
-      },
-      backendName
-    );
+      ...(opt && { opt }),
+      ...(backendName && { backendName }),
+    });
   }
 
+  /**
+   * Runs `config/update`, which keeps the keys it is not given. With `nonInteractive`, pass
+   * `continue`, `state` and `result` in `opt` to answer the question of a flow that
+   * `createRemote` or an earlier `updateRemote` started.
+   */
   async updateRemote(
     name: string,
     parameters: ConfigRecord,
     opt?: Record<string, unknown>,
     backendName?: string
-  ): Promise<void> {
-    await this.writeRemote(
-      'update_remote',
+  ): Promise<RcConfigQuestionResponse> {
+    return this.invokeCommand('update_remote', {
       name,
       parameters,
-      opt,
-      {
-        successKey: 'backendSuccess.remote.updated',
-        successParams: { name },
-        errorKey: 'backendErrors.remote.configFailed',
-      },
-      backendName
-    );
-  }
-
-  private async writeRemote(
-    command: string,
-    name: string,
-    parameters: ConfigRecord,
-    opt: Record<string, unknown> | undefined,
-    options: WriteRemoteOptions,
-    backendName?: string
-  ): Promise<void> {
-    await this.invokeWithNotification(
-      command,
-      { name, parameters, ...(opt && { opt }), ...(backendName && { backendName }) },
-      {
-        successKey: options.successKey,
-        successParams: options.successParams,
-        errorKey: options.errorKey,
-      }
-    );
+      ...(opt && { opt }),
+      ...(backendName && { backendName }),
+    });
   }
 
   async deleteRemote(name: string, backendName?: string): Promise<void> {
@@ -347,40 +323,6 @@ export class RemoteManagementService extends TauriBaseService {
     return abortableRequest(this.scope.signal, () =>
       this.invokeCommand<LocalDrive[]>('get_local_drives')
     );
-  }
-
-  async startRemoteConfigInteractive(
-    name: string,
-    type: string,
-    parameters?: Record<string, unknown>,
-    opt?: Record<string, unknown>,
-    backendName?: string
-  ): Promise<RcConfigQuestionResponse> {
-    return this.invokeCommand('create_remote_interactive', {
-      name,
-      rcloneType: type,
-      ...(parameters !== undefined && { parameters }),
-      ...(opt !== undefined && { opt }),
-      ...(backendName && { backendName }),
-    });
-  }
-
-  async continueRemoteConfigInteractive(
-    name: string,
-    stateToken: string,
-    result: unknown,
-    parameters?: Record<string, unknown>,
-    opt?: Record<string, unknown>,
-    backendName?: string
-  ): Promise<RcConfigQuestionResponse> {
-    return this.invokeCommand('continue_create_remote_interactive', {
-      name,
-      stateToken,
-      result,
-      ...(parameters !== undefined && { parameters }),
-      ...(opt !== undefined && { opt }),
-      ...(backendName && { backendName }),
-    });
   }
 
   async obscureValue(cleartext: string): Promise<string> {

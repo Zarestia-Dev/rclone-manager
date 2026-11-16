@@ -1423,8 +1423,8 @@
           "description": "密碼已經透過模糊處理——跳過模糊處理步驟"
         },
         "nonInteractive": {
-          "label": "非互動式",
-          "description": "返回 JSON 問題塊而不是提示；用於應用程式驅動的設定流"
+          "label": "逐步設定",
+          "description": "逐一詢問 rclone 的問題，而不是以預設值自動回答"
         },
         "all": {
           "label": "所有問題",
@@ -2559,6 +2559,7 @@
         "noProfiles": "未設定設定檔案",
         "placeholder": "選擇設定檔案",
         "inUseWarning": "無法刪除設定檔案 \"{{name}}\" - 正被 {{count}} 個活動 {{type}} 使用",
+        "nameExists": "已存在名為 \"{{name}}\" 的設定檔案",
         "disabledReason": {
           "inUse": "設定檔案正在被執行中的 {{operation}} 使用，請先停止它。"
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "解鎖失敗：{{error}}"
     },
     "remote": {
-      "configFailed": "設定遠端連線失敗：{{error}}",
+      "oauthFailed": "OAuth 驗證失敗或未完成",
+      "oauthPortInUse": "OAuth 登入連接埠已被佔用",
       "authExpired": "遠端驗證已過期或無效。請在設定中重新授權。",
       "quotaExceeded": "遠端連線 API 速率限制或配額已超限。請稍後重試。",
       "networkError": "無法連線到遠端伺服器。請檢查網路連線及遠端地址。",

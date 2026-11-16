@@ -76,6 +76,13 @@ export interface WorkflowDefinition {
   lastExecutedAt?: string;
 }
 
+/** A workflow as a list shows it, without its nodes. */
+export interface WorkflowRef {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 /** What checking a workflow found: `errors` stop a run, `warnings` are worth a look. Both are shown as is. */
 export interface WorkflowChecks {
   errors: string[];

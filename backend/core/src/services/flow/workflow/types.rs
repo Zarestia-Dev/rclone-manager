@@ -301,7 +301,52 @@ pub fn parse_delay_seconds(config: &Value) -> u64 {
     config_u64(config, "delaySeconds").unwrap_or(0)
 }
 
+/// Whether `value`, or anything inside it, is the remote `remote` or a path on it: `drive`,
+/// `drive:` or `drive:photos`. Remote names are unique, so the text alone says it.
+fn mentions_remote(
+    value: &Value,
+    remote: &str,
+    quick_run_remote: &dyn Fn(&str) -> Option<String>,
+) -> bool {
+    match value {
+        Value::String(text) => {
+            let text = text.trim();
+            text.trim_end_matches(':') == remote
+                || text
+                    .strip_prefix(remote)
+                    .is_some_and(|rest| rest.starts_with(':'))
+                // A Quick Run is named by its id; it belongs to the remote it was made for.
+                || quick_run_remote(text).is_some_and(|name| name.trim_end_matches(':') == remote)
+        }
+        Value::Array(items) => items
+            .iter()
+            .any(|item| mentions_remote(item, remote, quick_run_remote)),
+        Value::Object(fields) => fields
+            .values()
+            .any(|field| mentions_remote(field, remote, quick_run_remote)),
+        _ => false,
+    }
+}
+
 impl WorkflowDefinition {
+    /// Whether any node's settings name `remote`, directly, in a path, or through a Quick Run
+    /// (`quick_run_remote` gives the remote of a Quick Run by its id). This is what deleting the
+    /// remote would leave pointing at nothing. A text that happens to equal the name counts too:
+    /// better a warning too many than one too few.
+    #[must_use]
+    pub fn mentions_remote(
+        &self,
+        remote: &str,
+        quick_run_remote: &dyn Fn(&str) -> Option<String>,
+    ) -> bool {
+        let remote = remote.trim_end_matches(':');
+        !remote.is_empty()
+            && self
+                .nodes
+                .iter()
+                .any(|node| mentions_remote(&node.config, remote, quick_run_remote))
+    }
+
     /// Whether a finishing job can start this workflow.
     #[must_use]
     pub fn has_job_event_trigger(&self) -> bool {
@@ -506,6 +551,76 @@ pub struct WorkflowExecutionStateEvent {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn workflow_with(configs: &[Value]) -> WorkflowDefinition {
+        let nodes: Vec<Value> = configs
+            .iter()
+            .enumerate()
+            .map(|(index, config)| {
+                json!({"id": index.to_string(), "type": "x", "title": "x", "x": 0, "y": 0, "config": config})
+            })
+            .collect();
+        serde_json::from_value(json!({"id": "w", "name": "w", "nodes": nodes})).unwrap()
+    }
+
+    fn quick_run_of_drive(id: &str) -> Option<String> {
+        (id == "qr-1").then(|| "drive:".to_string())
+    }
+
+    #[test]
+    fn a_workflow_mentions_a_remote_by_name_by_root_or_by_path_wherever_the_node_keeps_it() {
+        for config in [
+            json!({"remoteName": "drive"}),
+            json!({"remote": "drive:"}),
+            json!({"config": {"rclone": {"srcFs": "/a", "dstFs": "drive:backup"}}}),
+            json!({"config": {"rclone": {"srcFs": ["/a", "drive:b"]}}}),
+            json!({"command": "operations/list", "params": {"fs": "drive:"}}),
+            json!({"path": "drive:trash"}),
+        ] {
+            assert!(
+                workflow_with(&[config.clone()]).mentions_remote("drive", &quick_run_of_drive),
+                "{config}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_remote_may_be_given_with_its_colon() {
+        let workflow = workflow_with(&[json!({"remoteName": "drive"})]);
+        assert!(workflow.mentions_remote("drive:", &quick_run_of_drive));
+    }
+
+    #[test]
+    fn another_remote_with_a_similar_name_or_a_local_path_is_not_a_mention() {
+        for config in [
+            json!({"remoteName": "drive2"}),
+            json!({"config": {"rclone": {"srcFs": "drive2:a", "dstFs": "/drive"}}}),
+            json!({"watchPaths": ["/home/me/drive:x"]}),
+            json!({"delaySeconds": 5, "cronExpression": "0 2 * * *"}),
+        ] {
+            assert!(
+                !workflow_with(&[config.clone()]).mentions_remote("drive", &quick_run_of_drive),
+                "{config}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_quick_run_node_mentions_the_remote_of_the_quick_run_it_runs() {
+        let runs = workflow_with(&[json!({"quickRunId": "qr-1"})]);
+        let other = workflow_with(&[json!({"quickRunId": "qr-2"})]);
+        assert!(runs.mentions_remote("drive", &quick_run_of_drive));
+        assert!(!other.mentions_remote("drive", &quick_run_of_drive));
+    }
+
+    #[test]
+    fn one_mentioning_node_is_enough_and_an_empty_remote_matches_nothing() {
+        let workflow = workflow_with(&[json!({}), json!({"remote": "drive"})]);
+        assert!(workflow.mentions_remote("drive", &quick_run_of_drive));
+        assert!(!workflow.mentions_remote("", &quick_run_of_drive));
+        assert!(!workflow.mentions_remote(":", &quick_run_of_drive));
+        assert!(!workflow_with(&[]).mentions_remote("drive", &quick_run_of_drive));
+    }
 
     #[test]
     fn a_port_keeps_its_label_key_and_params_when_stored() {

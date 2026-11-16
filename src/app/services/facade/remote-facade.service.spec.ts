@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal, computed, WritableSignal } from '@angular/core';
 import { Subject, from, of } from 'rxjs';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { RemoteFeatures, VaultStatePayload, JobInfo } from '@app/types';
 import { VaultService } from '../security/vault.service';
 import { RemoteFacadeService } from './remote-facade.service';
@@ -722,6 +722,27 @@ describe('RemoteFacadeService', () => {
     expect(TestBed.inject(RemoteFileOperationsService).cleanup).not.toHaveBeenCalled();
   });
 
+  describe('emptyTrash failures', () => {
+    it('names the remote and translates what the backend said', async () => {
+      const instant = vi.spyOn(TestBed.inject(TranslateService), 'instant');
+      const translateBackend = vi.mocked(
+        TestBed.inject(BackendTranslationService).translateBackendMessage
+      );
+      translateBackend.mockReturnValueOnce('Access denied');
+      vi.mocked(TestBed.inject(RemoteFileOperationsService).cleanup).mockRejectedValueOnce(
+        '{"key":"backendErrors.request.failed","params":{"error":"403"}}'
+      );
+
+      expect(await service.emptyTrash({ name: 'drive' })).toBe(false);
+
+      expect(instant).toHaveBeenCalledWith('nautilus.errors.emptyTrashFailed', {
+        remote: 'drive',
+        error: 'Access denied',
+      });
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledOnce();
+    });
+  });
+
   describe('generateIndex', () => {
     const options = { output: ['index.html=html'], maxDepth: 2 };
     const dialog = (result: unknown): void => {
@@ -828,7 +849,7 @@ describe('RemoteFacadeService', () => {
       expect(mockAppSettingsService.resetRemoteSettings).not.toHaveBeenCalled();
     });
 
-    it('reports a failed reset instead of throwing', async () => {
+    it('does not throw on a failed reset and does not repeat the error the settings service showed', async () => {
       const error = new Error('disk full');
       confirm().mockResolvedValueOnce(true);
       mockAppSettingsService.resetRemoteSettings.mockRejectedValueOnce(error);
@@ -836,7 +857,8 @@ describe('RemoteFacadeService', () => {
 
       await expect(service.resetSettings('drive')).resolves.toBeUndefined();
 
-      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledWith(error);
+      expect(TestBed.inject(NotificationService).showError).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalled();
       log.mockRestore();
     });
   });

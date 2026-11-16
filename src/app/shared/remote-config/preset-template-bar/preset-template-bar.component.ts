@@ -50,11 +50,8 @@ export class PresetTemplateBarComponent {
   onApplyDefaultPresets(): void {
     const rType = this.remoteType();
     if (!rType) {
-      const warningMsg = this.translate.instant('wizards.presets.noRemoteSelected');
       this.notificationService.showWarning(
-        warningMsg !== 'wizards.presets.noRemoteSelected'
-          ? warningMsg
-          : 'Please select a remote first'
+        this.translate.instant('wizards.presets.noRemoteSelected')
       );
       return;
     }

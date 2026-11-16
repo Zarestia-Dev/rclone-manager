@@ -57,7 +57,6 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
 // Maps ExportType string values to option IDs used in the UI
 const EXPORT_TYPE_TO_ID: Record<string, string> = {
   All: 'full',
-  FullBackup: 'full',
   Settings: 'settings',
   SpecificRemote: 'specific_remote',
 };
@@ -178,13 +177,11 @@ export class ExportModalComponent implements OnInit {
           const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
           options.push({
             id: 'alerts',
-            label: translationRoot ? `${translationRoot}.label` : 'Alerts',
-            description: translationRoot
-              ? `${translationRoot}.description`
-              : 'Alert rules and actions',
-            icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
+            label: `${translationRoot}.label`,
+            description: `${translationRoot}.description`,
+            icon: CATEGORY_ICON_MAP['alerts'],
             categoryType: 'sub_settings',
-            isTranslationKey: !!translationRoot,
+            isTranslationKey: true,
           });
         }
         continue;
@@ -297,11 +294,8 @@ export class ExportModalComponent implements OnInit {
           exportType = ExportType.Category(selectedId);
       }
 
-      const path = this.exportPath().trim();
-      if (!path) throw new Error('Export path is required');
-
       await this.backupRestoreService.backupSettings(
-        path,
+        this.exportPath().trim(),
         exportType,
         this.withPassword() ? this.password().trim() : null,
         selectedId === 'specific_remote' ? this.selectedRemoteName().trim() : '',

@@ -26,7 +26,6 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
-import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
   RemoteConfigStateService,
   DialogData,
@@ -92,7 +91,6 @@ export class RemoteConfigModalComponent {
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
-  private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
     DialogData | undefined;
   private readonly notificationService = inject(NotificationService);
@@ -141,11 +139,8 @@ export class RemoteConfigModalComponent {
       if (!this.state.loadFailed()) this.hasInitialized.set(true);
     } catch (error) {
       console.error('Failed to initialize remote config state:', error);
-      const errorMsg = this.translate.instant('modals.remoteConfig.errors.loadFailed');
       this.notificationService.showError(
-        errorMsg !== 'modals.remoteConfig.errors.loadFailed'
-          ? errorMsg
-          : 'Failed to load remote configuration settings'
+        this.translate.instant('modals.remoteConfig.errors.loadFailed')
       );
       this.state.initializationFailed.set(true);
     } finally {
@@ -219,10 +214,6 @@ export class RemoteConfigModalComponent {
     }
   }
 
-  private readonly requiresInteractiveFlow = computed(() =>
-    this.state.commandOptions().some(o => o.key === 'nonInteractive' && o.value === true)
-  );
-
   private async handleCreateMode(): Promise<{ success: boolean }> {
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const success = await this.orchestrator.createRemote(
@@ -235,37 +226,19 @@ export class RemoteConfigModalComponent {
 
   private async handleEditMode(): Promise<{ success: boolean }> {
     const remoteName = this.state.currentRemoteName();
-    await this.authStateService.startAuth(remoteName, true);
-
-    if (this.state.editTarget() === 'remote' || this.state.editTarget() === null) {
-      const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
-      if (this.requiresInteractiveFlow()) {
-        const finalConfig = this.buildFinalConfig();
-        this.orchestrator.setPendingConfig(remoteData, finalConfig);
-        const completed = await this.orchestrator.startInteractiveCreation(
-          remoteData,
-          finalConfig,
-          this.state.commandOptions()
-        );
-        return { success: completed };
-      }
-      await this.remoteManagementService.updateRemote(
-        remoteData.name,
-        remoteData,
-        undefined,
-        this.orchestrator.backendName
-      );
-      let profileSuccess = true;
-      if (this.state.editTarget() === null) {
-        profileSuccess = await this.state.saveRemoteProfiles(remoteName);
-      }
-      return { success: profileSuccess };
-    }
-
     const target = this.state.editTarget();
-    if (!target || target === 'remote') {
-      return { success: false };
+
+    if (target === 'remote' || target === null) {
+      const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
+      const success = await this.orchestrator.editRemote(
+        remoteData,
+        () => (target === null ? this.state.saveRemoteProfiles(remoteName) : Promise.resolve(true)),
+        this.state.commandOptions()
+      );
+      return { success };
     }
+
+    await this.authStateService.startAuth(remoteName, true);
     const success = await this.state.saveRemoteProfiles(remoteName, target);
     return { success };
   }
@@ -310,11 +283,9 @@ export class RemoteConfigModalComponent {
       isProcessing: true,
       answer: answer != null ? String(answer) : '',
     }));
-    void this.orchestrator
-      .submitInteractiveAnswer(answer, this.state.commandOptions())
-      .then(completed => {
-        if (completed) this.close();
-      });
+    void this.orchestrator.submitInteractiveAnswer(answer).then(completed => {
+      if (completed) this.close();
+    });
   }
 
   async cancelAuth(): Promise<void> {

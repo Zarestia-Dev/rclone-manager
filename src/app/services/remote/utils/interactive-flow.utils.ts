@@ -49,27 +49,8 @@ export function getDefaultAnswerFromQuestion(
     return typeof opt.Default === 'boolean' ? opt.Default : true;
   }
 
-  let defVal = '';
-  if (opt.ValueStr) {
-    defVal = opt.ValueStr;
-  } else if (opt.DefaultStr) {
-    defVal = opt.DefaultStr;
-  } else if (opt.Default !== undefined && opt.Default !== null) {
-    defVal = String(opt.Default);
-  } else if (opt.Examples?.length) {
-    defVal = opt.Examples[0].Value;
-  }
-
-  if (opt.Examples?.length) {
-    const hasExactMatch = opt.Examples.some(ex => ex.Value === defVal);
-    if (!hasExactMatch) {
-      const num = parseInt(defVal, 10);
-      // rclone uses 1-based numeric indices for example selection
-      if (!isNaN(num) && num >= 1 && num <= opt.Examples.length) {
-        return opt.Examples[num - 1].Value;
-      }
-    }
-  }
-
-  return defVal;
+  if (opt.ValueStr) return opt.ValueStr;
+  if (opt.DefaultStr) return opt.DefaultStr;
+  if (opt.Default !== undefined && opt.Default !== null) return String(opt.Default);
+  return opt.Examples?.[0]?.Value ?? '';
 }
