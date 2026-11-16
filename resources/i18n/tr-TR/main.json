@@ -1423,8 +1423,8 @@
           "description": "Parolalar zaten gizlenmiş; gizleme adımını atla"
         },
         "nonInteractive": {
-          "label": "Etkileşimsiz",
-          "description": "Sormak yerine bir JSON soru bloğu döndür; uygulama odaklı yapılandırma akışları için"
+          "label": "Adım adım kurulum",
+          "description": "rclone sorularını varsayılanlarla cevaplamak yerine tek tek sor"
         },
         "all": {
           "label": "Tüm Sorular",
@@ -2559,6 +2559,7 @@
         "noProfiles": "Yapılandırılmış profil yok",
         "placeholder": "Profil Seçin",
         "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
+        "nameExists": "\"{{name}}\" adında bir profil zaten var",
         "disabledReason": {
           "inUse": "Profil çalışan bir {{operation}} tarafından kullanılıyor. Önce onu durdurun."
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "Kilit açma başarısız: {{error}}"
     },
     "remote": {
-      "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}",
+      "oauthFailed": "OAuth kimlik doğrulaması başarısız oldu veya tamamlanmadı",
+      "oauthPortInUse": "OAuth oturum açma bağlantı noktası zaten kullanımda",
       "authExpired": "Uzak bağlantı kimlik doğrulaması geçersiz veya süresi dolmuş. Lütfen bağlantıyı yeniden yetkilendirin.",
       "quotaExceeded": "Uzak depolama API hız sınırı veya depolama kotası aşıldı. Lütfen daha sonra tekrar deneyin.",
       "networkError": "Uzak sunucuya ulaşılamadı. Lütfen ağ bağlantınızı ve uzak bağlantı adresini kontrol edin.",
