@@ -44,7 +44,14 @@
     "actions": "İşlemler",
     "savedSuccessfully": "Başarıyla kaydedildi",
     "deletedSuccessfully": "Başarıyla silindi",
-    "notConfigured": "Yapılandırılmadı"
+    "notConfigured": "Yapılandırılmadı",
+    "unknown": "Bilinmiyor",
+    "notAvailable": "Yok",
+    "unlimited": "Sınırsız",
+    "limitedTo": "{{rate}} ile sınırlı",
+    "none": "Yok",
+    "add": "Ekle",
+    "select": "Seç"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -248,7 +255,10 @@
       "empty": "Görev bulunamadı"
     },
     "settings": {
-      "metrics": "{{count}} ayar",
+      "metrics": {
+        "one": "{{count}} ayar",
+        "other": "{{count}} ayar"
+      },
       "notConfigured": "Yapılandırılmamış",
       "noData": "Yapılandırma verisi mevcut değil",
       "edit": "Ayarları Düzenle",
@@ -831,7 +841,8 @@
       "destination": "Hedef",
       "openViewer": "Görüntüleyicide Aç",
       "openViewerTooltip": "Tam medya önizlemesini aç",
-      "inferredFromUrl": "URL'den çıkarıldı"
+      "inferredFromUrl": "URL'den çıkarıldı",
+      "imageAlt": "Önizleme"
     },
     "installationOptions": {
       "tabs": {
@@ -946,7 +957,10 @@
         "waitingActivity": "Dosya etkinliği bekleniyor. Bazı işlemler tek tek dosya bilgisi bildirmez."
       },
       "time": {
-        "daysAgo": "{{count}} gün önce",
+        "daysAgo": {
+          "one": "{{count}} gün önce",
+          "other": "{{count}} gün önce"
+        },
         "hoursAgo": "{{count}} sa önce",
         "minutesAgo": "{{count}} dk önce",
         "justNow": "Az önce",
@@ -991,15 +1005,30 @@
       },
       "bulk": {
         "title": "Seçilen farklar",
-        "selectAll": "Açık {{count}} farkın tümünü seç",
+        "selectAll": {
+          "one": "Açık {{count}} farkın tümünü seç",
+          "other": "Açık {{count}} farkın tümünü seç"
+        },
         "selected": "{{count}} seçili",
         "toDestination": "{{count}} hedefe",
         "toSource": "{{count}} kaynağa",
-        "choose": "{{count}} karar bekliyor",
+        "choose": {
+          "one": "{{count}} karar bekliyor",
+          "other": "{{count}} karar bekliyor"
+        },
         "clear": "Temizle",
-        "applyOneWay": "{{count}} dosyayı kopyala",
-        "review": "{{count}} çakışmayı incele…",
-        "started": "{{count}} dosyanın kopyalanması başlatıldı",
+        "applyOneWay": {
+          "one": "{{count}} dosyayı kopyala",
+          "other": "{{count}} dosyayı kopyala"
+        },
+        "review": {
+          "one": "{{count}} çakışmayı incele…",
+          "other": "{{count}} çakışmayı incele…"
+        },
+        "started": {
+          "one": "{{count}} dosyanın kopyalanması başlatıldı",
+          "other": "{{count}} dosyanın kopyalanması başlatıldı"
+        },
         "partial": "{{started}} kopyalama başlatıldı, {{failed}} başarısız oldu"
       },
       "compare": {
@@ -1038,7 +1067,10 @@
       },
       "export": {
         "copy": "CSV olarak kopyala",
-        "copied": "{{count}} satır CSV olarak kopyalandı"
+        "copied": {
+          "one": "{{count}} satır CSV olarak kopyalandı",
+          "other": "{{count}} satır CSV olarak kopyalandı"
+        }
       },
       "conflicts": {
         "empty": "Bu çalıştırmada çakışma yok.",
@@ -1115,7 +1147,7 @@
       "loadingStats": "VFS istatistikleri yükleniyor...",
       "fetchingQueue": "Yükleme kuyruğu alınıyor...",
       "vfsInstance": "VFS Örneği",
-      "queued": "kuyrukta",
+      "queued": "{{count}} kuyrukta",
       "controlsUnavailable": "VFS Denetimleri Kullanılamıyor",
       "indexedWarning": "Bu VFS örneği, rclone'un VFS API'si tarafından desteklenmeyen bir dizin sonekine (örn. {{suffix}}) sahip. Bu, aynı uzak bağlantı için birden fazla bağlama olduğunda bilinen bir kısıtlamadır.",
       "stats": {
@@ -1195,7 +1227,10 @@
           "actionFailed": "İşlem başarısız: {{error}}",
           "removed": "'{{path}}' kaldırıldı",
           "removeFailed": "Dosya kaldırılamadı",
-          "cleared": "{{count}} öge temizlendi",
+          "cleared": {
+            "one": "{{count}} öge temizlendi",
+            "other": "{{count}} öge temizlendi"
+          },
           "directoryRefreshed": "Dizin yenilendi",
           "intervalSet": "Aralık {{val}} olarak ayarlandı",
           "error": "Hata: {{error}}"
@@ -1238,9 +1273,13 @@
       "cliArgumentWithSuggestion": "CLI tarzı '{{key}}' parametresi çalıştırılırken otomatik olarak '{{suggestion}}' olarak eşlenecektir.",
       "camelCaseSuggestionWarning": "'{{key}}' seçeneği bu biçimde geçerli değil. Şunu mu demek istediniz: '{{suggestion}}'?",
       "fixSuggestion": "Şuna değiştir: '{{suggestion}}'",
-      "wrongBlockWarning": "{{keys}} seçeneği/seçenekleri '{{block}}' yapılandırma bloğuna ait ve burada çalışmayabilir.",
-      "unknownWarning": "Bilinmeyen seçenek(ler): {{keys}}. Bunlar rclone tarafından yoksayılabilir.",
-      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin."
+      "wrongBlockWarning": "{{keys}} seçeneği '{{block}}' yapılandırma bloğuna ait ve burada çalışmayabilir.",
+      "unknownWarning": {
+        "one": "{{count}} bilinmeyen seçenek: {{keys}}. Bu, rclone tarafından yoksayılabilir.",
+        "other": "{{count}} bilinmeyen seçenek: {{keys}}. Bunlar rclone tarafından yoksayılabilir."
+      },
+      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin.",
+      "fieldsOverview": "Yapılandırma alanlarına genel bakış"
     },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -1321,7 +1360,11 @@
       "importDestPath": "Hedef Yolunu İçe Aktar",
       "importMountPoint": "Bağlama Noktasını İçe Aktar",
       "applyToTask": "Göreve Uygula",
-      "appliedToast": "{{count}} ayar başarıyla içe aktarıldı"
+      "appliedToast": {
+        "one": "{{count}} ayar başarıyla içe aktarıldı",
+        "other": "{{count}} ayar başarıyla içe aktarıldı"
+      },
+      "profileNamePlaceholder": "ör. daily-backup"
     },
     "obscure": {
       "title": "Şifreyi Gizle (Obscure)",
@@ -1568,7 +1611,10 @@
         "middle": "15 (Ortası)",
         "every2Days": "*/2 (Her 2 günde bir)",
         "everyMonth": "* (Her ay)",
-        "intervalN": "{{count}} saatte bir"
+        "intervalN": {
+          "one": "{{count}} saatte bir",
+          "other": "{{count}} saatte bir"
+        }
       },
       "aria": {
         "clear": "Temizle",
@@ -1617,7 +1663,10 @@
       "encrypted": "Şifreli",
       "notEncrypted": "Şifreli Değil",
       "contents": "Yedekleme İçeriği",
-      "itemCount": "{{count}} öge",
+      "itemCount": {
+        "one": "{{count}} öge",
+        "other": "{{count}} öge"
+      },
       "settings": {
         "title": "Uygulama Ayarları",
         "description": "Uygulama tercihleriniz ve yapılandırmanız"
@@ -1808,7 +1857,10 @@
         "processedFiles": "İşlenen dosyalar"
       },
       "running": "Çalışıyor",
-      "filesCount": "{{count}} dosya",
+      "filesCount": {
+        "one": "{{count}} dosya",
+        "other": "{{count}} dosya"
+      },
       "types": {
         "copy": "Kopyala",
         "copyurl": "URL Kopyala",
@@ -1835,7 +1887,10 @@
       "videoLabel": "Video: {{name}}",
       "audioLabel": "Ses: {{name}}",
       "calculatingFolderSize": "Klasör boyutu hesaplanıyor...",
-      "containsFiles": "{{count}} dosya içeriyor",
+      "containsFiles": {
+        "one": "{{count}} dosya içeriyor",
+        "other": "{{count}} dosya içeriyor"
+      },
       "totalSize": "Toplam boyut: {{size}}",
       "binaryFile": "İkili dosya",
       "previewNotAvailable": "Bu dosya türü için önizleme kullanılamıyor",
@@ -1878,7 +1933,10 @@
       "monitoring": "İzleme",
       "configuration": "Yapılandırma",
       "selectedProfile": "Seçili Profil",
-      "profilesCount": "{{count}} profil",
+      "profilesCount": {
+        "one": "{{count}} profil",
+        "other": "{{count}} profil"
+      },
       "addProfile": "Profil Ekle",
       "activeServes": "Aktif Sunucular",
       "sharedSettings": "Paylaşılan Ayarlar",
@@ -2292,7 +2350,10 @@
         "folderPathFor": "{{name}} için klasör yolu",
         "scrollToPending": "Bekleyen değişiklikler bölümüne kaydır"
       },
-      "pendingChangesTooltip": "Motorun yeniden başlatılmasını gerektiren {{count}} kaydedilmemiş değişikliğiniz var. Onlara kaydırmak için tıklayın."
+      "pendingChangesTooltip": {
+        "one": "Motorun yeniden başlatılmasını gerektiren {{count}} kaydedilmemiş değişikliğiniz var. Onlara kaydırmak için tıklayın.",
+        "other": "Motorun yeniden başlatılmasını gerektiren {{count}} kaydedilmemiş değişikliğiniz var. Onlara kaydırmak için tıklayın."
+      }
     },
     "export": {
       "title": "Ayarları Dışa Aktar",
@@ -2598,7 +2659,10 @@
         "emptyResult": "Rclone bayrağı bulunamadı",
         "emptySettings": "Bayrak bulunamadı",
         "adjustTerms": "Arama terimlerinizi ayarlamayı deneyin",
-        "showing": "{{total}} bayraktan {{count}} tanesi gösteriliyor"
+        "showing": {
+          "one": "{{count}} bayraktan {{shown}} tanesi gösteriliyor",
+          "other": "{{count}} bayraktan {{shown}} tanesi gösteriliyor"
+        }
       },
       "pageTitle": {
         "home": "Rclone Bayrakları",
@@ -2716,11 +2780,23 @@
         "pretty": "Biçimli",
         "raw": "Ham",
         "table": "Tablo",
-        "lines": "{{count}} satır",
-        "showMore": "{{count}} satır daha göster",
-        "showMoreRows": "{{count}} satır daha göster",
+        "lines": {
+          "one": "{{count}} satır",
+          "other": "{{count}} satır"
+        },
+        "showMore": {
+          "one": "{{count}} satır daha göster",
+          "other": "{{count}} satır daha göster"
+        },
+        "showMoreRows": {
+          "one": "{{count}} satır daha göster",
+          "other": "{{count}} satır daha göster"
+        },
         "collapse": "Daralt",
-        "rowsOmitted": "{{count}} satır daha gösterilmiyor"
+        "rowsOmitted": {
+          "one": "{{count}} satır daha gösterilmiyor",
+          "other": "{{count}} satır daha gösterilmiyor"
+        }
       },
       "tree": {
         "title": "API",
@@ -2746,9 +2822,18 @@
         "failed": "{{id}} numaralı iş başarısız oldu",
         "lost": "İş bulunamadı",
         "stop": "Durdur",
-        "transfers": "{{done}} / {{total}} aktarım",
-        "checks": "{{count}} denetim",
-        "errors": "{{count}} hata"
+        "transfers": {
+          "one": "{{done}} / {{count}} aktarım",
+          "other": "{{done}} / {{count}} aktarım"
+        },
+        "checks": {
+          "one": "{{count}} denetim",
+          "other": "{{count}} denetim"
+        },
+        "errors": {
+          "one": "{{count}} hata",
+          "other": "{{count}} hata"
+        }
       },
       "quickStart": "Bunlardan birini deneyin",
       "hints": {
@@ -2815,16 +2900,23 @@
     },
     "selection": {
       "selected": "seçildi",
-      "folder": "klasör",
-      "folders": "klasör",
-      "item": "öge",
-      "items": "öge"
+      "folders": {
+        "one": "{{count}} klasör seçildi",
+        "other": "{{count}} klasör seçildi"
+      },
+      "items": {
+        "one": "{{count}} öğe seçildi ({{size}})",
+        "other": "{{count}} öğe seçildi ({{size}})"
+      }
     },
     "modals": {
       "delete": {
         "title": "Öğeleri Sil",
         "messageSingle": "\"{{name}}\" öğesini silmek istediğinizden emin misiniz?",
-        "messageMultiple": "{{count}} öğeyi silmek istediğinizden emin misiniz?"
+        "messageMultiple": {
+          "one": "{{count}} öğeyi silmek istediğinizden emin misiniz?",
+          "other": "{{count}} öğeyi silmek istediğinizden emin misiniz?"
+        }
       },
       "newFolder": {
         "title": "Yeni Klasör",
@@ -2860,7 +2952,10 @@
         "compress": "Sıkıştır"
       },
       "multiRename": {
-        "title": "{{count}} Dosyayı Yeniden Adlandır",
+        "title": {
+          "one": "{{count}} Dosyayı Yeniden Adlandır",
+          "other": "{{count}} Dosyayı Yeniden Adlandır"
+        },
         "templateMode": "Şablon kullanarak yeniden adlandır",
         "replaceMode": "Metni bul ve değiştir",
         "templateInput": "Şablon",
@@ -2895,7 +2990,12 @@
         "suffix": "Son ek",
         "statsChanged": "{{count}} adlandırılacak",
         "statsUnchanged": "{{count}} değişmeyecek",
-        "statsConflicts": "{{count}} çakışma"
+        "statsConflicts": {
+          "one": "{{count}} çakışma",
+          "other": "{{count}} çakışma"
+        },
+        "findPlaceholder": "aranacak metin",
+        "replacePlaceholder": "yerine konacak metin"
       },
       "index": {
         "title": "Dizin Listeleri Oluştur",
@@ -2925,17 +3025,35 @@
       "connectionFailed": "Bağlantı Başarısız",
       "bookmarkRemoteNotFound": "Yer imi için uzak sunucu '{{remote}}' bulunamadı",
       "loadFailed": "Dizin yüklenemedi",
-      "deleteFailed": "{{count}} öge silinemedi",
-      "copyFailed": "{{count}} öge kopyalanamadı",
-      "moveFailed": "{{count}} öge taşınamadı",
-      "undoFailed": "{{count}} öge için geri alma başarısız",
-      "redoFailed": "{{count}} öge için yineleme başarısız",
+      "deleteFailed": {
+        "one": "{{count}} öge silinemedi",
+        "other": "{{count}} öge silinemedi"
+      },
+      "copyFailed": {
+        "one": "{{count}} öge kopyalanamadı",
+        "other": "{{count}} öge kopyalanamadı"
+      },
+      "moveFailed": {
+        "one": "{{count}} öge taşınamadı",
+        "other": "{{count}} öge taşınamadı"
+      },
+      "undoFailed": {
+        "one": "{{count}} öge için geri alma başarısız",
+        "other": "{{count}} öge için geri alma başarısız"
+      },
+      "redoFailed": {
+        "one": "{{count}} öge için yineleme başarısız",
+        "other": "{{count}} öge için yineleme başarısız"
+      },
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
       "emptyTrashFailed": "{{remote}} üzerindeki çöp kutusu boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin.",
+      "minSelection": {
+        "one": "Lütfen en az {{count}} öge seçin.",
+        "other": "Lütfen en az {{count}} öge seçin."
+      },
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
       "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}",
       "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
@@ -2999,13 +3117,28 @@
       "increaseIconSize": "Simge boyutunu büyüt"
     },
     "notifications": {
-      "uploadSuccess": "{{count}} dosya başarıyla yüklendi.",
-      "uploadFailed": "{{count}} dosya yüklenemedi.",
+      "uploadSuccess": {
+        "one": "{{count}} dosya başarıyla yüklendi.",
+        "other": "{{count}} dosya başarıyla yüklendi."
+      },
+      "uploadFailed": {
+        "one": "{{count}} dosya yüklenemedi.",
+        "other": "{{count}} dosya yüklenemedi."
+      },
       "trashEmptied": "Temizlik işlemi başlatıldı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
-      "deleteStarted": "{{count}} öge siliniyor...",
-      "copyStarted": "{{count}} öge kopyalanıyor...",
-      "moveStarted": "{{count}} öge taşınıyor...",
+      "deleteStarted": {
+        "one": "{{count}} öge siliniyor...",
+        "other": "{{count}} öge siliniyor..."
+      },
+      "copyStarted": {
+        "one": "{{count}} öge kopyalanıyor...",
+        "other": "{{count}} öge kopyalanıyor..."
+      },
+      "moveStarted": {
+        "one": "{{count}} öge taşınıyor...",
+        "other": "{{count}} öge taşınıyor..."
+      },
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı",
@@ -3017,7 +3150,10 @@
       "indexStarted": "Dizin listeleri yazılıyor..."
     },
     "androidShare": {
-      "uploadHere": "{{count}} paylaşılan dosyayı bu klasöre yükle",
+      "uploadHere": {
+        "one": "{{count}} paylaşılan dosyayı bu klasöre yükle",
+        "other": "{{count}} paylaşılan dosyayı bu klasöre yükle"
+      },
       "confirm": "Buraya yükle"
     },
     "toolbar": {
@@ -3131,7 +3267,10 @@
       "error": "Hata"
     },
     "jobs": {
-      "activeCount": "{{count}} aktif iş",
+      "activeCount": {
+        "one": "{{count}} aktif iş",
+        "other": "{{count}} aktif iş"
+      },
       "noActive": "Aktif iş yok",
       "loading": "İş bilgisi yükleniyor...",
       "aria": {
@@ -3161,7 +3300,10 @@
       "nextRun": "Sonraki Çalışma:"
     },
     "serves": {
-      "activeCount": "{{count}} aktif sunum",
+      "activeCount": {
+        "one": "{{count}} aktif sunum",
+        "other": "{{count}} aktif sunum"
+      },
       "noActive": "Aktif sunum yok",
       "noRunning": "Aktif çalışan sunum yok. Bir uzak bağlantıyı ağ protokolleri (HTTP, WebDAV, FTP veya SFTP) üzerinden erişilebilir kılmak için sunumu başlatın."
     }
@@ -3503,7 +3645,10 @@
   "backendSuccess": {
     "backup": {
       "created": "Yedek oluşturuldu: {{path}}",
-      "restored": "Ayarlar başarıyla geri yüklendi ({{count}} öğe geri yüklendi)"
+      "restored": {
+        "one": "Ayarlar başarıyla geri yüklendi ({{count}} öğe geri yüklendi)",
+        "other": "Ayarlar başarıyla geri yüklendi ({{count}} öğe geri yüklendi)"
+      }
     },
     "mount": {
       "unmounted": "{{mountPoint}} bağlantısı başarıyla kaldırıldı",
@@ -4507,8 +4652,10 @@
     "keyPlaceholder": "Örn. dir_cache_time",
     "valuePlaceholder": "Örn. 10m",
     "selectedCount": "{{selected}} / {{total}} seçildi",
-    "keyCount": "{{count}} anahtar",
-    "keysCount": "{{count}} anahtar",
+    "keyCount": {
+      "one": "{{count}} anahtar",
+      "other": "{{count}} anahtar"
+    },
     "zeroKeys": "0 anahtar",
     "applySuccess": "\"{{name}}\" şablonu başarıyla uygulandı.",
     "savedSuccess": "\"{{name}}\" şablonu başarıyla kaydedildi.",
