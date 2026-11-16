@@ -1423,8 +1423,8 @@
           "description": "Les mots de passe sont déjà masqués - sautez cette étape"
         },
         "nonInteractive": {
-          "label": "Mode non interactif",
-          "description": "Renvoyer un blob de question JSON au lieu de l'invite ; pour les flux de configuration pilotés par l'application"
+          "label": "Configuration pas à pas",
+          "description": "Poser chaque question de rclone une par une au lieu d'y répondre avec les valeurs par défaut"
         },
         "all": {
           "label": "Toutes les questions",
@@ -2559,6 +2559,7 @@
         "noProfiles": "Aucun profil configuré",
         "placeholder": "Sélectionner un profil",
         "inUseWarning": "Impossible de supprimer le profil \"{{name}}\" - il est utilisé par {{count}} actif {{type}}(s)",
+        "nameExists": "Un profil nommé \"{{name}}\" existe déjà",
         "disabledReason": {
           "inUse": "Le profil est utilisé par un {{operation}} en cours d'exécution. Arrêtez-le d'abord."
         },
@@ -3428,7 +3429,8 @@
       "unlockFailed": "Échec du déblocage : {{error}}"
     },
     "remote": {
-      "configFailed": "Échec de la configuration du dépôt distant : {{error}}",
+      "oauthFailed": "L'authentification OAuth a échoué ou n'a pas été terminée",
+      "oauthPortInUse": "Le port de connexion OAuth est déjà utilisé",
       "authExpired": "L'authentification du distant a expiré ou est invalide. Veuillez ré-authentifier le distant.",
       "quotaExceeded": "Limite de débit d'API ou quota de stockage distant dépassé. Veuillez réessayer ultérieurement.",
       "networkError": "Impossible de joindre le serveur distant. Veuillez vérifier votre connexion et l'adresse distante.",
