@@ -39,6 +39,9 @@ export async function ensureCronLocaleLoaded(locale: string): Promise<void> {
     case 'uk':
       await import('cronstrue/locales/uk');
       break;
+    case 'sk':
+      await import('cronstrue/locales/sk');
+      break;
   }
 
   loadedLocales.add(locale);

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Úložná služba Rclone SAF</string>
+    <string name="saf_keepalive_text">Prebieha aktívny prenos súborov na pozadí</string>
+    <string name="saf_keepalive_channel_name">Úložná služba Rclone</string>
+    <string name="saf_keepalive_channel_desc">Udržiava proces Rclone aktívny počas streamovania súborov cez SAF</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">Beží na pozadí</string>
+    <string name="keepalive_stopped_text">Systém Android zastavil službu na pozadí. Ťuknutím ju obnovíte.</string>
+    <string name="keepalive_channel_name">Služba RClone na pozadí</string>
+    <string name="keepalive_channel_desc">Udržiava aktívne pripojenia, prenosy a úlohy na pozadí</string>
+    <string name="shortcut_file_manager_short">Súbory</string>
+    <string name="shortcut_file_manager_long">Otvoriť správcu súborov</string>
+    <string name="shortcut_open_remote">Otvoriť %1$s</string>
+    <string name="saf_folder_load_failed">Tento priečinok sa nepodarilo načítať. Skontrolujte pripojenie a skúste to znova.</string>
+    <string name="action_quit">Ukončiť</string>
+    <string name="action_stop_jobs">Zastaviť úlohy</string>
+    <string name="action_cancel">Zrušiť</string>
+    <string name="quit_confirm_title">Ukončiť RClone Manager?</string>
+    <string name="quit_confirm_message">Prebiehajúce prenosy, pripojenia a servery budú zastavené.</string>
+    <string name="alerts_channel_name">Upozornenia</string>
+</resources>

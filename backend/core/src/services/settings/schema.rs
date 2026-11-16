@@ -12,6 +12,7 @@ use serde_json::Value;
 // `GeneralSettings::language` (a test keeps both in step) and create the translation file
 const SUPPORTED_LANGUAGES: &[&str] = &[
     "en-US", "tr-TR", "es-ES", "zh-CN", "zh-TW", "fr-FR", "uk-UA", "ru-RU", "pt-BR", "ja-JP",
+    "sk-SK",
 ];
 
 // Struct Definitions with Derive Macro
@@ -33,7 +34,8 @@ pub struct GeneralSettings {
             ("uk-UA", "Українська (Україна)"),
             ("ru-RU", "Русский (Россия)"),
             ("ja-JP", "日本語 (日本)"),
-            ("pt-BR", "Português (Brasil)")
+            ("pt-BR", "Português (Brasil)"),
+            ("sk-SK", "Slovenčina (Slovensko)")
         )
     )]
     pub language: String,

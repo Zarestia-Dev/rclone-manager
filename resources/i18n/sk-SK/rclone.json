@@ -1,0 +1,1426 @@
+{
+  "check_file_remote": {
+    "title": "Kontrola podľa súboru vo vzdialenom úložisku",
+    "help": "Považovať checkFileFs:checkFileRemote za súbor SUM s hashmi."
+  },
+  "combined": {
+    "title": "Kombinovaný",
+    "help": "Vytvoriť kombinovaný prehľad zmien."
+  },
+  "missing_on_src": {
+    "title": "Chýbajúce v zdroji",
+    "help": "Vypísať všetky súbory, ktoré chýbajú v zdroji."
+  },
+  "missing_on_dst": {
+    "title": "Chýbajúce v cieli",
+    "help": "Vypísať všetky súbory, ktoré chýbajú v cieli."
+  },
+  "match": {
+    "title": "Zhodné",
+    "help": "Vypísať všetky zhodné súbory."
+  },
+  "differ": {
+    "title": "Odlišné",
+    "help": "Vypísať všetky nezhodné súbory."
+  },
+  "error": {
+    "title": "Chyby",
+    "help": "Vypísať všetky súbory s chybami (pri hashovaní alebo čítaní)."
+  },
+  "addr": {
+    "title": "Adresa",
+    "help": "IPadresa:Port alebo :Port, na ktorý sa server naviaže"
+  },
+  "name": {
+    "title": "Názov",
+    "help": "Názov servera DLNA"
+  },
+  "log_trace": {
+    "title": "Trasovanie záznamov",
+    "help": "Zapnúť trasovacie záznamy prevádzky SOAP"
+  },
+  "interface": {
+    "title": "Rozhranie",
+    "help": "Rozhranie, ktoré sa použije pre SSDP (podľa potreby zopakujte)"
+  },
+  "announce_interval": {
+    "title": "Interval ohlasovania",
+    "help": "Interval medzi ohláseniami SSDP"
+  },
+  "delete_excluded": {
+    "title": "Odstrániť vylúčené",
+    "help": "Odstrániť v cieli súbory vylúčené zo synchronizácie"
+  },
+  "exclude_if_present": {
+    "title": "Vylúčiť, ak existuje",
+    "help": "Vylúčiť priečinky, ak obsahujú súbor s daným názvom"
+  },
+  "files_from": {
+    "title": "Súbory zo zoznamu",
+    "help": "Načítať zoznam názvov zdrojových súborov zo súboru (pomocou - čítať zo stdin)"
+  },
+  "files_from_raw": {
+    "title": "Súbory zo zoznamu (bez úprav)",
+    "help": "Načítať zoznam názvov zdrojových súborov zo súboru bez akéhokoľvek spracovania riadkov (pomocou - čítať zo stdin)"
+  },
+  "min_age": {
+    "title": "Minimálny vek",
+    "help": "Prenášať iba súbory staršie ako táto hodnota v s alebo s príponou ms|s|m|h|d|w|M|y"
+  },
+  "max_age": {
+    "title": "Maximálny vek",
+    "help": "Prenášať iba súbory mladšie ako táto hodnota v s alebo s príponou ms|s|m|h|d|w|M|y"
+  },
+  "min_size": {
+    "title": "Minimálna veľkosť",
+    "help": "Prenášať iba súbory väčšie ako táto hodnota v KiB alebo s príponou B|K|M|G|T|P"
+  },
+  "max_size": {
+    "title": "Maximálna veľkosť",
+    "help": "Prenášať iba súbory menšie ako táto hodnota v KiB alebo s príponou B|K|M|G|T|P"
+  },
+  "ignore_case": {
+    "title": "Ignorovať veľkosť písmen",
+    "help": "Ignorovať veľkosť písmen vo filtroch (bez rozlišovania veľkosti písmen)"
+  },
+  "hash_filter": {
+    "title": "Hashový filter",
+    "help": "Rozdeliť názvy súborov podľa hashu k/n alebo náhodne @/n"
+  },
+  "filter": {
+    "title": "Filter",
+    "help": "Pridať pravidlo filtrovania súborov"
+  },
+  "filter_from": {
+    "title": "Filter zo súboru",
+    "help": "Načítať vzory filtrovania súborov zo súboru (pomocou - čítať zo stdin)"
+  },
+  "exclude": {
+    "title": "Vylúčiť",
+    "help": "Vylúčiť súbory zodpovedajúce vzoru"
+  },
+  "exclude_from": {
+    "title": "Vylúčiť zo súboru",
+    "help": "Načítať vzory vylúčenia súborov zo súboru (pomocou - čítať zo stdin)"
+  },
+  "include": {
+    "title": "Zahrnúť",
+    "help": "Zahrnúť súbory zodpovedajúce vzoru"
+  },
+  "include_from": {
+    "title": "Zahrnúť zo súboru",
+    "help": "Načítať vzory zahrnutia súborov zo súboru (pomocou - čítať zo stdin)"
+  },
+  "metadata_filter": {
+    "title": "Filter metadát",
+    "help": "Pridať pravidlo filtrovania metadát"
+  },
+  "metadata_filter_from": {
+    "title": "Filter metadát zo súboru",
+    "help": "Načítať vzory filtrovania metadát zo súboru (pomocou - čítať zo stdin)"
+  },
+  "metadata_exclude": {
+    "title": "Vylúčiť podľa metadát",
+    "help": "Vylúčiť metadáta zodpovedajúce vzoru"
+  },
+  "metadata_exclude_from": {
+    "title": "Vylúčiť podľa metadát zo súboru",
+    "help": "Načítať vzory vylúčenia metadát zo súboru (pomocou - čítať zo stdin)"
+  },
+  "metadata_include": {
+    "title": "Zahrnúť podľa metadát",
+    "help": "Zahrnúť metadáta zodpovedajúce vzoru"
+  },
+  "metadata_include_from": {
+    "title": "Zahrnúť podľa metadát zo súboru",
+    "help": "Načítať vzory zahrnutia metadát zo súboru (pomocou - čítať zo stdin)"
+  },
+  "public_ip": {
+    "title": "Verejná IP",
+    "help": "Verejná IP adresa, ktorá sa ohlási pre pasívne spojenia"
+  },
+  "passive_port": {
+    "title": "Pasívny port",
+    "help": "Rozsah pasívnych portov, ktorý sa použije"
+  },
+  "user": {
+    "title": "Používateľ",
+    "help": "Používateľské meno na overenie"
+  },
+  "pass": {
+    "title": "Heslo",
+    "help": "Heslo na overenie"
+  },
+  "cert": {
+    "title": "Certifikát",
+    "help": "Kľúč TLS PEM (spojenie certifikátu a certifikátu CA)"
+  },
+  "key": {
+    "title": "Kľúč",
+    "help": "Súkromný kľúč TLS PEM"
+  },
+  "server_read_timeout": {
+    "title": "Časový limit čítania servera",
+    "help": "Časový limit, počas ktorého server číta údaje"
+  },
+  "server_write_timeout": {
+    "title": "Časový limit zápisu servera",
+    "help": "Časový limit, počas ktorého server zapisuje údaje"
+  },
+  "max_header_bytes": {
+    "title": "Maximálna veľkosť hlavičky",
+    "help": "Maximálna veľkosť hlavičky požiadavky"
+  },
+  "client_ca": {
+    "title": "CA klienta",
+    "help": "Certifikačná autorita klienta na overovanie klientov"
+  },
+  "baseurl": {
+    "title": "Základná URL",
+    "help": "Predpona URL – pre koreň ponechajte prázdne"
+  },
+  "min_tls_version": {
+    "title": "Minimálna verzia TLS",
+    "help": "Minimálna prijateľná verzia TLS"
+  },
+  "allow_origin": {
+    "title": "Povolený pôvod",
+    "help": "Pôvod, z ktorého je možné vykonať požiadavku medzi doménami (CORS)"
+  },
+  "htpasswd": {
+    "title": "Htpasswd",
+    "help": "Súbor htpasswd – ak nie je zadaný, overenie sa nevykonáva"
+  },
+  "realm": {
+    "title": "Realm",
+    "help": "Realm na overenie"
+  },
+  "salt": {
+    "title": "Soľ",
+    "help": "Soľ pre hashovanie hesiel"
+  },
+  "user_from_header": {
+    "title": "Používateľ z hlavičky",
+    "help": "Používateľské meno z definovanej hlavičky HTTP"
+  },
+  "template": {
+    "title": "Šablóna",
+    "help": "Šablóna zadaná používateľom"
+  },
+  "log_file": {
+    "title": "Súbor záznamov",
+    "help": "Zaznamenávať všetko do tohto súboru"
+  },
+  "log_file_max_size": {
+    "title": "Maximálna veľkosť súboru záznamov",
+    "help": "Maximálna veľkosť súboru záznamov pred jeho rotáciou (napr. \"10M\")"
+  },
+  "log_file_max_backups": {
+    "title": "Maximálny počet záloh záznamov",
+    "help": "Maximálny počet starých súborov záznamov, ktoré sa uchovajú."
+  },
+  "log_file_max_age": {
+    "title": "Maximálny vek súboru záznamov",
+    "help": "Maximálna doba uchovávania starých súborov záznamov (napr. \"7d\")"
+  },
+  "log_file_compress": {
+    "title": "Komprimovať súbory záznamov",
+    "help": "Ak je nastavené, rotované súbory záznamov sa komprimujú pomocou gzip."
+  },
+  "log_format": {
+    "title": "Formát záznamov",
+    "help": "Zoznam možností formátu záznamov oddelených čiarkou"
+  },
+  "syslog": {
+    "title": "Syslog",
+    "help": "Používať Syslog na zaznamenávanie"
+  },
+  "syslog_facility": {
+    "title": "Facility pre syslog",
+    "help": "Facility pre syslog, napr. KERN,USER"
+  },
+  "log_systemd": {
+    "title": "Záznamy do systemd",
+    "help": "Zapnúť integráciu záznamov so systemd"
+  },
+  "windows_event_log_level": {
+    "title": "Úroveň záznamov do Windows Event Log",
+    "help": "Úroveň záznamov do Windows Event Log DEBUG|INFO|NOTICE|ERROR|OFF"
+  },
+  "modify_window": {
+    "title": "Tolerancia času úpravy",
+    "help": "Maximálny časový rozdiel, pri ktorom sa časy považujú za rovnaké"
+  },
+  "checkers": {
+    "title": "Kontroly",
+    "help": "Počet kontrol spúšťaných paralelne"
+  },
+  "transfers": {
+    "title": "Prenosy",
+    "help": "Počet prenosov súborov spúšťaných paralelne"
+  },
+  "checksum": {
+    "title": "Kontrolný súčet",
+    "help": "Zisťovať zmeny podľa veľkosti a kontrolného súčtu (ak je dostupný, inak iba podľa veľkosti)"
+  },
+  "size_only": {
+    "title": "Iba veľkosť",
+    "help": "Preskakovať iba na základe veľkosti, nie času úpravy ani kontrolného súčtu"
+  },
+  "ignore_times": {
+    "title": "Ignorovať časy",
+    "help": "Nepreskakovať položky so zhodnou veľkosťou a časom – prenášať všetko bez podmienky"
+  },
+  "ignore_existing": {
+    "title": "Ignorovať existujúce",
+    "help": "Preskočiť všetky súbory, ktoré existujú v cieli"
+  },
+  "ignore_errors": {
+    "title": "Ignorovať chyby",
+    "help": "Odstraňovať aj pri chybách vstupu/výstupu"
+  },
+  "dry_run": {
+    "title": "Skúšobný beh",
+    "help": "Vykonať skúšobný beh bez trvalých zmien"
+  },
+  "interactive": {
+    "title": "Interaktívne",
+    "help": "Zapnúť interaktívny režim"
+  },
+  "links": {
+    "title": "Odkazy",
+    "help": "Prevádzať symbolické odkazy na bežné súbory s príponou '.rclonelink' a späť."
+  },
+  "contimeout": {
+    "title": "Časový limit pripojenia",
+    "help": "Časový limit pripojenia"
+  },
+  "timeout": {
+    "title": "Časový limit",
+    "help": "Časový limit nečinnosti vstupu/výstupu"
+  },
+  "expect_continue_timeout": {
+    "title": "Časový limit Expect Continue",
+    "help": "Časový limit pri použití expect / 100-continue v HTTP"
+  },
+  "no_check_certificate": {
+    "title": "Nekontrolovať certifikát",
+    "help": "Neoverovať certifikát SSL servera (nezabezpečené)"
+  },
+  "ask_password": {
+    "title": "Pýtať si heslo",
+    "help": "Povoliť výzvu na zadanie hesla k zašifrovanej konfigurácii"
+  },
+  "password_command": {
+    "title": "Príkaz pre heslo",
+    "help": "Príkaz, ktorý poskytne heslo k zašifrovanej konfigurácii"
+  },
+  "max_delete": {
+    "title": "Maximálny počet odstránení",
+    "help": "Pri synchronizácii obmedziť počet odstránení"
+  },
+  "max_delete_size": {
+    "title": "Maximálna veľkosť odstránení",
+    "help": "Pri synchronizácii obmedziť celkovú veľkosť odstránených údajov"
+  },
+  "track_renames": {
+    "title": "Sledovať premenovania",
+    "help": "Pri synchronizácii sledovať premenovania súborov a ak je to možné, vykonať presun na strane servera"
+  },
+  "track_renames_strategy": {
+    "title": "Stratégia sledovania premenovaní",
+    "help": "Stratégie, ktoré sa použijú pri synchronizácii s track-renames hash|modtime|leaf"
+  },
+  "retries": {
+    "title": "Opakovania",
+    "help": "Koľkokrát opakovať operácie, ak zlyhajú"
+  },
+  "retries_sleep": {
+    "title": "Prestávka medzi opakovaniami",
+    "help": "Interval medzi opakovaniami neúspešných operácií, napr. 500ms, 60s, 5m (0 na vypnutie)"
+  },
+  "low_level_retries": {
+    "title": "Opakovania na nízkej úrovni",
+    "help": "Počet opakovaní na nízkej úrovni"
+  },
+  "update": {
+    "title": "Aktualizovať",
+    "help": "Preskočiť súbory, ktoré sú v cieli novšie"
+  },
+  "use_server_modtime": {
+    "title": "Použiť čas úpravy zo servera",
+    "help": "Použiť čas úpravy zo servera namiesto metadát objektu"
+  },
+  "no_gzip_encoding": {
+    "title": "Bez kódovania gzip",
+    "help": "Nenastavovať Accept-Encoding: gzip"
+  },
+  "max_depth": {
+    "title": "Maximálna hĺbka",
+    "help": "Ak je nastavené, obmedzí hĺbku rekurzie na túto hodnotu"
+  },
+  "ignore_size": {
+    "title": "Ignorovať veľkosť",
+    "help": "Pri preskakovaní ignorovať veľkosť, použiť čas úpravy alebo kontrolný súčet"
+  },
+  "ignore_checksum": {
+    "title": "Ignorovať kontrolný súčet",
+    "help": "Preskočiť kontrolu kontrolných súčtov po kopírovaní"
+  },
+  "ignore_case_sync": {
+    "title": "Ignorovať veľkosť písmen pri synchronizácii",
+    "help": "Pri synchronizácii ignorovať veľkosť písmen"
+  },
+  "fix_case": {
+    "title": "Opraviť veľkosť písmen",
+    "help": "Vynútiť premenovanie cieľa bez rozlišovania veľkosti písmen tak, aby zodpovedal zdroju"
+  },
+  "no_traverse": {
+    "title": "Neprechádzať",
+    "help": "Pri kopírovaní neprechádzať cieľový súborový systém"
+  },
+  "check_first": {
+    "title": "Najprv kontrolovať",
+    "help": "Vykonať všetky kontroly pred spustením prenosov"
+  },
+  "no_check_dest": {
+    "title": "Nekontrolovať cieľ",
+    "help": "Nekontrolovať cieľ, kopírovať bez ohľadu naň"
+  },
+  "no_unicode_normalization": {
+    "title": "Bez normalizácie Unicode",
+    "help": "Nenormalizovať znaky Unicode v názvoch súborov"
+  },
+  "no_update_modtime": {
+    "title": "Neaktualizovať čas úpravy",
+    "help": "Neaktualizovať čas úpravy v cieli, ak sú súbory identické"
+  },
+  "no_update_dir_modtime": {
+    "title": "Neaktualizovať čas úpravy priečinkov",
+    "help": "Neaktualizovať časy úpravy priečinkov"
+  },
+  "compare_dest": {
+    "title": "Porovnávací cieľ",
+    "help": "Zahrnúť pri porovnávaní ďalšie cesty na strane servera"
+  },
+  "copy_dest": {
+    "title": "Kopírovací cieľ",
+    "help": "Zahŕňa --compare-dest, ale navyše kopíruje súbory z týchto ciest do cieľa"
+  },
+  "backup_dir": {
+    "title": "Priečinok záloh",
+    "help": "Vytvárať zálohy do hierarchie so základom v DIR"
+  },
+  "suffix": {
+    "title": "Prípona",
+    "help": "Prípona, ktorá sa pridá k zmeneným súborom"
+  },
+  "suffix_keep_extension": {
+    "title": "Prípona so zachovaním koncovky",
+    "help": "Zachovať koncovku súboru pri použití --suffix"
+  },
+  "fast_list": {
+    "title": "Rýchly výpis",
+    "help": "Použiť rekurzívny výpis, ak je dostupný; spotrebuje viac pamäte, ale menej transakcií"
+  },
+  "list_cutoff": {
+    "title": "Hranica výpisu",
+    "help": "Na úsporu pamäte triediť výpisy priečinkov nad touto hranicou na disku"
+  },
+  "tpslimit": {
+    "title": "Limit TPS",
+    "help": "Obmedziť počet transakcií HTTP za sekundu na túto hodnotu"
+  },
+  "tpslimit_burst": {
+    "title": "Nárazový limit TPS",
+    "help": "Maximálny nárazový počet transakcií pre --tpslimit"
+  },
+  "user_agent": {
+    "title": "User agent",
+    "help": "Nastaviť user-agent na zadaný reťazec"
+  },
+  "immutable": {
+    "title": "Nemenné",
+    "help": "Neupravovať súbory, zlyhať, ak boli existujúce súbory upravené"
+  },
+  "auto_confirm": {
+    "title": "Automatické potvrdenie",
+    "help": "Ak je zapnuté, nevyžadovať potvrdenie v konzole"
+  },
+  "stats_unit": {
+    "title": "Jednotka štatistík",
+    "help": "Zobrazovať rýchlosť prenosu v štatistikách v 'bits' alebo 'bytes' za sekundu"
+  },
+  "stats_file_name_length": {
+    "title": "Dĺžka názvu súboru v štatistikách",
+    "help": "Maximálna dĺžka názvu súboru v štatistikách (0 bez obmedzenia)"
+  },
+  "log_level": {
+    "title": "Úroveň záznamov",
+    "help": "Úroveň záznamov DEBUG|INFO|NOTICE|ERROR"
+  },
+  "stats_log_level": {
+    "title": "Úroveň záznamov štatistík",
+    "help": "Úroveň záznamov pre výstup --stats DEBUG|INFO|NOTICE|ERROR"
+  },
+  "bwlimit": {
+    "title": "Obmedzenie šírky pásma",
+    "help": "Obmedzenie šírky pásma v KiB/s, alebo použite príponu B|K|M|G|T|P alebo úplný časový rozvrh"
+  },
+  "bwlimit_file": {
+    "title": "Obmedzenie šírky pásma na súbor",
+    "help": "Obmedzenie šírky pásma na súbor v KiB/s, alebo použite príponu B|K|M|G|T|P alebo úplný časový rozvrh"
+  },
+  "buffer_size": {
+    "title": "Veľkosť buffera",
+    "help": "Veľkosť buffera v pamäti pri čítaní súborov pre každý --transfer"
+  },
+  "streaming_upload_cutoff": {
+    "title": "Hranica streamovaného nahrávania",
+    "help": "Hranica na prepnutie na nahrávanie po častiach, ak veľkosť súboru nie je známa; nahrávanie sa začne po dosiahnutí hranice alebo na konci súboru"
+  },
+  "dump": {
+    "title": "Výpis (dump)",
+    "help": "Zoznam položiek na výpis z: headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper"
+  },
+  "max_transfer": {
+    "title": "Maximálny prenos",
+    "help": "Maximálna veľkosť prenášaných údajov"
+  },
+  "max_duration": {
+    "title": "Maximálne trvanie",
+    "help": "Maximálny čas, počas ktorého bude rclone prenášať údaje"
+  },
+  "cutoff_mode": {
+    "title": "Režim ukončenia",
+    "help": "Režim zastavenia prenosov po dosiahnutí limitu maximálneho prenosu HARD|SOFT|CAUTIOUS"
+  },
+  "max_backlog": {
+    "title": "Maximálny počet čakajúcich",
+    "help": "Maximálny počet objektov čakajúcich na synchronizáciu alebo kontrolu"
+  },
+  "max_stats_groups": {
+    "title": "Maximálny počet skupín štatistík",
+    "help": "Maximálny počet skupín štatistík uchovávaných v pamäti; po dosiahnutí maxima sa zahodí najstaršia"
+  },
+  "stats_one_line": {
+    "title": "Štatistiky na jednom riadku",
+    "help": "Zobraziť štatistiky na jednom riadku"
+  },
+  "stats_one_line_date": {
+    "title": "Štatistiky na jednom riadku s dátumom",
+    "help": "Zapnúť --stats-one-line a pridať predponu s aktuálnym dátumom/časom"
+  },
+  "stats_one_line_date_format": {
+    "title": "Formát dátumu štatistík na jednom riadku",
+    "help": "Zapnúť --stats-one-line-date a použiť vlastný formát dátumu: reťazec dátumu uzavrite do dvojitých úvodzoviek (\"), pozri https://golang.org/pkg/time/#Time.Format"
+  },
+  "error_on_no_transfer": {
+    "title": "Chyba, ak nedôjde k prenosu",
+    "help": "Nastaví návratový kód 9, ak sa neprenesú žiadne súbory; užitočné v skriptoch"
+  },
+  "progress": {
+    "title": "Priebeh",
+    "help": "Zobrazovať priebeh počas prenosu"
+  },
+  "progress_terminal_title": {
+    "title": "Priebeh v nadpise terminálu",
+    "help": "Zobrazovať priebeh v nadpise terminálu (vyžaduje -P/--progress)"
+  },
+  "use_cookies": {
+    "title": "Používať cookies",
+    "help": "Zapnúť úložisko cookies relácie"
+  },
+  "use_mmap": {
+    "title": "Používať mmap",
+    "help": "Používať alokátor mmap (pozri dokumentáciu)"
+  },
+  "max_buffer_memory": {
+    "title": "Maximálna pamäť bufferov",
+    "help": "Ak je nastavené, nealokovať na buffery viac pamäte ako túto hodnotu"
+  },
+  "ca_cert": {
+    "title": "Certifikát CA",
+    "help": "Certifikát CA na overovanie serverov"
+  },
+  "client_cert": {
+    "title": "Certifikát klienta",
+    "help": "Certifikát SSL klienta (PEM) pre vzájomné overenie TLS"
+  },
+  "client_key": {
+    "title": "Kľúč klienta",
+    "help": "Súkromný kľúč SSL klienta (PEM) pre vzájomné overenie TLS"
+  },
+  "client_pass": {
+    "title": "Heslo klienta",
+    "help": "Heslo k súkromnému kľúču SSL klienta (PEM) pre vzájomné overenie TLS (zamaskované)"
+  },
+  "multi_thread_cutoff": {
+    "title": "Hranica viacvláknového sťahovania",
+    "help": "Pre súbory nad touto veľkosťou použiť viacvláknové sťahovanie"
+  },
+  "multi_thread_streams": {
+    "title": "Počet viacvláknových prúdov",
+    "help": "Počet prúdov pre viacvláknové sťahovanie"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "Veľkosť buffera zápisu pri viacerých vláknach",
+    "help": "Veľkosť buffera v pamäti na zápis vo viacvláknovom režime"
+  },
+  "multi_thread_chunk_size": {
+    "title": "Veľkosť časti pri viacerých vláknach",
+    "help": "Veľkosť časti pri viacvláknovom sťahovaní/nahrávaní, ak ju nenastavuje súborový systém"
+  },
+  "use_json_log": {
+    "title": "Záznamy vo formáte JSON",
+    "help": "Používať formát záznamov JSON"
+  },
+  "order_by": {
+    "title": "Poradie",
+    "help": "Pokyny na zoradenie prenosov, napr. 'size,descending'"
+  },
+  "refresh_times": {
+    "title": "Obnoviť časy",
+    "help": "Obnoviť čas úpravy súborov vo vzdialenom úložisku"
+  },
+  "no_console": {
+    "title": "Bez konzoly",
+    "help": "Skryť okno konzoly (podporované iba vo Windows)"
+  },
+  "fs_cache_expire_duration": {
+    "title": "Doba platnosti vyrovnávacej pamäte Fs",
+    "help": "Ako dlho uchovávať vzdialené úložiská vo vyrovnávacej pamäti (0 vypne vyrovnávaciu pamäť)"
+  },
+  "fs_cache_expire_interval": {
+    "title": "Interval kontroly platnosti vyrovnávacej pamäte Fs",
+    "help": "Interval kontroly vzdialených úložísk s vypršanou platnosťou"
+  },
+  "disable_http2": {
+    "title": "Vypnúť HTTP/2",
+    "help": "Vypnúť HTTP/2 v globálnom transporte"
+  },
+  "human_readable": {
+    "title": "Čitateľné pre človeka",
+    "help": "Vypisovať čísla v čitateľnom formáte, veľkosti s príponou Ki|Mi|Gi|Ti|Pi"
+  },
+  "kv_lock_time": {
+    "title": "Čas zámku KV",
+    "help": "Maximálny čas, počas ktorého môže proces držať zámok databázy kľúč – hodnota"
+  },
+  "disable_http_keep_alives": {
+    "title": "Vypnúť HTTP keep-alive",
+    "help": "Vypnúť HTTP keep-alive a každé spojenie použiť iba raz."
+  },
+  "metadata": {
+    "title": "Metadáta",
+    "help": "Ak je nastavené, zachovať metadáta pri kopírovaní objektov"
+  },
+  "server_side_across_configs": {
+    "title": "Na strane servera naprieč konfiguráciami",
+    "help": "Povoliť operácie na strane servera (napr. kopírovanie) naprieč rôznymi konfiguráciami"
+  },
+  "color": {
+    "title": "Farby",
+    "help": "Kedy zobrazovať farby (a iné kódy ANSI) AUTO|NEVER|ALWAYS"
+  },
+  "default_time": {
+    "title": "Predvolený čas",
+    "help": "Čas, ktorý sa zobrazí, ak nie je známy čas úpravy súborov a priečinkov"
+  },
+  "inplace": {
+    "title": "Priamo na mieste",
+    "help": "Sťahovať priamo do cieľového súboru namiesto atomického sťahovania do dočasného súboru s premenovaním"
+  },
+  "metadata_mapper": {
+    "title": "Mapovač metadát",
+    "help": "Program, ktorý sa spustí na transformáciu metadát pred nahratím"
+  },
+  "partial_suffix": {
+    "title": "Prípona čiastočného súboru",
+    "help": "Pridať partial-suffix k názvu dočasného súboru, keď sa nepoužíva --inplace"
+  },
+  "max_connections": {
+    "title": "Maximálny počet spojení",
+    "help": "Maximálny počet súčasných spojení s API backendu, 0 bez obmedzenia."
+  },
+  "name_transform": {
+    "title": "Transformácia názvov",
+    "help": "Transformovať cesty počas kopírovania."
+  },
+  "http_proxy": {
+    "title": "HTTP proxy",
+    "help": "URL HTTP proxy."
+  },
+  "debug_fuse": {
+    "title": "Ladenie FUSE",
+    "help": "Ladiť vnútornú činnosť FUSE – vyžaduje -v"
+  },
+  "attr_timeout": {
+    "title": "Časový limit atribútov",
+    "help": "Čas, počas ktorého sa atribúty súborov/priečinkov uchovávajú vo vyrovnávacej pamäti"
+  },
+  "option": {
+    "title": "Možnosť",
+    "help": "Možnosť pre libfuse/WinFsp (podľa potreby zopakujte)"
+  },
+  "fuse_flag": {
+    "title": "Prepínač FUSE",
+    "help": "Prepínače alebo argumenty odovzdávané priamo libfuse/WinFsp (podľa potreby zopakujte)"
+  },
+  "daemon": {
+    "title": "Démon",
+    "help": "Spustiť pripojenie na pozadí a ukončiť rodičovský proces (keďže výstup na pozadí je potlačený, na sledovanie použite --log-file s --log-format=pid,...) (nepodporované vo Windows)"
+  },
+  "daemon_timeout": {
+    "title": "Časový limit démona",
+    "help": "Časový limit, do ktorého musí rclone odpovedať jadru systému (nepodporované vo Windows)"
+  },
+  "default_permissions": {
+    "title": "Predvolené oprávnenia",
+    "help": "Jadro systému vynucuje riadenie prístupu podľa režimu súboru (nepodporované vo Windows)"
+  },
+  "allow_non_empty": {
+    "title": "Povoliť neprázdny priečinok",
+    "help": "Povoliť pripojenie do neprázdneho priečinka (nepodporované vo Windows)"
+  },
+  "allow_root": {
+    "title": "Povoliť root",
+    "help": "Povoliť prístup používateľovi root (nepodporované vo Windows)"
+  },
+  "allow_other": {
+    "title": "Povoliť ostatným",
+    "help": "Povoliť prístup ostatným používateľom (nepodporované vo Windows)"
+  },
+  "async_read": {
+    "title": "Asynchrónne čítanie",
+    "help": "Používať asynchrónne čítanie (nepodporované vo Windows)"
+  },
+  "max_read_ahead": {
+    "title": "Maximálne čítanie vopred",
+    "help": "Počet bajtov, ktoré je možné načítať vopred pri sekvenčnom čítaní (nepodporované vo Windows)"
+  },
+  "write_back_cache": {
+    "title": "Vyrovnávacia pamäť so spätným zápisom",
+    "help": "Jadro systému bufferuje zápisy pred ich odoslaním do rclone (bez tejto voľby sa používa priamy zápis cez vyrovnávaciu pamäť) (nepodporované vo Windows)"
+  },
+  "devname": {
+    "title": "Názov zariadenia",
+    "help": "Nastaviť názov zariadenia – predvolene remote:path"
+  },
+  "mount_case_insensitive": {
+    "title": "Pripojenie bez rozlišovania veľkosti písmen",
+    "help": "Oznámiť OS, že pripojenie nerozlišuje (true) alebo rozlišuje (false) veľkosť písmen bez ohľadu na backend (auto)"
+  },
+  "direct_io": {
+    "title": "Priamy vstup/výstup",
+    "help": "Používať Direct IO, vypne vyrovnávaciu pamäť údajov"
+  },
+  "volname": {
+    "title": "Názov zväzku",
+    "help": "Nastaviť názov zväzku (podporované iba vo Windows a OSX)"
+  },
+  "noappledouble": {
+    "title": "Bez AppleDouble",
+    "help": "Ignorovať súbory Apple Double (._) a .DS_Store (podporované iba v OSX)"
+  },
+  "noapplexattr": {
+    "title": "Bez Apple xattr",
+    "help": "Ignorovať všetky rozšírené atribúty \"com.apple.*\" (podporované iba v OSX)"
+  },
+  "network_mode": {
+    "title": "Sieťový režim",
+    "help": "Pripojiť ako vzdialenú sieťovú jednotku namiesto pevného disku (podporované iba vo Windows)"
+  },
+  "daemon_wait": {
+    "title": "Čakanie na démona",
+    "help": "Čas čakania na pripravenosť pripojenia od démona (maximálny čas v Linuxe, konštantný čas čakania v OSX/BSD) (nepodporované vo Windows)"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "Limit popisovačov vo vyrovnávacej pamäti NFS",
+    "help": "maximálny počet súčasne uchovávaných popisovačov súborov (min. 5)"
+  },
+  "nfs_cache_type": {
+    "title": "Typ vyrovnávacej pamäte NFS",
+    "help": "Typ vyrovnávacej pamäte popisovačov NFS"
+  },
+  "nfs_cache_dir": {
+    "title": "Priečinok vyrovnávacej pamäte NFS",
+    "help": "Priečinok, ktorý použije vyrovnávacia pamäť popisovačov NFS, ak je nastavený"
+  },
+  "auth_proxy": {
+    "title": "Proxy overenia",
+    "help": "Program, ktorý vytvorí backend z overovacích údajov"
+  },
+  "rc": {
+    "title": "Vzdialené ovládanie",
+    "help": "Zapnúť server vzdialeného ovládania"
+  },
+  "rc_files": {
+    "title": "Súbory vzdialeného ovládania",
+    "help": "Cesta k lokálnym súborom, ktoré sa sprístupnia na serveri HTTP"
+  },
+  "rc_serve": {
+    "title": "Sprístupnenie cez vzdialené ovládanie",
+    "help": "Zapnúť sprístupňovanie objektov vzdialeného úložiska"
+  },
+  "rc_serve_no_modtime": {
+    "title": "Sprístupnenie cez vzdialené ovládanie bez času úpravy",
+    "help": "Nečítať čas úpravy (môže zrýchliť činnosť)"
+  },
+  "rc_no_auth": {
+    "title": "Vzdialené ovládanie bez overenia",
+    "help": "Nevyžadovať overenie pre niektoré metódy"
+  },
+  "rc_web_gui": {
+    "title": "Webové rozhranie vzdialeného ovládania",
+    "help": "Spustiť webové rozhranie na localhost"
+  },
+  "rc_web_gui_update": {
+    "title": "Aktualizácia webového rozhrania vzdialeného ovládania",
+    "help": "Skontrolovať a aktualizovať webové rozhranie na najnovšiu verziu"
+  },
+  "rc_web_gui_force_update": {
+    "title": "Vynútená aktualizácia webového rozhrania vzdialeného ovládania",
+    "help": "Vynútiť aktualizáciu webového rozhrania na najnovšiu verziu"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "Webové rozhranie vzdialeného ovládania bez otvorenia prehliadača",
+    "help": "Neotvárať prehliadač automaticky"
+  },
+  "rc_web_fetch_url": {
+    "title": "URL na stiahnutie webového rozhrania vzdialeného ovládania",
+    "help": "URL, z ktorej sa načítajú vydania webového rozhrania"
+  },
+  "rc_enable_metrics": {
+    "title": "Metriky vzdialeného ovládania",
+    "help": "Zapnúť cestu s metrikami Prometheus na serveri vzdialeného ovládania"
+  },
+  "rc_job_expire_duration": {
+    "title": "Doba platnosti úloh vzdialeného ovládania",
+    "help": "Zrušiť dokončené asynchrónne úlohy staršie ako táto hodnota"
+  },
+  "rc_job_expire_interval": {
+    "title": "Interval kontroly platnosti úloh vzdialeného ovládania",
+    "help": "Interval kontroly asynchrónnych úloh s vypršanou platnosťou"
+  },
+  "metrics_addr": {
+    "title": "Adresa metrík",
+    "help": "IPadresa:Port alebo :Port, na ktorý sa server naviaže"
+  },
+  "rc_addr": {
+    "title": "Adresa vzdialeného ovládania",
+    "help": "IPadresa:Port alebo :Port, na ktorý sa server naviaže"
+  },
+  "rc_server_read_timeout": {
+    "title": "Časový limit čítania servera vzdialeného ovládania",
+    "help": "Časový limit, počas ktorého server číta údaje"
+  },
+  "rc_server_write_timeout": {
+    "title": "Časový limit zápisu servera vzdialeného ovládania",
+    "help": "Časový limit, počas ktorého server zapisuje údaje"
+  },
+  "rc_max_header_bytes": {
+    "title": "Maximálna veľkosť hlavičky vzdialeného ovládania",
+    "help": "Maximálna veľkosť hlavičky požiadavky"
+  },
+  "rc_cert": {
+    "title": "Certifikát vzdialeného ovládania",
+    "help": "Kľúč TLS PEM (spojenie certifikátu a certifikátu CA)"
+  },
+  "rc_key": {
+    "title": "Kľúč vzdialeného ovládania",
+    "help": "Súkromný kľúč TLS PEM"
+  },
+  "rc_client_ca": {
+    "title": "CA klienta vzdialeného ovládania",
+    "help": "Certifikačná autorita klienta na overovanie klientov"
+  },
+  "rc_baseurl": {
+    "title": "Základná URL vzdialeného ovládania",
+    "help": "Predpona URL – pre koreň ponechajte prázdne"
+  },
+  "rc_min_tls_version": {
+    "title": "Minimálna verzia TLS vzdialeného ovládania",
+    "help": "Minimálna prijateľná verzia TLS"
+  },
+  "rc_allow_origin": {
+    "title": "Povolený pôvod vzdialeného ovládania",
+    "help": "Pôvod, z ktorého je možné vykonať požiadavku medzi doménami (CORS)"
+  },
+  "rc_htpasswd": {
+    "title": "Htpasswd vzdialeného ovládania",
+    "help": "Súbor htpasswd – ak nie je zadaný, overenie sa nevykonáva"
+  },
+  "rc_realm": {
+    "title": "Realm vzdialeného ovládania",
+    "help": "Realm na overenie"
+  },
+  "rc_user": {
+    "title": "Používateľ vzdialeného ovládania",
+    "help": "Používateľské meno na overenie"
+  },
+  "rc_pass": {
+    "title": "Heslo vzdialeného ovládania",
+    "help": "Heslo na overenie"
+  },
+  "rc_salt": {
+    "title": "Soľ vzdialeného ovládania",
+    "help": "Soľ pre hashovanie hesiel"
+  },
+  "rc_user_from_header": {
+    "title": "Používateľ z hlavičky pre vzdialené ovládanie",
+    "help": "Používateľské meno z definovanej hlavičky HTTP"
+  },
+  "rc_template": {
+    "title": "Šablóna vzdialeného ovládania",
+    "help": "Šablóna zadaná používateľom"
+  },
+  "metrics_server_read_timeout": {
+    "title": "Časový limit čítania servera metrík",
+    "help": "Časový limit, počas ktorého server číta údaje"
+  },
+  "metrics_server_write_timeout": {
+    "title": "Časový limit zápisu servera metrík",
+    "help": "Časový limit, počas ktorého server zapisuje údaje"
+  },
+  "metrics_max_header_bytes": {
+    "title": "Maximálna veľkosť hlavičky metrík",
+    "help": "Maximálna veľkosť hlavičky požiadavky"
+  },
+  "metrics_cert": {
+    "title": "Certifikát metrík",
+    "help": "Kľúč TLS PEM (spojenie certifikátu a certifikátu CA)"
+  },
+  "metrics_key": {
+    "title": "Kľúč metrík",
+    "help": "Súkromný kľúč TLS PEM"
+  },
+  "metrics_client_ca": {
+    "title": "CA klienta metrík",
+    "help": "Certifikačná autorita klienta na overovanie klientov"
+  },
+  "metrics_baseurl": {
+    "title": "Základná URL metrík",
+    "help": "Predpona URL – pre koreň ponechajte prázdne"
+  },
+  "metrics_min_tls_version": {
+    "title": "Minimálna verzia TLS metrík",
+    "help": "Minimálna prijateľná verzia TLS"
+  },
+  "metrics_allow_origin": {
+    "title": "Povolený pôvod metrík",
+    "help": "Pôvod, z ktorého je možné vykonať požiadavku medzi doménami (CORS)"
+  },
+  "metrics_htpasswd": {
+    "title": "Htpasswd metrík",
+    "help": "Súbor htpasswd – ak nie je zadaný, overenie sa nevykonáva"
+  },
+  "metrics_realm": {
+    "title": "Realm metrík",
+    "help": "Realm na overenie"
+  },
+  "metrics_user": {
+    "title": "Používateľ metrík",
+    "help": "Používateľské meno na overenie"
+  },
+  "metrics_pass": {
+    "title": "Heslo metrík",
+    "help": "Heslo na overenie"
+  },
+  "metrics_salt": {
+    "title": "Soľ metrík",
+    "help": "Soľ pre hashovanie hesiel"
+  },
+  "metrics_user_from_header": {
+    "title": "Používateľ z hlavičky pre metriky",
+    "help": "Používateľské meno z definovanej hlavičky HTTP"
+  },
+  "metrics_template": {
+    "title": "Šablóna metrík",
+    "help": "Šablóna zadaná používateľom"
+  },
+  "stdio": {
+    "title": "Stdio",
+    "help": "Spustiť server SFTP na stdin/stdout"
+  },
+  "append_only": {
+    "title": "Iba pridávanie",
+    "help": "Zakázať odstraňovanie údajov repozitára"
+  },
+  "private_repos": {
+    "title": "Súkromné repozitáre",
+    "help": "Používatelia majú prístup iba k svojmu súkromnému repozitáru"
+  },
+  "cache_objects": {
+    "title": "Objekty vo vyrovnávacej pamäti",
+    "help": "Ukladať vypísané objekty do vyrovnávacej pamäte"
+  },
+  "force_path_style": {
+    "title": "Vynútiť štýl cesty",
+    "help": "Ak je true, použiť prístup v štýle cesty, ak false, použiť štýl virtuálneho hostiteľa"
+  },
+  "etag_hash": {
+    "title": "Hash ETag",
+    "help": "Ktorý hash použiť pre ETag, alebo auto, prípadne prázdne na vypnutie"
+  },
+  "auth_key": {
+    "title": "Overovací kľúč",
+    "help": "Nastaviť pár kľúčov pre autorizáciu v4: access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "Bez čistenia",
+    "help": "Neodstraňovať prázdny priečinok po odstránení objektu"
+  },
+  "authorized_keys": {
+    "title": "Autorizované kľúče",
+    "help": "Súbor autorizovaných kľúčov"
+  },
+  "no_auth": {
+    "title": "Bez overenia",
+    "help": "Ak je nastavené, povoliť spojenia bez overenia"
+  },
+  "no_modtime": {
+    "title": "Bez času úpravy",
+    "help": "Nečítať/nezapisovať čas úpravy (môže zrýchliť činnosť)"
+  },
+  "no_checksum": {
+    "title": "Bez kontrolného súčtu",
+    "help": "Neporovnávať kontrolné súčty pri nahrávaní/sťahovaní"
+  },
+  "no_seek": {
+    "title": "Bez posúvania",
+    "help": "Nepovoliť posúvanie (seek) v súboroch"
+  },
+  "dir_cache_time": {
+    "title": "Čas vyrovnávacej pamäte priečinkov",
+    "help": "Čas, počas ktorého sa položky priečinkov uchovávajú vo vyrovnávacej pamäti"
+  },
+  "vfs_refresh": {
+    "title": "Obnovenie VFS",
+    "help": "Pri spustení rekurzívne obnoví vyrovnávaciu pamäť priečinkov na pozadí"
+  },
+  "poll_interval": {
+    "title": "Interval dotazovania",
+    "help": "Čas čakania medzi dotazovaniami na zmeny; musí byť kratší ako dir-cache-time a funguje iba pri podporovaných vzdialených úložiskách (0 na vypnutie)"
+  },
+  "read_only": {
+    "title": "Iba na čítanie",
+    "help": "Povoliť iba prístup na čítanie"
+  },
+  "vfs_links": {
+    "title": "Odkazy VFS",
+    "help": "Prevádzať symbolické odkazy na bežné súbory s príponou '.rclonelink' a späť pre VFS"
+  },
+  "vfs_cache_mode": {
+    "title": "Režim vyrovnávacej pamäte VFS",
+    "help": "Režim vyrovnávacej pamäte off|minimal|writes|full"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "Interval kontroly vyrovnávacej pamäte VFS",
+    "help": "Interval, v ktorom sa vo vyrovnávacej pamäti hľadajú zastarané objekty"
+  },
+  "vfs_cache_max_age": {
+    "title": "Maximálny vek vyrovnávacej pamäte VFS",
+    "help": "Maximálny čas od posledného prístupu k objektom vo vyrovnávacej pamäti"
+  },
+  "vfs_cache_max_size": {
+    "title": "Maximálna veľkosť vyrovnávacej pamäte VFS",
+    "help": "Maximálna celková veľkosť objektov vo vyrovnávacej pamäti"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "Minimálne voľné miesto pre vyrovnávaciu pamäť VFS",
+    "help": "Cieľové minimálne voľné miesto na disku s vyrovnávacou pamäťou"
+  },
+  "vfs_read_chunk_size": {
+    "title": "Veľkosť časti čítania VFS",
+    "help": "Čítať zdrojové objekty po častiach"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "Limit veľkosti časti čítania VFS",
+    "help": "Ak je väčší ako --vfs-read-chunk-size, po každej prečítanej časti sa veľkosť časti zdvojnásobí, až kým sa nedosiahne limit ('off' znamená bez obmedzenia)"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "Prúdy čítania častí VFS",
+    "help": "Počet paralelných prúdov čítaných naraz"
+  },
+  "dir_perms": {
+    "title": "Oprávnenia priečinkov",
+    "help": "Oprávnenia priečinkov"
+  },
+  "file_perms": {
+    "title": "Oprávnenia súborov",
+    "help": "Oprávnenia súborov"
+  },
+  "link_perms": {
+    "title": "Oprávnenia odkazov",
+    "help": "Oprávnenia odkazov"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS bez rozlišovania veľkosti písmen",
+    "help": "Ak sa názov súboru nenájde, hľadať zhodu bez rozlišovania veľkosti písmen"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "VFS blokovať duplicity po normalizácii",
+    "help": "Ak v tom istom priečinku existujú duplicitné názvy súborov (po normalizácii), zaznamenať chybu a duplicity skryť (môže znížiť výkon)"
+  },
+  "vfs_write_wait": {
+    "title": "Čakanie na zápis VFS",
+    "help": "Čas čakania na zápis v poradí pred nahlásením chyby"
+  },
+  "vfs_read_wait": {
+    "title": "Čakanie na čítanie VFS",
+    "help": "Čas čakania na čítanie v poradí pred posunom v súbore"
+  },
+  "vfs_write_back": {
+    "title": "Spätný zápis VFS",
+    "help": "Čas do spätného zápisu súborov po poslednom použití pri používaní vyrovnávacej pamäte"
+  },
+  "vfs_read_ahead": {
+    "title": "Čítanie vopred VFS",
+    "help": "Dodatočné čítanie vopred nad rámec --buffer-size pri cache-mode full"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS: využité = veľkosť",
+    "help": "Použiť algoritmus `rclone size` na výpočet využitej veľkosti"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "Rýchle odtlačky VFS",
+    "help": "Používať rýchle (menej presné) odtlačky na zisťovanie zmien"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "Celková veľkosť disku VFS",
+    "help": "Zadať celkové miesto na disku"
+  },
+  "umask": {
+    "title": "Umask",
+    "help": "Prepísať bity oprávnení nastavené súborovým systémom (nepodporované vo Windows)"
+  },
+  "uid": {
+    "title": "UID",
+    "help": "Prepísať pole uid nastavené súborovým systémom (nepodporované vo Windows)"
+  },
+  "gid": {
+    "title": "GID",
+    "help": "Prepísať pole gid nastavené súborovým systémom (nepodporované vo Windows)"
+  },
+  "vfs_metadata_extension": {
+    "title": "Prípona metadát VFS",
+    "help": "Nastaviť príponu, z ktorej sa budú čítať metadáta."
+  },
+  "disable_dir_list": {
+    "title": "Vypnúť výpis priečinkov",
+    "help": "Vypnúť HTML výpis priečinka pri požiadavke GET na priečinok"
+  },
+  "create_empty_src_dirs": {
+    "title": "Vytvoriť prázdne zdrojové priečinky",
+    "help": "Po presune vytvoriť v cieli prázdne zdrojové priečinky."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Odstrániť prázdne zdrojové priečinky",
+    "help": "Po presune odstrániť prázdne zdrojové priečinky."
+  },
+  "resync": {
+    "title": "Resync",
+    "help": "Vykoná beh resync."
+  },
+  "force": {
+    "title": "Vynútiť",
+    "help": "Obísť bezpečnostnú kontrolu --max-delete a spustiť synchronizáciu."
+  },
+  "remove_empty_dirs": {
+    "title": "Odstrániť prázdne priečinky",
+    "help": "Odstrániť prázdne priečinky v záverečnom kroku čistenia."
+  },
+  "filters_file": {
+    "title": "Súbor filtrov",
+    "help": "Načítať vzory filtrovania zo súboru."
+  },
+  "ignore_listing_checksum": {
+    "title": "Ignorovať kontrolné súčty výpisu",
+    "help": "Nepoužívať kontrolné súčty pre výpisy."
+  },
+  "resilient": {
+    "title": "Odolný režim",
+    "help": "Umožniť ďalším behom opakovanie po niektorých menej závažných chybách."
+  },
+  "backup_dir1": {
+    "title": "Priečinok záloh 1",
+    "help": "--backup-dir pre Path1."
+  },
+  "backup_dir2": {
+    "title": "Priečinok záloh 2",
+    "help": "--backup-dir pre Path2."
+  },
+  "disable_zip": {
+    "title": "Vypnúť ZIP",
+    "help": "Vypnúť sťahovanie priečinkov ako ZIP"
+  },
+  "vfs_handle_caching": {
+    "title": "Vyrovnávacia pamäť popisovačov VFS",
+    "help": "Čas, počas ktorého sa po poslednom zatvorení udržiavajú popisovače súborov a sťahovače aktívne"
+  },
+  "type": {
+    "title": "Typ servera",
+    "help": "Typ servera, ktorý sa použije."
+  },
+  "mount_type_mount": {
+    "title": "Štandardné pripojenie",
+    "help": "Štandardné pripojenie FUSE"
+  },
+  "mount_type_cmount": {
+    "title": "Pripojenie FUSE pre Windows/macOS",
+    "help": "Pripojenie FUSE pomocou cgofuse (predvolené vo Windows/macOS)"
+  },
+  "mount_type_mount2": {
+    "title": "Natívne pripojenie Go",
+    "help": "Natívne pripojenie FUSE v Go pomocou go-fuse"
+  },
+  "mount_type_nfsmount": {
+    "title": "Pripojenie NFS",
+    "help": "Pripojenie pomocou protokolu NFS"
+  },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Natívne pripojenie cez Storage Access Framework v systéme Android"
+  },
+  "serve_type_http": {
+    "title": "Server HTTP",
+    "help": "Sprístupniť vzdialené úložisko cez HTTP"
+  },
+  "serve_type_webdav": {
+    "title": "Server WebDAV",
+    "help": "Sprístupniť vzdialené úložisko cez WebDAV"
+  },
+  "serve_type_ftp": {
+    "title": "Server FTP",
+    "help": "Sprístupniť vzdialené úložisko cez FTP"
+  },
+  "serve_type_sftp": {
+    "title": "Server SFTP",
+    "help": "Sprístupniť vzdialené úložisko cez SFTP"
+  },
+  "serve_type_nfs": {
+    "title": "Server NFS",
+    "help": "Sprístupniť vzdialené úložisko cez NFS"
+  },
+  "serve_type_dlna": {
+    "title": "Mediálny server DLNA",
+    "help": "Sprístupniť vzdialené úložisko cez DLNA"
+  },
+  "serve_type_docker": {
+    "title": "Doplnok zväzku Docker",
+    "help": "Sprístupniť vzdialené úložisko ako doplnok zväzku Docker"
+  },
+  "serve_type_restic": {
+    "title": "Server Restic REST",
+    "help": "Sprístupniť vzdialené úložisko cez Restic REST API"
+  },
+  "serve_type_s3": {
+    "title": "Server kompatibilný s Amazon S3",
+    "help": "Sprístupniť vzdialené úložisko cez Amazon S3 API"
+  },
+  "check_file_hash": {
+    "title": "Hash kontrolného súboru",
+    "help": "Považovať checkFileFs:checkFileRemote za súbor SUM s hashmi zadaného typu."
+  },
+  "check_file_fs": {
+    "title": "FS kontrolného súboru",
+    "help": "Považovať checkFileFs:checkFileRemote za súbor SUM s hashmi."
+  },
+  "one_way": {
+    "title": "Jednosmerná kontrola",
+    "help": "Kontrolovať iba jedným smerom – nájsť súbory v zdroji, ktoré neexistujú v cieli."
+  },
+  "auto_filename": {
+    "title": "Automatický názov súboru",
+    "help": "Ak je cieľom priečinok, získať názov súboru z URL alebo hlavičiek."
+  },
+  "rmdirs": {
+    "title": "Odstrániť prázdne priečinky",
+    "help": "Po odstránení súborov odstrániť prázdne priečinky."
+  },
+  "format": {
+    "title": "Formát archívu",
+    "help": "Formát archívu (zip, tar, tgz, tbz, txz atď.)"
+  },
+  "prefix": {
+    "title": "Predpona cesty",
+    "help": "Pridať v archíve priečinok s predponou"
+  },
+  "full_path": {
+    "title": "Úplná cesta",
+    "help": "Používať v archíve úplnú cestu k súborom"
+  },
+  "download": {
+    "title": "Stiahnuť a skontrolovať",
+    "help": "Stiahnuť súbory na kontrolu integrity / porovnanie hashov."
+  },
+  "resync_mode": {
+    "title": "Režim resync",
+    "help": "Počas resync uprednostniť verziu, ktorá je: path1, path2, newer, older, larger, smaller (predvolene: path1 pri --resync, inak none bez resync.)"
+  },
+  "compare": {
+    "title": "Porovnanie",
+    "help": "Zoznam možností porovnania pre bisync oddelených čiarkou, napr. 'size,modtime,checksum' (predvolene: 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Hash sťahovaním",
+    "help": "Vypočítať hash stiahnutím, ak inak nie je k dispozícii. (upozornenie: môže byť pomalé a spotrebovať veľa dát!)"
+  },
+  "max_lock": {
+    "title": "Maximálny zámok",
+    "help": "Považovať súbory zámkov staršie ako táto hodnota za neplatné (predvolene: 0 (nikdy nevyprší)) (minimum: 2m)"
+  },
+  "no_slow_hash": {
+    "title": "Bez pomalých hashov",
+    "help": "Ignorovať kontrolné súčty výpisov iba na backendoch, kde sú pomalé"
+  },
+  "slow_hash_sync_only": {
+    "title": "Pomalé hashe iba pri synchronizácii",
+    "help": "Ignorovať pomalé kontrolné súčty pre výpisy a rozdiely, ale brať ich do úvahy pri volaniach synchronizácie."
+  },
+  "recover": {
+    "title": "Obnova",
+    "help": "Automaticky sa zotaviť z prerušení bez potreby --resync."
+  },
+  "workdir": {
+    "title": "Pracovný priečinok",
+    "help": "Použiť vlastný pracovný priečinok – užitočné pri testovaní."
+  },
+  "check_access": {
+    "title": "Kontrola prístupu",
+    "help": "Prerušiť, ak sa súbory RCLONE_TEST nenájdu v oboch súborových systémoch."
+  },
+  "check_filename": {
+    "title": "Názov kontrolného súboru",
+    "help": "Názov súboru pre --check-access."
+  },
+  "check_sync": {
+    "title": "Kontrola synchronizácie",
+    "help": "Riadi porovnanie konečných výpisov."
+  },
+  "conflict_loser": {
+    "title": "Porazená verzia konfliktu",
+    "help": "Akcia pre porazenú verziu v konflikte synchronizácie (keď existuje víťaz) alebo pre oba súbory (keď víťaz nie je): , num, pathname, delete (predvolene: num)"
+  },
+  "conflict_resolve": {
+    "title": "Riešenie konfliktov",
+    "help": "Automaticky riešiť konflikty uprednostnením verzie, ktorá je: none, path1, path2, newer, older, larger, smaller (predvolene: none)"
+  },
+  "conflict_suffix": {
+    "title": "Prípona konfliktu",
+    "help": "Prípona použitá pri premenovaní --conflict-loser. Môže to byť jeden reťazec alebo dva reťazce oddelené čiarkou na priradenie rôznych prípon pre Path1/Path2. (predvolene: 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "Povoliť pripojenia s mapovaním ID",
+    "help": "Povoliť pripojenia s mapovaním ID (Linux 6.12+, iba mount2)"
+  },
+  "files_from0": {
+    "title": "Súbory zo zoznamu oddeleného znakom NUL",
+    "help": "Načítať zoznam názvov zdrojových súborov zo súboru s oddeľovačom NUL (pomocou - čítať zo stdin)"
+  },
+  "response_header": {
+    "title": "Hlavička odpovede",
+    "help": "Nastaviť hlavičku HTTP pre všetky odpovede s prepísaním existujúcich hodnôt"
+  },
+  "rc_response_header": {
+    "title": "Hlavička odpovede RC",
+    "help": "Nastaviť hlavičku HTTP pre všetky odpovede s prepísaním existujúcich hodnôt"
+  },
+  "metrics_response_header": {
+    "title": "Hlavička odpovede metrík",
+    "help": "Nastaviť hlavičku HTTP pre všetky odpovede s prepísaním existujúcich hodnôt"
+  },
+  "metadata_max_objects": {
+    "title": "Maximálny počet objektov metadát",
+    "help": "Maximálny počet objektov používateľa, ktorých metadáta sa uchovávajú v pamäti, 0 bez obmedzenia"
+  },
+  "multipart_expiry": {
+    "title": "Platnosť viacdielneho nahrávania",
+    "help": "Zrušiť nedokončené viacdielne nahrávania nečinné dlhšie ako táto hodnota, 0 na trvalé ponechanie"
+  },
+  "multipart_max_uploads": {
+    "title": "Maximálny počet streamovaných viacdielnych nahrávaní",
+    "help": "Maximálny počet streamovaných viacdielnych nahrávaní, ktoré môže mať používateľ súčasne rozpracované, 0 bez obmedzenia"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Limit buffera streamovaného viacdielneho nahrávania",
+    "help": "Maximálna pamäť bufferovaná pre jedno streamované viacdielne nahrávanie pre časti prichádzajúce mimo poradia, 0 bez obmedzenia"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Celkový limit buffera streamovaného viacdielneho nahrávania",
+    "help": "Maximálna pamäť bufferovaná všetkými streamovanými viacdielnymi nahrávaniami používateľa pre časti prichádzajúce mimo poradia, 0 bez obmedzenia"
+  },
+  "disable_multipart_streaming": {
+    "title": "Vypnúť streamovanie viacdielnych nahrávaní",
+    "help": "Bufferovať viacdielne nahrávania v pamäti namiesto ich streamovania do backendu"
+  },
+  "mount_type": {
+    "title": "Typ pripojenia",
+    "help": "Typ pripojenia, ktorý sa použije."
+  },
+  "allow_https_downgrade": {
+    "title": "Povoliť prechod z HTTPS na HTTP",
+    "help": "Nasledovať presmerovania z HTTPS na HTTP (nezabezpečené)"
+  },
+  "directory_markers": {
+    "title": "Značky priečinkov",
+    "help": "Vypisovať každý priečinok ako objekt značky priečinka"
+  },
+  "max_delete_renames_aware": {
+    "title": "Max. odstránení s ohľadom na premenovania",
+    "help": "Vylúčiť sledované premenovania z bezpečnostnej kontroly --max-delete (vyžaduje --track-renames)."
+  },
+  "sftp_key": {
+    "title": "Kľúč hostiteľa",
+    "help": "Súbor so súkromným kľúčom hostiteľa SSH (môže mať viac hodnôt; ak ponecháte prázdne, vygeneruje sa automaticky)"
+  },
+  "bisync_max_delete": {
+    "title": "Maximálne odstránenie (%)",
+    "help": "Prerušiť beh, ak by sa odstránilo viac ako toto percento súborov (0 – 100)."
+  },
+  "bisync_no_cleanup": {
+    "title": "Bez čistenia",
+    "help": "Ponechať pracovné súbory."
+  },
+  "dest_after": {
+    "title": "Cieľ po operácii",
+    "help": "Vypísať všetky súbory, ktoré existujú v cieli po operácii."
+  },
+  "index_output": {
+    "title": "Formáty výpisov",
+    "help": "Ktoré výpisy sa zapíšu do každého priečinka."
+  },
+  "index_max_depth": {
+    "title": "Maximálna hĺbka",
+    "help": "Zapisovať výpisy iba do tejto hĺbky priečinkov, pričom tento priečinok sa počíta ako 1. Ponechajte -1 bez obmedzenia."
+  },
+  "index_include_rule": {
+    "title": "Iba tieto priečinky",
+    "help": "Zapisovať výpisy iba do priečinkov zodpovedajúcich vzoru, napríklad /docs/**. Ostatné priečinky zostanú nezmenené, no naďalej sa zobrazia vo výpise nadradeného priečinka."
+  },
+  "index_exclude_rule": {
+    "title": "Preskočiť tieto priečinky",
+    "help": "V priečinkoch zodpovedajúcich vzoru, napríklad /private/**, nič nezapisovať ani neodstraňovať. Použite to na ochranu priečinka, ktorý má vlastný index."
+  },
+  "index_dir_time": {
+    "title": "Čas priečinka",
+    "help": "Čas zobrazený vedľa priečinka."
+  },
+  "index_no_mod_time": {
+    "title": "Skryť časy úpravy",
+    "help": "Nezobrazovať žiadne časy. Na S3, Swift a Oracle je to najlacnejšia možnosť, pretože inak každý objekt potrebuje vlastnú požiadavku."
+  },
+  "index_link_index": {
+    "title": "Odkazovať na súbor indexu",
+    "help": "Odkazovať na priečinky ako dir/index.html namiesto dir/ pre hostiteľov, ktorí nesprístupňujú indexové dokumenty (obyčajné URL S3, priateľské URL B2)."
+  },
+  "index_use_server_mod_time": {
+    "title": "Použiť čas nahratia",
+    "help": "Zobrazovať čas nahratia objektu namiesto času jeho úpravy. Na S3 sa tým ušetrí jedna požiadavka na objekt a webový server tento čas posiela ako Last-Modified."
+  },
+  "index_rewrite": {
+    "title": "Prepísať nezmenené výpisy",
+    "help": "Zapísať každý výpis, aj keď sa nezmenil, napríklad na použitie nových hlavičiek alebo metadát."
+  }
+}
