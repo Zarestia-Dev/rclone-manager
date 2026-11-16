@@ -34,6 +34,7 @@ describe('cron-locale.mapper', () => {
       expect(getCronstrueLocale('ja-JP')).toBe('ja');
       expect(getCronstrueLocale('ru-RU')).toBe('ru');
       expect(getCronstrueLocale('uk-UA')).toBe('uk');
+      expect(getCronstrueLocale('sk-SK')).toBe('sk');
     });
   });
 
@@ -47,6 +48,11 @@ describe('cron-locale.mapper', () => {
       const result = formatCronHumanReadable('0 0 * * *', 'zh-TW');
       expect(result).toBeTruthy();
       expect(typeof result).toBe('string');
+    });
+
+    it('should format cron expression in Slovak', async () => {
+      await ensureCronLocaleLoaded('sk');
+      expect(formatCronHumanReadable('0 0 * * *', 'sk-SK')).toBe('V 00:00');
     });
 
     it('should fallback gracefully on invalid cron expression', () => {
