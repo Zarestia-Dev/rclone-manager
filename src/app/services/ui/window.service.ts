@@ -2,6 +2,11 @@ import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
+import {
+  DEFAULT_WINDOW_BUTTON_LAYOUT,
+  parseWindowButtonLayout,
+  WindowButtonLayout,
+} from 'src/app/shared/utils';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
@@ -26,6 +31,10 @@ export class WindowService extends TauriBaseService {
 
   private readonly _isMaximized = signal<boolean>(false);
   public readonly isMaximized = this._isMaximized.asReadonly();
+
+  private readonly _buttonLayout = signal<WindowButtonLayout>(DEFAULT_WINDOW_BUTTON_LAYOUT);
+  /** Which window buttons the title bar shows, and on which side. */
+  public readonly buttonLayout = this._buttonLayout.asReadonly();
 
   constructor() {
     super();
@@ -72,6 +81,7 @@ export class WindowService extends TauriBaseService {
       if (this.appWindow) {
         this.initWindowListeners();
         this.initLinuxResizeHandles();
+        this.loadButtonLayout();
       }
     }
   }
@@ -84,6 +94,17 @@ export class WindowService extends TauriBaseService {
       .subscribe(() => {
         this.checkMaximizedState();
       });
+  }
+
+  /** On Linux, follow the desktop's button layout (for example GNOME's default close-only). */
+  private async loadButtonLayout(): Promise<void> {
+    try {
+      if (platform() !== 'linux') return;
+      const layout = await this.invokeCommand<string | null>('get_window_button_layout');
+      this._buttonLayout.set(parseWindowButtonLayout(layout));
+    } catch (error) {
+      console.error('Failed to read the window button layout:', error);
+    }
   }
 
   private initLinuxResizeHandles(): void {

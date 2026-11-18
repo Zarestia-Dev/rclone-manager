@@ -78,6 +78,32 @@ pub(super) fn should_open_main_window(args: &crate::cli::CliArgs, vault_locked: 
     !hidden_start && args.general.send_to_remote.is_none()
 }
 
+/// The desktop's title bar button layout in GTK's `gtk-decoration-layout` form, such as
+/// `appmenu:close` or `close,minimize,maximize:`. GNOME sets it from its `button-layout`
+/// setting and KDE from its window decoration settings. Only Linux has one.
+#[tauri::command]
+pub async fn get_window_button_layout(app: tauri::AppHandle) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        // GTK settings may only be read on the main thread.
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        app.run_on_main_thread(move || {
+            use gtk::prelude::GtkSettingsExt;
+            let layout = gtk::Settings::default()
+                .and_then(|settings| settings.gtk_decoration_layout())
+                .map(|layout| layout.to_string());
+            let _ = tx.send(layout);
+        })
+        .ok()?;
+        rx.await.ok().flatten()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{has_visible_tray, should_open_main_window};

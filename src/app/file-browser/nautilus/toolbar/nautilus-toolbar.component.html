@@ -1,4 +1,10 @@
 <div class="left-section" data-tauri-drag-region>
+  @if (
+    nautilusService.isStandaloneWindow() ||
+    (uiStateService.defaultView() === 'nautilus' && !nautilusService.isBrowserOverlayOpen())
+  ) {
+    <app-window-controls side="start"></app-window-controls>
+  }
   <button
     (click)="goBack.emit()"
     [disabled]="!effectiveCanGoBack()"
