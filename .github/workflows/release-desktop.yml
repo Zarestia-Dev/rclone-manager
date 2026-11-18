@@ -98,3 +98,28 @@ jobs:
           releaseDraft: true
           prerelease: ${{ steps.release_version.outputs.PRERELEASE }}
           args: ${{ matrix.args }} -- --locked
+
+      # Up to v0.3.3 the AppImage forced GDK_BACKEND=x11 and bundled
+      # libwayland-client, which left a blank window on Wayland sessions
+      # (#146, #227). Both came from the bundler, so fail the draft release
+      # if a bundler update brings either back.
+      - name: Check AppImage for X11 forcing and bundled libwayland-client
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        run: |
+          shopt -s globstar nullglob
+          images=(backend/target/**/bundle/appimage/*.AppImage)
+          [ ${#images[@]} -gt 0 ] || { echo "::error::No AppImage was built"; exit 1; }
+          status=0
+          for image in "${images[@]}"; do
+            work=$(mktemp -d)
+            (cd "$work" && "$OLDPWD/$image" --appimage-extract >/dev/null)
+            if grep -rqsE '^[[:space:]]*export GDK_BACKEND=x11' "$work/squashfs-root/AppRun" "$work/squashfs-root/apprun-hooks"; then
+              echo "::error file=$image::AppRun forces GDK_BACKEND=x11"; status=1
+            fi
+            if [ -n "$(find "$work/squashfs-root" -name 'libwayland-client.so*' -print -quit)" ]; then
+              echo "::error file=$image::bundles libwayland-client"; status=1
+            fi
+            rm -rf "$work"
+          done
+          exit $status
