@@ -769,7 +769,7 @@ mod tests {
             output["summary"]
                 .as_str()
                 .unwrap()
-                .contains("2 difference(s)")
+                .contains("Check found differences: 2")
         );
     }
 
@@ -919,11 +919,11 @@ mod tests {
 
         assert_eq!(
             output["summary"],
-            "Check found 26 difference(s): 25 differ, 0 missing on destination, 1 missing on source."
+            "Check found differences: 26 (25 differ, 0 missing on destination, 1 missing on source)."
         );
         let report = output["report"].as_str().unwrap();
         assert!(report.starts_with("### Check Report\n"), "{report}");
-        assert!(report.contains("- **Status**: Differences detected (26 file(s))"));
+        assert!(report.contains("- **Status**: Differences detected (files: 26)"));
         assert!(report.contains("- **Differing Files (25)**:"));
         assert_eq!(report.matches("  • file").count(), CHECK_REPORT_LIST_LIMIT);
         assert!(report.contains("  • ... and 5 more"));
@@ -934,13 +934,13 @@ mod tests {
             build_job_execution_output(check_job(JobType::Check, json!({"checks": 4})), true, None);
         assert_eq!(
             clean["summary"],
-            "Check passed: all 4 file(s) matched with 0 differences."
+            "Check passed: all files matched with 0 differences (files: 4)."
         );
         assert!(
             clean["report"]
                 .as_str()
                 .unwrap()
-                .contains("All 4 file(s) matched identically (0 differences).")
+                .contains("All files matched identically (0 differences, files: 4).")
         );
     }
 
@@ -954,11 +954,11 @@ mod tests {
         };
         assert_eq!(
             sync(json!({"bytes": 2048, "transfers": 2}), true, None),
-            "2 file(s) (2.00 KiB) transferred successfully, 0 error(s)."
+            "Files transferred successfully: 2 (2.00 KiB), errors: 0."
         );
         assert_eq!(
             sync(json!({}), true, None),
-            "Transfer completed successfully (0 files transferred, 0 errors)."
+            "Transfer completed successfully (0 files transferred, errors: 0)."
         );
         assert_eq!(
             sync(json!({}), false, Some("disk full")),
