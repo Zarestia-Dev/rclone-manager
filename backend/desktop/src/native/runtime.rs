@@ -1,7 +1,5 @@
 #[cfg(not(feature = "web-server"))]
 use crate::context::BackendContext;
-#[cfg(not(feature = "web-server"))]
-use crate::utils::types::state::RcloneState;
 
 /// XDG autostart entries launch right after `graphical-session.target`, which
 /// can precede the compositor exposing its sockets (KDE Plasma session start
@@ -147,12 +145,18 @@ pub fn run() {
                 }
                 crate::services::updates::health::host_ready(context.inner());
             }
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                let state = app_handle.backend_state::<RcloneState>();
-                if !state.is_shutting_down() {
-                    api.prevent_exit();
+            if let tauri::RunEvent::ExitRequested { api, .. } = event
+                && !rclone_manager_core::services::lifecycle::shutdown::is_shutdown_complete(
+                    app_handle.backend(),
+                )
+            {
+                api.prevent_exit();
 
-                    #[cfg(target_os = "linux")]
+                #[cfg(target_os = "linux")]
+                if !app_handle
+                    .backend_state::<crate::utils::types::state::RcloneState>()
+                    .is_shutting_down()
+                {
                     std::thread::spawn(kill_webkit_children);
                 }
             }
