@@ -716,6 +716,7 @@ export class QuickRunEditorComponent implements OnInit {
 
     const mapped = mapFormToConfigProfile(opType, rawValue, {
       remoteName,
+      pathStyle: this.pathService.enginePathStyle(),
       cleanData: (options, definitions) => this.valueMapper.cleanData(options, definitions),
       dynamicFields: this.getFlagFields(opType),
     });

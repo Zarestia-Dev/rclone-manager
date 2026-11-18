@@ -19,7 +19,7 @@ use crate::{
 
 use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 
-use super::common::{CommonConfigParams, OperationContext, parse_common_config};
+use super::common::{CommonConfigParams, OperationContext, backend_os, parse_common_config};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -90,6 +90,21 @@ impl MountParams {
             execute_id: None,
             no_cache: None,
         })
+    }
+
+    pub(crate) async fn normalize_windows_mount_point(
+        &mut self,
+        app: &AppHandle,
+        backend: &Backend,
+    ) {
+        // Rclone treats a forward-slash drive root as a directory on Windows.
+        if matches!(self.mount_point.as_bytes(), [letter, b':', b'/'] if letter.is_ascii_alphabetic())
+            && backend_os(app, backend)
+                .await
+                .is_ok_and(|os| os == "windows")
+        {
+            self.mount_point.pop();
+        }
     }
 
     pub fn to_rclone_body(&self) -> Result<Value, String> {
@@ -561,6 +576,10 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
             }
         };
 
+    mount_params
+        .normalize_windows_mount_point(&app, &resolved.backend)
+        .await;
+
     // Ensure profile is set from the function parameter, not the config object
     mount_params.backend = Some(resolved.backend);
     mount_params.starter = Some(Starter::profile(params.profile_name.clone()));
@@ -576,7 +595,47 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rclone::backend::runtime::RuntimeInfo;
     use serde_json::json;
+
+    #[tokio::test]
+    async fn saved_drive_root_is_normalized_for_the_windows_backend_only() {
+        let app = AppHandle::default();
+        let manager = BackendManager::new();
+        let windows = Backend::new_remote("Windows", "127.0.0.1", 51900);
+        let linux = Backend::new_remote("Linux", "127.0.0.1", 51901);
+        for (backend, os) in [(&windows, "windows"), (&linux, "linux")] {
+            manager
+                .set_runtime_info(
+                    &backend.name,
+                    RuntimeInfo {
+                        os: Some(os.into()),
+                        ..Default::default()
+                    },
+                )
+                .await;
+        }
+        app.manage(manager);
+
+        for (backend, saved, expected) in [
+            (&windows, "X:/", "X:"),
+            (&windows, "x:/", "x:"),
+            (&windows, "X:", "X:"),
+            (&windows, "X:\\", "X:\\"),
+            (&windows, "X:/folder", "X:/folder"),
+            (&windows, "X", "X"),
+            (&windows, "*", "*"),
+            (&windows, "1:/", "1:/"),
+            (&linux, "X:/", "X:/"),
+        ] {
+            let config = json!({"rclone": {"fs": "drive:", "mountPoint": saved}});
+            let mut params = MountParams::from_config("drive".into(), &config, &json!({})).unwrap();
+            params.normalize_windows_mount_point(&app, backend).await;
+            assert_eq!(params.mount_point, expected);
+            assert_eq!(params.to_rclone_body().unwrap()["mountPoint"], expected);
+            assert_eq!(config["rclone"]["mountPoint"], saved);
+        }
+    }
 
     #[test]
     fn mount_adapter_moves_the_first_source_and_destination_and_keeps_defaults() {

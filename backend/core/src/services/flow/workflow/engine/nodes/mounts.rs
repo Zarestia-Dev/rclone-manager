@@ -91,6 +91,9 @@ pub(crate) async fn mount_node(
         })));
     }
 
+    mount_params
+        .normalize_windows_mount_point(app, backend)
+        .await;
     let backend_manager = app.state::<BackendManager>();
     let is_already_mounted = {
         let mounted = backend_manager

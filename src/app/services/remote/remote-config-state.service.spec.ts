@@ -169,6 +169,29 @@ describe('RemoteConfigStateService', () => {
   });
 
   describe('profile persistence', () => {
+    it('saves a Windows mount destination with a forward slash as a drive letter', async () => {
+      vi.spyOn(TestBed.inject(BackendService), 'isWindows').mockReturnValue(true);
+      const initial = {
+        mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint: 'X:/' } } },
+      };
+      (service as unknown as { initialConfig: unknown }).initialConfig = initial;
+      setDialogData({ name: 'drive', remoteType: 'drive' });
+      service.initProfiles({ remoteType: 'drive' });
+      await service.selectProfile('mount', 'Default');
+
+      expect(await service.saveRemoteProfiles('drive', 'mount')).toBe(true);
+      expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
+        'drive',
+        {
+          mountConfigs: {
+            Default: { app: {}, rclone: { fs: 'drive:', mountPoint: 'X:' } },
+          },
+        },
+        'Local'
+      );
+      expect(initial.mountConfigs.Default.rclone.mountPoint).toBe('X:/');
+    });
+
     it('blocks a conflicting drive before writing profile settings', async () => {
       service.initProfiles({ remoteType: 'drive' });
       const profile = { app: {}, rclone: { fs: 'drive:', mountPoint: 'W:' } };

@@ -594,6 +594,7 @@ export class RemoteConfigStateService {
   ): Record<string, unknown> {
     return mapFormToConfigProfile(type, configData, {
       remoteName,
+      pathStyle: this.pathService.enginePathStyle(),
       cleanData: (opts, fields) => this.valueMapper.cleanData(opts, fields),
       dynamicFields: this.getFieldsForStep(type),
     });
