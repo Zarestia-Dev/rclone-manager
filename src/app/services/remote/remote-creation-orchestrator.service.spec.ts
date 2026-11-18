@@ -12,6 +12,7 @@ import { RemoteCreationOrchestrator } from './remote-creation-orchestrator.servi
 import { RemoteManagementService } from './remote-management.service';
 import { AuthStateService } from '../security/auth-state.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
@@ -135,6 +136,10 @@ describe('RemoteCreationOrchestrator', () => {
         { provide: AuthStateService, useValue: auth },
         { provide: AppSettingsService, useValue: { saveRemoteSettings: saveSettings } },
         {
+          provide: WindowsMountTargetService,
+          useValue: { changedDriveError: vi.fn().mockResolvedValue(undefined) },
+        },
+        {
           provide: MountManagementService,
           useValue: { mountRemoteProfile: vi.fn().mockResolvedValue(undefined) },
         },
@@ -145,7 +150,7 @@ describe('RemoteCreationOrchestrator', () => {
         { provide: JobManagementService, useValue: { startProfileBatch: startBatch } },
         {
           provide: NotificationService,
-          useValue: { showError: notifyError, showSuccess: notifySuccess },
+          useValue: { showError: notifyError, showSuccess: notifySuccess, showWarning: vi.fn() },
         },
         {
           provide: PathInspectionService,
@@ -157,6 +162,26 @@ describe('RemoteCreationOrchestrator', () => {
   });
 
   describe('creating a remote without nonInteractive', () => {
+    it('blocks a conflicting drive before creating the remote', async () => {
+      vi.mocked(TestBed.inject(WindowsMountTargetService).changedDriveError).mockResolvedValueOnce({
+        key: 'wizards.appOperation.mountDriveConflict',
+        params: { letter: 'W:' },
+      });
+      expect(
+        await service.createRemote(
+          remote,
+          {
+            ...config,
+            mountConfigs: { Archive: { app: {}, rclone: { fs: 'drive:', mountPoint: 'W:' } } },
+          },
+          []
+        )
+      ).toBe(false);
+      expect(remoteService.createRemote).not.toHaveBeenCalled();
+      expect(saveSettings).not.toHaveBeenCalled();
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledOnce();
+    });
+
     it('sends the name and type on their own, never as config parameters', async () => {
       await service.createRemote({ ...remote, host: 'h' }, config, [
         { key: 'obscure', value: true },

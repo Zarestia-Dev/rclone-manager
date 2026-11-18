@@ -72,6 +72,26 @@ describe('PathInspectionService', () => {
   });
 
   describe('inspect', () => {
+    it.each(['X:', 'X:\\', '*', '\\\\server\\example'])(
+      'does not browse the contents of the Windows mount target %s',
+      async path => {
+        mockPathService.enginePathStyle.mockReturnValue('windows');
+        expect(await service.inspect(path, 'example', 'Default', 'mount')).toBeNull();
+        expect(mockPathService.checkMountPathCollision).toHaveBeenCalled();
+        expect(mockRemoteFileOps.getStat).not.toHaveBeenCalled();
+        expect(mockRemoteFileOps.getRemotePaths).not.toHaveBeenCalled();
+      }
+    );
+
+    it('reports an existing Windows mount directory without reading its contents', async () => {
+      mockPathService.enginePathStyle.mockReturnValue('windows');
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      expect(await service.inspect('D:\\Cloud', 'example', 'Default', 'mount')).toMatchObject({
+        labelKey: 'wizards.appOperation.mountFolderAlreadyExists',
+      });
+      expect(mockRemoteFileOps.getRemotePaths).not.toHaveBeenCalled();
+    });
+
     it('forwards the edited profile and operation so it can exclude itself from collisions', async () => {
       await service.inspect('/mnt/drive', 'drive', 'Shared', 'mount');
       expect(mockPathService.checkMountPathCollision).toHaveBeenCalledWith(

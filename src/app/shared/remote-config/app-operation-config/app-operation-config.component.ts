@@ -22,6 +22,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -43,6 +44,10 @@ import {
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import {
+  windowsMountFolderTarget,
+  WindowsMountTargetService,
+} from 'src/app/services/operations/windows-mount-target.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import {
@@ -59,6 +64,7 @@ import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mappe
 import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
 import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
+import { WindowsMountTargetComponent } from '../windows-mount-target/windows-mount-target.component';
 import { PillDirective } from '../../directives/pill.directive';
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -81,6 +87,7 @@ interface PathItem {
     NgTemplateOutlet,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
@@ -94,10 +101,11 @@ interface PathItem {
     CdkOverlayAutoposDirective,
     UrlPreviewComponent,
     PillDirective,
+    WindowsMountTargetComponent,
   ],
   providers: [PathSelectionService],
   templateUrl: './app-operation-config.component.html',
-  styleUrl: './app-operation-config.component.scss',
+  styleUrls: ['./app-operation-config.component.scss', './operation-path-row.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OperationConfigComponent {
@@ -121,6 +129,7 @@ export class OperationConfigComponent {
   readonly currentRemoteName = input.required<string>();
   readonly currentProfileName = input<string | null>(null);
   readonly existingRemotes = input<string[]>([]);
+  readonly mountProfiles = input<Record<string, unknown>>();
   readonly description = input('');
   readonly isNewRemote = input(true);
   readonly showAutomations = input(true);
@@ -128,6 +137,7 @@ export class OperationConfigComponent {
 
   // Services
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly pathService = inject(PathService);
   private readonly pathInspectionService = inject(PathInspectionService);
@@ -192,6 +202,26 @@ export class OperationConfigComponent {
   });
 
   readonly isMount = computed(() => this.operationType() === 'mount');
+  protected readonly isWindowsMount = computed(
+    () => this.isMount() && this.backendService.isWindows()
+  );
+  protected readonly canSelectDriveLetter = computed(
+    () => this.isWindowsMount() && this.windowsMountTarget.canCheck()
+  );
+  protected readonly networkModeControl = computed(() => {
+    this.formVersion();
+    const options = this.opFormGroup().get('options');
+    return (options?.get('network_mode') ??
+      options?.get('NetworkMode') ??
+      options?.get('network-mode')) as FormControl | null;
+  });
+  protected readonly volumeNameControl = computed(() => {
+    this.formVersion();
+    const options = this.opFormGroup().get('options');
+    return (options?.get('volname') ??
+      options?.get('VolName') ??
+      options?.get('VolumeName')) as FormControl | null;
+  });
   readonly isServe = computed(() => this.operationType() === 'serve');
   readonly isCoreCommandOp = computed(() => this.hasFlag('coreCommand'));
   readonly otherRemotes = computed(() =>
@@ -313,10 +343,22 @@ export class OperationConfigComponent {
       this.operationType() !== 'serve' &&
       !isSourceOnlyOperation(this.operationType() as string) &&
       !(this.isMount() && this.isLocalMobileSafMount()) &&
-      this.matchesSearch(
+      (this.matchesSearch(
         ['dest', 'destination', 'path', 'output', 'target'],
         ['wizards.appOperation.destinationPath']
-      )
+      ) ||
+        (this.canSelectDriveLetter() &&
+          this.matchesSearch(
+            ['volname', 'network mode', 'network_mode', 'network-mode', 'NetworkMode'],
+            [
+              'volname.title',
+              'network_mode.title',
+              'wizards.appOperation.mountDiskName',
+              'wizards.appOperation.mountWindowsAppearance',
+              'wizards.appOperation.mountLocalDrive',
+              'wizards.appOperation.mountNetworkDrive',
+            ]
+          )))
   );
 
   readonly canAddSource = computed(() => this.hasFlag('multiSource'));
@@ -758,13 +800,39 @@ export class OperationConfigComponent {
 
   private async selectLocal(item: PathItem, target: FilePickerSelection): Promise<void> {
     const allowNonEmpty = this.opFormGroup().get('options.allow_non_empty')?.value;
-    const requireEmpty = this.isMount() && item.group === 'dest' && !allowNonEmpty;
+    const isMountDestination = this.isMount() && item.group === 'dest';
+    const chooseParent = isMountDestination && this.isWindowsMount();
+    const requireEmpty = isMountDestination && !chooseParent && !allowNonEmpty;
+    const previousPath = item.pathControl.value;
+    const previousIsDriveFolder = /^[a-z]:[\\/].+/i.test(previousPath);
+    const initialPath = chooseParent
+      ? previousIsDriveFolder
+        ? this.pathService.getParentPath(previousPath)
+        : undefined
+      : previousPath;
 
     try {
-      const selected =
+      let selected =
         target === 'files'
-          ? await this.fileSystemService.selectFile(item.pathControl.value)
-          : await this.fileSystemService.selectFolder(requireEmpty, item.pathControl.value);
+          ? await this.fileSystemService.selectFile(initialPath)
+          : await this.fileSystemService.selectFolder(requireEmpty, initialPath);
+
+      if (selected && chooseParent) {
+        if (
+          this.destroyRef.destroyed ||
+          this.destItem()?.pathControl !== item.pathControl ||
+          item.pathControl.value !== previousPath
+        )
+          return;
+        const folderTarget = windowsMountFolderTarget(selected, previousPath);
+        if (!folderTarget) {
+          this.notificationService.showWarning(
+            this.translate.instant('wizards.appOperation.mountFolderLocalDrive')
+          );
+          return;
+        }
+        selected = folderTarget;
+      }
 
       if (selected) {
         this.opFormGroup().markAsDirty();

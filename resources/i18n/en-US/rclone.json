@@ -1356,8 +1356,8 @@
     "help": "Buffer multipart uploads in memory instead of streaming them to the backend"
   },
   "mount_type": {
-    "title": "Mount Type",
-    "help": "Mount type to use."
+    "title": "Mount method",
+    "help": "Choose the method rclone uses to mount the storage."
   },
   "allow_https_downgrade": {
     "title": "Allow Https Downgrade",

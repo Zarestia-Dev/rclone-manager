@@ -100,87 +100,6 @@ app-alert-banner {
   }
 }
 
-.path-list {
-  display: flex;
-  flex-direction: column;
-  background: var(--mat-sys-surface-variant);
-  border-radius: var(--input-border-radius);
-  box-shadow: var(--box-shadow);
-  overflow: hidden;
-}
-
-// ── Path row ─────────────────────────────────────────────────────────────────
-.path-item-row {
-  display: flex;
-  align-items: stretch;
-  min-height: calc(var(--space-2xl) + var(--space-xl));
-  border-bottom: 1px solid var(--border-color);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:focus-within {
-    background: var(--hover-bg-color);
-  }
-
-  .path-type-selector {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    padding: 0 var(--space-xs) 0 var(--space-sm);
-    border-right: 1px solid var(--border-color);
-
-    .dropdown-arrow {
-      color: var(--dim-color);
-    }
-  }
-
-  mat-form-field.path-input-field {
-    flex: 1;
-    width: auto;
-
-    ::ng-deep {
-      .mat-mdc-text-field-wrapper {
-        background: transparent !important;
-        border: none !important;
-        border-radius: 0 !important;
-        padding: 0 var(--space-md) !important;
-        box-shadow: none !important;
-        height: 100%;
-      }
-      .mat-mdc-form-field-flex {
-        height: 100%;
-        align-items: center;
-      }
-      .mat-mdc-form-field-infix {
-        padding: 0 !important;
-        min-height: auto !important;
-      }
-      .mdc-line-ripple,
-      .mat-mdc-form-field-subscript-wrapper {
-        display: none !important;
-      }
-    }
-
-    input {
-      font-size: var(--font-size-lg);
-      color: var(--window-fg-color);
-
-      &::placeholder {
-        color: var(--dim-color);
-        opacity: 0.6;
-      }
-    }
-  }
-
-  .action-suffix {
-    display: flex;
-    align-items: center;
-    padding-right: var(--space-xxs);
-  }
-}
-
 .watch-options-container {
   display: flex;
   flex-direction: column;
@@ -334,6 +253,16 @@ app-alert-banner {
 }
 
 // ── Path row wrapper & status badge ──────────────────────────────────────────
+.mount-parent-picker {
+  align-self: flex-start;
+}
+
+.mount-target-hint {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
 .path-row-wrapper {
   display: flex;
   flex-direction: column;

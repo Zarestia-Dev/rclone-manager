@@ -61,6 +61,78 @@ describe('FlagConfigStepComponent search', () => {
     expect(group.get('options.createEmptySrcDirs')?.value).toBe(true);
   });
 
+  it('moves the two Windows display flags out of the advanced list without removing their values', () => {
+    TestBed.configureTestingModule({
+      imports: [FlagConfigStepComponent],
+      providers: [
+        provideTranslateService(),
+        { provide: UiStateService, useValue: { showJsonMode: signal(false) } },
+        { provide: IconService, useValue: {} },
+      ],
+    }).overrideComponent(FlagConfigStepComponent, { set: { template: '', imports: [] } });
+    const fixture = TestBed.createComponent(FlagConfigStepComponent);
+    const options = new FormGroup({
+      volname: new FormControl('Archive'),
+      network_mode: new FormControl(true),
+      direct_io: new FormControl(false),
+    });
+    fixture.componentRef.setInput(
+      'form',
+      new FormGroup({ mountConfig: new FormGroup({ options }) })
+    );
+    fixture.componentRef.setInput('flagType', 'mount');
+    fixture.componentRef.setInput(
+      'dynamicFlagFields',
+      ['volname', 'network_mode', 'direct_io'].map(Name => ({
+        Name,
+        FieldName: '',
+        Help: '',
+        Type: 'string',
+        DefaultStr: '',
+      }))
+    );
+    fixture.componentRef.setInput('showWindowsMountTarget', true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.dynamicFieldBindings().map(field => field.controlKey)).toEqual(
+      ['direct_io']
+    );
+    expect(options.value).toEqual({ volname: 'Archive', network_mode: true, direct_io: false });
+
+    fixture.componentRef.setInput('showWindowsMountTarget', false);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.dynamicFieldBindings().map(field => field.controlKey)).toEqual(
+      ['volname', 'network_mode', 'direct_io']
+    );
+  });
+
+  it('shows the automatic Windows method even when the backend only lists cmount', () => {
+    TestBed.configureTestingModule({
+      imports: [FlagConfigStepComponent],
+      providers: [
+        provideTranslateService(),
+        { provide: UiStateService, useValue: { showJsonMode: signal(false) } },
+        { provide: IconService, useValue: {} },
+      ],
+    }).overrideComponent(FlagConfigStepComponent, { set: { template: '', imports: [] } });
+    const fixture = TestBed.createComponent(FlagConfigStepComponent);
+    fixture.componentRef.setInput('flagType', 'mount');
+    fixture.componentRef.setInput('showWindowsMountTarget', true);
+    const field = {
+      Name: 'mountType',
+      FieldName: 'mountType',
+      Help: '',
+      Type: 'string',
+      DefaultStr: 'mount',
+      Examples: [{ Value: 'cmount', Help: 'Windows FUSE' }],
+    };
+    fixture.componentRef.setInput('dynamicFlagFields', [field]);
+    expect(fixture.componentInstance.dynamicFieldBindings()[0].field.Examples).toEqual([
+      { Value: 'mount', Help: 'wizards.remoteConfig.defaultMountMethod' },
+      ...field.Examples,
+    ]);
+    expect(field.Examples).toHaveLength(1);
+  });
+
   it('finds camelCase CLI flags and translated titles without changing controls', () => {
     TestBed.configureTestingModule({
       imports: [FlagConfigStepComponent],

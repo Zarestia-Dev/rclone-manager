@@ -25,7 +25,7 @@ export class PathInspectionService extends TauriBaseService {
     remoteName: string,
     currentProfileName?: string,
     currentOperation?: DefaultPathOp
-  ): Promise<PathInspectionStatus> {
+  ): Promise<PathInspectionStatus | null> {
     // Saved path collisions take precedence over filesystem inspection.
     const allSettings = await this.appSettingsService.getRemoteSettings();
     const collisions = this.pathService.checkMountPathCollision(
@@ -46,6 +46,13 @@ export class PathInspectionService extends TauriBaseService {
       };
     }
 
+    const windowsMount =
+      currentOperation === 'mount' && this.pathService.enginePathStyle() === 'windows';
+    // Drive letters and UNC volume names are mount targets, not directories to list.
+    if (windowsMount && (/^[a-z]:[\\/]?$/i.test(path) || path === '*' || path.startsWith('\\\\'))) {
+      return null;
+    }
+
     const { root, relative } = this.pathService.splitLocalForStat(path);
     try {
       const statRes = await this.remoteFileOps.getStat(root, relative);
@@ -62,6 +69,15 @@ export class PathInspectionService extends TauriBaseService {
       }
       if (statRes.item.IsDir !== true) {
         throw new Error('Path is not a directory');
+      }
+
+      if (windowsMount) {
+        return {
+          state: 'nonEmpty',
+          icon: 'folder-open',
+          badgeClass: 'non-empty',
+          labelKey: 'wizards.appOperation.mountFolderAlreadyExists',
+        };
       }
 
       if (!(await this.isDirectoryEmpty(root, relative))) {
@@ -97,7 +113,9 @@ export class PathInspectionService extends TauriBaseService {
     const remote = this.sanitizeRemoteName(remoteName);
     const raw = this.substitute(template, home, remote);
     const normalized = this.pathService.normalizeForPlatform(raw);
-    return this.ensureMountableDefault(normalized);
+    const requiresMissingTarget =
+      opType === 'mount' && this.pathService.enginePathStyle() === 'windows';
+    return this.ensureMountableDefault(normalized, requiresMissingTarget);
   }
 
   private async getPathTemplate(opType: DefaultPathOp): Promise<string> {
@@ -137,7 +155,10 @@ export class PathInspectionService extends TauriBaseService {
     return response.list.length === 0;
   }
 
-  private async ensureMountableDefault(path: string): Promise<string> {
+  private async ensureMountableDefault(
+    path: string,
+    requiresMissingTarget: boolean
+  ): Promise<string> {
     const { root, relative } = this.pathService.splitLocalForStat(path);
 
     for (let attempt = 0; attempt < MAX_DEFAULT_PATH_ATTEMPTS; attempt++) {
@@ -151,7 +172,13 @@ export class PathInspectionService extends TauriBaseService {
       }
       if (!stat?.item) return candidate;
       if (typeof stat.item.IsDir !== 'boolean') throw new Error('Invalid path stat response');
-      if (stat.item.IsDir && (await this.isDirectoryEmpty(root, candidateRel))) return candidate;
+      if (
+        !requiresMissingTarget &&
+        stat.item.IsDir &&
+        (await this.isDirectoryEmpty(root, candidateRel))
+      ) {
+        return candidate;
+      }
     }
     throw new Error(JSON.stringify({ key: 'backendErrors.mount.directoryNotEmpty' }));
   }

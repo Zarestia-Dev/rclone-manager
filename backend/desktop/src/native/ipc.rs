@@ -89,6 +89,8 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         crate::native::files::open_file_natively,
         #[cfg(all(desktop, not(feature = "web-server")))]
         crate::native::files::get_folder_location,
+        #[cfg(all(desktop, target_os = "windows", not(feature = "web-server")))]
+        crate::native::files::get_available_drive_letters,
         #[cfg(not(feature = "web-server"))]
         crate::native::files::get_file_location,
         #[cfg(not(feature = "web-server"))]

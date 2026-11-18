@@ -1356,8 +1356,8 @@
     "help": "Çok parçalı yüklemeleri arka uca akışla göndermek yerine bellekte tamponla"
   },
   "mount_type": {
-    "title": "Bağlama Türü",
-    "help": "Kullanılacak bağlama türü."
+    "title": "Bağlama yöntemi",
+    "help": "rclone’un depolamayı bağlamak için kullanacağı yöntemi seçin."
   },
   "allow_https_downgrade": {
     "title": "HTTPS Düşürmeye İzin Ver",

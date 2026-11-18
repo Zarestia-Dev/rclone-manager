@@ -53,7 +53,7 @@ notify-rust = { version = "4", optional = true }
 jni = "0.22"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Registry", "Win32_System_Threading"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-single-instance = { version = "2", optional = true }

@@ -3,12 +3,15 @@ import { signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MatSelectHarness } from '@angular/material/select/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OperationConfigComponent } from './app-operation-config.component';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { WindowsMountTargetService } from 'src/app/services/operations/windows-mount-target.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -23,11 +26,19 @@ describe('OperationConfigComponent', () => {
   };
   let backendServiceMock: {
     isLocalBackend: ReturnType<typeof vi.fn>;
+    isWindows: ReturnType<typeof vi.fn>;
   };
   let pathServiceMock: {
     parsePathType: ReturnType<typeof vi.fn>;
     getRemoteNameFromValue: ReturnType<typeof vi.fn>;
+    getParentPath: ReturnType<typeof vi.fn>;
+    normalizeForPlatform: ReturnType<typeof vi.fn>;
   };
+  let fileSystemServiceMock: {
+    selectFolder: ReturnType<typeof vi.fn>;
+  };
+
+  const getDriveOptions = vi.fn();
 
   const createOpFormGroup = (path = ''): FormGroup => {
     return new FormGroup({
@@ -48,11 +59,21 @@ describe('OperationConfigComponent', () => {
       watchEnabled: new FormControl(false),
       watchDelay: new FormControl(5),
       watchChangedOnly: new FormControl(false),
-      options: new FormGroup({}),
+      options: new FormGroup({
+        network_mode: new FormControl(false),
+        volname: new FormControl(''),
+      }),
     });
   };
 
   beforeEach(async () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     pathInspectionServiceMock = {
       resolveDefaultPath: vi
         .fn()
@@ -69,18 +90,34 @@ describe('OperationConfigComponent', () => {
 
     backendServiceMock = {
       isLocalBackend: vi.fn().mockReturnValue(true),
+      isWindows: vi.fn().mockReturnValue(false),
     };
 
     pathServiceMock = {
       parsePathType: vi.fn((val: string) => (val === 'local' ? 'local' : 'currentRemote')),
       getRemoteNameFromValue: vi.fn(() => ''),
+      getParentPath: vi.fn().mockReturnValue('D:\\'),
+      normalizeForPlatform: vi.fn((path: string) => path),
+    };
+    fileSystemServiceMock = {
+      selectFolder: vi.fn().mockResolvedValue(null),
     };
 
+    getDriveOptions.mockReset().mockResolvedValue([
+      { letter: 'Z:', status: 'occupied' },
+      { letter: 'Y:', status: 'reserved' },
+      { letter: 'X:', status: 'current' },
+      { letter: 'W:', status: 'free' },
+    ]);
     await TestBed.configureTestingModule({
       imports: [OperationConfigComponent, MatIconTestingModule],
       providers: [
         provideTranslateService(),
         { provide: PathInspectionService, useValue: pathInspectionServiceMock },
+        {
+          provide: WindowsMountTargetService,
+          useValue: { canCheck: (): boolean => true, getDriveOptions },
+        },
         { provide: BackendService, useValue: backendServiceMock },
         { provide: PathService, useValue: pathServiceMock },
         {
@@ -89,7 +126,7 @@ describe('OperationConfigComponent', () => {
         },
         {
           provide: FileSystemService,
-          useValue: { getOperations: vi.fn(), listRemotes: vi.fn() },
+          useValue: fileSystemServiceMock,
         },
         {
           provide: PathSelectionService,
@@ -112,6 +149,8 @@ describe('OperationConfigComponent', () => {
               provide: PathSelectionService,
               useValue: {
                 resetPath: vi.fn(),
+                triggerLoad: vi.fn(),
+                updateInput: vi.fn(),
                 unregisterField: vi.fn(),
                 registerField: vi
                   .fn()
@@ -127,7 +166,7 @@ describe('OperationConfigComponent', () => {
   });
 
   const setupComponent = (
-    operationType: 'mount' | 'serve' | 'bisync' | 'sync',
+    operationType: 'mount' | 'serve' | 'bisync' | 'sync' | 'copy',
     currentRemoteName: string,
     isNewRemote = true,
     initialPath = ''
@@ -148,6 +187,195 @@ describe('OperationConfigComponent', () => {
 
     return { form, component, fixture };
   };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const selectDestination = (): Promise<void> => {
+    const item = component.destItem();
+    if (!item) throw new Error('Missing destination');
+    return component.selectPath(item);
+  };
+
+  it('disables occupied and reserved letters, keeps the current drive and offers folder mode', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    const { form, fixture } = setupComponent('mount', 'example', false, 'X:');
+    const loader = TestbedHarnessEnvironment.loader(fixture);
+    const picker = await loader.getHarness(
+      MatSelectHarness.with({ selector: '.mount-drive-letter' })
+    );
+    expect(fixture.nativeElement.querySelector('.mount-parent-picker')).toBeNull();
+    expect(await picker.getValueText()).toBe('X:');
+    await picker.open();
+    const letters = await picker.getOptions();
+    expect(await Promise.all(letters.map(letter => letter.isDisabled()))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+    await letters[1].click();
+    expect(form.get('dest.path')?.value).toBe('X:');
+    await letters[3].click();
+    expect(form.get('dest.path')?.value).toBe('W:');
+    expect(form.dirty).toBe(true);
+    expect(fileSystemServiceMock.selectFolder).not.toHaveBeenCalled();
+
+    const location = await loader.getHarness(
+      MatSelectHarness.with({ selector: '.mount-location' })
+    );
+    const diskType = await loader.getHarness(
+      MatSelectHarness.with({ selector: '.mount-disk-type' })
+    );
+    await diskType.open();
+    const diskOptions = await diskType.getOptions();
+    expect(await diskOptions[0].getText()).toContain('mountLocalDrive');
+    expect(await diskOptions[1].getText()).toContain('mountNetworkDrive');
+    await diskOptions[1].click();
+    expect(form.get('options.network_mode')?.value).toBe(true);
+
+    const name = fixture.nativeElement.querySelector(
+      '.windows-appearance input'
+    ) as HTMLInputElement;
+    name.value = 'Testing volume';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(form.get('options.volname')?.value).toBe('Testing volume');
+    await location.open();
+    await (await location.getOptions())[1].click();
+    expect(
+      await loader.hasHarness(MatSelectHarness.with({ selector: '.mount-drive-letter' }))
+    ).toBe(false);
+    expect(fixture.nativeElement.querySelector('.mount-parent-picker')).not.toBeNull();
+    expect(form.get('options.network_mode')?.value).toBe(false);
+    expect(form.get('dest.path')?.invalid).toBe(true);
+    fileSystemServiceMock.selectFolder.mockResolvedValueOnce('D:\\Mounts');
+    (fixture.nativeElement.querySelector('.mount-parent-picker') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(form.get('dest.path')?.value).toBe('D:\\Mounts\\rclone-mount');
+    expect(form.get('dest.path')?.valid).toBe(true);
+    expect(await loader.hasHarness(MatSelectHarness.with({ selector: '.mount-disk-type' }))).toBe(
+      false
+    );
+
+    const folder = fixture.nativeElement.querySelector(
+      'app-windows-mount-target .path-item-row input'
+    ) as HTMLInputElement;
+    folder.value = 'D:' + String.fromCharCode(92);
+    folder.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(form.get('dest.path')?.hasError('mountFolderPath')).toBe(true);
+
+    await location.open();
+    await (await location.getOptions())[0].click();
+    expect(form.get('dest.path')?.value).toBe('W:');
+    expect(form.get('options.network_mode')?.value).toBe(true);
+    expect(form.get('options.volname')?.value).toBe('Testing volume');
+    name.value = '';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(form.get('options.volname')?.value).toBe('');
+    expect(name.placeholder).toContain('mountAutomaticName');
+  });
+
+  it('keeps separate letter, folder, and manual drafts', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    const { fixture, form } = setupComponent('mount', 'example', false, 'X:');
+    const location = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatSelectHarness.with({ selector: '.mount-location' })
+    );
+    async function choose(index: number): Promise<void> {
+      await location.open();
+      await (await location.getOptions())[index].click();
+    }
+    const path = form.get('dest.path');
+    await choose(2);
+    expect(path?.value).toBe('');
+    expect(path?.invalid).toBe(true);
+    path?.setValue('*');
+    await choose(1);
+    expect(path?.value).toBe('');
+    await choose(0);
+    expect(path?.value).toBe('X:');
+    await choose(2);
+    expect(path?.value).toBe('*');
+  });
+
+  it('uses a single editable field for a legacy automatic mount path', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    const { fixture, form } = setupComponent('mount', 'example', false, '*');
+    await fixture.whenStable();
+    const target = fixture.nativeElement.querySelector('app-windows-mount-target') as HTMLElement;
+    expect(target.querySelectorAll('.path-item-row input')).toHaveLength(1);
+    expect((target.querySelector('.path-item-row input') as HTMLInputElement).value).toBe('*');
+    expect(target.querySelector('.mount-parent-picker')).toBeNull();
+    expect(target.querySelector('.mount-drive-letter')).toBeNull();
+    expect(form.get('dest.path')?.value).toBe('*');
+    expect(form.pristine).toBe(true);
+  });
+
+  it('finds the Windows mount display settings by their original CLI option', () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    const { fixture } = setupComponent('mount', 'example', false, 'X:');
+    fixture.componentRef.setInput('searchQuery', 'volname');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.windows-appearance input')).not.toBeNull();
+  });
+
+  it('keeps the saved drive letter when availability cannot be checked', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    getDriveOptions.mockRejectedValue(new Error('Unavailable'));
+    const { form, fixture } = setupComponent('mount', 'example', false, 'Y:');
+    const picker = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatSelectHarness.with({ selector: '.mount-drive-letter' })
+    );
+    expect(await picker.getValueText()).toBe('Y:');
+    await picker.open();
+    const options = await picker.getOptions();
+    expect(await Promise.all(options.map(option => option.isDisabled()))).toEqual([true, true]);
+    expect(form.get('dest.path')?.value).toBe('Y:');
+    expect(form.dirty).toBe(false);
+  });
+
+  it('selects an existing Windows parent without requiring it to be empty', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    fileSystemServiceMock.selectFolder.mockResolvedValueOnce('D:\\Mounts');
+    const { form } = setupComponent('mount', 'example', false, 'X:');
+    await selectDestination();
+    expect(fileSystemServiceMock.selectFolder).toHaveBeenCalledWith(false, undefined);
+    expect(form.get('dest.path')?.value).toBe('D:\\Mounts\\rclone-mount');
+  });
+
+  it('keeps a cancelled Windows folder selection and preserves an existing mount folder name', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    const { form } = setupComponent('mount', 'example', false, 'D:\\Cloud');
+    await selectDestination();
+    expect(form.get('dest.path')?.value).toBe('D:\\Cloud');
+    expect(form.dirty).toBe(false);
+    fileSystemServiceMock.selectFolder.mockResolvedValueOnce('E:\\');
+    await selectDestination();
+    expect(fileSystemServiceMock.selectFolder).toHaveBeenLastCalledWith(false, 'D:\\');
+    expect(form.get('dest.path')?.value).toBe('E:\\Cloud');
+  });
+
+  it('allows an existing drive root as a regular file operation destination', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    fileSystemServiceMock.selectFolder.mockResolvedValueOnce('D:\\');
+    const { form } = setupComponent('copy', 'example', false);
+    await selectDestination();
+    expect(fileSystemServiceMock.selectFolder).toHaveBeenCalledWith(false, '');
+    expect(form.get('dest.path')?.value).toBe('D:\\');
+    expect(getDriveOptions).not.toHaveBeenCalled();
+  });
+
+  it('allows an existing drive root as a regular file operation source', async () => {
+    backendServiceMock.isWindows.mockReturnValue(true);
+    fileSystemServiceMock.selectFolder.mockResolvedValueOnce('D:\\');
+    const { form } = setupComponent('sync', 'example', false);
+    form.get('source.0.type')?.setValue('local');
+    fixture.detectChanges();
+    const [source] = component.sourceItems();
+    await component.selectPath(source);
+    expect(fileSystemServiceMock.selectFolder).toHaveBeenCalledWith(false, '');
+    expect(form.get('source.0.path')?.value).toBe('D:\\');
+    expect(getDriveOptions).not.toHaveBeenCalled();
+  });
 
   it('marks cron changes and schedule removal dirty for general remote saving', () => {
     const { form } = setupComponent('sync', 'drive', false);

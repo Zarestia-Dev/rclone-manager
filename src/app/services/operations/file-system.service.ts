@@ -20,6 +20,21 @@ export class FileSystemService extends TauriBaseService {
   private backendService = inject(BackendService);
   private pathService = inject(PathService);
 
+  canSelectDriveLetter(): boolean {
+    return (
+      this.isTauri &&
+      !isMobile() &&
+      this.backendService.isLocalBackend() &&
+      this.backendService.isWindows()
+    );
+  }
+
+  getAvailableDriveLetters(): Promise<string[]> {
+    return this.canSelectDriveLetter()
+      ? this.invokeCommand<string[]>('get_available_drive_letters')
+      : Promise.resolve([]);
+  }
+
   /**
    * Returns true if the internal Nautilus browser should be used instead of native system dialogs.
    * This is true in headless mode or when a remote rclone backend is active.

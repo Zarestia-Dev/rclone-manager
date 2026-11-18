@@ -6,6 +6,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { DialogData, RemoteConfigStateService } from './remote-config-state.service';
 import { AuthStateService } from '../security/auth-state.service';
 import { RemoteManagementService } from './remote-management.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
@@ -52,6 +53,13 @@ describe('RemoteConfigStateService', () => {
             getRemotes: vi.fn().mockResolvedValue([]),
             getRemoteConfigFields: vi.fn().mockResolvedValue([]),
             getRemoteTypes: vi.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: WindowsMountTargetService,
+          useValue: {
+            canCheck: (): boolean => false,
+            changedDriveError: vi.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -161,6 +169,26 @@ describe('RemoteConfigStateService', () => {
   });
 
   describe('profile persistence', () => {
+    it('blocks a conflicting drive before writing profile settings', async () => {
+      service.initProfiles({ remoteType: 'drive' });
+      const profile = { app: {}, rclone: { fs: 'drive:', mountPoint: 'W:' } };
+      service.updateProfileConfig('mount', 'Archive', profile);
+      vi.mocked(TestBed.inject(WindowsMountTargetService).changedDriveError).mockResolvedValueOnce({
+        key: 'wizards.appOperation.mountDriveConflict',
+        params: { letter: 'W:' },
+      });
+
+      expect(await service.saveRemoteProfiles('drive')).toBe(false);
+      expect(TestBed.inject(AppSettingsService).saveRemoteSettings).not.toHaveBeenCalled();
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledOnce();
+      expect(await service.saveRemoteProfiles('drive')).toBe(true);
+      expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
+        'drive',
+        { mountConfigs: { Archive: profile } },
+        'Local'
+      );
+    });
+
     it('uses the last successful save as the baseline for subsequent edits', async () => {
       const initial = {
         syncConfigs: { Default: { app: {}, rclone: { srcFs: '/old', dstFs: 'drive:' } } },

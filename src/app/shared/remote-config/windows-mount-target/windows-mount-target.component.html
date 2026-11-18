@@ -1,0 +1,254 @@
+<div class="path-list">
+  <div class="path-item-row mount-path-row" data-tone="purple">
+    <div class="path-type-selector">
+      <mat-select
+        appPill
+        tone="purple"
+        class="mount-location"
+        [panelWidth]="null"
+        [aria-label]="'wizards.appOperation.mountLocation' | translate"
+        [attr.title]="locationLabels[mountLocation()] | translate"
+        [value]="mountLocation()"
+        [disabled]="pathControl().disabled"
+        (selectionChange)="changeMountLocation($event.value)"
+      >
+        <mat-select-trigger>
+          <mat-icon [svgIcon]="locationIcons[mountLocation()]"></mat-icon>
+          <span class="truncate">{{ locationLabels[mountLocation()] | translate }}</span>
+        </mat-select-trigger>
+        <mat-option value="letter">
+          <mat-icon svgIcon="hard-drive" data-tone="purple"></mat-icon>
+          {{ locationLabels.letter | translate }}
+        </mat-option>
+        <mat-option value="folder">
+          <mat-icon svgIcon="folder" data-tone="purple"></mat-icon>
+          {{ locationLabels.folder | translate }}
+        </mat-option>
+        <mat-option value="manual">
+          <mat-icon svgIcon="terminal" data-tone="purple"></mat-icon>
+          {{ locationLabels.manual | translate }}
+        </mat-option>
+      </mat-select>
+    </div>
+    @if (mountLocation() === 'letter') {
+      <mat-select
+        class="mount-drive-letter"
+        [panelWidth]="null"
+        [aria-label]="'wizards.appOperation.mountDriveLetter' | translate"
+        [placeholder]="'wizards.appOperation.mountDriveLetter' | translate"
+        [value]="selectedDriveLetter()"
+        [disabled]="pathControl().disabled"
+        [attr.aria-busy]="driveStatus() === 'checking'"
+        (openedChange)="$event && loadDriveOptions()"
+        (selectionChange)="selectDriveLetter($event.value)"
+      >
+        <mat-select-trigger>{{ selectedDriveLetter() }}</mat-select-trigger>
+        @if (driveOptions().length) {
+          @for (option of driveOptions(); track option.letter) {
+            <mat-option
+              [value]="option.letter"
+              [disabled]="
+                driveStatus() === 'unavailable' ||
+                option.status === 'occupied' ||
+                option.status === 'reserved'
+              "
+            >
+              {{ option.letter }}
+              @if (option.status !== 'free') {
+                ({{ driveStatusLabels[option.status] | translate }})
+              }
+            </mat-option>
+          }
+        } @else {
+          @if (selectedDriveLetter(); as letter) {
+            <mat-option [value]="letter" disabled>{{ letter }}</mat-option>
+          }
+          <mat-option disabled>{{
+            (driveStatus() === 'unavailable'
+              ? 'wizards.appOperation.mountDriveLettersUnavailable'
+              : 'wizards.appOperation.mountDriveChecking'
+            ) | translate
+          }}</mat-option>
+        }
+      </mat-select>
+    } @else {
+      <mat-form-field class="path-input-field">
+        <input
+          matInput
+          [formControl]="pathControl()"
+          [placeholder]="
+            (mountLocation() === 'folder'
+              ? 'wizards.appOperation.enterDestPath'
+              : 'wizards.appOperation.mountManualPathPlaceholder'
+            ) | translate
+          "
+          [attr.aria-label]="'wizards.appOperation.destinationPath' | translate"
+          [cdkMenuTriggerFor]="
+            mountLocation() === 'folder' && !pathControl().disabled ? folderMenu : null
+          "
+          #folderTrigger="cdkMenuTriggerFor"
+          (cdkMenuOpened)="openFolderBrowser()"
+          (input)="mountLocation() === 'folder' && typeFolderPath($any($event.target).value)"
+        />
+      </mat-form-field>
+      @if (mountLocation() === 'folder') {
+        <div class="action-suffix">
+          <button
+            matIconButton
+            class="mount-parent-picker"
+            type="button"
+            [disabled]="folderPickerDisabled() || pathControl().disabled"
+            [attr.title]="'wizards.appOperation.mountParentFolder' | translate"
+            [attr.aria-label]="'wizards.appOperation.mountParentFolder' | translate"
+            (click)="selectFolder.emit()"
+          >
+            <mat-icon svgIcon="folder-open" data-tone="purple"></mat-icon>
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@let showDiskType = mountLocation() !== 'folder' && networkModeControl();
+@if (showDiskType || volumeNameControl()) {
+  <div class="section-title windows-appearance-heading">
+    <mat-icon svgIcon="chevron-right" data-tone="purple"></mat-icon>
+    {{ 'wizards.appOperation.mountWindowsAppearance' | translate }}
+  </div>
+  <div class="path-list windows-appearance">
+    @if (showDiskType) {
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'wizards.appOperation.mountDriveType' | translate }}</mat-label>
+        <mat-select
+          class="mount-disk-type"
+          [panelWidth]="null"
+          [value]="networkDrive()"
+          [disabled]="networkModeControl()?.disabled"
+          (selectionChange)="selectDiskType($event.value)"
+        >
+          <mat-select-trigger>
+            @if (networkDrive()) {
+              <ng-container *ngTemplateOutlet="networkDisk" />
+            } @else {
+              <ng-container *ngTemplateOutlet="localDisk" />
+            }
+          </mat-select-trigger>
+          <mat-option [value]="false"><ng-container *ngTemplateOutlet="localDisk" /></mat-option>
+          <mat-option [value]="true"><ng-container *ngTemplateOutlet="networkDisk" /></mat-option>
+        </mat-select>
+      </mat-form-field>
+    }
+    @if (volumeNameControl(); as volumeName) {
+      <mat-form-field subscriptSizing="dynamic" floatLabel="always">
+        <mat-label>{{ 'wizards.appOperation.mountDiskName' | translate }}</mat-label>
+        <input
+          matInput
+          [formControl]="volumeName"
+          [placeholder]="'wizards.appOperation.mountAutomaticName' | translate"
+          [attr.title]="'wizards.appOperation.mountAutomaticName' | translate"
+        />
+      </mat-form-field>
+    }
+  </div>
+}
+
+<p class="mount-target-hint" aria-live="polite">
+  @let status = inspection();
+  @let selectedOption = selectedDriveOption();
+  @if (mountLocation() === 'letter' && driveStatus() !== 'ready') {
+    {{
+      (driveStatus() === 'checking'
+        ? 'wizards.appOperation.mountDriveChecking'
+        : 'wizards.appOperation.mountDriveLettersUnavailable'
+      ) | translate
+    }}
+  } @else if (
+    mountLocation() === 'letter' &&
+    selectedOption &&
+    selectedOption.status !== 'free' &&
+    selectedOption.status !== 'current'
+  ) {
+    <span data-tone="warn">{{ driveStatusLabels[selectedOption.status] | translate }}</span>
+  } @else if (folderPathInvalid()) {
+    <span data-tone="warn">{{ 'wizards.appOperation.mountFolderPathRequired' | translate }}</span>
+  } @else if (status && status.state !== 'clean') {
+    <span
+      [attr.data-tone]="
+        status.state === 'colliding' || status.state === 'nonEmpty' ? 'warn' : 'dim'
+      "
+    >
+      {{ status.labelKey | translate: { details: status.details || '' } }}
+    </span>
+  } @else if (mountLocation() === 'folder') {
+    {{ 'wizards.appOperation.mountFolderPathRequired' | translate }}
+  } @else if (mountLocation() === 'manual') {
+    {{ 'wizards.appOperation.mountManualPathHint' | translate }}
+  } @else if (showDiskType) {
+    {{
+      (networkDrive()
+        ? 'wizards.appOperation.mountNetworkDriveHint'
+        : 'wizards.appOperation.mountLocalDriveHint'
+      ) | translate
+    }}
+  }
+</p>
+
+<ng-template #localDisk>
+  <span class="disk-type-value" data-tone="accent">
+    <mat-icon svgIcon="hard-drive"></mat-icon>
+    {{ 'wizards.appOperation.mountLocalDrive' | translate }}
+  </span>
+</ng-template>
+<ng-template #networkDisk>
+  <span class="disk-type-value" data-tone="orange">
+    <mat-icon svgIcon="server"></mat-icon>
+    {{ 'wizards.appOperation.mountNetworkDrive' | translate }}
+  </span>
+</ng-template>
+
+<ng-template #folderMenu>
+  <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos data-tone="purple">
+    @if (folderLoading()) {
+      <div class="menu-item disabled">
+        <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+        <span class="item-label">{{ 'wizards.appOperation.loading' | translate }}</span>
+      </div>
+    } @else {
+      @if (folderState().currentPath; as parent) {
+        <div class="menu-item disabled" [title]="parent">
+          <span class="item-label truncate">{{ parent }}</span>
+        </div>
+        <button type="button" cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="browseFolder()">
+          <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+          <span class="item-label">{{ 'wizards.appOperation.upFolder' | translate }}</span>
+        </button>
+        <button
+          type="button"
+          cdkMenuItem
+          class="menu-item"
+          [title]="parent"
+          (cdkMenuItemTriggered)="useFolderParent()"
+        >
+          <mat-icon svgIcon="folder-open" data-tone="purple"></mat-icon>
+          <span class="item-label">{{ 'wizards.appOperation.mountUseParent' | translate }}</span>
+        </button>
+      }
+      @for (entry of folderOptions(); track entry.Path) {
+        <button
+          type="button"
+          cdkMenuItem
+          class="menu-item"
+          (cdkMenuItemTriggered)="browseFolder(entry.Name)"
+        >
+          <mat-icon svgIcon="folder" data-tone="purple"></mat-icon>
+          <span class="item-label">{{ entry.Name }}</span>
+        </button>
+      } @empty {
+        <div class="empty-state">
+          <span class="item-label">{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
+        </div>
+      }
+    }
+  </div>
+</ng-template>

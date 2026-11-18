@@ -63,6 +63,7 @@ import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { QuickRunEditorModalOptions } from 'src/app/services/ui/modal.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
@@ -125,6 +126,7 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
+  protected readonly fileSystemService = inject(FileSystemService);
   private readonly pathInspectionService = inject(PathInspectionService);
   private readonly translate = inject(TranslateService);
   private readonly valueMapper = inject(RcloneValueMapperService);

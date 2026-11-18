@@ -332,16 +332,50 @@
       @if (showDestPath()) {
         <div class="section-header">
           <span class="section-title">
-            <mat-icon svgIcon="chevron-right" data-tone="accent"></mat-icon>
+            <mat-icon
+              svgIcon="chevron-right"
+              [attr.data-tone]="canSelectDriveLetter() ? 'purple' : 'accent'"
+            ></mat-icon>
             {{ 'wizards.appOperation.destinationPath' | translate }}
           </span>
         </div>
 
-        <div class="path-list">
-          @if (destItem(); as item) {
-            <ng-container *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: true }" />
+        @if (destItem(); as item) {
+          @if (canSelectDriveLetter()) {
+            <app-windows-mount-target
+              [pathControl]="item.pathControl"
+              [networkModeControl]="networkModeControl()"
+              [volumeNameControl]="volumeNameControl()"
+              [inspection]="item.inspectionStatus()"
+              [currentRemoteName]="currentRemoteName()"
+              [currentProfileName]="currentProfileName()"
+              [mountProfiles]="mountProfiles()"
+              [folderPickerDisabled]="isItemPickerDisabled(item)"
+              (selectFolder)="selectPath(item)"
+            />
+          } @else {
+            <div class="path-list">
+              <ng-container
+                *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: true }"
+              />
+              @if (isWindowsMount()) {
+                <button
+                  matButton
+                  class="mount-parent-picker"
+                  type="button"
+                  [disabled]="isItemPickerDisabled(item)"
+                  (click)="selectPath(item)"
+                >
+                  <mat-icon svgIcon="folder"></mat-icon>
+                  {{ 'wizards.appOperation.mountParentFolder' | translate }}
+                </button>
+                <p class="mount-target-hint">
+                  {{ 'wizards.appOperation.mountFolderHint' | translate }}
+                </p>
+              }
+            </div>
           }
-        </div>
+        }
       }
     </div>
   }
@@ -349,7 +383,11 @@
 
 <ng-template #pathRow let-item let-isDest="isDest">
   <div class="path-row-wrapper">
-    <div class="path-item-row" [formGroup]="item.control">
+    <div
+      class="path-item-row"
+      [class.mount-path-row]="canSelectDriveLetter() && !isDest"
+      [formGroup]="item.control"
+    >
       <div class="path-type-selector">
         @if ((isDest && isMount()) || (!isDest && (isMount() || isServe()))) {
           <div appPill [tone]="isDest ? 'purple' : 'primary'">
@@ -416,27 +454,31 @@
       </mat-form-field>
 
       <div class="action-suffix">
-        <button
-          matIconButton
-          [disabled]="isItemPickerDisabled(item)"
-          (click)="selectPath(item); $event.stopPropagation()"
-          type="button"
-        >
-          <mat-icon
-            [svgIcon]="item.type === 'local' ? 'folder' : 'hard-drive'"
-            [attr.data-tone]="
-              isItemPickerDisabled(item)
-                ? null
-                : item.type === 'local'
-                  ? 'purple'
-                  : item.type === 'currentRemote'
-                    ? 'primary'
-                    : item.type === 'otherRemote'
-                      ? 'accent'
-                      : null
-            "
-          ></mat-icon>
-        </button>
+        @if (!isDest || !isWindowsMount()) {
+          <button
+            matIconButton
+            [disabled]="isItemPickerDisabled(item)"
+            (click)="selectPath(item); $event.stopPropagation()"
+            type="button"
+          >
+            <mat-icon
+              [svgIcon]="
+                item.type === 'local' || canSelectDriveLetter() ? 'folder-open' : 'hard-drive'
+              "
+              [attr.data-tone]="
+                isItemPickerDisabled(item)
+                  ? null
+                  : item.type === 'local'
+                    ? 'purple'
+                    : item.type === 'currentRemote'
+                      ? 'primary'
+                      : item.type === 'otherRemote'
+                        ? 'accent'
+                        : null
+              "
+            ></mat-icon>
+          </button>
+        }
         @if (!isDest && canAddSource() && sourceItems().length > 1) {
           <button class="action-button" (click)="removePath('source', item.index)" type="button">
             <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>

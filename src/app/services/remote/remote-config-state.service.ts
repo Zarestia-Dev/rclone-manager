@@ -8,6 +8,7 @@ import {
   RemoteType,
   FLAG_TYPES,
   REMOTE_NAME_REGEX,
+  REMOTE_CONFIG_KEYS,
   CommandOption,
   RcConfigOption,
   LINKED_PROFILE_TYPES,
@@ -48,6 +49,7 @@ import { AuthStateService } from '../security/auth-state.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { ValidatorRegistryService } from '../ui/validation/validator-registry.service';
 import { RemoteManagementService } from './remote-management.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
@@ -108,6 +110,7 @@ export class RemoteConfigStateService {
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
@@ -526,6 +529,8 @@ export class RemoteConfigStateService {
       return this.remoteFormStatus() === 'INVALID' || this.remoteConfigFormStatus() === 'INVALID';
     return t === 'remote' ? this.remoteFormStatus() === 'INVALID' : this.isStepInvalid(t);
   });
+
+  readonly canSelectWindowsMountTarget = computed(() => this.windowsMountTarget.canCheck());
 
   readonly isInteractiveContinueDisabled = this.orchestrator.isInteractiveContinueDisabled;
 
@@ -1188,6 +1193,18 @@ export class RemoteConfigStateService {
     }
 
     const { settings, nextBaseline } = buildProfileChanges(this.profiles(), this.profileBaseline);
+
+    const targetError = await this.windowsMountTarget.changedDriveError(
+      remote,
+      settings[REMOTE_CONFIG_KEYS.mount],
+      this.profileBaseline.mount
+    );
+    if (targetError) {
+      this.notificationService.showWarning(
+        this.translate.instant(targetError.key, targetError.params)
+      );
+      return false;
+    }
 
     try {
       // Watch roots must exist before the backend applies the saved configuration.
