@@ -9,10 +9,12 @@ import { AuthStateService } from '../../../../services/security/auth-state.servi
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { ValidatorRegistryService } from '../../../../services/ui/validation/validator-registry.service';
 import { IconService } from '../../../../services/ui/icon.service';
+import { ModalService } from '../../../../services/ui/modal.service';
 import { PathService } from '../../../../services/infrastructure/platform/path.service';
 import { BackendService } from '../../../../services/infrastructure/system/backend.service';
 import { PresetValues, RemotePresetsService } from '../../../../services/remote/remote-presets';
 import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/interactive-flow.utils';
+import { OPERATION_TONE } from '@app/types';
 
 describe('QuickAddRemoteComponent submission', () => {
   let component: QuickAddRemoteComponent;
@@ -20,6 +22,7 @@ describe('QuickAddRemoteComponent submission', () => {
   const notifyError = vi.fn();
   const createRemote = vi.fn();
   const submitAnswer = vi.fn();
+  const openQuickRunEditor = vi.fn();
   const flow = signal(createInitialInteractiveFlowState());
 
   beforeEach(async () => {
@@ -27,6 +30,7 @@ describe('QuickAddRemoteComponent submission', () => {
     notifyError.mockReset();
     createRemote.mockReset().mockResolvedValue(true);
     submitAnswer.mockReset().mockResolvedValue(false);
+    openQuickRunEditor.mockReset();
     flow.set(createInitialInteractiveFlowState());
     TestBed.configureTestingModule({
       providers: [
@@ -59,6 +63,7 @@ describe('QuickAddRemoteComponent submission', () => {
           useValue: { createRemoteNameValidator: vi.fn().mockReturnValue(() => null) },
         },
         { provide: IconService, useValue: {} },
+        { provide: ModalService, useValue: { openQuickRunEditor } },
         PathService,
         { provide: BackendService, useValue: { isWindows: (): boolean => false } },
         { provide: RemotePresetsService, useValue: { resolvePresets: (): PresetValues => ({}) } },
@@ -70,14 +75,16 @@ describe('QuickAddRemoteComponent submission', () => {
     component.setupFormGroup.patchValue({ name: 'new-remote', type: 'drive' });
   });
 
-  it('delegates complete remote creation and closes only on explicit success', async () => {
+  it('delegates complete remote creation and shows the next step only on explicit success', async () => {
     await component.onSubmit();
     expect(createRemote).toHaveBeenCalledWith(
       { name: 'new-remote', type: 'drive' },
       expect.objectContaining({ showOnTray: true, mountConfigs: expect.any(Object) }),
       component.commandOptions()
     );
-    expect(close).toHaveBeenCalledExactlyOnceWith(true);
+    expect(component.currentStep()).toBe('next');
+    expect(component.createdRemoteName()).toBe('new-remote');
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('passes OAuth provider overviews to the shared remote configuration step', async () => {
@@ -144,15 +151,55 @@ describe('QuickAddRemoteComponent submission', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  it('closes only when continuation explicitly succeeds', async () => {
+  it('shows the next step only when continuation explicitly succeeds', async () => {
     submitAnswer.mockResolvedValue(true);
     await component.onInteractiveContinue('yes');
-    expect(close).toHaveBeenCalledExactlyOnceWith(true);
+    expect(component.currentStep()).toBe('next');
+    expect(component.createdRemoteName()).toBe('new-remote');
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('ignores repeated continuation clicks while processing', async () => {
     flow.update(state => ({ ...state, isProcessing: true }));
     await component.onInteractiveContinue('yes');
     expect(submitAnswer).not.toHaveBeenCalled();
+  });
+
+  describe('next step', () => {
+    it('offers mount, copy, sync and bisync with their registry tones', () => {
+      expect(component.nextGoals.map(goal => goal.op)).toEqual(['mount', 'copy', 'sync', 'bisync']);
+      for (const goal of component.nextGoals) {
+        expect(goal.tone).toBe(OPERATION_TONE[goal.op]);
+        expect(goal.icon).toBeTruthy();
+        expect(goal.title).toBe(`modals.quickAdd.next.goals.${goal.op}.title`);
+      }
+    });
+
+    it('closes the wizard and opens a Quick Run for the chosen goal and the new remote', async () => {
+      await component.onSubmit();
+      component.startGoal('bisync');
+      expect(close).toHaveBeenCalledExactlyOnceWith(true);
+      expect(openQuickRunEditor).toHaveBeenCalledExactlyOnceWith({
+        initialOpType: 'bisync',
+        initialRemoteName: 'new-remote',
+      });
+    });
+
+    it('keeps the created name even if the setup form changes afterwards', async () => {
+      component.setupFormGroup.patchValue({ name: 'my drive_2 (work)' });
+      await component.onSubmit();
+      component.setupFormGroup.patchValue({ name: '' });
+      component.startGoal('mount');
+      expect(openQuickRunEditor).toHaveBeenCalledWith(
+        expect.objectContaining({ initialRemoteName: 'my drive_2 (work)' })
+      );
+    });
+
+    it('closes successfully without opening anything when done', async () => {
+      await component.onSubmit();
+      component.finish();
+      expect(close).toHaveBeenCalledExactlyOnceWith(true);
+      expect(openQuickRunEditor).not.toHaveBeenCalled();
+    });
   });
 });

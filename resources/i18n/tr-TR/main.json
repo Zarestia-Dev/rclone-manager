@@ -2563,6 +2563,30 @@
           "description": "Dosyaları paylaşmak için bir arka plan sunucusu çalıştırın."
         }
       },
+      "next": {
+        "title": "Sırada ne var?",
+        "description": "{{remote}} hazır. Onunla ne yapmak istediğinizi seçin; doğru işlem seçili olarak bir Hızlı Çalıştırma açılır.",
+        "goals": {
+          "mount": {
+            "title": "Sürücü gibi kullan",
+            "description": "{{remote}} uzak sunucusunu bu bilgisayarda bir klasör olarak açar. Dosyalar açıldığında indirilir."
+          },
+          "copy": {
+            "title": "Bir klasörü yedekle",
+            "description": "Yeni ve değişen dosyaları hedefe kopyalar. Hedefte hiçbir şey silinmez."
+          },
+          "sync": {
+            "title": "Bir klasörü yansıla",
+            "description": "Hedefi kaynağın birebir kopyası yapar. Kaynakta olmayan dosyalar hedeften silinir."
+          },
+          "bisync": {
+            "title": "İki klasörü eşitlenmiş tut",
+            "description": "Bir taraftaki değişiklikler diğerine uygulanır; örneğin birden fazla cihazda kullanılan bir not kasası (Obsidian, Logseq)."
+          }
+        },
+        "hint": "Herhangi bir şey çalışmadan önce klasörleri ve seçenekleri siz belirlersiniz; Hızlı Çalıştırmayı tekrar ya da zamanlanmış çalıştırmak için kaydedebilirsiniz.",
+        "done": "Bitti"
+      },
       "buttons": {
         "create": "Uzak Sunucu Ekle",
         "creating": "Uzak Sunucu Ekleniyor...",

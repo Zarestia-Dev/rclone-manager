@@ -2580,6 +2580,30 @@
           "description": "Spustiť server na pozadí na zdieľanie súborov."
         }
       },
+      "next": {
+        "title": "Čo ďalej?",
+        "description": "{{remote}} je pripravený. Vyberte, čo s ním chcete robiť, a otvorí sa rýchle spustenie so správnou operáciou.",
+        "goals": {
+          "mount": {
+            "title": "Používať ako disk",
+            "description": "Otvorí {{remote}} ako priečinok v tomto počítači. Súbory sa stiahnu pri otvorení."
+          },
+          "copy": {
+            "title": "Zálohovať priečinok",
+            "description": "Skopíruje nové a zmenené súbory do cieľa. V cieli sa nikdy nič neodstráni."
+          },
+          "sync": {
+            "title": "Zrkadliť priečinok",
+            "description": "Z cieľa urobí presnú kópiu zdroja. Súbory, ktoré v zdroji chýbajú, sa z cieľa odstránia."
+          },
+          "bisync": {
+            "title": "Udržiavať dva priečinky synchronizované",
+            "description": "Zmeny na jednej strane sa prenesú na druhú, napríklad pri trezore poznámok (Obsidian, Logseq) používanom na viacerých zariadeniach."
+          }
+        },
+        "hint": "Priečinky a možnosti zvolíte pred spustením a rýchle spustenie si môžete uložiť na opakované alebo plánované spúšťanie.",
+        "done": "Hotovo"
+      },
       "buttons": {
         "create": "Vytvoriť vzdialené úložisko",
         "creating": "Pridáva sa vzdialené úložisko...",

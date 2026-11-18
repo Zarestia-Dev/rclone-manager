@@ -2563,6 +2563,30 @@
           "description": "Run a background server to share files."
         }
       },
+      "next": {
+        "title": "What's next?",
+        "description": "{{remote}} is ready. Pick what you want to do with it, and a Quick Run opens with the right operation already selected.",
+        "goals": {
+          "mount": {
+            "title": "Use it like a drive",
+            "description": "Open {{remote}} as a folder on this computer. Files download when you open them."
+          },
+          "copy": {
+            "title": "Back up a folder",
+            "description": "Copy new and changed files to the destination. Nothing is ever deleted there."
+          },
+          "sync": {
+            "title": "Mirror a folder",
+            "description": "Make the destination an exact copy of the source. Files missing from the source are deleted from the destination."
+          },
+          "bisync": {
+            "title": "Keep two folders in sync",
+            "description": "Changes on either side are applied to the other, for example a notes vault (Obsidian, Logseq) used on several devices."
+          }
+        },
+        "hint": "You choose the folders and options before anything runs, and you can save the Quick Run to run it again or on a schedule.",
+        "done": "Done"
+      },
       "buttons": {
         "create": "Create Remote",
         "creating": "Adding Remote...",

@@ -2522,6 +2522,30 @@
           "description": "Executar um servidor de fundo para compartilhar arquivos."
         }
       },
+      "next": {
+        "title": "E agora?",
+        "description": "{{remote}} está pronto. Escolha o que você quer fazer com ele e uma execução rápida será aberta com a operação certa já selecionada.",
+        "goals": {
+          "mount": {
+            "title": "Usar como uma unidade",
+            "description": "Abre {{remote}} como uma pasta neste computador. Os arquivos são baixados quando você os abre."
+          },
+          "copy": {
+            "title": "Fazer backup de uma pasta",
+            "description": "Copia arquivos novos e alterados para o destino. Nada é excluído lá."
+          },
+          "sync": {
+            "title": "Espelhar uma pasta",
+            "description": "Torna o destino uma cópia exata da origem. Arquivos que não existem na origem são excluídos do destino."
+          },
+          "bisync": {
+            "title": "Manter duas pastas sincronizadas",
+            "description": "Alterações em qualquer um dos lados são aplicadas ao outro, por exemplo um cofre de notas (Obsidian, Logseq) usado em vários dispositivos."
+          }
+        },
+        "hint": "Você escolhe as pastas e as opções antes de qualquer execução e pode salvar a execução rápida para repeti-la ou agendá-la.",
+        "done": "Concluir"
+      },
       "buttons": {
         "create": "Criar Remoto",
         "creating": "Adicionando Remoto...",

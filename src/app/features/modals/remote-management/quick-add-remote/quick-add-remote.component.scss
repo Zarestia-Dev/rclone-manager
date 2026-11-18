@@ -35,3 +35,51 @@
 app-alert-banner {
   margin: var(--space-sm);
 }
+
+// =============================================
+// WHAT'S NEXT STEP
+// =============================================
+.next-goals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.next-goal {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  text-align: start;
+  font: inherit;
+  color: var(--window-fg-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover {
+    background: var(--hover-bg-color);
+    border-color: var(--tone);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
+  }
+
+  mat-icon {
+    flex-shrink: 0;
+    color: var(--tone);
+  }
+}
+
+.next-hint {
+  padding: 0 var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}

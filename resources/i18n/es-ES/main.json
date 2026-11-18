@@ -2522,6 +2522,30 @@
           "description": "Ejecutar un servidor en segundo plano para compartir archivos."
         }
       },
+      "next": {
+        "title": "¿Qué quieres hacer ahora?",
+        "description": "{{remote}} está listo. Elige qué quieres hacer con él y se abrirá una ejecución rápida con la operación adecuada ya seleccionada.",
+        "goals": {
+          "mount": {
+            "title": "Usarlo como una unidad",
+            "description": "Abre {{remote}} como una carpeta en este equipo. Los archivos se descargan al abrirlos."
+          },
+          "copy": {
+            "title": "Hacer una copia de seguridad de una carpeta",
+            "description": "Copia los archivos nuevos y modificados al destino. Nunca se borra nada allí."
+          },
+          "sync": {
+            "title": "Duplicar una carpeta",
+            "description": "Convierte el destino en una copia exacta del origen. Los archivos que faltan en el origen se borran del destino."
+          },
+          "bisync": {
+            "title": "Mantener dos carpetas sincronizadas",
+            "description": "Los cambios en cualquiera de los lados se aplican al otro, por ejemplo una bóveda de notas (Obsidian, Logseq) usada en varios dispositivos."
+          }
+        },
+        "hint": "Eliges las carpetas y las opciones antes de que se ejecute nada, y puedes guardar la ejecución rápida para repetirla o programarla.",
+        "done": "Hecho"
+      },
       "buttons": {
         "create": "Crear remoto",
         "creating": "Añadiendo remoto...",

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **What's Next After Adding a Remote**: Quick Add Remote now ends with a "What's next?" step that offers goals in plain words (use it like a drive, back up a folder, mirror a folder, keep two folders in sync). Each goal opens a Quick Run with the new remote and the matching operation already selected, so you don't need to know what mount, sync, copy and bisync mean beforehand. Choosing **Done** closes the wizard as before ([#255](https://github.com/Zarestia-Dev/rclone-manager/issues/255)).
 - **Slovak Translation**: The interface is available in Slovak (`sk-SK`). Thanks to [@Vaso73](https://github.com/Vaso73) ([#345](https://github.com/Zarestia-Dev/rclone-manager/pull/345)).
 
 ### Changed

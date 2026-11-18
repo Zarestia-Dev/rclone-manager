@@ -2522,6 +2522,30 @@
           "description": "Exécutez un serveur en arrière-plan pour partager des fichiers."
         }
       },
+      "next": {
+        "title": "Et maintenant ?",
+        "description": "{{remote}} est prêt. Choisissez ce que vous voulez en faire : une exécution rapide s'ouvre avec la bonne opération déjà sélectionnée.",
+        "goals": {
+          "mount": {
+            "title": "L'utiliser comme un disque",
+            "description": "Ouvre {{remote}} comme un dossier sur cet ordinateur. Les fichiers sont téléchargés à l'ouverture."
+          },
+          "copy": {
+            "title": "Sauvegarder un dossier",
+            "description": "Copie les fichiers nouveaux et modifiés vers la destination. Rien n'y est jamais supprimé."
+          },
+          "sync": {
+            "title": "Créer un miroir d'un dossier",
+            "description": "Fait de la destination une copie exacte de la source. Les fichiers absents de la source sont supprimés de la destination."
+          },
+          "bisync": {
+            "title": "Garder deux dossiers synchronisés",
+            "description": "Les modifications d'un côté sont appliquées à l'autre, par exemple un coffre de notes (Obsidian, Logseq) utilisé sur plusieurs appareils."
+          }
+        },
+        "hint": "Vous choisissez les dossiers et les options avant toute exécution, et vous pouvez enregistrer l'exécution rapide pour la relancer ou la planifier.",
+        "done": "Terminé"
+      },
       "buttons": {
         "create": "Créer un dépôt distant",
         "creating": "Ajout un dépôt distant...",

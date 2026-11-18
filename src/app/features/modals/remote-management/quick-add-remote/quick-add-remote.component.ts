@@ -21,6 +21,7 @@ import { RemoteCreationOrchestrator } from 'src/app/services/remote/remote-creat
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { IconService } from 'src/app/services/ui/icon.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 
 import { RemotePresetsService, PresetValues } from 'src/app/services/remote/remote-presets';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
@@ -33,6 +34,9 @@ import {
   WizardStep,
   OperationType,
   DEFAULT_PROFILE_NAME,
+  PrimaryActionType,
+  getOperationDef,
+  OPERATION_TONE,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -94,6 +98,7 @@ export class QuickAddRemoteComponent {
   readonly iconService = inject(IconService);
   private readonly presetsService = inject(RemotePresetsService);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
+  private readonly modalService = inject(ModalService);
 
   readonly operationTabs = [
     {
@@ -130,8 +135,18 @@ export class QuickAddRemoteComponent {
 
   private readonly operationNames = this.operationTabs.map(t => t.type);
 
+  /** Goals offered once the remote exists; each opens the Quick Run editor for that operation. */
+  readonly nextGoals = (['mount', 'copy', 'sync', 'bisync'] as const).map(op => ({
+    op: op as PrimaryActionType,
+    icon: getOperationDef(op)?.icon ?? 'cloud',
+    tone: OPERATION_TONE[op],
+    title: `modals.quickAdd.next.goals.${op}.title`,
+    description: `modals.quickAdd.next.goals.${op}.description`,
+  }));
+
   // ── Wizard state ─────────────────────────────────────────────────────────
   readonly currentStep = signal<WizardStep>('setup');
+  readonly createdRemoteName = signal('');
   readonly isInitializing = signal(true);
   readonly loadFailed = signal(false);
   readonly interactiveFlowState = this.orchestrator.interactiveFlowState;
@@ -284,7 +299,7 @@ export class QuickAddRemoteComponent {
         this.buildFinalConfig(setup.name, operations, preset),
         this.commandOptions()
       );
-      if (completed) this.dialogRef.close(true);
+      if (completed) this.showNextStep(setup.name);
       else if (this.interactiveFlowState().isActive) this.currentStep.set('interactive');
     } catch (error) {
       if (this.interactiveFlowState().isActive) this.currentStep.set('interactive');
@@ -348,7 +363,7 @@ export class QuickAddRemoteComponent {
     if (this.interactiveFlowState().isProcessing) return;
     this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
     const completed = await this.orchestrator.submitInteractiveAnswer(answer);
-    if (completed) this.dialogRef.close(true);
+    if (completed) this.showNextStep(this.setupFormGroup.getRawValue().name as string);
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
@@ -362,5 +377,23 @@ export class QuickAddRemoteComponent {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  // ── What's next ───────────────────────────────────────────────────────────
+
+  private showNextStep(remoteName: string): void {
+    this.createdRemoteName.set(remoteName);
+    this.currentStep.set('next');
+  }
+
+  /** Close the wizard (the remote is already saved) and open a Quick Run for the chosen goal. */
+  startGoal(op: PrimaryActionType): void {
+    const remoteName = this.createdRemoteName();
+    this.dialogRef.close(true);
+    this.modalService.openQuickRunEditor({ initialOpType: op, initialRemoteName: remoteName });
+  }
+
+  finish(): void {
+    this.dialogRef.close(true);
   }
 }

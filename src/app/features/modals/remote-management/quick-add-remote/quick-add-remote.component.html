@@ -78,6 +78,40 @@
           />
         }
       }
+
+      @case ('next') {
+        <div class="section-group">
+          <div class="operations-header">
+            <h3 class="operations-title">{{ 'modals.quickAdd.next.title' | translate }}</h3>
+            <p class="section-description">
+              {{ 'modals.quickAdd.next.description' | translate: { remote: createdRemoteName() } }}
+            </p>
+          </div>
+
+          <div class="next-goals">
+            @for (goal of nextGoals; track goal.op) {
+              @let goalTitle = goal.title | translate;
+              <button
+                type="button"
+                class="next-goal"
+                [attr.data-tone]="goal.tone"
+                (click)="startGoal(goal.op)"
+                [attr.title]="goalTitle"
+              >
+                <mat-icon [svgIcon]="goal.icon" aria-hidden="true"></mat-icon>
+                <span class="option-content">
+                  <span class="option-label">{{ goalTitle }}</span>
+                  <span class="option-description">
+                    {{ goal.description | translate: { remote: createdRemoteName() } }}
+                  </span>
+                </span>
+              </button>
+            }
+          </div>
+
+          <p class="next-hint">{{ 'modals.quickAdd.next.hint' | translate }}</p>
+        </div>
+      }
     }
   }
   @if (oauthHelperUrl(); as oauthUrlValue) {
@@ -222,6 +256,20 @@
           <mat-icon svgIcon="spinner"></mat-icon>
         }
         {{ continueLabel }}
+      </button>
+    }
+
+    @case ('next') {
+      <button
+        matButton="filled"
+        data-tone="primary"
+        type="button"
+        (click)="finish()"
+        [attr.title]="'modals.quickAdd.next.done' | translate"
+        [attr.aria-label]="'modals.quickAdd.next.done' | translate"
+      >
+        <mat-icon iconPositionStart svgIcon="check-circle"></mat-icon>
+        {{ 'modals.quickAdd.next.done' | translate }}
       </button>
     }
   }

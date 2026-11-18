@@ -537,7 +537,7 @@ export interface PendingRemoteData {
   [key: string]: unknown;
 }
 
-export type WizardStep = 'setup' | 'operations' | 'interactive';
+export type WizardStep = 'setup' | 'operations' | 'interactive' | 'next';
 // `OperationType` was previously a hand-maintained 11-literal union duplicating
 // `PrimaryActionType` from `operations.ts`. Now aliased to it so adding a new
 // operation to `OPERATION_REGISTRY` automatically extends this type.
