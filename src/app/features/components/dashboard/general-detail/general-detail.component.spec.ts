@@ -2,7 +2,7 @@ import { TitleCasePipe } from '@angular/common';
 import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { provideTranslateService, TranslatePipe } from '@ngx-translate/core';
+import { provideTranslateService, TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionState, Remote } from '@app/types';
 import { GeneralDetailComponent } from './general-detail.component';
@@ -61,6 +61,12 @@ describe('GeneralDetailComponent controls', () => {
         schemas: [CUSTOM_ELEMENTS_SCHEMA],
       },
     });
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en-US', {
+      actions: { mount: 'Mount' },
+      overviews: { remoteCard: { actions: { mount: 'Mount', unmount: 'Unmount' } } },
+    });
+    translate.use('en-US');
     fixture = TestBed.createComponent(GeneralDetailComponent);
     fixture.detectChanges();
   });
@@ -70,6 +76,8 @@ describe('GeneralDetailComponent controls', () => {
       '.remote-status-indicators button'
     );
     const start = vi.spyOn(fixture.componentInstance.startJob, 'emit');
+    expect(button.textContent?.trim()).toBe('Mount');
+    expect(button.title).toBe('Mount');
     expect(button.tagName).toBe('BUTTON');
     expect(button.getAttribute('aria-pressed')).toBe('false');
     button.click();
@@ -93,6 +101,8 @@ describe('GeneralDetailComponent controls', () => {
       '.remote-status-indicators button'
     );
     const stop = vi.spyOn(fixture.componentInstance.stopJob, 'emit');
+    expect(button.textContent?.trim()).toBe('Unmount');
+    expect(button.title).toBe('Unmount');
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.dataset['tone']).toBe('accent');
     button.click();

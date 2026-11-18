@@ -212,7 +212,7 @@ export class GeneralDetailComponent {
 
       models.push({
         key: config.key,
-        label: config.label,
+        label: key === 'mount' && isActive ? tooltip : config.label,
         icon,
         isSelected: true,
         isActive,
