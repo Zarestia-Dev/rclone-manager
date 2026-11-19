@@ -119,6 +119,22 @@ describe('AppMenuComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('exposes the theme choice as a radio group and names items by their text', () => {
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('.menu-button')
+      ?.click();
+    fixture.detectChanges();
+    const menu = document.querySelector('[role="menu"]');
+    if (!menu) throw new Error('menu did not open');
+    expect(menu.querySelector('.theme-selector')?.getAttribute('role')).toBe('group');
+    const themes = Array.from(menu.querySelectorAll('.theme-button'));
+    expect(themes.length).toBeGreaterThan(1);
+    expect(themes.every(button => button.getAttribute('role') === 'menuitemradio')).toBe(true);
+    expect(themes.filter(button => button.getAttribute('aria-checked') === 'true')).toHaveLength(1);
+    // A label that differs from the visible text hides that text from speech input users.
+    expect(menu.querySelectorAll('.menu-item[aria-label]')).toHaveLength(0);
+  });
+
   it('should open power menu modal directly', () => {
     component.openPowerMenuModal();
     expect(modalServiceSpy.openPowerMenu).toHaveBeenCalled();
