@@ -125,13 +125,13 @@ export class RemoteCreationOrchestrator {
         return false;
       }
     }
-    const fileError = await this.pathInspectionService.profileFileError(
+    const pathError = await this.pathInspectionService.profilePathError(
       finalConfig,
       this.backendName,
       name
     );
-    if (fileError) {
-      this.notificationService.showWarning(this.translate.instant(fileError));
+    if (pathError) {
+      this.notificationService.showWarning(this.translate.instant(pathError));
       return false;
     }
     if (this.authStateService.isAuthInProgress()) return false;

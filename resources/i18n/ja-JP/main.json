@@ -1502,6 +1502,8 @@
       "mountNetworkDriveHint": "Windows ではネットワークドライブとして表示されます。ストレージは変わりません。",
       "mountDriveTarget": "ドライブ",
       "mountFolderPathRequired": "新しいサブフォルダーの完全なパスを入力してください。",
+      "mountFolderQuotesRemoved": "パスを囲む引用符を削除しました。",
+      "mountFolderSubfolderAdded": "パスにサブフォルダー名を追加しました。",
       "mountFolderNameHint": "フォルダー名を変えるには、パスの末尾を編集してください。フォルダーはマウント時に作成されます。",
       "mountLocalDrive": "ローカルディスク",
       "mountNetworkDrive": "ネットワークドライブ",

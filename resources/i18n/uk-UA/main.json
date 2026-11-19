@@ -1535,6 +1535,8 @@
       "mountNetworkDriveHint": "Windows показує диск як мережевий. Сховище залишається тим самим.",
       "mountDriveTarget": "Диск",
       "mountFolderPathRequired": "Введіть повний шлях до нової вкладеної папки.",
+      "mountFolderQuotesRemoved": "Лапки зі шляху видалено.",
+      "mountFolderSubfolderAdded": "До шляху додано назву вкладеної папки.",
       "mountFolderNameHint": "Щоб змінити назву папки, відредагуйте останню частину шляху. Папку буде створено під час монтування.",
       "mountLocalDrive": "Локальний диск",
       "mountNetworkDrive": "Мережевий диск",

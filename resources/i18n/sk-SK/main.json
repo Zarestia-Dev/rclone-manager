@@ -1527,6 +1527,8 @@
       "mountNetworkDriveHint": "Windows zobrazí disk ako sieťovú jednotku. Úložisko zostáva rovnaké.",
       "mountDriveTarget": "Jednotka",
       "mountFolderPathRequired": "Zadaj úplnú cestu k novému podpriečinku.",
+      "mountFolderQuotesRemoved": "Úvodzovky sme z cesty odstránili.",
+      "mountFolderSubfolderAdded": "Doplnili sme názov podpriečinka.",
       "mountFolderNameHint": "Ak chceš zmeniť názov priečinka, prepíš poslednú časť cesty. Priečinok vznikne pri pripojení.",
       "mountLocalDrive": "Lokálny disk",
       "mountNetworkDrive": "Sieťový disk",

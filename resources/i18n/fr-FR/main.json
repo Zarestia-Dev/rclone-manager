@@ -1513,6 +1513,8 @@
       "mountNetworkDriveHint": "Windows affiche le disque comme lecteur réseau. Le stockage reste le même.",
       "mountDriveTarget": "Lecteur",
       "mountFolderPathRequired": "Saisissez le chemin complet vers un nouveau sous-dossier.",
+      "mountFolderQuotesRemoved": "Les guillemets ont été retirés du chemin.",
+      "mountFolderSubfolderAdded": "Un nom de sous-dossier a été ajouté au chemin.",
       "mountFolderNameHint": "Pour changer le nom du dossier, modifiez la dernière partie du chemin. Le dossier est créé lors du montage.",
       "mountLocalDrive": "Disque local",
       "mountNetworkDrive": "Lecteur réseau",

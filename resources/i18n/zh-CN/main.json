@@ -1502,6 +1502,8 @@
       "mountNetworkDriveHint": "Windows 将其显示为网络驱动器。实际存储位置保持不变。",
       "mountDriveTarget": "驱动器",
       "mountFolderPathRequired": "请输入新子文件夹的完整路径。",
+      "mountFolderQuotesRemoved": "已移除路径两端的引号。",
+      "mountFolderSubfolderAdded": "已在路径中添加子文件夹名称。",
       "mountFolderNameHint": "如需更改文件夹名称，请编辑路径的最后一部分。文件夹会在挂载时创建。",
       "mountLocalDrive": "本地磁盘",
       "mountNetworkDrive": "网络驱动器",

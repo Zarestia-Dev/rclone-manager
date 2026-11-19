@@ -1,3 +1,7 @@
+@let status = inspection();
+@let folder = mountLocation() === 'folder';
+@let pasteNotice = folderPasteNotice();
+
 <div class="path-list">
   <div class="path-item-row mount-path-row" data-tone="purple">
     <div class="path-type-selector">
@@ -79,6 +83,7 @@
     } @else {
       <mat-form-field class="path-input-field">
         <input
+          #folderInput
           matInput
           [formControl]="pathControl()"
           [placeholder]="'wizards.appOperation.enterDestPath' | translate"
@@ -86,10 +91,29 @@
           [cdkMenuTriggerFor]="pathControl().disabled ? null : folderMenu"
           #folderTrigger="cdkMenuTriggerFor"
           (cdkMenuOpened)="openFolderBrowser()"
-          (input)="typeFolderPath($any($event.target).value)"
+          (input)="typeFolderPath($event, folderInput)"
+          (paste)="pasteFolderPath($event, folderInput)"
         />
       </mat-form-field>
       <div class="action-suffix">
+        @if (
+          status?.labelKey === existingFolderLabel &&
+          !checkingFolderPaste() &&
+          !folderPathInvalid() &&
+          pasteNotice !== 'subfolder'
+        ) {
+          <button
+            matIconButton
+            class="mount-use-parent"
+            type="button"
+            [disabled]="pathControl().disabled"
+            [attr.title]="'wizards.appOperation.mountUseParent' | translate"
+            [attr.aria-label]="'wizards.appOperation.mountUseParent' | translate"
+            (click)="useEnteredFolderAsParent()"
+          >
+            <mat-icon svgIcon="folder-plus" data-tone="accent"></mat-icon>
+          </button>
+        }
         <button
           matIconButton
           class="mount-parent-picker"
@@ -106,17 +130,27 @@
   </div>
 </div>
 
-@let status = inspection();
-@let folder = mountLocation() === 'folder';
 @if (folder) {
   <div class="mount-target-hint" aria-live="polite">
     <div>{{ 'wizards.appOperation.mountFolderNameHint' | translate }}</div>
     @if (folderPathInvalid()) {
       <div data-tone="warn">{{ 'wizards.appOperation.mountFolderPathRequired' | translate }}</div>
-    } @else if (status && status.state !== 'willCreate' && status.state !== 'clean') {
+    } @else if (
+      !checkingFolderPaste() &&
+      status &&
+      status.state !== 'willCreate' &&
+      status.state !== 'clean' &&
+      (status.state !== 'checking' || !pasteNotice)
+    ) {
       <div [attr.data-tone]="status.state === 'checking' ? 'dim' : 'warn'">
         {{ status.labelKey | translate: { details: status.details || '' } }}
       </div>
+    } @else if (pasteNotice === 'subfolder') {
+      <div>{{ 'wizards.appOperation.mountFolderSubfolderAdded' | translate }}</div>
+    } @else if (pasteNotice === 'quotes') {
+      <div>{{ 'wizards.appOperation.mountFolderQuotesRemoved' | translate }}</div>
+    } @else if (checkingFolderPaste()) {
+      <div>{{ 'remoteConfig.pathStatus.checking' | translate }}</div>
     }
   </div>
 } @else if (status?.state === 'notDirectory') {

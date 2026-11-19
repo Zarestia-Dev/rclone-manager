@@ -1535,6 +1535,8 @@
       "mountNetworkDriveHint": "Windows показывает диск как сетевой. Хранилище остаётся прежним.",
       "mountDriveTarget": "Диск",
       "mountFolderPathRequired": "Введите полный путь к новой вложенной папке.",
+      "mountFolderQuotesRemoved": "Кавычки из пути удалены.",
+      "mountFolderSubfolderAdded": "К пути добавлено имя вложенной папки.",
       "mountFolderNameHint": "Чтобы изменить имя папки, отредактируйте последнюю часть пути. Папка будет создана при монтировании.",
       "mountLocalDrive": "Локальный диск",
       "mountNetworkDrive": "Сетевой диск",

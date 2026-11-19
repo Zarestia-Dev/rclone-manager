@@ -1214,7 +1214,7 @@ export class RemoteConfigStateService {
         profileName && (activeType === 'mount' || activeType === 'bisync')
           ? { operation: activeType, name: profileName }
           : undefined;
-      const fileError = await this.pathInspectionService.profileFileError(
+      const pathError = await this.pathInspectionService.profilePathError(
         {
           [REMOTE_CONFIG_KEYS.mount]: nextBaseline.mount,
           [REMOTE_CONFIG_KEYS.bisync]: nextBaseline.bisync,
@@ -1224,8 +1224,8 @@ export class RemoteConfigStateService {
         this.profileBaseline,
         editedProfile
       );
-      if (fileError) {
-        this.notificationService.showWarning(this.translate.instant(fileError));
+      if (pathError) {
+        this.notificationService.showWarning(this.translate.instant(pathError));
         return false;
       }
       // Watch roots must exist before the backend applies the saved configuration.

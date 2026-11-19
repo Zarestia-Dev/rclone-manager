@@ -116,7 +116,7 @@ describe('RemoteConfigStateService', () => {
         {
           provide: PathInspectionService,
           useValue: {
-            profileFileError: vi.fn().mockResolvedValue(undefined),
+            profilePathError: vi.fn().mockResolvedValue(undefined),
             createRequiredDirectories: vi.fn().mockResolvedValue(undefined),
             resolveDefaultPath: vi.fn().mockResolvedValue('/default/path'),
           },
@@ -246,24 +246,29 @@ describe('RemoteConfigStateService', () => {
     });
 
     it.each([
-      ['mount', { mountPoint: 'D:\\sample\\report.txt' }, 'notDirectoryWindowsMount'],
-      ['bisync', { path2: 'D:\\sample\\report.txt' }, 'notDirectory'],
+      [
+        'mount',
+        { mountPoint: 'D:\\sample\\report.txt' },
+        'remoteConfig.pathStatus.notDirectoryWindowsMount',
+      ],
+      [
+        'mount',
+        { mountPoint: 'D:\\sample\\shared' },
+        'wizards.appOperation.mountFolderAlreadyExists',
+      ],
+      ['bisync', { path2: 'D:\\sample\\report.txt' }, 'remoteConfig.pathStatus.notDirectory'],
     ] as const)(
-      'does not write %s settings or create directories when the target is a file',
+      'does not write %s settings or create directories when the path cannot be used',
       async (operation, rclone, label) => {
         service.initProfiles({ remoteType: 'drive' });
         service.updateProfileConfig(operation, 'Archive', { app: {}, rclone });
         const inspection = TestBed.inject(PathInspectionService);
-        vi.mocked(inspection.profileFileError).mockResolvedValueOnce(
-          `remoteConfig.pathStatus.${label}`
-        );
+        vi.mocked(inspection.profilePathError).mockResolvedValueOnce(label);
 
         expect(await service.saveRemoteProfiles('drive')).toBe(false);
         expect(inspection.createRequiredDirectories).not.toHaveBeenCalled();
         expect(TestBed.inject(AppSettingsService).saveRemoteSettings).not.toHaveBeenCalled();
-        expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledWith(
-          `remoteConfig.pathStatus.${label}`
-        );
+        expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledWith(label);
       }
     );
 

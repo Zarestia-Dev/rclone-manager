@@ -43,6 +43,18 @@
   }
 }
 
+@container (max-width: 40rem) {
+  .mount-path-row:has(.mount-use-parent) {
+    .path-type-selector {
+      flex-basis: min(38%, 12rem);
+    }
+
+    .path-input-field ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: var(--space-xs) !important;
+    }
+  }
+}
+
 .windows-appearance-heading {
   display: flex;
   gap: var(--space-xxs);

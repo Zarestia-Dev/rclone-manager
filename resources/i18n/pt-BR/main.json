@@ -1513,6 +1513,8 @@
       "mountNetworkDriveHint": "O Windows mostra o disco como unidade de rede. O armazenamento continua o mesmo.",
       "mountDriveTarget": "Unidade",
       "mountFolderPathRequired": "Digite o caminho completo de uma nova subpasta.",
+      "mountFolderQuotesRemoved": "As aspas foram removidas do caminho.",
+      "mountFolderSubfolderAdded": "Um nome de subpasta foi adicionado ao caminho.",
       "mountFolderNameHint": "Para alterar o nome da pasta, edite a última parte do caminho. A pasta é criada ao montar.",
       "mountLocalDrive": "Disco local",
       "mountNetworkDrive": "Unidade de rede",

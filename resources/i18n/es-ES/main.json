@@ -1513,6 +1513,8 @@
       "mountNetworkDriveHint": "Windows muestra el disco como unidad de red. El almacenamiento sigue siendo el mismo.",
       "mountDriveTarget": "Unidad",
       "mountFolderPathRequired": "Introduce la ruta completa de una subcarpeta nueva.",
+      "mountFolderQuotesRemoved": "Se quitaron las comillas de la ruta.",
+      "mountFolderSubfolderAdded": "Se añadió un nombre de subcarpeta a la ruta.",
       "mountFolderNameHint": "Para cambiar el nombre de la carpeta, edita la última parte de la ruta. La carpeta se crea al montar.",
       "mountLocalDrive": "Disco local",
       "mountNetworkDrive": "Unidad de red",

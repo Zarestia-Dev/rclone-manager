@@ -1513,6 +1513,8 @@
       "mountNetworkDriveHint": "Windows diski ağ sürücüsü olarak gösterir. Depolama alanı aynı kalır.",
       "mountDriveTarget": "Sürücü",
       "mountFolderPathRequired": "Yeni bir alt klasörün tam yolunu girin.",
+      "mountFolderQuotesRemoved": "Yolu çevreleyen tırnak işaretleri kaldırıldı.",
+      "mountFolderSubfolderAdded": "Yola bir alt klasör adı eklendi.",
       "mountFolderNameHint": "Klasör adını değiştirmek için yolun son bölümünü düzenleyin. Klasör bağlama sırasında oluşturulur.",
       "mountLocalDrive": "Yerel disk",
       "mountNetworkDrive": "Ağ sürücüsü",

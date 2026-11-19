@@ -1505,6 +1505,8 @@
       "mountNetworkDriveHint": "Windows 會將其顯示為網路磁碟機。實際儲存位置維持不變。",
       "mountDriveTarget": "磁碟機",
       "mountFolderPathRequired": "請輸入新子資料夾的完整路徑。",
+      "mountFolderQuotesRemoved": "已移除路徑兩端的引號。",
+      "mountFolderSubfolderAdded": "已在路徑中加入子資料夾名稱。",
       "mountFolderNameHint": "如要更改資料夾名稱，請編輯路徑的最後一部分。資料夾會在掛載時建立。",
       "mountLocalDrive": "本機磁碟",
       "mountNetworkDrive": "網路磁碟機",

@@ -16,6 +16,10 @@ import {
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators, type ValidatorFn } from '@angular/forms';
 import { type PathInspectionStatus } from '@app/types';
+import {
+  PathInspectionService,
+  WINDOWS_MOUNT_FOLDER_EXISTS,
+} from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { CdkOverlayAutoposDirective } from '../../directives/cdk-overlay-autopos.directive';
 import { generatePrefixedId } from '../../utils/id.util';
@@ -77,6 +81,7 @@ export class WindowsMountTargetComponent {
   readonly selectFolder = output();
 
   private readonly windowsMountTarget = inject(WindowsMountTargetService);
+  private readonly pathInspection = inject(PathInspectionService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pathSelection = inject(PathSelectionService);
   private readonly folderField = generatePrefixedId('mount-folder');
@@ -98,6 +103,7 @@ export class WindowsMountTargetComponent {
   private reopeningFolderMenu = false;
   private readonly pathValueVersion = signal(0);
   private readonly networkModeVersion = signal(0);
+  private readonly folderPaste = signal<{ control: FormControl; path: string } | null>(null);
 
   constructor() {
     this.destroyRef.onDestroy(() => this.pathSelection.unregisterField(this.folderField));
@@ -119,9 +125,11 @@ export class WindowsMountTargetComponent {
     effect(onCleanup => {
       const control = this.pathControl();
       control.addValidators(this.mountTargetRequired);
-      const subscription = control.valueChanges.subscribe(() =>
-        this.pathValueVersion.update(value => value + 1)
-      );
+      const subscription = control.valueChanges.subscribe(value => {
+        const paste = this.folderPaste();
+        if (paste?.control === control && paste.path !== value) this.folderPaste.set(null);
+        this.pathValueVersion.update(version => version + 1);
+      });
       onCleanup(() => {
         subscription.unsubscribe();
         control.removeValidators(this.mountTargetRequired);
@@ -149,7 +157,20 @@ export class WindowsMountTargetComponent {
     this.pathValueVersion();
     return String(this.pathControl().value ?? '').trim();
   });
+  protected readonly folderPasteNotice = linkedSignal<'quotes' | 'subfolder' | null>(() => {
+    this.currentProfileName();
+    this.currentRemoteName();
+    this.pathControl();
+    this.mountPath();
+    return null;
+  });
+  protected readonly checkingFolderPaste = computed(() => {
+    this.pathValueVersion();
+    const paste = this.folderPaste();
+    return paste?.control === this.pathControl() && paste.path === paste.control.value;
+  });
   protected readonly automaticDrive = '*';
+  protected readonly existingFolderLabel = WINDOWS_MOUNT_FOLDER_EXISTS;
   private readonly legacyNetworkPath = computed(() => {
     const path = this.mountPath();
     return this.targetDraft().location !== 'folder' && isWindowsMountNetworkPath(path) ? path : '';
@@ -198,6 +219,10 @@ export class WindowsMountTargetComponent {
     return this.mountLocation() === 'folder' && !!this.pathControl().errors?.['mountFolderPath'];
   });
   private readonly mountTargetRequired: ValidatorFn = control => {
+    const paste = this.folderPaste();
+    if (paste?.control === control && paste.path === control.value) {
+      return { mountFolderPastePending: true };
+    }
     const selection = this.targetDraft().location;
     if (selection && Validators.required(control)) return { required: true };
     const path = String(control.value ?? '')
@@ -311,7 +336,80 @@ export class WindowsMountTargetComponent {
     this.updateFolderSuggestions(String(this.pathControl().value ?? ''), true);
   }
 
-  protected typeFolderPath(value: string): void {
+  protected pasteFolderPath(event: ClipboardEvent, field: HTMLInputElement): void {
+    const text = event.clipboardData?.getData('text/plain');
+    if (!text) return;
+
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? start;
+    const pasted = field.value.slice(0, start) + text + field.value.slice(end);
+    if (this.acceptPastedFolderPath(pasted)) event.preventDefault();
+  }
+
+  protected useEnteredFolderAsParent(): void {
+    this.acceptPastedFolderPath(this.mountPath());
+  }
+
+  private acceptPastedFolderPath(value: string): boolean {
+    const pasted = value.trim();
+    const quoted = /^"([^"]*)"$/.exec(pasted);
+    const path = quoted?.[1] ?? pasted;
+    if (this.pathControl().disabled || !/^[a-z]:[\\/][^"\r\n]*$/i.test(path)) return false;
+
+    void this.resolvePastedFolder(path, !!quoted);
+    return true;
+  }
+
+  private async resolvePastedFolder(path: string, quoted: boolean): Promise<void> {
+    const control = this.pathControl();
+    const remote = this.currentRemoteName();
+    const profile = this.currentProfileName();
+    const paste = { control, path };
+    this.folderPaste.set(paste);
+    this.targetDraft.update(draft => ({ ...draft, location: 'folder' }));
+    this.folderMenuTrigger()?.close();
+    control.markAsDirty();
+    control.setValue(path);
+    if (quoted) this.folderPasteNotice.set('quotes');
+
+    const status = await this.pathInspection
+      .inspect(path, remote, profile ?? undefined, 'mount', { checkWindowsDriveRoot: true })
+      .catch(() => null);
+
+    if (this.destroyRef.destroyed || this.folderPaste() !== paste) return;
+    this.folderPaste.set(null);
+    const stillEditingPastedPath =
+      this.pathControl() === control &&
+      this.currentRemoteName() === remote &&
+      this.currentProfileName() === profile &&
+      control.value === path &&
+      !control.disabled;
+    const subfolder =
+      stillEditingPastedPath && status?.state === 'nonEmpty'
+        ? windowsMountFolderTarget(path, '', remote)
+        : undefined;
+    if (subfolder) {
+      this.updateControl(control, subfolder);
+    } else {
+      control.updateValueAndValidity();
+    }
+    if (stillEditingPastedPath) {
+      this.folderPasteNotice.set(subfolder ? 'subfolder' : quoted ? 'quotes' : null);
+    }
+  }
+
+  protected typeFolderPath(event: Event, field: HTMLInputElement): void {
+    const value = field.value;
+    if (
+      (event as InputEvent).inputType === 'insertFromPaste' &&
+      this.acceptPastedFolderPath(value)
+    ) {
+      return;
+    }
+    if (this.folderPaste()) {
+      this.folderPaste.set(null);
+      this.pathControl().updateValueAndValidity();
+    }
     if (this.targetDraft().location === null) {
       this.targetDraft.update(state => ({ ...state, location: 'folder' }));
       this.pathControl().updateValueAndValidity();

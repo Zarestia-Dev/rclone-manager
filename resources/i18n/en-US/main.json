@@ -1516,6 +1516,8 @@
       "mountNetworkDriveHint": "Windows shows the disk as a network drive. The storage stays the same.",
       "mountDriveTarget": "Drive letter",
       "mountFolderPathRequired": "Enter a full path to a new subfolder.",
+      "mountFolderQuotesRemoved": "Quotation marks were removed from the path.",
+      "mountFolderSubfolderAdded": "A subfolder name was added to the path.",
       "mountFolderNameHint": "To change the folder name, edit the last part of the path. The folder is created when you mount.",
       "mountLocalDrive": "Local disk",
       "mountNetworkDrive": "Network drive",

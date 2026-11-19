@@ -155,7 +155,7 @@ describe('RemoteCreationOrchestrator', () => {
         {
           provide: PathInspectionService,
           useValue: {
-            profileFileError: vi.fn().mockResolvedValue(undefined),
+            profilePathError: vi.fn().mockResolvedValue(undefined),
             createRequiredDirectories: vi.fn().mockResolvedValue(undefined),
           },
         },
@@ -186,7 +186,7 @@ describe('RemoteCreationOrchestrator', () => {
     });
 
     it('rejects a file target before creating the remote or starting authentication', async () => {
-      vi.mocked(TestBed.inject(PathInspectionService).profileFileError).mockResolvedValueOnce(
+      vi.mocked(TestBed.inject(PathInspectionService).profilePathError).mockResolvedValueOnce(
         'remoteConfig.pathStatus.notDirectoryWindowsMount'
       );
       const settings = {

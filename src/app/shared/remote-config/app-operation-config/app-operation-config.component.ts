@@ -15,7 +15,13 @@ import {
 
 import { NgTemplateOutlet } from '@angular/common';
 import { merge } from 'rxjs';
-import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
+import {
+  FormGroup,
+  ReactiveFormsModule,
+  FormArray,
+  FormControl,
+  type ValidatorFn,
+} from '@angular/forms';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -58,6 +64,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import {
   PATH_INSPECTION_UNAVAILABLE,
   PathInspectionService,
+  WINDOWS_MOUNT_FOLDER_EXISTS,
 } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
@@ -272,7 +279,12 @@ export class OperationConfigComponent {
   >();
   private readonly inspectionDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inspectionTokens = new Map<string, number>();
-  private readonly lastInspectedPaths = new Map<string, string>();
+  private readonly lastInspectedPaths = new Map<string, { control: FormControl; key: string }>();
+  private readonly invalidInspectedPaths = new Map<FormControl, string>();
+  private readonly inspectedPathValidator: ValidatorFn = control =>
+    this.invalidInspectedPaths.get(control as FormControl) === String(control.value ?? '').trim()
+      ? { invalidInspectedPath: true }
+      : null;
   private pathResolveToken = 0;
   private readonly generatedDefaultPaths = new WeakMap<
     FormControl,
@@ -584,6 +596,14 @@ export class OperationConfigComponent {
 
       untracked(() => {
         const activeKeys = new Set(items.map(item => `${item.group}-${item.index}`));
+        const inspectedControls = new Set(
+          items
+            .filter(item => needsInspection && (item.type === 'local' || opType === 'bisync'))
+            .map(item => item.pathControl)
+        );
+        for (const control of this.invalidInspectedPaths.keys()) {
+          if (!inspectedControls.has(control)) this.setInspectedPathError(control);
+        }
         for (const [key, status] of this.pathInspectionStatuses) {
           if (!activeKeys.has(key)) {
             this.cancelAndClearInspection(key, status);
@@ -592,14 +612,15 @@ export class OperationConfigComponent {
         }
         for (const item of items) {
           const itemKey = `${item.group}-${item.index}`;
-          if (needsInspection && item.type === 'local') {
+          if (inspectedControls.has(item.pathControl)) {
             this.triggerPathInspection(
               itemKey,
-              item.pathControl.value,
+              item.pathControl,
               remoteName,
               item.inspectionStatus,
               profileName,
-              opType === 'mount' ? 'mount' : 'bisync'
+              opType === 'mount' ? 'mount' : 'bisync',
+              item.type === 'local' ? undefined : item.remoteName
             );
           } else {
             this.cancelAndClearInspection(itemKey, item.inspectionStatus);
@@ -614,6 +635,7 @@ export class OperationConfigComponent {
       this.clearAutocomplete();
       this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
       this.inspectionDebounceTimers.clear();
+      for (const control of this.invalidInspectedPaths.keys()) this.setInspectedPathError(control);
     });
   }
 
@@ -676,22 +698,34 @@ export class OperationConfigComponent {
 
   private triggerPathInspection(
     itemKey: string,
-    path: string | null | undefined,
+    control: FormControl,
     remoteName: string,
     statusSignal: WritableSignal<PathInspectionStatus | null>,
     profileName: string | undefined,
-    operation: DefaultPathOp
+    operation: DefaultPathOp,
+    bisyncRemote?: string
   ): void {
-    const trimmedPath = path?.trim() || '';
-    if (!trimmedPath) {
+    const trimmedPath = String(control.value ?? '').trim();
+    if (!trimmedPath || bisyncRemote === '') {
       this.cancelAndClearInspection(itemKey, statusSignal);
+      this.setInspectedPathError(control);
       return;
     }
 
-    const inspectionKey = JSON.stringify([remoteName, profileName, operation, trimmedPath]);
-    if (this.lastInspectedPaths.get(itemKey) === inspectionKey) {
+    const inspectionKey = JSON.stringify([
+      remoteName,
+      profileName,
+      operation,
+      bisyncRemote,
+      trimmedPath,
+    ]);
+    const previous = this.lastInspectedPaths.get(itemKey);
+    if (previous?.control === control && previous.key === inspectionKey) {
       return;
     }
+    this.lastInspectedPaths.set(itemKey, { control, key: inspectionKey });
+    statusSignal.set(null);
+    this.setInspectedPathError(control);
 
     const existingTimer = this.inspectionDebounceTimers.get(itemKey);
     if (existingTimer) {
@@ -706,7 +740,6 @@ export class OperationConfigComponent {
       this.inspectionDebounceTimers.delete(itemKey);
       if (this.inspectionTokens.get(itemKey) !== token) return;
 
-      this.lastInspectedPaths.set(itemKey, inspectionKey);
       statusSignal.set({
         state: 'checking',
         icon: 'spinner',
@@ -714,21 +747,39 @@ export class OperationConfigComponent {
         labelKey: 'remoteConfig.pathStatus.checking',
       });
 
-      this.pathInspectionService
-        .inspect(trimmedPath, remoteName, profileName, operation)
+      const result = bisyncRemote
+        ? this.pathInspectionService.inspect(trimmedPath, remoteName, profileName, operation, {
+            bisyncRemote,
+          })
+        : this.pathInspectionService.inspect(trimmedPath, remoteName, profileName, operation);
+      result
+        .catch(() => PATH_INSPECTION_UNAVAILABLE)
         .then(status => {
-          if (this.inspectionTokens.get(itemKey) === token) {
-            statusSignal.set(status);
-          }
-        })
-        .catch(() => {
-          if (this.inspectionTokens.get(itemKey) === token) {
-            statusSignal.set(PATH_INSPECTION_UNAVAILABLE);
-          }
+          if (
+            this.inspectionTokens.get(itemKey) !== token ||
+            String(control.value ?? '').trim() !== trimmedPath
+          )
+            return;
+          statusSignal.set(status);
+          const invalid =
+            status?.state === 'notDirectory' || status?.labelKey === WINDOWS_MOUNT_FOLDER_EXISTS;
+          this.setInspectedPathError(control, invalid ? trimmedPath : undefined);
         });
     }, 300);
 
     this.inspectionDebounceTimers.set(itemKey, timer);
+  }
+
+  private setInspectedPathError(control: FormControl, path?: string): void {
+    if (this.invalidInspectedPaths.get(control) === path) return;
+    if (path === undefined) {
+      this.invalidInspectedPaths.delete(control);
+      control.removeValidators(this.inspectedPathValidator);
+    } else {
+      this.invalidInspectedPaths.set(control, path);
+      control.addValidators(this.inspectedPathValidator);
+    }
+    control.updateValueAndValidity();
   }
 
   setType(item: PathItem, typeValue: string): void {

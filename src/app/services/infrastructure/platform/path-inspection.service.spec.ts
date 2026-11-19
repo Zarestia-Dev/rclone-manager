@@ -268,7 +268,7 @@ describe('PathInspectionService', () => {
     });
   });
 
-  describe('profileFileError', () => {
+  describe('profilePathError', () => {
     beforeEach(() => {
       mockPathService.enginePathStyle.mockReturnValue('windows');
       mockPathService.splitLocalForStat.mockImplementation(pathUtils.splitLocalForStat);
@@ -282,7 +282,7 @@ describe('PathInspectionService', () => {
 
     it.each(['X:', 'X:\\', 'X:/'])('skips file checks for the mount drive %s', async mountPoint => {
       expect(
-        await service.profileFileError(
+        await service.profilePathError(
           { mountConfigs: { Default: { mountPoint } } },
           'Local',
           'example'
@@ -296,7 +296,7 @@ describe('PathInspectionService', () => {
       async mountPoint => {
         mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: false } });
         expect(
-          await service.profileFileError(
+          await service.profilePathError(
             { mountConfigs: { Default: { rclone: { mountPoint } } } },
             'Local',
             'example'
@@ -316,9 +316,28 @@ describe('PathInspectionService', () => {
     it.each(['path1', 'path2'])('rejects a file on either local Bisync side (%s)', async field => {
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: false } });
       const settings = { bisyncConfigs: { Default: { [field]: 'D:\\sample\\report.txt' } } };
-      expect(await service.profileFileError(settings, 'Local', 'example')).toBe(
+      expect(await service.profilePathError(settings, 'Local', 'example')).toBe(
         'remoteConfig.pathStatus.notDirectory'
       );
+    });
+
+    it('rejects an existing Windows mount folder and accepts existing Bisync folders', async () => {
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      const folder = 'D:\\sample\\shared';
+      await expect(
+        service.profilePathError(
+          { mountConfigs: { Default: { mountPoint: folder } } },
+          'Local',
+          'example'
+        )
+      ).resolves.toBe('wizards.appOperation.mountFolderAlreadyExists');
+      await expect(
+        service.profilePathError(
+          { bisyncConfigs: { Default: { path1: folder } } },
+          'Local',
+          'example'
+        )
+      ).resolves.toBeUndefined();
     });
 
     it('checks a non-root Bisync remote path on the selected engine', async () => {
@@ -330,7 +349,7 @@ describe('PathInspectionService', () => {
           Default: { rclone: { path1: 'D:\\data', path2: 'cloud:files/test.txt' } },
         },
       };
-      expect(await service.profileFileError(settings, 'Test engine', 'example')).toBe(
+      expect(await service.profilePathError(settings, 'Test engine', 'example')).toBe(
         'remoteConfig.pathStatus.notDirectory'
       );
       expect(mockRemoteFileOps.getStat).toHaveBeenLastCalledWith(
@@ -353,7 +372,7 @@ describe('PathInspectionService', () => {
         .mockRejectedValueOnce(new Error('Access denied'))
         .mockResolvedValueOnce({ item: { IsDir: true } });
       expect(
-        await service.profileFileError(settings, 'Local', 'example', { mount: { Old: unchanged } })
+        await service.profilePathError(settings, 'Local', 'example', { mount: { Old: unchanged } })
       ).toBeUndefined();
       expect(mockRemoteFileOps.getStat).toHaveBeenCalledTimes(2);
       expect(mockRemoteFileOps.getStat.mock.calls.map(([, relative]) => relative)).toEqual([
@@ -367,7 +386,7 @@ describe('PathInspectionService', () => {
       const profiles = { Default: config, Sibling: config };
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: false } });
       expect(
-        await service.profileFileError(
+        await service.profilePathError(
           { mountConfigs: profiles },
           'Local',
           'example',
@@ -390,9 +409,9 @@ describe('PathInspectionService', () => {
       ]);
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: false } });
 
-      expect(await service.profileFileError(settings, 'Local', 'example')).toBeUndefined();
+      expect(await service.profilePathError(settings, 'Local', 'example')).toBeUndefined();
       expect(mockRemoteFileOps.getStat).not.toHaveBeenCalled();
-      expect(await service.profileFileError(settings, 'Other backend', 'example')).toBe(
+      expect(await service.profilePathError(settings, 'Other backend', 'example')).toBe(
         'remoteConfig.pathStatus.notDirectoryWindowsMount'
       );
       expect(mockRemoteFileOps.getStat).toHaveBeenCalledOnce();
