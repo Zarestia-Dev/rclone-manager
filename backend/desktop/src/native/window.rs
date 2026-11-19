@@ -121,46 +121,27 @@ pub async fn get_window_button_layout(app: tauri::AppHandle) -> Option<String> {
 async fn watch_button_layout() {
     use futures::StreamExt;
 
-    let connection = match zbus::Connection::session().await {
-        Ok(connection) => connection,
-        Err(e) => {
-            log::debug!("No D-Bus session bus for button layout changes: {e}");
-            return;
-        }
+    let Some(changes) =
+        super::portal::setting_changes("org.gnome.desktop.wm.preferences", "button-layout").await
+    else {
+        return;
     };
-    let proxy = match zbus::Proxy::new(
-        &connection,
-        "org.freedesktop.portal.Desktop",
-        "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.Settings",
-    )
-    .await
-    {
-        Ok(proxy) => proxy,
-        Err(e) => {
-            log::debug!("No settings portal for button layout changes: {e}");
-            return;
-        }
-    };
-    let mut changes = match proxy.receive_signal("SettingChanged").await {
-        Ok(changes) => changes,
-        Err(e) => {
-            log::debug!("Cannot follow button layout changes: {e}");
-            return;
-        }
-    };
+    let mut changes = std::pin::pin!(changes);
+    // GNOME's portal sends every change twice.
+    let mut last = None;
     while let Some(message) = changes.next().await {
-        if let Ok((namespace, key, value)) = message
-            .body()
-            .deserialize::<(String, String, zbus::OwnedVariant)>()
-            && namespace == "org.gnome.desktop.wm.preferences"
-            && key == "button-layout"
-        {
-            crate::services::bridge::emit(
-                crate::utils::types::events::WINDOW_BUTTON_LAYOUT_CHANGED,
-                portal_string(&value),
-            );
+        let Some(value) = super::portal::changed_value(&message) else {
+            continue;
+        };
+        let layout = portal_string(&value);
+        if last.as_ref() == Some(&layout) {
+            continue;
         }
+        last = Some(layout.clone());
+        crate::services::bridge::emit(
+            crate::utils::types::events::WINDOW_BUTTON_LAYOUT_CHANGED,
+            layout,
+        );
     }
 }
 

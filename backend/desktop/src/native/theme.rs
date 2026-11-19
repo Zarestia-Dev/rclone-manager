@@ -355,64 +355,38 @@ pub fn monitor_theme_changes() {
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 async fn run_theme_watcher() {
     use futures::StreamExt;
-    use zbus::Connection;
 
-    let connection = match Connection::session().await {
-        Ok(c) => c,
-        Err(e) => {
-            log::debug!("Failed to connect to D-Bus session bus for portal theme monitoring: {e}");
-            return;
-        }
-    };
+    const NAMESPACE: &str = "org.freedesktop.appearance";
+    const KEY: &str = "color-scheme";
 
-    let proxy = match zbus::Proxy::new(
-        &connection,
-        "org.freedesktop.portal.Desktop",
-        "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.Settings",
-    )
-    .await
-    {
-        Ok(p) => p,
-        Err(e) => {
-            log::debug!("Failed to create FreeDesktop Portal Settings D-Bus proxy: {e}");
-            return;
-        }
+    let Some(proxy) = super::portal::settings().await else {
+        return;
     };
 
     if let Ok(res) = proxy
-        .call::<_, _, zbus::OwnedVariant>("Read", &("org.freedesktop.appearance", "color-scheme"))
+        .call::<_, _, zbus::OwnedVariant>("Read", &(NAMESPACE, KEY))
         .await
         && let Some(is_dark) = extract_portal_color_scheme(&res)
     {
         apply_theme_change(is_dark);
     }
 
-    let signal_res = proxy.receive_signal("SettingChanged").await;
-    let mut signal_stream = match signal_res {
-        Ok(stream) => stream,
-        Err(e) => {
-            log::debug!("Failed to subscribe to portal SettingChanged signal: {e}");
-            return;
-        }
+    let Some(changes) = super::portal::setting_changes(NAMESPACE, KEY).await else {
+        return;
     };
+    let mut changes = std::pin::pin!(changes);
 
     log::info!("Listening for FreeDesktop XDG Portal color-scheme theme changes...");
 
-    while let Some(msg) = signal_stream.next().await {
-        if let Ok((namespace, key, value)) = msg
-            .body()
-            .deserialize::<(String, String, zbus::OwnedVariant)>()
-            && namespace == "org.freedesktop.appearance"
-            && key == "color-scheme"
+    while let Some(msg) = changes.next().await {
+        let Some(value) = super::portal::changed_value(&msg) else {
+            continue;
+        };
+        if let Some(is_dark) = extract_portal_color_scheme(&value) {
+            apply_theme_change(is_dark);
+        } else if let Ok(Some(is_dark)) = crate::utils::spawn_blocking(detect_platform_theme).await
         {
-            if let Some(is_dark) = extract_portal_color_scheme(&value) {
-                apply_theme_change(is_dark);
-            } else if let Ok(Some(is_dark)) =
-                crate::utils::spawn_blocking(detect_platform_theme).await
-            {
-                apply_theme_change(is_dark);
-            }
+            apply_theme_change(is_dark);
         }
     }
 }

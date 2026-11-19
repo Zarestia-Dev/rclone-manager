@@ -63,87 +63,73 @@ pub async fn check_links(
     Ok(result)
 }
 
+/// NetworkManager, on the connection and proxy every caller shares. The proxy caches its
+/// properties, so a read after the first costs no D-Bus call.
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-#[must_use]
-pub fn is_metered() -> bool {
-    std::thread::spawn(|| {
-        crate::utils::block_on(async {
-            use zbus::{Connection, Proxy};
-
-            let connection = match Connection::system().await {
-                Ok(c) => c,
-                Err(e) => {
-                    log::debug!("Failed to connect to D-Bus for metered network check: {e}");
-                    return false;
-                }
-            };
-
-            let proxy = match Proxy::new(
-                &connection,
+async fn network_manager() -> zbus::Result<&'static zbus::Proxy<'static>> {
+    static PROXY: tokio::sync::OnceCell<zbus::Proxy<'static>> = tokio::sync::OnceCell::const_new();
+    PROXY
+        .get_or_try_init(|| async {
+            zbus::Proxy::new(
+                crate::utils::dbus::system().await?,
                 "org.freedesktop.NetworkManager",
                 "/org/freedesktop/NetworkManager",
                 "org.freedesktop.NetworkManager",
             )
             .await
-            {
-                Ok(p) => p,
-                Err(e) => {
-                    log::debug!("NetworkManager D-Bus proxy error: {e}");
-                    return false;
-                }
-            };
-
-            match proxy.get_property::<u32>("Metered").await {
-                Ok(status) => matches!(status, 1 | 3),
-                Err(e) => {
-                    log::debug!("Failed to read Metered property: {e}");
-                    false
-                }
-            }
         })
-    })
-    .join()
-    .unwrap_or(false)
+        .await
+}
+
+/// NetworkManager's `Metered` property: 1 is "yes" and 3 is "guess yes".
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+fn is_metered_status(status: u32) -> bool {
+    matches!(status, 1 | 3)
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-use {futures::StreamExt, zbus::Connection};
+async fn is_metered() -> bool {
+    let status = async {
+        network_manager()
+            .await?
+            .get_property::<u32>("Metered")
+            .await
+    };
+    match status.await {
+        Ok(status) => is_metered_status(status),
+        Err(e) => {
+            log::debug!("Failed to read the NetworkManager Metered property: {e}");
+            false
+        }
+    }
+}
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 pub async fn monitor_network_changes() {
-    let connection = match Connection::system().await {
-        Ok(c) => c,
+    use futures::StreamExt;
+
+    let proxy = match network_manager().await {
+        Ok(proxy) => proxy,
         Err(e) => {
-            log::debug!("Failed to connect to D-Bus for network change monitoring: {e}");
+            log::debug!("Failed to reach NetworkManager for network change monitoring: {e}");
             return;
         }
     };
 
-    let proxy = match zbus::Proxy::new(
-        &connection,
-        "org.freedesktop.NetworkManager",
-        "/org/freedesktop/NetworkManager",
-        "org.freedesktop.NetworkManager",
-    )
-    .await
-    {
-        Ok(p) => p,
-        Err(e) => {
-            log::debug!("Failed to create NetworkManager D-Bus proxy: {e}");
-            return;
-        }
-    };
-
-    let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
+    let mut changes = proxy.receive_property_changed::<u32>("Metered").await;
     log::info!("Listening for NetworkManager 'Metered' property changes...");
 
-    while let Some(_metered_status) = metered_changed_stream.next().await {
-        log::debug!("'Metered' property changed!");
-        let payload = NetworkStatusPayload {
-            is_metered: is_metered(),
+    // The property moves between "yes" and "guess yes" without the answer changing.
+    let mut last = None;
+    while let Some(change) = changes.next().await {
+        let Ok(status) = change.get().await else {
+            continue;
         };
-
-        crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
+        let is_metered = is_metered_status(status);
+        if last.replace(is_metered) == Some(is_metered) {
+            continue;
+        }
+        crate::services::bridge::emit(NETWORK_STATUS_CHANGED, NetworkStatusPayload { is_metered });
     }
 }
 
@@ -242,7 +228,14 @@ pub fn is_metered() -> bool {
 }
 
 pub async fn is_network_metered() -> Result<bool, String> {
-    Ok(is_metered())
+    #[cfg(all(feature = "desktop", target_os = "linux"))]
+    {
+        Ok(is_metered().await)
+    }
+    #[cfg(not(all(feature = "desktop", target_os = "linux")))]
+    {
+        Ok(is_metered())
+    }
 }
 
 #[cfg(all(
@@ -265,6 +258,14 @@ mod tests {
 mod tests {
     use super::check_links;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[cfg(all(feature = "desktop", target_os = "linux"))]
+    #[test]
+    fn only_the_yes_answers_of_network_manager_are_metered() {
+        // 0 unknown, 1 yes, 2 no, 3 guess yes, 4 guess no.
+        let metered: Vec<bool> = (0..=5).map(super::is_metered_status).collect();
+        assert_eq!(metered, [false, true, false, true, false, false]);
+    }
 
     /// Answers `/ok` with 200 and everything else with 500.
     async fn serve() -> std::net::SocketAddr {
