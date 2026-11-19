@@ -32,19 +32,21 @@
     </div>
   </div>
 
-  <div class="card-status-indicators" aria-hidden="true">
+  <div class="card-status-indicators">
     @for (vm of statusIndicatorViewModels(); track vm.op) {
+      @let label = (vm.meta.ariaKey | translate) + (vm.profiles ? ' (' + vm.profiles + ')' : '');
       <div
         appPill
         size="sm"
+        role="img"
         [tone]="vm.meta.tone"
         [class]="vm.meta.animateContainer ? ACTION_ANIMATION_CLASS[vm.op] : ''"
-        [attr.title]="(vm.meta.ariaKey | translate) + (vm.profiles ? ' (' + vm.profiles + ')' : '')"
+        [attr.title]="label"
+        [attr.aria-label]="label"
       >
         <mat-icon
           [svgIcon]="vm.meta.icon"
           [class]="vm.meta.animateContainer ? '' : ACTION_ANIMATION_CLASS[vm.op]"
-          [attr.aria-label]="vm.meta.ariaKey | translate"
         ></mat-icon>
       </div>
     }

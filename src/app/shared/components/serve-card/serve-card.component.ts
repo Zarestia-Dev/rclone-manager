@@ -3,19 +3,13 @@ import { UpperCasePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import {
-  ServeListItem,
-  TYPE_INFO,
-  DEFAULT_ICON,
-  URL_BASED_PROTOCOLS,
-  getExecutionOrigin,
-  profileOf,
-} from '@app/types';
+import { TranslatePipe } from '@ngx-translate/core';
+import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 import { PillDirective } from '../../directives/pill.directive';
+import { StarterPillComponent } from '../starter-pill/starter-pill.component';
 @Component({
   selector: 'app-serve-card',
   imports: [
@@ -26,13 +20,13 @@ import { PillDirective } from '../../directives/pill.directive';
     TranslatePipe,
     CopyToClipboardDirective,
     PillDirective,
+    StarterPillComponent,
   ],
   templateUrl: './serve-card.component.html',
   styleUrl: './serve-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServeCardComponent {
-  private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
 
   serve = input.required<ServeListItem>();
@@ -40,34 +34,6 @@ export class ServeCardComponent {
 
   stopServe = output<ServeListItem>();
   cardClick = output<ServeListItem>();
-
-  readonly isWorkflow = computed(() => {
-    return getExecutionOrigin(this.serve()) === 'workflow';
-  });
-
-  readonly isQuickRun = computed(() => {
-    return !this.isWorkflow() && getExecutionOrigin(this.serve()) === 'quickrun';
-  });
-
-  readonly profile = computed(() => profileOf(this.serve()));
-
-  readonly originLabel = computed(() => {
-    if (this.isWorkflow()) {
-      const t = this.translate.instant('flow.tabs.workflow');
-      return t === 'flow.tabs.workflow' ? 'Workflow' : t;
-    }
-    if (this.isQuickRun()) {
-      const t = this.translate.instant('flow.tabs.quickRun');
-      return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
-    }
-    const t = this.translate.instant('navigation.dashboard');
-    return t === 'navigation.dashboard' ? 'Dashboard' : t;
-  });
-
-  readonly originIcon = computed(() => {
-    if (this.isWorkflow()) return 'workflow';
-    return this.isQuickRun() ? 'quick-run' : 'cloud';
-  });
 
   serveIcon = computed<string>(() => {
     const type = this.serve().params.type.toLowerCase();
@@ -81,13 +47,10 @@ export class ServeCardComponent {
     return URL_BASED_PROTOCOLS.has(type) ? `${type}://${addr}` : null;
   });
 
+  /** The options the serve was started with; `fs` and `type` are what it serves, not options. */
   optionsData = computed<{ keys: string[]; tooltip: string }>(() => {
     const params = this.serve().params;
-    const keys = Object.keys(params);
-
-    if (keys.length === 0) {
-      return { keys: [], tooltip: this.translate.instant('shared.serveCard.messages.noOptions') };
-    }
+    const keys = Object.keys(params).filter(key => key !== 'fs' && key !== 'type');
 
     const tooltip = keys
       .map(key => {

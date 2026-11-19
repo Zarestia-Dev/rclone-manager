@@ -14,17 +14,7 @@
             <span class="serve-remote-name truncate">{{ remoteName() }}</span>
           }
           <span appPill tone="primary" size="xs">{{ serve().params.type | uppercase }}</span>
-          @if (profile(); as name) {
-            <span appPill tone="accent" size="xs">{{ name }}</span>
-          }
-          <span
-            class="origin-mini-badge"
-            [class.quickrun]="isQuickRun()"
-            [class.workflow]="isWorkflow()"
-            [attr.title]="originLabel()"
-          >
-            <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
-          </span>
+          <app-starter-pill [starter]="serve().starter" />
         </div>
 
         <!-- URL or address -->

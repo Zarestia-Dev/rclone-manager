@@ -240,22 +240,20 @@ describe('QuickRunOverviewComponent', () => {
     expect(mockQuickRunService.openEditor).toHaveBeenCalledWith(undefined, undefined, 'my-remote');
   });
 
-  it('opens the remote of a Quick Run automation, and a workflow in the builder', async () => {
+  it('opens a Quick Run or a workflow for its automation, and the remote for a profile one', async () => {
     await createComponent();
     const open = vi.spyOn(component.openRemoteDetail, 'emit');
 
-    component.handleAutomationClick({
-      remoteName: 'drive',
-      args: { source: 'quickrun' },
-    } as unknown as Automation);
+    const profile = { remoteName: 'drive', args: { source: 'dashboard' } } as unknown as Automation;
+    component.handleAutomationClick(profile);
     expect(open).toHaveBeenCalledWith('drive');
+    expect(mockNavigationDispatcher.navigateToAutomation).not.toHaveBeenCalled();
 
-    const workflow = {
-      remoteName: 'Workflow',
-      args: { source: 'workflow' },
-    } as unknown as Automation;
-    component.handleAutomationClick(workflow);
+    for (const source of ['quickrun', 'workflow'] as const) {
+      const automation = { remoteName: 'drive', args: { source } } as unknown as Automation;
+      component.handleAutomationClick(automation);
+      expect(mockNavigationDispatcher.navigateToAutomation).toHaveBeenCalledWith(automation);
+    }
     expect(open).toHaveBeenCalledTimes(1);
-    expect(mockNavigationDispatcher.navigateToAutomation).toHaveBeenCalledWith(workflow);
   });
 });

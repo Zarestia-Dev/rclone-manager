@@ -1,5 +1,4 @@
 import { Component, input, output, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { TitleCasePipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,7 +25,6 @@ import { PillDirective } from '../../directives/pill.directive';
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatRipple,
@@ -62,6 +60,11 @@ export class JobsPanelComponent {
     this.lang();
     this.nowTick();
     const now = Date.now();
+    const typeLabel = (type: string): string => {
+      const key = `dashboard.appDetail.${type}`;
+      const translated = this.translate.instant(key);
+      return translated === key ? type.replace(/_/g, ' ') : translated;
+    };
     return this.config().jobs.map(job => {
       const statusLower = job.status.toLowerCase();
       const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
@@ -78,6 +81,7 @@ export class JobsPanelComponent {
       return {
         ...job,
         statusLower,
+        typeLabel: typeLabel(job.job_type),
         tone: JOB_STATUS_BADGE_MAP[statusLower] || 'accent',
         relativeTime,
         durationSeconds,
@@ -110,6 +114,13 @@ export class JobsPanelComponent {
     } catch (error) {
       console.error('Failed to stop job:', error);
     }
+  }
+
+  /** Enter or Space on the row itself opens the job; the stop button inside keeps its own keys. */
+  onRowKey(event: Event, job: JobInfo): void {
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    this.showJobDetails(job);
   }
 
   showJobDetails(job: JobInfo): void {

@@ -1,0 +1,40 @@
+<mat-card class="mount-card" [attr.data-tone]="tone" (click)="cardClick.emit(mount())">
+  <div class="mount-body">
+    <div class="mount-icon-wrap">
+      <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
+    </div>
+
+    <div class="mount-details">
+      <div class="mount-title-row">
+        <span class="mount-remote-name truncate">{{ remoteName() }}</span>
+        <app-starter-pill [starter]="mount().starter" />
+      </div>
+
+      <span
+        class="mount-point truncate"
+        [attr.title]="'shared.mountCard.copyPath' | translate"
+        [appCopyToClipboard]="mount().mount_point"
+        >{{ mount().mount_point }}</span
+      >
+      <span class="mount-fs truncate">{{ mount().fs }}</span>
+    </div>
+
+    <div class="mount-actions">
+      <button
+        class="action-button"
+        (click)="openMount.emit(mount()); $event.stopPropagation()"
+        [attr.title]="'shared.mountCard.open' | translate"
+      >
+        <mat-icon svgIcon="folder-open"></mat-icon>
+      </button>
+      <button
+        class="action-button"
+        data-tone="warn"
+        (click)="unmount.emit(mount()); $event.stopPropagation()"
+        [attr.title]="'shared.mountCard.unmount' | translate"
+      >
+        <mat-icon svgIcon="eject"></mat-icon>
+      </button>
+    </div>
+  </div>
+</mat-card>

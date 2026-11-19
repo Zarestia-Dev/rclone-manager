@@ -1,0 +1,46 @@
+@let mountsList = allMounts();
+
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  class="mounts-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="mount" data-tone="primary" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.mounts' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <span appPill [tone]="mountsList.length > 0 ? 'primary' : 'dim'">
+        {{
+          mountsList.length > 0
+            ? ('generalOverview.mounts.activeCount' | translate: { count: mountsList.length })
+            : ('generalOverview.mounts.noActive' | translate)
+        }}
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @if (showFilterChips()) {
+    <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
+  }
+
+  @if (mountsList.length === 0) {
+    <div class="empty-state" role="status">
+      <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
+      <p>{{ 'generalOverview.mounts.noMounted' | translate }}</p>
+    </div>
+  } @else {
+    <div class="grid">
+      @for (mount of mountsList; track mount.mount_point) {
+        <app-mount-card
+          [mount]="mount"
+          (cardClick)="onMountClick($event)"
+          (openMount)="onOpenMount($event)"
+          (unmount)="onUnmount($event)"
+        ></app-mount-card>
+      }
+    </div>
+  }
+</mat-expansion-panel>

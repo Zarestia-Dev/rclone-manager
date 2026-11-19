@@ -64,6 +64,21 @@ describe('JobsPanelComponent job actions', () => {
     expect(pills).toEqual(['Test 1', 'Nightly', undefined]);
   });
 
+  it.each(['Enter', ' '])('opens a job on %j pressed on its row, not on its stop button', key => {
+    const row: HTMLElement = fixture.nativeElement.querySelector('.card-row-item');
+    const press = (target: HTMLElement): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+
+    expect(press(row.querySelector('.action-button') as HTMLElement).defaultPrevented).toBe(false);
+    expect(openJobDetail).not.toHaveBeenCalled();
+
+    expect(press(row).defaultPrevented).toBe(true);
+    expect(openJobDetail).toHaveBeenCalledTimes(1);
+  });
+
   it('stops only the clicked job, even when another execution uses the same profile', async () => {
     const buttons: NodeListOf<HTMLButtonElement> =
       fixture.nativeElement.querySelectorAll('.action-button');

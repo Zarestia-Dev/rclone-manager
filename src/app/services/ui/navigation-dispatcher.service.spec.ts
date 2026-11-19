@@ -5,7 +5,7 @@ import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
-import { Remote, ServeListItem, Automation, QuickRun } from '@app/types';
+import { Remote, ServeListItem, MountedRemote, Automation, QuickRun, Starter } from '@app/types';
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
 
@@ -140,6 +140,96 @@ describe('NavigationDispatcherService', () => {
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith('serve');
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
+    });
+  });
+
+  describe('navigateToOwner', () => {
+    const mountWith = (starter?: MountedRemote['starter']): MountedRemote => ({
+      fs: 'test-remote:path',
+      mount_point: '/mnt/test',
+      starter,
+    });
+
+    it('should navigate to the mount tab of the remote', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue('test-remote');
+
+      service.navigateToOwner(mountWith({ kind: 'profile', name: 'work' }), 'test-remote', 'mount');
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
+      expect(mockUiStateService.setTab).toHaveBeenCalledWith('mount');
+      expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
+    });
+
+    it('should navigate to the Quick Run that started the mount', (): void => {
+      service.navigateToOwner(
+        mountWith({ kind: 'quick_run', id: 'qr-1', name: 'Sync Drive' }),
+        'test-remote',
+        'mount'
+      );
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+      expect(mockUiStateService.setTab).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when the remote is unknown', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue('gone');
+      mockRemoteFacade.getRemote.mockReturnValue(undefined);
+
+      service.navigateToOwner(mountWith(), 'test-remote', 'mount');
+
+      expect(mockUiStateService.setSelectedRemote).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('serves and mounts started by a Quick Run or a workflow', () => {
+    const quickRun: Starter = { kind: 'quick_run', id: 'qr-1', name: 'Sync Drive' };
+    const workflow: Starter = {
+      kind: 'workflow',
+      workflowId: 'wf-1',
+      workflowName: 'Nightly Sync',
+      nodeId: 'n1',
+      ancestors: [],
+    };
+    const serve = (starter: ServeListItem['starter']): ServeListItem => ({
+      id: 'serve-1',
+      addr: 'localhost:8080',
+      starter,
+      params: { fs: 'test-remote:path', type: 'http' },
+    });
+    const mount = (starter: MountedRemote['starter']): MountedRemote => ({
+      fs: 'test-remote:path',
+      mount_point: '/mnt/test',
+      starter,
+    });
+
+    beforeEach((): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue('test-remote');
+    });
+
+    it.each([
+      ['serve', (): void => service.navigateToServe(serve(quickRun))],
+      ['mount', (): void => service.navigateToOwner(mount(quickRun), 'test-remote', 'mount')],
+    ])('opens the Quick Run of a %s even when its remote is known', (_name, navigate) => {
+      navigate();
+      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+      expect(mockUiStateService.setTab).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['serve', (): void => service.navigateToServe(serve(workflow))],
+      ['mount', (): void => service.navigateToOwner(mount(workflow), 'test-remote', 'mount')],
+    ])('opens the workflow of a %s even when its remote is known', (_name, navigate) => {
+      navigate();
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
+      expect(mockWorkflowStorageService.openWorkflow).toHaveBeenCalledWith(mockWorkflow);
+      expect(mockUiStateService.setTab).not.toHaveBeenCalled();
+    });
+
+    it('stays on the remote for a serve started by one of its profiles', () => {
+      service.navigateToServe(serve({ kind: 'profile', name: 'work' }));
+      expect(mockUiStateService.setTab).toHaveBeenCalledWith('serve');
+      expect(mockQuickRunService.select).not.toHaveBeenCalled();
     });
   });
 

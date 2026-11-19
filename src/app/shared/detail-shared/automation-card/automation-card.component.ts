@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Automation, AutomationStatus, getOperationDef, PillTone } from '@app/types';
+import { Automation, AutomationStatus, getOperationDef, ORIGIN_META, PillTone } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
@@ -13,12 +13,6 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 
 import { PillDirective } from '../../directives/pill.directive';
-
-const ORIGINS = {
-  workflow: { label: 'flow.tabs.workflow', icon: 'workflow', tone: 'accent' },
-  quickrun: { label: 'flow.tabs.quickRun', icon: 'quick-run', tone: 'primary' },
-  dashboard: { label: 'navigation.dashboard', icon: 'cloud', tone: 'dim' },
-} as const satisfies Record<string, { label: string; icon: string; tone: PillTone }>;
 
 const STATUS_PILL: Record<AutomationStatus, PillTone> = {
   enabled: 'primary',
@@ -66,7 +60,7 @@ export class AutomationCardComponent {
   protected readonly origin = computed(() => {
     const source = this.automation().args?.source;
     const key = source === 'workflow' || source === 'quickrun' ? source : 'dashboard';
-    return { key, ...ORIGINS[key] };
+    return { key, ...ORIGIN_META[key] };
   });
 
   /** A workflow has no remote, operation type or destination of its own. */

@@ -4,7 +4,7 @@
       <div class="profile-group-header">
         <span class="operation-label">
           <mat-icon class="operation-icon" [svgIcon]="opVm.labelIcon"></mat-icon>
-          {{ opVm.operation | titlecase }}
+          {{ 'dashboard.appDetail.' + opVm.operation | translate }}
         </span>
         <span appPill size="xs" [tone]="opVm.tone">{{ opVm.profiles.length }}</span>
       </div>

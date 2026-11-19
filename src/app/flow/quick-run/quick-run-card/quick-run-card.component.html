@@ -30,38 +30,46 @@
     </div>
   </div>
 
-  <div class="card-status-indicators" aria-hidden="true">
+  <div class="card-status-indicators">
     @if (appConfig().cronEnabled && appConfig().cronExpression; as expr) {
+      @let label = ('flow.quickRun.badges.scheduled' | translate) + ': ' + expr;
       <div
         appPill
         size="sm"
         tone="primary"
-        [attr.title]="('flow.quickRun.badges.scheduled' | translate) + ': ' + expr"
+        role="img"
+        [attr.title]="label"
+        [attr.aria-label]="label"
       >
         <mat-icon svgIcon="clock"></mat-icon>
       </div>
     }
     @if (appConfig().watchEnabled) {
+      @let label =
+        (appConfig().watchChangedOnly
+          ? 'flow.quickRun.badges.watcherChangedOnly'
+          : 'flow.quickRun.badges.watcher'
+        ) | translate;
       <div
         appPill
         size="sm"
         tone="accent"
-        [attr.title]="
-          (appConfig().watchChangedOnly
-            ? 'flow.quickRun.badges.watcherChangedOnly'
-            : 'flow.quickRun.badges.watcher'
-          ) | translate
-        "
+        role="img"
+        [attr.title]="label"
+        [attr.aria-label]="label"
       >
         <mat-icon svgIcon="eye"></mat-icon>
       </div>
     }
     @if (appConfig().autoStart) {
+      @let label = 'flow.quickRun.badges.autostart' | translate;
       <div
         appPill
         size="sm"
         tone="yellow"
-        [attr.title]="'flow.quickRun.badges.autostart' | translate"
+        role="img"
+        [attr.title]="label"
+        [attr.aria-label]="label"
       >
         <mat-icon svgIcon="bolt"></mat-icon>
       </div>

@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { ServesOverviewPanelComponent } from './serves-overview-panel.component';
-import { ExecutionScope, Origin, ServeListItem } from '@app/types';
+import { ExecutionScope, ServeListItem } from '@app/types';
 import {
   buildRemoteProfileStatus,
   readRemoteProfiles,
@@ -103,12 +103,12 @@ describe('ServesOverviewPanelComponent', () => {
       serves: mockServes,
     });
     expect(profileStatus.serve.serves.map(serve => serve.id)).toEqual(['serve-3']);
-    expect(component.rawServes()).toEqual(mockServes);
+    expect(component.allServes()).toEqual(mockServes);
   });
 
-  it.each<[ExecutionScope, Origin]>([
-    [{ origin: undefined }, 'dashboard'],
-    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, 'quickrun'],
+  it.each<[ExecutionScope, string[]]>([
+    [{ origin: undefined }, ['dashboard']],
+    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, ['quickrun']],
     [
       {
         origin: 'automation',
@@ -120,7 +120,7 @@ describe('ServesOverviewPanelComponent', () => {
           ancestors: [],
         },
       },
-      'workflow',
+      ['workflow'],
     ],
     [
       {
@@ -132,32 +132,25 @@ describe('ServesOverviewPanelComponent', () => {
           workflow: { workflowId: 'wf', workflowName: 'Workflow', nodeId: 'node', ancestors: [] },
         },
       },
-      'workflow',
+      ['workflow'],
     ],
-    [{ origin: 'workflow' }, 'workflow'],
-    [{ origin: 'filemanager' }, 'filemanager'],
-  ])('uses execution ownership for filtering: %j', (scope, expected) => {
+    [{ origin: 'workflow' }, ['workflow']],
+    // Work of a remote's own profiles, however it was started, is dashboard work.
+    [{ origin: 'startup' }, ['dashboard', 'startup']],
+    [{ origin: 'filemanager' }, ['dashboard', 'filemanager']],
+  ])('uses execution ownership for filtering: %j', (scope, shownUnder) => {
     const serve: ServeListItem = { ...mockServes[2], ...scope };
     runningServes.set([serve]);
-    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager']) {
+    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
       component.selectedOriginFilter.set(filter);
-      expect(component.allServes()).toEqual(filter === expected ? [serve] : []);
+      expect(component.allServes()).toEqual(shownUnder.includes(filter) ? [serve] : []);
     }
   });
 
   it('reacts to serves from remotes outside the current catalogue', () => {
     runningServes.set([{ ...mockServes[1], params: { fs: 'deleted-remote:', type: 'http' } }]);
-    expect(component.rawServes()).toEqual(runningServes());
+    expect(component.allServes()).toEqual(runningServes());
     runningServes.set([]);
     expect(component.allServes()).toEqual([]);
-  });
-
-  it('uses an explicitly supplied list, including an empty list', () => {
-    fixture.componentRef.setInput('serves', [mockServes[0]]);
-    expect(component.rawServes()).toEqual([mockServes[0]]);
-    fixture.componentRef.setInput('serves', []);
-    expect(component.rawServes()).toEqual([]);
-    fixture.componentRef.setInput('serves', undefined);
-    expect(component.rawServes()).toEqual(runningServes());
   });
 });

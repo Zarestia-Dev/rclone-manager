@@ -1137,14 +1137,16 @@
         "stop": "Detener este servicio",
         "copyId": "Haga clic para copiar el ID"
       },
-      "messages": {
-        "noOptions": "Sin opciones adicionales"
-      },
       "labels": {
         "id": "ID:",
         "options": "Opciones:",
         "active": "activo"
       }
+    },
+    "mountCard": {
+      "copyPath": "Haz clic para copiar el punto de montaje",
+      "open": "Abrir en el explorador de archivos",
+      "unmount": "Desmontar este remoto"
     },
     "vfsControl": {
       "title": "Control VFS",
@@ -3221,6 +3223,7 @@
       "system": "Información del sistema",
       "jobs": "Información de trabajos",
       "automations": "Automatizaciones",
+      "mounts": "Remotos montados",
       "serves": "Servicios en ejecución"
     },
     "layout": {
@@ -3305,6 +3308,14 @@
       },
       "noActive": "No hay servicios activos",
       "noRunning": "No hay servicios activos en ejecución. Inicie un servicio para que el remoto sea accesible mediante protocolos de red como HTTP, WebDAV, FTP o SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} montaje activo",
+        "other": "{{count}} montajes activos"
+      },
+      "noActive": "No hay montajes activos",
+      "noMounted": "No hay ningún remoto montado. Monta un remoto para usar sus archivos como una carpeta en tu equipo."
     }
   },
   "appOverview": {
@@ -4676,10 +4687,7 @@
     "noChangesDetected": "Todos los ajustes de esta plantilla ya coinciden con los valores actuales.",
     "selectCategoriesToApply": "Categorías y ajustes"
   },
-  "navigation": {
-    "dashboard": "Panel de control",
-    "files": "Archivos"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Descargando...",

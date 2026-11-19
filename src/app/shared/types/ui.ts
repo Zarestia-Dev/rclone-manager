@@ -111,22 +111,30 @@ export type Theme = 'light' | 'dark' | 'system';
 export type ConnectionStatus = 'online' | 'offline' | 'checking';
 
 export type PanelId =
-  'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves' | 'quickRuns';
+  'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'mounts' | 'serves' | 'quickRuns';
 
 export interface PanelConfig {
   id: PanelId;
   title: string;
   defaultVisible: boolean;
+  /** Its edit controls offer a reset of what the panel itself remembers. */
+  resettable?: boolean;
 }
 
 export const SCROLL_DELAY_MS = 60;
 
 export const ALL_PANELS: readonly PanelConfig[] = Object.freeze([
-  { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
+  {
+    id: 'remotes',
+    title: 'generalOverview.panels.remotes',
+    defaultVisible: true,
+    resettable: true,
+  },
   { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
   { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
   { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
   { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
+  { id: 'mounts', title: 'generalOverview.panels.mounts', defaultVisible: true },
   { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
 ]);
 
@@ -135,9 +143,42 @@ export const ALL_QUICK_RUN_PANELS: readonly PanelConfig[] = Object.freeze([
   { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
   { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
   { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
+  { id: 'mounts', title: 'generalOverview.panels.mounts', defaultVisible: true },
   { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
   { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
 ]);
+
+/** How an overview arranges its panels and where it remembers the arrangement. */
+export interface OverviewLayout {
+  /** Names the overview while its layout is edited. */
+  id: 'general' | 'quick_run';
+  panels: readonly PanelConfig[];
+  /** The `runtime` setting that stores the order and the visibility of the panels. */
+  setting: 'dashboard_layout' | 'quick_run_layout';
+  /** Local storage key of which panels are expanded, and which are by default. */
+  openStatesKey: string;
+  openByDefault: Readonly<Record<string, boolean>>;
+  /** Whether the overview can switch its cards between compact and detailed. */
+  hasViewToggle: boolean;
+}
+
+export const GENERAL_OVERVIEW_LAYOUT: OverviewLayout = Object.freeze({
+  id: 'general',
+  panels: ALL_PANELS,
+  setting: 'dashboard_layout',
+  openStatesKey: 'dashboard.panelOpenStates',
+  openByDefault: Object.freeze({ remotes: true }),
+  hasViewToggle: true,
+});
+
+export const QUICK_RUN_OVERVIEW_LAYOUT: OverviewLayout = Object.freeze({
+  id: 'quick_run',
+  panels: ALL_QUICK_RUN_PANELS,
+  setting: 'quick_run_layout',
+  openStatesKey: 'flow.quickRun.panelOpenStates',
+  openByDefault: Object.freeze({ quickRuns: true, jobs: true }),
+  hasViewToggle: false,
+});
 
 export interface DashboardPanel extends PanelConfig {
   visible: boolean;

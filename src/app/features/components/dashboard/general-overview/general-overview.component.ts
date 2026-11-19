@@ -1,17 +1,8 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  signal,
-  computed,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, computed, output } from '@angular/core';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 import {
   Remote,
@@ -19,29 +10,28 @@ import {
   ServeListItem,
   StartJobEvent,
   StopJobEvent,
-  SavedPanelLayout,
-  applyPanelLayout,
-  defaultPanels,
-  panelLayoutOf,
-  DashboardPanel,
   SCROLL_DELAY_MS,
-  ALL_PANELS,
   OpenInFilesEvent,
   profileOf,
+  GENERAL_OVERVIEW_LAYOUT,
 } from '@app/types';
 
+import {
+  OverviewPanelDirective,
+  OverviewPanelsComponent,
+} from '../../../../shared/overviews-shared/overview-panels/overview-panels.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { BandwidthOverviewPanelComponent } from '../../../../shared/overviews-shared/bandwidth-overview-panel/bandwidth-overview-panel.component';
 import { SystemOverviewPanelComponent } from '../../../../shared/overviews-shared/system-overview-panel/system-overview-panel.component';
 import { JobsOverviewPanelComponent } from '../../../../shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
+import { MountsOverviewPanelComponent } from '../../../../shared/overviews-shared/mounts-overview-panel/mounts-overview-panel.component';
 import { ServesOverviewPanelComponent } from '../../../../shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
 import { AutomationsOverviewPanelComponent } from '../../../../shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
@@ -53,13 +43,14 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
     MatIconModule,
     MatButtonModule,
     MatSnackBarModule,
-    MatSlideToggleModule,
-    DragDropModule,
+    OverviewPanelsComponent,
+    OverviewPanelDirective,
     RemotesPanelComponent,
     OverviewHeaderComponent,
     BandwidthOverviewPanelComponent,
     SystemOverviewPanelComponent,
     JobsOverviewPanelComponent,
+    MountsOverviewPanelComponent,
     ServesOverviewPanelComponent,
     AutomationsOverviewPanelComponent,
     TranslatePipe,
@@ -71,7 +62,6 @@ export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly translate = inject(TranslateService);
-  private readonly localStorage = inject(LocalStorageService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
   private readonly uiStateService = inject(UiStateService);
 
@@ -87,22 +77,11 @@ export class GeneralOverviewComponent {
   readonly openBackendModal = output<void>();
 
   // --- State ---
-  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview('general'));
+  readonly isEditingLayout = computed(() =>
+    this.uiStateService.isEditingOverview(GENERAL_OVERVIEW_LAYOUT.id)
+  );
   readonly cardDisplayMode = this.uiStateService.cardDisplayMode;
-  readonly panelOpenStates = signal<Record<string, boolean>>(
-    this.localStorage.get<Record<string, boolean>>('dashboard.panelOpenStates', {
-      remotes: true,
-      bandwidth: false,
-      system: false,
-      jobs: false,
-      automations: false,
-      serves: false,
-    })
-  );
-  readonly dashboardPanels = signal<DashboardPanel[]>(defaultPanels(ALL_PANELS));
-  readonly displayPanels = computed(() =>
-    this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
-  );
+  readonly layout = GENERAL_OVERVIEW_LAYOUT;
 
   // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
@@ -111,63 +90,16 @@ export class GeneralOverviewComponent {
   );
   readonly activeJobsCount = computed(() => this.runningJobs().length);
 
-  constructor() {
-    void this.loadLayoutSettings();
-  }
-
   // --- Layout management ---
-  toggleEditLayout(): void {
-    this.uiStateService.toggleLayoutEdit({
-      overviewId: 'general',
-      hasViewToggle: true,
-      onReset: () => this.resetLayout(),
-    });
-  }
-
-  resetLayout(): void {
-    void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', {
-      order: [],
-      hidden: [],
-    });
+  /** The panel layout went back to its defaults: so do the cards and the remote order. */
+  onLayoutReset(): void {
     void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
-    this.dashboardPanels.set(defaultPanels(ALL_PANELS));
     void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
-    this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
   resetRemoteLayout(): void {
     void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
-  }
-
-  drop(event: CdkDragDrop<DashboardPanel[]>): void {
-    this.dashboardPanels.update(panels => {
-      const updated = [...panels];
-      moveItemInArray(updated, event.previousIndex, event.currentIndex);
-      return updated;
-    });
-    this.persistLayout();
-  }
-
-  togglePanelVisibility(panelId: string): void {
-    this.dashboardPanels.update(panels =>
-      panels.map(p => (p.id === panelId ? { ...p, visible: !p.visible } : p))
-    );
-    this.persistLayout();
-  }
-
-  protected setPanelOpenState(id: string, isOpen: boolean): void {
-    const updated = { ...this.panelOpenStates(), [id]: isOpen };
-    this.panelOpenStates.set(updated);
-    this.localStorage.set('dashboard.panelOpenStates', updated);
-  }
-
-  private persistLayout(): void {
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'dashboard_layout',
-      panelLayoutOf(this.dashboardPanels())
-    );
   }
 
   // --- Actions ---
@@ -191,23 +123,7 @@ export class GeneralOverviewComponent {
     this.navigationDispatcher.navigateToAutomation(automation);
   }
 
-  onOpenAutomationInFiles(path: string): void {
-    const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
-    void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
-  }
-
   // --- Private helpers ---
-  private async loadLayoutSettings(): Promise<void> {
-    try {
-      const saved = await this.appSettingsService.getSettingValue<SavedPanelLayout>(
-        'runtime.dashboard_layout'
-      );
-      this.dashboardPanels.set(applyPanelLayout(ALL_PANELS, saved));
-    } catch {
-      console.debug('Failed to load layout settings, using defaults');
-    }
-  }
-
   private scrollToTop(): void {
     const el = document.querySelector('.main-content') as HTMLElement | null;
     const target = el ?? document.scrollingElement ?? document.documentElement;

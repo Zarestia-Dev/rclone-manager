@@ -142,6 +142,20 @@ describe('FileSystemService', () => {
       });
     });
 
+    describe('with a remote engine on the desktop', () => {
+      beforeEach(() => {
+        Object.defineProperty(service, 'isTauri', { value: true, configurable: true });
+        backendServiceMock.activeBackend.mockReturnValue('NAS');
+      });
+
+      it('should open the path in Nautilus instead of the system file manager', async () => {
+        await service.openInFiles('/mnt/media');
+
+        expect(nautilusServiceMock.newNautilusWindow).toHaveBeenCalledWith('/', 'mnt/media');
+        expect(apiClientMock.invoke).not.toHaveBeenCalled();
+      });
+    });
+
     describe('when in headless/web mode', () => {
       beforeEach(() => {
         Object.defineProperty(service, 'isTauri', { value: false, configurable: true });

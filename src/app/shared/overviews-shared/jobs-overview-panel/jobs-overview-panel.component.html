@@ -2,7 +2,6 @@
   [expanded]="expanded()"
   (opened)="expanded.set(true)"
   (closed)="expanded.set(false)"
-  [hideToggle]="hideToggle()"
   class="job-info-panel"
 >
   <mat-expansion-panel-header>
@@ -105,7 +104,7 @@
               <div
                 class="running-job-card"
                 (click)="onJobRowClick(vm.job)"
-                (keydown.enter)="onJobRowClick(vm.job)"
+                (keydown.enter)="$event.target === $event.currentTarget && onJobRowClick(vm.job)"
                 tabindex="0"
                 role="button"
                 [attr.title]="'common.viewDetails' | translate"
@@ -130,9 +129,11 @@
                           </span>
                         }
                         <app-starter-pill [starter]="vm.job.starter" />
-                        <span appPill size="xs" [tone]="vm.originTone">
-                          {{ vm.originLabel }}
-                        </span>
+                        @if (vm.origin; as origin) {
+                          <span appPill size="xs" [tone]="origin.tone">
+                            {{ origin.labelKey | translate }}
+                          </span>
+                        }
                         @if (vm.job.dry_run) {
                           <span appPill tone="accent" size="xs">
                             {{ 'detailShared.jobs.dryRun' | translate }}

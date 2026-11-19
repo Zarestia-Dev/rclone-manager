@@ -1,5 +1,13 @@
 import { inject, Injectable } from '@angular/core';
-import { Automation, Remote, ServeListItem, AppTab, QuickRun, quickRunIdOf } from '@app/types';
+import {
+  Automation,
+  HasStarter,
+  Remote,
+  ServeListItem,
+  AppTab,
+  QuickRun,
+  quickRunIdOf,
+} from '@app/types';
 import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -33,17 +41,11 @@ export class NavigationDispatcherService {
   }
 
   /**
-   * Navigate to the serve tab for the remote hosting the given serve instance.
+   * Navigate to the serve tab for the remote hosting the given serve instance, or to the Quick Run
+   * or workflow that started it.
    */
   navigateToServe(serve: ServeListItem): void {
-    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
-    if (remoteName) {
-      this.navigateToRemote(remoteName, 'serve');
-      return;
-    }
-
-    const quickRunId = quickRunIdOf(serve);
-    if (quickRunId) this.navigateToQuickRun(quickRunId);
+    this.navigateToOwner(serve, this.pathService.getRemoteNameFromFs(serve.params?.fs), 'serve');
   }
 
   /**
@@ -64,6 +66,25 @@ export class NavigationDispatcherService {
     if (automation.remoteName) {
       this.navigateToRemote(automation.remoteName, 'operations');
     }
+  }
+
+  /**
+   * Where a running serve or mount is shown: the tab of its remote, or its owner. A Quick Run or a workflow owns what it starts, and
+   * the remote's tab lists only what its own profiles started, so that is where it is found.
+   */
+  navigateToOwner(item: HasStarter, remoteName: string | null, tab: AppTab): void {
+    const quickRunId = quickRunIdOf(item);
+    if (quickRunId) {
+      this.navigateToQuickRun(quickRunId);
+      return;
+    }
+
+    if (item.starter?.kind === 'workflow') {
+      this.navigateToWorkflow(item.starter.workflowId, item.starter.workflowName);
+      return;
+    }
+
+    if (remoteName) this.navigateToRemote(remoteName, tab);
   }
 
   /**

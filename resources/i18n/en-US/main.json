@@ -1137,14 +1137,16 @@
         "stop": "Stop this serve",
         "copyId": "Click to copy ID"
       },
-      "messages": {
-        "noOptions": "No additional options"
-      },
       "labels": {
         "id": "ID:",
         "options": "Options:",
         "active": "active"
       }
+    },
+    "mountCard": {
+      "copyPath": "Click to copy the mount point",
+      "open": "Open in the file browser",
+      "unmount": "Unmount this remote"
     },
     "vfsControl": {
       "title": "VFS Control",
@@ -3262,6 +3264,7 @@
       "system": "System Information",
       "jobs": "Job Information",
       "automations": "Automations",
+      "mounts": "Mounted Remotes",
       "serves": "Running Serves"
     },
     "layout": {
@@ -3346,6 +3349,14 @@
       },
       "noActive": "No active serves",
       "noRunning": "No active serves running. Start serving a remote to make it accessible via network protocols like HTTP, WebDAV, FTP, or SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} active mount",
+        "other": "{{count}} active mounts"
+      },
+      "noActive": "No active mounts",
+      "noMounted": "No remotes are mounted. Mount a remote to use its files as a folder on your computer."
     }
   },
   "appOverview": {
@@ -4717,10 +4728,7 @@
     "noChangesDetected": "All settings in this template already match your current values.",
     "selectCategoriesToApply": "Categories & Settings"
   },
-  "navigation": {
-    "dashboard": "Dashboard",
-    "files": "Files"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Downloading...",
