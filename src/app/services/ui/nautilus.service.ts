@@ -34,6 +34,7 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
 import { generatePrefixedId } from 'src/app/shared/utils';
+import { CoveringOverlayService } from './covering-overlay.service';
 
 @Injectable({
   providedIn: 'root',
@@ -56,6 +57,7 @@ export class NautilusService extends TauriBaseService {
   private readonly navigationHistory = inject(NavigationHistoryService);
   private releasePickerHistory?: () => void;
   private readonly overlay = inject(Overlay);
+  private readonly covering = inject(CoveringOverlayService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
@@ -579,6 +581,7 @@ export class NautilusService extends TauriBaseService {
     });
 
     const componentRef = overlayRef.attach(new ComponentPortal(componentClass));
+    this.covering.cover(overlayRef, componentRef.location.nativeElement as HTMLElement);
 
     if (showAnimation) {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
@@ -611,6 +614,7 @@ export class NautilusService extends TauriBaseService {
     overlayRef: OverlayRef | null
   ): void {
     if (!overlayRef) return;
+    this.covering.uncover(overlayRef);
     if (!this.vault.isAccessible() || !componentRef) {
       overlayRef.dispose();
       return;
