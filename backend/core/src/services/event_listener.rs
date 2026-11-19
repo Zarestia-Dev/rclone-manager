@@ -74,8 +74,7 @@ fn handle_termination_signals(app: &AppHandle) {
             info!("Ctrl+C received, initiating shutdown");
         }
 
-        let _ = shutdown_app(app_clone.clone()).await;
-        app_clone.exit(0);
+        shutdown_app(app_clone).await;
     });
 }
 

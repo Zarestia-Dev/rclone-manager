@@ -78,9 +78,17 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     opt?: Record<string, unknown>,
     source?: Origin,
-    group?: string
+    group?: string,
+    backendName?: string
   ): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path, opt, origin: source, group });
+    return this.invokeCommand('get_stat', {
+      remote,
+      path,
+      opt,
+      origin: source,
+      group,
+      ...(backendName && { backendName }),
+    });
   }
 
   async getHashsum(

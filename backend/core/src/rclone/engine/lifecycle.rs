@@ -41,9 +41,13 @@ impl RcApiEngine {
         self.mark_stopping();
 
         // Desktop: kill the rcd child process via core/quit + force-kill.
+        // Only a child we spawned is ours to stop. Without one, whatever listens on the port
+        // is someone else's daemon or application and keeps running.
         #[cfg(not(feature = "librclone"))]
         {
-            if let Err(e) = self.kill_process(_app).await {
+            if self.process.is_some()
+                && let Err(e) = self.kill_process(_app).await
+            {
                 error!("Failed to stop engine cleanly: {e}");
             }
             self.process = None;
@@ -558,5 +562,31 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
         Err(EngineError::RestartFailed(
             "Engine failed to start after restart".to_string(),
         ))
+    }
+}
+
+#[cfg(all(test, not(feature = "librclone")))]
+mod tests {
+    use super::*;
+    use crate::rclone::backend::BackendManager;
+    use crate::utils::constants::LOCAL_BACKEND_NAME;
+
+    /// If this regresses, shutdown kills the listener's owner, which is the test process itself.
+    #[tokio::test]
+    async fn shutdown_without_a_spawned_child_leaves_the_port_holder_running() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let app = AppHandle::default();
+        let manager = BackendManager::new();
+        let mut local = manager.get(LOCAL_BACKEND_NAME).await.unwrap();
+        local.port = listener.local_addr().unwrap().port();
+        manager.update(LOCAL_BACKEND_NAME, local).await.unwrap();
+        app.manage(manager);
+
+        let mut engine = RcApiEngine::default();
+        engine.mark_running();
+        engine.shutdown(&app).await;
+
+        assert!(std::net::TcpStream::connect(listener.local_addr().unwrap()).is_ok());
+        assert_eq!(engine.phase, EnginePhase::Stopped);
     }
 }

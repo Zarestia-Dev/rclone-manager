@@ -8,6 +8,7 @@ import {
   RemoteType,
   FLAG_TYPES,
   REMOTE_NAME_REGEX,
+  REMOTE_CONFIG_KEYS,
   CommandOption,
   RcConfigOption,
   LINKED_PROFILE_TYPES,
@@ -48,6 +49,7 @@ import { AuthStateService } from '../security/auth-state.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { ValidatorRegistryService } from '../ui/validation/validator-registry.service';
 import { RemoteManagementService } from './remote-management.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
@@ -108,6 +110,7 @@ export class RemoteConfigStateService {
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
@@ -527,6 +530,8 @@ export class RemoteConfigStateService {
     return t === 'remote' ? this.remoteFormStatus() === 'INVALID' : this.isStepInvalid(t);
   });
 
+  readonly canSelectWindowsMountTarget = computed(() => this.windowsMountTarget.canCheck());
+
   readonly isInteractiveContinueDisabled = this.orchestrator.isInteractiveContinueDisabled;
 
   readonly saveButtonLabel = computed(() =>
@@ -589,6 +594,7 @@ export class RemoteConfigStateService {
   ): Record<string, unknown> {
     return mapFormToConfigProfile(type, configData, {
       remoteName,
+      pathStyle: this.pathService.enginePathStyle(),
       cleanData: (opts, fields) => this.valueMapper.cleanData(opts, fields),
       dynamicFields: this.getFieldsForStep(type),
     });
@@ -1189,24 +1195,50 @@ export class RemoteConfigStateService {
 
     const { settings, nextBaseline } = buildProfileChanges(this.profiles(), this.profileBaseline);
 
+    const targetError = await this.windowsMountTarget.changedDriveError(
+      remote,
+      settings[REMOTE_CONFIG_KEYS.mount],
+      this.profileBaseline.mount
+    );
+    if (targetError) {
+      this.notificationService.showWarning(
+        this.translate.instant(targetError.key, targetError.params)
+      );
+      return false;
+    }
+
     try {
-      // Watch roots must exist before the backend applies the saved configuration.
-      await this.pathInspectionService.createRequiredDirectories(
-        settings,
-        this.profileBackend || this.backendService.activeBackend()
-      );
-      await this.appSettingsService.saveRemoteSettings(
+      const backend = this.profileBackend || this.backendService.activeBackend();
+      const profileName = activeType && this.selectedProfileName()[activeType];
+      const editedProfile =
+        profileName && (activeType === 'mount' || activeType === 'bisync')
+          ? { operation: activeType, name: profileName }
+          : undefined;
+      const pathError = await this.pathInspectionService.profilePathError(
+        {
+          [REMOTE_CONFIG_KEYS.mount]: nextBaseline.mount,
+          [REMOTE_CONFIG_KEYS.bisync]: nextBaseline.bisync,
+        },
+        backend,
         remote,
-        settings,
-        this.profileBackend || this.backendService.activeBackend()
+        this.profileBaseline,
+        editedProfile
       );
+      if (pathError) {
+        this.notificationService.showWarning(this.translate.instant(pathError));
+        return false;
+      }
+      // Watch roots must exist before the backend applies the saved configuration.
+      await this.pathInspectionService.createRequiredDirectories(settings, backend);
+      await this.appSettingsService.saveRemoteSettings(remote, settings, backend);
       this.profileBaseline = nextBaseline;
       this.remoteConfigForm.markAsPristine();
       await this.remoteFacade.loadRemotes();
-      const selName =
-        (activeType && this.selectedProfileName()[activeType]) || DEFAULT_PROFILE_NAME;
       this.notificationService.showSuccess(
-        this.translate.instant('modals.remoteConfig.profileSaved', { profile: selName, remote })
+        this.translate.instant('modals.remoteConfig.profileSaved', {
+          profile: profileName || DEFAULT_PROFILE_NAME,
+          remote,
+        })
       );
       return true;
     } catch (e) {

@@ -74,6 +74,11 @@ export function getDirname(path: string): string {
   return normalized.substring(0, lastSlash);
 }
 
+/** UNC network names accepted by Rclone's Windows mount implementation. */
+export function isWindowsMountNetworkPath(path: string): boolean {
+  return /^\\\\[^\\?]+\\[^\\]/.test(path);
+}
+
 /**
  * Returns the parent path respecting platform style.
  */

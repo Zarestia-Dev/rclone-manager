@@ -229,6 +229,9 @@
                           [currentRemoteName]="state.currentRemoteName()"
                           [currentProfileName]="state.selectedProfileName()[flagType]"
                           [existingRemotes]="state.existingRemotes()"
+                          [mountProfiles]="
+                            flagType === 'mount' ? state.profiles().mount : undefined
+                          "
                           [isNewRemote]="!state.editTarget()"
                           [searchQuery]="state.searchQuery()"
                           [description]="
@@ -243,6 +246,9 @@
                       <app-flag-config-step
                         class="step"
                         [flagType]="flagType"
+                        [showWindowsMountTarget]="
+                          flagType === 'mount' && state.canSelectWindowsMountTarget()
+                        "
                         [form]="state.remoteConfigForm"
                         [existingRemotes]="state.existingRemotes()"
                         [currentRemoteName]="state.currentRemoteName()"

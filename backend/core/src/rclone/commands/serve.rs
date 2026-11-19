@@ -385,11 +385,17 @@ pub async fn stop_serve_profile(
     stop_serve_on_backend(app, backend, serve.id, remote_name).await
 }
 
-/// Stop all serves on the backend selected when the command starts.
+/// Stop all serves on the backend selected when the command starts (the Local one on shutdown).
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
-    let backend = app.state::<BackendManager>().get_active().await;
+    // Only the Local backend is ours to stop when the app quits.
+    let backend_manager = app.state::<BackendManager>();
+    let backend = if context.is_shutdown() {
+        backend_manager.get_local().await
+    } else {
+        backend_manager.get_active().await
+    };
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
 
     if let Err(e) = transport.rpc(serve::STOPALL, None).await {

@@ -56,6 +56,7 @@ export class FlagConfigStepComponent {
   readonly dynamicFlagFields = input<RcConfigOption[]>([]);
   readonly isLoadingServeFields = input<boolean>(false);
   readonly isLoading = input(false);
+  readonly showWindowsMountTarget = input(false);
   readonly isInvalid = input(false);
   readonly highlightedFields = input<Set<string>>(new Set());
 
@@ -77,11 +78,37 @@ export class FlagConfigStepComponent {
       ? this.dynamicFlagFields().filter(field => this.configSearch.matches(field, query))
       : this.dynamicFlagFields();
 
-    return fields.map(field => ({
-      field,
-      controlKey: field.Name || field.FieldName,
-      trackKey: field.FieldName ?? field.Name ?? '',
-    }));
+    return fields
+      .filter(field => {
+        const key = field.Name || field.FieldName;
+        return (
+          !this.isMount() ||
+          !this.showWindowsMountTarget() ||
+          !/^(network_mode|NetworkMode|network-mode|volname|VolName|VolumeName)$/.test(key)
+        );
+      })
+      .map(field => {
+        const controlKey = field.Name || field.FieldName;
+        const defaultMethod = field.DefaultStr;
+        // An omitted method lets rclone choose even if the backend lists no "mount" method.
+        if (
+          this.isMount() &&
+          this.showWindowsMountTarget() &&
+          controlKey === 'mountType' &&
+          defaultMethod &&
+          field.Examples?.length &&
+          !field.Examples.some(example => example.Value === defaultMethod)
+        ) {
+          field = {
+            ...field,
+            Examples: [
+              { Value: defaultMethod, Help: 'wizards.remoteConfig.defaultMountMethod' },
+              ...field.Examples,
+            ],
+          };
+        }
+        return { field, controlKey, trackKey: field.FieldName ?? field.Name ?? '' };
+      });
   });
 
   constructor() {

@@ -244,6 +244,9 @@
                 <app-flag-config-step
                   [form]="form"
                   [flagType]="tab"
+                  [showWindowsMountTarget]="
+                    tab === 'mount' && fileSystemService.canSelectDriveLetter()
+                  "
                   [dynamicFlagFields]="getFlagFields(activeTab())"
                   [currentRemoteName]="currentRemoteName()"
                   [existingRemotes]="existingRemoteNames()"

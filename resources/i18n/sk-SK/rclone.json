@@ -1356,8 +1356,8 @@
     "help": "Bufferovať viacdielne nahrávania v pamäti namiesto ich streamovania do backendu"
   },
   "mount_type": {
-    "title": "Typ pripojenia",
-    "help": "Typ pripojenia, ktorý sa použije."
+    "title": "Metóda pripojenia",
+    "help": "Vyber metódu, ktorou rclone pripojí úložisko."
   },
   "allow_https_downgrade": {
     "title": "Povoliť prechod z HTTPS na HTTP",

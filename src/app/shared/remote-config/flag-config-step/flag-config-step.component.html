@@ -25,8 +25,15 @@
   @if (dynamicFlagFields().length) {
     <div class="dynamic-fields-header">
       <span class="fields-count">
-        {{ dynamicFieldBindings().length }}
-        {{ 'wizards.remoteConfig.fields' | translate }}
+        @if (showWindowsMountTarget()) {
+          {{
+            'wizards.remoteConfig.advancedSettingsCount'
+              | translate: { count: dynamicFieldBindings().length }
+          }}
+        } @else {
+          {{ dynamicFieldBindings().length }}
+          {{ 'wizards.remoteConfig.fields' | translate }}
+        }
       </span>
       <button
         type="button"

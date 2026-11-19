@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 
@@ -17,8 +17,18 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { Automation, RepairSheetType, Remote, SettingMetadata } from '@app/types';
+import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import {
+  ActionState,
+  Automation,
+  MountedRemote,
+  PathDisplayConfig,
+  RepairSheetType,
+  Remote,
+  SettingMetadata,
+} from '@app/types';
 
 const automation = (overrides: Partial<Automation> = {}): Automation => ({
   id: 'scheduled-sync',
@@ -54,9 +64,10 @@ describe('AppDetailComponent', () => {
   let remoteFacadeMock: {
     selectedRemote: ReturnType<typeof signal<Remote | null>>;
     isRemoteMissing: ReturnType<typeof vi.fn>;
+    actionInProgress: ReturnType<typeof signal<Record<string, ActionState[]>>>;
     activeInFlightActions: ReturnType<typeof signal<unknown[]>>;
     runningServes: ReturnType<typeof signal<unknown[]>>;
-    mountedRemotes: ReturnType<typeof signal<unknown[]>>;
+    mountedRemotes: ReturnType<typeof signal<MountedRemote[]>>;
     stats: ReturnType<typeof signal<unknown>>;
     transfers: ReturnType<typeof signal<unknown[]>>;
     completedTransfers: ReturnType<typeof signal<unknown[]>>;
@@ -72,6 +83,7 @@ describe('AppDetailComponent', () => {
 
   let quickRunServiceMock: {
     runningIds: ReturnType<typeof signal<Set<string>>>;
+    actionInProgress: ReturnType<typeof signal<Record<string, 'start' | 'stop'>>>;
     openEditor: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
   };
@@ -84,6 +96,7 @@ describe('AppDetailComponent', () => {
   const activeBackend = signal('Local');
 
   let appSettingsServiceMock: {
+    isTrayAvailable: ReturnType<typeof signal<boolean>>;
     options: ReturnType<typeof signal<Record<string, SettingMetadata>>>;
     saveSetting: ReturnType<typeof vi.fn>;
     selectSetting: ReturnType<typeof vi.fn>;
@@ -104,6 +117,7 @@ describe('AppDetailComponent', () => {
         status: { mount: { active: false } },
       } as unknown as Remote),
       isRemoteMissing: vi.fn().mockReturnValue(false),
+      actionInProgress: signal({}),
       activeInFlightActions: signal([]),
       runningServes: signal([]),
       mountedRemotes: signal([]),
@@ -122,6 +136,7 @@ describe('AppDetailComponent', () => {
 
     quickRunServiceMock = {
       runningIds: signal(new Set<string>()),
+      actionInProgress: signal({}),
       openEditor: vi.fn(),
       save: vi.fn().mockResolvedValue(undefined),
     };
@@ -133,6 +148,7 @@ describe('AppDetailComponent', () => {
     };
 
     appSettingsServiceMock = {
+      isTrayAvailable: signal(true),
       options: signal<Record<string, SettingMetadata>>({}),
       saveSetting: vi.fn().mockResolvedValue(undefined),
       selectSetting: vi.fn().mockReturnValue(of({ value: false })),
@@ -145,7 +161,7 @@ describe('AppDetailComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [AppDetailComponent],
+      imports: [AppDetailComponent, MatIconTestingModule, SettingsPanelComponent],
       providers: [
         provideTranslateService(),
         FormatFileSizePipe,
@@ -164,17 +180,144 @@ describe('AppDetailComponent', () => {
             get: vi.fn().mockReturnValue(null),
             set: vi.fn(),
             getScoped: vi.fn().mockReturnValue({}),
+            setScoped: vi.fn(),
           },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: IconService, useValue: { getIconName: vi.fn().mockReturnValue('hard-drive') } },
       ],
-    });
+    }).overrideComponent(AppDetailComponent, { set: { template: '', imports: [] } });
 
     fixture = TestBed.createComponent(AppDetailComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('mainOperationType', 'mount');
     fixture.componentRef.setInput('remoteSettings', { mountConfigs: {} });
+  });
+
+  it('shows each automatic mount in Monitoring and Configuration as its assigned drive changes', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('sk-SK', {
+      wizards: { appOperation: { mountAutomaticDrive: 'Automaticky' } },
+    });
+    translate.use('sk-SK');
+    const automatic = { app: {}, rclone: { mountPoint: '*' } };
+    const nested = { app: {}, rclone: { mount: { mountPoint: '*' } } };
+    const mountConfigs = { First: automatic, Second: nested };
+    fixture.componentRef.setInput('remoteSettings', { mountConfigs });
+    const updateMount = (activeProfiles: Record<string, string>): void => {
+      remoteFacadeMock.selectedRemote.update(remote => {
+        if (!remote) throw new Error('Missing test remote');
+        return {
+          ...remote,
+          status: {
+            ...remote.status,
+            mount: { active: Object.keys(activeProfiles).length > 0, activeProfiles },
+          },
+        };
+      });
+    };
+    const pathConfig = (): PathDisplayConfig => component.controlConfigs()[0].pathConfig;
+    const panel = TestBed.createComponent(SettingsPanelComponent);
+    const panelHost = panel.nativeElement as HTMLElement;
+    const renderProfile = (name: string): string | undefined => {
+      const section = component
+        .operationSettingsSections()
+        .find(item => item.key === `mount:${name}`);
+      if (!section) throw new Error('Missing mount settings section');
+      panel.componentRef.setInput('config', component.getSettingsPanelConfig(section));
+      panel.componentInstance.isExpanded.set(true);
+      panel.detectChanges();
+      return panelHost.querySelector('.setting-value')?.textContent?.trim();
+    };
+
+    updateMount({ Second: 'y:/' });
+    expect(pathConfig()).toMatchObject({
+      destination: 'Automaticky',
+      hasDestination: false,
+      isDestinationActive: false,
+    });
+    expect(renderProfile('First')).toBe('Automaticky');
+    expect(renderProfile('Second')).toBe('Automaticky · Y:');
+
+    updateMount({ First: 'Z:', Second: 'y:/' });
+    expect(pathConfig()).toMatchObject({
+      destination: 'Z:',
+      hasDestination: true,
+      isDestinationActive: true,
+    });
+    expect(renderProfile('First')).toBe('Automaticky · Z:');
+    component.onProfileSelect('Second');
+    expect(pathConfig()).toMatchObject({ destination: 'Y:', isDestinationActive: true });
+
+    updateMount({ First: 'Z:' });
+    expect(pathConfig()).toMatchObject({
+      destination: 'Automaticky',
+      hasDestination: false,
+      isDestinationActive: false,
+    });
+    expect(renderProfile('Second')).toBe('Automaticky');
+    updateMount({ First: 'Z:', Second: 'X:' });
+    expect(pathConfig()).toMatchObject({ destination: 'X:', isDestinationActive: true });
+    expect(renderProfile('Second')).toBe('Automaticky · X:');
+    const editSettings = vi.fn();
+    panel.componentInstance.editSettings.subscribe(editSettings);
+    panelHost.querySelector<HTMLButtonElement>('button.full-action-button')?.click();
+    expect(editSettings).toHaveBeenCalledWith({
+      section: 'mount:Second',
+      settings: { app: {}, rclone: { mount: { mountPoint: '*' } } },
+    });
+  });
+
+  it.each(['X:', 'D:\\Mounts\\Test'])('keeps the configured mount target %s', mountPoint => {
+    fixture.componentRef.setInput('remoteSettings', {
+      mountConfigs: { First: { app: {}, rclone: { mountPoint } } },
+    });
+    expect(component.controlConfigs()[0].pathConfig).toMatchObject({
+      destination: mountPoint,
+      hasDestination: true,
+      isDestinationActive: false,
+    });
+    expect(
+      component.getSettingsPanelConfig(component.operationSettingsSections()[0]).rcloneValueLabels
+    ).toBeUndefined();
+  });
+
+  it('only uses the actual drive of the matching Quick Run', () => {
+    fixture.componentRef.setInput('mode', 'quickRun');
+    fixture.componentRef.setInput('quickRun', {
+      id: 'qr-1',
+      name: 'First',
+      operationType: 'mount',
+      remoteName: 'test-remote',
+      config: { rclone: { mountPoint: '*' } },
+    });
+    quickRunServiceMock.runningIds.set(new Set(['qr-1']));
+    const profileMount: MountedRemote = {
+      fs: 'test-remote:',
+      mount_point: 'Y:',
+      starter: { kind: 'profile', name: 'First' },
+    };
+    remoteFacadeMock.mountedRemotes.set([profileMount]);
+    expect(component.controlConfigs()[0].pathConfig).toMatchObject({
+      destination: 'wizards.appOperation.mountAutomaticDrive',
+      isDestinationActive: false,
+    });
+
+    remoteFacadeMock.mountedRemotes.set([
+      profileMount,
+      {
+        fs: 'test-remote:',
+        mount_point: 'Z:',
+        starter: { kind: 'quick_run', id: 'qr-1', name: 'First' },
+      },
+    ]);
+    expect(component.controlConfigs()[0].pathConfig).toMatchObject({
+      destination: 'Z:',
+      isDestinationActive: true,
+    });
+    expect(component.quickRunSettingsConfig().rcloneValueLabels?.get('mountPoint')).toBe(
+      'wizards.appOperation.mountAutomaticDrive · Z:'
+    );
   });
 
   it('should not show banner when operation is not mount', () => {

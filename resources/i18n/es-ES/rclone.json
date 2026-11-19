@@ -1356,8 +1356,8 @@
     "help": "Almacenar las cargas multiparte en memoria en lugar de transmitirlas en streaming al backend"
   },
   "mount_type": {
-    "title": "Tipo de montaje",
-    "help": "Tipo de montaje a utilizar."
+    "title": "Método de montaje",
+    "help": "Elige el método que usará rclone para montar el almacenamiento."
   },
   "allow_https_downgrade": {
     "title": "Permitir degradación a HTTP",

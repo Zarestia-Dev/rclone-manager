@@ -1356,8 +1356,8 @@
     "help": "Mettre les envois multiparties en mémoire tampon au lieu de les transmettre en continu au backend"
   },
   "mount_type": {
-    "title": "Type de montage",
-    "help": "Type de montage à utiliser."
+    "title": "Méthode de montage",
+    "help": "Choisissez la méthode utilisée par rclone pour monter le stockage."
   },
   "allow_https_downgrade": {
     "title": "Autoriser la rétrogradation HTTPS",

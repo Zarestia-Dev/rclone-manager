@@ -99,10 +99,9 @@ async fn pick_folder(
         return Ok(None);
     };
 
-    #[cfg(target_os = "windows")]
-    reject_drive_root(&folder)?;
-
     if require_empty {
+        #[cfg(target_os = "windows")]
+        reject_drive_root(&folder)?;
         ensure_empty_folder(&folder).await?;
     }
     Ok(Some(folder))
@@ -122,8 +121,7 @@ fn reject_drive_root(folder: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// A missing folder passes (rclone creates it). On Windows an empty one is removed,
-/// because WinFsp needs the mount directory not to exist.
+/// Validate a picked folder without modifying it.
 #[cfg(desktop)]
 async fn ensure_empty_folder(folder: &str) -> Result<(), String> {
     debug!("Checking if folder is empty: {folder}");
@@ -140,18 +138,24 @@ async fn ensure_empty_folder(folder: &str) -> Result<(), String> {
         Err(e) => return Err(io_error(e)),
     }
 
-    #[cfg(target_os = "windows")]
-    remove_empty_mount_directory(path).await.map_err(io_error)?;
     Ok(())
 }
 
-// Never recurse: a file may appear after the dialog's emptiness check.
-#[cfg(any(target_os = "windows", test))]
-async fn remove_empty_mount_directory(path: &Path) -> std::io::Result<()> {
-    match tokio::fs::remove_dir(path).await {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        result => result,
-    }
+#[tauri::command]
+#[cfg(all(desktop, target_os = "windows"))]
+pub fn get_available_drive_letters() -> Result<Vec<String>, String> {
+    rclone_manager_core::utils::io::windows_drives::occupied_or_pending_drives()
+        .map(available_drive_letters)
+        .map_err(io_error)
+}
+
+#[cfg(any(all(desktop, target_os = "windows"), test))]
+fn available_drive_letters(occupied: u32) -> Vec<String> {
+    (0..26)
+        .rev()
+        .filter(|index| occupied & (1 << index) == 0)
+        .map(|index| format!("{}:", char::from(b'A' + index)))
+        .collect()
 }
 
 #[tauri::command]
@@ -507,19 +511,14 @@ async fn open_destination(destination: &str) -> Result<StagedFile, String> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn mount_folder_cleanup_preserves_files_added_after_the_empty_check() {
-        let directory = tempfile::tempdir().unwrap();
-        let mount = directory.path().join("mount");
-        tokio::fs::create_dir(&mount).await.unwrap();
-        let file = mount.join("new-file.txt");
-        tokio::fs::write(&file, b"keep").await.unwrap();
-        assert!(remove_empty_mount_directory(&mount).await.is_err());
-        assert_eq!(tokio::fs::read(&file).await.unwrap(), b"keep");
-        tokio::fs::remove_file(file).await.unwrap();
-        remove_empty_mount_directory(&mount).await.unwrap();
-        assert!(!mount.exists());
-        remove_empty_mount_directory(&mount).await.unwrap();
+    #[test]
+    fn available_drive_letters_excludes_occupied_letters() {
+        let occupied = (1 << 2) | (1 << 23);
+        let available = available_drive_letters(occupied);
+        assert_eq!(available.len(), 24);
+        assert_eq!(&available[..3], &["Z:", "Y:", "W:"]);
+        assert!(!available.iter().any(|letter| letter == "C:"));
+        assert!(available_drive_letters((1 << 26) - 1).is_empty());
     }
 
     #[tokio::test]
@@ -529,6 +528,10 @@ mod tests {
         ensure_empty_folder(missing.to_str().unwrap())
             .await
             .unwrap();
+        let empty = directory.path().join("empty");
+        tokio::fs::create_dir(&empty).await.unwrap();
+        ensure_empty_folder(empty.to_str().unwrap()).await.unwrap();
+        assert!(empty.is_dir());
 
         let full = directory.path().join("full");
         tokio::fs::create_dir(&full).await.unwrap();

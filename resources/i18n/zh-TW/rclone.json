@@ -1356,8 +1356,8 @@
     "help": "將分段上傳緩衝在記憶體中，而非串流傳輸至後端"
   },
   "mount_type": {
-    "title": "掛載型別",
-    "help": "要使用的掛載型別。"
+    "title": "掛載方式",
+    "help": "選擇 rclone 掛載儲存空間的方式。"
   },
   "allow_https_downgrade": {
     "title": "允許 HTTPS 降級",
