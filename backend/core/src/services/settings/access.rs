@@ -184,11 +184,12 @@ pub fn can_deliver_event(
                         == value
                 });
     }
-    !locked
-        && revision.is_none_or(|revision| {
-            app.try_state::<Arc<VaultAccess>>()
-                .is_none_or(|access| access.permits(revision))
-        })
+    crate::utils::types::events::PUBLIC_EVENTS.contains(&name)
+        || !locked
+            && revision.is_none_or(|revision| {
+                app.try_state::<Arc<VaultAccess>>()
+                    .is_none_or(|access| access.permits(revision))
+            })
 }
 
 /// A closed interface only accepts status, password entry and the updater receipt.
@@ -482,6 +483,44 @@ pub(crate) mod tests {
         access.unlock();
         assert!(!access.permits(queued.revision));
         drop(app);
+    }
+
+    #[tokio::test]
+    async fn display_state_reaches_a_locked_interface_and_nothing_else_does() {
+        use crate::{
+            services::bridge::EventBridge,
+            utils::types::events::{
+                JOB_CACHE_CHANGED, PUBLIC_EVENTS, SYSTEM_THEME_CHANGED, VAULT_STATE_CHANGED,
+                WINDOW_BUTTON_LAYOUT_CHANGED,
+            },
+        };
+        let directory = tempfile::tempdir().unwrap();
+        let (app, access) = app(directory.path());
+        let bridge = EventBridge::new(10, None);
+        bridge.set_frontend_access(access.clone());
+        let mut frontend = bridge.subscribe_frontend();
+        access.lock();
+        bridge.emit(JOB_CACHE_CHANGED, serde_json::json!({"remote": "private"}));
+        bridge.emit(SYSTEM_THEME_CHANGED, true);
+        bridge.emit(WINDOW_BUTTON_LAYOUT_CHANGED, "close:");
+        for expected in [SYSTEM_THEME_CHANGED, WINDOW_BUTTON_LAYOUT_CHANGED] {
+            let delivered = frontend.recv().await.unwrap();
+            assert_eq!(delivered.event.event, expected);
+            assert!(can_deliver_event(
+                &app,
+                expected,
+                &delivered.event.payload,
+                Some(delivered.revision)
+            ));
+        }
+        assert!(frontend.try_recv().is_err());
+        assert!(!can_deliver_event(
+            &app,
+            JOB_CACHE_CHANGED,
+            &serde_json::json!({}),
+            None
+        ));
+        assert!(PUBLIC_EVENTS.contains(&VAULT_STATE_CHANGED));
     }
 
     #[tokio::test]

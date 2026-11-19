@@ -48,6 +48,8 @@ tempfile = { workspace = true }
 # Only to reap WebKit helper processes on exit (see native/runtime.rs).
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 zbus = { version = "6", optional = true }
+# Reads the desktop's title bar button layout (see native/window.rs).
+gtk = "0.18"
 notify-rust = { version = "4", optional = true }
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.22"

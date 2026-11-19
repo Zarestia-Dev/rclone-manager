@@ -65,9 +65,7 @@ pub async fn request_app_exit(app: crate::context::AppHandle) -> Result<(), Stri
         return Ok(());
     }
 
-    crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
-    app.exit(0);
-
+    crate::services::lifecycle::shutdown::shutdown_app(app).await;
     Ok(())
 }
 

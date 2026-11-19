@@ -32,15 +32,17 @@
         <!-- Theme Selector -->
         <div
           class="theme-selector"
+          role="group"
           [attr.aria-label]="'titlebar.menu.theme' | translate"
           data-tauri-drag-region="false"
         >
           @for (theme of themes; track theme.id) {
             <button
               class="theme-button"
+              role="menuitemradio"
               [class]="theme.class"
               [class.selected]="currentTheme() === theme.id"
-              [attr.aria-pressed]="currentTheme() === theme.id"
+              [attr.aria-checked]="currentTheme() === theme.id"
               (click)="setTheme(theme.id, $event)"
               [attr.aria-label]="theme.label | translate"
             >
@@ -58,34 +60,19 @@
         <mat-divider></mat-divider>
 
         <!-- Import / Export -->
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="restoreSettings()"
-          [attr.aria-label]="'titlebar.menu.import' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="restoreSettings()">
           <span>{{ 'titlebar.menu.import' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + I</span>
         </button>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openExportModal()"
-          [attr.aria-label]="'titlebar.menu.export' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openExportModal()">
           <span>{{ 'titlebar.menu.export' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + E</span>
         </button>
         <mat-divider></mat-divider>
 
         <!-- Preferences & Advanced Settings -->
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openPreferencesModal()"
-          [attr.aria-label]="'titlebar.menu.preferences' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openPreferencesModal()">
           <span>{{ 'titlebar.menu.preferences' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
         </button>
@@ -97,7 +84,6 @@
           tabindex="0"
           (click)="menuCtrl.openSubmenu('submenu'); $event.stopPropagation()"
           (keydown)="onAdvancedKeydown($event)"
-          [attr.aria-label]="'titlebar.menu.advanced' | translate"
         >
           <span>{{ 'titlebar.menu.advanced' | translate }}</span>
           <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
@@ -125,12 +111,7 @@
         }
         <mat-divider></mat-divider>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openAlertsModal()"
-          [attr.aria-label]="'alerts.title' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openAlertsModal()">
           <span>{{ 'alerts.title' | translate }}</span>
           <span class="shortcut" aria-hidden="true">
             @if (alertService.unacknowledged() > 0) {
@@ -146,12 +127,7 @@
 
         <mat-divider></mat-divider>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openKeyboardShortcutsModal()"
-          [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openKeyboardShortcutsModal()">
           <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
         </button>
@@ -166,7 +142,6 @@
           (click)="onAboutClicked()"
           appLongPress
           (longPress)="onAboutLongPress()"
-          [attr.aria-label]="'titlebar.menu.about' | translate"
         >
           <span>{{ 'titlebar.menu.about' | translate }}</span>
           @if (
@@ -200,32 +175,17 @@
 
         <mat-divider></mat-divider>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openVaultModal()"
-          [attr.aria-label]="'titlebar.menu.vault' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openVaultModal()">
           <span>{{ 'titlebar.menu.vault' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + Alt + V</span>
         </button>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openRcloneFlagsModal()"
-          [attr.aria-label]="'titlebar.menu.flags' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openRcloneFlagsModal()">
           <span>{{ 'titlebar.menu.flags' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + .</span>
         </button>
 
-        <button
-          cdkMenuItem
-          class="menu-item"
-          (click)="openRcConsoleModal()"
-          [attr.aria-label]="'titlebar.menu.rcConsole' | translate"
-        >
+        <button cdkMenuItem class="menu-item" (click)="openRcConsoleModal()">
           <span>{{ 'titlebar.menu.rcConsole' | translate }}</span>
           <span class="shortcut" aria-hidden="true">Ctrl + Alt + R</span>
         </button>

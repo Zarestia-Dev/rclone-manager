@@ -50,7 +50,12 @@
     ></app-nautilus-sidebar>
   </mat-sidenav>
 
-  <mat-sidenav-content class="nautilus-main-content">
+  <!-- Only the file browser shown as the page is its main landmark; as an overlay
+       or a picker it sits above the main UI, which already has one. -->
+  <mat-sidenav-content class="nautilus-main-content" [attr.role]="isPageView() ? 'main' : null">
+    @if (isPageView()) {
+      <h1 class="cdk-visually-hidden">{{ 'titlebar.menu.fileBrowser' | translate }}</h1>
+    }
     <app-nautilus-toolbar
       data-tauri-drag-region
       [isMobile]="isMobile()"

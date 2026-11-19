@@ -8,14 +8,16 @@ use tauri_plugin_autostart::ManagerExt;
 #[cfg(autostart_portal)]
 pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
     use std::collections::HashMap;
+    use zbus::Proxy;
     use zbus::Variant;
-    use zbus::{Connection, Proxy};
 
-    let connection = Connection::session().await.map_err(|e| e.to_string())?;
+    let connection = crate::utils::dbus::session()
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Proxy to the Desktop portal Background interface
     let proxy = Proxy::new(
-        &connection,
+        connection,
         "org.freedesktop.portal.Desktop",
         "/org/freedesktop/portal/desktop",
         "org.freedesktop.portal.Background",

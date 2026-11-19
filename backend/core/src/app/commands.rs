@@ -245,7 +245,7 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // APPLICATION CONTROL
             #[cfg(not(any(target_os = "ios")))]
-            (shutdown_app, $crate::services::lifecycle::shutdown::shutdown_app, []);
+            (shutdown_app, $crate::services::lifecycle::shutdown::shutdown_app, [], [infallible]);
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (execute_system_power, $crate::services::power::actions::execute_system_power, [action: String], [no_app]);
 

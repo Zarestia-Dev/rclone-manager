@@ -1,8 +1,9 @@
 <ng-content select="app-titlebar"></ng-content>
 <ng-content select="app-banner"></ng-content>
-<div class="workspace-content">
+<main class="workspace-content">
+  <h1 class="cdk-visually-hidden">{{ 'overviews.headers.general' | translate }}</h1>
   <ng-content></ng-content>
-</div>
+</main>
 <nav #navigation class="workspace-navigation">
   <ng-content select="app-tabs"></ng-content>
 </nav>

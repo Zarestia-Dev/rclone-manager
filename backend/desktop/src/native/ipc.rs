@@ -28,7 +28,7 @@ impl NativeLifecycleCommand {
     ) -> Result<serde_json::Value, String> {
         match self {
             Self::Request => crate::services::lifecycle::exit::request_app_exit(app).await?,
-            Self::Confirm => crate::services::lifecycle::shutdown::shutdown_app(app).await?,
+            Self::Confirm => crate::services::lifecycle::shutdown::shutdown_app(app).await,
             Self::Pending => {
                 let summary = crate::services::lifecycle::exit::check_pending_app_exit(app.clone())
                     .map(|summary| {
@@ -40,6 +40,10 @@ impl NativeLifecycleCommand {
         Ok(serde_json::Value::Null)
     }
 }
+
+/// Native commands a locked interface may call. They read or set how the window looks, which
+/// the lock screen needs, and touch no vault data.
+const LOCKED_NATIVE_COMMANDS: &[&str] = &["set_theme", "get_window_button_layout"];
 
 pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
     let command = invoke.message.command().to_owned();
@@ -74,9 +78,11 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         }
         return true;
     }
-    if rclone_manager_core::services::settings::access::is_locked(
-        invoke.message.webview_ref().app_handle().backend(),
-    ) {
+    if !LOCKED_NATIVE_COMMANDS.contains(&command.as_str())
+        && rclone_manager_core::services::settings::access::is_locked(
+            invoke.message.webview_ref().app_handle().backend(),
+        )
+    {
         invoke
             .resolver
             .reject(rclone_manager_core::services::settings::access::locked_error());
@@ -109,6 +115,8 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         crate::desktop::debug::open_devtools,
         #[cfg(all(desktop, not(feature = "web-server")))]
         crate::desktop::window::new_window,
+        #[cfg(all(desktop, not(feature = "web-server")))]
+        crate::native::window::get_window_button_layout,
     ];
     handler(invoke)
 }

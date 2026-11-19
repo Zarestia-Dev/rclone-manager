@@ -568,7 +568,12 @@ pub async fn unmount_all_remotes(
     context: OperationContext,
 ) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    // Only the Local backend is ours to unmount when the app quits.
+    let backend = if context.is_shutdown() {
+        backend_manager.get_local().await
+    } else {
+        backend_manager.get_active().await
+    };
     #[cfg(target_os = "android")]
     if backend.is_local {
         info!("🗑️ Unmounting all SAF remotes");

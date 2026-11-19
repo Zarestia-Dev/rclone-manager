@@ -59,6 +59,20 @@ import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.com
 import { AndroidShareService } from 'src/app/services/ui/android-share.service';
 import { NautilusContextMenuComponent } from './context-menu/nautilus-context-menu.component';
 
+/**
+ * Whether the file browser is the page itself (its own window, or the default view) rather
+ * than a picker or an overlay above the main UI, which already has the page's main landmark.
+ */
+export function isNautilusPageView(state: {
+  picker: boolean;
+  standaloneWindow: boolean;
+  defaultView: string;
+  overlayOpen: boolean;
+}): boolean {
+  if (state.picker) return false;
+  return state.standaloneWindow || (state.defaultView === 'nautilus' && !state.overlayOpen);
+}
+
 @Component({
   selector: 'app-nautilus',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -145,6 +159,14 @@ export class NautilusComponent implements OnInit {
       this.uiStateService.activeWorkspace() === 'nautilus'
     );
   });
+  protected readonly isPageView = computed(() =>
+    isNautilusPageView({
+      picker: this.isPickerMode(),
+      standaloneWindow: this.nautilusService.isStandaloneWindow(),
+      defaultView: this.uiStateService.defaultView(),
+      overlayOpen: this.nautilusService.isBrowserOverlayOpen(),
+    })
+  );
   protected readonly pickerOptions = computed(
     (): FilePickerConfig => this.filePickerState().options ?? DEFAULT_PICKER_OPTIONS
   );

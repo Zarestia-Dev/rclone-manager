@@ -229,6 +229,13 @@ impl BackendManager {
         self.state.read().await.active().is_local
     }
 
+    /// The Local backend: the one whose engine this app starts and stops. It cannot be removed.
+    pub async fn get_local(&self) -> Backend {
+        self.get(LOCAL_BACKEND_NAME)
+            .await
+            .expect("the Local backend cannot be removed")
+    }
+
     /// Get a specific backend by name
     pub async fn get(&self, name: &str) -> Option<Backend> {
         self.state

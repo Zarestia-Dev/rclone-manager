@@ -4774,6 +4774,7 @@ dependencies = [
  "async-trait",
  "clap",
  "futures",
+ "gtk",
  "http",
  "jni 0.22.4",
  "log",

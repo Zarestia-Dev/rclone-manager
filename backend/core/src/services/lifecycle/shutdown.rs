@@ -1,10 +1,11 @@
 use crate::context::AppHandle;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serde_json::json;
 use std::time::Duration;
 
 use crate::{
     rclone::{
+        backend::types::Backend,
         backend::{BackendManager, routing_transport::RoutingTransport},
         commands::{job::stop_job_on_backend, mount::unmount_all_remotes, serve::stop_all_serves},
         endpoints::mount,
@@ -14,44 +15,61 @@ use crate::{
 };
 
 /// Longest shutdown waits for in-flight initialization before tearing services down anyway.
-const INITIALIZATION_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+const INITIALIZATION_WAIT: Duration = Duration::from_secs(5);
 
-// The same budget covers the initial batch, verification, and retries.
-const WINDOWS_UNMOUNT_WAIT: Duration = Duration::from_secs(30);
-const UNMOUNT_RETRY_INTERVAL: Duration = Duration::from_millis(250);
+/// Budget for stopping jobs and serves.
+const STOP_WAIT: Duration = Duration::from_secs(5);
+/// Unmount budget when the app only sends the batch and does not check the result.
 const UNMOUNT_WAIT: Duration = Duration::from_secs(5);
+/// Unmount budget on Windows, shared by the batch, the verification and the retries.
+const VERIFIED_UNMOUNT_WAIT: Duration = Duration::from_secs(30);
+const UNMOUNT_RETRY_INTERVAL: Duration = Duration::from_millis(250);
+
+/// Room for the steps without a timeout of their own (watchers, staged updates, host cleanup).
+const CLEANUP_MARGIN: Duration = Duration::from_secs(10);
 
 /// Engine shutdown must outlast the graceful-exit wait, otherwise its forced kill is cut
 /// off before it can run.
 #[cfg(not(feature = "librclone"))]
-const ENGINE_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
+const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(
     crate::rclone::binaries::process_common::GRACEFUL_SHUTDOWN_TIMEOUT.as_secs() + 2,
 );
 #[cfg(feature = "librclone")]
-const ENGINE_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Default)]
 struct ShutdownState(tokio::sync::OnceCell<()>);
 
 impl ShutdownState {
-    async fn run(&self, cleanup: impl std::future::Future<Output = ()>) {
-        self.0.get_or_init(|| cleanup).await;
+    /// Runs the cleanup once. Callers must not cancel it: the native event loop stays blocked
+    /// until it has finished, so the deadline lives here and an expired cleanup still counts
+    /// as done.
+    async fn run(&self, deadline: Duration, cleanup: impl std::future::Future<Output = ()>) {
+        self.0
+            .get_or_init(|| async {
+                if tokio::time::timeout(deadline, cleanup).await.is_err() {
+                    error!("Shutdown exceeded its {deadline:?} deadline; exiting anyway");
+                }
+            })
+            .await;
     }
 }
 
-/// Concurrent exit requests share one completed cleanup sequence.
+/// Concurrent exit requests share one completed cleanup sequence. Every step is bounded, so
+/// callers wait for it without a timeout of their own.
 pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.manage(ShutdownState::default());
     let state = app_handle.state::<ShutdownState>();
-    // The standalone server has a shorter overall shutdown deadline.
-    let verify_mounts = cfg!(windows) && app_handle.product().mode == "desktop";
-    let unmount_wait = if verify_mounts {
-        WINDOWS_UNMOUNT_WAIT
-    } else {
-        UNMOUNT_WAIT
-    };
+    // Windows unmounts drives asynchronously, so the desktop app waits until rclone no longer
+    // lists them. The standalone server keeps the quick batch.
+    let verified_unmount =
+        (cfg!(windows) && app_handle.product().mode == "desktop").then_some(VERIFIED_UNMOUNT_WAIT);
+    let deadline = INITIALIZATION_WAIT
+        + verified_unmount.unwrap_or(UNMOUNT_WAIT)
+        + ENGINE_SHUTDOWN_TIMEOUT
+        + CLEANUP_MARGIN;
     state
-        .run(shutdown(app_handle, unmount_wait, verify_mounts))
+        .run(deadline, shutdown(app_handle, verified_unmount))
         .await;
 }
 
@@ -61,67 +79,56 @@ pub fn is_shutdown_complete(app: &AppHandle) -> bool {
         .is_some_and(|state| state.0.get().is_some())
 }
 
-async fn unmount_for_shutdown(app: AppHandle, verify_mounts: bool) -> Result<(), String> {
-    if !verify_mounts {
-        unmount_all_remotes(
-            app,
-            crate::rclone::commands::common::OperationContext::Shutdown,
-        )
-        .await?;
-        return Ok(());
-    }
-
-    #[derive(serde::Deserialize)]
-    struct MountList {
-        #[serde(rename = "mountPoints")]
-        mount_points: Vec<MountPoint>,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct MountPoint {
-        #[serde(rename = "MountPoint")]
-        path: String,
-    }
-
-    let backend = app.state::<BackendManager>().get_active().await;
-    let transport = RoutingTransport::for_backend(app, backend);
+/// Unmounts everything, then keeps retrying whatever rclone still lists until nothing is left.
+/// It has no deadline of its own; the caller bounds it.
+async fn unmount_until_clear(app: AppHandle, backend: Backend) -> Result<(), String> {
+    let transport = &*RoutingTransport::for_backend(app, backend);
     // rclone stops the batch at the first error. Check for remaining mounts
     // even if the batch reports a failure.
     if let Err(error) = transport.rpc(mount::UNMOUNTALL, None).await {
         debug!("Initial unmount batch failed during shutdown: {error}");
     }
 
-    let mut retry = tokio::time::interval(UNMOUNT_RETRY_INTERVAL);
-    retry.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
+        // A missing or malformed list is an error, never "nothing mounted".
         let response = transport
             .rpc(mount::LISTMOUNTS, None)
             .await
             .map_err(|error| error.to_string())?;
-        let mounts: MountList = serde_json::from_value(response)
-            .map_err(|error| format!("Invalid mount list during shutdown: {error}"))?;
-        if mounts.mount_points.is_empty() {
+        let remaining = response["mountPoints"]
+            .as_array()
+            .ok_or("Invalid mount list during shutdown")?
+            .iter()
+            .map(|mount| mount["MountPoint"].as_str())
+            .collect::<Option<Vec<_>>>()
+            .ok_or("Invalid mount point during shutdown")?;
+        if remaining.is_empty() {
             return Ok(());
         }
-        if mounts
-            .mount_points
-            .iter()
-            .any(|mount| mount.path.trim().is_empty())
-        {
-            return Err("Empty mount point in shutdown mount list".into());
-        }
-
-        retry.tick().await;
-        for mount in mounts.mount_points {
-            let request = json!({ "mountPoint": mount.path });
+        // The last of these lines names what was still mounted if the deadline cuts us off.
+        warn!("Still mounted during shutdown, retrying: {remaining:?}");
+        // One stuck mount must not hold back the others.
+        futures::future::join_all(remaining.iter().map(|mount_point| async move {
+            let request = json!({ "mountPoint": mount_point });
             if let Err(error) = transport.rpc(mount::UNMOUNT, Some(&request)).await {
-                debug!("Unmount retry failed during shutdown: {error}");
+                debug!("Unmount retry failed for {mount_point}: {error}");
             }
-        }
+        }))
+        .await;
+        tokio::time::sleep(UNMOUNT_RETRY_INTERVAL).await;
     }
 }
 
-async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: bool) {
+fn log_step<T>(step: &str, result: Result<Result<T, String>, tokio::time::error::Elapsed>) {
+    match result {
+        Ok(Ok(_)) => {}
+        Ok(Err(error)) => error!("Failed to {step}: {error}"),
+        Err(_) => error!("Timed out trying to {step}"),
+    }
+}
+
+/// `verified_unmount` is the unmount budget of a platform that checks the result.
+async fn shutdown(app_handle: AppHandle, verified_unmount: Option<Duration>) {
     info!("Beginning shutdown sequence...");
 
     let runtime = app_handle.state::<RcloneState>();
@@ -142,6 +149,57 @@ async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: 
         json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
     );
 
+    let scheduler_state = app_handle.state::<AutomationScheduler>();
+
+    if let Some(watcher_manager) =
+        app_handle.try_state::<crate::services::automation::watcher::WatcherManager>()
+    {
+        watcher_manager.stop_all().await;
+    }
+
+    // Only the Local backend is ours to clean up: its engine stops with the app, while a remote
+    // backend keeps running its mounts, jobs and serves for whoever else uses it.
+    let local = app_handle.state::<BackendManager>().get_local().await;
+
+    // Run cleanup tasks concurrently with individual timeouts.
+    let (unmount_result, stop_jobs_result, stop_serves_result) = tokio::join!(
+        async {
+            match verified_unmount {
+                Some(wait) => {
+                    tokio::time::timeout(
+                        wait,
+                        unmount_until_clear(app_handle.clone(), local.clone()),
+                    )
+                    .await
+                }
+                None => {
+                    tokio::time::timeout(UNMOUNT_WAIT, async {
+                        unmount_all_remotes(
+                            app_handle.clone(),
+                            crate::rclone::commands::common::OperationContext::Shutdown,
+                        )
+                        .await
+                        .map(drop)
+                    })
+                    .await
+                }
+            }
+        },
+        tokio::time::timeout(
+            STOP_WAIT,
+            stop_active_jobs(app_handle.clone(), vec![local.clone()]),
+        ),
+        tokio::time::timeout(
+            STOP_WAIT,
+            stop_all_serves(
+                app_handle.clone(),
+                crate::rclone::commands::common::OperationContext::Shutdown,
+            ),
+        ),
+    );
+
+    // Released only now: on Windows the shutdown block reason is what holds the OS back while
+    // the drives are being unmounted.
     #[cfg(all(
         feature = "desktop",
         not(any(target_os = "android", target_os = "ios"))
@@ -151,33 +209,6 @@ async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: 
         power_state.release().await;
     }
 
-    let scheduler_state = app_handle.state::<AutomationScheduler>();
-
-    if let Some(watcher_manager) =
-        app_handle.try_state::<crate::services::automation::watcher::WatcherManager>()
-    {
-        watcher_manager.stop_all().await;
-    }
-
-    // Run cleanup tasks concurrently with individual timeouts.
-    let (unmount_result, stop_jobs_result, stop_serves_result) = tokio::join!(
-        tokio::time::timeout(
-            unmount_wait,
-            unmount_for_shutdown(app_handle.clone(), verify_mounts),
-        ),
-        tokio::time::timeout(
-            tokio::time::Duration::from_secs(5),
-            stop_all_active_jobs(app_handle.clone()),
-        ),
-        tokio::time::timeout(
-            tokio::time::Duration::from_secs(5),
-            stop_all_serves(
-                app_handle.clone(),
-                crate::rclone::commands::common::OperationContext::Shutdown,
-            ),
-        ),
-    );
-
     crate::services::lifecycle::auto_updater::stop_auto_updater(&app_handle);
 
     match scheduler_state.stop().await {
@@ -185,23 +216,9 @@ async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: 
         Err(e) => error!("Failed to stop cron scheduler: {e}"),
     }
 
-    if let Ok(Err(e)) = unmount_result {
-        error!("Failed to unmount remotes: {e}");
-    } else if unmount_result.is_err() {
-        error!("Unmount operation timed out");
-    }
-
-    if let Ok(Err(e)) = stop_jobs_result {
-        error!("Failed to stop all jobs: {e}");
-    } else if stop_jobs_result.is_err() {
-        error!("Job stopping timed out");
-    }
-
-    if let Ok(Err(e)) = stop_serves_result {
-        error!("Failed to stop all serves: {e}");
-    } else if stop_serves_result.is_err() {
-        error!("Serve stopping timed out");
-    }
+    log_step("unmount remotes", unmount_result);
+    log_step("stop jobs", stop_jobs_result);
+    log_step("stop serves", stop_serves_result);
 
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
@@ -218,17 +235,11 @@ async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: 
         #[cfg(not(feature = "librclone"))]
         Err(_) => {
             error!("Engine shutdown timed out — force-killing rclone processes");
-            // The engine's child always belongs to the Local backend, whichever one is active.
-            let local = app_handle
-                .state::<BackendManager>()
-                .get(crate::utils::constants::LOCAL_BACKEND_NAME)
-                .await;
-            if let Some(local) = local
-                && let Err(e) =
-                    crate::utils::process::process_manager::kill_all_rclone_processes(local.port)
-            {
-                error!("Force kill failed: {e}");
-            }
+            let port = local.port;
+            let _ = crate::utils::spawn_blocking(move || {
+                crate::utils::process::process_manager::kill_processes_on_port(port)
+            })
+            .await;
         }
         #[cfg(feature = "librclone")]
         Err(_) => {}
@@ -245,11 +256,11 @@ async fn shutdown(app_handle: AppHandle, unmount_wait: Duration, verify_mounts: 
     apply_pending_updates(&app_handle).await;
 }
 
-pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
+/// Runs the shutdown sequence, then exits the application.
+pub async fn shutdown_app(app: AppHandle) {
     handle_shutdown(app.clone()).await;
     info!("Shutdown completed.");
     app.exit(0);
-    Ok(())
 }
 
 /// Applies any staged updates (app or rclone) during shutdown.
@@ -264,13 +275,20 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     }
 }
 
+/// Stops the active jobs of every backend, for a user request.
 pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     let manager = app.state::<BackendManager>();
-    let mut tasks = Vec::new();
+    let mut backends = Vec::new();
     for info in manager.list_all().await {
-        let Some(backend) = manager.get(&info.name).await else {
-            continue;
-        };
+        backends.extend(manager.get(&info.name).await);
+    }
+    stop_active_jobs(app, backends).await
+}
+
+async fn stop_active_jobs(app: AppHandle, backends: Vec<Backend>) -> Result<(), String> {
+    let manager = app.state::<BackendManager>();
+    let mut tasks = Vec::new();
+    for backend in backends {
         for job in manager.job_cache_for(&backend.name).get_active_jobs().await {
             let app = app.clone();
             let backend = backend.clone();
@@ -309,7 +327,12 @@ pub async fn stop_all_active_jobs_with_notice(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::{ShutdownState, is_shutdown_complete};
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::{
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Duration,
+    };
+
+    const DEADLINE: Duration = Duration::from_secs(10);
 
     #[tokio::test]
     async fn concurrent_and_later_requests_wait_for_one_cleanup() {
@@ -319,26 +342,33 @@ mod tests {
             tokio::task::yield_now().await;
             completed.fetch_add(1, Ordering::SeqCst);
         };
-        tokio::join!(state.run(cleanup()), async {
-            state.run(cleanup()).await;
+        tokio::join!(state.run(DEADLINE, cleanup()), async {
+            state.run(DEADLINE, cleanup()).await;
             assert_eq!(completed.load(Ordering::SeqCst), 1);
         });
-        state.run(cleanup()).await;
+        state.run(DEADLINE, cleanup()).await;
         assert_eq!(completed.load(Ordering::SeqCst), 1);
     }
 
     #[tokio::test]
-    async fn host_exit_waits_for_cleanup_and_stays_blocked_on_cancellation() {
-        use futures::FutureExt;
+    async fn host_exit_waits_for_cleanup() {
         let app = crate::context::AppHandle::default();
         assert!(!is_shutdown_complete(&app));
         app.manage(ShutdownState::default());
         let state = app.state::<ShutdownState>();
         assert!(!is_shutdown_complete(&app));
-        assert!(state.run(std::future::pending()).now_or_never().is_none());
-        assert!(!is_shutdown_complete(&app));
         state
-            .run(async { assert!(!is_shutdown_complete(&app)) })
+            .run(DEADLINE, async { assert!(!is_shutdown_complete(&app)) })
+            .await;
+        assert!(is_shutdown_complete(&app));
+    }
+
+    #[tokio::test]
+    async fn an_expired_cleanup_still_lets_the_host_exit() {
+        let app = crate::context::AppHandle::default();
+        app.manage(ShutdownState::default());
+        app.state::<ShutdownState>()
+            .run(Duration::from_millis(50), std::future::pending())
             .await;
         assert!(is_shutdown_complete(&app));
     }
@@ -425,6 +455,21 @@ mod tests {
                 reply(&mut self.request(path, payload).await, status, body).await;
             }
 
+            /// Answers requests that rclone may receive in any order, matching on the payload.
+            async fn respond_unordered(&self, path: &str, replies: Vec<(Value, u16, Value)>) {
+                let mut pending = replies;
+                while !pending.is_empty() {
+                    let (mut socket, actual_path, payload) = receive(&self.listener).await;
+                    assert_eq!(actual_path, path);
+                    let index = pending
+                        .iter()
+                        .position(|(expected, ..)| *expected == payload)
+                        .expect("unexpected request payload");
+                    let (_, status, body) = pending.remove(index);
+                    reply(&mut socket, status, body).await;
+                }
+            }
+
             async fn assert_waiting(&self) {
                 assert!(
                     self.app
@@ -455,9 +500,14 @@ mod tests {
             }
         }
 
-        async fn begin_shutdown(
-            unmount_wait: Duration,
-            verify_mounts: bool,
+        async fn begin_shutdown(verified_unmount: Option<Duration>) -> (ShutdownTest, TcpStream) {
+            begin_shutdown_with(verified_unmount, None).await
+        }
+
+        /// `active_remote` is the port of a remote backend the user has switched to.
+        async fn begin_shutdown_with(
+            verified_unmount: Option<Duration>,
+            active_remote: Option<u16>,
         ) -> (ShutdownTest, TcpStream) {
             let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let app = AppHandle::default();
@@ -467,6 +517,29 @@ mod tests {
             // Prevent engine process cleanup targeting the test listener.
             backend.is_local = false;
             manager.update(LOCAL_BACKEND_NAME, backend).await.unwrap();
+            if let Some(port) = active_remote {
+                let directory = tempfile::tempdir().unwrap();
+                let mut builder = rcman::SettingsManager::builder("shutdown-test", "1.0.0")
+                    .with_config_dir(directory.path())
+                    .with_schema::<crate::services::settings::schema::AppSettings>();
+                for name in crate::utils::constants::ENGINE_SUB_SETTINGS {
+                    builder = builder.with_sub_settings(
+                        rcman::SubSettingsConfig::singlefile(name).with_profiles(),
+                    );
+                }
+                let settings = builder.build().unwrap();
+                let remote =
+                    crate::rclone::backend::types::Backend::new_remote("NAS", "127.0.0.1", port);
+                manager
+                    .add(
+                        &settings,
+                        remote,
+                        crate::rclone::backend::CopySources::default(),
+                    )
+                    .await
+                    .unwrap();
+                manager.switch_to(&settings, "NAS").await.unwrap();
+            }
             app.manage(manager);
             app.manage(RcloneState::new(
                 crate::rclone::backend::types::rc_client(),
@@ -484,11 +557,10 @@ mod tests {
             let task = crate::utils::spawn(async move {
                 running
                     .state::<ShutdownState>()
-                    .run(super::super::shutdown(
-                        running.clone(),
-                        unmount_wait,
-                        verify_mounts,
-                    ))
+                    .run(
+                        Duration::from_secs(30),
+                        super::super::shutdown(running.clone(), verified_unmount),
+                    )
                     .await;
             });
 
@@ -518,7 +590,7 @@ mod tests {
 
         #[tokio::test]
         async fn shutdown_finishes_promptly_when_the_batch_leaves_no_mounts() {
-            let (test, mut batch) = begin_shutdown(Duration::from_secs(10), true).await;
+            let (test, mut batch) = begin_shutdown(Some(Duration::from_secs(10))).await;
             reply(&mut batch, 200, json!({})).await;
             let mut list = test.request("/mount/listmounts", Value::Null).await;
             test.assert_waiting().await;
@@ -528,24 +600,18 @@ mod tests {
 
         #[tokio::test]
         async fn shutdown_retries_only_mounts_that_rclone_still_lists() {
-            let (test, mut batch) = begin_shutdown(Duration::from_secs(10), true).await;
+            let (test, mut batch) = begin_shutdown(Some(Duration::from_secs(10))).await;
             reply(&mut batch, 500, json!({"error": "Unmount interrupted"})).await;
             let folder = r"D:\Dáta a súbory";
             test.respond("/mount/listmounts", Value::Null, 200, json!({
                 "mountPoints": [{"Fs": "drive:", "MountPoint": "X:"}, {"Fs": "nas:", "MountPoint": folder}]
             })).await;
-            test.respond(
+            test.respond_unordered(
                 "/mount/unmount",
-                json!({"mountPoint": "X:"}),
-                500,
-                json!({"error": "Busy"}),
-            )
-            .await;
-            test.respond(
-                "/mount/unmount",
-                json!({"mountPoint": folder}),
-                200,
-                json!({}),
+                vec![
+                    (json!({"mountPoint": "X:"}), 500, json!({"error": "Busy"})),
+                    (json!({"mountPoint": folder}), 200, json!({})),
+                ],
             )
             .await;
             test.respond(
@@ -572,8 +638,8 @@ mod tests {
 
         #[tokio::test]
         async fn shutdown_waits_for_a_slow_windows_unmount_before_stopping_engine() {
-            let unmount_wait = super::super::WINDOWS_UNMOUNT_WAIT;
-            let (mut test, mut batch) = begin_shutdown(unmount_wait, true).await;
+            let (mut test, mut batch) =
+                begin_shutdown(Some(super::super::VERIFIED_UNMOUNT_WAIT)).await;
 
             assert!(
                 timeout(Duration::from_secs(6), &mut test.task)
@@ -594,14 +660,14 @@ mod tests {
 
         #[tokio::test]
         async fn shutdown_can_finish_when_unmount_never_replies() {
-            let (test, _batch) = begin_shutdown(Duration::from_millis(500), true).await;
+            let (test, _batch) = begin_shutdown(Some(Duration::from_millis(500))).await;
             test.assert_waiting().await;
             test.finish().await;
         }
 
         #[tokio::test]
         async fn shutdown_timeout_includes_a_stalled_mount_list() {
-            let (test, mut batch) = begin_shutdown(Duration::from_millis(800), true).await;
+            let (test, mut batch) = begin_shutdown(Some(Duration::from_millis(800))).await;
             reply(&mut batch, 200, json!({})).await;
             let _list = test.request("/mount/listmounts", Value::Null).await;
             test.assert_waiting().await;
@@ -610,7 +676,7 @@ mod tests {
 
         #[tokio::test]
         async fn shutdown_timeout_includes_a_stalled_retry() {
-            let (test, mut batch) = begin_shutdown(Duration::from_millis(800), true).await;
+            let (test, mut batch) = begin_shutdown(Some(Duration::from_millis(800))).await;
             reply(&mut batch, 200, json!({})).await;
             test.respond(
                 "/mount/listmounts",
@@ -631,7 +697,7 @@ mod tests {
         #[tokio::test]
         async fn repeated_unmount_failures_do_not_extend_the_deadline() {
             timeout(Duration::from_secs(3), async {
-                let (test, mut batch) = begin_shutdown(Duration::from_secs(2), true).await;
+                let (test, mut batch) = begin_shutdown(Some(Duration::from_secs(2))).await;
                 // Spend some of the budget in the batch, then verify a stalled
                 // retry only gets the time left over.
                 tokio::time::sleep(Duration::from_millis(900)).await;
@@ -665,10 +731,10 @@ mod tests {
             for (status, body) in [
                 (200, json!({})),
                 (200, json!({"mountPoints": null})),
-                (200, json!({"mountPoints": [{"MountPoint": " "}]})),
+                (200, json!({"mountPoints": [{"Fs": "drive:"}]})),
                 (500, json!({"error": "Could not list mounts"})),
             ] {
-                let (test, mut batch) = begin_shutdown(Duration::from_secs(10), true).await;
+                let (test, mut batch) = begin_shutdown(Some(Duration::from_secs(10))).await;
                 reply(&mut batch, 200, json!({})).await;
                 test.respond("/mount/listmounts", Value::Null, status, body)
                     .await;
@@ -677,8 +743,34 @@ mod tests {
         }
 
         #[tokio::test]
+        async fn shutdown_leaves_an_active_remote_backend_alone() {
+            let remote = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let port = remote.local_addr().unwrap().port();
+            for verified_unmount in [Some(Duration::from_secs(10)), None] {
+                let (test, mut batch) = begin_shutdown_with(verified_unmount, Some(port)).await;
+                reply(&mut batch, 200, json!({})).await;
+                if verified_unmount.is_some() {
+                    test.respond(
+                        "/mount/listmounts",
+                        Value::Null,
+                        200,
+                        json!({"mountPoints": []}),
+                    )
+                    .await;
+                }
+                test.finish().await;
+            }
+            assert!(
+                timeout(Duration::from_millis(200), remote.accept())
+                    .await
+                    .is_err(),
+                "a remote backend must not receive shutdown requests"
+            );
+        }
+
+        #[tokio::test]
         async fn shutdown_without_windows_verification_keeps_the_batch_only() {
-            let (test, mut batch) = begin_shutdown(Duration::from_secs(10), false).await;
+            let (test, mut batch) = begin_shutdown(None).await;
             reply(&mut batch, 200, json!({})).await;
             test.finish().await;
         }

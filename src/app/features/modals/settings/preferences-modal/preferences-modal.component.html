@@ -59,7 +59,7 @@
       <!-- Search result items, or empty state when nothing matches -->
       @if (searchResults().length > 0) {
         @for (vm of searchResultViewModels(); track vm.category + '.' + vm.key) {
-          <div class="setting-item" role="listitem">
+          <div class="setting-item">
             <ng-container
               [ngTemplateOutlet]="settingTemplate"
               [ngTemplateOutletContext]="{
@@ -98,7 +98,7 @@
     } @else {
       @if (selectedTabKey(); as activeCategory) {
         @for (vm of selectedTabViewModels(); track vm.key) {
-          <div class="setting-item" role="listitem">
+          <div class="setting-item">
             <ng-container
               [ngTemplateOutlet]="settingTemplate"
               [ngTemplateOutletContext]="{

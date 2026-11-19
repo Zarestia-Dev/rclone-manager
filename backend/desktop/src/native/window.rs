@@ -78,8 +78,99 @@ pub(super) fn should_open_main_window(args: &crate::cli::CliArgs, vault_locked: 
     !hidden_start && args.general.send_to_remote.is_none()
 }
 
+/// The desktop's title bar button layout in GTK's `gtk-decoration-layout` form, such as
+/// `appmenu:close` or `close,minimize,maximize:`. GNOME sets it from its `button-layout`
+/// setting and KDE from its window decoration settings. Only Linux has one. The first call
+/// also starts following changes, which arrive as `WINDOW_BUTTON_LAYOUT_CHANGED`.
+#[tauri::command]
+pub async fn get_window_button_layout(app: tauri::AppHandle) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        #[cfg(feature = "desktop")]
+        {
+            use std::sync::atomic::{AtomicBool, Ordering};
+            static WATCHING: AtomicBool = AtomicBool::new(false);
+            if !WATCHING.swap(true, Ordering::SeqCst) {
+                crate::utils::spawn(watch_button_layout());
+            }
+        }
+
+        // GTK settings may only be read on the main thread.
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        app.run_on_main_thread(move || {
+            use gtk::prelude::GtkSettingsExt;
+            let layout = gtk::Settings::default()
+                .and_then(|settings| settings.gtk_decoration_layout())
+                .map(|layout| layout.to_string());
+            let _ = tx.send(layout);
+        })
+        .ok()?;
+        rx.await.ok().flatten()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        None
+    }
+}
+
+/// Follows the button layout through the XDG settings portal, like the theme watcher, and
+/// emits each new value. GTK 3 does notify when the setting changes, but on Wayland its
+/// `gtk-decoration-layout` keeps the old value, so it cannot tell what changed.
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+async fn watch_button_layout() {
+    use futures::StreamExt;
+
+    let Some(changes) =
+        super::portal::setting_changes("org.gnome.desktop.wm.preferences", "button-layout").await
+    else {
+        return;
+    };
+    let mut changes = std::pin::pin!(changes);
+    // GNOME's portal sends every change twice.
+    let mut last = None;
+    while let Some(message) = changes.next().await {
+        let Some(value) = super::portal::changed_value(&message) else {
+            continue;
+        };
+        let layout = portal_string(&value);
+        if last.as_ref() == Some(&layout) {
+            continue;
+        }
+        last = Some(layout.clone());
+        crate::services::bridge::emit(
+            crate::utils::types::events::WINDOW_BUTTON_LAYOUT_CHANGED,
+            layout,
+        );
+    }
+}
+
+/// The string in a portal setting value, which some portals wrap in a second variant.
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+fn portal_string(value: &zbus::Variant) -> Option<String> {
+    match value {
+        zbus::Variant::Str(text) => Some(text.to_string()),
+        zbus::Variant::Variant(inner) => portal_string(inner),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[cfg(all(feature = "desktop", target_os = "linux"))]
+    #[test]
+    fn portal_string_reads_plain_and_wrapped_layouts() {
+        use super::portal_string;
+        let plain = zbus::Variant::from("appmenu:close");
+        assert_eq!(portal_string(&plain), Some("appmenu:close".to_string()));
+        let wrapped = zbus::Variant::from(zbus::Variant::from("close,minimize,maximize:"));
+        assert_eq!(
+            portal_string(&wrapped),
+            Some("close,minimize,maximize:".to_string())
+        );
+        assert_eq!(portal_string(&zbus::Variant::from(1u32)), None);
+    }
+
     use super::{has_visible_tray, should_open_main_window};
     use crate::cli::CliArgs;
     use clap::Parser;
