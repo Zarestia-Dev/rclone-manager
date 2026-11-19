@@ -140,6 +140,11 @@ export class WindowsMountTargetComponent {
 
   protected readonly driveOptions = signal<MountDriveOption[]>([]);
   protected readonly driveStatus = signal<'checking' | 'ready' | 'unavailable'>('checking');
+  protected readonly suggestedDrive = computed(() =>
+    this.mountPath() === this.automaticDrive && this.driveStatus() === 'ready'
+      ? this.driveOptions().find(option => option.availableForAutomatic)?.letter
+      : undefined
+  );
   protected readonly driveStatusLabels = {
     occupied: 'wizards.appOperation.mountDriveOccupied',
     reserved: 'wizards.appOperation.mountDriveReserved',

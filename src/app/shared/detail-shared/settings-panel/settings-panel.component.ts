@@ -74,7 +74,8 @@ export class SettingsPanelComponent {
         const rcloneEntries = this.flattenSettings(
           'rclone',
           rawSettings['rclone'],
-          restrictedLabel
+          restrictedLabel,
+          this.config().rcloneValueLabels
         );
         if (rcloneEntries.length > 0) {
           groups.push({
@@ -130,7 +131,12 @@ export class SettingsPanelComponent {
     return this.expandedKeys().has(key);
   }
 
-  private flattenSettings(key: string, value: unknown, restrictedLabel: string): SettingEntry[] {
+  private flattenSettings(
+    key: string,
+    value: unknown,
+    restrictedLabel: string,
+    valueLabels?: ReadonlyMap<string, string>
+  ): SettingEntry[] {
     if (value === null || value === undefined) return [];
 
     if (typeof value === 'object' && !Array.isArray(value)) {
@@ -140,17 +146,22 @@ export class SettingsPanelComponent {
 
       return entries.flatMap(([k, v]) => {
         const displayKey = key === 'app' || key === 'rclone' ? k : `${key}.${k}`;
-        return this.flattenSettings(displayKey, v, restrictedLabel);
+        return this.flattenSettings(displayKey, v, restrictedLabel, valueLabels);
       });
     }
 
-    return [this.formatEntry(key, value, restrictedLabel)];
+    return [this.formatEntry(key, value, restrictedLabel, valueLabels?.get(key))];
   }
 
-  private formatEntry(key: string, value: unknown, restrictedLabel: string): SettingEntry {
+  private formatEntry(
+    key: string,
+    value: unknown,
+    restrictedLabel: string,
+    displayLabel?: string
+  ): SettingEntry {
     const isSensitive =
       this.restrictMode() && SENSITIVE_KEYS.some(s => key.toLowerCase().includes(s));
-    const valueText = this.valueToString(value);
+    const valueText = displayLabel ?? this.valueToString(value);
 
     return {
       key,

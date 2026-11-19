@@ -1,5 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { profileOf, REMOTE_CONFIG_KEYS, type MountedRemote } from '@app/types';
+import {
+  profileOf,
+  REMOTE_CONFIG_KEYS,
+  type MountedRemote,
+  type MountPathCollision,
+} from '@app/types';
 import { getFilename } from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
@@ -47,6 +52,7 @@ export function windowsMountFolderTarget(
 export interface MountDriveOption {
   letter: string;
   status: 'free' | 'current' | 'occupied' | 'reserved';
+  availableForAutomatic: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -111,16 +117,25 @@ export class WindowsMountTargetService {
       const letter = String.fromCharCode(90 - index) + ':';
       const atLetter = mounts.filter(mount => mountDriveLetter(mount.mount_point) === letter);
       if (atLetter.some(mount => !isOwn(mount)) || (!free.has(letter) && !atLetter.some(isOwn))) {
-        return { letter, status: 'occupied' };
+        return { letter, status: 'occupied', availableForAutomatic: false };
       }
-      const hasReservation = (profiles: typeof settings): boolean =>
-        this.paths.checkMountPathCollision(letter, remote, profiles, profile, 'mount').length > 0;
+      const reservations = (profiles: typeof settings): MountPathCollision[] =>
+        this.paths.checkMountPathCollision(letter, remote, profiles, profile, 'mount');
 
       // Compare against both the stored profiles and changes in the current editor.
-      if (hasReservation(settings) || (draftProfiles && hasReservation(draftSettings))) {
-        return { letter, status: 'reserved' };
+      const collisions = [
+        ...reservations(settings),
+        ...(draftProfiles ? reservations(draftSettings) : []),
+      ];
+      const availableForAutomatic =
+        letter[0] >= 'D' &&
+        free.has(letter) &&
+        atLetter.length === 0 &&
+        !collisions.some(collision => collision.opType === 'mount');
+      if (collisions.length > 0) {
+        return { letter, status: 'reserved', availableForAutomatic };
       }
-      return { letter, status: atLetter.some(isOwn) ? 'current' : 'free' };
+      return { letter, status: atLetter.some(isOwn) ? 'current' : 'free', availableForAutomatic };
     });
   }
 

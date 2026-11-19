@@ -240,6 +240,12 @@
         {{ status.labelKey | translate: { details: status.details || '' } }}
       </span>
     } @else if (driveSelection() === automaticDrive) {
+      @if (suggestedDrive(); as letter) {
+        <span class="mount-drive-suggestion">{{
+          'wizards.appOperation.mountDriveSuggestion' | translate: { letter }
+        }}</span>
+        <br />
+      }
       {{ 'wizards.appOperation.mountAutomaticDriveHint' | translate }}
     } @else if (showDiskType) {
       {{

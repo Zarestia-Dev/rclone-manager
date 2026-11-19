@@ -21,6 +21,11 @@ use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend
 
 use super::common::{CommonConfigParams, OperationContext, backend_os, parse_common_config};
 
+#[cfg(any(windows, test))]
+use crate::utils::io::windows_drives::{DriveReservation, DriveReservations, drive_bit};
+#[cfg(any(windows, test))]
+use crate::utils::types::remotes::{RemoteSettings, dest_path};
+
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct MountParams {
@@ -121,6 +126,61 @@ impl MountParams {
         builder.with_runtime_remote_options(self.runtime_remote_options.as_ref())?;
         Ok(builder.build())
     }
+
+    #[cfg(any(windows, test))]
+    fn legacy_windows_network_name(&self) -> Option<&str> {
+        let (server, share) = self.mount_point.strip_prefix(r"\\")?.split_once('\\')?;
+        (!server.is_empty()
+            && !server.contains('?')
+            && !share.is_empty()
+            && !share.starts_with('\\'))
+        .then_some(self.mount_point.as_str())
+    }
+
+    #[cfg(any(windows, test))]
+    fn uses_automatic_windows_drive(&self) -> bool {
+        self.mount_point == "*" || self.legacy_windows_network_name().is_some()
+    }
+
+    #[cfg(any(windows, test))]
+    async fn reserve_windows_drive<'a>(
+        &mut self,
+        reservations: &'a DriveReservations,
+        fixed_profiles: u32,
+        occupied: impl Fn() -> Result<u32, String>,
+    ) -> Result<Option<DriveReservation<'a>>, String> {
+        let fixed = drive_bit(&self.mount_point);
+        if fixed.is_none() && !self.uses_automatic_windows_drive() {
+            return Ok(None);
+        }
+
+        let claim = reservations
+            .reserve(fixed, fixed_profiles, occupied)
+            .await?;
+        if let Some(network_name) = self.legacy_windows_network_name().map(str::to_owned) {
+            // An explicit letter needs the legacy UNC name as a mount option.
+            let opts = &mut self.rclone_config["mountOpt"];
+            if !opts.is_object() {
+                *opts = json!({});
+            }
+            opts["VolumeName"] = json!(network_name);
+            opts["NetworkMode"] = json!(true);
+        }
+        self.mount_point = claim.letter();
+        Ok(Some(claim))
+    }
+}
+
+#[cfg(any(windows, test))]
+fn fixed_mount_drives(settings: HashMap<String, Value>) -> u32 {
+    settings
+        .into_values()
+        .filter_map(|settings| serde_json::from_value::<RemoteSettings>(settings).ok())
+        .filter_map(|settings| settings.mount_configs)
+        .flat_map(HashMap::into_values)
+        .filter_map(|profile| dest_path(&super::common::flatten_rclone_config(&profile.rclone)))
+        .filter_map(|path| drive_bit(&path))
+        .fold(0, |mask, bit| mask | bit)
 }
 
 /// Mount a remote filesystem (not exposed as Tauri command - use `mount_remote_profile`)
@@ -204,6 +264,34 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<String,
         log::warn!("{error_msg}");
         return Err(error_msg);
     }
+
+    #[cfg(windows)]
+    let (params, _drive_reservation) = {
+        use crate::utils::io::windows_drives::{MOUNT_DRIVES, occupied_system_drives};
+
+        let mut params = params;
+        let reservation = if backend.is_local {
+            let fixed_profiles = if params.uses_automatic_windows_drive() {
+                fixed_mount_drives(
+                    backend_manager
+                        .read_mount_drive_profiles(&app, &backend.name)
+                        .await?,
+                )
+            } else {
+                0
+            };
+            params
+                .reserve_windows_drive(&MOUNT_DRIVES, fixed_profiles, || {
+                    occupied_system_drives().map_err(|error| {
+                        crate::localized_error!("backendErrors.file.ioError", "error" => error)
+                    })
+                })
+                .await?
+        } else {
+            None
+        };
+        (params, reservation)
+    };
 
     let payload = params.to_rclone_body()?;
 
@@ -606,6 +694,125 @@ mod tests {
     use super::*;
     use crate::rclone::backend::runtime::RuntimeInfo;
     use serde_json::json;
+
+    fn test_mount(remote: &str, target: &str) -> MountParams {
+        MountParams::from_config(
+            remote.into(),
+            &json!({"rclone": {"fs": format!("{remote}:"), "mountPoint": target}}),
+            &json!({}),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn windows_startup_keeps_fixed_y_even_if_the_automatic_mount_starts_first() {
+        let fixed_profiles = fixed_mount_drives(HashMap::from([(
+            "fixed".into(),
+            json!({"mountConfigs": {
+                "Default": {"app": {"autoStart": true, "autoStartDelay": 15}, "rclone": {
+                    "fs": "fixed:", "mountPoint": "y:/"
+                }},
+                "Folder": {"rclone": {"fs": "fixed:", "mountPoint": "W:/folder"}},
+                "Automatic": {"rclone": {"fs": "fixed:", "mountPoint": "*"}}
+            }}),
+        )]));
+        assert_eq!(fixed_profiles, drive_bit("Y:").unwrap());
+
+        let reservations = DriveReservations::default();
+        let occupied = || Ok(drive_bit("Z:").unwrap());
+        let mut automatic = test_mount("automatic", "*");
+        let _automatic_claim = automatic
+            .reserve_windows_drive(&reservations, fixed_profiles, occupied)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut fixed = test_mount("fixed", "y:/");
+        let _fixed_claim = fixed
+            .reserve_windows_drive(&reservations, fixed_profiles, occupied)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(automatic.to_rclone_body().unwrap()["mountPoint"], "X:");
+        assert_eq!(fixed.to_rclone_body().unwrap()["mountPoint"], "Y:");
+        assert_eq!(automatic.rclone_config["mountPoint"], "*");
+    }
+
+    #[tokio::test]
+    async fn simultaneous_automatic_mounts_submit_different_letters_before_windows_updates() {
+        let reservations = DriveReservations::default();
+        let both_started = tokio::sync::Barrier::new(2);
+        let occupied = || Ok(drive_bit("Z:").unwrap());
+        let reserved = drive_bit("Y:").unwrap();
+        let run = |remote| {
+            let reservations = &reservations;
+            let both_started = &both_started;
+            async move {
+                let mut mount = test_mount(remote, "*");
+                let _claim = mount
+                    .reserve_windows_drive(reservations, reserved, occupied)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                both_started.wait().await;
+                mount.to_rclone_body().unwrap()["mountPoint"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            }
+        };
+
+        let (first, second) = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            tokio::join!(run("first"), run("second"))
+        })
+        .await
+        .unwrap();
+        assert_eq!((first.as_str(), second.as_str()), ("X:", "W:"));
+    }
+
+    #[tokio::test]
+    async fn windows_startup_retries_a_pending_letter_after_the_first_attempt_fails() {
+        let reservations = DriveReservations::default();
+        let only_x = || Ok(((1 << 26) - 1) & !drive_bit("X:").unwrap());
+        let mut first = test_mount("first", "*");
+        let failed_claim = first
+            .reserve_windows_drive(&reservations, 0, only_x)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut next = test_mount("next", "*");
+        let next_claim = next.reserve_windows_drive(&reservations, 0, only_x);
+        tokio::pin!(next_claim);
+        assert!(futures::poll!(&mut next_claim).is_pending());
+        drop(failed_claim);
+        assert_eq!(next_claim.await.unwrap().unwrap().letter(), "X:");
+
+        let mut exhausted = test_mount("exhausted", "*");
+        let error = exhausted
+            .reserve_windows_drive(&reservations, drive_bit("X:").unwrap(), only_x)
+            .await
+            .err()
+            .unwrap();
+        assert!(error.contains("backendErrors.mount.noFreeDriveLetter"));
+    }
+
+    #[tokio::test]
+    async fn windows_legacy_network_name_is_preserved_when_selecting_a_drive() {
+        let reservations = DriveReservations::default();
+        let network_name = r"\\server\share";
+        let mut mount = test_mount("legacy", network_name);
+        mount.rclone_config["mountOpt"] = json!({"AllowOther": true});
+        let _claim = mount
+            .reserve_windows_drive(&reservations, drive_bit("Z:").unwrap(), || Ok(0))
+            .await
+            .unwrap()
+            .unwrap();
+        let payload = mount.to_rclone_body().unwrap();
+        assert_eq!(payload["mountPoint"], "Y:");
+        assert_eq!(payload["mountOpt"]["VolumeName"], network_name);
+        assert_eq!(payload["mountOpt"]["NetworkMode"], true);
+        assert_eq!(payload["mountOpt"]["AllowOther"], true);
+    }
 
     #[tokio::test]
     async fn saved_drive_root_is_normalized_for_the_windows_backend_only() {

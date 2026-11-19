@@ -111,10 +111,10 @@ describe('OperationConfigComponent', () => {
     };
 
     getDriveOptions.mockReset().mockResolvedValue([
-      { letter: 'Z:', status: 'occupied' },
-      { letter: 'Y:', status: 'reserved' },
-      { letter: 'X:', status: 'current' },
-      { letter: 'W:', status: 'free' },
+      { letter: 'Z:', status: 'occupied', availableForAutomatic: false },
+      { letter: 'Y:', status: 'reserved', availableForAutomatic: false },
+      { letter: 'X:', status: 'current', availableForAutomatic: false },
+      { letter: 'W:', status: 'free', availableForAutomatic: true },
     ]);
     await TestBed.configureTestingModule({
       imports: [OperationConfigComponent, MatIconTestingModule],
@@ -304,7 +304,14 @@ describe('OperationConfigComponent', () => {
 
   it('offers only drive and folder modes and remembers the automatic drive selection', async () => {
     backendServiceMock.isWindows.mockReturnValue(true);
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('sk-SK', {
+      wizards: { appOperation: { mountDriveSuggestion: 'Návrh jednotky: {{letter}}' } },
+    });
+    translate.use('sk-SK');
     const { fixture, form } = setupComponent('mount', 'example', false, 'X:');
+    const host = fixture.nativeElement as HTMLElement;
+    const hintText = (): string => host.querySelector('.mount-target-hint')?.textContent ?? '';
     const location = await TestbedHarnessEnvironment.loader(fixture).getHarness(
       MatSelectHarness.with({ selector: '.mount-location' })
     );
@@ -322,8 +329,19 @@ describe('OperationConfigComponent', () => {
     await picker.open();
     await (await picker.getOptions({ text: /mountAutomaticDrive/ }))[0].click();
     expect(path?.value).toBe('*');
+    expect(hintText()).toContain('Návrh jednotky: W:');
+
+    await picker.open();
+    expect(await (await picker.getOptions({ text: /^Y:/ }))[0].isDisabled()).toBe(true);
+    await (await picker.getOptions({ text: /^W:$/ }))[0].click();
+    expect(path?.value).toBe('W:');
+    expect(hintText()).not.toContain('Návrh jednotky');
+
+    await picker.open();
+    await (await picker.getOptions({ text: /mountAutomaticDrive/ }))[0].click();
     await choose(1);
     expect(path?.value).toBe('');
+    expect(hintText()).not.toContain('Návrh jednotky');
     await choose(0);
     expect(path?.value).toBe('*');
   });
@@ -454,6 +472,7 @@ describe('OperationConfigComponent', () => {
     await options[0].click();
     expect(form.get('dest.path')?.value).toBe('*');
     expect(await picker.getValueText()).toContain('mountAutomaticDrive');
+    expect(fixture.nativeElement.querySelector('.mount-drive-suggestion')).toBeNull();
   });
 
   it('selects an existing Windows parent without requiring it to be empty', async () => {

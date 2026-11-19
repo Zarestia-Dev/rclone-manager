@@ -95,6 +95,22 @@ describe('WindowsMountTargetService', () => {
     ]).toEqual(['occupied', 'current', 'reserved', 'free', 'reserved', 'occupied']);
   });
 
+  it('previews the automatic Z-to-D assignment without taking saved or draft fixed letters', async () => {
+    physicalFree.mockResolvedValue(['Y:', 'X:', 'W:', 'C:', 'B:', 'A:']);
+    const options = await service.getDriveOptions('office', 'Main');
+    expect(
+      options.filter(option => option.availableForAutomatic).map(option => option.letter)
+    ).toEqual(['W:']);
+    expect(options.find(option => option.letter === 'Y:')?.status).toBe('reserved');
+    expect(options.find(option => option.letter === 'C:')?.status).toBe('free');
+
+    const withDraft = await service.getDriveOptions('office', 'Main', {
+      Main: profile('*'),
+      Draft: profile('w:/'),
+    });
+    expect(withDraft.some(option => option.availableForAutomatic)).toBe(false);
+  });
+
   it('does not mistake the same profile name on another connection or a stale reservation for ownership', async () => {
     const other = await service.getDriveOptions('vault', 'Main');
     expect(other.find(o => o.letter === 'X:')?.status).toBe('occupied');
