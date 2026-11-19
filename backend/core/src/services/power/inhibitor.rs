@@ -12,10 +12,21 @@ unsafe impl Send for MacosActivityToken {}
 #[cfg(target_os = "macos")]
 unsafe impl Sync for MacosActivityToken {}
 
+/// What a Linux acquire holds: the logind lock (released when its file descriptor closes,
+/// which is `None` when logind refused) and the guard that stops the shutdown watcher.
+#[cfg(target_os = "linux")]
+struct LinuxInhibit {
+    fd: Option<zbus::OwnedFd>,
+    _stop_watching: tokio_util::sync::DropGuard,
+}
+
 pub struct PowerInhibitorState {
+    /// Written only while `turn` is held; read without it.
     is_inhibited: AtomicBool,
+    /// One acquire or release at a time, so the flag and the platform lock never disagree.
+    turn: tokio::sync::Mutex<()>,
     #[cfg(target_os = "linux")]
-    linux_fd: tokio::sync::Mutex<Option<zbus::OwnedFd>>,
+    linux: tokio::sync::Mutex<Option<LinuxInhibit>>,
     #[cfg(target_os = "macos")]
     macos_activity: tokio::sync::Mutex<Option<MacosActivityToken>>,
     #[cfg(target_os = "windows")]
@@ -33,8 +44,9 @@ impl PowerInhibitorState {
     pub fn new() -> Self {
         Self {
             is_inhibited: AtomicBool::new(false),
+            turn: tokio::sync::Mutex::new(()),
             #[cfg(target_os = "linux")]
-            linux_fd: tokio::sync::Mutex::new(None),
+            linux: tokio::sync::Mutex::new(None),
             #[cfg(target_os = "macos")]
             macos_activity: tokio::sync::Mutex::new(None),
             #[cfg(target_os = "windows")]
@@ -44,15 +56,12 @@ impl PowerInhibitorState {
 
     #[must_use]
     pub fn is_inhibited(&self) -> bool {
-        self.is_inhibited.load(Ordering::Relaxed)
+        self.is_inhibited.load(Ordering::Acquire)
     }
 
     pub async fn acquire(&self, _app: &AppHandle, reason: &str) {
-        if self
-            .is_inhibited
-            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-            .is_err()
-        {
+        let _turn = self.turn.lock().await;
+        if self.is_inhibited.swap(true, Ordering::Release) {
             return;
         }
 
@@ -61,11 +70,8 @@ impl PowerInhibitorState {
     }
 
     pub async fn release(&self) {
-        if self
-            .is_inhibited
-            .compare_exchange(true, false, Ordering::Acquire, Ordering::Relaxed)
-            .is_err()
-        {
+        let _turn = self.turn.lock().await;
+        if !self.is_inhibited.swap(false, Ordering::Release) {
             return;
         }
 
@@ -75,87 +81,49 @@ impl PowerInhibitorState {
 
     #[cfg(target_os = "linux")]
     async fn acquire_platform(&self, app: &AppHandle, reason: &str) {
-        match zbus::Connection::system().await {
-            Ok(connection) => {
-                match zbus::Proxy::new(
-                    &connection,
-                    "org.freedesktop.login1",
-                    "/org/freedesktop/login1",
-                    "org.freedesktop.login1.Manager",
-                )
-                .await
-                {
-                    Ok(proxy) => {
-                        // Inhibit "idle" to prevent automatic system sleep/suspend while operations run.
-                        // Unlike "sleep" and "shutdown", inhibiting "idle":
-                        // 1. Prevents unattended idle suspend during long transfers.
-                        // 2. Does not prompt for Polkit/root passwords on manual sleep.
-                        // 3. Allows clean desktop shutdown/reboot without black-screen hangs on KDE Plasma 6.
-                        // 4. Safely allows laptops to suspend when the lid is closed to prevent overheating in bags.
-                        match proxy
-                            .call::<_, _, zbus::OwnedFd>(
-                                "Inhibit",
-                                &("idle", "RClone Manager", reason, "block"),
-                            )
-                            .await
-                        {
-                            Ok(fd) => {
-                                info!(
-                                    "🔒 Linux systemd logind idle inhibitor lock acquired: {reason}"
-                                );
-                                *self.linux_fd.lock().await = Some(fd);
-                            }
-                            Err(e) => {
-                                log::debug!(
-                                    "Failed to acquire systemd logind idle inhibitor lock: {e}"
-                                );
-                            }
-                        }
-
-                        let app_handle = app.clone();
-                        crate::utils::spawn(async move {
-                            if let Ok(mut shutdown_stream) =
-                                proxy.receive_signal("PrepareForShutdown").await
-                            {
-                                use futures::StreamExt;
-                                while let Some(signal) = shutdown_stream.next().await {
-                                    if let Ok(true) = signal.body().deserialize::<bool>() {
-                                        info!(
-                                            "⚠️ OS Shutdown requested while power inhibitor is active; unmounting remotes"
-                                        );
-
-                                        let is_already_shutting_down = app_handle
-                                            .try_state::<crate::utils::types::state::RcloneState>()
-                                            .is_some_and(|s| s.is_shutting_down());
-
-                                        if !is_already_shutting_down {
-                                            crate::services::lifecycle::shutdown::handle_shutdown(
-                                                app_handle.clone(),
-                                            )
-                                            .await;
-                                        }
-
-                                        if let Some(state) =
-                                            app_handle.try_state::<PowerInhibitorState>()
-                                        {
-                                            state.release().await;
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    Err(e) => log::debug!("Failed to create login1 proxy: {e}"),
-                }
+        let mut held = self.linux.lock().await;
+        let proxy = match crate::utils::dbus::login1().await {
+            Ok(proxy) => proxy,
+            Err(e) => {
+                log::debug!("System D-Bus unavailable for power inhibitor: {e}");
+                return;
             }
-            Err(e) => log::debug!("System D-Bus unavailable for power inhibitor: {e}"),
-        }
+        };
+
+        // Inhibit "idle" to prevent automatic system sleep/suspend while operations run.
+        // Unlike "sleep" and "shutdown", inhibiting "idle":
+        // 1. Prevents unattended idle suspend during long transfers.
+        // 2. Does not prompt for Polkit/root passwords on manual sleep.
+        // 3. Allows clean desktop shutdown/reboot without black-screen hangs on KDE Plasma 6.
+        // 4. Safely allows laptops to suspend when the lid is closed to prevent overheating in bags.
+        let fd = match proxy
+            .call::<_, _, zbus::OwnedFd>("Inhibit", &("idle", "RClone Manager", reason, "block"))
+            .await
+        {
+            Ok(fd) => {
+                info!("🔒 Linux systemd logind idle inhibitor lock acquired: {reason}");
+                Some(fd)
+            }
+            Err(e) => {
+                log::debug!("Failed to acquire systemd logind idle inhibitor lock: {e}");
+                None
+            }
+        };
+
+        let stop = tokio_util::sync::CancellationToken::new();
+        crate::utils::spawn(unmount_on_os_shutdown(app.clone(), proxy, stop.clone()));
+        *held = Some(LinuxInhibit {
+            fd,
+            _stop_watching: stop.drop_guard(),
+        });
     }
 
     #[cfg(target_os = "linux")]
     async fn release_platform(&self) {
-        if let Some(fd) = self.linux_fd.lock().await.take() {
-            drop(fd);
+        // Dropping it closes the descriptor and stops the shutdown watcher.
+        if let Some(inhibit) = self.linux.lock().await.take()
+            && inhibit.fd.is_some()
+        {
             info!("🔓 Linux systemd logind idle inhibitor lock released");
         }
     }
@@ -242,6 +210,46 @@ impl PowerInhibitorState {
 
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     async fn release_platform(&self) {}
+}
+
+/// While the inhibitor is held, unmounts the remotes when the OS announces a shutdown. It
+/// ends when `stop` is cancelled, which only takes effect between signals: the shutdown
+/// itself releases the inhibitor and must not be cut off.
+#[cfg(target_os = "linux")]
+async fn unmount_on_os_shutdown(
+    app: AppHandle,
+    logind: zbus::Proxy<'static>,
+    stop: tokio_util::sync::CancellationToken,
+) {
+    use futures::StreamExt;
+
+    let Ok(mut signals) = logind.receive_signal("PrepareForShutdown").await else {
+        return;
+    };
+    loop {
+        let signal = tokio::select! {
+            () = stop.cancelled() => return,
+            signal = signals.next() => signal,
+        };
+        let Some(signal) = signal else {
+            return;
+        };
+        if !matches!(signal.body().deserialize::<bool>(), Ok(true)) {
+            continue;
+        }
+        info!("⚠️ OS Shutdown requested while power inhibitor is active; unmounting remotes");
+
+        let is_already_shutting_down = app
+            .try_state::<crate::utils::types::state::RcloneState>()
+            .is_some_and(|s| s.is_shutting_down());
+        if !is_already_shutting_down {
+            crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
+        }
+
+        if let Some(state) = app.try_state::<PowerInhibitorState>() {
+            state.release().await;
+        }
+    }
 }
 
 fn get_localized_inhibitor_reason(

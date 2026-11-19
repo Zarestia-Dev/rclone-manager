@@ -119,7 +119,7 @@ impl EventBridge {
         };
         if let Some(access) = self.access.read().as_ref() {
             access.deliver(
-                event == crate::utils::types::events::VAULT_STATE_CHANGED,
+                crate::utils::types::events::PUBLIC_EVENTS.contains(&event),
                 deliver,
             );
         } else {

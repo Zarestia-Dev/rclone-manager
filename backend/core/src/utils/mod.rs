@@ -6,6 +6,8 @@ pub mod app;
 pub(crate) mod archive;
 pub mod constants;
 pub mod cron;
+#[cfg(all(target_os = "linux", any(feature = "desktop", feature = "flatpak")))]
+pub mod dbus;
 pub mod format;
 pub mod github_client;
 pub mod i18n;

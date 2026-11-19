@@ -7,6 +7,8 @@ pub use runtime::run;
 
 #[cfg(not(feature = "web-server"))]
 mod ipc;
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+mod portal;
 #[cfg(not(feature = "web-server"))]
 pub(crate) mod protocol;
 #[cfg(any(not(feature = "web-server"), feature = "tray"))]

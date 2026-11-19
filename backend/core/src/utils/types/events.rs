@@ -78,14 +78,14 @@ pub const VAULT_STATE_CHANGED: &str = "vault_state_changed";
 /// - Handled by: `services::event_listener` (delegates to the desktop tray host)
 pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 
-/// Emitted when the OS system theme (dark/light) changes.
+/// Emitted when the OS system theme (dark/light) changes. In `PUBLIC_EVENTS`.
 /// - Emitted by: `native::theme`
 /// - Handled by: `WindowService`
 pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 
-/// Emitted on Linux desktops when GTK's `gtk-decoration-layout` (the title bar button
-/// layout) changes, with the new layout string or null. Desktop only: headless has no
-/// window buttons, so it is not in `SSE_FORWARD_EVENTS`.
+/// Emitted on Linux desktops when the title bar button layout changes, with the new layout
+/// string or null. Desktop only: headless has no window buttons, so it is not in
+/// `SSE_FORWARD_EVENTS`. In `PUBLIC_EVENTS`.
 /// - Emitted by: `native::window` (XDG settings portal watcher, started by `get_window_button_layout`)
 /// - Handled by: `WindowService`
 pub const WINDOW_BUTTON_LAYOUT_CHANGED: &str = "window_button_layout_changed";
@@ -198,6 +198,15 @@ pub struct FileDownloadProgressPayload {
     pub total: Option<u64>,
     pub percentage: Option<f64>,
 }
+
+/// Events a locked interface still receives. They carry no vault data: the vault state
+/// itself and display state the lock screen needs to look right. Every other event is
+/// withheld until the vault is unlocked.
+pub const PUBLIC_EVENTS: &[&str] = &[
+    VAULT_STATE_CHANGED,
+    SYSTEM_THEME_CHANGED,
+    WINDOW_BUTTON_LAYOUT_CHANGED,
+];
 
 /// List of all events that should be forwarded to SSE clients in headless mode
 pub const SSE_FORWARD_EVENTS: &[&str] = &[

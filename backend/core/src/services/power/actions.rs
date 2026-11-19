@@ -25,46 +25,26 @@ async fn execute_platform_power(_action: &str) -> Result<(), String> {
 #[cfg(target_os = "linux")]
 async fn execute_platform_power(action: &str) -> Result<(), String> {
     #[cfg(feature = "desktop")]
-    {
-        match zbus::Connection::system().await {
-            Ok(connection) => {
-                match zbus::Proxy::new(
-                    &connection,
-                    "org.freedesktop.login1",
-                    "/org/freedesktop/login1",
-                    "org.freedesktop.login1.Manager",
-                )
-                .await
-                {
-                    Ok(proxy) => {
-                        let res = match action {
-                            "shutdown" => proxy.call::<_, _, ()>("PowerOff", &(false)).await,
-                            "hibernate" => proxy.call::<_, _, ()>("Hibernate", &(false)).await,
-                            "lock" => proxy.call::<_, _, ()>("LockSessions", &()).await,
-                            _ => proxy.call::<_, _, ()>("Suspend", &(false)).await,
-                        };
-
-                        if let Ok(()) = res {
-                            info!("D-Bus systemd logind power action '{action}' succeeded");
-                            return Ok(());
-                        } else if let Err(e) = res {
-                            log::warn!(
-                                "D-Bus login1 power action '{action}' failed: {e}. Falling back to CLI..."
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "Failed to create login1 D-Bus proxy: {e}. Falling back to CLI..."
-                        );
-                    }
+    match crate::utils::dbus::login1().await {
+        Ok(proxy) => {
+            let res = match action {
+                "shutdown" => proxy.call::<_, _, ()>("PowerOff", &(false)).await,
+                "hibernate" => proxy.call::<_, _, ()>("Hibernate", &(false)).await,
+                "lock" => proxy.call::<_, _, ()>("LockSessions", &()).await,
+                _ => proxy.call::<_, _, ()>("Suspend", &(false)).await,
+            };
+            match res {
+                Ok(()) => {
+                    info!("D-Bus systemd logind power action '{action}' succeeded");
+                    return Ok(());
                 }
+                Err(e) => log::warn!(
+                    "D-Bus login1 power action '{action}' failed: {e}. Falling back to CLI..."
+                ),
             }
-            Err(e) => {
-                log::debug!(
-                    "System D-Bus unavailable for power action: {e}. Falling back to CLI..."
-                );
-            }
+        }
+        Err(e) => {
+            log::debug!("System D-Bus unavailable for power action: {e}. Falling back to CLI...");
         }
     }
 
