@@ -1356,8 +1356,8 @@
     "help": "将分段上传缓存在内存中，而不是流式传输到后端"
   },
   "mount_type": {
-    "title": "挂载类型",
-    "help": "要使用的挂载类型。"
+    "title": "挂载方式",
+    "help": "选择 rclone 用于挂载存储的方式。"
   },
   "allow_https_downgrade": {
     "title": "允许 HTTPS 降级",
