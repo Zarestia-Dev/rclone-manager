@@ -159,7 +159,7 @@ pub unsafe extern "C" fn Java_com_rclone_manager_RcloneSafBridge_nativeQuit<'loc
         return false;
     };
     crate::utils::spawn(async move {
-        let _ = rclone_manager_core::services::lifecycle::shutdown::shutdown_app(core).await;
+        rclone_manager_core::services::lifecycle::shutdown::shutdown_app(core).await;
     });
     true
 }

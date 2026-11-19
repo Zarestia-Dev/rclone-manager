@@ -238,7 +238,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                         arguments,
                         working_directory,
                     } => {
-                        shutdown_for_update(app.clone()).await;
+                        crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
                         let result = app.host().restart_updated_binary(
                             &executable,
                             &previous,
@@ -250,7 +250,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                         }
                     }
                     InstallOutcome::Exit => {
-                        shutdown_for_update(app.clone()).await;
+                        crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
                         app.exit(0);
                     }
                     InstallOutcome::Restart => {
@@ -280,18 +280,6 @@ fn exit_after_failed_restart(app: &AppHandle, error: &str) {
         }),
     );
     app.exit(1);
-}
-
-async fn shutdown_for_update(app: AppHandle) {
-    if tokio::time::timeout(
-        std::time::Duration::from_secs(20),
-        crate::services::lifecycle::shutdown::handle_shutdown(app),
-    )
-    .await
-    .is_err()
-    {
-        log::error!("Update cleanup exceeded shutdown deadline");
-    }
 }
 
 #[cfg(test)]

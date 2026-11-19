@@ -25,15 +25,7 @@ pub fn run() {
     rclone_manager_core::app::send_to::start(&app, cli_args.general);
     let code = utils::block_on(wait_for_shutdown(&app, shutdown_signal()));
     utils::block_on(async {
-        if tokio::time::timeout(
-            std::time::Duration::from_secs(20),
-            services::lifecycle::shutdown::handle_shutdown(app.clone()),
-        )
-        .await
-        .is_err()
-        {
-            log::error!("Application cleanup exceeded shutdown deadline");
-        }
+        services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
         match tokio::time::timeout(std::time::Duration::from_secs(6), &mut server).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => log::error!("HTTP task failed: {error}"),

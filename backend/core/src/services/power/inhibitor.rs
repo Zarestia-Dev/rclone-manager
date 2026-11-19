@@ -239,16 +239,8 @@ async fn unmount_on_os_shutdown(
         }
         info!("⚠️ OS Shutdown requested while power inhibitor is active; unmounting remotes");
 
-        let is_already_shutting_down = app
-            .try_state::<crate::utils::types::state::RcloneState>()
-            .is_some_and(|s| s.is_shutting_down());
-        if !is_already_shutting_down {
-            crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
-        }
-
-        if let Some(state) = app.try_state::<PowerInhibitorState>() {
-            state.release().await;
-        }
+        // The shutdown releases the inhibitor itself; a shutdown already under way is awaited.
+        crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
     }
 }
 

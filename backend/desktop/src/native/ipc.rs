@@ -28,7 +28,7 @@ impl NativeLifecycleCommand {
     ) -> Result<serde_json::Value, String> {
         match self {
             Self::Request => crate::services::lifecycle::exit::request_app_exit(app).await?,
-            Self::Confirm => crate::services::lifecycle::shutdown::shutdown_app(app).await?,
+            Self::Confirm => crate::services::lifecycle::shutdown::shutdown_app(app).await,
             Self::Pending => {
                 let summary = crate::services::lifecycle::exit::check_pending_app_exit(app.clone())
                     .map(|summary| {
