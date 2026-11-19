@@ -501,6 +501,8 @@ $dark-theme: (
   // These map to the GNOME palette for app-specific semantic meaning
 
   --primary-color: var(--gnome-green-4);
+  // Text and icons on a primary fill (dark on the green, white on most system accents).
+  --primary-fg-color: var(--warning-fg-color);
   --accent-color: var(--gnome-blue-3);
   --warn-color: var(--gnome-red-3);
   --orange: var(--gnome-orange-3);
@@ -682,6 +684,39 @@ $dark-theme: (
   }
 }
 
+// The system accent colour as the primary colour (Linux, Windows and macOS; Preferences > General >
+// System Accent Color). WindowService sets the attribute and the --system-accent-* values: the
+// fill, its text colour, and text colours derived from it as libadwaita does.
+html[data-system-accent] {
+  --primary-color: var(--system-accent-bg);
+  --primary-color-rgb: var(--system-accent-bg-rgb);
+  --primary-fg-color: var(--system-accent-fg);
+  --mat-sys-primary: var(--system-accent-bg);
+  --mat-sys-on-primary: var(--system-accent-fg);
+
+  &.light {
+    --primary-color-text: var(--system-accent-light);
+    --mat-sys-primary-container: color-mix(
+      in srgb,
+      var(--system-accent-bg) 15%,
+      var(--view-bg-color)
+    );
+    --mat-sys-on-primary-container: var(--system-accent-light);
+    --mat-sys-inverse-primary: var(--system-accent-dark);
+  }
+
+  &.dark {
+    --primary-color-text: var(--system-accent-dark);
+    --mat-sys-primary-container: color-mix(
+      in srgb,
+      var(--system-accent-bg) 20%,
+      var(--view-bg-color)
+    );
+    --mat-sys-on-primary-container: var(--system-accent-dark);
+    --mat-sys-inverse-primary: var(--system-accent-light);
+  }
+}
+
 // ============================================================================
 // TONE SCOPE
 // ============================================================================
@@ -690,7 +725,7 @@ $dark-theme: (
 // a solid fill with var(--tone-on), and text on a plain or tinted background with var(--tone-text). It also sets --mat-sys-primary, so Material controls inside
 // (progress bars, toggles, filled buttons) follow the role. Roles are the PillTone values in
 // src/app/shared/types/pill.ts; the operation registry decides which operation gets which.
-@each $tone, $color, $on in ("primary" "primary-color" "warning-fg-color"),
+@each $tone, $color, $on in ("primary" "primary-color" "primary-fg-color"),
   ("accent" "accent-color" "accent-fg-color"), ("orange" "orange" "warning-fg-color"),
   ("yellow" "yellow" "warning-fg-color"), ("purple" "purple" "destructive-fg-color"),
   ("warn" "warn-color" "destructive-fg-color"), ("dim" "dim-color" "window-bg-color")

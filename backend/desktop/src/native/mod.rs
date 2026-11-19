@@ -5,6 +5,12 @@ mod runtime;
 pub(crate) mod setup;
 pub use runtime::run;
 
+#[cfg(all(
+    feature = "desktop",
+    not(feature = "web-server"),
+    any(target_os = "linux", windows, target_os = "macos")
+))]
+mod accent;
 #[cfg(not(feature = "web-server"))]
 mod ipc;
 #[cfg(all(feature = "desktop", target_os = "linux"))]

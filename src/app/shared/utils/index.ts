@@ -12,3 +12,4 @@ export * from './binary-signature.util';
 export * from './cli-parser.util';
 export * from './job-report.util';
 export * from './window-button-layout.util';
+export * from './accent-color.util';
