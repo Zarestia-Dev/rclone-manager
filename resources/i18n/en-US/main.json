@@ -59,7 +59,10 @@
       "nonEmpty": "Directory has files",
       "colliding": "In use by {{details}}",
       "willCreate": "Folder will be created after remote creation.",
-      "checking": "Checking path..."
+      "checking": "Checking path...",
+      "notDirectory": "This path points to a file. Choose a folder.",
+      "notDirectoryWindowsMount": "This path points to a file. Choose an unused drive letter or enter the path to a new folder.",
+      "unavailable": "Could not check the path. Make sure it is typed correctly and that you can access the location."
     }
   },
   "validators": {
@@ -497,6 +500,10 @@
       "prevent_sleep": {
         "label": "Prevent System Sleep",
         "description": "Prevent automatic system sleep while active transfers, mounts, or servers are running."
+      },
+      "ui_scale": {
+        "label": "Interface Scale",
+        "description": "Size of the interface, in percent. Lower it if everything looks too large, for example with fractional display scaling on KDE."
       },
       "keep_alive": {
         "label": "Run in Background",
@@ -1130,14 +1137,16 @@
         "stop": "Stop this serve",
         "copyId": "Click to copy ID"
       },
-      "messages": {
-        "noOptions": "No additional options"
-      },
       "labels": {
         "id": "ID:",
         "options": "Options:",
         "active": "active"
       }
+    },
+    "mountCard": {
+      "copyPath": "Click to copy the mount point",
+      "open": "Open in the file browser",
+      "unmount": "Unmount this remote"
     },
     "vfsControl": {
       "title": "VFS Control",
@@ -1392,6 +1401,8 @@
       "remoteType": "Remote Type",
       "noMatchingTypes": "No matching remote types",
       "loadingOptions": "Loading configuration options...",
+      "advancedSettingsCount": "Advanced settings ({{count}})",
+      "defaultMountMethod": "Automatic (default)",
       "fields": "Fields",
       "switchToForm": "Switch to Form Mode",
       "switchToJson": "Switch to JSON Mode",
@@ -1499,6 +1510,37 @@
       }
     },
     "appOperation": {
+      "mountLocation": "Mount as",
+      "mountFolder": "Folder",
+      "mountAutomaticDrive": "Automatic",
+      "mountDriveType": "Show as",
+      "mountWindowsAppearance": "Appearance in Windows",
+      "mountDiskName": "Disk name (optional)",
+      "mountNetworkName": "Network name (optional)",
+      "mountAutomaticName": "Automatic name",
+      "mountLocalDriveHint": "Local disk is the usual choice. Try a network drive if a program has trouble.",
+      "mountNetworkDriveHint": "Windows shows the disk as a network drive. The storage stays the same.",
+      "mountDriveTarget": "Drive letter",
+      "mountFolderPathRequired": "Enter a full path to a new subfolder.",
+      "mountFolderQuotesRemoved": "Quotation marks were removed from the path.",
+      "mountFolderSubfolderAdded": "A subfolder name was added to the path.",
+      "mountFolderNameHint": "To change the folder name, edit the last part of the path. The folder is created when you mount.",
+      "mountLocalDrive": "Local disk",
+      "mountNetworkDrive": "Network drive",
+      "mountDriveOccupied": "In use",
+      "mountDriveCurrent": "Current",
+      "mountDriveChecking": "Checking drive letters…",
+      "mountUseParent": "Use as parent folder",
+      "mountDriveSuggestion": "Suggested drive: {{letter}} · Choose a letter from the list to use it every time.",
+      "mountAutomaticDriveHint": "A free drive letter is selected when mounting.",
+      "mountDriveReserved": "Reserved by another profile",
+      "mountDriveConflict": "Drive {{letter}} is occupied or reserved. Choose another letter.",
+      "mountDriveLetter": "Drive letter",
+      "mountParentFolder": "Choose parent folder",
+      "mountFolderHint": "A folder mount uses a local disk. Choose its parent and use a folder name that does not exist yet.",
+      "mountDriveLettersUnavailable": "Could not verify drive letters. Try again.",
+      "mountFolderLocalDrive": "Choose a folder on a local drive.",
+      "mountFolderAlreadyExists": "The mount folder already exists. Use a new folder name.",
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
       "autoStartDelay": "Startup Delay",
@@ -3222,6 +3264,7 @@
       "system": "System Information",
       "jobs": "Job Information",
       "automations": "Automations",
+      "mounts": "Mounted Remotes",
       "serves": "Running Serves"
     },
     "layout": {
@@ -3306,6 +3349,14 @@
       },
       "noActive": "No active serves",
       "noRunning": "No active serves running. Start serving a remote to make it accessible via network protocols like HTTP, WebDAV, FTP, or SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} active mount",
+        "other": "{{count}} active mounts"
+      },
+      "noActive": "No active mounts",
+      "noMounted": "No remotes are mounted. Mount a remote to use its files as a folder on your computer."
     }
   },
   "appOverview": {
@@ -3411,10 +3462,12 @@
       "alreadyInUse": "Mount point {{mountPoint}} is already in use by remote {{remote}}",
       "configIncomplete": "Mount configuration incomplete for profile '{{profile}}'",
       "directoryAlreadyMounted": "Mount directory is already in use. Please select an empty folder or enable '--allow-non-empty' in profile settings.",
+      "windowsTargetAlreadyExists": "The mount target already exists. Choose a free drive letter or enter a folder path that does not exist yet.",
       "directoryNotEmpty": "Selected folder is not empty. Please choose an empty folder or enable '--allow-non-empty'.",
       "winfspMissing": "WinFsp is not installed. Please install WinFsp to mount virtual drives on Windows.",
       "fuseMissing": "FUSE (fuse3) is not installed on your system. Please install fuse3 to enable mounting.",
       "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
+      "noFreeDriveLetter": "No free drive letter is available for automatic mounting. Free a drive letter or select a folder.",
       "driveLetterInUse": "Selected drive letter is already in use by the system.",
       "permissionDenied": "Permission denied while attempting to mount.",
       "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again.",
@@ -4675,10 +4728,7 @@
     "noChangesDetected": "All settings in this template already match your current values.",
     "selectCategoriesToApply": "Categories & Settings"
   },
-  "navigation": {
-    "dashboard": "Dashboard",
-    "files": "Files"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Downloading...",
