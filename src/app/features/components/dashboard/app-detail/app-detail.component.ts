@@ -18,7 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe } from '@app/pipes';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { extractProfileSource, extractProfileDest } from 'src/app/shared/utils';
+import { extractProfileSource, extractProfileDest, getRcloneCfg } from 'src/app/shared/utils';
 import {
   CompletedTransfer,
   GlobalStats,
@@ -66,6 +66,7 @@ import {
   Automation,
   RepairSheetType,
   profileOf,
+  quickRunIdOf,
   isSourceOnlyOperation,
   operationHas,
 } from '@app/types';
@@ -84,6 +85,7 @@ import { SettingsPanelComponent } from '../../../../shared/detail-shared/setting
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { mountDriveLetter } from 'src/app/services/operations/windows-mount-target.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -196,9 +198,11 @@ export class AppDetailComponent {
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
+  private readonly selectedRemoteName = computed(() => this.selectedRemote().name);
+
   private readonly _selectedProfiles = linkedSignal<Record<string, string>>(() => {
     return this.localStorage.getScoped<Record<string, string>>(
-      `remote.${this.selectedRemote().name}`,
+      `remote.${this.selectedRemoteName()}`,
       'selectedProfiles',
       {}
     );
@@ -666,6 +670,7 @@ export class AppDetailComponent {
 
   // --- Derived: Control Configs ---
   readonly controlConfigs = computed<OperationControlConfig[]>(() => {
+    this._lang();
     if (this.mode() === 'quickRun') {
       const qr = this.quickRun();
       if (!qr) return [];
@@ -699,13 +704,18 @@ export class AppDetailComponent {
 
   readonly quickRunSettingsConfig = computed<SettingsPanelConfig>(() => {
     const qr = this.quickRun();
+    const settings = (qr?.config ?? {}) as unknown as Record<string, unknown>;
     return {
       section: {
         key: 'quickRun',
         title: this.translate.instant('flow.quickRun.detail.configuration'),
         icon: 'tune',
       },
-      settings: (qr?.config ?? {}) as unknown as Record<string, unknown>,
+      settings,
+      rcloneValueLabels:
+        qr?.operationType === 'mount'
+          ? this.automaticMountValueLabels(settings, undefined, qr.id)
+          : undefined,
       buttonLabel: 'common.edit',
     };
   });
@@ -752,7 +762,7 @@ export class AppDetailComponent {
     const updatedMap = { ...this._selectedProfiles(), [op]: name };
     this._selectedProfiles.set(updatedMap);
     this.localStorage.setScoped(
-      `remote.${this.selectedRemote().name}`,
+      `remote.${this.selectedRemoteName()}`,
       'selectedProfiles',
       updatedMap
     );
@@ -1095,7 +1105,41 @@ export class AppDetailComponent {
       specificSettings = (profiles as Record<string, unknown>) ?? {};
     }
 
-    return { section, settings: specificSettings };
+    return {
+      section,
+      settings: specificSettings,
+      rcloneValueLabels:
+        key === 'mount' ? this.automaticMountValueLabels(specificSettings, profileName) : undefined,
+    };
+  }
+
+  private assignedMountDrive(profileName?: string, quickRunId?: string): string | undefined {
+    const mountPoint = quickRunId
+      ? this.remoteFacade.mountedRemotes().find(mount => quickRunIdOf(mount) === quickRunId)
+          ?.mount_point
+      : this.selectedRemote().status.mount.activeProfiles?.[profileName ?? DEFAULT_PROFILE_NAME];
+    return mountDriveLetter(mountPoint);
+  }
+
+  private automaticMountValueLabels(
+    settings: Record<string, unknown>,
+    profileName?: string,
+    quickRunId?: string
+  ): ReadonlyMap<string, string> | undefined {
+    const rclone = getRcloneCfg(settings);
+    const flat = rclone?.['mountPoint'] === '*';
+    const nested =
+      (rclone?.['mount'] as Record<string, unknown> | undefined)?.['mountPoint'] === '*';
+    if (!flat && !nested) return undefined;
+
+    this._lang();
+    const automatic = this.translate.instant('wizards.appOperation.mountAutomaticDrive');
+    const drive = this.assignedMountDrive(profileName, quickRunId);
+    const label = drive ? `${automatic} · ${drive}` : automatic;
+    const labels = new Map<string, string>();
+    if (flat) labels.set('mountPoint', label);
+    if (nested) labels.set('mount.mountPoint', label);
+    return labels;
   }
 
   private buildControlConfig(
@@ -1129,7 +1173,12 @@ export class AppDetailComponent {
     const rawDest = isSafMount
       ? `saf://${this.selectedRemote().name}`
       : ((extractProfileDest(opData) ?? extractProfileDest(rawRclone)) as string | undefined);
-    const resolvedDest = rawDest;
+    const isAutomaticMount = isMount && rawDest === '*';
+    const resolvedDest = isAutomaticMount
+      ? isActive
+        ? this.assignedMountDrive(profileName, qr?.id)
+        : undefined
+      : rawDest;
 
     const pathConfig: PathDisplayConfig =
       type === 'serve'
@@ -1146,10 +1195,15 @@ export class AppDetailComponent {
         : {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
             destination: this.normalizeSinglePath(
-              resolvedDest ?? t('dashboard.appDetail.notConfigured')
+              resolvedDest ??
+                t(
+                  isAutomaticMount
+                    ? 'wizards.appOperation.mountAutomaticDrive'
+                    : 'dashboard.appDetail.notConfigured'
+                )
             ),
             showOpenButtons: true,
-            isDestinationActive: type === 'mount' ? isActive : true,
+            isDestinationActive: !isMount || (isActive && (!isAutomaticMount || !!resolvedDest)),
             actionInProgress: (actionType as RemoteAction) ?? undefined,
             hasSource: !!resolvedSource,
             hasDestination: !!resolvedDest,

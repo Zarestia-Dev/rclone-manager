@@ -1,0 +1,123 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  container-type: inline-size;
+}
+
+.path-item-row {
+  .path-input-field,
+  .mount-drive-letter {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mount-drive-letter {
+    align-self: center;
+    padding-inline: var(--space-md);
+  }
+
+  .mount-location {
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+
+    mat-select-trigger {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xxs);
+    }
+
+    mat-icon {
+      flex: none;
+    }
+
+    ::ng-deep .mat-mdc-select-arrow-wrapper {
+      flex: none;
+      margin-inline-start: var(--space-xs);
+    }
+
+    ::ng-deep .mat-mdc-select-arrow {
+      color: var(--tone);
+    }
+  }
+}
+
+@container (max-width: 40rem) {
+  .mount-path-row:has(.mount-use-parent) {
+    .path-type-selector {
+      flex-basis: min(38%, 12rem);
+    }
+
+    .path-input-field ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: var(--space-xs) !important;
+    }
+  }
+}
+
+.windows-appearance-heading {
+  display: flex;
+  gap: var(--space-xxs);
+  align-items: center;
+  margin-top: var(--space-sm);
+}
+
+.path-list.windows-appearance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  &:has(> :nth-child(2)) {
+    grid-template-columns: minmax(0, clamp(9.5rem, 34%, 12rem)) minmax(0, 1fr);
+  }
+
+  mat-form-field {
+    min-width: 0;
+
+    + mat-form-field {
+      border-inline-start: 1px solid var(--border-color);
+    }
+  }
+
+  ::ng-deep .mat-mdc-text-field-wrapper {
+    border-radius: 0;
+    background: transparent;
+  }
+
+  @container (max-width: 22rem) {
+    &:has(> :nth-child(2)) {
+      grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
+    }
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: var(--space-xs);
+    }
+
+    mat-select-trigger .disk-type-value {
+      gap: var(--space-xxs);
+      font-size: var(--font-size-sm);
+    }
+  }
+}
+
+.disk-type-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--tone);
+
+  mat-icon {
+    width: var(--space-md);
+    height: var(--space-md);
+  }
+}
+
+.mount-target-hint {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  margin-block: 0;
+  min-block-size: 2lh;
+
+  [data-tone="warn"] {
+    color: var(--tone);
+  }
+}

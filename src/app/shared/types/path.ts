@@ -23,7 +23,8 @@ export interface MountPathCollision {
 }
 
 export interface PathInspectionStatus {
-  state: 'clean' | 'nonEmpty' | 'colliding' | 'willCreate' | 'checking' | 'unavailable';
+  state:
+    'clean' | 'nonEmpty' | 'colliding' | 'willCreate' | 'checking' | 'unavailable' | 'notDirectory';
   details?: string;
   icon: string;
   badgeClass: string;

@@ -20,6 +20,7 @@ export interface SettingsSection {
 export interface SettingsPanelConfig {
   section: SettingsSection;
   settings: Record<string, unknown>;
+  rcloneValueLabels?: ReadonlyMap<string, string>;
   buttonLabel?: string;
 }
 

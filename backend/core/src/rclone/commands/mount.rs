@@ -19,7 +19,12 @@ use crate::{
 
 use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 
-use super::common::{CommonConfigParams, OperationContext, parse_common_config};
+use super::common::{CommonConfigParams, OperationContext, backend_os, parse_common_config};
+
+#[cfg(any(windows, test))]
+use crate::utils::io::windows_drives::{DriveReservation, DriveReservations, drive_bit};
+#[cfg(any(windows, test))]
+use crate::utils::types::remotes::{RemoteSettings, dest_path};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -92,6 +97,21 @@ impl MountParams {
         })
     }
 
+    pub(crate) async fn normalize_windows_mount_point(
+        &mut self,
+        app: &AppHandle,
+        backend: &Backend,
+    ) {
+        // Rclone treats a forward-slash drive root as a directory on Windows.
+        if matches!(self.mount_point.as_bytes(), [letter, b':', b'/'] if letter.is_ascii_alphabetic())
+            && backend_os(app, backend)
+                .await
+                .is_ok_and(|os| os == "windows")
+        {
+            self.mount_point.pop();
+        }
+    }
+
     pub fn to_rclone_body(&self) -> Result<Value, String> {
         let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
             &self.rclone_config,
@@ -106,10 +126,65 @@ impl MountParams {
         builder.with_runtime_remote_options(self.runtime_remote_options.as_ref())?;
         Ok(builder.build())
     }
+
+    #[cfg(any(windows, test))]
+    fn legacy_windows_network_name(&self) -> Option<&str> {
+        let (server, share) = self.mount_point.strip_prefix(r"\\")?.split_once('\\')?;
+        (!server.is_empty()
+            && !server.contains('?')
+            && !share.is_empty()
+            && !share.starts_with('\\'))
+        .then_some(self.mount_point.as_str())
+    }
+
+    #[cfg(any(windows, test))]
+    fn uses_automatic_windows_drive(&self) -> bool {
+        self.mount_point == "*" || self.legacy_windows_network_name().is_some()
+    }
+
+    #[cfg(any(windows, test))]
+    async fn reserve_windows_drive<'a>(
+        &mut self,
+        reservations: &'a DriveReservations,
+        fixed_profiles: u32,
+        occupied: impl Fn() -> Result<u32, String>,
+    ) -> Result<Option<DriveReservation<'a>>, String> {
+        let fixed = drive_bit(&self.mount_point);
+        if fixed.is_none() && !self.uses_automatic_windows_drive() {
+            return Ok(None);
+        }
+
+        let claim = reservations
+            .reserve(fixed, fixed_profiles, occupied)
+            .await?;
+        if let Some(network_name) = self.legacy_windows_network_name().map(str::to_owned) {
+            // An explicit letter needs the legacy UNC name as a mount option.
+            let opts = &mut self.rclone_config["mountOpt"];
+            if !opts.is_object() {
+                *opts = json!({});
+            }
+            opts["VolumeName"] = json!(network_name);
+            opts["NetworkMode"] = json!(true);
+        }
+        self.mount_point = claim.letter();
+        Ok(Some(claim))
+    }
+}
+
+#[cfg(any(windows, test))]
+fn fixed_mount_drives(settings: HashMap<String, Value>) -> u32 {
+    settings
+        .into_values()
+        .filter_map(|settings| serde_json::from_value::<RemoteSettings>(settings).ok())
+        .filter_map(|settings| settings.mount_configs)
+        .flat_map(HashMap::into_values)
+        .filter_map(|profile| dest_path(&super::common::flatten_rclone_config(&profile.rclone)))
+        .filter_map(|path| drive_bit(&path))
+        .fold(0, |mask, bit| mask | bit)
 }
 
 /// Mount a remote filesystem (not exposed as Tauri command - use `mount_remote_profile`)
-pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
+pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = match &params.backend {
         Some(backend) => backend.clone(),
@@ -173,7 +248,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             }),
         );
 
-        return Ok(());
+        return Ok(mount_point);
     }
 
     let mounted_remotes = cache.get_mounted_remotes().await;
@@ -189,6 +264,34 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         log::warn!("{error_msg}");
         return Err(error_msg);
     }
+
+    #[cfg(windows)]
+    let (params, _drive_reservation) = {
+        use crate::utils::io::windows_drives::{MOUNT_DRIVES, occupied_system_drives};
+
+        let mut params = params;
+        let reservation = if backend.is_local {
+            let fixed_profiles = if params.uses_automatic_windows_drive() {
+                fixed_mount_drives(
+                    backend_manager
+                        .read_mount_drive_profiles(&app, &backend.name)
+                        .await?,
+                )
+            } else {
+                0
+            };
+            params
+                .reserve_windows_drive(&MOUNT_DRIVES, fixed_profiles, || {
+                    occupied_system_drives().map_err(|error| {
+                        crate::localized_error!("backendErrors.file.ioError", "error" => error)
+                    })
+                })
+                .await?
+        } else {
+            None
+        };
+        (params, reservation)
+    };
 
     let payload = params.to_rclone_body()?;
 
@@ -220,7 +323,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     .with_execute_id(params.execute_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
-    let _ = super::job::submit_job_with_options(
+    let submission = super::job::submit_job_with_options(
         app.clone(),
         crate::rclone::endpoints::mount::MOUNT,
         payload,
@@ -231,12 +334,21 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         },
     )
     .await?;
+    // Automatic, UNC and relative targets can resolve to a different path at mount time.
+    let mount_point = submission
+        .output
+        .as_ref()
+        .and_then(|output| output.get("mountPoint"))
+        .and_then(Value::as_str)
+        .filter(|path| !path.is_empty())
+        .unwrap_or(&params.mount_point)
+        .to_owned();
 
     // Pre-seed metadata so the reconciliation attaches the starter atomically
     cache
         .preseed_mount_metadata(crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
-            mount_point: params.mount_point.clone(),
+            mount_point: mount_point.clone(),
             starter: params.starter.clone(),
             origin: params.origin.clone(),
             execute_id: params.execute_id.clone(),
@@ -251,11 +363,11 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             backend: backend_name,
             remote: params.remote_name.clone(),
             profile,
-            mount_point: params.mount_point.clone(),
+            mount_point: mount_point.clone(),
         }),
     );
 
-    Ok(())
+    Ok(mount_point)
 }
 
 /// Unmount a remote filesystem
@@ -566,6 +678,10 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
             }
         };
 
+    mount_params
+        .normalize_windows_mount_point(&app, &resolved.backend)
+        .await;
+
     // Ensure profile is set from the function parameter, not the config object
     mount_params.backend = Some(resolved.backend);
     mount_params.starter = Some(Starter::profile(params.profile_name.clone()));
@@ -575,13 +691,270 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
     mount_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
     mount_params.no_cache = params.no_cache;
 
-    mount_remote(app, mount_params).await
+    mount_remote(app, mount_params).await.map(drop)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rclone::backend::runtime::RuntimeInfo;
     use serde_json::json;
+
+    fn test_mount(remote: &str, target: &str) -> MountParams {
+        MountParams::from_config(
+            remote.into(),
+            &json!({"rclone": {"fs": format!("{remote}:"), "mountPoint": target}}),
+            &json!({}),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn windows_startup_keeps_fixed_y_even_if_the_automatic_mount_starts_first() {
+        let fixed_profiles = fixed_mount_drives(HashMap::from([(
+            "fixed".into(),
+            json!({"mountConfigs": {
+                "Default": {"app": {"autoStart": true, "autoStartDelay": 15}, "rclone": {
+                    "fs": "fixed:", "mountPoint": "y:/"
+                }},
+                "Folder": {"rclone": {"fs": "fixed:", "mountPoint": "W:/folder"}},
+                "Automatic": {"rclone": {"fs": "fixed:", "mountPoint": "*"}}
+            }}),
+        )]));
+        assert_eq!(fixed_profiles, drive_bit("Y:").unwrap());
+
+        let reservations = DriveReservations::default();
+        let occupied = || Ok(drive_bit("Z:").unwrap());
+        let mut automatic = test_mount("automatic", "*");
+        let _automatic_claim = automatic
+            .reserve_windows_drive(&reservations, fixed_profiles, occupied)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut fixed = test_mount("fixed", "y:/");
+        let _fixed_claim = fixed
+            .reserve_windows_drive(&reservations, fixed_profiles, occupied)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(automatic.to_rclone_body().unwrap()["mountPoint"], "X:");
+        assert_eq!(fixed.to_rclone_body().unwrap()["mountPoint"], "Y:");
+        assert_eq!(automatic.rclone_config["mountPoint"], "*");
+    }
+
+    #[tokio::test]
+    async fn simultaneous_automatic_mounts_submit_different_letters_before_windows_updates() {
+        let reservations = DriveReservations::default();
+        let both_started = tokio::sync::Barrier::new(2);
+        let occupied = || Ok(drive_bit("Z:").unwrap());
+        let reserved = drive_bit("Y:").unwrap();
+        let run = |remote| {
+            let reservations = &reservations;
+            let both_started = &both_started;
+            async move {
+                let mut mount = test_mount(remote, "*");
+                let _claim = mount
+                    .reserve_windows_drive(reservations, reserved, occupied)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                both_started.wait().await;
+                mount.to_rclone_body().unwrap()["mountPoint"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            }
+        };
+
+        let (first, second) = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            tokio::join!(run("first"), run("second"))
+        })
+        .await
+        .unwrap();
+        assert_eq!((first.as_str(), second.as_str()), ("X:", "W:"));
+    }
+
+    #[tokio::test]
+    async fn windows_startup_retries_a_pending_letter_after_the_first_attempt_fails() {
+        let reservations = DriveReservations::default();
+        let only_x = || Ok(((1 << 26) - 1) & !drive_bit("X:").unwrap());
+        let mut first = test_mount("first", "*");
+        let failed_claim = first
+            .reserve_windows_drive(&reservations, 0, only_x)
+            .await
+            .unwrap()
+            .unwrap();
+        let mut next = test_mount("next", "*");
+        let next_claim = next.reserve_windows_drive(&reservations, 0, only_x);
+        tokio::pin!(next_claim);
+        assert!(futures::poll!(&mut next_claim).is_pending());
+        drop(failed_claim);
+        assert_eq!(next_claim.await.unwrap().unwrap().letter(), "X:");
+
+        let mut exhausted = test_mount("exhausted", "*");
+        let error = exhausted
+            .reserve_windows_drive(&reservations, drive_bit("X:").unwrap(), only_x)
+            .await
+            .err()
+            .unwrap();
+        assert!(error.contains("backendErrors.mount.noFreeDriveLetter"));
+    }
+
+    #[tokio::test]
+    async fn windows_legacy_network_name_is_preserved_when_selecting_a_drive() {
+        let reservations = DriveReservations::default();
+        let network_name = r"\\server\share";
+        let mut mount = test_mount("legacy", network_name);
+        mount.rclone_config["mountOpt"] = json!({"AllowOther": true});
+        let _claim = mount
+            .reserve_windows_drive(&reservations, drive_bit("Z:").unwrap(), || Ok(0))
+            .await
+            .unwrap()
+            .unwrap();
+        let payload = mount.to_rclone_body().unwrap();
+        assert_eq!(payload["mountPoint"], "Y:");
+        assert_eq!(payload["mountOpt"]["VolumeName"], network_name);
+        assert_eq!(payload["mountOpt"]["NetworkMode"], true);
+        assert_eq!(payload["mountOpt"]["AllowOther"], true);
+    }
+
+    #[tokio::test]
+    async fn saved_drive_root_is_normalized_for_the_windows_backend_only() {
+        let app = AppHandle::default();
+        let manager = BackendManager::new();
+        let windows = Backend::new_remote("Windows", "127.0.0.1", 51900);
+        let linux = Backend::new_remote("Linux", "127.0.0.1", 51901);
+        for (backend, os) in [(&windows, "windows"), (&linux, "linux")] {
+            manager
+                .set_runtime_info(
+                    &backend.name,
+                    RuntimeInfo {
+                        os: Some(os.into()),
+                        ..Default::default()
+                    },
+                )
+                .await;
+        }
+        app.manage(manager);
+
+        for (backend, saved, expected) in [
+            (&windows, "X:/", "X:"),
+            (&windows, "x:/", "x:"),
+            (&windows, "X:", "X:"),
+            (&windows, "X:\\", "X:\\"),
+            (&windows, "X:/folder", "X:/folder"),
+            (&windows, "X", "X"),
+            (&windows, "*", "*"),
+            (&windows, "1:/", "1:/"),
+            (&linux, "X:/", "X:/"),
+        ] {
+            let config = json!({"rclone": {"fs": "drive:", "mountPoint": saved}});
+            let mut params = MountParams::from_config("drive".into(), &config, &json!({})).unwrap();
+            params.normalize_windows_mount_point(&app, backend).await;
+            assert_eq!(params.mount_point, expected);
+            assert_eq!(params.to_rclone_body().unwrap()["mountPoint"], expected);
+            assert_eq!(config["rclone"]["mountPoint"], saved);
+        }
+    }
+
+    #[tokio::test]
+    async fn automatic_and_legacy_network_mounts_keep_the_assigned_letter_and_profile() {
+        use crate::rclone::state::automations::AutomationsCache;
+        use crate::utils::types::state::RcloneState;
+        use std::{sync::Arc, time::Duration};
+        use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+
+        for requested in ["*", r"\\server\share"] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let backend = Backend::new_remote(
+                "Windows",
+                "127.0.0.1",
+                listener.local_addr().unwrap().port(),
+            );
+            let app = AppHandle::default();
+            app.manage(BackendManager::new());
+            app.manage(AutomationsCache::new());
+            app.manage(RcloneState::new(
+                reqwest::Client::builder()
+                    .timeout(Duration::from_secs(2))
+                    .build()
+                    .unwrap(),
+                Arc::new(RoutingTransport::new(app.clone())),
+            ));
+            let mut params = MountParams::from_config(
+                "drive".into(),
+                &json!({"rclone": {"fs": "drive:", "mountPoint": requested}}),
+                &json!({}),
+            )
+            .unwrap();
+            params.backend = Some(backend.clone());
+            params.starter = Some(Starter::profile("Example"));
+            params.no_cache = Some(true);
+
+            let server = crate::utils::spawn(async move {
+                for (endpoint, response) in [
+                    ("/mount/mount", json!({"jobid": 17})),
+                    (
+                        "/job/batch",
+                        json!({"results": [
+                            {"finished": true, "success": true, "output": {"mountPoint": "W:"}}
+                        ]}),
+                    ),
+                    (
+                        "/mount/listmounts",
+                        json!({"mountPoints": [
+                            {"Fs": "drive:", "MountPoint": "W:"}
+                        ]}),
+                    ),
+                ] {
+                    let (stream, _) = listener.accept().await.unwrap();
+                    let mut stream = BufReader::new(stream);
+                    let mut line = String::new();
+                    stream.read_line(&mut line).await.unwrap();
+                    assert_eq!(line.split_whitespace().nth(1), Some(endpoint));
+                    let mut length = 0;
+                    loop {
+                        line.clear();
+                        stream.read_line(&mut line).await.unwrap();
+                        if line.trim().is_empty() {
+                            break;
+                        }
+                        if let Some(value) =
+                            line.to_ascii_lowercase().strip_prefix("content-length:")
+                        {
+                            length = value.trim().parse().unwrap();
+                        }
+                    }
+                    let mut body = vec![0; length];
+                    stream.read_exact(&mut body).await.unwrap();
+                    if endpoint == "/mount/mount" {
+                        let payload: Value = serde_json::from_slice(&body).unwrap();
+                        assert_eq!(payload["mountPoint"], requested);
+                    }
+                    let response = response.to_string();
+                    stream.get_mut().write_all(format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}",
+                        response.len()
+                    ).as_bytes()).await.unwrap();
+                }
+            });
+            tokio::time::timeout(Duration::from_secs(5), async {
+                assert_eq!(mount_remote(app.clone(), params).await.unwrap(), "W:");
+                server.await.unwrap();
+            })
+            .await
+            .unwrap();
+            let cache = app
+                .state::<BackendManager>()
+                .remote_cache_for(&backend.name);
+            let mount = cache
+                .find_mount_by_profile("drive", "Example")
+                .await
+                .unwrap();
+            assert_eq!(mount.mount_point, "W:");
+        }
+    }
 
     #[test]
     fn mount_adapter_moves_the_first_source_and_destination_and_keeps_defaults() {

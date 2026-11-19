@@ -160,12 +160,14 @@ pub(crate) async fn start_quick_run_snapshot(
     if qr.operation_type == OperationType::Mount {
         let mut mount_params =
             MountParams::from_config(qr.remote_name.clone(), &qr.config, &owner_settings)?;
-        let mount_point = mount_params.mount_point.clone();
+        mount_params
+            .normalize_windows_mount_point(&app, &backend)
+            .await;
         mount_params.backend = Some(backend.clone());
         mount_params.starter = Some(starter.clone());
         mount_params.execute_id = Some(execute_id.clone());
 
-        mount_remote(app.clone(), mount_params).await?;
+        let mount_point = mount_remote(app.clone(), mount_params).await?;
 
         return Ok(OperationExecutionResult {
             mount_point: Some(mount_point),

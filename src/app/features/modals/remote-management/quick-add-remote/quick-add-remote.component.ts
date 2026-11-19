@@ -16,6 +16,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthStateService } from 'src/app/services/security/auth-state.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RemoteCreationOrchestrator } from 'src/app/services/remote/remote-creation-orchestrator.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -88,6 +89,7 @@ export class QuickAddRemoteComponent {
   private readonly dialogRef = inject(MatDialogRef<QuickAddRemoteComponent>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly authStateService = inject(AuthStateService);
+  private readonly pathService = inject(PathService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
@@ -303,6 +305,7 @@ export class QuickAddRemoteComponent {
     ): Record<string, unknown> => {
       return mapFormToConfigProfile(type, opData, {
         remoteName,
+        pathStyle: this.pathService.enginePathStyle(),
       });
     };
 

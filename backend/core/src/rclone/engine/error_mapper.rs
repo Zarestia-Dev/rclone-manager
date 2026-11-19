@@ -19,13 +19,18 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
     // 1. Mount errors (Source: rclone/cmd/mountlib/, rclone/cmd/cmount/, rclone/cmd/mount/)
     // -------------------------------------------------------------------------
 
-    // rclone/cmd/mountlib/check_linux.go: "directory already mounted, use --allow-non-empty to mount anyway"
     // rclone/cmd/cmount/mountpoint_windows.go: "mountpoint path already exists"
+    if raw_lower.contains("mountpoint path already exists") {
+        return Some(crate::localized_error!(
+            "backendErrors.mount.windowsTargetAlreadyExists"
+        ));
+    }
+
+    // rclone/cmd/mountlib/check_linux.go: "directory already mounted, use --allow-non-empty to mount anyway"
     // rclone/cmd/mountlib/utils.go: "mount point ... and directory to be mounted ... mustn't overlap"
     // rclone/fs/fs.go: "can't sync or move files on overlapping remotes"
     if raw_lower.contains("directory already mounted")
         || raw_lower.contains("already mounted, use --allow-non-empty")
-        || raw_lower.contains("mountpoint path already exists")
         || raw_lower.contains("mustn't overlap")
         || raw_lower.contains("overlapping remotes")
         || raw_lower.contains("already mounted")
@@ -287,12 +292,13 @@ mod tests {
 
     #[test]
     fn test_mount_windows_path_already_exists() {
-        let err = "mountpoint path already exists: C:\\mount";
-        let mapped = map_rclone_error(err);
-        assert_eq!(
-            mapped,
-            Some("backendErrors.mount.directoryAlreadyMounted".to_string())
-        );
+        for target in [r"D:\test\test.txt", r"C:\mount", "X:"] {
+            let err = format!("failed to mount FUSE fs: mountpoint path already exists: {target}");
+            assert_eq!(
+                map_rclone_error(&err),
+                Some("backendErrors.mount.windowsTargetAlreadyExists".to_string())
+            );
+        }
     }
 
     #[test]
