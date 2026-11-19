@@ -30,6 +30,7 @@
             "core:window:allow-minimize",
             "core:window:allow-toggle-maximize",
             "core:window:allow-internal-toggle-maximize",
+            "core:webview:allow-set-webview-zoom",
             "notification:default",
             "clipboard-manager:allow-read-text",
             "clipboard-manager:allow-write-text",

@@ -499,6 +499,10 @@
         "label": "Sistem Uykusunu Engelle",
         "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistemin otomatik uykuya geçmesini engeller."
       },
+      "ui_scale": {
+        "label": "Arayüz Ölçeği",
+        "description": "Arayüzün boyutu, yüzde olarak. Örneğin KDE'de kesirli ekran ölçeklemesi kullanırken her şey çok büyük görünüyorsa düşürün."
+      },
       "keep_alive": {
         "label": "Arka Planda Çalıştır",
         "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et."

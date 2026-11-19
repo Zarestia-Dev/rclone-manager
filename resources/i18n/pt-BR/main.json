@@ -501,6 +501,10 @@
         "label": "Evitar suspensão do sistema",
         "description": "Evita a suspensão automática do sistema enquanto houver transferências, montagens ou servidores ativos."
       },
+      "ui_scale": {
+        "label": "Escala da interface",
+        "description": "Tamanho da interface, em porcentagem. Diminua se tudo parecer grande demais, por exemplo com escala fracionária de tela no KDE."
+      },
       "keep_alive": {
         "label": "Executar em segundo plano",
         "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
