@@ -15,15 +15,28 @@
   <!-- Main Content -->
   <mat-sidenav-content>
     <!-- Sidebar Toggle Button -->
-    <button matIconButton class="sidebar-button" (click)="sidenav.toggle()">
+    <button
+      matIconButton
+      class="sidebar-button"
+      (click)="sidenav.toggle()"
+      [attr.title]="'sidebar.toggleSidebar' | translate"
+      [attr.aria-label]="'sidebar.toggleSidebar' | translate"
+      [attr.aria-expanded]="isSidebarOpen()"
+    >
       <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
 
     <!-- Remote Options Menu -->
     @let remote = selectedRemote();
     @if (remote) {
-      <button matIconButton class="ellipsis-button" [cdkMenuTriggerFor]="remoteOptionsMenu">
-        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+      <button
+        matIconButton
+        class="ellipsis-button"
+        [cdkMenuTriggerFor]="remoteOptionsMenu"
+        [attr.title]="'common.moreActions' | translate"
+        [attr.aria-label]="'common.moreActions' | translate"
+      >
+        <mat-icon svgIcon="ellipsis-vertical" aria-hidden="true"></mat-icon>
       </button>
     }
 
