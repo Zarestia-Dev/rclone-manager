@@ -1,0 +1,69 @@
+.mount-card {
+  background: var(--window-bg-color);
+  box-shadow: var(--box-shadow);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+}
+
+.mount-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.mount-icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--tone-rgb), 0.12);
+  color: var(--tone);
+}
+
+.mount-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.mount-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.mount-remote-name {
+  min-width: 0;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--window-fg-color);
+}
+
+.mount-point {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-color);
+  cursor: pointer;
+}
+
+.mount-fs {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+}
+
+.mount-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-xxs);
+}

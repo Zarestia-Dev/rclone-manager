@@ -1137,14 +1137,16 @@
         "stop": "Bu sunumu durdur",
         "copyId": "Kimliği kopyalamak için tıkla"
       },
-      "messages": {
-        "noOptions": "Ek seçenek yok"
-      },
       "labels": {
         "id": "Kimlik:",
         "options": "Seçenekler:",
         "active": "aktif"
       }
+    },
+    "mountCard": {
+      "copyPath": "Bağlama noktasını kopyalamak için tıkla",
+      "open": "Dosya tarayıcısında aç",
+      "unmount": "Bu uzak bağlantının bağlantısını kes"
     },
     "vfsControl": {
       "title": "VFS Denetimi",
@@ -3262,6 +3264,7 @@
       "system": "Sistem Bilgisi",
       "jobs": "İş Bilgisi",
       "automations": "Otomasyonlar",
+      "mounts": "Bağlanan Uzak Bağlantılar",
       "serves": "Çalışan Sunumlar"
     },
     "layout": {
@@ -3346,6 +3349,14 @@
       },
       "noActive": "Aktif sunum yok",
       "noRunning": "Aktif çalışan sunum yok. Bir uzak bağlantıyı ağ protokolleri (HTTP, WebDAV, FTP veya SFTP) üzerinden erişilebilir kılmak için sunumu başlatın."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} aktif bağlama",
+        "other": "{{count}} aktif bağlama"
+      },
+      "noActive": "Aktif bağlama yok",
+      "noMounted": "Bağlanmış uzak bağlantı yok. Dosyalarını bilgisayarında bir klasör gibi kullanmak için bir uzak bağlantıyı bağla."
     }
   },
   "appOverview": {
@@ -4717,10 +4728,7 @@
     "noChangesDetected": "Bu şablondaki tüm ayarlar mevcut değerlerinizle zaten eşleşiyor.",
     "selectCategoriesToApply": "Kategoriler ve Ayarlar"
   },
-  "navigation": {
-    "dashboard": "Kontrol Paneli",
-    "files": "Dosyalar"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "İndiriliyor...",

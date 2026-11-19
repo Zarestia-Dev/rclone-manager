@@ -1,12 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  model,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, model } from '@angular/core';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -45,7 +37,6 @@ import { PillDirective } from '../../directives/pill.directive';
 })
 export class BandwidthOverviewPanelComponent {
   readonly expanded = model<boolean>(false);
-  readonly hideToggle = input<boolean>(false);
 
   private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);

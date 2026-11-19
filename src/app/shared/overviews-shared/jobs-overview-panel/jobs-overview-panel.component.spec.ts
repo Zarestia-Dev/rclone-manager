@@ -3,7 +3,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { JobsOverviewPanelComponent } from './jobs-overview-panel.component';
-import { DEFAULT_JOB_STATS, ExecutionScope, JobInfo, Origin } from '@app/types';
+import {
+  DEFAULT_JOB_STATS,
+  ExecutionScope,
+  JobInfo,
+  ORIGIN_META,
+  Origin,
+  getStarterOrigin,
+} from '@app/types';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
@@ -13,6 +20,7 @@ describe('JobsOverviewPanelComponent', () => {
   let fixture: ComponentFixture<JobsOverviewPanelComponent>;
   let mockModalService: { openJobDetail: ReturnType<typeof vi.fn> };
   const stopJob = vi.fn<JobManagementService['stopJob']>();
+  const jobs = signal<JobInfo[]>([]);
 
   const baseJob = {
     execute_id: 'execution',
@@ -52,8 +60,9 @@ describe('JobsOverviewPanelComponent', () => {
 
   beforeEach(async () => {
     stopJob.mockReset().mockResolvedValue(undefined);
+    jobs.set(mockJobs);
     const mockJobService = {
-      jobs: signal(mockJobs),
+      jobs,
       stopJob,
     };
     const mockStatusService = {
@@ -102,9 +111,13 @@ describe('JobsOverviewPanelComponent', () => {
     expect(component.runningJobs()[0].origin).toBe('dashboard');
   });
 
-  it.each<[ExecutionScope, Origin]>([
-    [{ origin: undefined }, 'dashboard'],
-    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, 'quickrun'],
+  it.each<[ExecutionScope, string[], Origin]>([
+    [{ origin: undefined }, ['dashboard'], 'dashboard'],
+    [
+      { origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } },
+      ['quickrun'],
+      'quickrun',
+    ],
     [
       {
         origin: 'automation',
@@ -116,6 +129,7 @@ describe('JobsOverviewPanelComponent', () => {
           ancestors: [],
         },
       },
+      ['workflow'],
       'workflow',
     ],
     [
@@ -128,30 +142,49 @@ describe('JobsOverviewPanelComponent', () => {
           workflow: { workflowId: 'wf', workflowName: 'Workflow', nodeId: 'node', ancestors: [] },
         },
       },
+      ['workflow'],
       'workflow',
     ],
-    [{ origin: 'workflow' }, 'workflow'],
-    [{ origin: 'filemanager' }, 'filemanager'],
-  ])('uses execution ownership for filtering and badges: %j', (scope, expected) => {
+    [{ origin: 'workflow' }, ['workflow'], 'workflow'],
+    // Work of a remote's own profiles, however it was started, is dashboard work.
+    [{ origin: 'startup' }, ['dashboard', 'startup'], 'startup'],
+    [{ origin: 'filemanager' }, ['dashboard', 'filemanager'], 'filemanager'],
+  ])('uses execution ownership for filtering and badges: %j', (scope, shownUnder, origin) => {
     const job: JobInfo = { ...mockJobs[0], ...scope };
-    fixture.componentRef.setInput('jobs', [job]);
-    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager']) {
+    jobs.set([job]);
+    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
       component.selectedOriginFilter.set(filter);
-      expect(component.runningJobs()).toEqual(filter === expected ? [job] : []);
+      expect(component.runningJobs()).toEqual(shownUnder.includes(filter) ? [job] : []);
     }
-    component.selectedOriginFilter.set(expected);
-    expect(component.runningJobViewModels()[0].originTone).toBe(component.getOriginTone(expected));
+    component.selectedOriginFilter.set('all');
+    // A Quick Run or a workflow is named by the job's starter pill, so its origin is not repeated.
+    const named = getStarterOrigin(job) !== undefined;
+    expect(component.runningJobViewModels()[0].origin).toEqual(named ? null : ORIGIN_META[origin]);
   });
 
-  it('returns correct origin labels and badge classes', () => {
-    expect(component.getOriginLabel('workflow')).toBe('Workflow');
-    expect(component.getOriginTone('workflow')).toBe('accent');
+  it('names the origin of a job that has no Quick Run or workflow starter', () => {
+    const [dashboardJob] = component
+      .runningJobViewModels()
+      .filter(vm => vm.job.origin === 'dashboard');
+    expect(dashboardJob.origin).toEqual({
+      labelKey: 'alerts.origins.dashboard',
+      icon: 'cloud',
+      tone: 'dim',
+    });
+  });
 
-    expect(component.getOriginLabel('quickrun')).toBe('Quick Run');
-    expect(component.getOriginTone('quickrun')).toBe('primary');
+  it('opens job detail on Enter pressed on the card, not on its stop button', () => {
+    fixture.detectChanges();
+    const card: HTMLElement = fixture.nativeElement.querySelector('.running-job-card');
+    const press = (target: HTMLElement): void => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    };
 
-    expect(component.getOriginLabel('dashboard')).toBe('Dashboard');
-    expect(component.getOriginTone('dashboard')).toBe('dim');
+    press(card.querySelector('.action-button') as HTMLElement);
+    expect(mockModalService.openJobDetail).not.toHaveBeenCalled();
+
+    press(card);
+    expect(mockModalService.openJobDetail).toHaveBeenCalledTimes(1);
   });
 
   it('opens job detail modal on job row click', () => {
@@ -173,7 +206,7 @@ describe('JobsOverviewPanelComponent', () => {
       origin: 'quickrun',
       starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' },
     };
-    fixture.componentRef.setInput('jobs', [first, selected]);
+    jobs.set([first, selected]);
     const event = new MouseEvent('click');
     const propagation = vi.spyOn(event, 'stopPropagation');
 
@@ -186,7 +219,7 @@ describe('JobsOverviewPanelComponent', () => {
 
   it('does not substitute another job if the selected execution is no longer listed', async () => {
     const selected: JobInfo = { ...mockJobs[0], jobid: 404 };
-    fixture.componentRef.setInput('jobs', [mockJobs[0]]);
+    jobs.set([mockJobs[0]]);
     await component.onStopJobClick(selected, new MouseEvent('click'));
     expect(stopJob).toHaveBeenCalledExactlyOnceWith(404, 'drive');
   });

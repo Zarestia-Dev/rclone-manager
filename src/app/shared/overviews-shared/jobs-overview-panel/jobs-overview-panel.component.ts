@@ -21,6 +21,9 @@ import {
   PillTone,
   JOB_ICON_MAP,
   getExecutionOrigin,
+  getStarterOrigin,
+  matchesOriginFilter,
+  ORIGIN_META,
 } from '@app/types';
 import {
   FormatEtaPipe,
@@ -43,8 +46,8 @@ export interface RunningJobViewModel {
   typeTone: PillTone;
   animationClass: string;
   label: string;
-  originLabel: string;
-  originTone: PillTone;
+  /** The origin to name next to the job; none when its Quick Run or workflow already names it. */
+  origin: { labelKey: string; tone: PillTone } | null;
   progressPercentage: number;
 }
 
@@ -73,10 +76,8 @@ export interface RunningJobViewModel {
 })
 export class JobsOverviewPanelComponent {
   readonly expanded = model<boolean>(false);
-  readonly hideToggle = input<boolean>(false);
 
-  readonly jobs = input<JobInfo[] | undefined>(undefined);
-  readonly defaultOriginFilter = input<Origin | Origin[] | 'all'>('all');
+  readonly defaultOriginFilter = input<Origin | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
 
   private readonly jobService = inject(JobManagementService);
@@ -84,22 +85,16 @@ export class JobsOverviewPanelComponent {
   private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
 
-  readonly selectedOriginFilter = linkedSignal<string>(() => {
-    const def = this.defaultOriginFilter();
-    if (typeof def === 'string') return def;
-    if (Array.isArray(def) && def.length > 0) return def[0];
-    return 'all';
-  });
+  readonly selectedOriginFilter = linkedSignal<string>(() => this.defaultOriginFilter());
 
-  readonly rawJobs = computed(() => this.jobs() ?? this.jobService.jobs());
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
   readonly runningJobs = computed(() => {
-    const all = this.rawJobs().filter(j => j.status === 'Running' && !j.parent_job_id);
     const filter = this.selectedOriginFilter();
-    if (filter === 'all') return all;
-    return all.filter(j => getExecutionOrigin(j) === filter);
+    return this.jobService
+      .jobs()
+      .filter(j => j.status === 'Running' && !j.parent_job_id && matchesOriginFilter(j, filter));
   });
 
   readonly activeJobsCount = computed(() => this.runningJobs().length);
@@ -135,8 +130,7 @@ export class JobsOverviewPanelComponent {
         typeTone: this.getJobTone(job),
         animationClass: this.getJobAnimationClass(job),
         label: this.getJobLabel(job),
-        originLabel: this.getOriginLabel(getExecutionOrigin(job)),
-        originTone: this.getOriginTone(getExecutionOrigin(job)),
+        origin: getStarterOrigin(job) ? null : ORIGIN_META[getExecutionOrigin(job)],
         progressPercentage,
       };
     })
@@ -159,48 +153,6 @@ export class JobsOverviewPanelComponent {
     const key = `dashboard.appDetail.${job.job_type}`;
     const translated = this.translate.instant(key);
     return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
-  }
-
-  getOriginLabel(origin?: Origin): string {
-    switch (origin) {
-      case 'workflow': {
-        const t = this.translate.instant('flow.tabs.workflow');
-        return t === 'flow.tabs.workflow' ? 'Workflow' : t;
-      }
-      case 'quickrun': {
-        const t = this.translate.instant('flow.tabs.quickRun');
-        return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
-      }
-      case 'dashboard': {
-        const t = this.translate.instant('navigation.dashboard');
-        return t === 'navigation.dashboard' ? 'Dashboard' : t;
-      }
-      case 'automation': {
-        const t = this.translate.instant('generalOverview.panels.automations');
-        return t === 'generalOverview.panels.automations' ? 'Automation' : t;
-      }
-      case 'filemanager': {
-        const t = this.translate.instant('navigation.files');
-        return t === 'navigation.files' ? 'Files' : t;
-      }
-      default:
-        return 'Manual';
-    }
-  }
-
-  getOriginTone(origin?: Origin): PillTone {
-    switch (origin) {
-      case 'workflow':
-        return 'accent';
-      case 'quickrun':
-        return 'primary';
-      case 'automation':
-        return 'orange';
-      case 'filemanager':
-        return 'accent';
-      default:
-        return 'dim';
-    }
   }
 
   onJobRowClick(job: JobInfo): void {

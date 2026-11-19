@@ -1137,14 +1137,16 @@
         "stop": "Arrêter ce partage",
         "copyId": "Cliquer pour copier l'ID"
       },
-      "messages": {
-        "noOptions": "Pas d'options supplémentaires"
-      },
       "labels": {
         "id": "ID:",
         "options": "Options :",
         "active": "actif"
       }
+    },
+    "mountCard": {
+      "copyPath": "Cliquer pour copier le point de montage",
+      "open": "Ouvrir dans l'explorateur de fichiers",
+      "unmount": "Démonter ce remote"
     },
     "vfsControl": {
       "title": "Contrôle VFS",
@@ -3221,6 +3223,7 @@
       "system": "Informations système",
       "jobs": "Informations du job",
       "automations": "Automatisations",
+      "mounts": "Remotes montés",
       "serves": "Services de partage en cours"
     },
     "layout": {
@@ -3305,6 +3308,14 @@
       },
       "noActive": "Aucun service de partage actif",
       "noRunning": "Aucun partage actif. Démarrez un service de partage pour rendre un dépôt accessible via HTTP, WebDAV, FTP ou SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} montage actif",
+        "other": "{{count}} montages actifs"
+      },
+      "noActive": "Aucun montage actif",
+      "noMounted": "Aucun remote n'est monté. Montez un remote pour utiliser ses fichiers comme un dossier sur votre ordinateur."
     }
   },
   "appOverview": {
@@ -4676,10 +4687,7 @@
     "noChangesDetected": "Tous les paramètres de ce modèle correspondent déjà à vos valeurs actuelles.",
     "selectCategoriesToApply": "Catégories et paramètres"
   },
-  "navigation": {
-    "dashboard": "Tableau de bord",
-    "files": "Fichiers"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Téléchargement...",

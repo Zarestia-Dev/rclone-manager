@@ -9,38 +9,32 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import {
   QuickRun,
-  DashboardPanel,
-  ALL_QUICK_RUN_PANELS,
-  SavedPanelLayout,
-  applyPanelLayout,
-  defaultPanels,
-  panelLayoutOf,
   ServeListItem,
   Automation,
   OpenInFilesEvent,
   profileOf,
+  QUICK_RUN_OVERVIEW_LAYOUT,
 } from '@app/types';
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
+import {
+  OverviewPanelDirective,
+  OverviewPanelsComponent,
+} from 'src/app/shared/overviews-shared/overview-panels/overview-panels.component';
 import { OverviewHeaderComponent } from 'src/app/shared/overviews-shared/overview-header/overview-header.component';
 import { BandwidthOverviewPanelComponent } from 'src/app/shared/overviews-shared/bandwidth-overview-panel/bandwidth-overview-panel.component';
 import { SystemOverviewPanelComponent } from 'src/app/shared/overviews-shared/system-overview-panel/system-overview-panel.component';
 import { JobsOverviewPanelComponent } from 'src/app/shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
+import { MountsOverviewPanelComponent } from 'src/app/shared/overviews-shared/mounts-overview-panel/mounts-overview-panel.component';
 import { ServesOverviewPanelComponent } from 'src/app/shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
 import { AutomationsOverviewPanelComponent } from 'src/app/shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
 import { QuickRunCardComponent } from '../quick-run-card/quick-run-card.component';
@@ -56,14 +50,14 @@ import { PillDirective } from '../../../shared/directives/pill.directive';
     MatIconModule,
     MatButtonModule,
     MatExpansionModule,
-    MatSlideToggleModule,
-    MatSnackBarModule,
-    DragDropModule,
+    OverviewPanelsComponent,
+    OverviewPanelDirective,
     TranslatePipe,
     OverviewHeaderComponent,
     BandwidthOverviewPanelComponent,
     SystemOverviewPanelComponent,
     JobsOverviewPanelComponent,
+    MountsOverviewPanelComponent,
     ServesOverviewPanelComponent,
     AutomationsOverviewPanelComponent,
     QuickRunCardComponent,
@@ -75,13 +69,8 @@ import { PillDirective } from '../../../shared/directives/pill.directive';
 })
 export class QuickRunOverviewComponent {
   private readonly quickRunService = inject(QuickRunService);
-  private readonly appSettingsService = inject(AppSettingsService);
-  private readonly localStorage = inject(LocalStorageService);
-  private readonly snackBar = inject(MatSnackBar);
-  private readonly translate = inject(TranslateService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
   private readonly pathService = inject(PathService);
-  private readonly uiStateService = inject(UiStateService);
   readonly iconService = inject(IconService);
 
   readonly remoteFacade = inject(RemoteFacadeService);
@@ -89,9 +78,10 @@ export class QuickRunOverviewComponent {
   readonly openRemoteDetail = output<string>();
   readonly openBackendModal = output<void>();
 
+  readonly layout = QUICK_RUN_OVERVIEW_LAYOUT;
+
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly runningIds = this.quickRunService.runningIds;
-  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview('quick_run'));
 
   readonly selectedRemoteFilter = signal<string | null>(null);
 
@@ -135,29 +125,8 @@ export class QuickRunOverviewComponent {
     return this.quickRuns().filter(qr => (qr.remoteName || 'local') === filter);
   });
 
-  readonly panelOpenStates = signal<Record<string, boolean>>(
-    this.localStorage.get<Record<string, boolean>>('flow.quickRun.panelOpenStates', {
-      quickRuns: true,
-      bandwidth: false,
-      system: false,
-      jobs: true,
-      serves: false,
-      automations: false,
-    })
-  );
-
-  readonly dashboardPanels = signal<DashboardPanel[]>(defaultPanels(ALL_QUICK_RUN_PANELS));
-
-  readonly displayPanels = computed(() =>
-    this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
-  );
-
   readonly totalCount = computed(() => this.quickRuns().length);
   readonly activeCount = computed(() => this.runningIds().size);
-
-  constructor() {
-    void this.loadLayoutSettings();
-  }
 
   setRemoteFilter(remoteName: string | null): void {
     this.selectedRemoteFilter.set(remoteName);
@@ -191,54 +160,6 @@ export class QuickRunOverviewComponent {
     this.quickRunService.openEditor(qr);
   }
 
-  // --- Layout management ---
-  toggleEditLayout(): void {
-    this.uiStateService.toggleLayoutEdit({
-      overviewId: 'quick_run',
-      hasViewToggle: false,
-      onReset: () => this.resetLayout(),
-    });
-  }
-
-  resetLayout(): void {
-    void this.appSettingsService.saveSetting('runtime', 'quick_run_layout', {
-      order: [],
-      hidden: [],
-    });
-    this.dashboardPanels.set(defaultPanels(ALL_QUICK_RUN_PANELS));
-    this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
-  }
-
-  drop(event: CdkDragDrop<DashboardPanel[]>): void {
-    this.dashboardPanels.update(panels => {
-      const updated = [...panels];
-      moveItemInArray(updated, event.previousIndex, event.currentIndex);
-      return updated;
-    });
-    this.persistLayout();
-  }
-
-  togglePanelVisibility(panelId: string): void {
-    this.dashboardPanels.update(panels =>
-      panels.map(p => (p.id === panelId ? { ...p, visible: !p.visible } : p))
-    );
-    this.persistLayout();
-  }
-
-  protected setPanelOpenState(id: string, isOpen: boolean): void {
-    const updated = { ...this.panelOpenStates(), [id]: isOpen };
-    this.panelOpenStates.set(updated);
-    this.localStorage.set('flow.quickRun.panelOpenStates', updated);
-  }
-
-  private persistLayout(): void {
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'quick_run_layout',
-      panelLayoutOf(this.dashboardPanels())
-    );
-  }
-
   // --- Smart Item Navigation Handlers ---
   handleServeClick(serve: ServeListItem): void {
     this.navigationDispatcher.navigateToServe(serve);
@@ -252,8 +173,9 @@ export class QuickRunOverviewComponent {
   }
 
   handleAutomationClick(automation: Automation): void {
-    // A workflow has no remote to show; it opens in the workflow builder.
-    if (automation.args?.source === 'workflow') {
+    // A workflow or a Quick Run owns its automation and opens it; a profile's belongs to its remote.
+    const source = automation.args?.source;
+    if (source === 'workflow' || source === 'quickrun') {
       this.navigationDispatcher.navigateToAutomation(automation);
     } else if (automation.remoteName) {
       this.openRemoteDetail.emit(automation.remoteName);
@@ -272,20 +194,5 @@ export class QuickRunOverviewComponent {
         event.operationType
       );
     }
-  }
-
-  private async loadLayoutSettings(): Promise<void> {
-    try {
-      const saved = await this.appSettingsService.getSettingValue<SavedPanelLayout>(
-        'runtime.quick_run_layout'
-      );
-      this.dashboardPanels.set(applyPanelLayout(ALL_QUICK_RUN_PANELS, saved));
-    } catch {
-      console.debug('Failed to load Quick Run layout settings, using defaults');
-    }
-  }
-
-  private showSnackbar(message: string, duration = 2000): void {
-    this.snackBar.open(message, this.translate.instant('common.close'), { duration });
   }
 }

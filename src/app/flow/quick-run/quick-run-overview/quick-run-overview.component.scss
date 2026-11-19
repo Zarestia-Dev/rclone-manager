@@ -77,9 +77,6 @@
   }
 }
 
-/* Drag & Drop Layout Editor */
-@include draggable-panel-layout-editor;
-
 @media (max-width: 768px) {
   :host {
     padding: var(--panel-padding-mobile);

@@ -1129,14 +1129,16 @@
         "stop": "この公開サーバーを停止",
         "copyId": "クリックしてIDをコピー"
       },
-      "messages": {
-        "noOptions": "追加オプションなし"
-      },
       "labels": {
         "id": "ID:",
         "options": "オプション:",
         "active": "アクティブ"
       }
+    },
+    "mountCard": {
+      "copyPath": "クリックしてマウントポイントをコピー",
+      "open": "ファイルブラウザーで開く",
+      "unmount": "このリモートをアンマウント"
     },
     "vfsControl": {
       "title": "VFSコントロール",
@@ -3179,6 +3181,7 @@
       "system": "システム情報",
       "jobs": "ジョブ情報",
       "automations": "自動化",
+      "mounts": "マウント中のリモート",
       "serves": "実行中の公開サーバー"
     },
     "layout": {
@@ -3261,6 +3264,13 @@
       },
       "noActive": "実行中の公開サーバーはありません",
       "noRunning": "実行中の公開サーバーはありません。リモートの公開を開始すると、HTTP, WebDAV, FTP, SFTP などのネットワークプロトコル経由でアクセス可能になります。"
+    },
+    "mounts": {
+      "activeCount": {
+        "other": "{{count}} 件のアクティブなマウント"
+      },
+      "noActive": "アクティブなマウントはありません",
+      "noMounted": "マウントされているリモートはありません。リモートをマウントすると、そのファイルをコンピューター上のフォルダーとして使えます。"
     }
   },
   "appOverview": {
@@ -4630,10 +4640,7 @@
     "noChangesDetected": "このテンプレートのすべての設定は既に現在の値と一致しています。",
     "selectCategoriesToApply": "カテゴリーと設定"
   },
-  "navigation": {
-    "dashboard": "ダッシュボード",
-    "files": "ファイル"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "ダウンロード中...",

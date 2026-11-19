@@ -1145,14 +1145,16 @@
         "stop": "Zastaviť tento server",
         "copyId": "Kliknutím skopírujete ID"
       },
-      "messages": {
-        "noOptions": "Žiadne ďalšie možnosti"
-      },
       "labels": {
         "id": "ID:",
         "options": "Možnosti:",
         "active": "aktívne"
       }
+    },
+    "mountCard": {
+      "copyPath": "Kliknutím skopírujete prípojný bod",
+      "open": "Otvoriť v prehliadači súborov",
+      "unmount": "Odpojiť toto úložisko"
     },
     "vfsControl": {
       "title": "Ovládanie VFS",
@@ -3304,6 +3306,7 @@
       "system": "Informácie o systéme",
       "jobs": "Informácie o úlohe",
       "automations": "Automatizácie",
+      "mounts": "Pripojené úložiská",
       "serves": "Bežiace servery"
     },
     "layout": {
@@ -3390,6 +3393,15 @@
       },
       "noActive": "Žiadne aktívne servery",
       "noRunning": "Nebežia žiadne aktívne servery. Spustením servera sprístupníte vzdialené úložisko cez sieťové protokoly ako HTTP, WebDAV, FTP alebo SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} aktívne pripojenie",
+        "few": "{{count}} aktívne pripojenia",
+        "other": "{{count}} aktívnych pripojení"
+      },
+      "noActive": "Žiadne aktívne pripojenia",
+      "noMounted": "Nie je pripojené žiadne úložisko. Pripojte úložisko a používajte jeho súbory ako priečinok v počítači."
     }
   },
   "appOverview": {
@@ -4763,10 +4775,7 @@
     "noChangesDetected": "Všetky nastavenia v tejto šablóne sa už zhodujú s vašimi aktuálnymi hodnotami.",
     "selectCategoriesToApply": "Kategórie a nastavenia"
   },
-  "navigation": {
-    "dashboard": "Prehľad",
-    "files": "Súbory"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Sťahuje sa...",

@@ -1,0 +1,7 @@
+@use "../../../styles/mixins" as *;
+
+:host {
+  display: block;
+}
+
+@include draggable-panel-layout-editor;

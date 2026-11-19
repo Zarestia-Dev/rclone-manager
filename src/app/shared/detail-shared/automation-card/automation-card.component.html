@@ -51,20 +51,17 @@
         <div class="automation-title-section">
           <div class="automation-title-row">
             <span class="automation-name truncate">{{ auto.profileName }}</span>
-            <span
-              class="origin-mini-badge"
-              [class.quickrun]="origin().key === 'quickrun'"
-              [class.workflow]="origin().key === 'workflow'"
-              [attr.title]="origin().label | translate"
-            >
-              <mat-icon [svgIcon]="origin().icon" class="origin-mini-icon"></mat-icon>
-            </span>
+            <mat-icon
+              [svgIcon]="origin().icon"
+              [attr.data-tone]="origin().tone"
+              [attr.title]="origin().labelKey | translate"
+            ></mat-icon>
           </div>
           <span class="automation-subtitle truncate">
             @if (typeLabelKey(); as typeKey) {
               {{ auto.remoteName }} · {{ typeKey | translate }}
             } @else {
-              {{ origin().label | translate }}
+              {{ origin().labelKey | translate }}
             }
             @if (auto.watchEnabled) {
               ·
@@ -85,7 +82,12 @@
       </div>
 
       <div class="automation-header-end">
-        <span appPill size="xs" [tone]="statusPill()">
+        <span
+          appPill
+          size="xs"
+          [tone]="statusPill()"
+          [attr.title]="auto.status === 'failed' ? auto.lastError : null"
+        >
           {{ 'automation.status.' + auto.status | translate }}
         </span>
         <ng-container *ngTemplateOutlet="actions" />
@@ -133,7 +135,7 @@
           <div class="title-heading-row">
             <h4 class="truncate">{{ auto.profileName }} · {{ auto.backendName }}</h4>
             <span appPill size="xs" [tone]="origin().tone">
-              {{ origin().label | translate }}
+              {{ origin().labelKey | translate }}
             </span>
           </div>
           @if (typeLabelKey(); as typeKey) {

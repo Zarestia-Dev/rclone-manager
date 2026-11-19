@@ -16,8 +16,8 @@
         role="button"
         tabindex="0"
         (click)="showJobDetails(job)"
-        (keydown.enter)="showJobDetails(job)"
-        (keydown.space)="$event.preventDefault(); showJobDetails(job)"
+        (keydown.enter)="onRowKey($event, job)"
+        (keydown.space)="onRowKey($event, job)"
       >
         <div class="card-header">
           <div class="card-info-left">
@@ -27,7 +27,7 @@
               [class]="job.iconClass"
             ></mat-icon>
             <span class="card-title-text truncate">
-              {{ job.job_type | titlecase }}
+              {{ job.typeLabel }}
             </span>
             <span
               class="job-id-label"

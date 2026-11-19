@@ -1,0 +1,64 @@
+<mat-accordion
+  multi
+  cdkDropList
+  [cdkDropListDisabled]="!isEditing()"
+  [cdkDropListData]="panels()"
+  (cdkDropListDropped)="drop($event)"
+>
+  @for (panel of displayPanels(); track panel.id) {
+    <div
+      cdkDrag
+      [cdkDragData]="panel"
+      [cdkDragDisabled]="!isEditing()"
+      class="draggable-panel-wrapper"
+      [class.editing]="isEditing()"
+    >
+      <div class="custom-placeholder" *cdkDragPlaceholder></div>
+
+      @if (isEditing()) {
+        <div
+          class="panel-edit-controls"
+          cdkDragHandle
+          animate.enter="expand-height-enter"
+          animate.leave="expand-height-leave"
+        >
+          <mat-icon svgIcon="drag-indicator"></mat-icon>
+          <span class="panel-label">{{ panel.title | translate }}</span>
+
+          @if (panel.resettable) {
+            <button
+              matIconButton
+              class="card-layout-toggle"
+              (click)="panelReset.emit(panel.id)"
+              [attr.title]="'common.reset' | translate"
+            >
+              <mat-icon svgIcon="rotate-right"></mat-icon>
+            </button>
+          }
+          <div class="visibility-toggle">
+            <span class="toggle-label">{{
+              panel.visible
+                ? ('generalOverview.layout.visible' | translate)
+                : ('generalOverview.layout.hidden' | translate)
+            }}</span>
+            <mat-slide-toggle
+              [checked]="panel.visible"
+              (change)="togglePanelVisibility(panel.id)"
+              data-tone="primary"
+            >
+            </mat-slide-toggle>
+          </div>
+        </div>
+      }
+
+      <div
+        [class.panel-hidden-visual]="isEditing() && !panel.visible"
+        class="panel-content-wrapper"
+      >
+        @if (templateOf(panel.id); as template) {
+          <ng-container *ngTemplateOutlet="template; context: contexts()[panel.id]" />
+        }
+      </div>
+    </div>
+  }
+</mat-accordion>

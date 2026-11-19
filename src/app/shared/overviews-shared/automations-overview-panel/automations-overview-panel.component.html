@@ -6,7 +6,6 @@
   [expanded]="expanded()"
   (opened)="expanded.set(true)"
   (closed)="expanded.set(false)"
-  [hideToggle]="hideToggle()"
   class="automations-panel"
 >
   <mat-expansion-panel-header>
@@ -46,7 +45,6 @@
           [automation]="automation"
           variant="compact"
           (click)="onAutomationCardClick(automation)"
-          (openInFiles)="onOpenInFiles($event)"
         ></app-automation-card>
       }
     </div>

@@ -24,7 +24,6 @@ import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance
 })
 export class SystemOverviewPanelComponent {
   readonly expanded = model<boolean>(false);
-  readonly hideToggle = input<boolean>(false);
 
   readonly totalCount = input<number | undefined>(undefined);
   readonly totalCountLabelKey = input<string>('generalOverview.system.totalRemotes');

@@ -8,34 +8,16 @@
   >
     <span>{{ 'common.all' | translate }}</span>
   </button>
-  <button
-    type="button"
-    appPill
-    [selected]="selected() === 'workflow'"
-    (click)="selected.set('workflow')"
-    [attr.title]="'flow.tabs.workflow' | translate"
-  >
-    <mat-icon svgIcon="workflow"></mat-icon>
-    <span>{{ 'flow.tabs.workflow' | translate }}</span>
-  </button>
-  <button
-    type="button"
-    appPill
-    [selected]="selected() === 'quickrun'"
-    (click)="selected.set('quickrun')"
-    [attr.title]="'flow.tabs.quickRun' | translate"
-  >
-    <mat-icon svgIcon="quick-run"></mat-icon>
-    <span>{{ 'flow.tabs.quickRun' | translate }}</span>
-  </button>
-  <button
-    type="button"
-    appPill
-    [selected]="selected() === 'dashboard'"
-    (click)="selected.set('dashboard')"
-    [attr.title]="'navigation.dashboard' | translate"
-  >
-    <mat-icon svgIcon="cloud"></mat-icon>
-    <span>{{ 'navigation.dashboard' | translate }}</span>
-  </button>
+  @for (chip of chips; track chip.origin) {
+    <button
+      type="button"
+      appPill
+      [selected]="selected() === chip.origin"
+      (click)="selected.set(chip.origin)"
+      [attr.title]="chip.labelKey | translate"
+    >
+      <mat-icon [svgIcon]="chip.icon"></mat-icon>
+      <span>{{ chip.labelKey | translate }}</span>
+    </button>
+  }
 </div>

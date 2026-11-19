@@ -1129,14 +1129,16 @@
         "stop": "停止此服務",
         "copyId": "點選複製 ID"
       },
-      "messages": {
-        "noOptions": "無額外選項"
-      },
       "labels": {
         "id": "ID：",
         "options": "選項：",
         "active": "執行中"
       }
+    },
+    "mountCard": {
+      "copyPath": "點擊複製掛載點",
+      "open": "在檔案瀏覽器中開啟",
+      "unmount": "卸載此遠端"
     },
     "vfsControl": {
       "title": "VFS 控制",
@@ -3220,6 +3222,7 @@
       "system": "系統資訊",
       "jobs": "任務資訊",
       "automations": "自動化",
+      "mounts": "已掛載的遠端",
       "serves": "執行中的服務"
     },
     "layout": {
@@ -3302,6 +3305,13 @@
       },
       "noActive": "暫無活動服務",
       "noRunning": "暫無執行中的服務。啟動一個遠端連線服務，即可透過 HTTP、WebDAV、FTP 或 SFTP 訪問。"
+    },
+    "mounts": {
+      "activeCount": {
+        "other": "{{count}} 個運作中的掛載"
+      },
+      "noActive": "暫無運作中的掛載",
+      "noMounted": "沒有已掛載的遠端。掛載遠端後，即可把它的檔案當作電腦上的資料夾使用。"
     }
   },
   "appOverview": {
@@ -4671,10 +4681,7 @@
     "noChangesDetected": "該模板中的所有設定已與目前值完全一致。",
     "selectCategoriesToApply": "分類與設定"
   },
-  "navigation": {
-    "dashboard": "儀錶板",
-    "files": "檔案"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "正在下載...",

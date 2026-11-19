@@ -3,6 +3,7 @@ import {
   getExecutionOrigin,
   getStarterOrigin,
   isProfileScoped,
+  matchesOriginFilter,
   ExecutionScope,
   Origin,
 } from './origin';
@@ -93,5 +94,39 @@ describe('getStarterOrigin', () => {
     expect(getExecutionOrigin({ origin: 'dashboard', starter: { kind: 'workflow', ...run } })).toBe(
       'workflow'
     );
+  });
+});
+
+describe('matchesOriginFilter', () => {
+  const quickRun: ExecutionScope = {
+    origin: 'dashboard',
+    starter: { kind: 'quick_run', id: 'qr', name: 'qr' },
+  };
+  const workflow: ExecutionScope = { origin: 'workflow' };
+
+  it('keeps everything under "all"', () => {
+    for (const item of [{}, quickRun, workflow, { origin: 'startup' }] as ExecutionScope[]) {
+      expect(matchesOriginFilter(item, 'all')).toBe(true);
+    }
+  });
+
+  it.each<Origin | undefined>([undefined, 'dashboard', 'automation', 'filemanager', 'startup'])(
+    'counts work of origin %s as dashboard: a remote profile owns it',
+    origin => {
+      expect(matchesOriginFilter({ origin }, 'dashboard')).toBe(true);
+    }
+  );
+
+  it('keeps Quick Run and workflow work out of dashboard, and under its own chip', () => {
+    expect(matchesOriginFilter(quickRun, 'dashboard')).toBe(false);
+    expect(matchesOriginFilter(workflow, 'dashboard')).toBe(false);
+    expect(matchesOriginFilter(quickRun, 'quickrun')).toBe(true);
+    expect(matchesOriginFilter(workflow, 'workflow')).toBe(true);
+    expect(matchesOriginFilter(quickRun, 'workflow')).toBe(false);
+  });
+
+  it('matches any other chip by the origin itself', () => {
+    expect(matchesOriginFilter({ origin: 'filemanager' }, 'filemanager')).toBe(true);
+    expect(matchesOriginFilter({ origin: 'filemanager' }, 'startup')).toBe(false);
   });
 });

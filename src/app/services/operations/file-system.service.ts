@@ -162,12 +162,15 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
-   * Open a path in the system file manager
+   * Open a path in the system file manager, or in our file browser when the path is not on this
+   * computer (headless, remote engine).
    */
   async openInFiles(path: string): Promise<void> {
     if (!path) return;
 
-    if (!this.isTauri) {
+    // A path on the web server or on a remote engine does not exist on this computer, so the
+    // system file manager cannot open it: our file browser reads it through the engine.
+    if (!this.isTauri || this.backendService.activeBackend() !== 'Local') {
       const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }

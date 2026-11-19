@@ -33,11 +33,11 @@ import {
   OPERATION_META,
   OpenInFilesEvent,
   isOperationActionInProgress,
+  matchesOriginFilter,
 } from '@app/types';
 import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
 import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
-import { matchesOriginFilter } from '../../../../shared/utils/automation-origin.util';
 import { OriginFilterBarComponent } from '../../../../shared/overviews-shared/origin-filter-bar/origin-filter-bar.component';
 import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -178,7 +178,9 @@ export class GeneralDetailComponent {
 
   readonly remoteAutomations = computed(() => {
     const filter = this.automationOriginFilter();
-    return this.scopedAutomations().filter(automation => matchesOriginFilter(automation, filter));
+    return this.scopedAutomations().filter(automation =>
+      matchesOriginFilter({ origin: automation.args?.source }, filter)
+    );
   });
 
   readonly hasAutomations = computed(() => this.scopedAutomations().length > 0);

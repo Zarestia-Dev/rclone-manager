@@ -113,6 +113,15 @@ describe('AutomationCardComponent', () => {
     expect(workflow.querySelector('.running-section')).toBeNull();
   });
 
+  it('tells why a compact card failed when the status is hovered', () => {
+    const pill = (overrides: Partial<Automation>): Element | null =>
+      render(overrides, 'compact').querySelector('.automation-header-end .app-pill');
+    expect(pill({ status: 'failed', lastError: 'remote unreachable' })?.getAttribute('title')).toBe(
+      'remote unreachable'
+    );
+    expect(pill({ status: 'enabled', lastError: 'old error' })?.getAttribute('title')).toBeNull();
+  });
+
   it('offers Run only when it can start and Stop only while running', () => {
     for (const [status, run, stop] of [
       ['enabled', true, false],
