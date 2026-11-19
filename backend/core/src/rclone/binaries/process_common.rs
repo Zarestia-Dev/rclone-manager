@@ -182,14 +182,25 @@ pub async fn build_rclone_process_command(
 
     append_user_flags_from_app(app, &mut args)?;
 
+    command.args(args);
+    let mut command = apply_rclone_environment(app, command).await?;
+
+    // After the user's own RCLONE_* variables, so the generated credentials still win,
+    // as they did when they were flags.
     if let (Some(user), Some(pass)) = (&backend.username, &backend.password) {
         debug!("Starting rclone with authentication");
-        args.push(format!("--rc-user={user}"));
-        args.push(format!("--rc-pass={pass}"));
+        apply_rc_auth(&mut command, user, pass);
     }
+    Ok(command)
+}
 
-    command.args(args);
-    apply_rclone_environment(app, command).await
+/// Gives rcd its RC credentials through the environment. Any local user can read a
+/// process's command line (`/proc/<pid>/cmdline`, `ps`), while its environment is readable
+/// only by its owner and root, so `--rc-user`/`--rc-pass` would expose them
+/// (GHSA-5q5w-3j5f-v425). rclone reads every flag from `RCLONE_<FLAG>` as well.
+fn apply_rc_auth(command: &mut tokio::process::Command, user: &str, pass: &str) {
+    command.env("RCLONE_RC_USER", user);
+    command.env("RCLONE_RC_PASS", pass);
 }
 
 /// Send a quit request and wait for the process to exit, force-killing after the timeout.
@@ -224,5 +235,57 @@ pub async fn graceful_shutdown(
             let _ = child.wait().await;
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{apply_rc_auth, build_rclone_base_args};
+    use std::ffi::OsStr;
+
+    fn env<'a>(command: &'a tokio::process::Command, key: &str) -> Option<&'a OsStr> {
+        command
+            .as_std()
+            .get_envs()
+            .find(|(k, _)| *k == OsStr::new(key))
+            .and_then(|(_, v)| v)
+    }
+
+    #[test]
+    fn rc_credentials_stay_out_of_the_command_line() {
+        let mut command = tokio::process::Command::new("rclone");
+        command.args(build_rclone_base_args("127.0.0.1", 51900));
+        apply_rc_auth(&mut command, "user_1a2b3c4d", "s3cr3t-pass");
+
+        for arg in command.as_std().get_args() {
+            let arg = arg.to_string_lossy();
+            assert!(!arg.contains("s3cr3t-pass"), "password in argument {arg}");
+            assert!(!arg.starts_with("--rc-user") && !arg.starts_with("--rc-pass"));
+        }
+        assert_eq!(
+            env(&command, "RCLONE_RC_USER"),
+            Some(OsStr::new("user_1a2b3c4d"))
+        );
+        assert_eq!(
+            env(&command, "RCLONE_RC_PASS"),
+            Some(OsStr::new("s3cr3t-pass"))
+        );
+    }
+
+    #[test]
+    fn generated_credentials_override_user_environment() {
+        let mut command = tokio::process::Command::new("rclone");
+        command.env("RCLONE_RC_USER", "from-user-settings");
+        command.env("RCLONE_RC_PASS", "from-user-settings");
+        apply_rc_auth(&mut command, "generated", "generated-pass");
+
+        assert_eq!(
+            env(&command, "RCLONE_RC_USER"),
+            Some(OsStr::new("generated"))
+        );
+        assert_eq!(
+            env(&command, "RCLONE_RC_PASS"),
+            Some(OsStr::new("generated-pass"))
+        );
     }
 }
