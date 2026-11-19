@@ -907,7 +907,8 @@ mod tests {
     #[tokio::test]
     async fn a_panicking_node_fails_its_step_instead_of_hanging_the_run() {
         let failing = async {
-            let missing: Option<u8> = None;
+            // black_box keeps the panic from being known at compile time.
+            let missing: Option<u8> = std::hint::black_box(None);
             missing.expect("boom");
             Ok(NodeExecutionOutput::new(json!({})))
         };

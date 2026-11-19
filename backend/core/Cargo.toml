@@ -33,7 +33,6 @@ rustls-native-certs = "0.8"
 rustls = { workspace = true }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
 sys-locale = "0.3"
-dirs = { workspace = true }
 
 # rcman - Rust Config Manager library
 rcman = { workspace = true, features = ["json", "backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
