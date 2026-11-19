@@ -83,6 +83,13 @@ pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 /// - Handled by: `WindowService`
 pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 
+/// Emitted on Linux desktops when GTK's `gtk-decoration-layout` (the title bar button
+/// layout) changes, with the new layout string or null. Desktop only: headless has no
+/// window buttons, so it is not in `SSE_FORWARD_EVENTS`.
+/// - Emitted by: `native::window` (XDG settings portal watcher, started by `get_window_button_layout`)
+/// - Handled by: `WindowService`
+pub const WINDOW_BUTTON_LAYOUT_CHANGED: &str = "window_button_layout_changed";
+
 /// Emitted when a background job starts, completes, fails, stops, or is removed (lifecycle change).
 /// - Emitted by: `rclone::state::job`
 /// - Handled by: `services::event_listener` (tray update & workflow engine), `JobManagementService`

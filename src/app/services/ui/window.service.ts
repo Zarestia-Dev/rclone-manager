@@ -96,12 +96,25 @@ export class WindowService extends TauriBaseService {
       });
   }
 
-  /** On Linux, follow the desktop's button layout (for example GNOME's default close-only). */
+  /**
+   * On Linux, follow the desktop's button layout (for example GNOME's default close-only),
+   * including later changes, which apply without a reload.
+   */
   private async loadButtonLayout(): Promise<void> {
     try {
       if (platform() !== 'linux') return;
+      // Subscribe first, so a change made while the first read is pending is not lost, and
+      // a change that arrives before that read returns wins over the older value.
+      let changed = false;
+      this.eventListeners
+        .listenToWindowButtonLayoutChanged()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(layout => {
+          changed = true;
+          this._buttonLayout.set(parseWindowButtonLayout(layout));
+        });
       const layout = await this.invokeCommand<string | null>('get_window_button_layout');
-      this._buttonLayout.set(parseWindowButtonLayout(layout));
+      if (!changed) this._buttonLayout.set(parseWindowButtonLayout(layout));
     } catch (error) {
       console.error('Failed to read the window button layout:', error);
     }
