@@ -6,11 +6,13 @@ import { take } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
+import { CoveringOverlayService } from './covering-overlay.service';
 
 @Injectable()
 export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
   private readonly vault = inject(VaultService);
   protected readonly overlay = inject(Overlay);
+  private readonly covering = inject(CoveringOverlayService);
 
   protected overlayRef: OverlayRef | null = null;
   protected componentRef: ComponentRef<T> | null = null;
@@ -65,6 +67,7 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
         .subscribe(() => this.closeOverlay());
 
       this.componentRef = componentRef;
+      this.covering.cover(overlayRef, host);
     } catch (error) {
       overlayRef.dispose();
       if (this.overlayRef === overlayRef) {
@@ -82,6 +85,7 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
 
     const overlayRefToDispose = this.overlayRef;
     const componentRefToAnimate = this.componentRef;
+    this.covering.uncover(overlayRefToDispose);
     this.overlayRef = null;
     this.componentRef = null;
 
