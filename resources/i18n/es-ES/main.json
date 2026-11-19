@@ -59,7 +59,10 @@
       "nonEmpty": "El directorio tiene archivos",
       "colliding": "En uso por {{details}}",
       "willCreate": "La carpeta se creará después de la creación del remoto.",
-      "checking": "Comprobando ruta..."
+      "checking": "Comprobando ruta...",
+      "notDirectory": "La ruta apunta a un archivo. Elige una carpeta.",
+      "notDirectoryWindowsMount": "La ruta apunta a un archivo. Elige una letra de unidad libre o introduce la ruta de una carpeta nueva.",
+      "unavailable": "No se pudo comprobar la ruta. Comprueba que esté bien escrita y que puedas acceder a la ubicación."
     }
   },
   "validators": {
@@ -497,6 +500,10 @@
       "prevent_sleep": {
         "label": "Evitar suspensión del sistema",
         "description": "Evita la suspensión automática del sistema mientras haya transferencias, montajes o servidores activos."
+      },
+      "ui_scale": {
+        "label": "Escala de la interfaz",
+        "description": "Tamaño de la interfaz, en porcentaje. Redúcelo si todo se ve demasiado grande, por ejemplo con el escalado fraccionario de pantalla en KDE."
       },
       "keep_alive": {
         "label": "Ejecutar en segundo plano",
@@ -1130,14 +1137,16 @@
         "stop": "Detener este servicio",
         "copyId": "Haga clic para copiar el ID"
       },
-      "messages": {
-        "noOptions": "Sin opciones adicionales"
-      },
       "labels": {
         "id": "ID:",
         "options": "Opciones:",
         "active": "activo"
       }
+    },
+    "mountCard": {
+      "copyPath": "Haz clic para copiar el punto de montaje",
+      "open": "Abrir en el explorador de archivos",
+      "unmount": "Desmontar este remoto"
     },
     "vfsControl": {
       "title": "Control VFS",
@@ -1392,6 +1401,8 @@
       "remoteType": "Tipo remoto",
       "noMatchingTypes": "No hay tipos remotos coincidentes",
       "loadingOptions": "Cargando opciones de configuración...",
+      "advancedSettingsCount": "Configuración avanzada ({{count}})",
+      "defaultMountMethod": "Automático (predeterminado)",
       "fields": "Campos",
       "switchToForm": "Cambiar a modo formulario",
       "switchToJson": "Cambiar a modo JSON",
@@ -1499,6 +1510,37 @@
       }
     },
     "appOperation": {
+      "mountLocation": "Montar como",
+      "mountFolder": "Carpeta",
+      "mountAutomaticDrive": "Automático",
+      "mountDriveType": "Mostrar como",
+      "mountWindowsAppearance": "Apariencia en Windows",
+      "mountDiskName": "Nombre del disco (opcional)",
+      "mountNetworkName": "Nombre de red (opcional)",
+      "mountAutomaticName": "Nombre automático",
+      "mountLocalDriveHint": "El disco local es la opción habitual. Prueba la unidad de red si algún programa tiene problemas.",
+      "mountNetworkDriveHint": "Windows muestra el disco como unidad de red. El almacenamiento sigue siendo el mismo.",
+      "mountDriveTarget": "Unidad",
+      "mountFolderPathRequired": "Introduce la ruta completa de una subcarpeta nueva.",
+      "mountFolderQuotesRemoved": "Se quitaron las comillas de la ruta.",
+      "mountFolderSubfolderAdded": "Se añadió un nombre de subcarpeta a la ruta.",
+      "mountFolderNameHint": "Para cambiar el nombre de la carpeta, edita la última parte de la ruta. La carpeta se crea al montar.",
+      "mountLocalDrive": "Disco local",
+      "mountNetworkDrive": "Unidad de red",
+      "mountDriveOccupied": "En uso",
+      "mountDriveCurrent": "Actual",
+      "mountDriveChecking": "Comprobando las letras de unidad…",
+      "mountUseParent": "Usar como carpeta principal",
+      "mountDriveSuggestion": "Unidad sugerida: {{letter}} · Elige una letra de la lista para usarla siempre.",
+      "mountAutomaticDriveHint": "Se elige una letra de unidad libre al montar.",
+      "mountDriveReserved": "Reservada por otro perfil",
+      "mountDriveConflict": "La unidad {{letter}} está en uso o reservada. Elige otra letra.",
+      "mountDriveLetter": "Letra de unidad",
+      "mountParentFolder": "Elegir carpeta principal",
+      "mountFolderHint": "El montaje en una carpeta usa un disco local. Elige la carpeta principal y un nombre de carpeta que aún no exista.",
+      "mountDriveLettersUnavailable": "No se pudieron verificar las letras de unidad. Inténtalo de nuevo.",
+      "mountFolderLocalDrive": "Elige una carpeta en una unidad local.",
+      "mountFolderAlreadyExists": "La carpeta de montaje ya existe. Usa un nombre nuevo.",
       "multiSourceOneWayInfo": "Se detectaron múltiples rutas de origen. La verificación unidireccional se ha habilitado automáticamente para garantizar que rclone verifique cada origen contra el destino.",
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
       "autoStartDelay": "Retraso de inicio",
@@ -3222,6 +3264,7 @@
       "system": "Información del sistema",
       "jobs": "Información de trabajos",
       "automations": "Automatizaciones",
+      "mounts": "Remotos montados",
       "serves": "Servicios en ejecución"
     },
     "layout": {
@@ -3306,6 +3349,14 @@
       },
       "noActive": "No hay servicios activos",
       "noRunning": "No hay servicios activos en ejecución. Inicie un servicio para que el remoto sea accesible mediante protocolos de red como HTTP, WebDAV, FTP o SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} montaje activo",
+        "other": "{{count}} montajes activos"
+      },
+      "noActive": "No hay montajes activos",
+      "noMounted": "No hay ningún remoto montado. Monta un remoto para usar sus archivos como una carpeta en tu equipo."
     }
   },
   "appOverview": {
@@ -3411,10 +3462,12 @@
       "alreadyInUse": "El punto de montaje {{mountPoint}} ya está en uso por el remoto {{remote}}",
       "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'",
       "directoryAlreadyMounted": "El directorio de montaje ya está en uso. Seleccione una carpeta vacía o active '--allow-non-empty' en la configuración del perfil.",
+      "windowsTargetAlreadyExists": "El destino del montaje ya existe. Elige una letra de unidad libre o introduce la ruta de una carpeta que aún no exista.",
       "directoryNotEmpty": "La carpeta seleccionada no está vacía. Elija una carpeta vacía o active '--allow-non-empty'.",
       "winfspMissing": "WinFsp no está instalado. Instale WinFsp para montar unidades virtuales en Windows.",
       "fuseMissing": "FUSE (fuse3) no está instalado en el sistema. Instale fuse3 para habilitar el montaje.",
       "macfuseMissing": "macFUSE / FUSE-T no está instalado. Instale macFUSE para habilitar el montaje en macOS.",
+      "noFreeDriveLetter": "No hay letras de unidad libres para el montaje automático. Libera una letra o selecciona una carpeta.",
       "driveLetterInUse": "La letra de unidad seleccionada ya está en uso por el sistema.",
       "permissionDenied": "Permiso denegado al intentar montar.",
       "deviceBusy": "El punto de montaje o dispositivo de destino está ocupado. Cierre los archivos abiertos, administradores de archivos o terminales que accedan al directorio e inténtelo de nuevo.",
@@ -4675,10 +4728,7 @@
     "noChangesDetected": "Todos los ajustes de esta plantilla ya coinciden con los valores actuales.",
     "selectCategoriesToApply": "Categorías y ajustes"
   },
-  "navigation": {
-    "dashboard": "Panel de control",
-    "files": "Archivos"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Descargando...",
