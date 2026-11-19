@@ -112,6 +112,19 @@ pub struct GeneralSettings {
     pub prevent_sleep: bool,
 
     #[setting(
+        label = "settings.general.ui_scale.label",
+        description = "settings.general.ui_scale.description",
+        min = 50,
+        max = 200,
+        step = 10
+    )]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    pub ui_scale: u32,
+
+    #[setting(
         label = "settings.general.keep_alive.label",
         description = "settings.general.keep_alive.description"
     )]
@@ -155,6 +168,11 @@ impl Default for GeneralSettings {
                 not(any(target_os = "android", target_os = "ios"))
             ))]
             prevent_sleep: true,
+            #[cfg(all(
+                feature = "desktop",
+                not(any(target_os = "android", target_os = "ios"))
+            ))]
+            ui_scale: 100,
             #[cfg(target_os = "android")]
             keep_alive: true,
             #[cfg(target_os = "android")]
@@ -515,6 +533,36 @@ mod feature_tests {
         assert_eq!(offered, supported);
     }
 
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    #[test]
+    fn interface_scale_defaults_to_100_and_reads_older_settings_files() {
+        let metadata = GeneralSettings::get_metadata();
+        let scale = &metadata["general.ui_scale"].constraints.number;
+        assert_eq!(
+            (scale.min, scale.max, scale.step),
+            (Some(50.0), Some(200.0), Some(10.0))
+        );
+        assert_eq!(GeneralSettings::default().ui_scale, 100);
+
+        // A settings file saved before the setting existed.
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"general": {"language": "en-US", "restrict": false}}"#,
+        )
+        .unwrap();
+        let manager = rcman::SettingsManager::builder("ui-scale", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<super::AppSettings>()
+            .build()
+            .unwrap();
+        assert_eq!(manager.get::<u32>("general.ui_scale").unwrap(), 100);
+        assert!(!manager.get::<bool>("general.restrict").unwrap());
+    }
+
     #[test]
     fn settings_expose_only_enabled_integrations() {
         let settings = serde_json::to_value(GeneralSettings::default()).unwrap();
@@ -534,6 +582,13 @@ mod feature_tests {
         assert_eq!(
             settings.get("tray_enabled").is_some(),
             cfg!(feature = "tray")
+        );
+        assert_eq!(
+            settings.get("ui_scale").is_some(),
+            cfg!(all(
+                feature = "desktop",
+                not(any(target_os = "android", target_os = "ios"))
+            ))
         );
         assert_eq!(
             settings.get("prevent_sleep").is_some(),

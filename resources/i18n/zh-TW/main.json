@@ -500,6 +500,10 @@
         "label": "防止系統休眠",
         "description": "在活動傳輸、掛載或服務執行時阻止系統自動休眠。"
       },
+      "ui_scale": {
+        "label": "介面縮放",
+        "description": "介面大小（百分比）。如果所有內容都顯得太大（例如在 KDE 中使用小數縮放時），請調低此值。"
+      },
       "keep_alive": {
         "label": "在後台執行",
         "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。"

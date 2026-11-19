@@ -502,6 +502,10 @@
         "label": "Zabrániť uspaniu systému",
         "description": "Zabráni automatickému uspaniu systému počas aktívnych prenosov, pripojení alebo spustených serverov."
       },
+      "ui_scale": {
+        "label": "Mierka rozhrania",
+        "description": "Veľkosť rozhrania v percentách. Znížte ju, ak sa všetko zdá príliš veľké, napríklad pri zlomkovom škálovaní obrazovky v KDE."
+      },
       "keep_alive": {
         "label": "Spustiť na pozadí",
         "description": "Ponechá RClone Manager, aktívne prenosy a pripojené vzdialené úložiská spustené na pozadí aj po minimalizovaní alebo zavretí."

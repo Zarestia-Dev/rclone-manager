@@ -1,6 +1,7 @@
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { Theme } from '@app/types';
 import {
   DEFAULT_WINDOW_BUTTON_LAYOUT,
@@ -82,8 +83,31 @@ export class WindowService extends TauriBaseService {
         this.initWindowListeners();
         this.initLinuxResizeHandles();
         this.loadButtonLayout();
+        this.followInterfaceScale();
       }
     }
+  }
+
+  /**
+   * Zooms this window's webview to the Interface scale setting. Desktops with fractional
+   * scaling (KDE under Wayland, for example) can render the WebKitGTK interface too large;
+   * the browser in headless mode has its own zoom.
+   */
+  private followInterfaceScale(): void {
+    this.appSettingsService
+      .selectSetting('general.ui_scale')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(setting => {
+        const percent = Number(setting?.value);
+        if (!Number.isFinite(percent) || percent <= 0) return;
+        this.setWebviewZoom(Math.min(Math.max(percent, 50), 200) / 100).catch(error =>
+          console.error('Failed to apply the interface scale:', error)
+        );
+      });
+  }
+
+  private setWebviewZoom(factor: number): Promise<void> {
+    return getCurrentWebview().setZoom(factor);
   }
 
   private async initWindowListeners(): Promise<void> {

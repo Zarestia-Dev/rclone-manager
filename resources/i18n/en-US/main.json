@@ -501,6 +501,10 @@
         "label": "Prevent System Sleep",
         "description": "Prevent automatic system sleep while active transfers, mounts, or servers are running."
       },
+      "ui_scale": {
+        "label": "Interface Scale",
+        "description": "Size of the interface, in percent. Lower it if everything looks too large, for example with fractional display scaling on KDE."
+      },
       "keep_alive": {
         "label": "Run in Background",
         "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."

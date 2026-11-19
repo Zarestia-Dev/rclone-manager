@@ -23,6 +23,8 @@ describe('WindowService', () => {
     invoke: ReturnType<typeof vi.fn>;
   };
   let themeSettingSubject: Subject<{ value: string } | null>;
+  let scaleSettingSubject: Subject<{ value: unknown } | null>;
+  let setZoom: ReturnType<typeof vi.spyOn>;
   let sseEventSubject: Subject<unknown>;
   let layoutChanges: Subject<string | null>;
 
@@ -42,11 +44,22 @@ describe('WindowService', () => {
     );
 
     themeSettingSubject = new Subject();
+    scaleSettingSubject = new Subject();
+    setZoom = vi
+      .spyOn(
+        WindowService.prototype as unknown as { setWebviewZoom: (f: number) => Promise<void> },
+        'setWebviewZoom'
+      )
+      .mockResolvedValue(undefined);
     sseEventSubject = new Subject();
     layoutChanges = new Subject();
 
     mockAppSettings = {
-      selectSetting: vi.fn().mockReturnValue(themeSettingSubject.asObservable()),
+      selectSetting: vi.fn((key: string) =>
+        key === 'general.ui_scale'
+          ? scaleSettingSubject.asObservable()
+          : themeSettingSubject.asObservable()
+      ),
       saveSetting: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -156,6 +169,32 @@ describe('WindowService', () => {
       Reflect.deleteProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__');
       vi.mocked(platform).mockReset();
       vi.restoreAllMocks();
+    });
+
+    it('zooms the webview to the interface scale and follows changes', async () => {
+      await createDesktopService('linux', Promise.resolve('appmenu:close'));
+      scaleSettingSubject.next({ value: 80 });
+      expect(setZoom).toHaveBeenLastCalledWith(0.8);
+      scaleSettingSubject.next({ value: 150 });
+      expect(setZoom).toHaveBeenLastCalledWith(1.5);
+    });
+
+    it('clamps the scale and ignores values that are not numbers', async () => {
+      await createDesktopService('windows', Promise.resolve(null));
+      scaleSettingSubject.next({ value: 500 });
+      expect(setZoom).toHaveBeenLastCalledWith(2);
+      scaleSettingSubject.next({ value: 10 });
+      expect(setZoom).toHaveBeenLastCalledWith(0.5);
+      setZoom.mockClear();
+      scaleSettingSubject.next({ value: 'big' });
+      scaleSettingSubject.next(null);
+      expect(setZoom).not.toHaveBeenCalled();
+    });
+
+    it('does not zoom outside the desktop app', () => {
+      // The default service runs without Tauri, like the headless web UI.
+      scaleSettingSubject.next({ value: 80 });
+      expect(setZoom).not.toHaveBeenCalled();
     });
 
     it('starts with minimize, maximize and close at the end', () => {

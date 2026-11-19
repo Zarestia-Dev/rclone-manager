@@ -499,6 +499,10 @@
         "label": "Empêcher la mise en veille du système",
         "description": "Empêche la mise en veille automatique du système pendant que des transferts, des montages ou des serveurs sont actifs."
       },
+      "ui_scale": {
+        "label": "Échelle de l'interface",
+        "description": "Taille de l'interface, en pourcentage. Réduisez-la si tout paraît trop grand, par exemple avec la mise à l'échelle fractionnaire de l'écran sous KDE."
+      },
       "keep_alive": {
         "label": "Exécuter en arrière-plan",
         "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture."

@@ -498,6 +498,10 @@
         "label": "防止系统休眠",
         "description": "在活动传输、挂载或服务运行时阻止系统自动休眠。"
       },
+      "ui_scale": {
+        "label": "界面缩放",
+        "description": "界面大小（百分比）。如果所有内容都显得太大（例如在 KDE 中使用小数缩放时），请调低此值。"
+      },
       "keep_alive": {
         "label": "在后台运行",
         "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。"
