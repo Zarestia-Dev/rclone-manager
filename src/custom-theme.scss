@@ -655,6 +655,36 @@ $dark-theme: (
   }
 }
 
+// The desktop's accent colour in place of the blue (Linux, Preferences > General > System
+// Accent Color). WindowService sets the attribute and the --system-accent-* values. Like the blue,
+// the accent fills with --accent-color; text uses --accent-color-text, derived as libadwaita does.
+html[data-system-accent] {
+  --accent-bg-color: var(--system-accent-bg);
+  --accent-color: var(--system-accent-bg);
+  --accent-color-rgb: var(--system-accent-bg-rgb);
+  --mat-sys-tertiary: var(--system-accent-bg);
+
+  &.light {
+    --accent-color-text: var(--system-accent-light);
+    --mat-sys-tertiary-container: color-mix(
+      in srgb,
+      var(--system-accent-bg) 15%,
+      var(--view-bg-color)
+    );
+    --mat-sys-on-tertiary-container: var(--system-accent-light);
+  }
+
+  &.dark {
+    --accent-color-text: var(--system-accent-dark);
+    --mat-sys-tertiary-container: color-mix(
+      in srgb,
+      var(--system-accent-bg) 20%,
+      var(--view-bg-color)
+    );
+    --mat-sys-on-tertiary-container: var(--system-accent-dark);
+  }
+}
+
 // ============================================================================
 // TONE SCOPE
 // ============================================================================
