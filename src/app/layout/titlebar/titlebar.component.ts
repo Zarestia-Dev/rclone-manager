@@ -38,6 +38,7 @@ import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.co
   templateUrl: './titlebar.component.html',
   styleUrls: ['./titlebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { role: 'banner' },
 })
 export class TitlebarComponent implements OnInit {
   private readonly modalService = inject(ModalService);
