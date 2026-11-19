@@ -105,11 +105,37 @@ describe('WindowsMountTargetService', () => {
   });
 
   it('uses an existing parent drive or folder without changing the draft subfolder name', () => {
-    expect(windowsMountFolderTarget('D:/', '')).toBe('D:\\rclone-mount');
-    expect(windowsMountFolderTarget('D:/Mounts/', 'C:\\Old\\Archív')).toBe('D:\\Mounts\\Archív');
-    expect(windowsMountFolderTarget('C:\\', 'X:')).toBe('C:\\rclone-mount');
-    expect(windowsMountFolderTarget('\\\\server\\share', '*')).toBeUndefined();
-    expect(windowsMountFolderTarget('D:', '')).toBeUndefined();
+    expect(windowsMountFolderTarget('D:/', '', 'Test_NAS')).toBe('D:\\Test_NAS');
+    expect(windowsMountFolderTarget('D:/Mounts/', 'C:\\Old\\Archív', 'Test_NAS', 'Backup')).toBe(
+      'D:\\Mounts\\Archív'
+    );
+    expect(windowsMountFolderTarget('C:\\', 'X:', 'Test_NAS', 'Backup')).toBe('C:\\Backup');
+    expect(windowsMountFolderTarget('\\\\server\\share', '*', 'Test_NAS')).toBeUndefined();
+    expect(windowsMountFolderTarget('D:', '', 'Test_NAS')).toBeUndefined();
+  });
+
+  it('suggests the disk name when replacing the previous default or using the typed path as parent', () => {
+    expect(
+      windowsMountFolderTarget('D:\\test', 'D:\\test\\rclone-mount', 'Test_NAS', 'Backup')
+    ).toBe('D:\\test\\Backup');
+    expect(windowsMountFolderTarget('D:/test/', 'd:\\TEST', 'Test_NAS', 'Backup')).toBe(
+      'D:\\test\\Backup'
+    );
+  });
+
+  it.each(['\\\\cloud\\share', 'NUL.txt', 'COM¹', '..', 'cesta/s/inou', 'názov.'])(
+    'uses the remote name when %s cannot be used as a folder name',
+    diskName => {
+      expect(windowsMountFolderTarget('D:\\test', '', 'Test_NAS', diskName)).toBe(
+        'D:\\test\\Test_NAS'
+      );
+    }
+  );
+
+  it('falls back to the generic folder name when neither name is usable', () => {
+    expect(windowsMountFolderTarget('D:\\test', '', 'AUX', '\\\\cloud\\share')).toBe(
+      'D:\\test\\rclone-mount'
+    );
   });
 
   it('refreshes a busy selected device when its cached mount is missing', async () => {
@@ -152,6 +178,16 @@ describe('WindowsMountTargetService', () => {
         Other: profile('v:/'),
       })
     ).resolves.toBe('V:');
+  });
+
+  it.each(['X:', 'X:\\', 'X:/'])('accepts the free drive %s at save time', async mountPoint => {
+    physicalFree.mockResolvedValue(['X:']);
+    getSettings.mockResolvedValue({});
+    getMounts.mockResolvedValue([]);
+    await expect(
+      service.validateChangedDrives('office', { Main: profile(mountPoint) })
+    ).resolves.toBeUndefined();
+    expect(physicalFree).toHaveBeenCalledOnce();
   });
 
   it('leaves unchanged targets and folder paths alone and fails closed if Windows availability fails', async () => {

@@ -55,7 +55,10 @@ import {
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
+import {
+  PATH_INSPECTION_UNAVAILABLE,
+  PathInspectionService,
+} from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
@@ -115,6 +118,7 @@ export class OperationConfigComponent {
     clean: 'primary',
     nonEmpty: 'orange',
     unavailable: 'orange',
+    notDirectory: 'warn',
     colliding: 'warn',
     willCreate: 'accent',
     checking: 'dim',
@@ -354,6 +358,7 @@ export class OperationConfigComponent {
               'volname.title',
               'network_mode.title',
               'wizards.appOperation.mountDiskName',
+              'wizards.appOperation.mountNetworkName',
               'wizards.appOperation.mountWindowsAppearance',
               'wizards.appOperation.mountLocalDrive',
               'wizards.appOperation.mountNetworkDrive',
@@ -718,12 +723,7 @@ export class OperationConfigComponent {
         })
         .catch(() => {
           if (this.inspectionTokens.get(itemKey) === token) {
-            statusSignal.set({
-              state: 'unavailable',
-              icon: 'warning',
-              badgeClass: 'non-empty',
-              labelKey: 'common.error',
-            });
+            statusSignal.set(PATH_INSPECTION_UNAVAILABLE);
           }
         });
     }, 300);
@@ -824,7 +824,12 @@ export class OperationConfigComponent {
           item.pathControl.value !== previousPath
         )
           return;
-        const folderTarget = windowsMountFolderTarget(selected, previousPath);
+        const folderTarget = windowsMountFolderTarget(
+          selected,
+          previousPath ?? '',
+          this.currentRemoteName(),
+          this.volumeNameControl()?.value
+        );
         if (!folderTarget) {
           this.notificationService.showWarning(
             this.translate.instant('wizards.appOperation.mountFolderLocalDrive')

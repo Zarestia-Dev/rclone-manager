@@ -565,6 +565,7 @@ pub async fn get_stat(
     opt: Option<serde_json::Value>,
     origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
+    backend_name: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
@@ -573,13 +574,17 @@ pub async fn get_stat(
         params.insert("opt".to_string(), opt_val);
     }
     let source = build_full_path(&remote, &path);
+    let backend = app
+        .state::<BackendManager>()
+        .get_active_checked(backend_name.as_deref())
+        .await?;
 
     run_fs_command_as_job(
         app,
         operations::STAT,
         json!(params),
         JobMetadata::for_query(remote, source, JobType::Stat, origin, group),
-        None,
+        Some(backend),
     )
     .await
 }

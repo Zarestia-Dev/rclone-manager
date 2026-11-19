@@ -124,7 +124,7 @@ impl MountParams {
 }
 
 /// Mount a remote filesystem (not exposed as Tauri command - use `mount_remote_profile`)
-pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
+pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = match &params.backend {
         Some(backend) => backend.clone(),
@@ -188,7 +188,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             }),
         );
 
-        return Ok(());
+        return Ok(mount_point);
     }
 
     let mounted_remotes = cache.get_mounted_remotes().await;
@@ -235,7 +235,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     .with_execute_id(params.execute_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
-    let _ = super::job::submit_job_with_options(
+    let submission = super::job::submit_job_with_options(
         app.clone(),
         crate::rclone::endpoints::mount::MOUNT,
         payload,
@@ -246,12 +246,21 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         },
     )
     .await?;
+    // Automatic, UNC and relative targets can resolve to a different path at mount time.
+    let mount_point = submission
+        .output
+        .as_ref()
+        .and_then(|output| output.get("mountPoint"))
+        .and_then(Value::as_str)
+        .filter(|path| !path.is_empty())
+        .unwrap_or(&params.mount_point)
+        .to_owned();
 
     // Pre-seed metadata so the reconciliation attaches the starter atomically
     cache
         .preseed_mount_metadata(crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
-            mount_point: params.mount_point.clone(),
+            mount_point: mount_point.clone(),
             starter: params.starter.clone(),
             origin: params.origin.clone(),
             execute_id: params.execute_id.clone(),
@@ -266,11 +275,11 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             backend: backend_name,
             remote: params.remote_name.clone(),
             profile,
-            mount_point: params.mount_point.clone(),
+            mount_point: mount_point.clone(),
         }),
     );
 
-    Ok(())
+    Ok(mount_point)
 }
 
 /// Unmount a remote filesystem
@@ -589,7 +598,7 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
     mount_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
     mount_params.no_cache = params.no_cache;
 
-    mount_remote(app, mount_params).await
+    mount_remote(app, mount_params).await.map(drop)
 }
 
 #[cfg(test)]
@@ -634,6 +643,104 @@ mod tests {
             assert_eq!(params.mount_point, expected);
             assert_eq!(params.to_rclone_body().unwrap()["mountPoint"], expected);
             assert_eq!(config["rclone"]["mountPoint"], saved);
+        }
+    }
+
+    #[tokio::test]
+    async fn automatic_and_legacy_network_mounts_keep_the_assigned_letter_and_profile() {
+        use crate::rclone::state::automations::AutomationsCache;
+        use crate::utils::types::state::RcloneState;
+        use std::{sync::Arc, time::Duration};
+        use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+
+        for requested in ["*", r"\\server\share"] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let backend = Backend::new_remote(
+                "Windows",
+                "127.0.0.1",
+                listener.local_addr().unwrap().port(),
+            );
+            let app = AppHandle::default();
+            app.manage(BackendManager::new());
+            app.manage(AutomationsCache::new());
+            app.manage(RcloneState::new(
+                reqwest::Client::builder()
+                    .timeout(Duration::from_secs(2))
+                    .build()
+                    .unwrap(),
+                Arc::new(RoutingTransport::new(app.clone())),
+            ));
+            let mut params = MountParams::from_config(
+                "drive".into(),
+                &json!({"rclone": {"fs": "drive:", "mountPoint": requested}}),
+                &json!({}),
+            )
+            .unwrap();
+            params.backend = Some(backend.clone());
+            params.starter = Some(Starter::profile("Example"));
+            params.no_cache = Some(true);
+
+            let server = crate::utils::spawn(async move {
+                for (endpoint, response) in [
+                    ("/mount/mount", json!({"jobid": 17})),
+                    (
+                        "/job/batch",
+                        json!({"results": [
+                            {"finished": true, "success": true, "output": {"mountPoint": "W:"}}
+                        ]}),
+                    ),
+                    (
+                        "/mount/listmounts",
+                        json!({"mountPoints": [
+                            {"Fs": "drive:", "MountPoint": "W:"}
+                        ]}),
+                    ),
+                ] {
+                    let (stream, _) = listener.accept().await.unwrap();
+                    let mut stream = BufReader::new(stream);
+                    let mut line = String::new();
+                    stream.read_line(&mut line).await.unwrap();
+                    assert_eq!(line.split_whitespace().nth(1), Some(endpoint));
+                    let mut length = 0;
+                    loop {
+                        line.clear();
+                        stream.read_line(&mut line).await.unwrap();
+                        if line.trim().is_empty() {
+                            break;
+                        }
+                        if let Some(value) =
+                            line.to_ascii_lowercase().strip_prefix("content-length:")
+                        {
+                            length = value.trim().parse().unwrap();
+                        }
+                    }
+                    let mut body = vec![0; length];
+                    stream.read_exact(&mut body).await.unwrap();
+                    if endpoint == "/mount/mount" {
+                        let payload: Value = serde_json::from_slice(&body).unwrap();
+                        assert_eq!(payload["mountPoint"], requested);
+                    }
+                    let response = response.to_string();
+                    stream.get_mut().write_all(format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}",
+                        response.len()
+                    ).as_bytes()).await.unwrap();
+                }
+            });
+            tokio::time::timeout(Duration::from_secs(5), async {
+                assert_eq!(mount_remote(app.clone(), params).await.unwrap(), "W:");
+                server.await.unwrap();
+            })
+            .await
+            .unwrap();
+            let cache = app
+                .state::<BackendManager>()
+                .remote_cache_for(&backend.name);
+            let mount = cache
+                .find_mount_by_profile("drive", "Example")
+                .await
+                .unwrap();
+            assert_eq!(mount.mount_point, "W:");
         }
     }
 

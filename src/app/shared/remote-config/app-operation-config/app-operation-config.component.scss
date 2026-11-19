@@ -269,6 +269,18 @@ app-alert-banner {
   width: 100%;
   border-bottom: 1px solid var(--border-color);
 
+  > .app-pill {
+    > mat-icon {
+      flex: none;
+    }
+
+    > span {
+      min-inline-size: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
+
   &:last-child {
     border-bottom: none;
   }

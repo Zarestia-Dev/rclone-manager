@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  container-type: inline-size;
 }
 
 .path-item-row {
@@ -68,6 +69,21 @@
   ::ng-deep .mat-mdc-text-field-wrapper {
     border-radius: 0;
     background: transparent;
+  }
+
+  @container (max-width: 22rem) {
+    &:has(> :nth-child(2)) {
+      grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
+    }
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: var(--space-xs);
+    }
+
+    mat-select-trigger .disk-type-value {
+      gap: var(--space-xxs);
+      font-size: var(--font-size-sm);
+    }
   }
 }
 

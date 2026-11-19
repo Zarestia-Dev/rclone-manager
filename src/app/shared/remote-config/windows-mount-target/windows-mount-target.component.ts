@@ -20,6 +20,7 @@ import { PathSelectionService } from 'src/app/services/remote/path-selection.ser
 import { CdkOverlayAutoposDirective } from '../../directives/cdk-overlay-autopos.directive';
 import { generatePrefixedId } from '../../utils/id.util';
 import { PillDirective } from '../../directives/pill.directive';
+import { isWindowsMountNetworkPath } from '../../utils/path.utils';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,12 +34,13 @@ import {
   WindowsMountTargetService,
 } from 'src/app/services/operations/windows-mount-target.service';
 
-type MountLocation = 'letter' | 'folder' | 'manual';
+type MountLocation = 'letter' | 'folder';
 
 interface MountTargetDraft {
   location: MountLocation | null;
   paths: Partial<Record<MountLocation, string>>;
   networkDrive: boolean;
+  names: { local?: string; network?: string };
 }
 
 @Component({
@@ -109,10 +111,10 @@ export class WindowsMountTargetComponent {
       else ++this.driveRequest;
     });
     effect(onCleanup => {
-      const subscription = this.networkModeControl()?.valueChanges.subscribe(() =>
-        this.networkModeVersion.update(value => value + 1)
+      const subscriptions = [this.networkModeControl(), this.volumeNameControl()].map(control =>
+        control?.valueChanges.subscribe(() => this.networkModeVersion.update(value => value + 1))
       );
-      onCleanup(() => subscription?.unsubscribe());
+      onCleanup(() => subscriptions.forEach(subscription => subscription?.unsubscribe()));
     });
     effect(onCleanup => {
       const control = this.pathControl();
@@ -139,11 +141,24 @@ export class WindowsMountTargetComponent {
     this.currentProfileName();
     this.currentRemoteName();
     this.pathControl();
-    return { location: null, paths: {}, networkDrive: false };
+    return { location: null, paths: {}, networkDrive: false, names: {} };
   });
-  protected readonly selectedDriveLetter = computed(() => {
+  private readonly mountPath = computed(() => {
+    this.currentProfileName();
+    this.currentRemoteName();
     this.pathValueVersion();
-    return mountDriveLetter(this.pathControl().value);
+    return String(this.pathControl().value ?? '').trim();
+  });
+  protected readonly automaticDrive = '*';
+  private readonly legacyNetworkPath = computed(() => {
+    const path = this.mountPath();
+    return this.targetDraft().location !== 'folder' && isWindowsMountNetworkPath(path) ? path : '';
+  });
+  protected readonly selectedDriveLetter = computed(() => mountDriveLetter(this.mountPath()));
+  protected readonly driveSelection = computed(() => {
+    return this.mountPath() === this.automaticDrive || this.legacyNetworkPath()
+      ? this.automaticDrive
+      : this.selectedDriveLetter();
   });
   protected readonly selectedDriveOption = computed(() =>
     this.driveOptions().find(option => option.letter === this.selectedDriveLetter())
@@ -151,23 +166,32 @@ export class WindowsMountTargetComponent {
   protected readonly mountLocation = computed((): MountLocation => {
     const override = this.targetDraft().location;
     if (override) return override;
-    this.pathValueVersion();
-    const path = String(this.pathControl().value ?? '').trim();
-    if (!path || mountDriveLetter(path)) return 'letter';
-    return /^[a-z]:[\\/]./i.test(path) ? 'folder' : 'manual';
+    return !this.mountPath() || this.driveSelection() ? 'letter' : 'folder';
+  });
+  private readonly volumeName = computed(() => {
+    this.networkModeVersion();
+    this.targetDraft();
+    return String(this.volumeNameControl()?.value ?? '');
   });
   protected readonly networkDrive = computed(() => {
     this.networkModeVersion();
-    this.currentProfileName();
-    this.currentRemoteName();
+    this.targetDraft();
     const value: unknown = this.networkModeControl()?.value;
-    return value === true || value === 'true';
+    return (
+      this.mountLocation() === 'letter' &&
+      (!!this.legacyNetworkPath() ||
+        isWindowsMountNetworkPath(this.volumeName()) ||
+        value === true ||
+        value === 'true')
+    );
   });
-  protected readonly locationIcons = { letter: 'hard-drive', folder: 'folder', manual: 'terminal' };
+  protected readonly displayedVolumeName = computed(
+    () => this.legacyNetworkPath() || this.volumeName()
+  );
+  protected readonly locationIcons = { letter: 'hard-drive', folder: 'folder' };
   protected readonly locationLabels = {
     letter: 'wizards.appOperation.mountDriveTarget',
     folder: 'wizards.appOperation.mountFolder',
-    manual: 'wizards.appOperation.mountManualPath',
   };
   protected readonly folderPathInvalid = computed(() => {
     this.pathValueVersion();
@@ -216,33 +240,70 @@ export class WindowsMountTargetComponent {
     const paths = { ...draft.paths, [previous]: currentPath };
     const networkDrive = previous === 'folder' ? draft.networkDrive : this.networkDrive();
 
-    this.targetDraft.set({ location, paths, networkDrive });
+    this.setDiskAppearance(location === 'letter' && networkDrive);
+    this.targetDraft.update(state => ({ ...state, location, paths, networkDrive }));
     control.markAsDirty();
     control.setValue(paths[location] ?? '');
-
-    const networkMode = this.networkModeControl();
-    if (networkMode && (location === 'folder' || previous === 'folder')) {
-      const value = location !== 'folder' && networkDrive;
-      if (networkMode.value !== value) {
-        networkMode.markAsDirty();
-        networkMode.setValue(value);
-      }
-    }
   }
 
   protected selectDiskType(useNetwork: boolean): void {
     const control = this.networkModeControl();
     if (!control || control.disabled || this.mountLocation() === 'folder') return;
+    const legacyPath = this.legacyNetworkPath();
+    this.setDiskAppearance(useNetwork);
+    if (legacyPath && !useNetwork) this.updateControl(this.pathControl(), this.automaticDrive);
+  }
+
+  protected changeVolumeName(name: string): void {
+    if (this.legacyNetworkPath()) {
+      this.updateControl(this.networkModeControl(), true);
+      this.updateControl(this.pathControl(), this.automaticDrive);
+    }
+    this.updateControl(this.volumeNameControl(), name);
+  }
+
+  private setDiskAppearance(useNetwork: boolean): void {
+    const wasNetwork = this.networkDrive();
+    const volumeName = this.volumeName();
+    const shownName = this.displayedVolumeName();
+    if (wasNetwork !== useNetwork) {
+      const names = {
+        ...this.targetDraft().names,
+        [wasNetwork ? 'network' : 'local']: shownName,
+      };
+      const defaultName =
+        isWindowsMountNetworkPath(shownName) && !useNetwork
+          ? isWindowsMountNetworkPath(volumeName)
+            ? ''
+            : volumeName
+          : shownName;
+      this.targetDraft.update(state => ({ ...state, names }));
+      this.updateControl(
+        this.volumeNameControl(),
+        names[useNetwork ? 'network' : 'local'] ?? defaultName
+      );
+    }
+    this.updateControl(this.networkModeControl(), useNetwork);
+  }
+
+  private updateControl(control: FormControl | null, value: string | boolean): void {
+    if (!control || control.disabled || control.value === value) return;
     control.markAsDirty();
-    control.setValue(useNetwork);
+    control.setValue(value);
   }
 
   protected selectDriveLetter(letter: string): void {
-    if (this.driveStatus() === 'unavailable') return;
-    const option = this.driveOptions().find(option => option.letter === letter);
-    if (option?.status !== 'free' && option?.status !== 'current') return;
-    this.pathControl().markAsDirty();
-    this.pathControl().setValue(letter);
+    if (letter !== this.automaticDrive) {
+      if (this.driveStatus() === 'unavailable') return;
+      const option = this.driveOptions().find(option => option.letter === letter);
+      if (option?.status !== 'free' && option?.status !== 'current') return;
+    }
+    const legacyPath = this.legacyNetworkPath();
+    if (legacyPath && letter !== this.automaticDrive) {
+      this.updateControl(this.networkModeControl(), true);
+      this.updateControl(this.volumeNameControl(), legacyPath);
+    }
+    this.updateControl(this.pathControl(), letter);
   }
 
   protected openFolderBrowser(): void {
@@ -251,6 +312,10 @@ export class WindowsMountTargetComponent {
   }
 
   protected typeFolderPath(value: string): void {
+    if (this.targetDraft().location === null) {
+      this.targetDraft.update(state => ({ ...state, location: 'folder' }));
+      this.pathControl().updateValueAndValidity();
+    }
     const trigger = this.folderMenuTrigger();
     if (trigger?.isOpen()) {
       this.updateFolderSuggestions(value, false);
@@ -293,7 +358,12 @@ export class WindowsMountTargetComponent {
 
   protected useFolderParent(): void {
     const control = this.pathControl();
-    const target = windowsMountFolderTarget(this.folderState().currentPath, control.value ?? '');
+    const target = windowsMountFolderTarget(
+      this.folderState().currentPath,
+      control.value ?? '',
+      this.currentRemoteName(),
+      this.volumeNameControl()?.value
+    );
     if (!target || control.disabled) return;
     control.markAsDirty();
     control.setValue(target);

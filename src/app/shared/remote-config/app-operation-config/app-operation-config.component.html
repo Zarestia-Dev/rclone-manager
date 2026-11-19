@@ -490,9 +490,7 @@
       @if (item.inspectionStatus(); as status) {
         <div appPill style="border-radius: 0" [tone]="inspectionTone(status.state)">
           <mat-icon [svgIcon]="status.icon"></mat-icon>
-          <span class="truncate">{{
-            status.labelKey | translate: { details: status.details || '' }
-          }}</span>
+          <span>{{ status.labelKey | translate: { details: status.details || '' } }}</span>
         </div>
       }
     }

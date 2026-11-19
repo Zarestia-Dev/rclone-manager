@@ -116,6 +116,7 @@ describe('RemoteConfigStateService', () => {
         {
           provide: PathInspectionService,
           useValue: {
+            profileFileError: vi.fn().mockResolvedValue(undefined),
             createRequiredDirectories: vi.fn().mockResolvedValue(undefined),
             resolveDefaultPath: vi.fn().mockResolvedValue('/default/path'),
           },
@@ -169,28 +170,60 @@ describe('RemoteConfigStateService', () => {
   });
 
   describe('profile persistence', () => {
-    it('saves a Windows mount destination with a forward slash as a drive letter', async () => {
+    it.each([
+      ['X:', 'X:'],
+      ['X:\\', 'X:\\'],
+      ['X:/', 'X:'],
+    ])('saves a Windows mount destination %s as %s', async (input, expected) => {
       vi.spyOn(TestBed.inject(BackendService), 'isWindows').mockReturnValue(true);
       const initial = {
-        mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint: 'X:/' } } },
+        mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint: 'W:' } } },
       };
       (service as unknown as { initialConfig: unknown }).initialConfig = initial;
       setDialogData({ name: 'drive', remoteType: 'drive' });
       service.initProfiles({ remoteType: 'drive' });
       await service.selectProfile('mount', 'Default');
+      service.remoteConfigForm.get('mountConfig.dest.path')?.setValue(input);
 
       expect(await service.saveRemoteProfiles('drive', 'mount')).toBe(true);
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
         'drive',
         {
           mountConfigs: {
-            Default: { app: {}, rclone: { fs: 'drive:', mountPoint: 'X:' } },
+            Default: { app: {}, rclone: { fs: 'drive:', mountPoint: expected } },
           },
         },
         'Local'
       );
-      expect(initial.mountConfigs.Default.rclone.mountPoint).toBe('X:/');
+      expect(initial.mountConfigs.Default.rclone.mountPoint).toBe('W:');
     });
+
+    it.each(['*', '\\\\server\\share', 'Relative\\Mount'])(
+      'preserves the saved Windows target %s when another profile setting changes',
+      async mountPoint => {
+        vi.spyOn(TestBed.inject(BackendService), 'isWindows').mockReturnValue(true);
+        const initial = {
+          mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint } } },
+        };
+        (service as unknown as { initialConfig: unknown }).initialConfig = initial;
+        setDialogData({ name: 'drive', remoteType: 'drive' });
+        service.initProfiles({ remoteType: 'drive' });
+        await service.selectProfile('mount', 'Default');
+        expect(service.remoteConfigForm.get('mountConfig.dest.path')?.value).toBe(mountPoint);
+        service.remoteConfigForm.get('mountConfig.autoStart')?.setValue(true);
+
+        expect(await service.saveRemoteProfiles('drive', 'mount')).toBe(true);
+        expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
+          'drive',
+          {
+            mountConfigs: {
+              Default: { app: { autoStart: true }, rclone: { fs: 'drive:', mountPoint } },
+            },
+          },
+          'Local'
+        );
+      }
+    );
 
     it('blocks a conflicting drive before writing profile settings', async () => {
       service.initProfiles({ remoteType: 'drive' });
@@ -211,6 +244,28 @@ describe('RemoteConfigStateService', () => {
         'Local'
       );
     });
+
+    it.each([
+      ['mount', { mountPoint: 'D:\\sample\\report.txt' }, 'notDirectoryWindowsMount'],
+      ['bisync', { path2: 'D:\\sample\\report.txt' }, 'notDirectory'],
+    ] as const)(
+      'does not write %s settings or create directories when the target is a file',
+      async (operation, rclone, label) => {
+        service.initProfiles({ remoteType: 'drive' });
+        service.updateProfileConfig(operation, 'Archive', { app: {}, rclone });
+        const inspection = TestBed.inject(PathInspectionService);
+        vi.mocked(inspection.profileFileError).mockResolvedValueOnce(
+          `remoteConfig.pathStatus.${label}`
+        );
+
+        expect(await service.saveRemoteProfiles('drive')).toBe(false);
+        expect(inspection.createRequiredDirectories).not.toHaveBeenCalled();
+        expect(TestBed.inject(AppSettingsService).saveRemoteSettings).not.toHaveBeenCalled();
+        expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledWith(
+          `remoteConfig.pathStatus.${label}`
+        );
+      }
+    );
 
     it('uses the last successful save as the baseline for subsequent edits', async () => {
       const initial = {

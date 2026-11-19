@@ -124,8 +124,17 @@ export class RemoteCreationOrchestrator {
         );
         return false;
       }
-      if (this.authStateService.isAuthInProgress()) return false;
     }
+    const fileError = await this.pathInspectionService.profileFileError(
+      finalConfig,
+      this.backendName,
+      name
+    );
+    if (fileError) {
+      this.notificationService.showWarning(this.translate.instant(fileError));
+      return false;
+    }
+    if (this.authStateService.isAuthInProgress()) return false;
     const opt = this.remoteManagementService.buildOpt(commandOptions);
     return this.runFlow({ remoteData, parameters, opt, finalConfig }, false, () =>
       this.remoteManagementService.createRemote(name, type, parameters, opt, this.backendName)

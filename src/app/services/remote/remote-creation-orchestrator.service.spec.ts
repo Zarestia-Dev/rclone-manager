@@ -154,7 +154,10 @@ describe('RemoteCreationOrchestrator', () => {
         },
         {
           provide: PathInspectionService,
-          useValue: { createRequiredDirectories: vi.fn().mockResolvedValue(undefined) },
+          useValue: {
+            profileFileError: vi.fn().mockResolvedValue(undefined),
+            createRequiredDirectories: vi.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     });
@@ -180,6 +183,23 @@ describe('RemoteCreationOrchestrator', () => {
       expect(remoteService.createRemote).not.toHaveBeenCalled();
       expect(saveSettings).not.toHaveBeenCalled();
       expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledOnce();
+    });
+
+    it('rejects a file target before creating the remote or starting authentication', async () => {
+      vi.mocked(TestBed.inject(PathInspectionService).profileFileError).mockResolvedValueOnce(
+        'remoteConfig.pathStatus.notDirectoryWindowsMount'
+      );
+      const settings = {
+        ...config,
+        mountConfigs: { Archive: { app: {}, rclone: { mountPoint: 'D:\\sample\\report.txt' } } },
+      };
+      expect(await service.createRemote(remote, settings, [])).toBe(false);
+      expect(remoteService.createRemote).not.toHaveBeenCalled();
+      expect(TestBed.inject(AuthStateService).startAuth).not.toHaveBeenCalled();
+      expect(saveSettings).not.toHaveBeenCalled();
+      expect(TestBed.inject(NotificationService).showWarning).toHaveBeenCalledWith(
+        'remoteConfig.pathStatus.notDirectoryWindowsMount'
+      );
     });
 
     it('sends the name and type on their own, never as config parameters', async () => {

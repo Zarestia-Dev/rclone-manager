@@ -95,27 +95,29 @@ pub(crate) async fn mount_node(
         .normalize_windows_mount_point(app, backend)
         .await;
     let backend_manager = app.state::<BackendManager>();
-    let is_already_mounted = {
+    let existing_mount = {
         let mounted = backend_manager
             .remote_cache_for(&backend.name)
             .get_mounted_remotes()
             .await;
         mounted
-            .iter()
-            .any(|m| is_own_mount(m, &workflow.id, &node.id, &mount_params))
+            .into_iter()
+            .find(|m| is_own_mount(m, &workflow.id, &node.id, &mount_params))
     };
 
-    if is_already_mounted {
+    let is_already_mounted = existing_mount.is_some();
+    let mount_point = if let Some(mount) = existing_mount {
         info!(
             "Remote '{}' or mount point '{}' is already mounted for node '{}'. Continuing workflow.",
             op.remote, mount_params.mount_point, node.id
         );
+        mount.mount_point
     } else {
-        mount_remote(app.clone(), mount_params.clone()).await?;
-    }
+        mount_remote(app.clone(), mount_params).await?
+    };
     let mut output = json!({
         "mounted": true,
-        "mountPoint": mount_params.mount_point,
+        "mountPoint": mount_point,
         "remote": op.remote,
         "nodeId": node.id,
         "workflowId": workflow.id

@@ -12,11 +12,36 @@ export function mountDriveLetter(path: unknown): string | undefined {
   return /^[a-z]:[\\/]?$/i.test(path.trim()) ? path.trim().slice(0, 2).toUpperCase() : undefined;
 }
 
-export function windowsMountFolderTarget(parent: string, previous: string): string | undefined {
-  const directory = parent.replaceAll('/', '\\');
-  if (!/^[a-z]:\\/i.test(directory)) return undefined;
-  const name = /^[a-z]:[\\/]./i.test(previous) ? getFilename(previous) : '';
-  return `${directory.replace(/\\+$/, '')}\\${name || 'rclone-mount'}`;
+function windowsFolderName(value: unknown): string | undefined {
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (!name || /[<>:"/\\|?*]/.test(name) || name.endsWith('.')) return undefined;
+  if (Array.from(name).some(character => character.charCodeAt(0) < 32)) return undefined;
+  const base = name.split('.', 1)[0].trimEnd();
+  if (/^(con|prn|aux|nul|(?:com|lpt)[1-9¹²³])$/i.test(base)) return undefined;
+  return name;
+}
+
+export function windowsMountFolderTarget(
+  parent: string,
+  previous: string,
+  remoteName: string,
+  diskName?: unknown
+): string | undefined {
+  const fallback = 'rclone-mount';
+  if (!/^[a-z]:[\\/]/i.test(parent)) return undefined;
+  const directory = parent.replaceAll('/', '\\').replace(/\\+$/, '');
+  const oldTarget = previous.replaceAll('/', '\\').replace(/\\+$/, '');
+  const previousName =
+    /^[a-z]:\\./i.test(oldTarget) && oldTarget.toLowerCase() !== directory.toLowerCase()
+      ? getFilename(oldTarget)
+      : '';
+  const existingName = previousName.toLowerCase() === fallback ? '' : previousName;
+  const name =
+    windowsFolderName(existingName) ??
+    windowsFolderName(diskName) ??
+    windowsFolderName(remoteName) ??
+    fallback;
+  return `${directory}\\${name}`;
 }
 
 export interface MountDriveOption {

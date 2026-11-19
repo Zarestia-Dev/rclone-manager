@@ -1208,23 +1208,37 @@ export class RemoteConfigStateService {
     }
 
     try {
-      // Watch roots must exist before the backend applies the saved configuration.
-      await this.pathInspectionService.createRequiredDirectories(
-        settings,
-        this.profileBackend || this.backendService.activeBackend()
-      );
-      await this.appSettingsService.saveRemoteSettings(
+      const backend = this.profileBackend || this.backendService.activeBackend();
+      const profileName = activeType && this.selectedProfileName()[activeType];
+      const editedProfile =
+        profileName && (activeType === 'mount' || activeType === 'bisync')
+          ? { operation: activeType, name: profileName }
+          : undefined;
+      const fileError = await this.pathInspectionService.profileFileError(
+        {
+          [REMOTE_CONFIG_KEYS.mount]: nextBaseline.mount,
+          [REMOTE_CONFIG_KEYS.bisync]: nextBaseline.bisync,
+        },
+        backend,
         remote,
-        settings,
-        this.profileBackend || this.backendService.activeBackend()
+        this.profileBaseline,
+        editedProfile
       );
+      if (fileError) {
+        this.notificationService.showWarning(this.translate.instant(fileError));
+        return false;
+      }
+      // Watch roots must exist before the backend applies the saved configuration.
+      await this.pathInspectionService.createRequiredDirectories(settings, backend);
+      await this.appSettingsService.saveRemoteSettings(remote, settings, backend);
       this.profileBaseline = nextBaseline;
       this.remoteConfigForm.markAsPristine();
       await this.remoteFacade.loadRemotes();
-      const selName =
-        (activeType && this.selectedProfileName()[activeType]) || DEFAULT_PROFILE_NAME;
       this.notificationService.showSuccess(
-        this.translate.instant('modals.remoteConfig.profileSaved', { profile: selName, remote })
+        this.translate.instant('modals.remoteConfig.profileSaved', {
+          profile: profileName || DEFAULT_PROFILE_NAME,
+          remote,
+        })
       );
       return true;
     } catch (e) {
