@@ -498,6 +498,10 @@
         "label": "Samostatné dialógy",
         "description": "Otvárať dialógové okná (modálne okná) v samostatných natívnych oknách systému."
       },
+      "system_accent_color": {
+        "label": "Systémová farba zvýraznenia",
+        "description": "Použiť farbu zvýraznenia zvolenú v nastaveniach pracovného prostredia (GNOME 47 a novší, KDE Plasma 6) namiesto predvolenej modrej."
+      },
       "prevent_sleep": {
         "label": "Zabrániť uspaniu systému",
         "description": "Zabráni automatickému uspaniu systému počas aktívnych prenosov, pripojení alebo spustených serverov."

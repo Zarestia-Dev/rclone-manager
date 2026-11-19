@@ -496,6 +496,10 @@
         "label": "獨立視窗對話方塊",
         "description": "在獨立的系統原生視窗中開啟對話方塊（模態框）。"
       },
+      "system_accent_color": {
+        "label": "系統強調色",
+        "description": "使用桌面設定中選擇的強調色（GNOME 47 及更新版本、KDE Plasma 6），而非預設的藍色。"
+      },
       "prevent_sleep": {
         "label": "防止系統休眠",
         "description": "在活動傳輸、掛載或服務執行時阻止系統自動休眠。"

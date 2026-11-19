@@ -27,6 +27,8 @@ describe('WindowService', () => {
   let setZoom: ReturnType<typeof vi.spyOn>;
   let sseEventSubject: Subject<unknown>;
   let layoutChanges: Subject<string | null>;
+  let accentChanges: Subject<string | null>;
+  let accentSetting: Subject<{ value: unknown }>;
 
   beforeEach(() => {
     vi.stubGlobal(
@@ -53,12 +55,16 @@ describe('WindowService', () => {
       .mockResolvedValue(undefined);
     sseEventSubject = new Subject();
     layoutChanges = new Subject();
+    accentChanges = new Subject();
+    accentSetting = new Subject();
 
     mockAppSettings = {
       selectSetting: vi.fn((key: string) =>
         key === 'general.ui_scale'
           ? scaleSettingSubject.asObservable()
-          : themeSettingSubject.asObservable()
+          : key === 'general.system_accent_color'
+            ? accentSetting.asObservable()
+            : themeSettingSubject.asObservable()
       ),
       saveSetting: vi.fn().mockResolvedValue(undefined),
     };
@@ -94,6 +100,7 @@ describe('WindowService', () => {
             listenToSystemThemeChanged: vi.fn().mockReturnValue(new Subject()),
             listenToWindowResize: vi.fn().mockReturnValue(new Subject()),
             listenToWindowButtonLayoutChanged: vi.fn(() => layoutChanges.asObservable()),
+            listenToSystemAccentColorChanged: vi.fn(() => accentChanges.asObservable()),
           },
         },
       ],
@@ -104,6 +111,8 @@ describe('WindowService', () => {
 
   afterEach(() => {
     document.documentElement.removeAttribute('class');
+    document.documentElement.removeAttribute('data-system-accent');
+    document.documentElement.removeAttribute('style');
     vi.unstubAllGlobals();
   });
 
@@ -307,5 +316,80 @@ describe('WindowService', () => {
   it('should quit application by invoking request_app_exit', async () => {
     await service.quitApplication();
     expect(mockApiClient.invoke).toHaveBeenCalledWith('request_app_exit', undefined);
+  });
+
+  describe('system accent color', () => {
+    const root = document.documentElement;
+    const createDesktopService = async (
+      os: 'linux' | 'windows',
+      accent: Promise<unknown>
+    ): Promise<WindowService> => {
+      Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+      Object.defineProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__', {
+        value: { platform: os },
+        configurable: true,
+      });
+      vi.mocked(platform).mockReturnValue(os);
+      vi.spyOn(
+        WindowService.prototype as unknown as { getCurrentTauriWindow: () => unknown },
+        'getCurrentTauriWindow'
+      ).mockReturnValue({ isMaximized: vi.fn().mockResolvedValue(false) });
+      mockApiClient.invoke.mockImplementation((command: string) =>
+        command === 'get_system_accent_color' ? accent : Promise.resolve(null)
+      );
+      const desktop = TestBed.runInInjectionContext(() => new WindowService());
+      await Promise.resolve();
+      await Promise.resolve();
+      return desktop;
+    };
+
+    afterEach(() => {
+      Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+      Reflect.deleteProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__');
+      vi.mocked(platform).mockReset();
+      vi.restoreAllMocks();
+    });
+
+    it('uses the desktop accent color while the setting is on', async () => {
+      await createDesktopService('linux', Promise.resolve('#3584e4'));
+      expect(root.hasAttribute('data-system-accent')).toBe(false);
+      accentSetting.next({ value: true });
+      expect(root.hasAttribute('data-system-accent')).toBe(true);
+      expect(root.style.getPropertyValue('--system-accent-bg')).toBe('#3584e4');
+      expect(root.style.getPropertyValue('--system-accent-light')).toBe('#0461be');
+      expect(root.style.getPropertyValue('--system-accent-dark')).toBe('#81d0ff');
+      expect(root.style.getPropertyValue('--system-accent-bg-rgb')).toBe('53, 132, 228');
+      accentSetting.next({ value: false });
+      expect(root.hasAttribute('data-system-accent')).toBe(false);
+    });
+
+    it('follows accent changes, and drops the accent when the desktop has none', async () => {
+      await createDesktopService('linux', Promise.resolve('#3584e4'));
+      accentSetting.next({ value: true });
+      accentChanges.next('#e01b24');
+      expect(root.style.getPropertyValue('--system-accent-bg')).toBe('#e01b24');
+      accentChanges.next(null);
+      expect(root.hasAttribute('data-system-accent')).toBe(false);
+    });
+
+    it('keeps a change that arrives before the first read returns', async () => {
+      let answer: (color: string) => void = () => undefined;
+      const pending = new Promise<string>(resolve => (answer = resolve));
+      await createDesktopService('linux', pending);
+      accentSetting.next({ value: true });
+      accentChanges.next('#2ec27e');
+      answer('#3584e4');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(root.style.getPropertyValue('--system-accent-bg')).toBe('#2ec27e');
+    });
+
+    it('does not ask for an accent color outside Linux', async () => {
+      await createDesktopService('windows', Promise.resolve('#3584e4'));
+      accentSetting.next({ value: true });
+      const commands = mockApiClient.invoke.mock.calls.map(([command]) => command);
+      expect(commands).not.toContain('get_system_accent_color');
+      expect(root.hasAttribute('data-system-accent')).toBe(false);
+    });
   });
 });

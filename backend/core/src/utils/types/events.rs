@@ -90,6 +90,12 @@ pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 /// - Handled by: `WindowService`
 pub const WINDOW_BUTTON_LAYOUT_CHANGED: &str = "window_button_layout_changed";
 
+/// Emitted on Linux desktops when the desktop's accent colour changes, with the new colour as
+/// `#rrggbb` or null. Desktop only, like the button layout. In `PUBLIC_EVENTS`.
+/// - Emitted by: `native::window` (XDG settings portal watcher, started by `get_system_accent_color`)
+/// - Handled by: `WindowService`
+pub const SYSTEM_ACCENT_COLOR_CHANGED: &str = "system_accent_color_changed";
+
 /// Emitted when a background job starts, completes, fails, stops, or is removed (lifecycle change).
 /// - Emitted by: `rclone::state::job`
 /// - Handled by: `services::event_listener` (tray update & workflow engine), `JobManagementService`
@@ -206,6 +212,7 @@ pub const PUBLIC_EVENTS: &[&str] = &[
     VAULT_STATE_CHANGED,
     SYSTEM_THEME_CHANGED,
     WINDOW_BUTTON_LAYOUT_CHANGED,
+    SYSTEM_ACCENT_COLOR_CHANGED,
 ];
 
 /// List of all events that should be forwarded to SSE clients in headless mode

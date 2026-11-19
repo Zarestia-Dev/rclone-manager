@@ -155,6 +155,87 @@ fn portal_string(value: &zbus::Variant) -> Option<String> {
     }
 }
 
+/// The desktop's accent colour as `#rrggbb`, from the XDG settings portal (GNOME 47 and
+/// later, KDE Plasma 6). `None` when the desktop has none or is not Linux. The first call
+/// also starts following changes, which arrive as `SYSTEM_ACCENT_COLOR_CHANGED`.
+#[tauri::command]
+pub async fn get_system_accent_color() -> Option<String> {
+    #[cfg(all(feature = "desktop", target_os = "linux"))]
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static WATCHING: AtomicBool = AtomicBool::new(false);
+        if !WATCHING.swap(true, Ordering::SeqCst) {
+            crate::utils::spawn(watch_accent_color());
+        }
+        let value = super::portal::settings()
+            .await?
+            .call::<_, _, zbus::OwnedVariant>("Read", &(APPEARANCE, ACCENT_COLOR))
+            .await
+            .ok()?;
+        portal_accent_color(&value)
+    }
+    #[cfg(not(all(feature = "desktop", target_os = "linux")))]
+    None
+}
+
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+const APPEARANCE: &str = "org.freedesktop.appearance";
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+const ACCENT_COLOR: &str = "accent-color";
+
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+async fn watch_accent_color() {
+    use futures::StreamExt;
+
+    let Some(changes) = super::portal::setting_changes(APPEARANCE, ACCENT_COLOR).await else {
+        return;
+    };
+    let mut changes = std::pin::pin!(changes);
+    // GNOME's portal sends every change twice.
+    let mut last = None;
+    while let Some(message) = changes.next().await {
+        let Some(value) = super::portal::changed_value(&message) else {
+            continue;
+        };
+        let color = portal_accent_color(&value);
+        if last.as_ref() == Some(&color) {
+            continue;
+        }
+        last = Some(color.clone());
+        crate::services::bridge::emit(
+            crate::utils::types::events::SYSTEM_ACCENT_COLOR_CHANGED,
+            color,
+        );
+    }
+}
+
+/// The colour in a portal `accent-color` value: red, green and blue doubles from 0 to 1. A
+/// value outside that range means the desktop has no accent colour.
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+fn portal_accent_color(value: &zbus::Variant) -> Option<String> {
+    let channel = |field: &zbus::Variant| match field {
+        zbus::Variant::F64(level) if (0.0..=1.0).contains(level) => {
+            Some((level * 255.0).round() as u8)
+        }
+        _ => None,
+    };
+    match value {
+        zbus::Variant::Structure(color) => {
+            let [red, green, blue] = color.fields() else {
+                return None;
+            };
+            Some(format!(
+                "#{:02x}{:02x}{:02x}",
+                channel(red)?,
+                channel(green)?,
+                channel(blue)?
+            ))
+        }
+        zbus::Variant::Variant(inner) => portal_accent_color(inner),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(all(feature = "desktop", target_os = "linux"))]
@@ -170,6 +251,25 @@ mod tests {
             Some("close,minimize,maximize:".to_string())
         );
         assert_eq!(portal_string(&zbus::Variant::from(1u32)), None);
+    }
+
+    #[cfg(all(feature = "desktop", target_os = "linux"))]
+    #[test]
+    fn portal_accent_color_reads_the_rgb_doubles() {
+        use super::portal_accent_color;
+        let color = |red: f64, green: f64, blue: f64| {
+            zbus::Variant::Structure(zbus::Structure::from((red, green, blue)))
+        };
+        // GNOME's default blue, #3584e4.
+        let blue = color(0.208, 0.518, 0.894);
+        assert_eq!(portal_accent_color(&blue), Some("#3584e4".to_string()));
+        assert_eq!(
+            portal_accent_color(&zbus::Variant::Variant(Box::new(color(1.0, 0.0, 0.5)))),
+            Some("#ff0080".to_string())
+        );
+        // Out of range: the desktop has no accent colour.
+        assert_eq!(portal_accent_color(&color(-1.0, -1.0, -1.0)), None);
+        assert_eq!(portal_accent_color(&zbus::Variant::from("blue")), None);
     }
 
     use super::{has_visible_tray, should_open_main_window};

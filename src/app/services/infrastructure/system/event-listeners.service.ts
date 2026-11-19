@@ -26,6 +26,7 @@ import {
   SYSTEM_SETTINGS_CHANGED,
   SYSTEM_THEME_CHANGED,
   WINDOW_BUTTON_LAYOUT_CHANGED,
+  SYSTEM_ACCENT_COLOR_CHANGED,
   AUTOMATIONS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
@@ -261,6 +262,11 @@ export class EventListenersService extends TauriBaseService {
   /** Linux desktop only; headless has no window buttons and never receives it. */
   listenToWindowButtonLayoutChanged(): Observable<string | null> {
     return this.listenToEvent<string | null>(WINDOW_BUTTON_LAYOUT_CHANGED);
+  }
+
+  /** Linux desktop only, like the button layout. */
+  listenToSystemAccentColorChanged(): Observable<string | null> {
+    return this.listenToEvent<string | null>(SYSTEM_ACCENT_COLOR_CHANGED);
   }
 
   listenToAutomationsCacheChanged(): Observable<string> {

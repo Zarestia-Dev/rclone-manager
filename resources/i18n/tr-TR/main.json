@@ -495,6 +495,10 @@
         "label": "Bağımsız Pencereler",
         "description": "İletişim kutularını (modalleri) ayrı işletim sistemi pencerelerinde açar."
       },
+      "system_accent_color": {
+        "label": "Sistem vurgu rengi",
+        "description": "Varsayılan mavi yerine masaüstü ayarlarında seçilen vurgu rengini kullan (GNOME 47 ve sonrası, KDE Plasma 6)."
+      },
       "prevent_sleep": {
         "label": "Sistem Uykusunu Engelle",
         "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistemin otomatik uykuya geçmesini engeller."
