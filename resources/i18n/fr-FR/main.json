@@ -59,7 +59,10 @@
       "nonEmpty": "Le dossier contient des fichiers",
       "colliding": "Utilisé par {{details}}",
       "willCreate": "Le dossier sera créé après la création du dépôt distant.",
-      "checking": "Vérification du chemin..."
+      "checking": "Vérification du chemin...",
+      "notDirectory": "Le chemin pointe vers un fichier. Choisissez un dossier.",
+      "notDirectoryWindowsMount": "Le chemin pointe vers un fichier. Choisissez une lettre de lecteur libre ou saisissez le chemin d’un nouveau dossier.",
+      "unavailable": "Impossible de vérifier le chemin. Vérifiez sa saisie et votre accès à cet emplacement."
     }
   },
   "validators": {
@@ -497,6 +500,10 @@
       "prevent_sleep": {
         "label": "Empêcher la mise en veille du système",
         "description": "Empêche la mise en veille automatique du système pendant que des transferts, des montages ou des serveurs sont actifs."
+      },
+      "ui_scale": {
+        "label": "Échelle de l'interface",
+        "description": "Taille de l'interface, en pourcentage. Réduisez-la si tout paraît trop grand, par exemple avec la mise à l'échelle fractionnaire de l'écran sous KDE."
       },
       "keep_alive": {
         "label": "Exécuter en arrière-plan",
@@ -1130,14 +1137,16 @@
         "stop": "Arrêter ce partage",
         "copyId": "Cliquer pour copier l'ID"
       },
-      "messages": {
-        "noOptions": "Pas d'options supplémentaires"
-      },
       "labels": {
         "id": "ID:",
         "options": "Options :",
         "active": "actif"
       }
+    },
+    "mountCard": {
+      "copyPath": "Cliquer pour copier le point de montage",
+      "open": "Ouvrir dans l'explorateur de fichiers",
+      "unmount": "Démonter ce remote"
     },
     "vfsControl": {
       "title": "Contrôle VFS",
@@ -1392,6 +1401,8 @@
       "remoteType": "Type de dépôt distant",
       "noMatchingTypes": "Aucun type de dépôt distant correspondant",
       "loadingOptions": "Chargement des options de configuration...",
+      "advancedSettingsCount": "Paramètres avancés ({{count}})",
+      "defaultMountMethod": "Automatique (par défaut)",
       "fields": "Champs",
       "switchToForm": "Basculer en mode formulaire",
       "switchToJson": "Passer en mode JSON",
@@ -1499,6 +1510,37 @@
       }
     },
     "appOperation": {
+      "mountLocation": "Monter en tant que",
+      "mountFolder": "Dossier",
+      "mountAutomaticDrive": "Automatique",
+      "mountDriveType": "Afficher comme",
+      "mountWindowsAppearance": "Affichage dans Windows",
+      "mountDiskName": "Nom du disque (facultatif)",
+      "mountNetworkName": "Nom réseau (facultatif)",
+      "mountAutomaticName": "Nom automatique",
+      "mountLocalDriveHint": "Le disque local est le choix habituel. Essaie un lecteur réseau si un programme rencontre des problèmes.",
+      "mountNetworkDriveHint": "Windows affiche le disque comme lecteur réseau. Le stockage reste le même.",
+      "mountDriveTarget": "Lecteur",
+      "mountFolderPathRequired": "Saisissez le chemin complet vers un nouveau sous-dossier.",
+      "mountFolderQuotesRemoved": "Les guillemets ont été retirés du chemin.",
+      "mountFolderSubfolderAdded": "Un nom de sous-dossier a été ajouté au chemin.",
+      "mountFolderNameHint": "Pour changer le nom du dossier, modifiez la dernière partie du chemin. Le dossier est créé lors du montage.",
+      "mountLocalDrive": "Disque local",
+      "mountNetworkDrive": "Lecteur réseau",
+      "mountDriveOccupied": "Occupée",
+      "mountDriveCurrent": "Actuel",
+      "mountDriveChecking": "Vérification des lettres de lecteur…",
+      "mountUseParent": "Utiliser comme dossier parent",
+      "mountDriveSuggestion": "Lecteur suggéré : {{letter}} · Choisissez une lettre dans la liste pour toujours l’utiliser.",
+      "mountAutomaticDriveHint": "Une lettre de lecteur libre est choisie lors du montage.",
+      "mountDriveReserved": "Réservée par un autre profil",
+      "mountDriveConflict": "Le lecteur {{letter}} est occupé ou réservé. Choisissez une autre lettre.",
+      "mountDriveLetter": "Lettre de lecteur",
+      "mountParentFolder": "Choisir le dossier parent",
+      "mountFolderHint": "Le montage dans un dossier utilise un disque local. Choisissez son dossier parent et un nom de dossier qui n’existe pas encore.",
+      "mountDriveLettersUnavailable": "Impossible de vérifier les lettres de lecteur. Réessayez.",
+      "mountFolderLocalDrive": "Choisissez un dossier sur un lecteur local.",
+      "mountFolderAlreadyExists": "Le dossier de montage existe déjà. Utilisez un nouveau nom.",
       "multiSourceOneWayInfo": "Plusieurs chemins source détectés. La vérification unidirectionnelle a été automatiquement activée pour s'assurer que rclone vérifie chaque source par rapport à la destination.",
       "enableAutoStart": "Activer Auto-{{type}} au démarrage",
       "autoStartDelay": "Délai de démarrage",
@@ -3222,6 +3264,7 @@
       "system": "Informations système",
       "jobs": "Informations du job",
       "automations": "Automatisations",
+      "mounts": "Remotes montés",
       "serves": "Services de partage en cours"
     },
     "layout": {
@@ -3306,6 +3349,14 @@
       },
       "noActive": "Aucun service de partage actif",
       "noRunning": "Aucun partage actif. Démarrez un service de partage pour rendre un dépôt accessible via HTTP, WebDAV, FTP ou SFTP."
+    },
+    "mounts": {
+      "activeCount": {
+        "one": "{{count}} montage actif",
+        "other": "{{count}} montages actifs"
+      },
+      "noActive": "Aucun montage actif",
+      "noMounted": "Aucun remote n'est monté. Montez un remote pour utiliser ses fichiers comme un dossier sur votre ordinateur."
     }
   },
   "appOverview": {
@@ -3411,10 +3462,12 @@
       "alreadyInUse": "Le point de montage {{mountPoint}} est déjà utilisé par le dépôt distant {{remote}}",
       "configIncomplete": "Configuration du montage incomplète pour le profil '{{profile}}'",
       "directoryAlreadyMounted": "Le répertoire de montage est déjà utilisé. Veuillez sélectionner un dossier vide ou activer '--allow-non-empty' dans le profil.",
+      "windowsTargetAlreadyExists": "Le point de montage existe déjà. Choisissez une lettre de lecteur libre ou saisissez le chemin d’un dossier qui n’existe pas encore.",
       "directoryNotEmpty": "Le dossier sélectionné n'est pas vide. Veuillez choisir un dossier vide ou activer '--allow-non-empty'.",
       "winfspMissing": "WinFsp n'est pas installé. Veuillez installer WinFsp pour monter des disques virtuels sous Windows.",
       "fuseMissing": "FUSE (fuse3) n'est pas installé. Veuillez installer fuse3 pour activer le montage.",
       "macfuseMissing": "macFUSE / FUSE-T n'est pas installé. Veuillez installer macFUSE pour activer le montage sur macOS.",
+      "noFreeDriveLetter": "Aucune lettre de lecteur libre pour le montage automatique. Libérez une lettre ou choisissez un dossier.",
       "driveLetterInUse": "La lettre de lecteur sélectionnée est déjà utilisée par le système.",
       "permissionDenied": "Permission refusée lors de la tentative de montage.",
       "deviceBusy": "Le point de montage ou le périphérique cible est occupé. Fermez les fichiers ouverts, gestionnaires de fichiers ou terminaux accédant au répertoire et réessayez.",
@@ -4675,10 +4728,7 @@
     "noChangesDetected": "Tous les paramètres de ce modèle correspondent déjà à vos valeurs actuelles.",
     "selectCategoriesToApply": "Catégories et paramètres"
   },
-  "navigation": {
-    "dashboard": "Tableau de bord",
-    "files": "Fichiers"
-  },
+  "navigation": {},
   "provision": {
     "stages": {
       "downloading": "Téléchargement...",
