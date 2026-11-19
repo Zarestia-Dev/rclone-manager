@@ -25,6 +25,7 @@ import {
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
   SYSTEM_THEME_CHANGED,
+  WINDOW_BUTTON_LAYOUT_CHANGED,
   AUTOMATIONS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
@@ -255,6 +256,11 @@ export class EventListenersService extends TauriBaseService {
 
   listenToSystemThemeChanged(): Observable<boolean> {
     return this.listenToEvent<boolean>(SYSTEM_THEME_CHANGED);
+  }
+
+  /** Linux desktop only; headless has no window buttons and never receives it. */
+  listenToWindowButtonLayoutChanged(): Observable<string | null> {
+    return this.listenToEvent<string | null>(WINDOW_BUTTON_LAYOUT_CHANGED);
   }
 
   listenToAutomationsCacheChanged(): Observable<string> {

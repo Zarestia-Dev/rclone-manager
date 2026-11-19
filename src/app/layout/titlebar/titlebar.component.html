@@ -1,4 +1,9 @@
 <div class="left-section">
+  <!-- Window controls the desktop places on the left (for example close,minimize,maximize:) -->
+  @if (!isOverlayOpen()) {
+    <app-window-controls side="start"></app-window-controls>
+  }
+
   <!-- Main Buttons -->
   <button
     matIconButton

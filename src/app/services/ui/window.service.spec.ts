@@ -24,6 +24,7 @@ describe('WindowService', () => {
   };
   let themeSettingSubject: Subject<{ value: string } | null>;
   let sseEventSubject: Subject<unknown>;
+  let layoutChanges: Subject<string | null>;
 
   beforeEach(() => {
     vi.stubGlobal(
@@ -42,6 +43,7 @@ describe('WindowService', () => {
 
     themeSettingSubject = new Subject();
     sseEventSubject = new Subject();
+    layoutChanges = new Subject();
 
     mockAppSettings = {
       selectSetting: vi.fn().mockReturnValue(themeSettingSubject.asObservable()),
@@ -78,6 +80,7 @@ describe('WindowService', () => {
           useValue: {
             listenToSystemThemeChanged: vi.fn().mockReturnValue(new Subject()),
             listenToWindowResize: vi.fn().mockReturnValue(new Subject()),
+            listenToWindowButtonLayoutChanged: vi.fn(() => layoutChanges.asObservable()),
           },
         },
       ],
@@ -122,6 +125,88 @@ describe('WindowService', () => {
       else Reflect.deleteProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__');
       vi.mocked(platform).mockReset();
     }
+  });
+
+  describe('window button layout', () => {
+    const createDesktopService = async (
+      os: 'linux' | 'windows',
+      layout: Promise<unknown>
+    ): Promise<WindowService> => {
+      Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+      Object.defineProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__', {
+        value: { platform: os },
+        configurable: true,
+      });
+      vi.mocked(platform).mockReturnValue(os);
+      vi.spyOn(
+        WindowService.prototype as unknown as { getCurrentTauriWindow: () => unknown },
+        'getCurrentTauriWindow'
+      ).mockReturnValue({ isMaximized: vi.fn().mockResolvedValue(false) });
+      mockApiClient.invoke.mockImplementation((command: string) =>
+        command === 'get_window_button_layout' ? layout : Promise.resolve({})
+      );
+      const desktop = TestBed.runInInjectionContext(() => new WindowService());
+      await Promise.resolve();
+      await Promise.resolve();
+      return desktop;
+    };
+
+    afterEach(() => {
+      Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+      Reflect.deleteProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__');
+      vi.mocked(platform).mockReset();
+      vi.restoreAllMocks();
+    });
+
+    it('starts with minimize, maximize and close at the end', () => {
+      expect(service.buttonLayout()).toEqual({ start: [], end: ['minimize', 'maximize', 'close'] });
+    });
+
+    it('follows the desktop layout on Linux', async () => {
+      const desktop = await createDesktopService('linux', Promise.resolve('appmenu:close'));
+      expect(mockApiClient.invoke).toHaveBeenCalledWith('get_window_button_layout', undefined);
+      expect(desktop.buttonLayout()).toEqual({ start: [], end: ['close'] });
+    });
+
+    it('follows layout changes without a reload', async () => {
+      const desktop = await createDesktopService('linux', Promise.resolve('appmenu:close'));
+      layoutChanges.next('close,minimize,maximize:');
+      expect(desktop.buttonLayout()).toEqual({ start: ['close', 'minimize', 'maximize'], end: [] });
+      layoutChanges.next(null);
+      expect(desktop.buttonLayout().end).toEqual(['minimize', 'maximize', 'close']);
+      const reads = mockApiClient.invoke.mock.calls.filter(
+        ([c]) => c === 'get_window_button_layout'
+      );
+      expect(reads).toHaveLength(1);
+    });
+
+    it('keeps a change that arrives before the first read returns', async () => {
+      let answer: (layout: string) => void = () => undefined;
+      const pending = new Promise<string>(resolve => (answer = resolve));
+      const desktop = await createDesktopService('linux', pending);
+      layoutChanges.next('close:');
+      answer('appmenu:minimize,maximize,close');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(desktop.buttonLayout()).toEqual({ start: ['close'], end: [] });
+    });
+
+    it('does not ask for a layout on Windows', async () => {
+      const desktop = await createDesktopService('windows', Promise.resolve('close:'));
+      const commands = mockApiClient.invoke.mock.calls.map(([command]) => command);
+      expect(commands).not.toContain('get_window_button_layout');
+      expect(
+        TestBed.inject(EventListenersService).listenToWindowButtonLayoutChanged
+      ).not.toHaveBeenCalled();
+      expect(desktop.buttonLayout().end).toEqual(['minimize', 'maximize', 'close']);
+    });
+
+    it('keeps the default when the layout cannot be read', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const desktop = await createDesktopService('linux', Promise.reject(new Error('no GTK')));
+      expect(desktop.buttonLayout().end).toEqual(['minimize', 'maximize', 'close']);
+      expect(error).toHaveBeenCalled();
+    });
   });
 
   it('should be created with default system theme', () => {

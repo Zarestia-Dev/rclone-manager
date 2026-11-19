@@ -15,6 +15,8 @@ export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed' as const;
 export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked' as const;
 export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
 export const SYSTEM_THEME_CHANGED = 'system_theme_changed' as const;
+/** Linux desktop only: GTK's title bar button layout changed. Payload: the layout or null. */
+export const WINDOW_BUTTON_LAYOUT_CHANGED = 'window_button_layout_changed' as const;
 export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
 export const JOB_STATS_UPDATED = 'job_stats_updated' as const;
 export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;

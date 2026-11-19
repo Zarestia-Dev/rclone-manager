@@ -107,6 +107,8 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         crate::desktop::debug::open_devtools,
         #[cfg(all(desktop, not(feature = "web-server")))]
         crate::desktop::window::new_window,
+        #[cfg(all(desktop, not(feature = "web-server")))]
+        crate::native::window::get_window_button_layout,
     ];
     handler(invoke)
 }
