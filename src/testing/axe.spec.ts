@@ -7,6 +7,7 @@ import { axeViolations } from './axe';
 import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
 import { OverviewHeaderComponent } from 'src/app/shared/overviews-shared/overview-header/overview-header.component';
 import { WindowService } from 'src/app/services/ui/window.service';
+import { DEFAULT_WINDOW_BUTTON_LAYOUT } from 'src/app/shared/utils';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
@@ -50,6 +51,7 @@ describe('axe-core component checks', () => {
           provide: WindowService,
           useValue: {
             isMaximized: signal(false),
+            buttonLayout: signal(DEFAULT_WINDOW_BUTTON_LAYOUT),
             minimize: vi.fn(),
             maximize: vi.fn(),
             close: vi.fn(),
