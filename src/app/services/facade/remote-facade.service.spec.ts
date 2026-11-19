@@ -57,6 +57,7 @@ describe('RemoteFacadeService', () => {
   let mockStatusService: {
     refreshStatus: ReturnType<typeof vi.fn>;
     rcloneStatus: ReturnType<typeof signal>;
+    isLoading: ReturnType<typeof signal<boolean>>;
   };
 
   beforeEach(() => {
@@ -87,6 +88,7 @@ describe('RemoteFacadeService', () => {
     mockStatusService = {
       refreshStatus: vi.fn().mockResolvedValue(undefined),
       rcloneStatus: signal('inactive'),
+      isLoading: signal(true),
     };
 
     isStatusKnown = signal(true);
@@ -260,6 +262,35 @@ describe('RemoteFacadeService', () => {
     await service.refreshAll();
     expect(mockRemoteService.getRemoteTypes).not.toHaveBeenCalled();
     expect(mockRemoteService.getAllRemoteConfigs).toHaveBeenCalled();
+  });
+
+  it('leaves engine ready reloads to the status, mount, serve and job services', async () => {
+    TestBed.tick();
+    await service.refreshAll();
+    vi.clearAllMocks();
+    rcloneReady$.next();
+    await service.loadRemotes();
+    expect(mockRemoteService.getAllRemoteConfigs).toHaveBeenCalled();
+    expect(mockStatusService.refreshStatus).not.toHaveBeenCalled();
+    expect(TestBed.inject(MountManagementService).getMountedRemotes).not.toHaveBeenCalled();
+    expect(TestBed.inject(JobManagementService).refreshJobs).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh again for the first status reading, but does after a reconnection', async () => {
+    TestBed.tick();
+    await service.refreshAll();
+    vi.clearAllMocks();
+    // The startup refresh reads the status for the first time.
+    mockStatusService.rcloneStatus.set('active');
+    mockStatusService.isLoading.set(false);
+    TestBed.tick();
+    expect(mockStatusService.refreshStatus).not.toHaveBeenCalled();
+
+    mockStatusService.rcloneStatus.set('error');
+    TestBed.tick();
+    mockStatusService.rcloneStatus.set('active');
+    TestBed.tick();
+    expect(mockStatusService.refreshStatus).toHaveBeenCalledOnce();
   });
 
   it('handles status loading failures during background refresh', async () => {
