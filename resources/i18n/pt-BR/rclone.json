@@ -1356,8 +1356,8 @@
     "help": "Armazenar envios em várias partes em um buffer de memória em vez de transmiti-los por streaming ao backend"
   },
   "mount_type": {
-    "title": "Tipo de Montagem",
-    "help": "Tipo de montagem a usar."
+    "title": "Método de montagem",
+    "help": "Escolha o método que o rclone usa para montar o armazenamento."
   },
   "allow_https_downgrade": {
     "title": "Permitir downgrade de HTTPS",
