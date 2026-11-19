@@ -16,10 +16,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Window Buttons Follow the Desktop Layout (Linux)**: The title bar always showed minimize, maximize and close on the right, even on GNOME, whose default is a close button only. On Linux it now shows the buttons your desktop asks for, in its order and on its side (GTK's `gtk-decoration-layout`, which GNOME and KDE set), for example close only, or close, minimize and maximize on the left. Windows is unchanged ([#37](https://github.com/Zarestia-Dev/rclone-manager/issues/37)).
 - **Interface Drawn Only Under the Mouse on Hybrid Laptops (Linux)**: On a Wayland session with KDE Plasma older than 6.8 or Hyprland, the app turned off WebKitGTK compositing whenever an NVIDIA driver was loaded, even when the Intel or AMD GPU draws the window. With WebKitGTK 2.54 this made buttons and text appear only while hovered. The workaround, which exists for an NVIDIA-specific explicit-sync crash, is now skipped when the boot GPU is not NVIDIA; if the boot GPU cannot be read it is applied as before. Setting `WEBKIT_DISABLE_COMPOSITING_MODE` yourself still takes precedence. Fixes [#344](https://github.com/Zarestia-Dev/rclone-manager/issues/344).
 - **File Manager Entries Left Behind (Linux)**: Removing the DEB or RPM package did not delete the Nautilus Python extension (its name pattern never matched), and the headless package looked for the desktop product's names, so none of its context menu entries were removed. Both pre-removal scripts now match the product's own names.
 - **Docker Password on the Command Line**: The container entrypoint turned `RCLONE_MANAGER_PASS` (and the other `RCLONE_MANAGER_*` variables) into command-line arguments, so the password was visible to every user on the host through `ps` and `/proc/<pid>/cmdline`. The server now reads the variables from its environment; empty values are still treated as unset.
 - **Update Rolled Back After Quitting Right Away**: Closing or stopping the updated app within 10 seconds of its start undid the update, even though it had started correctly. The update is now kept as soon as the new version confirms its startup, without the extra 10-second wait; a version that crashes or never confirms its startup (90 seconds) still restores the previous one.
+
+### Security
+
+- **RC Credentials No Longer on the Command Line (Linux)**: The local rclone engine received its generated RC username and password as `--rc-user` / `--rc-pass` arguments, which any local user can read through `/proc/<pid>/cmdline` or `ps`. They are now passed as `RCLONE_RC_USER` / `RCLONE_RC_PASS` in the engine's environment, which only its owner and root can read. Fixes [GHSA-5q5w-3j5f-v425](https://github.com/Zarestia-Dev/rclone-manager/security/advisories/GHSA-5q5w-3j5f-v425).
 
 ## [0.3.6] - 2026-11-13
 

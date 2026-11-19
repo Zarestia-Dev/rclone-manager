@@ -8,9 +8,11 @@ import {
   viewChild,
   ViewEncapsulation,
 } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-workspace-shell',
+  imports: [TranslatePipe],
   templateUrl: './workspace-shell.component.html',
   styleUrl: './workspace-shell.component.scss',
   encapsulation: ViewEncapsulation.None,

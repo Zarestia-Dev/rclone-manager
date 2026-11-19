@@ -10,6 +10,7 @@ import { WindowService } from '../../../services/ui/window.service';
 import { UiStateService } from '../../../services/ui/state/ui-state.service';
 import { WindowControlsComponent } from '../../../shared/components/window-controls/window-controls.component';
 import { AppLifecycleService } from '../../../services/infrastructure/system/app-lifecycle.service';
+import { DEFAULT_WINDOW_BUTTON_LAYOUT } from '../../../shared/utils';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 
 @Pipe({ name: 'translate' })
@@ -37,6 +38,7 @@ describe('VaultLockScreenComponent', () => {
 
   const windowMock = {
     isMaximized: signal(false),
+    buttonLayout: signal(DEFAULT_WINDOW_BUTTON_LAYOUT),
     minimize: vi.fn(),
     maximize: vi.fn(),
     close: vi.fn(),
@@ -276,6 +278,23 @@ describe('VaultLockScreenComponent', () => {
     expect(windowMock.maximize).toHaveBeenCalled();
     expect(windowMock.close).toHaveBeenCalled();
     expect(header?.querySelectorAll('button').length).toBe(3);
+  });
+
+  it('places window controls on the side the desktop layout asks for', () => {
+    windowMock.buttonLayout.set({ start: ['close'], end: ['minimize'] });
+    fixture.detectChanges();
+    const [start, end] = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '.vault-window-bar app-window-controls'
+      )
+    );
+    expect(Array.from(start.querySelectorAll('button')).map(b => b.title)).toEqual([
+      'titlebar.close',
+    ]);
+    expect(Array.from(end.querySelectorAll('button')).map(b => b.title)).toEqual([
+      'titlebar.minimize',
+    ]);
+    windowMock.buttonLayout.set(DEFAULT_WINDOW_BUTTON_LAYOUT);
   });
 
   it.each(['web', 'mobile'])('hides native controls and ignores exit calls on %s', async mode => {

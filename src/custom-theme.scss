@@ -11,12 +11,16 @@
 // ============================================================================
 
 @use "@angular/material" as mat;
+@use "@angular/cdk";
 @use "sass:map";
 @use "sass:color";
 @use "animations";
 @use "app/styles/code-editor";
 @use "app/styles/activity-tables";
 @use "app/styles/pill";
+
+// .cdk-visually-hidden: text for screen readers only, such as the page headings.
+@include cdk.a11y-visually-hidden();
 
 // ============================================================================
 // SECTION 1: GNOME COLOR PALETTE (Single Source of Truth)

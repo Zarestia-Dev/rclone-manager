@@ -1,5 +1,6 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceShellComponent } from './workspace-shell.component';
 
@@ -36,7 +37,13 @@ describe('WorkspaceShellComponent', () => {
         disconnect = disconnect;
       }
     );
-    TestBed.configureTestingModule({ imports: [TestHostComponent] });
+    TestBed.configureTestingModule({
+      imports: [TestHostComponent],
+      providers: [provideTranslateService()],
+    });
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', { overviews: { headers: { general: 'RClone Manager' } } });
+    translate.use('en');
     fixture = TestBed.createComponent(TestHostComponent);
     fixture.detectChanges();
   });
@@ -80,6 +87,16 @@ describe('WorkspaceShellComponent', () => {
     expect(resize(104)).toBe('104px');
     expect(resize(0)).toBe('0px');
     expect(resize(104)).toBe('104px');
+  });
+
+  it('gives screen readers a main landmark and a page heading', () => {
+    const main: HTMLElement | null = fixture.nativeElement.querySelector('main.workspace-content');
+    expect(main?.querySelector('.workspace-scroll-region')).not.toBeNull();
+    const heading = main?.querySelector('h1');
+    expect(heading?.textContent?.trim()).toBe('RClone Manager');
+    expect(heading?.classList.contains('cdk-visually-hidden')).toBe(true);
+    // The titlebar and the navigation stay outside the main landmark.
+    expect(main?.querySelector('app-titlebar, app-tabs')).toBeNull();
   });
 
   it('disconnects the observer when the workspace is destroyed', () => {
