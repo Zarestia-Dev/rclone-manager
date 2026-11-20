@@ -6,12 +6,12 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="jobs" data-tone="yellow" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="jobs" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.jobs' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
       @let activeJobs = activeJobsCount();
-      <span appPill [tone]="activeJobs > 0 ? 'primary' : 'dim'">
+      <span appPill [tone]="activeJobs > 0 ? tone : 'dim'">
         {{
           activeJobs > 0
             ? ('generalOverview.jobs.activeCount' | translate: { count: activeJobs })
@@ -45,6 +45,7 @@
           </div>
           <mat-progress-bar
             mode="determinate"
+            [attr.data-tone]="tone"
             [value]="jobCompletionPercentage()"
             [attr.aria-valuenow]="jobCompletionPercentage()"
             aria-valuemin="0"

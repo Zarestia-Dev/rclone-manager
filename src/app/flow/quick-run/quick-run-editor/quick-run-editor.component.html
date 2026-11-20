@@ -230,6 +230,7 @@
                   [opFormGroup]="getOpFormGroup(activeTab())"
                   [operationType]="currentOpType()"
                   [currentRemoteName]="currentRemoteName()"
+                  [currentQuickRunId]="targetQuickRun()?.id ?? null"
                   [existingRemotes]="existingRemoteNames()"
                   [isNewRemote]="false"
                   [searchQuery]="searchQuery()"

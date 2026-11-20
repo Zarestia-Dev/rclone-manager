@@ -30,6 +30,7 @@ import {
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import type { CheckCompareData } from '../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component';
+import type { GuideAnswers, GuideGoalId } from '../../shared/utils/intent-guide.util';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
@@ -43,6 +44,21 @@ export interface RemoteConfigModalOptions {
   targetProfile?: string;
   autoAddProfile?: boolean;
   cloneFrom?: string;
+}
+
+/** What a guide that was closed to add a cloud has chosen so far, so it can carry on afterwards. */
+export interface IntentGuideResume {
+  /** The remote the user was working with; the new remote becomes the other side. */
+  remoteName: string;
+  goal: GuideGoalId;
+  answers: GuideAnswers;
+}
+
+export interface IntentGuideModalOptions {
+  /** The remote the guide starts with, for example the one that was just created. */
+  remoteName?: string;
+  /** Carries on with the choices of a guide that was closed to add this remote. */
+  resume?: IntentGuideResume;
 }
 
 export interface ExportModalOptions {
@@ -162,6 +178,8 @@ export class StandaloneWindowRef<R = unknown> implements DialogRefLike<R> {
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
   private readonly vault = inject(VaultService);
+  /** Set while the guide is closed for the quick add dialog; the next guide may carry on. */
+  private guideResume: IntentGuideResume | null = null;
   private readonly dialog = inject(MatDialog);
   private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
@@ -211,6 +229,10 @@ export class ModalService extends TauriBaseService {
     'quick-add-remote': () =>
       import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
         m => m.QuickAddRemoteComponent
+      ),
+    'intent-guide': () =>
+      import('../../features/modals/intent-guide/intent-guide-modal.component').then(
+        m => m.IntentGuideModalComponent
       ),
     'remote-config': () =>
       import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
@@ -630,7 +652,31 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openQuickAddRemote<TResult = unknown>(): DialogRefLike<TResult> {
+  openIntentGuide<TResult = unknown>(
+    options: IntentGuideModalOptions = {}
+  ): DialogRefLike<TResult> {
+    // A guide that was closed to add a cloud continues only with the cloud that was added.
+    const resume = this.guideResume;
+    this.guideResume = null;
+    const carriesOn = !!resume && !!options.remoteName && options.remoteName !== resume.remoteName;
+    return this.openModal(
+      'intent-guide',
+      {
+        ...CONFIG_MODAL_SIZE,
+        disableClose: true,
+        data: { remoteName: options.remoteName, resume: carriesOn ? resume : undefined },
+      },
+      {
+        title: this.translate.instant('modals.intentGuide.title'),
+        width: 1024,
+        height: 768,
+      }
+    );
+  }
+
+  /** Opens the quick add dialog; the guide it was opened from can carry on with the new remote. */
+  openQuickAddRemote<TResult = unknown>(resumeGuide?: IntentGuideResume): DialogRefLike<TResult> {
+    this.guideResume = resumeGuide ?? null;
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },

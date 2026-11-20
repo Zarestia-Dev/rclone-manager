@@ -7,6 +7,7 @@ import {
   PathStyle,
   MountPathCollision,
   DefaultPathOp,
+  QuickRun,
 } from '@app/types';
 import { BackendService } from '../system/backend.service';
 import * as pathUtils from '../../../shared/utils/path.utils';
@@ -160,7 +161,8 @@ export class PathService {
     currentRemoteName: string,
     allSettings: Record<string, unknown> | undefined | null,
     currentProfileName?: string,
-    currentOperation?: DefaultPathOp
+    currentOperation?: DefaultPathOp,
+    quick?: { runs: readonly QuickRun[]; exceptId?: string | null }
   ): MountPathCollision[] {
     return pathUtils.checkMountPathCollision(
       proposedPath,
@@ -168,7 +170,12 @@ export class PathService {
       allSettings,
       p => this.isLocalPath(p),
       currentProfileName,
-      { pathStyle: this.enginePathStyle(), currentOperation }
+      {
+        pathStyle: this.enginePathStyle(),
+        currentOperation,
+        quickRuns: quick?.runs,
+        currentQuickRunId: quick?.exceptId,
+      }
     );
   }
 }

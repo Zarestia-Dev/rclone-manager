@@ -7,7 +7,6 @@ import {
   computed,
   effect,
   DestroyRef,
-  WritableSignal,
   signal,
   linkedSignal,
   untracked,
@@ -23,23 +22,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   CronValidationResponse,
   EditTarget,
-  FileBrowserItem,
-  FilePickerSelection,
   CORE_SYNC_OPS,
   MOUNT_NETWORK_MODE_KEYS,
   MOUNT_VOLUME_NAME_KEYS,
   type PathGroup,
-  type PathInspectionStatus,
   type DefaultPathOp,
-  type PillTone,
   isSourceOnlyOperation,
   operationHas,
   type OperationFlag,
@@ -48,19 +41,13 @@ import { isMobile } from 'src/app/services/infrastructure/platform/api-client.se
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import {
-  PathSelectionService,
-  PathSelectionState,
-} from 'src/app/services/remote/path-selection.service';
+import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import {
-  PATH_INSPECTION_UNAVAILABLE,
-  PathInspectionService,
-} from 'src/app/services/infrastructure/platform/path-inspection.service';
+import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
-import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
+import { PathFieldComponent } from 'src/app/shared/components/path-field/path-field.component';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
 import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
@@ -78,7 +65,6 @@ interface PathItem {
   remoteName: string;
   pathControl: FormControl;
   typeControl: FormControl;
-  inspectionStatus: WritableSignal<PathInspectionStatus | null>;
 }
 
 @Component({
@@ -92,14 +78,12 @@ interface PathItem {
     MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
-    MatDividerModule,
     MatExpansionModule,
-    CdkMenuModule,
     CronInputComponent,
     NumberInputComponent,
     TranslatePipe,
     AlertBannerComponent,
-    CdkOverlayAutoposDirective,
+    PathFieldComponent,
     UrlPreviewComponent,
     PillDirective,
     WindowsMountTargetComponent,
@@ -110,27 +94,12 @@ interface PathItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OperationConfigComponent {
-  private static readonly INSPECTION_TONES: Readonly<
-    Record<PathInspectionStatus['state'], PillTone>
-  > = {
-    clean: 'primary',
-    nonEmpty: 'orange',
-    exists: 'orange',
-    unavailable: 'orange',
-    notDirectory: 'warn',
-    colliding: 'warn',
-    willCreate: 'accent',
-    checking: 'dim',
-  };
-
-  protected inspectionTone(state: PathInspectionStatus['state']): PillTone {
-    return OperationConfigComponent.INSPECTION_TONES[state];
-  }
-
   readonly opFormGroup = input.required<FormGroup>();
   readonly operationType = input.required<EditTarget>();
   readonly currentRemoteName = input.required<string>();
   readonly currentProfileName = input<string | null>(null);
+  /** The Quick Run being edited, so that its own folders do not count as taken. */
+  readonly currentQuickRunId = input<string | null>(null);
   readonly existingRemotes = input<string[]>([]);
   readonly mountProfiles = input<Record<string, unknown>>();
   readonly description = input('');
@@ -140,7 +109,6 @@ export class OperationConfigComponent {
 
   // Services
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly pathSelectionService = inject(PathSelectionService);
   private readonly pathService = inject(PathService);
   private readonly pathInspectionService = inject(PathInspectionService);
   private readonly notificationService = inject(NotificationService);
@@ -262,14 +230,6 @@ export class OperationConfigComponent {
     () => this.isOperationInList(CORE_SYNC_OPS) && this.hasLocalSource() && this.hasRemoteSource()
   );
 
-  pathStates = new Map<string, WritableSignal<PathSelectionState>>();
-  private readonly pathInspectionStatuses = new Map<
-    string,
-    WritableSignal<PathInspectionStatus | null>
-  >();
-  private readonly inspectionDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private readonly inspectionTokens = new Map<string, number>();
-  private readonly lastInspectedPaths = new Map<string, { control: FormControl; key: string }>();
   private pathResolveToken = 0;
   private readonly generatedDefaultPaths = new WeakMap<
     FormControl,
@@ -494,16 +454,6 @@ export class OperationConfigComponent {
     });
 
     effect(() => {
-      const dest = this.destItem();
-      const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
-      if (this.isNewRemote()) {
-        this.syncAutocomplete(items.filter(i => i.type !== 'currentRemote'));
-      } else {
-        this.syncAutocomplete(items);
-      }
-    });
-
-    effect(() => {
       const watchEnabledCtrl = this.opFormGroup().get('watchEnabled');
       const watchChangedOnlyCtrl = this.opFormGroup().get('watchChangedOnly');
       if (!watchEnabledCtrl) return;
@@ -571,51 +521,8 @@ export class OperationConfigComponent {
       }
     });
 
-    effect(() => {
-      const opType = this.operationType();
-      const needsInspection = opType === 'mount' || opType === 'bisync';
-      const remoteName = this.currentRemoteName();
-      const profileName = this.currentProfileName() ?? undefined;
-      const dest = this.destItem();
-      const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
-
-      untracked(() => {
-        const activeKeys = new Set(items.map(item => `${item.group}-${item.index}`));
-        const inspectedControls = new Set(
-          items
-            .filter(item => needsInspection && item.type === 'local')
-            .map(item => item.pathControl)
-        );
-        for (const [key, status] of this.pathInspectionStatuses) {
-          if (!activeKeys.has(key)) {
-            this.cancelAndClearInspection(key, status);
-            this.pathInspectionStatuses.delete(key);
-          }
-        }
-        for (const item of items) {
-          const itemKey = `${item.group}-${item.index}`;
-          if (inspectedControls.has(item.pathControl)) {
-            this.triggerPathInspection(
-              itemKey,
-              item.pathControl,
-              remoteName,
-              item.inspectionStatus,
-              profileName,
-              opType === 'mount' ? 'mount' : 'bisync'
-            );
-          } else {
-            this.cancelAndClearInspection(itemKey, item.inspectionStatus);
-          }
-        }
-      });
-    });
-
     this.destroyRef.onDestroy(() => {
       this.pathResolveToken++;
-      this.inspectionTokens.forEach((token, key) => this.inspectionTokens.set(key, token + 1));
-      this.clearAutocomplete();
-      this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
-      this.inspectionDebounceTimers.clear();
     });
   }
 
@@ -639,14 +546,6 @@ export class OperationConfigComponent {
         pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
       const pathControl = control.get('path') as FormControl;
 
-      const itemKey = `${group}-${index}`;
-      let inspectionStatus = this.pathInspectionStatuses.get(itemKey);
-
-      if (!inspectionStatus) {
-        inspectionStatus = signal<PathInspectionStatus | null>(null);
-        this.pathInspectionStatuses.set(itemKey, inspectionStatus);
-      }
-
       return {
         control,
         index,
@@ -655,102 +554,8 @@ export class OperationConfigComponent {
         remoteName,
         pathControl,
         typeControl: control.get('type') as FormControl,
-        inspectionStatus,
       };
     });
-  }
-
-  private cancelAndClearInspection(
-    itemKey: string,
-    statusSignal: WritableSignal<PathInspectionStatus | null>
-  ): void {
-    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.inspectionDebounceTimers.delete(itemKey);
-    }
-    this.inspectionTokens.set(itemKey, (this.inspectionTokens.get(itemKey) ?? 0) + 1);
-    this.lastInspectedPaths.delete(itemKey);
-    if (statusSignal() !== null) {
-      statusSignal.set(null);
-    }
-  }
-
-  private triggerPathInspection(
-    itemKey: string,
-    control: FormControl,
-    remoteName: string,
-    statusSignal: WritableSignal<PathInspectionStatus | null>,
-    profileName: string | undefined,
-    operation: DefaultPathOp
-  ): void {
-    const trimmedPath = String(control.value ?? '').trim();
-    if (!trimmedPath) {
-      this.cancelAndClearInspection(itemKey, statusSignal);
-      return;
-    }
-
-    const inspectionKey = JSON.stringify([remoteName, profileName, operation, trimmedPath]);
-    const previous = this.lastInspectedPaths.get(itemKey);
-    if (previous?.control === control && previous.key === inspectionKey) {
-      return;
-    }
-    this.lastInspectedPaths.set(itemKey, { control, key: inspectionKey });
-    statusSignal.set(null);
-
-    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.inspectionDebounceTimers.delete(itemKey);
-    }
-
-    const token = (this.inspectionTokens.get(itemKey) || 0) + 1;
-    this.inspectionTokens.set(itemKey, token);
-
-    const timer = setTimeout(() => {
-      this.inspectionDebounceTimers.delete(itemKey);
-      if (this.inspectionTokens.get(itemKey) !== token) return;
-
-      statusSignal.set({
-        state: 'checking',
-        icon: 'spinner',
-        badgeClass: 'checking',
-        labelKey: 'remoteConfig.pathStatus.checking',
-      });
-
-      this.pathInspectionService
-        .inspect(trimmedPath, remoteName, profileName, operation)
-        .catch(() => PATH_INSPECTION_UNAVAILABLE)
-        .then(status => {
-          if (
-            this.inspectionTokens.get(itemKey) !== token ||
-            String(control.value ?? '').trim() !== trimmedPath
-          )
-            return;
-          statusSignal.set(status);
-        });
-    }, 300);
-
-    this.inspectionDebounceTimers.set(itemKey, timer);
-  }
-
-  setType(item: PathItem, typeValue: string): void {
-    if (item.typeControl.value === typeValue) return;
-    this.opFormGroup().markAsDirty();
-
-    item.typeControl.setValue(typeValue);
-    item.pathControl.setValue('', { emitEvent: false });
-    item.pathControl.updateValueAndValidity();
-
-    if (typeValue.startsWith('otherRemote:')) {
-      const remoteName = pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName());
-      item.control.get('remote')?.setValue(remoteName, { emitEvent: false });
-    } else {
-      item.control.get('remote')?.setValue('', { emitEvent: false });
-    }
-
-    this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
-    this.formVersion.update(v => v + 1);
   }
 
   addPath(
@@ -782,175 +587,79 @@ export class OperationConfigComponent {
     this.opFormGroup().markAsDirty();
 
     array.removeAt(index);
-    this.pathSelectionService.unregisterField(`${group}-${index}`);
-    this.pathStates.delete(`${group}-${index}`);
     this.formVersion.update(v => v + 1);
   }
 
-  async selectPath(item: PathItem): Promise<void> {
+  /**
+   * A Windows mount point is a new folder under a parent the user picks, so the system picker
+   * chooses the parent and the folder name comes from the volume name or the remote.
+   */
+  async selectMountParent(item: PathItem): Promise<void> {
     if (this.isItemPickerDisabled(item)) return;
-
-    const isSource = item.group === 'source';
-    const target: FilePickerSelection = isSource && this.supportsFileSource() ? 'both' : 'folders';
-    const isMountDest = this.isMount() && item.group === 'dest';
-
-    if (item.type === 'local' || isMountDest) {
-      await this.selectLocal(item, target);
-    } else {
-      await this.selectNautilus(item, target);
-    }
-  }
-
-  private async selectLocal(item: PathItem, target: FilePickerSelection): Promise<void> {
-    const allowNonEmpty = this.opFormGroup().get('options.allow_non_empty')?.value;
-    const isMountDestination = this.isMount() && item.group === 'dest';
-    const chooseParent = isMountDestination && this.isWindowsMount();
-    const requireEmpty = isMountDestination && !chooseParent && !allowNonEmpty;
     const previousPath = item.pathControl.value;
-    const previousIsDriveFolder = pathUtils.isWindowsDriveFolder(previousPath);
-    const initialPath = chooseParent
-      ? previousIsDriveFolder
-        ? this.pathService.getParentPath(previousPath)
-        : undefined
-      : previousPath;
+    const initialPath = pathUtils.isWindowsDriveFolder(previousPath)
+      ? this.pathService.getParentPath(previousPath)
+      : undefined;
 
     try {
-      let selected =
-        target === 'files'
-          ? await this.fileSystemService.selectFile(initialPath)
-          : await this.fileSystemService.selectFolder(requireEmpty, initialPath);
-
-      if (selected && chooseParent) {
-        if (
-          this.destroyRef.destroyed ||
-          this.destItem()?.pathControl !== item.pathControl ||
-          item.pathControl.value !== previousPath
-        )
-          return;
-        const folderTarget = pathUtils.windowsMountFolderTarget(
-          selected,
-          previousPath ?? '',
-          this.currentRemoteName(),
-          this.volumeNameControl()?.value
+      const selected = await this.fileSystemService.selectFolder(false, initialPath);
+      if (!selected) return;
+      if (
+        this.destroyRef.destroyed ||
+        this.destItem()?.pathControl !== item.pathControl ||
+        item.pathControl.value !== previousPath
+      )
+        return;
+      const folderTarget = pathUtils.windowsMountFolderTarget(
+        selected,
+        previousPath ?? '',
+        this.currentRemoteName(),
+        this.volumeNameControl()?.value
+      );
+      if (!folderTarget) {
+        this.notificationService.showWarning(
+          this.translate.instant('wizards.appOperation.mountFolderLocalDrive')
         );
-        if (!folderTarget) {
-          this.notificationService.showWarning(
-            this.translate.instant('wizards.appOperation.mountFolderLocalDrive')
-          );
-          return;
-        }
-        selected = folderTarget;
+        return;
       }
-
-      if (selected) {
-        this.opFormGroup().markAsDirty();
-        item.pathControl.setValue(selected);
-        item.typeControl.setValue('local');
-        item.control.get('remote')?.setValue('');
-      }
+      this.opFormGroup().markAsDirty();
+      item.pathControl.setValue(folderTarget);
+      item.typeControl.setValue('local');
+      item.control.get('remote')?.setValue('');
     } catch (e) {
       console.error('Local picker error:', e);
     }
   }
 
-  private async selectNautilus(item: PathItem, target: FilePickerSelection): Promise<void> {
-    const restrict = (this.isMount() || this.isServe()) && item.group === 'source';
-    const initialLocation = this.buildInitialLocation(item, restrict);
-
-    const result = await this.fileSystemService.selectPathWithNautilus({
-      mode: restrict ? 'remote' : 'both',
-      selection: target,
-      multi: item.group === 'source' && this.canAddSource(),
-      allowedRemotes: restrict ? [this.currentRemoteName()] : undefined,
-      initialLocation,
-    });
-
-    if (!result.cancelled && result.items.length > 0) {
-      this.opFormGroup().markAsDirty();
-      result.items.forEach((res, i) => {
-        const data = this.getPathData(res, item.group);
-        if (!data) return;
-
-        if (i === 0) {
-          item.pathControl.setValue(data.path);
-          item.typeControl.setValue(data.type);
-          item.control.get('remote')?.setValue(data.remote || '');
-        } else {
-          this.addPath(item.group, data);
-        }
-      });
-    }
+  /** The paths a picker returned beyond the first: each becomes a source of its own. */
+  addPaths(group: PathDirection, paths: PathGroup[]): void {
+    for (const data of paths) this.addPath(group, data);
   }
 
-  private buildInitialLocation(item: PathItem, restrict: boolean): string | undefined {
-    if (item.type === 'local') return item.pathControl.value || undefined;
-    const remote = restrict ? this.currentRemoteName() : item.remoteName;
-    if (!remote) return undefined;
-    return item.pathControl.value
-      ? pathUtils.joinPath(`${remote}:`, item.pathControl.value)
-      : `${remote}:`;
+  /** A fixed type: a mount point is local, and a mount or serve source is the remote itself. */
+  pathLock(item: PathItem): 'local' | 'currentRemote' | null {
+    if (item.group === 'dest') return this.isMount() ? 'local' : null;
+    return this.isMount() || this.isServe() ? 'currentRemote' : null;
   }
 
-  private getPathData(item: FileBrowserItem, group: PathDirection): PathGroup | null {
-    const data = this.pathService.resolvePathGroup(item, this.currentRemoteName());
-
-    if (this.isMount() && group === 'dest' && data.type !== 'local') {
-      this.notificationService.showError(
-        this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
-      );
-      return null;
-    }
-    return data;
+  pathPlaceholder(item: PathItem): string {
+    if (item.group === 'dest') return 'wizards.appOperation.enterDestPath';
+    return this.isServe()
+      ? 'wizards.appOperation.rootFolderSpecific'
+      : 'wizards.appOperation.enterSourcePath';
   }
 
-  private syncAutocomplete(items: PathItem[]): void {
-    const currentIds = new Set(items.map(i => `${i.group}-${i.index}`));
-
-    for (const id of this.pathStates.keys()) {
-      if (!currentIds.has(id)) {
-        this.pathSelectionService.unregisterField(id);
-        this.pathStates.delete(id);
-      }
-    }
-
-    for (const item of items) {
-      const id = `${item.group}-${item.index}`;
-      const existing = this.pathStates.get(id);
-
-      if (!existing || existing().remoteName !== item.remoteName) {
-        if (existing) this.pathSelectionService.unregisterField(id);
-        this.pathStates.set(
-          id,
-          this.pathSelectionService.registerField(id, item.remoteName, item.pathControl.value)
-        );
-      }
-    }
+  /** The system picker takes only an empty folder for a mount point, unless non-empty is allowed. */
+  requiresEmptyDest(item: PathItem): boolean {
+    this.formVersion();
+    if (!(this.isMount() && item.group === 'dest')) return false;
+    return !this.opFormGroup().get('options.allow_non_empty')?.value;
   }
 
-  private clearAutocomplete(): void {
-    this.pathStates.forEach((_, id) => this.pathSelectionService.unregisterField(id));
-    this.pathStates.clear();
-  }
-
-  onInputChanged(event: Event, item: PathItem): void {
-    this.pathSelectionService.updateInput(
-      `${item.group}-${item.index}`,
-      (event.target as HTMLInputElement).value
-    );
-  }
-
-  onPathSelected(entryName: string, item: PathItem): void {
-    this.opFormGroup().markAsDirty();
-    this.pathSelectionService.selectEntry(
-      `${item.group}-${item.index}`,
-      entryName,
-      item.pathControl
-    );
-  }
-
-  goUp(item: PathItem): void {
-    this.opFormGroup().markAsDirty();
-    this.pathSelectionService.navigateUp(`${item.group}-${item.index}`, item.pathControl);
+  /** Which check a local folder of this operation gets: a mount point or a two-way folder. */
+  inspectOp(): DefaultPathOp | null {
+    const type = this.operationType();
+    return type === 'mount' || type === 'bisync' ? type : null;
   }
 
   onCronChange(cron: string | null): void {
@@ -966,10 +675,5 @@ export class OperationConfigComponent {
     this.opFormGroup().markAsDirty();
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
-  }
-
-  onMenuOpened(item: PathItem): void {
-    const id = `${item.group}-${item.index}`;
-    this.pathSelectionService.triggerLoad(id, item.remoteName, item.pathControl.value);
   }
 }

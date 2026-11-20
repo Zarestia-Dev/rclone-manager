@@ -16,6 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 // Services
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppNavigationService } from 'src/app/services/ui/app-navigation.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { ConnectionService } from 'src/app/services/infrastructure/system/connection.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
@@ -45,6 +46,7 @@ export class TitlebarComponent implements OnInit {
   readonly mainUiOverlayService = inject(MainUiOverlayService);
   readonly flowOverlayService = inject(FlowOverlayService);
   readonly uiStateService = inject(UiStateService);
+  private readonly navigation = inject(AppNavigationService);
   readonly connectionService = inject(ConnectionService);
   readonly isMobile = isMobile;
 
@@ -70,18 +72,23 @@ export class TitlebarComponent implements OnInit {
     return !!this.uiStateService.selectedRemote();
   });
 
-  readonly addRemoteMenuItems = [
-    {
-      label: 'titlebar.menu.quickRemote',
-      shortcut: 'Ctrl + R',
-      action: (): void => this.openQuickAddRemoteModal(),
-    },
-    {
-      label: 'titlebar.menu.detailedRemote',
-      shortcut: 'Ctrl + N',
-      action: (): void => this.openRemoteConfigModal(),
-    },
-  ];
+  readonly addRemoteMenuItems: readonly { label: string; shortcut?: string; action: () => void }[] =
+    [
+      {
+        label: 'titlebar.menu.quickRemote',
+        shortcut: 'Ctrl + R',
+        action: (): void => this.openQuickAddRemoteModal(),
+      },
+      {
+        label: 'titlebar.menu.detailedRemote',
+        shortcut: 'Ctrl + N',
+        action: (): void => this.openRemoteConfigModal(),
+      },
+      {
+        label: 'titlebar.menu.intentGuide',
+        action: (): void => this.openIntentGuideModal(),
+      },
+    ];
 
   async ngOnInit(): Promise<void> {
     if (this.isMobile()) return;
@@ -125,9 +132,13 @@ export class TitlebarComponent implements OnInit {
     this.modalService.openRemoteConfig();
   }
 
+  openIntentGuideModal(): void {
+    this.modalService.openIntentGuide();
+  }
+
   // Reset Remote Selection
   resetRemote(): void {
     this.uiStateService.resetSelectedRemote();
-    this.uiStateService.setMainView('main_menu');
+    void this.navigation.openWorkspace('main_menu');
   }
 }

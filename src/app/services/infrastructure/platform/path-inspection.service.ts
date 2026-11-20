@@ -10,6 +10,7 @@ import { TauriBaseService } from './tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
 import { MountManagementService } from '../../operations/mount-management.service';
+import { QuickRunService } from '../../flow/quick-run.service';
 import { PathService } from './path.service';
 
 const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
@@ -38,22 +39,70 @@ export const PATH_INSPECTION_UNAVAILABLE: Readonly<PathInspectionStatus> = {
   labelKey: 'remoteConfig.pathStatus.unavailable',
 };
 
+const INSPECTION_PAUSE_MS = 300;
+
+/**
+ * Inspects a path once the user has paused typing. It reports a "checking" status first and then
+ * the answer, or `PATH_INSPECTION_UNAVAILABLE` when the check fails. The returned function cancels
+ * the pending check; call it whenever the path changes or the field goes away.
+ */
+export function inspectAfterPause(
+  inspector: Pick<PathInspectionService, 'inspect'>,
+  request: {
+    path: string;
+    remoteName: string;
+    profileName?: string;
+    operation?: DefaultPathOp;
+    quickRunId?: string | null;
+  },
+  report: (status: PathInspectionStatus | null) => void
+): () => void {
+  let cancelled = false;
+  const timer = setTimeout(() => {
+    report({
+      state: 'checking',
+      icon: 'spinner',
+      badgeClass: 'checking',
+      labelKey: 'remoteConfig.pathStatus.checking',
+    });
+    inspector
+      .inspect(
+        request.path,
+        request.remoteName,
+        request.profileName,
+        request.operation,
+        request.quickRunId
+      )
+      .catch(() => PATH_INSPECTION_UNAVAILABLE)
+      .then(status => {
+        if (!cancelled) report(status);
+      });
+  }, INSPECTION_PAUSE_MS);
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PathInspectionService extends TauriBaseService {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteFileOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly mounts = inject(MountManagementService);
+  private readonly quickRuns = inject(QuickRunService);
 
   /**
    * Freshly inspects the given path and returns its status.
-   * No caching — callers are responsible for managing reactive state.
+   * No caching — callers are responsible for managing reactive state. The profile or Quick Run
+   * being edited does not collide with itself.
    */
   async inspect(
     path: string,
     remoteName: string,
     currentProfileName?: string,
-    currentOperation?: DefaultPathOp
+    currentOperation?: DefaultPathOp,
+    currentQuickRunId?: string | null
   ): Promise<PathInspectionStatus | null> {
     const pathStyle = this.pathService.enginePathStyle();
     const windowsMount = currentOperation === 'mount' && pathStyle === 'windows';
@@ -67,16 +116,20 @@ export class PathInspectionService extends TauriBaseService {
       remoteName,
       allSettings,
       currentProfileName,
-      currentOperation
+      currentOperation,
+      { runs: this.quickRuns.quickRuns(), exceptId: currentQuickRunId }
     );
     if (collisions.length > 0) {
-      const c = collisions[0];
+      const { kind, name, remoteName: owner } = collisions[0];
       return {
         state: 'colliding',
-        details: `${c.remoteName} (${c.opType})`,
         icon: 'warning',
         badgeClass: 'colliding',
-        labelKey: 'remoteConfig.pathStatus.colliding',
+        labelKey:
+          kind === 'quick_run'
+            ? 'remoteConfig.pathStatus.collidingQuickRun'
+            : 'remoteConfig.pathStatus.collidingProfile',
+        labelParams: { name, remote: owner },
       };
     }
 
@@ -163,16 +216,25 @@ export class PathInspectionService extends TauriBaseService {
   }
 
   /**
-   * Resolve a unique default local path for mount or bisync based on config templates.
+   * Resolve a unique default local path for mount or bisync based on config templates. A folder
+   * that a saved profile or Quick Run already uses is skipped, like one that is not empty.
    */
   async resolveDefaultPath(remoteName: string, opType: DefaultPathOp): Promise<string> {
-    const [template, home] = await Promise.all([this.getPathTemplate(opType), this.resolveHome()]);
+    const [template, home, saved] = await Promise.all([
+      this.getPathTemplate(opType),
+      this.resolveHome(),
+      this.appSettingsService.getRemoteSettings(),
+    ]);
+    const usedBySaved = (candidate: string): boolean =>
+      this.pathService.checkMountPathCollision(candidate, remoteName, saved, undefined, opType, {
+        runs: this.quickRuns.quickRuns(),
+      }).length > 0;
     const remote = this.sanitizeRemoteName(remoteName);
     const raw = this.substitute(template, home, remote);
     const normalized = this.pathService.normalizeForPlatform(raw);
     const requiresMissingTarget =
       opType === 'mount' && this.pathService.enginePathStyle() === 'windows';
-    return this.ensureMountableDefault(normalized, requiresMissingTarget);
+    return this.ensureMountableDefault(normalized, requiresMissingTarget, usedBySaved);
   }
 
   private async getPathTemplate(opType: DefaultPathOp): Promise<string> {
@@ -214,7 +276,8 @@ export class PathInspectionService extends TauriBaseService {
 
   private async ensureMountableDefault(
     path: string,
-    requiresMissingTarget: boolean
+    requiresMissingTarget: boolean,
+    usedBySaved: (candidate: string) => boolean
   ): Promise<string> {
     const { root, relative } = this.pathService.splitLocalForStat(path);
 
@@ -222,6 +285,7 @@ export class PathInspectionService extends TauriBaseService {
       const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
       const candidate = `${path}${suffix}`;
       const candidateRel = `${relative}${suffix}`;
+      if (usedBySaved(candidate)) continue;
 
       const stat = await this.remoteFileOps.getStat(root, candidateRel);
       if (!stat || !Object.prototype.hasOwnProperty.call(stat, 'item')) {

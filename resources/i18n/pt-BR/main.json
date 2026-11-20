@@ -57,7 +57,8 @@
     "pathStatus": {
       "clean": "Limpo & Vazio",
       "nonEmpty": "O diretório tem arquivos",
-      "colliding": "Em uso por {{details}}",
+      "collidingProfile": "Em uso pelo perfil “{{name}}” de {{remote}}",
+      "collidingQuickRun": "Em uso pela execução rápida “{{name}}”",
       "willCreate": "Diretório será criada após a criação do remoto.",
       "checking": "Verificando o caminho...",
       "notDirectory": "O caminho aponta para um arquivo. Selecione uma pasta.",
@@ -638,6 +639,21 @@
         "label": "Marcadores de página",
         "description": "Lista de localizações marcadas para acesso rápido."
       }
+    },
+    "wizard": {
+      "after_remote": {
+        "label": "Mostrar o guia de configuração após adicionar uma nuvem",
+        "description": "Abre o guia “O que você quer fazer?” quando você termina de adicionar uma nuvem nova."
+      },
+      "destination": {
+        "label": "Onde o guia guarda o que configura",
+        "description": "Automático segue a visualização de inicialização padrão: o menu principal guarda um perfil na página da nuvem; as outras visualizações guardam uma Quick Run.",
+        "options": {
+          "auto": "Automático",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Perfil da nuvem (menu principal)"
+        }
+      }
     }
   },
   "banners": {
@@ -741,7 +757,8 @@
       "shortcuts": "Atalhos do teclado",
       "about": "O RClone Manager",
       "quickRemote": "Remoto Rápido",
-      "detailedRemote": "Remoto Detalhado"
+      "detailedRemote": "Remoto Detalhado",
+      "intentGuide": "Assistente"
     }
   },
   "onboarding": {
@@ -2844,6 +2861,478 @@
         "newLine": "nova linha",
         "clear": "limpar"
       }
+    },
+    "intentGuide": {
+      "title": "O que você quer fazer?",
+      "stepOf": "Etapa {{current}} de {{total}}",
+      "loadFailed": "Não foi possível carregar seus armazenamentos na nuvem.",
+      "noRemotes": "Adicione primeiro um armazenamento na nuvem e depois volte aqui.",
+      "remoteLabel": "Qual nuvem?",
+      "recommended": "Recomendado",
+      "measuring": "Medindo tamanhos…",
+      "applyFailed": "Não foi possível configurar. Verifique as pastas e tente de novo.",
+      "hello": {
+        "created": "{{remote}} está pronto! O que você quer fazer com ele?",
+        "default": "O que você quer fazer com sua nuvem?",
+        "subtitle": "Escolha o que você quer com suas próprias palavras. Nós configuramos o resto, e nada começa sem a sua confirmação."
+      },
+      "places": {
+        "computer": "Este computador",
+        "phone": "Este celular",
+        "server": "O servidor",
+        "filesApp": "App Arquivos",
+        "tv": "TV ou player",
+        "device": "Celular ou computador",
+        "browser": "Navegador web",
+        "homeNetwork": "Sua rede doméstica"
+      },
+      "goals": {
+        "access": {
+          "title": "Usar minha nuvem como uma pasta neste computador",
+          "description": "Como uma unidade de rede: seus arquivos aparecem em uma pasta e são baixados quando você os abre.",
+          "descriptionApp": "Como o app do {{app}} no Windows: seus arquivos aparecem em uma pasta e são baixados quando você os abre.",
+          "titlePhone": "Ver minha nuvem no app Arquivos do celular",
+          "descriptionPhone": "Sua nuvem aparece ao lado dos outros armazenamentos, e os arquivos são baixados quando você os abre."
+        },
+        "backup": {
+          "title": "Fazer backup dos meus arquivos na nuvem",
+          "description": "Guarde uma cópia de uma pasta na nuvem, caso algo aconteça com este computador."
+        },
+        "devices": {
+          "title": "Manter uma cópia neste computador, igual à nuvem",
+          "description": "Funciona sem internet e em vários dispositivos: as mudanças vão nos dois sentidos. Ótimo para notas do Obsidian ou do Logseq."
+        },
+        "download": {
+          "title": "Trazer meus arquivos da nuvem para este computador",
+          "description": "Baixe uma pasta ou tudo, uma vez ou sempre atualizado."
+        },
+        "migrate": {
+          "title": "Mudar para outra nuvem",
+          "description": "Copie tudo desta nuvem para outra, por exemplo do Google Drive para o OneDrive."
+        },
+        "share": {
+          "title": "Abrir meus arquivos na TV ou no celular",
+          "description": "Disponibilize sua nuvem para uma TV, celular ou computador da sua rede doméstica."
+        },
+        "explore": {
+          "title": "Só dar uma olhada ou verificar algo",
+          "description": "Navegue pelos seus arquivos ou verifique se uma pasta bate com a nuvem."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "Se você apagar um arquivo aqui, o que deve acontecer com o backup dele?"
+        },
+        "keepOld": {
+          "title": "Os arquivos devem ficar na nuvem antiga?"
+        },
+        "device": {
+          "title": "Com o que você vai abrir os arquivos?"
+        },
+        "explore": {
+          "title": "O que você gostaria de fazer?"
+        }
+      },
+      "about": {
+        "title": "Qual é a diferença?",
+        "goals": {
+          "title": "Qual escolher?",
+          "access": "Nuvem como pasta: seus arquivos ficam na nuvem e só chegam a este computador quando você os abre.",
+          "devices": "Uma cópia aqui: seus arquivos também ficam guardados neste computador, então você pode usá-los sem internet. Mudou de um lado, o outro acompanha.",
+          "backup": "Backup: uma cópia de segurança de uma pasta vai para a nuvem. Nada na sua pasta muda.",
+          "download": "Trazer meus arquivos da nuvem: uma cópia dos seus arquivos chega a este computador. Nada muda na nuvem."
+        },
+        "deleted": {
+          "same": "Nos dois casos, os arquivos novos e alterados são copiados para a nuvem, e sua pasta nunca é alterada.",
+          "differ": "“Manter na nuvem”: se você apagar um arquivo aqui, a nuvem continua com ele. “Apagar lá também”: a nuvem fica sempre igual à sua pasta, então um arquivo apagado aqui some da nuvem também."
+        },
+        "keepOld": {
+          "same": "Nos dois casos, tudo é copiado para a nuvem nova.",
+          "differ": "“Sim, manter lá”: a nuvem antiga fica exatamente como está. “Não, mover”: cada arquivo sai da nuvem antiga depois de chegar com segurança à nova."
+        },
+        "device": {
+          "same": "Em qualquer opção, sua nuvem fica disponível para outros dispositivos da sua rede doméstica. Só funciona enquanto este app está aberto.",
+          "differ": "Uma pasta de rede abre como qualquer outra pasta no Finder, no Explorador de Arquivos ou em um app de arquivos, e pode permitir alterações. Um navegador web só consegue ver os arquivos e baixá-los. Uma TV ou um player encontra por conta própria e só pode reproduzir."
+        },
+        "explore": {
+          "same": "Nos dois casos, nada muda.",
+          "differ": "“Ver meus arquivos”: sua nuvem abre neste app para você olhar. “Comparar uma pasta com a nuvem”: mostra quais arquivos são diferentes entre uma pasta deste computador e a nuvem."
+        },
+        "where": {
+          "stream": "Esta pasta é como uma porta: seus arquivos ficam na nuvem, aparecem aqui e são baixados quando você os abre. Escolha uma pasta vazia. Tudo o que você colocar nela também é salvo na nuvem.",
+          "twoWay": "Você pode escolher uma pasta que já usa. Na primeira vez, ela é comparada com a nuvem e as duas são unidas, sem apagar nada. Depois, uma mudança em um lado, inclusive apagar um arquivo, aparece no outro.",
+          "mirror": "A pasta da nuvem ficará como uma cópia exata da sua. Os arquivos que estiverem nela e não estiverem na sua pasta serão apagados. O mais seguro é escolher uma pasta da nuvem nova ou vazia."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Manter na nuvem",
+            "description": "Como uma cópia de segurança: mesmo que você apague um arquivo aqui, a nuvem continua com ele."
+          },
+          "mirror": {
+            "title": "Apagar lá também",
+            "description": "Como um espelho: a nuvem sempre fica igual à sua pasta, inclusive com os arquivos apagados."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Sim, manter lá",
+            "description": "Como tirar uma cópia: a nuvem antiga fica exatamente como está, então você sempre pode voltar."
+          },
+          "move": {
+            "title": "Não, mover",
+            "description": "Como uma mudança de casa: cada arquivo sai da nuvem antiga quando chega bem na nova."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "Uma pasta de rede",
+            "description": "Como uma pasta compartilhada: abre no Finder, no Explorador de Arquivos ou em um app de arquivos, com o usuário e a senha que você escolher. Você decide se os dispositivos podem alterar arquivos."
+          },
+          "browser": {
+            "title": "Um navegador web",
+            "description": "Como uma página web: um celular ou computador com o endereço e a senha pode ver os arquivos e baixá-los. Nada pode ser alterado."
+          },
+          "tv": {
+            "title": "Uma TV ou media player",
+            "description": "Como um servidor de mídia: smart TVs, consoles e players encontram sozinhos. Podem assistir e ouvir, mas não alterar nada."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Ver meus arquivos",
+            "description": "Como abrir uma pasta: navegue pela sua nuvem dentro deste app. Nada é baixado nem alterado."
+          },
+          "compare": {
+            "title": "Comparar uma pasta com a nuvem",
+            "description": "Como comparar duas pastas: veja quais arquivos diferem entre uma pasta daqui e a nuvem. Nada muda."
+          }
+        }
+      },
+      "where": {
+        "heading": "Onde?",
+        "target": "Para onde vão os arquivos?",
+        "noOtherRemote": "Adicione primeiro a sua nuvem nova e depois volte aqui.",
+        "shareLogin": "Login para o outro dispositivo",
+        "shareHint": "O celular ou computador pede isso ao se conectar.",
+        "shareUser": "Usuário",
+        "sharePassword": "Senha",
+        "local": {
+          "stream": "a nuvem aparece nesta pasta",
+          "twoWay": "seus arquivos ficam nesta pasta",
+          "download": "os arquivos são baixados aqui",
+          "upload": "qual pasta fazer backup?",
+          "compare": "qual pasta verificar?",
+          "devices": "qual pasta deve ficar igual?"
+        },
+        "cloud": {
+          "stream": "qual parte da nuvem?",
+          "twoWay": "mantida igual a esta pasta",
+          "download": "qual pasta baixar?",
+          "upload": "o backup vai para cá",
+          "cloudToCloud": "o que copiar?",
+          "share": "o que compartilhar?",
+          "compare": "comparada com esta pasta"
+        },
+        "localPlaceholder": "Escolha ou digite uma pasta",
+        "cloudPlaceholder": "Deixe vazio para a nuvem inteira",
+        "shareConnection": "Como os dispositivos se conectam",
+        "sharePort": "Porta",
+        "sharePortHint": "O número depois dos dois-pontos no endereço. Mantenha 8080, a menos que outra coisa já use.",
+        "portInvalid": "Escolha uma porta entre 1024 e 65535.",
+        "shareReadOnly": "Os dispositivos só podem olhar, não alterar arquivos",
+        "shareReadOnlyHint": "Desative se celulares ou computadores também devem poder enviar, renomear ou apagar.",
+        "shareName": "Nome na TV",
+        "shareNameHint": "É o que você verá na lista de servidores de mídia da TV ou do player.",
+        "shareNameLabel": "Nome",
+        "portBusy": "A porta {{port}} já está em uso por outro programa. Escolha outra.",
+        "portUseFree": "Usar a porta {{port}}"
+      },
+      "review": {
+        "heading": "Veja o que vai acontecer",
+        "technical": "Nome técnico",
+        "advanced": "Abrir no editor completo",
+        "start": "Configurar e iniciar",
+        "firstRun": "A primeira execução compara os dois lados e os une. Pode demorar um pouco, e nada é apagado.",
+        "startOnLogin": "Abrir também este app quando o computador ligar",
+        "mountPlugin": {
+          "title": "Falta mais uma coisa",
+          "description": "Mostrar a nuvem como pasta precisa de um pequeno componente do sistema (FUSE ou WinFsp) que ainda não está instalado.",
+          "install": "Instalar"
+        },
+        "summary": {
+          "stream": "{{cloud}} aparece em {{local}}.",
+          "streamSaf": "{{cloud}} aparece no app Arquivos.",
+          "twoWay": "{{local}} e {{cloud}} ficam iguais.",
+          "upload_copy": "{{local}} recebe backup em {{cloud}}.",
+          "upload_sync": "{{cloud}} vira uma cópia exata de {{local}}.",
+          "download": "{{cloud}} é baixado para {{local}}.",
+          "cloudToCloud_copy": "{{cloud}} é copiado para {{target}}.",
+          "cloudToCloud_move": "{{cloud}} é movido para {{target}}.",
+          "share_dlna": "{{cloud}} é compartilhado com as TVs e players da sua rede.",
+          "share_webdav": "{{cloud}} é compartilhado na sua rede com senha.",
+          "share_http": "{{cloud}} é compartilhado na sua rede como uma página web, com senha.",
+          "compare": "{{local}} é comparado com {{cloud}}."
+        },
+        "schedule": {
+          "watch": "Roda sozinho sempre que um arquivo muda.",
+          "startup": "Roda sozinho sempre que o app abre.",
+          "startupMount": "Conecta sozinho sempre que o app abre.",
+          "cron": "Horário: {{when}}",
+          "manual": "Só roda quando você inicia."
+        },
+        "detailsTitle": "Bom saber",
+        "destination": {
+          "title": "Guardar como",
+          "quickRun": "Execução Rápida",
+          "profile": "Perfil no menu principal",
+          "hintQuickRun": "Aparece em Flow › Execuções Rápidas.",
+          "hintProfile": "Aparece na página de “{{remote}}” no menu principal, onde você pode iniciá-lo e pará-lo."
+        },
+        "wholeCloud": "A nuvem toda",
+        "duplicate": "Você já tem uma configuração que faz isto: “{{name}}”."
+      },
+      "effects": {
+        "streamOpen": "Abrir um arquivo o baixa da nuvem.",
+        "streamSave": "Salvar um arquivo o envia para a nuvem.",
+        "streamDelete": "Apagar um arquivo nesta pasta o apaga da nuvem também.",
+        "uploadNew": "Arquivos novos e alterados são enviados.",
+        "keepDelete": "Arquivos que você apaga aqui ficam na nuvem.",
+        "uploadCloudChange": "O backup nunca altera nada na sua pasta.",
+        "mirrorDelete": "Arquivos que você apaga aqui são apagados da nuvem também.",
+        "mirrorExtra": "Arquivos que existem só na pasta da nuvem são apagados.",
+        "downloadNew": "Arquivos novos e alterados da nuvem são baixados.",
+        "downloadKeep": "Arquivos apagados na nuvem ficam neste computador.",
+        "downloadLocalChange": "Nada na nuvem é alterado.",
+        "twoWayChange": "Uma mudança em qualquer lado é copiada para o outro.",
+        "twoWayDelete": "Um arquivo apagado de um lado é apagado do outro.",
+        "twoWayConflict": "Se um arquivo mudar dos dois lados, as duas versões são mantidas.",
+        "migrateCopy": "Cada arquivo é copiado para a nuvem nova.",
+        "migrateKeep": "A nuvem antiga fica como está.",
+        "migrateMove": "Os arquivos são removidos da nuvem antiga depois de copiados.",
+        "shareTv": "As TVs e players da sua rede encontram sozinhos.",
+        "shareReadOnly": "Eles podem assistir e ouvir, mas não alterar nada.",
+        "shareBrowse": "Os dispositivos podem ver os arquivos e baixá-los, mas não alterar nada.",
+        "shareStops": "O compartilhamento para quando o app é fechado.",
+        "sharePassword": "Só dispositivos com a sua senha podem se conectar.",
+        "shareWrite": "Dispositivos conectados podem alterar e apagar arquivos.",
+        "compareNothing": "Nenhum arquivo é alterado.",
+        "compareList": "Você recebe uma lista dos arquivos diferentes.",
+        "browseNothing": "Nada muda."
+      },
+      "advice": {
+        "tooBigForDisk": "Isso tem {{size}}, mas este computador só tem {{free}} livres. Não cabe.",
+        "tightOnDisk": "Isso tem {{size}} e este computador tem {{free}} livres. Cabe, mas o disco vai ficar quase cheio.",
+        "fitsOnDisk": "Isso tem {{size}} e este computador tem {{free}} livres. Cabe com folga.",
+        "cloudTooFull": "A pasta tem {{size}}, mas a nuvem só tem {{free}} livres. Não cabe.",
+        "streamSavesSpace": "Sua nuvem tem {{cloud}} e este computador tem {{free}} livres, então esta é a escolha certa: só os arquivos que você abre ocupam espaço."
+      },
+      "preview": {
+        "title": "Veja antes o que vai acontecer",
+        "description": "Um teste compara os dois lados e lista cada arquivo que copiaria, substituiria ou apagaria. Nenhum arquivo é alterado.",
+        "run": "Mostrar o que vai mudar",
+        "running": "Comparando arquivos…",
+        "checked": {
+          "one": "{{count}} arquivo verificado até agora",
+          "other": "{{count}} arquivos verificados até agora"
+        },
+        "transfers": {
+          "one": "{{count}} arquivo será copiado",
+          "other": "{{count}} arquivos serão copiados"
+        },
+        "deletes": {
+          "one": "{{count}} arquivo será apagado",
+          "other": "{{count}} arquivos serão apagados"
+        },
+        "errors": {
+          "one": "{{count}} arquivo não pôde ser lido",
+          "other": "{{count}} arquivos não puderam ser lidos"
+        },
+        "noDeletes": "Nenhum arquivo será apagado",
+        "nothing": "Tudo já está atualizado; nada mudaria.",
+        "failed": "O teste não terminou. Você ainda pode configurar ou mudar as pastas.",
+        "runName": "{{name}} (teste)",
+        "groups": {
+          "delete": "Serão apagados",
+          "add": "Arquivos novos",
+          "replace": "Serão substituídos",
+          "copy": "Serão copiados",
+          "error": "Problemas",
+          "untouched": "Ficam como estão"
+        },
+        "groupHints": {
+          "delete": "Estes arquivos só existem no destino, então serão apagados lá.",
+          "add": "Estes arquivos são novos, então serão copiados.",
+          "replace": "Estes arquivos existem dos dois lados, mas são diferentes. A versão do destino será substituída.",
+          "copy": "Estes arquivos serão copiados.",
+          "error": "Não foi possível comparar nem copiar estes arquivos.",
+          "untouched": "Estes arquivos só existem no destino. Ficam como estão."
+        },
+        "unchanged": {
+          "one": "{{count}} arquivo já é igual nos dois lados",
+          "other": "{{count}} arquivos já são iguais nos dois lados"
+        },
+        "search": "Pesquisar na lista",
+        "showMore": "Mostrar mais",
+        "noMatches": "Nenhum arquivo corresponde à sua pesquisa.",
+        "deleteWarning": "Veja esta lista antes de começar: estes arquivos serão removidos do destino.",
+        "again": "Repetir o teste",
+        "slowNote": "Isso pode demorar um pouco, dependendo de quantos arquivos há. Não travou, aguarde.",
+        "elapsed": "Rodando há {{time}}"
+      },
+      "working": {
+        "saving": "Configurando…",
+        "firstRun": "Fazendo a primeira sincronização…",
+        "canClose": "Você pode fechar esta janela; continua rodando em segundo plano.",
+        "slowNote": "A primeira sincronização pode demorar bastante, dependendo de quantos arquivos há. Ela não travou."
+      },
+      "done": {
+        "title": "Tudo pronto!",
+        "stream": "Sua nuvem agora está em {{path}}.",
+        "streamSaf": "Sua nuvem agora está no app Arquivos.",
+        "twoWayReady": "A primeira sincronização terminou. De agora em diante, os dois lados ficam iguais.",
+        "twoWayFailed": "Está configurado, mas a primeira sincronização não terminou.",
+        "started": "Começou. Você pode acompanhar o progresso no app.",
+        "findIt": "Depois você encontra em Flow › Execuções Rápidas como “{{name}}”.",
+        "openFolder": "Abrir a pasta",
+        "openCloud": "Mostrar no navegador de arquivos",
+        "another": "Configurar outra coisa",
+        "shareWebdav": "O compartilhamento está ativo. No celular ou computador, conecte-se a um destes endereços:",
+        "shareHttp": "O compartilhamento está ativo. No celular ou computador, abra um destes endereços em um navegador:",
+        "shareAddress": "Endereço",
+        "shareOtherAddresses": "Também funcionam",
+        "shareUser": "Nome de usuário",
+        "sharePassword": "Senha",
+        "sharePasswordHint": "A que você escolheu",
+        "troubleTitle": "Se não conectar",
+        "troubleNetwork": "O celular precisa estar na mesma rede Wi-Fi que este computador.",
+        "troubleNetworkRemote": "O celular precisa estar em uma rede que alcance {{host}}.",
+        "troubleFirewall": "O firewall do computador que compartilha os arquivos precisa permitir a porta {{port}}.",
+        "shareDlna": "O compartilhamento está ativo. Procure “{{name}}” na lista de mídia da sua TV ou player.",
+        "noAddress": "O compartilhamento está ativo. Conecte-se ao endereço de rede deste computador, porta {{port}}.",
+        "findItProfile": "Depois você o encontra na página de “{{remote}}” no menu principal, como o perfil “{{name}}”.",
+        "whereQuickRun": "Mostrar em Execuções Rápidas",
+        "whereProfile": "Mostrar no menu principal",
+        "failureReason": "O que deu errado: {{reason}}"
+      },
+      "runNames": {
+        "access": "Pasta {{remote}}",
+        "backup": "Backup {{remote}}",
+        "devices": "Sincronização {{remote}}",
+        "download": "Download {{remote}}",
+        "migrate": "Migração {{remote}}",
+        "share": "Compartilhamento {{remote}}",
+        "explore": "Verificação {{remote}}"
+      },
+      "when": {
+        "heading": "Quando deve rodar?",
+        "subtitle": "Escolha as que quiser e combine. Sem escolher nenhuma, só roda quando você iniciar.",
+        "watch": {
+          "title": "Sempre que um arquivo mudar",
+          "description": "A pasta é monitorada e as mudanças sobem em segundos, como o envio automático de fotos do celular."
+        },
+        "cron": {
+          "title": "Em um horário",
+          "description": "Todo dia, toda hora, em dias úteis ou no horário que você escolher."
+        },
+        "startup": {
+          "title": "Quando o app abrir",
+          "description": "Roda sozinho toda vez que o app abre.",
+          "descriptionMount": "Sua nuvem conecta sozinha toda vez que o app abre."
+        },
+        "cloudHint": "O monitoramento só vê mudanças neste computador. Adicione também um horário para receber as mudanças feitas na nuvem.",
+        "invalidCron": "Este horário ainda não está completo. Escolha uma das opções acima."
+      },
+      "details": {
+        "cache": "Os arquivos que você abre ficam neste computador por até {{age}}, usando no máximo {{size}} de disco.",
+        "writeBack": "As mudanças que você faz são enviadas para a nuvem após {{time}}.",
+        "minFree": "O cache para de crescer quando restam menos de {{size}} livres no disco.",
+        "address": "Endereço:",
+        "addressUnknown": "Use o endereço deste computador com a porta:",
+        "addressViaBackend": "É o endereço que o aplicativo usa para se conectar a esse computador. Um celular em outra rede pode não conseguir alcançá-lo.",
+        "port": "Porta:",
+        "user": "Usuário:",
+        "readOnly": "Os dispositivos podem olhar, mas não alterar arquivos.",
+        "canChange": "Os dispositivos também podem alterar e apagar arquivos.",
+        "tvName": "Aparece na TV como:"
+      },
+      "settings": {
+        "title": "Configurações do guia",
+        "subtitle": "Essas escolhas são lembradas na próxima vez.",
+        "afterRemote": "Mostrar este guia depois de adicionar uma nuvem",
+        "destinationTitle": "Guardar o que o guia configura como",
+        "auto": "Automático",
+        "hintAuto": "Segue a visualização de inicialização: um perfil se o aplicativo abre no menu principal, uma Execução Rápida caso contrário.",
+        "done": "Concluído"
+      },
+      "undo": {
+        "action": "Remover esta configuração",
+        "confirm": "“{{name}}” para de funcionar e some do aplicativo. Seus arquivos não são tocados.",
+        "working": "Removendo…",
+        "failed": "Não foi possível remover. Você ainda pode removê-la pelo lugar onde ela aparece.",
+        "removedTitle": "Removida",
+        "removed": "“{{name}}” foi removida. Seus arquivos não foram alterados.",
+        "title": "Remover esta configuração?",
+        "confirmRunning": "“{{name}}” está em execução agora. Ela será interrompida primeiro e depois removida. Seus arquivos não são tocados."
+      },
+      "setups": {
+        "title": "Já configurado",
+        "show": "Abrir",
+        "remove": "Remover",
+        "status": {
+          "stream": {
+            "running": "Montado",
+            "idle": "Não montado"
+          },
+          "share": {
+            "running": "Servindo",
+            "idle": "Não servindo"
+          },
+          "job": {
+            "running": "Em execução",
+            "ok": "Concluído · {{when}}",
+            "failed": "Falhou · {{when}}",
+            "stopped": "Interrompido · {{when}}",
+            "idle": "Nunca executado"
+          }
+        },
+        "subtitle": "Tudo o que você configurou, agrupado por nuvem.",
+        "empty": "Nada foi configurado ainda.",
+        "headline": {
+          "stream": "Nuvem como pasta",
+          "streamSaf": "Nuvem no app Arquivos",
+          "twoWay": "Sincronizado",
+          "upload_copy": "Backup",
+          "upload_sync": "Backup espelhado",
+          "upload_move": "Mover para a nuvem",
+          "download": "Download",
+          "download_sync": "Download espelhado",
+          "download_move": "Mover da nuvem",
+          "cloudToCloud_copy": "Copiar para {{target}}",
+          "cloudToCloud_move": "Mover para {{target}}",
+          "cloudToCloud_sync": "Espelhar em {{target}}",
+          "share_dlna": "Compartilhado com TVs e players",
+          "share_webdav": "Compartilhado na sua rede",
+          "share_http": "Compartilhado como página web",
+          "share_other": "Compartilhado via {{type}}",
+          "compare": "Verificação de pasta"
+        },
+        "auto": {
+          "startup": "Executa ao abrir o app",
+          "watch": "Executa ao mudar arquivos",
+          "manual": "Início manual",
+          "startupStream": "Monta ao abrir o app",
+          "startupShare": "Serve ao abrir o app"
+        },
+        "kind": {
+          "quickRun": "Execução Rápida",
+          "profile": "Perfil"
+        },
+        "sameAs": "Igual a “{{name}}”",
+        "runningCount": "Em execução: {{count}}",
+        "failedCount": "Com falha: {{count}}"
+      }
     }
   },
   "nautilus": {
@@ -4116,6 +4605,11 @@
     "tabs": {
       "quickRun": "Execução Rápida",
       "workflow": "Fluxo de Trabalho"
+    },
+    "addMenu": {
+      "remote": "Criar Remote",
+      "quickRun": "Criar Execução Rápida",
+      "workflow": "Criar Fluxo de Trabalho"
     },
     "workflow": {
       "untitled": "Fluxo sem título",

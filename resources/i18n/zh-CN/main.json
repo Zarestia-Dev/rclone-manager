@@ -57,7 +57,8 @@
     "pathStatus": {
       "clean": "干净且为空",
       "nonEmpty": "目录包含文件",
-      "colliding": "已被 {{details}} 使用",
+      "collidingProfile": "已被 {{remote}} 的配置文件“{{name}}”使用",
+      "collidingQuickRun": "已被快捷运行“{{name}}”使用",
       "willCreate": "创建远程存储后将创建文件夹。",
       "checking": "正在检查路径...",
       "notDirectory": "此路径指向文件。请选择文件夹。",
@@ -637,7 +638,22 @@
       }
     },
     "remoteSaved": "远程存储已成功保存",
-    "remoteSaveFailed": "保存远程存储失败：{{error}}"
+    "remoteSaveFailed": "保存远程存储失败：{{error}}",
+    "wizard": {
+      "after_remote": {
+        "label": "添加云盘后显示设置向导",
+        "description": "添加完新云盘后，打开“你想做什么？”向导。"
+      },
+      "destination": {
+        "label": "设置向导的保存位置",
+        "description": "“自动”跟随默认启动视图：主菜单会在云盘页面保存一个配置文件，其他视图保存一个 Quick Run。",
+        "options": {
+          "auto": "自动",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "云盘配置文件（主菜单）"
+        }
+      }
+    }
   },
   "banners": {
     "development": {
@@ -740,7 +756,8 @@
       "shortcuts": "快捷键",
       "about": "关于 RClone Manager",
       "quickRemote": "快速远程存储",
-      "detailedRemote": "详细远程存储"
+      "detailedRemote": "详细远程存储",
+      "intentGuide": "向导"
     }
   },
   "onboarding": {
@@ -2819,6 +2836,473 @@
         "newLine": "换行",
         "clear": "清空"
       }
+    },
+    "intentGuide": {
+      "title": "你想做什么？",
+      "stepOf": "第 {{current}} 步，共 {{total}} 步",
+      "loadFailed": "无法加载你的云存储。",
+      "noRemotes": "请先添加一个云存储，再回到这里。",
+      "remoteLabel": "哪个云？",
+      "recommended": "推荐",
+      "measuring": "正在计算大小…",
+      "applyFailed": "无法完成设置。请检查文件夹后重试。",
+      "hello": {
+        "created": "{{remote}} 已就绪！你想用它做什么？",
+        "default": "你想用云存储做什么？",
+        "subtitle": "用你自己的话选择想做的事。其余由我们设置，在你确认之前不会开始任何操作。"
+      },
+      "places": {
+        "computer": "这台电脑",
+        "phone": "这部手机",
+        "server": "服务器",
+        "filesApp": "“文件”应用",
+        "tv": "电视或播放器",
+        "device": "手机或电脑",
+        "browser": "网页浏览器",
+        "homeNetwork": "你的家庭网络"
+      },
+      "goals": {
+        "access": {
+          "title": "把云存储当作这台电脑上的文件夹使用",
+          "description": "就像网络驱动器：文件显示在一个文件夹中，打开时才下载。",
+          "descriptionApp": "就像 Windows 上的 {{app}} 应用：文件显示在一个文件夹中，打开时才下载。",
+          "titlePhone": "在手机的“文件”应用中查看云存储",
+          "descriptionPhone": "云存储会出现在其他存储旁边，文件在打开时才下载。"
+        },
+        "backup": {
+          "title": "把文件备份到云端",
+          "description": "在云端保留一个文件夹的副本，以防这台电脑出问题。"
+        },
+        "devices": {
+          "title": "在这台电脑上保留一份与云端相同的副本",
+          "description": "没有网络也能用，还能在多台设备间保持一致：更改会双向同步。非常适合 Obsidian 或 Logseq 笔记。"
+        },
+        "download": {
+          "title": "把云端文件下载到这台电脑",
+          "description": "下载一个文件夹或全部内容，一次性或保持最新。"
+        },
+        "migrate": {
+          "title": "迁移到另一个云",
+          "description": "把这个云的所有内容复制到另一个云，例如从 Google Drive 到 OneDrive。"
+        },
+        "share": {
+          "title": "在电视或手机上打开我的文件",
+          "description": "让家庭网络中的电视、手机或电脑访问你的云存储。"
+        },
+        "explore": {
+          "title": "只是看看或检查一下",
+          "description": "浏览你的文件，或检查某个文件夹是否与云端一致。"
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "如果你在这里删除了文件，它的备份应该怎样？"
+        },
+        "keepOld": {
+          "title": "文件要保留在旧的云中吗？"
+        },
+        "device": {
+          "title": "你会用什么打开这些文件？"
+        },
+        "explore": {
+          "title": "你想做什么？"
+        }
+      },
+      "about": {
+        "title": "有什么区别？",
+        "goals": {
+          "title": "哪个适合我？",
+          "access": "把云端当文件夹：文件留在云端，只有你打开时才会到这台电脑上。",
+          "devices": "这里也留一份副本：文件也保存在这台电脑上，没有网络也能用。一边改了，另一边也会跟着变。",
+          "backup": "备份：文件夹的一份安全副本会放到云端。你的文件夹里什么都不会变。",
+          "download": "取回云端文件：云端文件的副本会来到这台电脑。云端什么都不会变。"
+        },
+        "deleted": {
+          "same": "两种方式都会把新增和修改过的文件复制到云端，也都不会改动你的文件夹。",
+          "differ": "“保留在云端”：在这里删除文件后，云端仍会保留。“云端也删除”：云端始终与你的文件夹保持一模一样，所以在这里删除的文件，云端里也会一起删除。"
+        },
+        "keepOld": {
+          "same": "两种方式都会把所有文件复制到新的云端。",
+          "differ": "“是的，保留在那里”：旧的云端保持原样。“不，移动过去”：每个文件安全到达新的云端后，就会从旧的云端移除。"
+        },
+        "device": {
+          "same": "无论选哪种，你的云端都会向家庭网络里的其他设备开放。只有这个应用开着时才有效。",
+          "differ": "网络文件夹可以像普通文件夹一样在 Finder、资源管理器或文件应用中打开，还可以允许更改。网页浏览器只能浏览和下载文件。电视或播放器会自动发现它，只能播放。"
+        },
+        "explore": {
+          "same": "两种方式都不会改动任何东西。",
+          "differ": "“浏览我的文件”：在此应用中打开你的云端，浏览其中的文件。“将文件夹与云端比较”：显示这台电脑上的文件夹与云端之间哪些文件不一样。"
+        },
+        "where": {
+          "stream": "这个文件夹就像一扇门：文件留在云端，在这里显示，打开时才下载。请选一个空文件夹。你放进去的内容也会保存到云端。",
+          "twoWay": "你可以选择已经在用的文件夹。第一次会与云端比较并合并，不会删除任何内容。之后，一边的更改（包括删除文件）也会出现在另一边。",
+          "mirror": "云端文件夹会变成与你的文件夹一模一样的副本。其中有、但你的文件夹里没有的文件会被删除。最稳妥的做法是选择一个新的或空的云端文件夹。"
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "保留在云端",
+            "description": "就像一份安全副本：即使你在这里删除了文件，云端仍然保留着。"
+          },
+          "mirror": {
+            "title": "云端也删除",
+            "description": "就像一面镜子：云端始终与你的文件夹完全一样，包括已删除的文件。"
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "是的，保留在那里",
+            "description": "就像复制一份：旧的云保持原样，你随时可以回去。"
+          },
+          "move": {
+            "title": "不，移动过去",
+            "description": "就像搬家：每个文件安全到达新的云之后，才会离开旧的云。"
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "网络文件夹",
+            "description": "就像共享文件夹：可以在 Finder、资源管理器或文件应用中打开，用你设置的用户名和密码连接。设备能否更改文件由你决定。"
+          },
+          "browser": {
+            "title": "网页浏览器",
+            "description": "就像一个网页：有地址和密码的手机或电脑可以浏览并下载文件。无法更改任何内容。"
+          },
+          "tv": {
+            "title": "电视或媒体播放器",
+            "description": "就像媒体服务器：智能电视、游戏机和播放器会自动发现它。它们可以观看和收听，但无法更改任何内容。"
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "浏览我的文件",
+            "description": "就像打开一个文件夹：在此应用内浏览你的云端。不会下载或更改任何内容。"
+          },
+          "compare": {
+            "title": "将文件夹与云端比较",
+            "description": "就像比较两个文件夹：看看本地文件夹与云端之间有哪些文件不同。不会更改任何内容。"
+          }
+        }
+      },
+      "where": {
+        "heading": "在哪里？",
+        "target": "文件要放到哪里？",
+        "noOtherRemote": "请先添加新的云，再回到这里。",
+        "shareLogin": "其他设备的登录信息",
+        "shareHint": "手机或电脑连接时会要求输入这些信息。",
+        "shareUser": "用户名",
+        "sharePassword": "密码",
+        "local": {
+          "stream": "云存储会显示在这个文件夹中",
+          "twoWay": "文件会保存在这个文件夹中",
+          "download": "文件会下载到这里",
+          "upload": "备份哪个文件夹？",
+          "compare": "检查哪个文件夹？",
+          "devices": "哪个文件夹需要保持一致？"
+        },
+        "cloud": {
+          "stream": "云存储的哪一部分？",
+          "twoWay": "与这个文件夹保持一致",
+          "download": "下载哪个文件夹？",
+          "upload": "备份存放在这里",
+          "cloudToCloud": "复制什么？",
+          "share": "共享什么？",
+          "compare": "与这个文件夹比较"
+        },
+        "localPlaceholder": "选择或输入文件夹",
+        "cloudPlaceholder": "留空表示整个云存储",
+        "shareConnection": "设备如何连接",
+        "sharePort": "端口",
+        "sharePortHint": "地址中冒号后面的数字。除非已被占用，否则保持 8080。",
+        "portInvalid": "请选择 1024 到 65535 之间的端口。",
+        "shareReadOnly": "设备只能查看，不能更改文件",
+        "shareReadOnlyHint": "如果手机或电脑也需要上传、重命名或删除，请关闭此项。",
+        "shareName": "在电视上的名称",
+        "shareNameHint": "这是你在电视或播放器的媒体服务器列表中看到的名称。",
+        "shareNameLabel": "名称",
+        "portBusy": "端口 {{port}} 已被其他程序占用，请选择其他端口。",
+        "portUseFree": "使用端口 {{port}}"
+      },
+      "review": {
+        "heading": "将会这样进行",
+        "technical": "技术名称",
+        "advanced": "在完整编辑器中打开",
+        "start": "设置并开始",
+        "firstRun": "首次运行会比较两边并合并。可能需要一些时间，不会删除任何文件。",
+        "startOnLogin": "电脑启动时也启动此应用",
+        "mountPlugin": {
+          "title": "还需要一样东西",
+          "description": "要把云存储显示为文件夹，需要一个尚未安装的小型系统组件（FUSE 或 WinFsp）。",
+          "install": "安装"
+        },
+        "summary": {
+          "stream": "{{cloud}} 会显示在 {{local}} 中。",
+          "streamSaf": "{{cloud}} 会显示在“文件”应用中。",
+          "twoWay": "{{local}} 与 {{cloud}} 会保持一致。",
+          "upload_copy": "{{local}} 会备份到 {{cloud}}。",
+          "upload_sync": "{{cloud}} 会成为 {{local}} 的完全副本。",
+          "download": "{{cloud}} 会下载到 {{local}}。",
+          "cloudToCloud_copy": "{{cloud}} 会复制到 {{target}}。",
+          "cloudToCloud_move": "{{cloud}} 会移动到 {{target}}。",
+          "share_dlna": "{{cloud}} 会共享给你网络中的电视和播放器。",
+          "share_webdav": "{{cloud}} 会以密码保护的方式在你的网络中共享。",
+          "share_http": "{{cloud}} 会以带密码的网页形式在你的网络中共享。",
+          "compare": "{{local}} 会与 {{cloud}} 进行比较。"
+        },
+        "schedule": {
+          "watch": "文件发生变化时会自动运行。",
+          "startup": "每次应用启动时会自动运行。",
+          "startupMount": "每次应用启动时会自动连接。",
+          "cron": "计划：{{when}}",
+          "manual": "只在你启动时运行。"
+        },
+        "detailsTitle": "温馨提示",
+        "destination": {
+          "title": "保存为",
+          "quickRun": "快捷运行",
+          "profile": "主菜单中的配置文件",
+          "hintQuickRun": "显示在 Flow › 快捷运行 中。",
+          "hintProfile": "显示在主菜单中“{{remote}}”的页面上，可在那里启动和停止。"
+        },
+        "wholeCloud": "整个云端",
+        "duplicate": "你已经有一个做同样事情的设置：“{{name}}”。"
+      },
+      "effects": {
+        "streamOpen": "打开文件时会从云端下载。",
+        "streamSave": "保存文件时会上传到云端。",
+        "streamDelete": "在此文件夹中删除的文件也会从云端删除。",
+        "uploadNew": "新增和修改的文件会上传。",
+        "keepDelete": "你在这里删除的文件会保留在云端。",
+        "uploadCloudChange": "备份绝不会更改你文件夹中的内容。",
+        "mirrorDelete": "你在这里删除的文件也会从云端删除。",
+        "mirrorExtra": "只存在于云端文件夹中的文件会被删除。",
+        "downloadNew": "云端新增和修改的文件会下载。",
+        "downloadKeep": "在云端删除的文件会保留在这台电脑上。",
+        "downloadLocalChange": "云端的内容绝不会被更改。",
+        "twoWayChange": "任一边的更改都会复制到另一边。",
+        "twoWayDelete": "一边删除的文件，另一边也会删除。",
+        "twoWayConflict": "如果同一文件在两边都有更改，两个版本都会保留。",
+        "migrateCopy": "每个文件都会复制到新的云。",
+        "migrateKeep": "旧的云保持不变。",
+        "migrateMove": "文件复制完成后会从旧的云中删除。",
+        "shareTv": "你网络中的电视和播放器会自动发现它。",
+        "shareReadOnly": "它们可以观看和收听，但无法更改任何内容。",
+        "shareBrowse": "设备可以浏览并下载文件，但无法更改任何内容。",
+        "shareStops": "关闭应用后共享会停止。",
+        "sharePassword": "只有知道你密码的设备才能连接。",
+        "shareWrite": "已连接的设备可以修改和删除文件。",
+        "compareNothing": "不会更改任何文件。",
+        "compareList": "你会得到不同文件的列表。",
+        "browseNothing": "不会更改任何内容。"
+      },
+      "advice": {
+        "tooBigForDisk": "这些内容有 {{size}}，但这台电脑只剩 {{free}}。放不下。",
+        "tightOnDisk": "这些内容有 {{size}}，这台电脑剩余 {{free}}。能放下，但磁盘会几乎占满。",
+        "fitsOnDisk": "这些内容有 {{size}}，这台电脑剩余 {{free}}。完全放得下。",
+        "cloudTooFull": "该文件夹有 {{size}}，但云端只剩 {{free}}。放不下。",
+        "streamSavesSpace": "你的云端有 {{cloud}}，这台电脑剩余 {{free}}，所以这是正确的选择：只有你打开的文件才占用空间。"
+      },
+      "preview": {
+        "title": "先看看会发生什么",
+        "description": "试运行会比较两边，并列出它将复制、替换或删除的每个文件。不会更改任何文件。",
+        "run": "查看会有哪些变化",
+        "running": "正在比较文件…",
+        "checked": {
+          "other": "已检查 {{count}} 个文件"
+        },
+        "transfers": {
+          "other": "将复制 {{count}} 个文件"
+        },
+        "deletes": {
+          "other": "将删除 {{count}} 个文件"
+        },
+        "errors": {
+          "other": "{{count}} 个文件无法读取"
+        },
+        "noDeletes": "不会删除任何文件",
+        "nothing": "一切都已是最新，不会有任何变化。",
+        "failed": "试运行未完成。你仍可以继续设置，或更改文件夹。",
+        "runName": "{{name}}（试运行）",
+        "groups": {
+          "delete": "将被删除",
+          "add": "新文件",
+          "replace": "将被替换",
+          "copy": "将被复制",
+          "error": "有问题",
+          "untouched": "保持原样"
+        },
+        "groupHints": {
+          "delete": "这些文件只存在于目标位置，因此会在那里被删除。",
+          "add": "这些是新文件，因此会被复制。",
+          "replace": "这些文件两边都有但内容不同。目标位置的版本将被替换。",
+          "copy": "这些文件将被复制。",
+          "error": "这些文件无法比较或复制。",
+          "untouched": "这些文件只存在于目标位置，会保持原样。"
+        },
+        "unchanged": {
+          "other": "{{count}} 个文件两边已经相同"
+        },
+        "search": "在列表中搜索",
+        "showMore": "显示更多",
+        "noMatches": "没有文件与你的搜索匹配。",
+        "deleteWarning": "开始之前请先查看此列表：这些文件将从目标位置删除。",
+        "again": "重新试运行",
+        "slowNote": "根据文件数量，这可能需要一些时间。并没有卡住，请稍候。",
+        "elapsed": "已运行 {{time}}"
+      },
+      "working": {
+        "saving": "正在设置…",
+        "firstRun": "正在进行首次同步…",
+        "canClose": "你可以关闭此窗口；它会在后台继续运行。",
+        "slowNote": "首次同步可能需要较长时间，取决于文件数量。并没有卡住。"
+      },
+      "done": {
+        "title": "全部完成！",
+        "stream": "你的云存储现在位于 {{path}}。",
+        "streamSaf": "你的云存储现在在“文件”应用中。",
+        "twoWayReady": "首次同步已完成。从现在起两边将始终保持一致。",
+        "twoWayFailed": "已设置完成，但首次同步没有完成。",
+        "started": "已经开始。你可以在应用中查看进度。",
+        "findIt": "之后可以在 Flow › 快捷运行 中找到“{{name}}”。",
+        "openFolder": "打开文件夹",
+        "openCloud": "在文件浏览器中显示",
+        "another": "设置其他内容",
+        "shareWebdav": "共享已开启。请在手机或电脑上连接以下任一地址：",
+        "shareHttp": "共享已开启。请在手机或电脑的浏览器中打开以下任一地址：",
+        "shareAddress": "地址",
+        "shareOtherAddresses": "也可以使用",
+        "shareUser": "用户名",
+        "sharePassword": "密码",
+        "sharePasswordHint": "您设置的密码",
+        "troubleTitle": "如果连接不上",
+        "troubleNetwork": "手机必须与这台电脑连接同一个 Wi-Fi。",
+        "troubleNetworkRemote": "手机必须处于能访问 {{host}} 的网络中。",
+        "troubleFirewall": "共享文件的那台电脑的防火墙必须允许端口 {{port}}。",
+        "shareDlna": "共享已开启。请在电视或播放器的媒体列表中查找“{{name}}”。",
+        "noAddress": "共享已开启。请连接这台电脑的网络地址，端口 {{port}}。",
+        "findItProfile": "之后可在主菜单中“{{remote}}”的页面找到，配置文件名为“{{name}}”。",
+        "whereQuickRun": "在快捷运行中显示",
+        "whereProfile": "在主菜单中显示",
+        "failureReason": "出错原因：{{reason}}"
+      },
+      "runNames": {
+        "access": "{{remote}} 文件夹",
+        "backup": "{{remote}} 备份",
+        "devices": "{{remote}} 同步",
+        "download": "{{remote}} 下载",
+        "migrate": "{{remote}} 迁移",
+        "share": "{{remote}} 共享",
+        "explore": "{{remote}} 检查"
+      },
+      "when": {
+        "heading": "何时运行？",
+        "subtitle": "选择任意几项并组合使用。一项都不选，则只在你启动时运行。",
+        "watch": {
+          "title": "每当文件发生变化时",
+          "description": "监视该文件夹，变化会在几秒内上传，就像手机的照片自动上传。"
+        },
+        "cron": {
+          "title": "按计划",
+          "description": "每天、每小时、工作日，或你选择的任意时间。"
+        },
+        "startup": {
+          "title": "应用启动时",
+          "description": "每次打开应用时自动运行。",
+          "descriptionMount": "每次打开应用时云存储会自动连接。"
+        },
+        "cloudHint": "监视只能发现这台电脑上的变化。再添加一个计划，这样云端的变化也能同步过来。",
+        "invalidCron": "此计划尚未完成。请从上方选择一个时间。"
+      },
+      "details": {
+        "cache": "你打开的文件最多会在这台电脑上保留 {{age}}，最多占用 {{size}} 磁盘。",
+        "writeBack": "你所做的更改会在 {{time}} 后发送到云端。",
+        "minFree": "当磁盘剩余空间少于 {{size}} 时，缓存会停止增长。",
+        "address": "地址：",
+        "addressUnknown": "使用这台电脑的地址加端口：",
+        "addressViaBackend": "这是应用连接到那台电脑所用的地址。位于其他网络的手机可能无法访问。",
+        "port": "端口：",
+        "user": "用户名：",
+        "readOnly": "设备可以查看，但不能更改文件。",
+        "canChange": "设备也可以更改和删除文件。",
+        "tvName": "在电视上显示为："
+      },
+      "settings": {
+        "title": "向导设置",
+        "subtitle": "这些选择会在下次继续使用。",
+        "afterRemote": "添加云盘后显示此向导",
+        "destinationTitle": "将向导设置的内容保存为",
+        "auto": "自动",
+        "hintAuto": "跟随启动视图：应用从主菜单启动时保存为配置文件，否则保存为 快捷运行。",
+        "done": "完成"
+      },
+      "undo": {
+        "action": "移除此设置",
+        "confirm": "“{{name}}”会停止运行并从应用中消失。你的文件不会受到影响。",
+        "working": "正在移除…",
+        "failed": "无法移除。你仍可在它所在的位置移除。",
+        "removedTitle": "已移除",
+        "removed": "“{{name}}”已移除。你的文件没有任何改动。",
+        "title": "要移除此设置吗？",
+        "confirmRunning": "“{{name}}”正在运行。将先停止它，然后移除。你的文件不会受到影响。"
+      },
+      "setups": {
+        "title": "已设置的内容",
+        "show": "打开",
+        "remove": "移除",
+        "status": {
+          "stream": {
+            "running": "已挂载",
+            "idle": "未挂载"
+          },
+          "share": {
+            "running": "服务运行中",
+            "idle": "服务未运行"
+          },
+          "job": {
+            "running": "运行中",
+            "ok": "已完成 · {{when}}",
+            "failed": "失败 · {{when}}",
+            "stopped": "已停止 · {{when}}",
+            "idle": "从未运行"
+          }
+        },
+        "subtitle": "你设置的所有内容，按云端分组。",
+        "empty": "还没有设置任何内容。",
+        "headline": {
+          "stream": "云端作为文件夹",
+          "streamSaf": "云端显示在“文件”应用中",
+          "twoWay": "保持同步",
+          "upload_copy": "备份",
+          "upload_sync": "镜像备份",
+          "upload_move": "移动到云端",
+          "download": "下载",
+          "download_sync": "镜像下载",
+          "download_move": "从云端移动",
+          "cloudToCloud_copy": "复制到 {{target}}",
+          "cloudToCloud_move": "移动到 {{target}}",
+          "cloudToCloud_sync": "镜像到 {{target}}",
+          "share_dlna": "与电视和播放器共享",
+          "share_webdav": "在你的网络中共享",
+          "share_http": "以网页形式共享",
+          "share_other": "通过 {{type}} 共享",
+          "compare": "文件夹检查"
+        },
+        "auto": {
+          "startup": "应用启动时运行",
+          "watch": "文件变化时运行",
+          "manual": "手动启动",
+          "startupStream": "应用启动时挂载",
+          "startupShare": "应用启动时提供服务"
+        },
+        "kind": {
+          "quickRun": "快捷运行",
+          "profile": "配置文件"
+        },
+        "sameAs": "与“{{name}}”相同",
+        "runningCount": "运行中：{{count}}",
+        "failedCount": "失败：{{count}}"
+      }
     }
   },
   "nautilus": {
@@ -4070,6 +4554,11 @@
     "tabs": {
       "quickRun": "快捷运行",
       "workflow": "工作流"
+    },
+    "addMenu": {
+      "remote": "创建远程存储",
+      "quickRun": "创建快捷运行",
+      "workflow": "创建工作流"
     },
     "workflow": {
       "untitled": "未命名工作流",

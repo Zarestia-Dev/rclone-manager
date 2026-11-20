@@ -52,6 +52,7 @@ describe('FlowContainerComponent', () => {
 
   let mockModalService: {
     openRemoteConfig: ReturnType<typeof vi.fn>;
+    openIntentGuide: ReturnType<typeof vi.fn>;
   };
 
   const createComponent = async (): Promise<void> => {
@@ -124,6 +125,7 @@ describe('FlowContainerComponent', () => {
 
     mockModalService = {
       openRemoteConfig: vi.fn(),
+      openIntentGuide: vi.fn(),
     };
   });
 
@@ -196,6 +198,11 @@ describe('FlowContainerComponent', () => {
     component.setSidebarOpen(true);
     component.newRemote();
     expect(mockModalService.openRemoteConfig).toHaveBeenCalledWith({ editTarget: 'remote' });
+    expect(component.isSidebarOpen()).toBe(false);
+
+    component.setSidebarOpen(true);
+    component.openGuide();
+    expect(mockModalService.openIntentGuide).toHaveBeenCalledOnce();
     expect(component.isSidebarOpen()).toBe(false);
   });
 

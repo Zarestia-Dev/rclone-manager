@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 
+import { PANEL_TONE } from '@app/types';
+
 @Component({
   selector: 'app-system-overview-panel',
   standalone: true,
@@ -23,6 +25,8 @@ import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance
   styleUrls: ['./system-overview-panel.component.scss'],
 })
 export class SystemOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.system;
   readonly expanded = model<boolean>(false);
 
   readonly totalCount = input<number | undefined>(undefined);

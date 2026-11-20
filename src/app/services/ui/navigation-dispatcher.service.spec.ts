@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { NavigationDispatcherService } from './navigation-dispatcher.service';
 import { UiStateService } from './state/ui-state.service';
+import { AppNavigationService } from './app-navigation.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
@@ -12,11 +13,12 @@ import { vi, describe, beforeEach, it, expect } from 'vitest';
 describe('NavigationDispatcherService', () => {
   let service: NavigationDispatcherService;
   let mockUiStateService: {
-    setMainView: ReturnType<typeof vi.fn>;
     setFlowSubMode: ReturnType<typeof vi.fn>;
     setTab: ReturnType<typeof vi.fn>;
     setSelectedRemote: ReturnType<typeof vi.fn>;
+    requestProfile: ReturnType<typeof vi.fn>;
   };
+  let mockNavigation: { openWorkspace: ReturnType<typeof vi.fn> };
   let mockRemoteFacade: { getRemote: ReturnType<typeof vi.fn> };
   let mockPathService: { getRemoteNameFromFs: ReturnType<typeof vi.fn> };
   let mockQuickRunService: {
@@ -53,11 +55,12 @@ describe('NavigationDispatcherService', () => {
 
   beforeEach((): void => {
     mockUiStateService = {
-      setMainView: vi.fn(),
       setFlowSubMode: vi.fn(),
       setTab: vi.fn(),
       setSelectedRemote: vi.fn(),
+      requestProfile: vi.fn(),
     };
+    mockNavigation = { openWorkspace: vi.fn().mockResolvedValue(undefined) };
     mockRemoteFacade = {
       getRemote: vi.fn((name: string) => (name === mockRemote.name ? mockRemote : undefined)),
     };
@@ -77,6 +80,7 @@ describe('NavigationDispatcherService', () => {
       providers: [
         NavigationDispatcherService,
         { provide: UiStateService, useValue: mockUiStateService },
+        { provide: AppNavigationService, useValue: mockNavigation },
         { provide: RemoteFacadeService, useValue: mockRemoteFacade },
         { provide: PathService, useValue: mockPathService },
         { provide: QuickRunService, useValue: mockQuickRunService },
@@ -91,20 +95,37 @@ describe('NavigationDispatcherService', () => {
     expect(service).toBeTruthy();
   });
 
+  it('shows a workspace through the shared navigation and never replaces the base view', () => {
+    service.navigateToQuickRun('qr-1');
+    service.navigateToRemote(mockRemote.name, 'mount');
+    expect(mockNavigation.openWorkspace.mock.calls).toEqual([['flow'], ['main_menu']]);
+    expect(mockUiStateService).not.toHaveProperty('setMainView');
+  });
+
+  it('reports a workspace that could not be opened instead of failing the click', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockNavigation.openWorkspace.mockRejectedValue(new Error('chunk failed'));
+    service.navigateToQuickRun('qr-1');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
   describe('navigateToWorkflow', () => {
     it.each([
       { id: 'wf-1', name: undefined },
       { id: undefined, name: 'Nightly Sync' },
     ])('loads a workflow by ID or name: $id / $name', ({ id, name }) => {
       service.navigateToWorkflow(id, name);
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStorageService.openWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
     it('opens the builder without replacing the canvas when no workflow matches', () => {
       service.navigateToWorkflow('missing');
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStorageService.openWorkflow).not.toHaveBeenCalled();
     });
@@ -113,14 +134,39 @@ describe('NavigationDispatcherService', () => {
   describe('navigateToRemote', () => {
     it.each(['operations', 'mount', 'serve'] as const)('selects the %s tab', tab => {
       service.navigateToRemote(mockRemote.name, tab);
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith(tab);
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
     });
 
+    it('asks the remote page to open a profile before it selects the remote', () => {
+      service.navigateToRemote(mockRemote.name, 'operations', {
+        operationType: 'bisync',
+        name: 'Notes',
+      });
+      expect(mockUiStateService.requestProfile).toHaveBeenCalledWith({
+        remoteName: 'test-remote',
+        operationType: 'bisync',
+        profile: 'Notes',
+      });
+      expect(mockUiStateService.requestProfile.mock.invocationCallOrder[0]).toBeLessThan(
+        mockUiStateService.setSelectedRemote.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('asks for no profile when none is given', () => {
+      service.navigateToRemote(mockRemote.name, 'mount');
+      expect(mockUiStateService.requestProfile).not.toHaveBeenCalled();
+    });
+
+    it('does not ask for a profile of a remote it cannot open', () => {
+      service.navigateToRemote('missing', 'mount', { operationType: 'mount', name: 'X' });
+      expect(mockUiStateService.requestProfile).not.toHaveBeenCalled();
+    });
+
     it.each(['', 'missing'])('keeps the current view when remote %s is unavailable', name => {
       service.navigateToRemote(name);
-      expect(mockUiStateService.setMainView).not.toHaveBeenCalled();
+      expect(mockNavigation.openWorkspace).not.toHaveBeenCalled();
       expect(mockUiStateService.setTab).not.toHaveBeenCalled();
       expect(mockUiStateService.setSelectedRemote).not.toHaveBeenCalled();
     });
@@ -137,7 +183,7 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToServe(serve);
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith('serve');
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
     });
@@ -155,9 +201,22 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToOwner(mountWith({ kind: 'profile', name: 'work' }), 'test-remote', 'mount');
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith('mount');
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
+    });
+
+    it('opens the profile that started the mount, or none when no profile did', (): void => {
+      service.navigateToOwner(mountWith({ kind: 'profile', name: 'work' }), 'test-remote', 'mount');
+      expect(mockUiStateService.requestProfile).toHaveBeenCalledWith({
+        remoteName: 'test-remote',
+        operationType: 'mount',
+        profile: 'work',
+      });
+
+      mockUiStateService.requestProfile.mockClear();
+      service.navigateToOwner(mountWith(), 'test-remote', 'mount');
+      expect(mockUiStateService.requestProfile).not.toHaveBeenCalled();
     });
 
     it('should navigate to the Quick Run that started the mount', (): void => {
@@ -167,7 +226,7 @@ describe('NavigationDispatcherService', () => {
         'mount'
       );
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
       expect(mockUiStateService.setTab).not.toHaveBeenCalled();
     });
@@ -257,9 +316,14 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToAutomation(automation);
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith('operations');
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
+      expect(mockUiStateService.requestProfile).toHaveBeenCalledWith({
+        remoteName: 'test-remote',
+        operationType: 'sync',
+        profile: 'default',
+      });
     });
 
     it('should navigate to flow and load workflow when automation source is flow', (): void => {
@@ -281,7 +345,7 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToAutomation(automation);
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStorageService.openWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
@@ -304,7 +368,7 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToAutomation(automation);
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
@@ -314,7 +378,7 @@ describe('NavigationDispatcherService', () => {
     it('should set main view to flow, set flow sub-mode to quick_run, and select quick run', (): void => {
       service.navigateToQuickRun('qr-1');
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
@@ -333,7 +397,7 @@ describe('NavigationDispatcherService', () => {
 
       service.navigateToServe(serveWith({ kind: 'quick_run', id: 'qr-1', name: 'Sync Drive' }));
 
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockNavigation.openWorkspace).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });

@@ -23,8 +23,12 @@ const home: MainNavigation = {
   workflow: null,
 };
 
+/** Lets the overlay of a restored workspace finish loading. */
+const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve));
+
 describe('AppNavigationService', () => {
   const view = signal<MainView>('main_menu');
+  const defaultView = signal<MainView>('main_menu');
   const tab = signal<AppTab>('general');
   const mode = signal<FlowSubMode>('quick_run');
   const remote = signal<Remote | null>(null);
@@ -48,6 +52,7 @@ describe('AppNavigationService', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     view.set('main_menu');
+    defaultView.set('main_menu');
     tab.set('general');
     mode.set('quick_run');
     remote.set(null);
@@ -91,6 +96,7 @@ describe('AppNavigationService', () => {
           provide: UiStateService,
           useValue: {
             selectedMainView: view,
+            defaultView,
             activeWorkspace: view,
             currentTab: tab,
             selectedRemote: remote,
@@ -179,7 +185,7 @@ describe('AppNavigationService', () => {
   it('a user workflow selection supersedes an unresolved deep link', async () => {
     service.initialize(null);
     restored.next({ main: { ...home, view: 'flow', flowMode: 'builder', workflow: 'missing' } });
-    await Promise.resolve();
+    await flush();
     TestBed.tick();
     const state = TestBed.inject(WorkflowStateService);
     state.currentWorkflow.set(chosen);
@@ -198,7 +204,7 @@ describe('AppNavigationService', () => {
     service.initialize(null);
     currentWorkflow.set(chosen);
     restored.next({ main: { ...home, view: 'flow', flowMode: 'builder', workflow: 'late' } });
-    await Promise.resolve();
+    await flush();
     TestBed.tick();
     expect(currentWorkflow()).toBeNull();
     expect(updateMain).toHaveBeenLastCalledWith(expect.objectContaining({ workflow: 'late' }));
@@ -221,5 +227,79 @@ describe('AppNavigationService', () => {
     expect(loadWorkflow).not.toHaveBeenCalled();
     expect(currentWorkflow()).toBeNull();
     expect(updateMain).toHaveBeenLastCalledWith(home);
+  });
+
+  describe('openWorkspace', () => {
+    const overlays = (): {
+      nautilus: NautilusService;
+      flow: FlowOverlayService;
+      main: MainUiOverlayService;
+    } => ({
+      nautilus: TestBed.inject(NautilusService),
+      flow: TestBed.inject(FlowOverlayService),
+      main: TestBed.inject(MainUiOverlayService),
+    });
+
+    it('shows the base view by closing every overlay, whatever replaced the base before', async () => {
+      defaultView.set('main_menu');
+      view.set('flow');
+      service.initialize(null);
+      const { nautilus, flow, main } = overlays();
+
+      await service.openWorkspace('main_menu');
+
+      expect(nautilus.closeBrowserOverlay).toHaveBeenCalled();
+      expect(flow.closeOverlay).toHaveBeenCalled();
+      expect(main.closeOverlay).toHaveBeenCalled();
+      expect(view()).toBe('main_menu');
+    });
+
+    it('opens any other workspace as an overlay and leaves the base view alone', async () => {
+      defaultView.set('main_menu');
+      service.initialize(null);
+      const { flow } = overlays();
+      const setMainView = vi.spyOn(TestBed.inject(UiStateService), 'setMainView');
+
+      await service.openWorkspace('flow');
+
+      expect(flow.openOverlay).toHaveBeenCalledOnce();
+      expect(setMainView).not.toHaveBeenCalled();
+    });
+
+    it('keeps the old workspace visible until the requested overlay has loaded', async () => {
+      service.initialize(null);
+      let finish!: () => void;
+      const loading = new Promise<void>(resolve => {
+        finish = resolve;
+      });
+      const { nautilus, flow } = overlays();
+      vi.spyOn(flow, 'openOverlay').mockReturnValue(loading);
+
+      const opening = service.openWorkspace('flow');
+      expect(nautilus.closeBrowserOverlay).not.toHaveBeenCalled();
+      finish();
+      await opening;
+
+      expect(nautilus.closeBrowserOverlay).toHaveBeenCalledOnce();
+      expect(flow.closeOverlay).not.toHaveBeenCalled();
+    });
+
+    it('drops the rest of the work when a newer request has started', async () => {
+      service.initialize(null);
+      const { nautilus } = overlays();
+      await service.openWorkspace('flow', () => false);
+      expect(nautilus.closeBrowserOverlay).not.toHaveBeenCalled();
+    });
+
+    it('treats the workspace a standalone window was opened for as its base view', async () => {
+      defaultView.set('main_menu');
+      service.initialize('flow');
+      const { flow } = overlays();
+
+      await service.openWorkspace('flow');
+
+      expect(flow.openOverlay).not.toHaveBeenCalled();
+      expect(flow.closeOverlay).toHaveBeenCalled();
+    });
   });
 });

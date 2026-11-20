@@ -18,6 +18,7 @@ import {
   OpenInFilesEvent,
   profileOf,
   QUICK_RUN_OVERVIEW_LAYOUT,
+  PANEL_TONE,
 } from '@app/types';
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
@@ -68,6 +69,8 @@ import { PillDirective } from '../../../shared/directives/pill.directive';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickRunOverviewComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.quickRuns;
   private readonly quickRunService = inject(QuickRunService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
   private readonly pathService = inject(PathService);

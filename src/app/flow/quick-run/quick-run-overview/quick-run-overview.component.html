@@ -27,11 +27,11 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-icon svgIcon="quick-run" data-tone="primary" aria-hidden="true"></mat-icon>
+              <mat-icon svgIcon="quick-run" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
               <span>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</span>
             </mat-panel-title>
             <mat-panel-description>
-              <span appPill [tone]="quickRuns().length > 0 ? 'primary' : 'dim'">
+              <span appPill [tone]="quickRuns().length > 0 ? tone : 'dim'">
                 {{ quickRuns().length }}
               </span>
             </mat-panel-description>

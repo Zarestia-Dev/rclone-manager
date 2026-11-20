@@ -11,7 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { MountedRemote, Origin, matchesOriginFilter } from '@app/types';
+import { MountedRemote, Origin, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import { MountCardComponent } from '../../components/mount-card/mount-card.component';
 import { MountManagementService } from '../../../services/operations/mount-management.service';
 import { NavigationDispatcherService } from '../../../services/ui/navigation-dispatcher.service';
@@ -36,6 +36,8 @@ import { PillDirective } from '../../directives/pill.directive';
   styleUrl: '../../../styles/_overview-card-panel.scss',
 })
 export class MountsOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.mounts;
   readonly expanded = model<boolean>(false);
 
   readonly defaultOriginFilter = input<Origin | 'all'>('all');

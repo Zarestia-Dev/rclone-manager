@@ -19,6 +19,7 @@ import { AppSettingsService } from '../settings/app-settings.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
+import { ModalService } from '../ui/modal.service';
 import { NotificationService } from '../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendService } from '../infrastructure/system/backend.service';
@@ -81,6 +82,7 @@ export class RemoteCreationOrchestrator {
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
+  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
   private readonly pathInspectionService = inject(PathInspectionService);
 
@@ -283,7 +285,18 @@ export class RemoteCreationOrchestrator {
         { name: pending.remoteData.name }
       )
     );
+    if (!pending.save && (await this.showsGuideAfterRemote())) {
+      this.modalService.openIntentGuide({ remoteName: pending.remoteData.name });
+    }
     return true;
+  }
+
+  /** The setup guide follows a new remote unless the settings turn that off. */
+  private async showsGuideAfterRemote(): Promise<boolean> {
+    const setting = await this.appSettingsService
+      .getSettingValue<boolean>('wizard.after_remote')
+      .catch(() => true);
+    return setting !== false;
   }
 
   private finish(): void {

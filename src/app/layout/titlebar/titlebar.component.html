@@ -95,7 +95,9 @@
         [attr.aria-label]="item.label | translate"
       >
         <span>{{ item.label | translate }}</span>
-        <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+        @if (item.shortcut) {
+          <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+        }
       </button>
     }
   </div>

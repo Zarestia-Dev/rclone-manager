@@ -202,7 +202,15 @@ describe('OperationConfigComponent', () => {
   const selectDestination = (): Promise<void> => {
     const item = component.destItem();
     if (!item) throw new Error('Missing destination');
-    return component.selectPath(item);
+    return component.selectMountParent(item);
+  };
+
+  /** Presses the folder picker of the first or the last path field. */
+  const pressPicker = async (which: 'first' | 'last'): Promise<void> => {
+    const fields = fixture.nativeElement.querySelectorAll('app-path-field');
+    const field = which === 'first' ? fields[0] : fields[fields.length - 1];
+    (field.querySelector('.mat-mdc-icon-button') as HTMLButtonElement).click();
+    await fixture.whenStable();
   };
 
   it('keeps occupied and reserved letters selectable with a hint, keeps the current drive and offers folder mode', async () => {
@@ -514,7 +522,7 @@ describe('OperationConfigComponent', () => {
     backendServiceMock.isWindows.mockReturnValue(true);
     fileSystemServiceMock.selectFolder.mockResolvedValueOnce('D:\\');
     const { form } = setupComponent('copy', 'example', false);
-    await selectDestination();
+    await pressPicker('last');
     expect(fileSystemServiceMock.selectFolder).toHaveBeenCalledWith(false, '');
     expect(form.get('dest.path')?.value).toBe('D:\\');
     expect(getDriveOptions).not.toHaveBeenCalled();
@@ -526,8 +534,7 @@ describe('OperationConfigComponent', () => {
     const { form } = setupComponent('sync', 'example', false);
     form.get('source.0.type')?.setValue('local');
     fixture.detectChanges();
-    const [source] = component.sourceItems();
-    await component.selectPath(source);
+    await pressPicker('first');
     expect(fileSystemServiceMock.selectFolder).toHaveBeenCalledWith(false, '');
     expect(form.get('source.0.path')?.value).toBe('D:\\');
     expect(getDriveOptions).not.toHaveBeenCalled();
@@ -828,7 +835,8 @@ describe('OperationConfigComponent', () => {
         '/home/user/test-mount',
         'my-drive',
         undefined,
-        'mount'
+        'mount',
+        null
       );
     } finally {
       vi.useRealTimers();
@@ -1091,7 +1099,7 @@ describe('OperationConfigComponent', () => {
 
         await vi.waitFor(() => {
           fixture.detectChanges();
-          expect(inspection).toHaveBeenCalledWith(path, 'example', undefined, 'mount');
+          expect(inspection).toHaveBeenCalledWith(path, 'example', undefined, 'mount', null);
           expect(fixture.nativeElement.querySelector('.mount-target-hint').textContent.trim()).toBe(
             'wizards.appOperation.mountLocalDriveHint'
           );
@@ -1113,7 +1121,8 @@ describe('OperationConfigComponent', () => {
         '/mnt/shared',
         'my-drive',
         'First',
-        'mount'
+        'mount',
+        null
       );
       fixture.componentRef.setInput('currentProfileName', 'Second');
       fixture.detectChanges();
@@ -1123,7 +1132,8 @@ describe('OperationConfigComponent', () => {
         '/mnt/shared',
         'my-drive',
         'Second',
-        'mount'
+        'mount',
+        null
       );
     } finally {
       vi.useRealTimers();

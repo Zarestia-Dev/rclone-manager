@@ -1,7 +1,15 @@
 import { NavigationHistoryService } from '../navigation-history.service';
 import { inject, Injectable, signal, computed, effect, type Signal } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, Remote, APP_TABS, MainView, CardDisplayMode, FlowSubMode } from '@app/types';
+import {
+  AppTab,
+  Remote,
+  APP_TABS,
+  MainView,
+  CardDisplayMode,
+  FlowSubMode,
+  PrimaryActionType,
+} from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
@@ -31,6 +39,13 @@ export interface LayoutEditContext {
 /**
  * Service for managing UI state with focus on viewport settings
  */
+/** The profile of a remote to open: its operation decides the tab's operation, its name the card. */
+export interface ProfileRequest {
+  readonly remoteName: string;
+  readonly operationType: PrimaryActionType;
+  readonly profile: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -46,6 +61,10 @@ export class UiStateService {
 
   private readonly _currentTab = signal<AppTab>(this.getInitialTab());
   public readonly currentTab = this._currentTab.asReadonly();
+
+  private readonly _profileRequest = signal<ProfileRequest | null>(null);
+  /** A profile some other part of the app wants the remote's page to open; taken once. */
+  readonly profileRequest = this._profileRequest.asReadonly();
 
   private readonly _flowSubMode = signal<FlowSubMode>(
     this.localStorage.get<string>('ui.flowActiveSubMode', 'quick_run') === 'builder'
@@ -281,6 +300,14 @@ export class UiStateService {
   // === Remote Selection ===
   setSelectedRemote(remote: Remote | null): void {
     this._selectedRemote.set(remote);
+  }
+
+  requestProfile(request: ProfileRequest): void {
+    this._profileRequest.set(request);
+  }
+
+  clearProfileRequest(): void {
+    this._profileRequest.set(null);
   }
 
   resetSelectedRemote(): void {

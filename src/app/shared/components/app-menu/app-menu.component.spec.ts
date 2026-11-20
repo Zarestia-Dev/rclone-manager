@@ -6,14 +6,12 @@ import { signal } from '@angular/core';
 import { AppMenuComponent } from './app-menu.component';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { AppNavigationService } from 'src/app/services/ui/app-navigation.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { AlertService } from 'src/app/services/alerts/alert.service';
-import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
-import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
 import { Theme } from '@app/types';
 
 describe('AppMenuComponent', () => {
@@ -48,14 +46,7 @@ describe('AppMenuComponent', () => {
         provideTranslateService(),
         { provide: ModalService, useValue: modalServiceSpy },
         { provide: BackupRestoreUiService, useValue: { launchRestoreFlow: vi.fn() } },
-        {
-          provide: NautilusService,
-          useValue: {
-            isStandaloneWindow: vi.fn().mockReturnValue(false),
-            openBrowserOverlay: vi.fn().mockResolvedValue(undefined),
-            closeBrowserOverlay: vi.fn(),
-          },
-        },
+        { provide: AppNavigationService, useValue: { openWorkspace: vi.fn() } },
         {
           provide: WindowService,
           useValue: {
@@ -89,22 +80,6 @@ describe('AppMenuComponent', () => {
           provide: AlertService,
           useValue: {
             unacknowledged: signal(0),
-          },
-        },
-        {
-          provide: FlowOverlayService,
-          useValue: {
-            isOpen: vi.fn().mockReturnValue(false),
-            openOverlay: vi.fn().mockResolvedValue(undefined),
-            closeOverlay: vi.fn(),
-          },
-        },
-        {
-          provide: MainUiOverlayService,
-          useValue: {
-            isOpen: vi.fn().mockReturnValue(false),
-            openOverlay: vi.fn().mockResolvedValue(undefined),
-            closeOverlay: vi.fn(),
           },
         },
       ],
@@ -183,20 +158,11 @@ describe('AppMenuComponent', () => {
     expect(modalServiceSpy.openRcloneFlags).toHaveBeenCalled();
   });
 
-  it('keeps the old workspace visible until the requested overlay finishes loading', async () => {
-    let finish!: () => void;
-    const loading = new Promise<void>(resolve => {
-      finish = resolve;
-    });
-    const flow = TestBed.inject(FlowOverlayService);
-    const nautilus = TestBed.inject(NautilusService);
-    vi.spyOn(flow, 'openOverlay').mockReturnValue(loading);
-    const opening = component.openWorkspace('flow');
-    expect(nautilus.closeBrowserOverlay).not.toHaveBeenCalled();
-    finish();
-    await opening;
-    expect(nautilus.closeBrowserOverlay).toHaveBeenCalledOnce();
-    expect(flow.closeOverlay).not.toHaveBeenCalled();
+  it('opens a workspace through the shared navigation', async () => {
+    const navigation = TestBed.inject(AppNavigationService);
+    const open = vi.spyOn(navigation, 'openWorkspace').mockResolvedValue();
+    await component.openWorkspace('flow');
+    expect(open).toHaveBeenCalledExactlyOnceWith('flow');
   });
 
   it('handles keyboard navigation into and back from submenu', () => {

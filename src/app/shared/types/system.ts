@@ -221,6 +221,13 @@ export interface LocalDiskUsage {
   dir?: string;
 }
 
+/** The names other devices can use to reach the machine the backend runs on. */
+export interface LocalAddresses {
+  hostName?: string | null;
+  /** IPv4 addresses, a home or office network first. */
+  addresses: string[];
+}
+
 export interface PendingChange {
   category: string;
   key: string;

@@ -57,7 +57,8 @@
     "pathStatus": {
       "clean": "Temiz ve Boş",
       "nonEmpty": "Klasörde dosyalar var",
-      "colliding": "{{details}} tarafından kullanılıyor",
+      "collidingProfile": "“{{remote}}” bulutunun “{{name}}” profili tarafından kullanılıyor",
+      "collidingQuickRun": "Hızlı Çalıştırma “{{name}}” tarafından kullanılıyor",
       "willCreate": "Klasör, uzak bağlantı oluşturulduktan sonra oluşturulacaktır.",
       "checking": "Yol kontrol ediliyor...",
       "notDirectory": "Bu yol bir dosyaya işaret ediyor. Bir klasör seçin.",
@@ -638,7 +639,22 @@
       }
     },
     "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
-    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
+    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}",
+    "wizard": {
+      "after_remote": {
+        "label": "Bulut eklendikten sonra kurulum rehberini göster",
+        "description": "Yeni bir bulut eklemeyi bitirince “Ne yapmak istiyorsun?” rehberini açar."
+      },
+      "destination": {
+        "label": "Kurulum rehberi yaptıklarını nerede saklasın",
+        "description": "Otomatik, varsayılan başlangıç görünümünü izler: ana menü bulutun sayfasında bir profil, diğer görünümler bir Quick Run saklar.",
+        "options": {
+          "auto": "Otomatik",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Bulut profili (ana menü)"
+        }
+      }
+    }
   },
   "banners": {
     "development": {
@@ -741,7 +757,8 @@
       "shortcuts": "Klavye Kısayolları",
       "about": "RClone Yöneticisi Hakkında",
       "quickRemote": "Hızlı Uzak Bağlantı",
-      "detailedRemote": "Detaylı Uzak Bağlantı"
+      "detailedRemote": "Detaylı Uzak Bağlantı",
+      "intentGuide": "Sihirbaz"
     }
   },
   "onboarding": {
@@ -2885,6 +2902,478 @@
         "newLine": "yeni satır",
         "clear": "temizle"
       }
+    },
+    "intentGuide": {
+      "title": "Ne yapmak istiyorsun?",
+      "stepOf": "Adım {{current}} / {{total}}",
+      "loadFailed": "Bulut depolamaların yüklenemedi.",
+      "noRemotes": "Önce bir bulut depolama ekle, sonra buraya dön.",
+      "remoteLabel": "Hangi bulut?",
+      "recommended": "Önerilen",
+      "measuring": "Boyutlar ölçülüyor…",
+      "applyFailed": "Kurulamadı. Klasörleri kontrol edip tekrar dene.",
+      "hello": {
+        "created": "{{remote}} hazır! Onunla ne yapmak istersin?",
+        "default": "Bulutunla ne yapmak istersin?",
+        "subtitle": "Ne istediğini kendi kelimelerinle seç. Gerisini biz ayarlarız ve sen onaylamadan hiçbir şey başlamaz."
+      },
+      "places": {
+        "computer": "Bu bilgisayar",
+        "phone": "Bu telefon",
+        "server": "Sunucu",
+        "filesApp": "Dosyalar uygulaması",
+        "tv": "TV veya oynatıcı",
+        "device": "Telefon veya bilgisayar",
+        "browser": "Web tarayıcı",
+        "homeNetwork": "Ev ağın"
+      },
+      "goals": {
+        "access": {
+          "title": "Bulutumu bu bilgisayarda bir klasör gibi kullanayım",
+          "description": "Ağ sürücüsü gibi: dosyaların bir klasörde görünür, açınca iner.",
+          "descriptionApp": "Windows'taki {{app}} uygulaması gibi: dosyaların bir klasörde görünür, açınca iner.",
+          "titlePhone": "Bulutumu telefonun Dosyalar uygulamasında göreyim",
+          "descriptionPhone": "Bulutun diğer depolama alanlarının yanında görünür, dosyalar açınca iner."
+        },
+        "backup": {
+          "title": "Dosyalarımı buluta yedekleyeyim",
+          "description": "Bu bilgisayara bir şey olursa diye bir klasörün kopyası bulutta dursun."
+        },
+        "devices": {
+          "title": "Bulutun bir kopyası bu bilgisayarda da dursun",
+          "description": "İnternetsiz de çalışır, birkaç cihazda aynı kalır: değişiklikler iki yöne gider. Obsidian veya Logseq notları için ideal."
+        },
+        "download": {
+          "title": "Bulut dosyalarımı bu bilgisayara indireyim",
+          "description": "Bir klasörü ya da her şeyi indir; bir kere ya da hep güncel."
+        },
+        "migrate": {
+          "title": "Başka bir buluta geçeyim",
+          "description": "Bu buluttaki her şeyi başka birine kopyala; örneğin Google Drive'dan OneDrive'a."
+        },
+        "share": {
+          "title": "Dosyalarımı TV'de veya telefonda açayım",
+          "description": "Bulutunu ev ağındaki bir TV, telefon veya bilgisayara aç."
+        },
+        "explore": {
+          "title": "Sadece göz atayım ya da bir şeyi kontrol edeyim",
+          "description": "Dosyalarına göz at ya da bir klasörün bulutla aynı olup olmadığına bak."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "Burada bir dosyayı silersen yedeği ne olsun?"
+        },
+        "keepOld": {
+          "title": "Dosyalar eski bulutta kalsın mı?"
+        },
+        "device": {
+          "title": "Dosyaları ne ile açacaksın?"
+        },
+        "explore": {
+          "title": "Ne yapmak istersin?"
+        }
+      },
+      "about": {
+        "title": "Aradaki fark ne?",
+        "goals": {
+          "title": "Hangisi bana göre?",
+          "access": "Bulut klasör gibi: dosyaların bulutta kalır, sen açtığında bu bilgisayara iner.",
+          "devices": "Burada da bir kopya: dosyaların bu bilgisayarda da durur, internetsiz de kullanırsın. Birinde değişiklik yapınca diğeri de değişir.",
+          "backup": "Yedek: bir klasörün güvenlik kopyası buluta gider. Klasöründe hiçbir şey değişmez.",
+          "download": "Bulut dosyalarımı al: bulut dosyalarının bir kopyası bu bilgisayara gelir. Bulutta hiçbir şey değişmez."
+        },
+        "deleted": {
+          "same": "İkisinde de yeni ve değişen dosyalar buluta kopyalanır, klasörüne asla dokunulmaz.",
+          "differ": "“Bulutta kalsın”: burada bir dosyayı silsen de bulutta durur. “Orada da silinsin”: bulut hep klasörünle aynı olur, yani burada sildiğin dosya buluttan da kaybolur."
+        },
+        "keepOld": {
+          "same": "İkisinde de her şey yeni buluta kopyalanır.",
+          "differ": "“Evet, orada kalsın”: eski bulut olduğu gibi kalır. “Hayır, taşınsın”: her dosya yeni buluta sağ salim ulaşınca eski buluttan silinir."
+        },
+        "device": {
+          "same": "Her seçenekte bulutun, ev ağındaki diğer cihazlara açılır. Yalnızca bu uygulama açıkken çalışır.",
+          "differ": "Ağ klasörü, Finder'da, Dosya Gezgini'nde veya bir dosya uygulamasında her klasör gibi açılır ve istersen değişikliğe izin verir. Web tarayıcı yalnızca dosyalara göz atıp indirebilir. TV veya oynatıcı kendiliğinden bulur ve yalnızca oynatabilir."
+        },
+        "explore": {
+          "same": "İkisinde de hiçbir şey değişmez.",
+          "differ": "“Dosyalarıma göz atayım”: bulutun bu uygulamada açılır, dosyalarını gezersin. “Bir klasörü bulutla karşılaştırayım”: buradaki bir klasörle bulut arasında hangi dosyaların farklı olduğunu gösterir."
+        },
+        "where": {
+          "stream": "Bu klasör bir kapı gibi: dosyaların bulutta kalır, burada görünür ve sen açınca iner. Boş bir klasör seç. Buraya koyduğun her şey buluta da kaydedilir.",
+          "twoWay": "Zaten kullandığın bir klasörü seçebilirsin. İlk çalışmada bulutla karşılaştırılıp birleştirilir, hiçbir şey silinmez. Sonrasında bir tarafta yaptığın değişiklik, bir dosyayı silmek de dahil, diğer tarafa da geçer.",
+          "mirror": "Bulut klasörü senin klasörünün birebir kopyası olacak. İçinde senin klasöründe olmayan dosyalar varsa silinir. En güvenlisi yeni veya boş bir bulut klasörü seçmek."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Bulutta kalsın",
+            "description": "Yedek kopya gibi: burada bir dosyayı silsen bile bulutta durmaya devam eder."
+          },
+          "mirror": {
+            "title": "Orada da silinsin",
+            "description": "Ayna gibi: bulut her zaman klasörünle birebir aynı görünür, sildiğin dosyalar dahil."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Evet, orada kalsın",
+            "description": "Kopya çıkarmak gibi: eski bulut olduğu gibi kalır, istediğin zaman geri dönebilirsin."
+          },
+          "move": {
+            "title": "Hayır, taşınsın",
+            "description": "Taşınmak gibi: her dosya yeni buluta sağ salim ulaşınca eski buluttan çıkar."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "Ağ klasörü",
+            "description": "Paylaşımlı klasör gibi: Finder'da, Dosya Gezgini'nde ya da bir dosya uygulamasında açılır, seçtiğin kullanıcı adı ve şifreyle bağlanırsın. Cihazların dosyaları değiştirmesine izin verip vermeyeceğine sen karar verirsin."
+          },
+          "browser": {
+            "title": "Web tarayıcı",
+            "description": "Bir web sayfası gibi: adresi ve şifresi olan telefon veya bilgisayar dosyalara göz atıp indirebilir. Hiçbir şey değiştirilemez."
+          },
+          "tv": {
+            "title": "TV veya medya oynatıcı",
+            "description": "Medya sunucusu gibi: akıllı TV'ler, konsollar ve oynatıcılar onu kendiliğinden bulur. İzleyip dinleyebilirler ama hiçbir şeyi değiştiremezler."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Dosyalarıma göz atayım",
+            "description": "Klasör açmak gibi: bulutuna uygulamanın içinden göz at. Hiçbir şey indirilmez ya da değişmez."
+          },
+          "compare": {
+            "title": "Bir klasörü bulutla karşılaştırayım",
+            "description": "İki klasörü karşılaştırmak gibi: buradaki bir klasörle bulut arasında hangi dosyaların farklı olduğunu gör. Hiçbir şey değişmez."
+          }
+        }
+      },
+      "where": {
+        "heading": "Nerede?",
+        "target": "Dosyalar nereye gitsin?",
+        "noOtherRemote": "Önce yeni bulutunu ekle, sonra buraya dön.",
+        "shareLogin": "Diğer cihaz için giriş bilgisi",
+        "shareHint": "Telefon veya bilgisayar bağlanırken bunları soracak.",
+        "shareUser": "Kullanıcı adı",
+        "sharePassword": "Şifre",
+        "local": {
+          "stream": "bulut bu klasörde görünecek",
+          "twoWay": "dosyaların bu klasörde duracak",
+          "download": "dosyalar buraya inecek",
+          "upload": "hangi klasör yedeklensin?",
+          "compare": "hangi klasör kontrol edilsin?",
+          "devices": "hangi klasör aynı kalsın?"
+        },
+        "cloud": {
+          "stream": "bulutun hangi kısmı?",
+          "twoWay": "bu klasörle eşit tutulacak",
+          "download": "hangi klasör indirilsin?",
+          "upload": "yedek buraya gidecek",
+          "cloudToCloud": "ne kopyalansın?",
+          "share": "ne paylaşılsın?",
+          "compare": "bu klasörle karşılaştırılacak"
+        },
+        "localPlaceholder": "Bir klasör seç ya da yaz",
+        "cloudPlaceholder": "Boş bırakırsan bulutun tamamı",
+        "shareConnection": "Cihazlar nasıl bağlanır",
+        "sharePort": "Port",
+        "sharePortHint": "Adresteki iki noktadan sonraki sayı. Başka bir şey kullanmıyorsa 8080 olarak bırak.",
+        "portInvalid": "1024 ile 65535 arasında bir port seç.",
+        "shareReadOnly": "Cihazlar sadece bakabilir, dosyaları değiştiremez",
+        "shareReadOnlyHint": "Telefon ya da bilgisayarlar dosya yükleyip yeniden adlandırabilsin ve silebilsin istiyorsan bunu kapat.",
+        "shareName": "TV'deki ad",
+        "shareNameHint": "TV ya da oynatıcının medya sunucusu listesinde göreceğin ad budur.",
+        "shareNameLabel": "Ad",
+        "portBusy": "{{port}} portunu başka bir program zaten kullanıyor. Başka bir tane seç.",
+        "portUseFree": "{{port}} portunu kullan"
+      },
+      "review": {
+        "heading": "Şöyle olacak",
+        "technical": "Teknik adı",
+        "advanced": "Tam düzenleyicide aç",
+        "start": "Kur ve başlat",
+        "firstRun": "İlk çalıştırma iki tarafı karşılaştırıp birleştirir. Biraz sürebilir ve hiçbir şey silinmez.",
+        "startOnLogin": "Bilgisayar açılınca bu uygulamayı da başlat",
+        "mountPlugin": {
+          "title": "Bir şey daha gerekiyor",
+          "description": "Bulutu klasör olarak göstermek için henüz kurulu olmayan küçük bir sistem bileşeni (FUSE veya WinFsp) gerekiyor.",
+          "install": "Kur"
+        },
+        "summary": {
+          "stream": "{{cloud}}, {{local}} klasöründe görünecek.",
+          "streamSaf": "{{cloud}}, Dosyalar uygulamasında görünecek.",
+          "twoWay": "{{local}} ile {{cloud}} aynı tutulacak.",
+          "upload_copy": "{{local}}, {{cloud}} konumuna yedeklenecek.",
+          "upload_sync": "{{cloud}}, {{local}} klasörünün birebir kopyası olacak.",
+          "download": "{{cloud}}, {{local}} klasörüne indirilecek.",
+          "cloudToCloud_copy": "{{cloud}}, {{target}} konumuna kopyalanacak.",
+          "cloudToCloud_move": "{{cloud}}, {{target}} konumuna taşınacak.",
+          "share_dlna": "{{cloud}}, ağındaki TV ve oynatıcılarla paylaşılacak.",
+          "share_webdav": "{{cloud}}, ağında şifreyle paylaşılacak.",
+          "share_http": "{{cloud}}, ağında şifreyle bir web sayfası olarak paylaşılacak.",
+          "compare": "{{local}}, {{cloud}} ile karşılaştırılacak."
+        },
+        "schedule": {
+          "watch": "Bir dosya değiştiğinde kendiliğinden çalışır.",
+          "startup": "Uygulama her açıldığında kendiliğinden çalışır.",
+          "startupMount": "Uygulama her açıldığında kendiliğinden bağlanır.",
+          "cron": "Zamanlama: {{when}}",
+          "manual": "Sadece sen başlatınca çalışır."
+        },
+        "detailsTitle": "Bilmekte fayda var",
+        "destination": {
+          "title": "Şu olarak sakla",
+          "quickRun": "Hızlı Çalıştırma",
+          "profile": "Ana menüde profil",
+          "hintQuickRun": "Flow › Hızlı Çalıştırmalar altında listelenir.",
+          "hintProfile": "Ana menüde “{{remote}}” sayfasında listelenir; oradan başlatıp durdurabilirsin."
+        },
+        "wholeCloud": "Bulutun tamamı",
+        "duplicate": "Bunu yapan bir kurulumun zaten var: “{{name}}”."
+      },
+      "effects": {
+        "streamOpen": "Bir dosyayı açınca buluttan iner.",
+        "streamSave": "Bir dosyayı kaydedince buluta yüklenir.",
+        "streamDelete": "Bu klasörde sildiğin dosya buluttan da silinir.",
+        "uploadNew": "Yeni ve değişen dosyalar yüklenir.",
+        "keepDelete": "Burada sildiğin dosyalar bulutta kalır.",
+        "uploadCloudChange": "Yedekleme klasöründeki hiçbir şeyi değiştirmez.",
+        "mirrorDelete": "Burada sildiğin dosyalar buluttan da silinir.",
+        "mirrorExtra": "Sadece bulut klasöründe olan dosyalar silinir.",
+        "downloadNew": "Buluttaki yeni ve değişen dosyalar indirilir.",
+        "downloadKeep": "Bulutta silinen dosyalar bu bilgisayarda kalır.",
+        "downloadLocalChange": "Buluttaki hiçbir şey değiştirilmez.",
+        "twoWayChange": "Bir taraftaki değişiklik diğerine kopyalanır.",
+        "twoWayDelete": "Bir tarafta silinen dosya diğerinde de silinir.",
+        "twoWayConflict": "Bir dosya iki tarafta da değişirse iki sürüm de saklanır.",
+        "migrateCopy": "Her dosya yeni buluta kopyalanır.",
+        "migrateKeep": "Eski bulut olduğu gibi kalır.",
+        "migrateMove": "Dosyalar kopyalanınca eski buluttan silinir.",
+        "shareTv": "Ağındaki TV ve oynatıcılar onu kendiliğinden bulur.",
+        "shareReadOnly": "İzleyip dinleyebilirler ama hiçbir şeyi değiştiremezler.",
+        "shareBrowse": "Cihazlar dosyalara göz atıp indirebilir ama hiçbir şeyi değiştiremez.",
+        "shareStops": "Uygulama kapanınca paylaşım durur.",
+        "sharePassword": "Sadece şifreni bilen cihazlar bağlanabilir.",
+        "shareWrite": "Bağlanan cihazlar dosyaları değiştirip silebilir.",
+        "compareNothing": "Hiçbir dosya değişmez.",
+        "compareList": "Farklı olan dosyaların listesini alırsın.",
+        "browseNothing": "Hiçbir şey değişmez."
+      },
+      "advice": {
+        "tooBigForDisk": "Bu {{size}}, ama bu bilgisayarda sadece {{free}} boş yer var. Sığmaz.",
+        "tightOnDisk": "Bu {{size}}, bu bilgisayarda {{free}} boş yer var. Sığar ama disk neredeyse dolar.",
+        "fitsOnDisk": "Bu {{size}}, bu bilgisayarda {{free}} boş yer var. Rahatça sığar.",
+        "cloudTooFull": "Klasör {{size}}, ama bulutta sadece {{free}} boş yer var. Sığmaz.",
+        "streamSavesSpace": "Bulutunda {{cloud}} var, bu bilgisayarda {{free}} boş yer var; bu yüzden doğru seçim bu: sadece açtığın dosyalar yer kaplar."
+      },
+      "preview": {
+        "title": "Önce ne olacağını gör",
+        "description": "Deneme çalıştırması iki tarafı karşılaştırır ve kopyalayacağı, değiştireceği ya da sileceği her dosyayı listeler. Hiçbir dosya değişmez.",
+        "run": "Neyin değişeceğini göster",
+        "running": "Dosyalar karşılaştırılıyor…",
+        "checked": {
+          "one": "Şimdiye kadar {{count}} dosya kontrol edildi",
+          "other": "Şimdiye kadar {{count}} dosya kontrol edildi"
+        },
+        "transfers": {
+          "one": "{{count}} dosya kopyalanacak",
+          "other": "{{count}} dosya kopyalanacak"
+        },
+        "deletes": {
+          "one": "{{count}} dosya silinecek",
+          "other": "{{count}} dosya silinecek"
+        },
+        "errors": {
+          "one": "{{count}} dosya okunamadı",
+          "other": "{{count}} dosya okunamadı"
+        },
+        "noDeletes": "Hiçbir dosya silinmeyecek",
+        "nothing": "Her şey zaten güncel; hiçbir şey değişmeyecek.",
+        "failed": "Deneme tamamlanamadı. Yine de kurabilir ya da klasörleri değiştirebilirsin.",
+        "runName": "{{name}} (deneme)",
+        "groups": {
+          "delete": "Silinecek",
+          "add": "Yeni dosyalar",
+          "replace": "Değiştirilecek",
+          "copy": "Kopyalanacak",
+          "error": "Sorunlular",
+          "untouched": "Dokunulmayacak"
+        },
+        "groupHints": {
+          "delete": "Bu dosyalar sadece hedefte var, bu yüzden orada silinecek.",
+          "add": "Bu dosyalar yeni, bu yüzden kopyalanacak.",
+          "replace": "Bu dosyalar iki tarafta da var ama farklı. Hedefteki sürüm değiştirilecek.",
+          "copy": "Bu dosyalar kopyalanacak.",
+          "error": "Bu dosyalar karşılaştırılamadı ya da kopyalanamadı.",
+          "untouched": "Bu dosyalar sadece hedefte var. Olduğu gibi kalacak."
+        },
+        "unchanged": {
+          "one": "{{count}} dosya iki tarafta da zaten aynı",
+          "other": "{{count}} dosya iki tarafta da zaten aynı"
+        },
+        "search": "Listede ara",
+        "showMore": "Daha fazla göster",
+        "noMatches": "Aramana uyan dosya yok.",
+        "deleteWarning": "Başlamadan önce bu listeye bak: bu dosyalar hedeften silinecek.",
+        "again": "Testi tekrar çalıştır",
+        "slowNote": "Dosya sayısına göre bu biraz sürebilir. Takılmadı, lütfen bekle.",
+        "elapsed": "{{time}} süredir çalışıyor"
+      },
+      "working": {
+        "saving": "Kuruluyor…",
+        "firstRun": "İlk eşitleme yapılıyor…",
+        "canClose": "Bu pencereyi kapatabilirsin; arka planda çalışmaya devam eder.",
+        "slowNote": "İlk eşitleme, dosya sayısına göre uzun sürebilir. Takılmadı."
+      },
+      "done": {
+        "title": "Hazır!",
+        "stream": "Bulutun artık {{path}} klasöründe.",
+        "streamSaf": "Bulutun artık Dosyalar uygulamasında.",
+        "twoWayReady": "İlk eşitleme bitti. Artık iki taraf hep aynı kalacak.",
+        "twoWayFailed": "Kurulum tamam, ancak ilk eşitleme bitmedi.",
+        "started": "Başladı. İlerlemesini uygulamada takip edebilirsin.",
+        "findIt": "Sonra Flow › Hızlı Çalıştırmalar altında “{{name}}” adıyla bulabilirsin.",
+        "openFolder": "Klasörü aç",
+        "openCloud": "Dosya tarayıcısında göster",
+        "another": "Başka bir şey kur",
+        "shareWebdav": "Paylaşım açık. Telefondan ya da bilgisayardan şu adreslerden birine bağlan:",
+        "shareHttp": "Paylaşım açık. Telefondan ya da bilgisayardan bir tarayıcıda şu adreslerden birini aç:",
+        "shareAddress": "Adres",
+        "shareOtherAddresses": "Şunlar da çalışır",
+        "shareUser": "Kullanıcı adı",
+        "sharePassword": "Parola",
+        "sharePasswordHint": "Seçtiğin parola",
+        "troubleTitle": "Bağlanmazsa",
+        "troubleNetwork": "Telefon bu bilgisayarla aynı Wi-Fi ağında olmalı.",
+        "troubleNetworkRemote": "Telefon {{host}} adresine ulaşabilen bir ağda olmalı.",
+        "troubleFirewall": "Dosyaları paylaşan bilgisayarın güvenlik duvarı {{port}} numaralı porta izin vermeli.",
+        "shareDlna": "Paylaşım açık. TV'nin ya da oynatıcının medya listesinde “{{name}}” adını ara.",
+        "noAddress": "Paylaşım açık. Bu bilgisayarın ağ adresine {{port}} portundan bağlan.",
+        "findItProfile": "Sonra ana menüde “{{remote}}” sayfasında “{{name}}” profili olarak bulabilirsin.",
+        "whereQuickRun": "Hızlı Çalıştırmalar'da göster",
+        "whereProfile": "Ana menüde göster",
+        "failureReason": "Ne ters gitti: {{reason}}"
+      },
+      "runNames": {
+        "access": "{{remote}} klasörü",
+        "backup": "{{remote}} yedeği",
+        "devices": "{{remote}} eşitleme",
+        "download": "{{remote}} indirme",
+        "migrate": "{{remote}} taşıma",
+        "share": "{{remote}} paylaşımı",
+        "explore": "{{remote}} kontrolü"
+      },
+      "when": {
+        "heading": "Ne zaman çalışsın?",
+        "subtitle": "İstediklerini seç, hepsini birleştirebilirsin. Hiçbirini seçmezsen sadece sen başlatınca çalışır.",
+        "watch": {
+          "title": "Bir dosya değiştiğinde",
+          "description": "Klasör izlenir, değişiklikler saniyeler içinde yüklenir; telefondaki otomatik fotoğraf yüklemesi gibi."
+        },
+        "cron": {
+          "title": "Zamanlanmış",
+          "description": "Her gün, her saat, hafta içi ya da seçtiğin herhangi bir zamanda."
+        },
+        "startup": {
+          "title": "Uygulama açıldığında",
+          "description": "Uygulama her açıldığında kendiliğinden çalışır.",
+          "descriptionMount": "Uygulama her açıldığında bulutun kendiliğinden bağlanır."
+        },
+        "cloudHint": "İzleme sadece bu bilgisayardaki değişiklikleri görür. Buluttaki değişiklikler de gelsin diye bir zamanlama da ekle.",
+        "invalidCron": "Bu zamanlama henüz tamamlanmadı. Yukarıdaki seçeneklerden birini seç."
+      },
+      "details": {
+        "cache": "Açtığın dosyalar bu bilgisayarda en fazla {{age}} kalır ve diskte en çok {{size}} yer kaplar.",
+        "writeBack": "Yaptığın değişiklikler {{time}} sonra buluta gönderilir.",
+        "minFree": "Diskte {{size}} altında boş yer kalınca önbellek büyümeyi bırakır.",
+        "address": "Adres:",
+        "addressUnknown": "Bu bilgisayarın adresini port ile kullan:",
+        "addressViaBackend": "Bu, uygulamanın o bilgisayara bağlandığı adrestir. Başka bir ağdaki telefon bu adrese ulaşamayabilir.",
+        "port": "Port:",
+        "user": "Kullanıcı adı:",
+        "readOnly": "Cihazlar bakabilir ama dosyaları değiştiremez.",
+        "canChange": "Cihazlar dosyaları değiştirip silebilir de.",
+        "tvName": "TV'de şöyle görünür:"
+      },
+      "settings": {
+        "title": "Rehber ayarları",
+        "subtitle": "Bu seçimler bir sonraki sefer için hatırlanır.",
+        "afterRemote": "Bir bulut ekledikten sonra bu rehberi göster",
+        "destinationTitle": "Rehberin kurduklarını şu olarak sakla",
+        "auto": "Otomatik",
+        "hintAuto": "Başlangıç görünümünü izler: uygulama ana menüyle açılıyorsa profil, aksi halde Hızlı Çalıştırma.",
+        "done": "Bitti"
+      },
+      "undo": {
+        "action": "Bu kurulumu kaldır",
+        "confirm": "“{{name}}” çalışmayı bırakır ve uygulamadan kaybolur. Dosyalarına dokunulmaz.",
+        "working": "Kaldırılıyor…",
+        "failed": "Kaldırılamadı. Listelendiği yerden yine kaldırabilirsin.",
+        "removedTitle": "Kaldırıldı",
+        "removed": "“{{name}}” kaldırıldı. Dosyaların değişmedi.",
+        "title": "Bu kurulum kaldırılsın mı?",
+        "confirmRunning": "“{{name}}” şu an çalışıyor. Önce durdurulacak, sonra kaldırılacak. Dosyalarına dokunulmaz."
+      },
+      "setups": {
+        "title": "Zaten kurulu olanlar",
+        "show": "Aç",
+        "remove": "Kaldır",
+        "status": {
+          "stream": {
+            "running": "Bağlı",
+            "idle": "Bağlı değil"
+          },
+          "share": {
+            "running": "Sunuluyor",
+            "idle": "Sunulmuyor"
+          },
+          "job": {
+            "running": "Çalışıyor",
+            "ok": "Bitti · {{when}}",
+            "failed": "Başarısız · {{when}}",
+            "stopped": "Durduruldu · {{when}}",
+            "idle": "Hiç çalışmadı"
+          }
+        },
+        "subtitle": "Kurduğun her şey, buluta göre gruplanmış.",
+        "empty": "Henüz kurulu bir şey yok.",
+        "headline": {
+          "stream": "Bulut klasör olarak",
+          "streamSaf": "Bulut Dosyalar uygulamasında",
+          "twoWay": "Eşitleniyor",
+          "upload_copy": "Yedek",
+          "upload_sync": "Yansıtmalı yedek",
+          "upload_move": "Buluta taşıma",
+          "download": "İndirme",
+          "download_sync": "Yansıtmalı indirme",
+          "download_move": "Buluttan taşıma",
+          "cloudToCloud_copy": "{{target}} hedefine kopyala",
+          "cloudToCloud_move": "{{target}} hedefine taşı",
+          "cloudToCloud_sync": "{{target}} hedefine yansıt",
+          "share_dlna": "TV ve oynatıcılarla paylaşım",
+          "share_webdav": "Ağında paylaşım",
+          "share_http": "Web sayfası olarak paylaşım",
+          "share_other": "{{type}} ile paylaşım",
+          "compare": "Klasör kontrolü"
+        },
+        "auto": {
+          "startup": "Uygulama açılınca çalışır",
+          "watch": "Dosya değişince çalışır",
+          "manual": "Elle başlatılır",
+          "startupStream": "Uygulama açılınca bağlanır",
+          "startupShare": "Uygulama açılınca sunulur"
+        },
+        "kind": {
+          "quickRun": "Hızlı Çalıştırma",
+          "profile": "Profil"
+        },
+        "sameAs": "“{{name}}” ile aynı",
+        "runningCount": "Çalışan: {{count}}",
+        "failedCount": "Başarısız: {{count}}"
+      }
     }
   },
   "nautilus": {
@@ -4157,6 +4646,11 @@
     "tabs": {
       "quickRun": "Hızlı Çalıştırma",
       "workflow": "İş Akışı"
+    },
+    "addMenu": {
+      "remote": "Uzak Bağlantı Oluştur",
+      "quickRun": "Hızlı Çalıştırma Oluştur",
+      "workflow": "İş Akışı Oluştur"
     },
     "workflow": {
       "untitled": "İsimsiz İş Akışı",

@@ -24,6 +24,7 @@ import {
   getStarterOrigin,
   matchesOriginFilter,
   ORIGIN_META,
+  PANEL_TONE,
 } from '@app/types';
 import {
   FormatEtaPipe,
@@ -77,6 +78,8 @@ export interface RunningJobViewModel {
   styleUrls: ['./jobs-overview-panel.component.scss'],
 })
 export class JobsOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.jobs;
   readonly expanded = model<boolean>(false);
 
   readonly defaultOriginFilter = input<Origin | 'all'>('all');

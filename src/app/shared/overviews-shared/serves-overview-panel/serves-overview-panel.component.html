@@ -8,11 +8,11 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="satellite-dish" data-tone="primary" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="satellite-dish" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.serves' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span appPill [tone]="servesList.length > 0 ? 'primary' : 'dim'">
+      <span appPill [tone]="servesList.length > 0 ? tone : 'dim'">
         {{
           servesList.length > 0
             ? ('generalOverview.serves.activeCount' | translate: { count: servesList.length })

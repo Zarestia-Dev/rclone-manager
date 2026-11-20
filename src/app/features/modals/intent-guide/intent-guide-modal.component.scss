@@ -1,0 +1,1269 @@
+// Entrance animations use `backwards`: the end state is the element's own style, so hover and
+// press transforms still apply once it has settled.
+
+// ── Frame ───────────────────────────────────────────────────────────────────
+
+.guide-progress {
+  height: 3px;
+  background: var(--bg-elevated-2);
+
+  .guide-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent-color);
+    transition: var(--transition-standard);
+  }
+}
+
+.guide-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  animation: guide-rise 0.35s ease-out backwards;
+}
+
+.guide-heading,
+.guide-hello h2 {
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.guide-heading {
+  font-size: var(--font-size-xl);
+}
+
+.guide-hello {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--bg-elevated-1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  animation: guide-rise 0.4s ease-out backwards;
+
+  h2 {
+    font-size: var(--font-size-2xl);
+  }
+
+  p {
+    margin: var(--space-xs) 0 0;
+    color: var(--dim-color);
+  }
+
+  .hello-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    background: var(--card-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+
+    mat-icon {
+      width: 36px;
+      height: 36px;
+      color: var(--accent-color);
+    }
+  }
+}
+
+.guide-facts,
+.hint,
+.technical {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  &[data-tone] {
+    color: var(--tone);
+  }
+}
+
+.technical {
+  flex-wrap: wrap;
+}
+
+.remote-row,
+.folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.remote-row-label {
+  margin-inline-end: var(--space-xs);
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+// ── Choices ─────────────────────────────────────────────────────────────────
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-md);
+
+  &.single {
+    grid-template-columns: 1fr;
+  }
+}
+
+.choice-card {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  min-height: 88px;
+  padding: var(--space-md);
+  text-align: start;
+  color: var(--window-fg-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  animation: guide-rise 0.45s ease-out backwards;
+  animation-delay: calc(var(--i, 0) * 60ms + 80ms);
+
+  &:hover,
+  &:focus-visible,
+  &.recommended {
+    background: rgba(var(--tone-rgb), 0.06);
+    border-color: var(--tone);
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+
+    .choice-chevron {
+      color: var(--tone);
+      transform: translateX(3px);
+    }
+
+    .choice-tile {
+      transform: scale(1.08) rotate(-3deg);
+    }
+  }
+
+  &:active {
+    transform: scale(0.985);
+  }
+
+  .choice-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--tone);
+    background: rgba(var(--tone-rgb), 0.15);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-standard);
+
+    mat-icon {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  .choice-chevron {
+    flex: none;
+    margin-inline-start: auto;
+    color: var(--dim-color);
+    transition: var(--transition-fast);
+  }
+
+  // The goal people ask for most: the cloud as a folder, like the app they know from Windows.
+  &.featured {
+    grid-column: 1 / -1;
+    min-height: 112px;
+    background: linear-gradient(135deg, rgba(var(--tone-rgb), 0.12), var(--card-bg-color) 70%);
+    border-color: rgba(var(--tone-rgb), 0.45);
+
+    .choice-tile {
+      width: 64px;
+      height: 64px;
+
+      mat-icon {
+        width: 34px;
+        height: 34px;
+      }
+    }
+
+    .choice-title {
+      font-size: var(--font-size-lg);
+    }
+  }
+}
+
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.choice-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  font-weight: 500;
+}
+
+.choice-description {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+// ── Loading ─────────────────────────────────────────────────────────────────
+// The first step's boxes without their content; the shimmer comes from `.animate-shimmer`.
+
+.guide-skeleton {
+  .skeleton-box {
+    display: block;
+    flex: none;
+    border-radius: var(--radius-sm);
+  }
+
+  .hello-skeleton {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-md);
+  }
+
+  .choice-skeleton {
+    width: 48px;
+    height: 48px;
+  }
+
+  .skeleton-lines {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .skeleton-title {
+    width: 55%;
+    height: var(--space-md);
+  }
+
+  .skeleton-subtitle {
+    width: 85%;
+    height: var(--space-sm);
+  }
+
+  // Like the featured card of the real step: the first goal spans the whole row.
+  .choice-card {
+    pointer-events: none;
+
+    &:first-child {
+      grid-column: 1 / -1;
+      min-height: 112px;
+    }
+  }
+}
+
+// ── Where ───────────────────────────────────────────────────────────────────
+
+.where-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  animation: guide-rise 0.35s ease-out backwards;
+
+  &:nth-of-type(2) {
+    animation-delay: 80ms;
+  }
+
+  &:nth-of-type(3) {
+    animation-delay: 160ms;
+  }
+
+  .section-label {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    font-weight: 600;
+  }
+}
+
+// A path field is a row inside a card; the card is the container its small-screen layout reads.
+.path-card {
+  overflow: hidden;
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  container-type: inline-size;
+  transition: var(--transition-fast);
+
+  &:focus-within {
+    border-color: var(--accent-color);
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-sm);
+}
+
+// ── Review ──────────────────────────────────────────────────────────────────
+
+.flow-diagram {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+.flow-node {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+
+  mat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  code {
+    max-width: 100%;
+    color: var(--dim-color);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+  }
+}
+
+.flow-arrow {
+  --arrow-length: 96px;
+
+  position: relative;
+  flex: 0 0 var(--arrow-length);
+  height: 4px;
+  background: rgba(var(--tone-rgb), 0.2);
+  border-radius: var(--radius-xxs);
+  overflow: hidden;
+
+  .flow-dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 4px;
+    background: var(--tone);
+    border-radius: var(--radius-xxs);
+    animation: flow-right 1.8s linear infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.6s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 1.2s;
+    }
+  }
+}
+
+.flow-diagram[data-flow="download"] .flow-dot {
+  animation-name: flow-left;
+}
+
+.flow-diagram[data-flow="twoWay"] .flow-dot,
+.flow-diagram[data-flow="stream"] .flow-dot {
+  &:nth-child(2) {
+    animation-name: flow-left;
+  }
+}
+
+.flow-diagram[data-flow="compare"] .flow-dot {
+  animation-name: flow-pulse;
+}
+
+.guide-summary {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.effect-list,
+.preview-counts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    animation: guide-rise 0.35s ease-out backwards;
+
+    mat-icon {
+      flex: none;
+      color: var(--dim-color);
+    }
+
+    &[data-tone] mat-icon {
+      color: var(--tone);
+    }
+
+    @for $i from 2 through 5 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{($i - 1) * 70}ms;
+      }
+    }
+  }
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  padding: var(--space-md);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  animation: guide-rise 0.3s ease-out backwards;
+
+  mat-progress-bar {
+    width: 100%;
+  }
+
+  .dim {
+    color: var(--dim-color);
+  }
+}
+
+.preview-intro {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+
+  p {
+    margin: var(--space-xxs) 0 0;
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+}
+
+// ── Done ────────────────────────────────────────────────────────────────────
+
+.done {
+  align-items: center;
+  text-align: center;
+
+  h2 {
+    margin: 0;
+  }
+
+  .done-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--tone);
+    animation: guide-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  }
+}
+
+.done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+.setups-entry {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--window-fg-color);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+}
+
+.setups-entry-title {
+  font-weight: 500;
+}
+
+.setups-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+
+  p {
+    margin: 0;
+  }
+}
+
+.setup-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.setup-group-head {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: 0 var(--space-xs);
+
+  mat-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+// One card per cloud; its setups are rows separated by a line.
+.detail-card.setup-card {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.setup-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  padding-inline-end: var(--space-sm);
+
+  & + & {
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+// The whole row opens the setup; only the bin beside it does something else.
+.setup-open {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-md);
+  align-items: start;
+  min-width: 0;
+  padding: var(--space-md);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+}
+
+.setup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  margin-top: var(--space-sm);
+}
+
+.setup-tile {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--tone);
+  background: rgba(var(--tone-rgb), 0.15);
+  border-radius: var(--radius-sm);
+
+  mat-icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.setup-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.setup-title {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.setup-headline {
+  flex: none;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.setup-name {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+.setup-path {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.setup-auto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  align-items: center;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+.setup-auto-item {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.setup-same {
+  color: var(--tone-text);
+}
+
+.setup-error {
+  color: var(--warn-color);
+  font-size: var(--font-size-sm);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.setup-status {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.setup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.failure-reason {
+  max-width: 520px;
+  color: var(--warn-color);
+  text-align: center;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.undo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  justify-content: center;
+}
+
+.undo-question {
+  color: var(--dim-color);
+}
+
+.destination-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.done-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+// Where and how to connect: the address to type is the card's headline, the rest sits below it.
+.share-card,
+.share-trouble {
+  width: 100%;
+  max-width: 520px;
+  text-align: start;
+}
+
+.share-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.share-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.share-label {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.share-field {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  background: var(--bg-elevated-2);
+  border-radius: var(--radius-sm);
+
+  code {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+
+  .action-button {
+    flex: none;
+  }
+
+  &.is-main code {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+  }
+}
+
+.share-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+
+  > div {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+  }
+
+  dt {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    color: var(--dim-color);
+  }
+
+  dd {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    margin: 0;
+
+    &.dim {
+      color: var(--dim-color);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      user-select: text;
+    }
+  }
+}
+
+.share-trouble {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-inline: var(--space-xs);
+}
+
+.empty-state mat-progress-bar {
+  width: min(100%, 320px);
+}
+
+// ── Motion ──────────────────────────────────────────────────────────────────
+
+@keyframes guide-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes guide-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes flow-right {
+  from {
+    transform: translateX(-12px);
+  }
+
+  to {
+    transform: translateX(var(--arrow-length));
+  }
+}
+
+@keyframes flow-left {
+  from {
+    transform: translateX(var(--arrow-length));
+  }
+
+  to {
+    transform: translateX(-12px);
+  }
+}
+
+@keyframes flow-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+// ── Phones ──────────────────────────────────────────────────────────────────
+
+@media (max-width: 480px) {
+  .guide-hello {
+    padding: var(--space-sm);
+
+    h2 {
+      font-size: var(--font-size-xl);
+    }
+
+    .hello-tile {
+      width: 48px;
+      height: 48px;
+
+      mat-icon {
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+
+  .guide-skeleton .hello-skeleton {
+    width: 48px;
+    height: 48px;
+  }
+
+  .choice-card {
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+
+    &.featured .choice-tile {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  .flow-diagram {
+    flex-direction: column;
+  }
+
+  .flow-arrow {
+    flex-basis: 4px;
+    width: var(--arrow-length);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-step,
+  .guide-hello,
+  .choice-card,
+  .where-block,
+  .effect-list li,
+  .preview-card,
+  .done-icon,
+  .flow-dot {
+    animation: none;
+  }
+
+  .choice-card,
+  .choice-tile,
+  .choice-chevron,
+  .guide-progress-fill {
+    transition: none;
+  }
+}
+
+// ── When ────────────────────────────────────────────────────────────────────
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.schedule-group {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: var(--transition-standard);
+
+  &.selected {
+    border-color: var(--accent-color);
+    background: var(--bg-elevated-1);
+
+    .schedule-card {
+      border-color: transparent;
+      background: transparent;
+    }
+  }
+
+  .schedule-editor {
+    padding: 0 var(--space-md) var(--space-md);
+    animation: guide-rise 0.3s ease-out backwards;
+  }
+}
+
+.schedule-card {
+  width: 100%;
+
+  &.selected {
+    background: rgba(var(--tone-rgb), 0.06);
+    border-color: var(--tone);
+  }
+
+  .schedule-check {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin-inline-start: auto;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--tone-on);
+      opacity: 0;
+      transform: scale(0.4);
+      transition: var(--transition-standard);
+    }
+  }
+
+  &.selected .schedule-check {
+    background: var(--tone);
+    border-color: var(--tone);
+
+    mat-icon {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-group,
+  .schedule-editor,
+  .schedule-check,
+  .schedule-check mat-icon {
+    animation: none;
+    transition: none;
+  }
+}
+
+.delay-row {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: space-between;
+
+  .delay-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    min-width: 0;
+  }
+
+  .delay-title {
+    font-weight: 500;
+  }
+
+  .delay-hint {
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+
+  app-number-input {
+    flex: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .delay-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// ── Preview ─────────────────────────────────────────────────────────────────
+
+.preview-card {
+  align-items: stretch;
+  gap: var(--space-md);
+
+  .preview-intro mat-icon {
+    color: var(--accent-color);
+  }
+}
+
+.preview-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: var(--space-sm);
+}
+
+.preview-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  align-items: flex-start;
+  padding: var(--space-sm) var(--space-md);
+  text-align: start;
+  color: var(--window-fg-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  mat-icon {
+    color: var(--tone);
+  }
+
+  .tile-count {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .tile-label,
+  .tile-size {
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+
+  &:hover,
+  &.selected {
+    background: rgba(var(--tone-rgb), 0.08);
+    border-color: var(--tone);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.preview-search {
+  width: 100%;
+}
+
+.preview-files {
+  max-height: 260px;
+  margin: 0;
+  padding: var(--space-xs);
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  user-select: text;
+
+  li {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    animation: guide-rise 0.25s ease-out backwards;
+
+    &:hover {
+      background: var(--hover-bg-color);
+    }
+
+    mat-icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      color: var(--tone);
+    }
+
+    .file-path {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-size {
+      flex: none;
+      color: var(--dim-color);
+    }
+
+    &.no-files {
+      color: var(--dim-color);
+      font-family: inherit;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-tile,
+  .preview-files li {
+    animation: none;
+    transition: none;
+  }
+}
+
+// A long wait: the note says it is not stuck.
+.slow-note {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  text-align: start;
+
+  mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+  }
+}
+
+// ── Details ─────────────────────────────────────────────────────────────────
+
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  animation: guide-rise 0.35s ease-out backwards;
+
+  .section-label {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    font-weight: 600;
+  }
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    min-width: 0;
+
+    > mat-icon {
+      flex: none;
+      color: var(--dim-color);
+    }
+
+    .detail-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .action-button {
+      flex: none;
+    }
+  }
+
+  .detail-value {
+    margin-inline-start: var(--space-xs);
+    padding: var(--space-xxs) var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    background: var(--bg-elevated-2);
+    border-radius: var(--radius-xxs);
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-card {
+    animation: none;
+  }
+}
+
+// The sentence that says what is set up, over the list of what that means.
+.review-card {
+  gap: var(--space-md);
+
+  .guide-summary {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+  }
+}

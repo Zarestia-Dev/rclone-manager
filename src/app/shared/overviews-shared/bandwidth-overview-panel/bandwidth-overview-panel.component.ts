@@ -9,7 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 
-import { BANDWIDTH_PRESETS, BandwidthDetailItem } from '@app/types';
+import { BANDWIDTH_PRESETS, BandwidthDetailItem, PANEL_TONE } from '@app/types';
 import { FormatRateValuePipe } from '@app/pipes';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
@@ -36,6 +36,8 @@ import { PillDirective } from '../../directives/pill.directive';
   styleUrls: ['./bandwidth-overview-panel.component.scss'],
 })
 export class BandwidthOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.bandwidth;
   readonly expanded = model<boolean>(false);
 
   private readonly rcloneStatusService = inject(RcloneStatusService);

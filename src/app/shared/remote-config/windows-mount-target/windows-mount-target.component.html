@@ -129,7 +129,7 @@
       (status.state !== 'checking' || !quotesRemoved())
     ) {
       <div [attr.data-tone]="status.state === 'checking' ? 'dim' : 'warn'">
-        {{ status.labelKey | translate: { details: status.details || '' } }}
+        {{ status.labelKey | translate: status.labelParams ?? {} }}
       </div>
     } @else if (quotesRemoved()) {
       <div>{{ 'wizards.appOperation.mountFolderQuotesRemoved' | translate }}</div>
@@ -221,7 +221,7 @@
             : 'dim'
         "
       >
-        {{ status.labelKey | translate: { details: status.details || '' } }}
+        {{ status.labelKey | translate: status.labelParams ?? {} }}
       </span>
     } @else if (driveSelection() === automaticDrive) {
       @if (suggestedDrive(); as letter) {

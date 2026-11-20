@@ -6,7 +6,7 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="core" data-tone="orange" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="core" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.system' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>

@@ -6,6 +6,7 @@ import {
   PathStyle,
   REMOTE_CONFIG_KEYS,
   DefaultPathOp,
+  QuickRun,
 } from '@app/types';
 
 /**
@@ -531,8 +532,20 @@ export function parseLocation(
   return null;
 }
 
+/** The folders a mount or a two-way folder pair keeps, from a profile or a Quick Run config. */
+function foldersOf(opType: 'mount' | 'bisync', config: Record<string, unknown>): string[] {
+  const rclone = config['rclone'] as Record<string, unknown> | undefined;
+  const dest = config['dest'] as { path?: string } | undefined;
+  const keys = opType === 'mount' ? ['mountPoint'] : ['path1', 'path2'];
+  const values = [...keys.map(key => config[key]), dest?.path, ...keys.map(key => rclone?.[key])];
+  return values.filter((value): value is string => typeof value === 'string' && value !== '');
+}
+
 /**
- * Checks for path collisions across remote mount and bisync profiles in remote settings.
+ * Finds what already uses a folder: the saved mount and bisync profiles of every remote, and the
+ * Quick Runs that mount or sync a folder. Each collision names its owner, so the message can say
+ * which profile or which Quick Run it is. What is being edited is left out of the search: the
+ * profile by its remote and name, the Quick Run by its id.
  */
 export function checkMountPathCollision(
   proposedPath: string,
@@ -540,7 +553,12 @@ export function checkMountPathCollision(
   allSettings: Record<string, unknown> | undefined | null,
   isLocalPathFn: (path: string) => boolean,
   currentProfileName?: string,
-  options: { pathStyle?: PathStyle; currentOperation?: DefaultPathOp } = {}
+  options: {
+    pathStyle?: PathStyle;
+    currentOperation?: DefaultPathOp;
+    quickRuns?: readonly QuickRun[];
+    currentQuickRunId?: string | null;
+  } = {}
 ): MountPathCollision[] {
   if (!proposedPath || !proposedPath.trim()) return [];
 
@@ -552,10 +570,13 @@ export function checkMountPathCollision(
   };
   const normTarget = normalize(proposedPath);
   const collisions: MountPathCollision[] = [];
-  if (!allSettings) return [];
   const opKeys = ['mount', 'bisync'] as const;
+  const uses = (config: Record<string, unknown>, opType: 'mount' | 'bisync'): string | undefined =>
+    foldersOf(opType, config).find(
+      folder => isLocalPathFn(folder) && normalize(folder) === normTarget
+    );
 
-  for (const [rName, rConfig] of Object.entries(allSettings)) {
+  for (const [rName, rConfig] of Object.entries(allSettings ?? {})) {
     if (!rConfig || typeof rConfig !== 'object') continue;
 
     for (const opType of opKeys) {
@@ -573,41 +594,27 @@ export function checkMountPathCollision(
         )
           continue;
 
-        const pathsToCheck: string[] = [];
-        const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
-        if (opType === 'mount') {
-          if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
-          const dest = pConfig['dest'] as { path?: string } | undefined;
-          if (dest?.path) pathsToCheck.push(dest.path);
-          if (typeof rclone?.['mountPoint'] === 'string') {
-            pathsToCheck.push(rclone['mountPoint']);
-          }
-        } else if (opType === 'bisync') {
-          if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
-          if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
-          const dest = pConfig['dest'] as { path?: string } | undefined;
-          if (dest?.path) pathsToCheck.push(dest.path);
-          for (const key of ['path1', 'path2']) {
-            const value = rclone?.[key];
-            if (typeof value === 'string') pathsToCheck.push(value);
-          }
-        }
-
-        for (const rawPath of pathsToCheck) {
-          if (!rawPath || typeof rawPath !== 'string') continue;
-          if (!isLocalPathFn(rawPath)) continue;
-
-          const normPath = normalize(rawPath);
-          if (normPath === normTarget) {
-            collisions.push({
-              remoteName: rName,
-              profileName: pName,
-              opType,
-              path: rawPath,
-            });
-          }
+        const path = uses(pConfig, opType);
+        if (path !== undefined) {
+          collisions.push({ kind: 'profile', remoteName: rName, name: pName, opType, path });
         }
       }
+    }
+  }
+
+  for (const quickRun of options.quickRuns ?? []) {
+    const { operationType: opType } = quickRun;
+    if (quickRun.id === options.currentQuickRunId) continue;
+    if (opType !== 'mount' && opType !== 'bisync') continue;
+    const path = uses(quickRun.config as unknown as Record<string, unknown>, opType);
+    if (path !== undefined) {
+      collisions.push({
+        kind: 'quick_run',
+        remoteName: quickRun.remoteName,
+        name: quickRun.name,
+        opType,
+        path,
+      });
     }
   }
 

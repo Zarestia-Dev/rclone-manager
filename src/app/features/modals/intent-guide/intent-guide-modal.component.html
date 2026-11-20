@@ -1,0 +1,1681 @@
+@let p = plan();
+@let place = 'modals.intentGuide.places.' + localPlace() | translate;
+<header data-tauri-drag-region>
+  <button>
+    <mat-icon svgIcon="wand" aria-hidden="true"></mat-icon>
+  </button>
+  <p>{{ 'modals.intentGuide.title' | translate }}</p>
+  <button
+    type="button"
+    matIconButton
+    (click)="close()"
+    [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+@if (
+  !isLoading() &&
+  !loadFailed() &&
+  remotes().length &&
+  step() !== 'done' &&
+  step() !== 'setups' &&
+  !settingsOpen()
+) {
+  <div
+    class="guide-progress"
+    role="progressbar"
+    [attr.aria-valuenow]="stepNumber()"
+    aria-valuemin="1"
+    [attr.aria-valuemax]="stepTotal()"
+    [attr.aria-label]="
+      'modals.intentGuide.stepOf' | translate: { current: stepNumber(), total: stepTotal() }
+    "
+  >
+    <span class="guide-progress-fill" [style.width.%]="(stepNumber() / stepTotal()) * 100"></span>
+  </div>
+}
+
+<main [attr.aria-busy]="isLoading()">
+  @if (isLoading()) {
+    <!-- The first step's own boxes without their content, so nothing jumps when it loads. -->
+    <section
+      class="guide-step guide-skeleton"
+      role="status"
+      [attr.aria-label]="'common.loading' | translate"
+    >
+      <div class="guide-hello" aria-hidden="true">
+        <span class="skeleton-box animate-shimmer hello-skeleton"></span>
+        <div class="skeleton-lines">
+          <span class="skeleton-text animate-shimmer skeleton-title"></span>
+          <span class="skeleton-text animate-shimmer skeleton-subtitle"></span>
+        </div>
+      </div>
+      <div class="choice-grid" aria-hidden="true">
+        @for (goal of goals; track goal.id) {
+          <div class="choice-card" [style.--i]="$index">
+            <span class="skeleton-box animate-shimmer choice-skeleton"></span>
+            <div class="skeleton-lines">
+              <span class="skeleton-text animate-shimmer skeleton-title"></span>
+              <span class="skeleton-text animate-shimmer skeleton-subtitle"></span>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  } @else if (loadFailed()) {
+    <div class="empty-state">
+      <mat-icon svgIcon="circle-exclamation"></mat-icon>
+      <span>{{ 'modals.intentGuide.loadFailed' | translate }}</span>
+      <button matButton (click)="load()">{{ 'common.retry' | translate }}</button>
+    </div>
+  } @else if (!remotes().length) {
+    <div class="empty-state">
+      <mat-icon svgIcon="cloud"></mat-icon>
+      <span>{{ 'modals.intentGuide.noRemotes' | translate }}</span>
+      <button matButton="filled" data-tone="primary" (click)="addRemote()">
+        {{ 'titlebar.menu.quickRemote' | translate }}
+      </button>
+    </div>
+  } @else if (settingsOpen()) {
+    <section class="guide-step">
+      <div class="guide-hello">
+        <span class="hello-tile">
+          <mat-icon svgIcon="gear" aria-hidden="true"></mat-icon>
+        </span>
+        <div>
+          <h2>{{ 'modals.intentGuide.settings.title' | translate }}</h2>
+          <p>{{ 'modals.intentGuide.settings.subtitle' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <mat-slide-toggle
+          data-tone="accent"
+          [checked]="afterRemote()"
+          (change)="setAfterRemote($event.checked)"
+        >
+          {{ 'modals.intentGuide.settings.afterRemote' | translate }}
+        </mat-slide-toggle>
+      </div>
+
+      <div class="detail-card">
+        <span class="section-label">
+          {{ 'modals.intentGuide.settings.destinationTitle' | translate }}
+        </span>
+        <div class="destination-options">
+          <button
+            appPill
+            type="button"
+            [selected]="destinationSetting() === 'auto'"
+            (click)="setDestinationSetting('auto')"
+          >
+            <mat-icon svgIcon="wand"></mat-icon>
+            {{ 'modals.intentGuide.settings.auto' | translate }}
+          </button>
+          <button
+            appPill
+            type="button"
+            [selected]="destinationSetting() === 'profile'"
+            (click)="setDestinationSetting('profile')"
+          >
+            <mat-icon svgIcon="server"></mat-icon>
+            {{ 'modals.intentGuide.review.destination.profile' | translate }}
+          </button>
+          <button
+            appPill
+            type="button"
+            [selected]="destinationSetting() === 'quick_run'"
+            (click)="setDestinationSetting('quick_run')"
+          >
+            <mat-icon svgIcon="bolt"></mat-icon>
+            {{ 'modals.intentGuide.review.destination.quickRun' | translate }}
+          </button>
+        </div>
+        <p class="hint">
+          {{
+            destinationSetting() === 'auto'
+              ? ('modals.intentGuide.settings.hintAuto' | translate)
+              : destinationSetting() === 'profile'
+                ? ('modals.intentGuide.review.destination.hintProfile'
+                  | translate: { remote: remoteName() })
+                : ('modals.intentGuide.review.destination.hintQuickRun' | translate)
+          }}
+        </p>
+      </div>
+    </section>
+  } @else {
+    @switch (step()) {
+      <!-- ── 1. What do you want? ─────────────────────────────────────── -->
+      @case ('goal') {
+        <section class="guide-step">
+          <div class="guide-hello">
+            <span class="hello-tile">
+              <mat-icon
+                [svgIcon]="iconService.getIconName(remoteType())"
+                aria-hidden="true"
+              ></mat-icon>
+            </span>
+            <div>
+              <h2>
+                @if (data?.remoteName === remoteName()) {
+                  {{ 'modals.intentGuide.hello.created' | translate: { remote: remoteName() } }}
+                } @else {
+                  {{ 'modals.intentGuide.hello.default' | translate }}
+                }
+              </h2>
+              <p>{{ 'modals.intentGuide.hello.subtitle' | translate }}</p>
+            </div>
+          </div>
+
+          @if (remotes().length > 1) {
+            <div
+              class="remote-row"
+              role="radiogroup"
+              [attr.aria-label]="'modals.intentGuide.remoteLabel' | translate"
+            >
+              <span class="remote-row-label">{{
+                'modals.intentGuide.remoteLabel' | translate
+              }}</span>
+              @for (remote of remotes(); track remote.name) {
+                <button
+                  appPill
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="remote.name === remoteName()"
+                  [selected]="remote.name === remoteName()"
+                  (click)="selectRemote(remote.name)"
+                >
+                  <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+                  {{ remote.name }}
+                </button>
+              }
+            </div>
+          }
+
+          @if (setups().length) {
+            <button type="button" class="setups-entry" (click)="openSetups()">
+              <mat-icon svgIcon="list" aria-hidden="true"></mat-icon>
+              <span class="setups-entry-title">{{
+                'modals.intentGuide.setups.title' | translate
+              }}</span>
+              <span appPill size="xs" tone="dim">{{ setups().length }}</span>
+              @if (setupCounts().running) {
+                <span appPill size="xs" tone="accent">{{
+                  'modals.intentGuide.setups.runningCount'
+                    | translate: { count: setupCounts().running }
+                }}</span>
+              }
+              @if (setupCounts().failed) {
+                <span appPill size="xs" tone="warn">{{
+                  'modals.intentGuide.setups.failedCount'
+                    | translate: { count: setupCounts().failed }
+                }}</span>
+              }
+              <mat-icon class="ml-auto" svgIcon="chevron-right" aria-hidden="true"></mat-icon>
+            </button>
+          }
+
+          <div class="choice-grid">
+            @for (goal of goals; track goal.id) {
+              <button
+                type="button"
+                class="choice-card"
+                [class.featured]="$first"
+                [style.--i]="$index"
+                [attr.data-tone]="goalTone(goal)"
+                (click)="chooseGoal(goal.id)"
+              >
+                <span class="choice-tile">
+                  <mat-icon [svgIcon]="goal.icon" aria-hidden="true"></mat-icon>
+                </span>
+                <span class="choice-text">
+                  <span class="choice-title">
+                    @if (goal.id === 'access' && env()?.isAndroid) {
+                      {{ 'modals.intentGuide.goals.access.titlePhone' | translate }}
+                    } @else {
+                      {{ 'modals.intentGuide.goals.' + goal.id + '.title' | translate }}
+                    }
+                  </span>
+                  <span class="choice-description">
+                    @if (goal.id === 'access' && env()?.isAndroid) {
+                      {{ 'modals.intentGuide.goals.access.descriptionPhone' | translate }}
+                    } @else if (goal.id === 'access' && appBrand()) {
+                      {{
+                        'modals.intentGuide.goals.access.descriptionApp'
+                          | translate: { app: appBrand() }
+                      }}
+                    } @else {
+                      {{ 'modals.intentGuide.goals.' + goal.id + '.description' | translate }}
+                    }
+                  </span>
+                </span>
+                <mat-icon
+                  class="choice-chevron"
+                  svgIcon="chevron-right"
+                  aria-hidden="true"
+                ></mat-icon>
+              </button>
+            }
+          </div>
+          <app-alert-banner
+            severity="dim"
+            [title]="'modals.intentGuide.about.goals.title' | translate"
+          >
+            <p>{{ 'modals.intentGuide.about.goals.access' | translate }}</p>
+            <p>{{ 'modals.intentGuide.about.goals.devices' | translate }}</p>
+            <p>{{ 'modals.intentGuide.about.goals.backup' | translate }}</p>
+            <p>{{ 'modals.intentGuide.about.goals.download' | translate }}</p>
+          </app-alert-banner>
+        </section>
+      }
+
+      <!-- ── What is already set up ───────────────────────────────────── -->
+      @case ('setups') {
+        <section class="guide-step">
+          <div class="setups-head">
+            <h2 class="guide-heading">{{ 'modals.intentGuide.setups.title' | translate }}</h2>
+            <p class="hint">{{ 'modals.intentGuide.setups.subtitle' | translate }}</p>
+          </div>
+
+          @for (group of setupGroups(); track group.remote.name) {
+            <div class="setup-group">
+              <div class="setup-group-head">
+                <mat-icon [svgIcon]="iconService.getIconName(group.remote.type)"></mat-icon>
+                <strong>{{ group.remote.name }}</strong>
+              </div>
+              <div class="detail-card setup-card">
+                @for (row of group.rows; track row.setup.key) {
+                  <div class="setup-item" [attr.data-tone]="row.tone">
+                    <button
+                      type="button"
+                      class="setup-open"
+                      [title]="'modals.intentGuide.setups.show' | translate"
+                      (click)="showSetup(row.setup)"
+                    >
+                      <span class="setup-tile">
+                        <mat-icon [svgIcon]="row.icon" aria-hidden="true"></mat-icon>
+                      </span>
+                      <span class="setup-main">
+                        <span class="setup-title">
+                          <span class="setup-headline">
+                            {{
+                              'modals.intentGuide.setups.headline.' + row.setup.summaryKey
+                                | translate
+                                  : {
+                                      target: row.setup.target,
+                                      type: row.setup.serveType | uppercase,
+                                    }
+                            }}
+                          </span>
+                          <span
+                            appPill
+                            size="xs"
+                            tone="dim"
+                            [attr.title]="
+                              (row.kind === 'quickRun'
+                                ? 'modals.intentGuide.review.destination.hintQuickRun'
+                                : 'modals.intentGuide.review.destination.profile'
+                              ) | translate
+                            "
+                          >
+                            @if (row.kind === 'quickRun') {
+                              <mat-icon svgIcon="quick-run" aria-hidden="true"></mat-icon>
+                            }
+                            {{ 'modals.intentGuide.setups.kind.' + row.kind | translate }}
+                          </span>
+                          <span class="setup-name truncate">{{ row.setup.name }}</span>
+                        </span>
+                        @if (row.path) {
+                          <span class="setup-path truncate">{{ row.path }}</span>
+                        }
+                        <span class="setup-auto">
+                          @for (item of row.auto; track $index) {
+                            <span class="setup-auto-item">
+                              <mat-icon [svgIcon]="item.icon" aria-hidden="true"></mat-icon>
+                              {{
+                                item.text ??
+                                  ('modals.intentGuide.setups.auto.' + item.key | translate)
+                              }}
+                            </span>
+                          }
+                          @if (row.sameAs) {
+                            <span class="setup-same" data-tone="yellow">{{
+                              'modals.intentGuide.setups.sameAs' | translate: { name: row.sameAs }
+                            }}</span>
+                          }
+                        </span>
+                        @if (row.status.error) {
+                          <span class="setup-error">{{ row.status.error }}</span>
+                        }
+                      </span>
+                      <span class="setup-status" [attr.data-tone]="row.statusTone">
+                        <span class="setup-dot" aria-hidden="true"></span>
+                        {{
+                          'modals.intentGuide.setups.status.' + row.statusKey
+                            | translate: { when: row.when }
+                        }}
+                      </span>
+                    </button>
+                    <div class="setup-actions">
+                      <button
+                        type="button"
+                        class="action-button"
+                        [title]="row.actionKey | translate"
+                        [attr.aria-label]="row.actionKey | translate"
+                        [disabled]="busyKey() === row.setup.key || removingKey() === row.setup.key"
+                        (click)="toggleSetup(row)"
+                      >
+                        <mat-icon
+                          [svgIcon]="row.actionIcon"
+                          [attr.data-tone]="row.running ? 'warn' : 'primary'"
+                        ></mat-icon>
+                      </button>
+                      <button
+                        type="button"
+                        class="action-button"
+                        [title]="'modals.intentGuide.setups.remove' | translate"
+                        [attr.aria-label]="'modals.intentGuide.setups.remove' | translate"
+                        [disabled]="busyKey() === row.setup.key || removingKey() === row.setup.key"
+                        (click)="removeSetup(row.setup)"
+                      >
+                        <mat-icon svgIcon="trash"></mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <mat-icon svgIcon="list"></mat-icon>
+              <span>{{ 'modals.intentGuide.setups.empty' | translate }}</span>
+            </div>
+          }
+        </section>
+      }
+
+      <!-- ── 2. One question at a time ────────────────────────────────── -->
+      @case ('question') {
+        @let q = question();
+        @if (q) {
+          <section class="guide-step">
+            <h2 class="guide-heading">
+              {{ 'modals.intentGuide.questions.' + q + '.title' | translate }}
+            </h2>
+            <div class="choice-grid single">
+              @for (option of questionOptions(); track option.id) {
+                <button
+                  type="button"
+                  class="choice-card"
+                  data-tone="accent"
+                  [style.--i]="$index"
+                  [class.recommended]="recommended() === option.id"
+                  (click)="answer(option.id)"
+                >
+                  <span class="choice-tile"
+                    ><mat-icon [svgIcon]="option.icon" aria-hidden="true"></mat-icon
+                  ></span>
+                  <span class="choice-text">
+                    <span class="choice-title">
+                      {{
+                        'modals.intentGuide.options.' + q + '.' + option.id + '.title' | translate
+                      }}
+                      @if (recommended() === option.id) {
+                        <span appPill size="xs" tone="accent">
+                          {{ 'modals.intentGuide.recommended' | translate }}
+                        </span>
+                      }
+                    </span>
+                    <span class="choice-description">
+                      {{
+                        'modals.intentGuide.options.' + q + '.' + option.id + '.description'
+                          | translate
+                      }}
+                    </span>
+                  </span>
+                  <mat-icon
+                    class="choice-chevron"
+                    svgIcon="chevron-right"
+                    aria-hidden="true"
+                  ></mat-icon>
+                </button>
+              }
+            </div>
+            <app-alert-banner severity="dim" [title]="'modals.intentGuide.about.title' | translate">
+              <p>{{ 'modals.intentGuide.about.' + q + '.same' | translate }}</p>
+              <p>{{ 'modals.intentGuide.about.' + q + '.differ' | translate }}</p>
+            </app-alert-banner>
+          </section>
+        }
+      }
+
+      <!-- ── 3. Where? ────────────────────────────────────────────────── -->
+      @case ('where') {
+        @if (p) {
+          <section class="guide-step">
+            <h2 class="guide-heading">{{ 'modals.intentGuide.where.heading' | translate }}</h2>
+
+            @if (whereAbout(); as about) {
+              <app-alert-banner
+                severity="dim"
+                [title]="'modals.intentGuide.review.detailsTitle' | translate"
+              >
+                <p>{{ 'modals.intentGuide.about.where.' + about | translate }}</p>
+              </app-alert-banner>
+            }
+
+            @if (showsLocal()) {
+              <div class="where-block">
+                <span class="section-label">
+                  <mat-icon
+                    [svgIcon]="env()?.isAndroid ? 'mobiledata-arrows' : 'desktop'"
+                    aria-hidden="true"
+                  ></mat-icon>
+                  {{ place }} ·
+                  {{
+                    'modals.intentGuide.where.local.' +
+                      (goalId() === 'devices' ? 'devices' : p.flow) | translate
+                  }}
+                </span>
+                @if (localIsSource() && homeFolders()?.length) {
+                  <div class="folder-chips">
+                    @for (folder of homeFolders(); track folder) {
+                      <button
+                        appPill
+                        type="button"
+                        [selected]="
+                          localPath().endsWith(folder) && baseNameOf(localPath()) === folder
+                        "
+                        (click)="chooseHomeFolder(folder)"
+                      >
+                        <mat-icon svgIcon="folder"></mat-icon>{{ folder }}
+                      </button>
+                    }
+                  </div>
+                }
+                <div class="path-card">
+                  <app-path-field
+                    [control]="localGroup"
+                    fieldId="guide-local"
+                    [currentRemote]="remoteName()"
+                    lock="local"
+                    defaultType="local"
+                    placeholderKey="modals.intentGuide.where.localPlaceholder"
+                    [requireEmpty]="p.flow === 'stream'"
+                    [inspect]="inspectOp()"
+                  />
+                </div>
+              </div>
+            }
+
+            <div class="where-block">
+              <span class="section-label">
+                <mat-icon
+                  [svgIcon]="iconService.getIconName(remoteType())"
+                  aria-hidden="true"
+                ></mat-icon>
+                {{ remoteName() }} · {{ 'modals.intentGuide.where.cloud.' + p.flow | translate }}
+              </span>
+              <div class="path-card">
+                <app-path-field
+                  [control]="cloudGroup"
+                  fieldId="guide-cloud"
+                  [currentRemote]="remoteName()"
+                  lock="currentRemote"
+                  [restrictToCurrentRemote]="true"
+                  placeholderKey="modals.intentGuide.where.cloudPlaceholder"
+                />
+              </div>
+            </div>
+
+            @if (p.needsSecondRemote) {
+              <div class="where-block">
+                <span class="section-label">
+                  <mat-icon svgIcon="right-left" aria-hidden="true"></mat-icon>
+                  {{ 'modals.intentGuide.where.target' | translate }}
+                </span>
+                @if (otherRemotes().length) {
+                  <div class="path-card">
+                    <app-path-field
+                      [control]="targetGroup"
+                      fieldId="guide-target"
+                      [currentRemote]="remoteName()"
+                      [otherRemotes]="otherRemoteNames()"
+                      [types]="['otherRemote']"
+                      placeholderKey="modals.intentGuide.where.cloudPlaceholder"
+                    />
+                  </div>
+                } @else {
+                  <app-alert-banner
+                    severity="info"
+                    [title]="'modals.intentGuide.where.noOtherRemote' | translate"
+                  >
+                    <button matButton="filled" data-tone="primary" (click)="addRemote()">
+                      {{ 'titlebar.menu.quickRemote' | translate }}
+                    </button>
+                  </app-alert-banner>
+                }
+              </div>
+            }
+
+            @if (sharesWithLogin(p.serveType)) {
+              <div class="where-block">
+                <span class="section-label">
+                  <mat-icon svgIcon="lock" aria-hidden="true"></mat-icon>
+                  {{ 'modals.intentGuide.where.shareLogin' | translate }}
+                </span>
+                <p class="hint">{{ 'modals.intentGuide.where.shareHint' | translate }}</p>
+                <div class="field-row">
+                  <mat-form-field>
+                    <mat-label>{{ 'modals.intentGuide.where.shareUser' | translate }}</mat-label>
+                    <input
+                      matInput
+                      autocomplete="off"
+                      [ngModel]="shareUser()"
+                      (ngModelChange)="shareUser.set($event)"
+                    />
+                  </mat-form-field>
+                  <mat-form-field>
+                    <mat-label>{{
+                      'modals.intentGuide.where.sharePassword' | translate
+                    }}</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      autocomplete="new-password"
+                      [ngModel]="sharePassword()"
+                      (ngModelChange)="sharePassword.set($event)"
+                    />
+                  </mat-form-field>
+                </div>
+              </div>
+              <div class="where-block">
+                <span class="section-label">
+                  <mat-icon svgIcon="server" aria-hidden="true"></mat-icon>
+                  {{ 'modals.intentGuide.where.shareConnection' | translate }}
+                </span>
+                <div class="delay-row">
+                  <div class="delay-info">
+                    <span class="delay-title">{{
+                      'modals.intentGuide.where.sharePort' | translate
+                    }}</span>
+                    <span class="delay-hint">{{
+                      'modals.intentGuide.where.sharePortHint' | translate
+                    }}</span>
+                  </div>
+                  <app-number-input
+                    [ngModel]="sharePort()"
+                    (ngModelChange)="setSharePort($event)"
+                    [min]="1024"
+                    [allowNegative]="false"
+                    [ariaLabel]="'modals.intentGuide.where.sharePort' | translate"
+                  />
+                </div>
+                @if (!sharePortValid()) {
+                  <app-alert-banner
+                    severity="warning"
+                    [title]="'modals.intentGuide.where.portInvalid' | translate"
+                  />
+                } @else if (sharePortBusy()) {
+                  <app-alert-banner
+                    severity="warning"
+                    [title]="'modals.intentGuide.where.portBusy' | translate: { port: sharePort() }"
+                  >
+                    @if (freePortSuggestion(); as free) {
+                      <button matButton type="button" (click)="useFreePort()">
+                        {{ 'modals.intentGuide.where.portUseFree' | translate: { port: free } }}
+                      </button>
+                    }
+                  </app-alert-banner>
+                }
+                @if (p.serveType === 'webdav') {
+                  <mat-slide-toggle
+                    data-tone="accent"
+                    [checked]="shareReadOnly()"
+                    (change)="shareReadOnly.set($event.checked)"
+                  >
+                    {{ 'modals.intentGuide.where.shareReadOnly' | translate }}
+                  </mat-slide-toggle>
+                  <p class="hint">{{ 'modals.intentGuide.where.shareReadOnlyHint' | translate }}</p>
+                }
+              </div>
+            }
+
+            @if (p.serveType === 'dlna') {
+              <div class="where-block">
+                <span class="section-label">
+                  <mat-icon svgIcon="tv" aria-hidden="true"></mat-icon>
+                  {{ 'modals.intentGuide.where.shareName' | translate }}
+                </span>
+                <p class="hint">{{ 'modals.intentGuide.where.shareNameHint' | translate }}</p>
+                <mat-form-field>
+                  <mat-label>{{ 'modals.intentGuide.where.shareNameLabel' | translate }}</mat-label>
+                  <input
+                    matInput
+                    autocomplete="off"
+                    [ngModel]="shareName()"
+                    (ngModelChange)="shareName.set($event)"
+                  />
+                </mat-form-field>
+              </div>
+            }
+          </section>
+        }
+      }
+
+      <!-- ── 4. When should it run? ───────────────────────────────────── -->
+      @case ('when') {
+        @if (p) {
+          <section class="guide-step">
+            <h2 class="guide-heading">{{ 'modals.intentGuide.when.heading' | translate }}</h2>
+            <p class="hint">{{ 'modals.intentGuide.when.subtitle' | translate }}</p>
+
+            <div class="schedule-list">
+              @if (scheduleOptions().watch) {
+                <div class="schedule-group" [class.selected]="scheduleWatch()">
+                  <button
+                    type="button"
+                    class="choice-card schedule-card"
+                    role="switch"
+                    data-tone="accent"
+                    [style.--i]="0"
+                    [class.selected]="scheduleWatch()"
+                    [attr.aria-checked]="scheduleWatch()"
+                    (click)="scheduleWatch.set(!scheduleWatch())"
+                  >
+                    <span class="choice-tile"
+                      ><mat-icon svgIcon="bolt" aria-hidden="true"></mat-icon
+                    ></span>
+                    <span class="choice-text">
+                      <span class="choice-title">{{
+                        'modals.intentGuide.when.watch.title' | translate
+                      }}</span>
+                      <span class="choice-description">
+                        {{ 'modals.intentGuide.when.watch.description' | translate }}
+                      </span>
+                    </span>
+                    <span class="schedule-check" aria-hidden="true">
+                      <mat-icon svgIcon="check-circle"></mat-icon>
+                    </span>
+                  </button>
+                  @if (scheduleWatch()) {
+                    <div class="schedule-editor delay-row">
+                      <div class="delay-info">
+                        <span class="delay-title">{{
+                          'wizards.appOperation.watchDelay' | translate
+                        }}</span>
+                        <span class="delay-hint">{{
+                          'wizards.appOperation.watchDelayHint' | translate
+                        }}</span>
+                      </div>
+                      <app-number-input
+                        [ngModel]="scheduleWatchDelay()"
+                        (ngModelChange)="setDelay('watch', $event)"
+                        [min]="0"
+                        [allowNegative]="false"
+                        [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
+                      />
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (scheduleOptions().cron) {
+                <div class="schedule-group" [class.selected]="scheduleCronOn()">
+                  <button
+                    type="button"
+                    class="choice-card schedule-card"
+                    role="switch"
+                    data-tone="accent"
+                    [style.--i]="1"
+                    [class.selected]="scheduleCronOn()"
+                    [attr.aria-checked]="scheduleCronOn()"
+                    (click)="toggleCron()"
+                  >
+                    <span class="choice-tile">
+                      <mat-icon svgIcon="calendar" aria-hidden="true"></mat-icon>
+                    </span>
+                    <span class="choice-text">
+                      <span class="choice-title">{{
+                        'modals.intentGuide.when.cron.title' | translate
+                      }}</span>
+                      <span class="choice-description">
+                        @if (scheduleCronOn() && cronText()) {
+                          {{ cronText() }}
+                        } @else {
+                          {{ 'modals.intentGuide.when.cron.description' | translate }}
+                        }
+                      </span>
+                    </span>
+                    <span class="schedule-check" aria-hidden="true">
+                      <mat-icon svgIcon="check-circle"></mat-icon>
+                    </span>
+                  </button>
+                  @if (scheduleCronOn()) {
+                    <div class="schedule-editor">
+                      <app-cron-input
+                        [initialValue]="scheduleCron()"
+                        [automationName]="operationLabel() | translate"
+                        (cronChange)="onCronChange($event)"
+                        (validationChange)="onCronValidation($event)"
+                      />
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (scheduleOptions().startup) {
+                <div class="schedule-group" [class.selected]="scheduleStartup()">
+                  <button
+                    type="button"
+                    class="choice-card schedule-card"
+                    role="switch"
+                    data-tone="accent"
+                    [style.--i]="2"
+                    [class.selected]="scheduleStartup()"
+                    [attr.aria-checked]="scheduleStartup()"
+                    (click)="scheduleStartup.set(!scheduleStartup())"
+                  >
+                    <span class="choice-tile"
+                      ><mat-icon svgIcon="power-off" aria-hidden="true"></mat-icon
+                    ></span>
+                    <span class="choice-text">
+                      <span class="choice-title">{{
+                        'modals.intentGuide.when.startup.title' | translate
+                      }}</span>
+                      <span class="choice-description">
+                        {{
+                          (p.flow === 'stream'
+                            ? 'modals.intentGuide.when.startup.descriptionMount'
+                            : 'modals.intentGuide.when.startup.description'
+                          ) | translate
+                        }}
+                      </span>
+                    </span>
+                    <span class="schedule-check" aria-hidden="true">
+                      <mat-icon svgIcon="check-circle"></mat-icon>
+                    </span>
+                  </button>
+                  @if (scheduleStartup()) {
+                    <div class="schedule-editor delay-row">
+                      <div class="delay-info">
+                        <span class="delay-title">{{
+                          'wizards.appOperation.autoStartDelay' | translate
+                        }}</span>
+                        <span class="delay-hint">{{
+                          'wizards.appOperation.autoStartDelayHint' | translate
+                        }}</span>
+                      </div>
+                      <app-number-input
+                        [ngModel]="scheduleStartupDelay()"
+                        (ngModelChange)="setDelay('startup', $event)"
+                        [min]="0"
+                        [allowNegative]="false"
+                        [ariaLabel]="'wizards.appOperation.autoStartDelay' | translate"
+                      />
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            @if (needsCloudSchedule()) {
+              <app-alert-banner
+                severity="info"
+                [title]="'modals.intentGuide.when.cloudHint' | translate"
+              />
+            }
+            @if (!scheduleValid()) {
+              <app-alert-banner
+                severity="warning"
+                [title]="'modals.intentGuide.when.invalidCron' | translate"
+              />
+            }
+
+            <ul class="effect-list">
+              @for (line of scheduleLines(); track line.key) {
+                <li>
+                  <mat-icon
+                    [svgIcon]="
+                      line.key === 'manual'
+                        ? 'play'
+                        : line.key === 'watch'
+                          ? 'bolt'
+                          : line.key === 'cron'
+                            ? 'calendar'
+                            : 'power-off'
+                    "
+                    aria-hidden="true"
+                  ></mat-icon>
+                  <span>
+                    {{
+                      'modals.intentGuide.review.schedule.' + line.key
+                        | translate: { when: line.when }
+                    }}
+                  </span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      }
+
+      <!-- ── 4. Here is what will happen ──────────────────────────────── -->
+      @case ('review') {
+        @if (p) {
+          <section class="guide-step">
+            <h2 class="guide-heading">{{ 'modals.intentGuide.review.heading' | translate }}</h2>
+
+            <div
+              class="flow-diagram"
+              [attr.data-flow]="p.flow"
+              [attr.data-tone]="p.operationType ? 'primary' : null"
+              aria-hidden="true"
+            >
+              @if (p.flow === 'cloudToCloud') {
+                <div class="flow-node">
+                  <mat-icon [svgIcon]="iconService.getIconName(remoteType())"></mat-icon>
+                  <strong>{{ remoteName() }}</strong>
+                  <code class="truncate">{{
+                    cloudFolder() || ('modals.intentGuide.review.wholeCloud' | translate)
+                  }}</code>
+                </div>
+              } @else if (p.flow === 'share') {
+                <div class="flow-node">
+                  <mat-icon [svgIcon]="iconService.getIconName(remoteType())"></mat-icon>
+                  <strong>{{ remoteName() }}</strong>
+                  <code class="truncate">{{
+                    cloudFolder() || ('modals.intentGuide.review.wholeCloud' | translate)
+                  }}</code>
+                </div>
+              } @else {
+                <div class="flow-node">
+                  <mat-icon
+                    [svgIcon]="
+                      env()?.isAndroid
+                        ? 'mobiledata-arrows'
+                        : env()?.isServer
+                          ? 'server'
+                          : 'desktop'
+                    "
+                  ></mat-icon>
+                  <strong>{{ place }}</strong>
+                  <code class="truncate">
+                    {{
+                      usesSaf() ? ('modals.intentGuide.places.filesApp' | translate) : localPath()
+                    }}
+                  </code>
+                </div>
+              }
+              <div class="flow-arrow">
+                <span class="flow-dot"></span><span class="flow-dot"></span
+                ><span class="flow-dot"></span>
+              </div>
+              @if (p.flow === 'cloudToCloud') {
+                <div class="flow-node">
+                  <mat-icon [svgIcon]="iconService.getIconName(otherRemoteType())"></mat-icon>
+                  <strong>{{ targetRemote() }}</strong>
+                  <code class="truncate">{{
+                    targetFolder() || ('modals.intentGuide.review.wholeCloud' | translate)
+                  }}</code>
+                </div>
+              } @else if (p.flow === 'share') {
+                <div class="flow-node">
+                  <mat-icon [svgIcon]="sharePlace().icon"></mat-icon>
+                  <strong>{{ 'modals.intentGuide.places.' + sharePlace().key | translate }}</strong>
+                  <code class="truncate">{{
+                    'modals.intentGuide.places.homeNetwork' | translate
+                  }}</code>
+                </div>
+              } @else {
+                <div class="flow-node">
+                  <mat-icon [svgIcon]="iconService.getIconName(remoteType())"></mat-icon>
+                  <strong>{{ remoteName() }}</strong>
+                  <code class="truncate">{{
+                    cloudFolder() || ('modals.intentGuide.review.wholeCloud' | translate)
+                  }}</code>
+                </div>
+              }
+            </div>
+
+            @if (sameSetup(); as same) {
+              <app-alert-banner
+                severity="info"
+                [title]="'modals.intentGuide.review.duplicate' | translate: { name: same.name }"
+              >
+                <button matButton (click)="showSetup(same)">
+                  {{ 'modals.intentGuide.setups.show' | translate }}
+                </button>
+              </app-alert-banner>
+            }
+
+            <div class="detail-card review-card">
+              <p class="guide-summary">
+                {{
+                  'modals.intentGuide.review.summary.' + summaryKey()
+                    | translate: { local: localPath(), cloud: cloudLabel(), target: targetLabel() }
+                }}
+              </p>
+
+              <ul class="effect-list">
+                @for (e of effects(); track e.key) {
+                  <li [attr.data-tone]="effectTone(e.tone)">
+                    <mat-icon [svgIcon]="e.icon" aria-hidden="true"></mat-icon>
+                    <span>{{ 'modals.intentGuide.effects.' + e.key | translate }}</span>
+                  </li>
+                }
+                @for (line of scheduleLines(); track line.key) {
+                  <li>
+                    <mat-icon
+                      [svgIcon]="
+                        line.key === 'manual'
+                          ? 'play'
+                          : line.key === 'watch'
+                            ? 'bolt'
+                            : line.key === 'cron'
+                              ? 'calendar'
+                              : 'power-off'
+                      "
+                      aria-hidden="true"
+                    ></mat-icon>
+                    <span>
+                      {{
+                        'modals.intentGuide.review.schedule.' + line.key
+                          | translate: { when: line.when }
+                      }}
+                    </span>
+                  </li>
+                }
+              </ul>
+            </div>
+
+            @if (details().length) {
+              <div class="detail-card">
+                <span class="section-label">
+                  <mat-icon svgIcon="info" aria-hidden="true"></mat-icon>
+                  {{ 'modals.intentGuide.review.detailsTitle' | translate }}
+                </span>
+                <ul class="detail-list">
+                  @for (d of details(); track $index) {
+                    <li>
+                      <mat-icon [svgIcon]="d.icon" aria-hidden="true"></mat-icon>
+                      <span class="detail-text">
+                        {{ 'modals.intentGuide.details.' + d.key | translate: d.params }}
+                        @if (d.value) {
+                          <code class="detail-value">{{ d.value }}</code>
+                        }
+                      </span>
+                      @if (d.copy && d.value) {
+                        <button
+                          type="button"
+                          class="action-button"
+                          [appCopyToClipboard]="d.value"
+                          [attr.aria-label]="'common.copy' | translate"
+                          [attr.title]="'common.copy' | translate"
+                        >
+                          <mat-icon svgIcon="copy"></mat-icon>
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+
+            @let a = advice();
+            @if (a) {
+              <app-alert-banner
+                [severity]="a.tone === 'warn' ? 'warning' : 'success'"
+                [icon]="a.tone === 'warn' ? 'warning' : 'check-circle'"
+                [title]="
+                  'modals.intentGuide.advice.' + a.key
+                    | translate
+                      : {
+                          size: a.bytes['size'] | formatFileSize,
+                          free: a.bytes['free'] | formatFileSize,
+                          cloud: a.bytes['cloud'] | formatFileSize,
+                        }
+                "
+              />
+            } @else if (measuring() > 0) {
+              <p class="hint">
+                <mat-icon svgIcon="spinner" aria-hidden="true"></mat-icon>
+                {{ 'modals.intentGuide.measuring' | translate }}
+              </p>
+            }
+
+            @if (needsMountPlugin()) {
+              <app-alert-banner
+                severity="warning"
+                [title]="'modals.intentGuide.review.mountPlugin.title' | translate"
+                [description]="'modals.intentGuide.review.mountPlugin.description' | translate"
+              >
+                <button matButton="filled" data-tone="primary" (click)="installMountPlugin()">
+                  {{ 'modals.intentGuide.review.mountPlugin.install' | translate }}
+                </button>
+              </app-alert-banner>
+            }
+
+            @if (p.firstRunResync) {
+              <app-alert-banner
+                severity="info"
+                [title]="'modals.intentGuide.review.firstRun' | translate"
+              />
+            }
+
+            <div class="detail-card">
+              <span class="section-label">
+                {{ 'modals.intentGuide.review.destination.title' | translate }}
+              </span>
+              <div class="destination-options">
+                <button
+                  appPill
+                  type="button"
+                  [selected]="destination() === 'profile'"
+                  (click)="destination.set('profile')"
+                >
+                  <mat-icon svgIcon="server"></mat-icon>
+                  {{ 'modals.intentGuide.review.destination.profile' | translate }}
+                </button>
+                <button
+                  appPill
+                  type="button"
+                  [selected]="destination() === 'quick_run'"
+                  (click)="destination.set('quick_run')"
+                >
+                  <mat-icon svgIcon="bolt"></mat-icon>
+                  {{ 'modals.intentGuide.review.destination.quickRun' | translate }}
+                </button>
+              </div>
+              <p class="hint">
+                {{
+                  destination() === 'profile'
+                    ? ('modals.intentGuide.review.destination.hintProfile'
+                      | translate: { remote: remoteName() })
+                    : ('modals.intentGuide.review.destination.hintQuickRun' | translate)
+                }}
+              </p>
+            </div>
+
+            @if (offersStartOnLogin()) {
+              <mat-slide-toggle
+                data-tone="accent"
+                [checked]="startOnLogin()"
+                (change)="startOnLogin.set($event.checked)"
+              >
+                {{ 'modals.intentGuide.review.startOnLogin' | translate }}
+              </mat-slide-toggle>
+            }
+
+            @if (p.canPreview) {
+              @let pv = preview();
+              <div class="preview-card">
+                @switch (pv.state) {
+                  @case ('idle') {
+                    <div class="preview-intro">
+                      <mat-icon svgIcon="eye" aria-hidden="true"></mat-icon>
+                      <div>
+                        <strong>{{ 'modals.intentGuide.preview.title' | translate }}</strong>
+                        <p>{{ 'modals.intentGuide.preview.description' | translate }}</p>
+                      </div>
+                    </div>
+                    <button matButton="tonal" type="button" (click)="runPreview()">
+                      {{ 'modals.intentGuide.preview.run' | translate }}
+                    </button>
+                  }
+                  @case ('running') {
+                    @let job = previewJob();
+                    <div class="preview-intro">
+                      <mat-icon svgIcon="spinner" aria-hidden="true"></mat-icon>
+                      <div>
+                        <strong>{{ 'modals.intentGuide.preview.running' | translate }}</strong>
+                        @if (job) {
+                          <p>
+                            {{
+                              'modals.intentGuide.preview.checked'
+                                | translate: { count: job.stats.checks + job.stats.transfers }
+                            }}
+                            @if (job.stats.elapsedTime > 0) {
+                              ·
+                              {{
+                                'modals.intentGuide.preview.elapsed'
+                                  | translate: { time: job.stats.elapsedTime | formatEta }
+                              }}
+                            }
+                          </p>
+                        }
+                      </div>
+                    </div>
+                    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                    <p class="slow-note">
+                      <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                      {{ 'modals.intentGuide.preview.slowNote' | translate }}
+                    </p>
+                    <button matButton type="button" (click)="cancelPreview()">
+                      {{ 'common.cancel' | translate }}
+                    </button>
+                  }
+                  @case ('done') {
+                    @if (previewResult(); as r) {
+                      @if (r.groups.length) {
+                        <div
+                          class="preview-tiles"
+                          role="tablist"
+                          [attr.aria-label]="'modals.intentGuide.preview.title' | translate"
+                        >
+                          @for (g of r.groups; track g.kind) {
+                            <button
+                              type="button"
+                              role="tab"
+                              class="preview-tile"
+                              [attr.data-tone]="previewStyle[g.kind].tone"
+                              [class.selected]="previewKind() === g.kind"
+                              [attr.aria-selected]="previewKind() === g.kind"
+                              (click)="selectPreviewKind(g.kind)"
+                            >
+                              <mat-icon
+                                [svgIcon]="previewStyle[g.kind].icon"
+                                aria-hidden="true"
+                              ></mat-icon>
+                              <span class="tile-count">{{ g.files.length }}</span>
+                              <span class="tile-label">{{
+                                'modals.intentGuide.preview.groups.' + g.kind | translate
+                              }}</span>
+                              @if (g.bytes) {
+                                <span class="tile-size">{{ g.bytes | formatFileSize }}</span>
+                              }
+                            </button>
+                          }
+                        </div>
+
+                        @if (previewGroup(); as g) {
+                          <p class="hint" [attr.data-tone]="previewStyle[g.kind].tone">
+                            {{ 'modals.intentGuide.preview.groupHints.' + g.kind | translate }}
+                          </p>
+                          @if (g.kind === 'delete') {
+                            <app-alert-banner
+                              severity="warning"
+                              [title]="'modals.intentGuide.preview.deleteWarning' | translate"
+                            />
+                          }
+
+                          @if (g.files.length > previewPage) {
+                            <mat-form-field class="preview-search">
+                              <mat-label>{{
+                                'modals.intentGuide.preview.search' | translate
+                              }}</mat-label>
+                              <input
+                                matInput
+                                type="search"
+                                autocomplete="off"
+                                [ngModel]="previewQuery()"
+                                (ngModelChange)="setPreviewQuery($event)"
+                              />
+                            </mat-form-field>
+                          }
+
+                          <ul
+                            class="preview-files"
+                            [attr.data-tone]="previewStyle[g.kind].tone"
+                            tabindex="0"
+                            [attr.aria-label]="
+                              'modals.intentGuide.preview.groups.' + g.kind | translate
+                            "
+                          >
+                            @for (f of previewVisible(); track f.path) {
+                              <li>
+                                <mat-icon
+                                  [svgIcon]="previewStyle[g.kind].icon"
+                                  aria-hidden="true"
+                                ></mat-icon>
+                                <span class="file-path truncate" [attr.title]="f.path">{{
+                                  f.path
+                                }}</span>
+                                @if (f.size !== undefined) {
+                                  <span class="file-size">{{ f.size | formatFileSize }}</span>
+                                }
+                              </li>
+                            } @empty {
+                              <li class="no-files">
+                                {{ 'modals.intentGuide.preview.noMatches' | translate }}
+                              </li>
+                            }
+                          </ul>
+
+                          @if (previewMatches().length > previewVisible().length) {
+                            <button
+                              matButton
+                              type="button"
+                              (click)="previewLimit.set(previewLimit() + previewPage)"
+                            >
+                              {{ 'modals.intentGuide.preview.showMore' | translate }}
+                              <span appPill size="xs" tone="dim">{{
+                                previewMatches().length - previewVisible().length
+                              }}</span>
+                            </button>
+                          }
+                        }
+
+                        @if (r.matched) {
+                          <p class="hint">
+                            <mat-icon svgIcon="check-circle" aria-hidden="true"></mat-icon>
+                            {{
+                              'modals.intentGuide.preview.unchanged'
+                                | translate: { count: r.matched }
+                            }}
+                          </p>
+                        }
+                      } @else if (r.counts.transfers || r.counts.deletes) {
+                        <ul class="preview-counts">
+                          <li>
+                            <mat-icon svgIcon="copy" aria-hidden="true"></mat-icon>
+                            <span>
+                              {{
+                                'modals.intentGuide.preview.transfers'
+                                  | translate: { count: r.counts.transfers }
+                              }}
+                              @if (r.counts.bytes) {
+                                <span class="dim">({{ r.counts.bytes | formatFileSize }})</span>
+                              }
+                            </span>
+                          </li>
+                          <li [attr.data-tone]="r.counts.deletes ? 'warn' : 'primary'">
+                            <mat-icon
+                              [svgIcon]="r.counts.deletes ? 'trash' : 'shield'"
+                              aria-hidden="true"
+                            ></mat-icon>
+                            <span>
+                              @if (r.counts.deletes) {
+                                {{
+                                  'modals.intentGuide.preview.deletes'
+                                    | translate: { count: r.counts.deletes }
+                                }}
+                              } @else {
+                                {{ 'modals.intentGuide.preview.noDeletes' | translate }}
+                              }
+                            </span>
+                          </li>
+                        </ul>
+                      } @else {
+                        <div class="preview-intro">
+                          <mat-icon
+                            svgIcon="check-circle"
+                            data-tone="primary"
+                            aria-hidden="true"
+                          ></mat-icon>
+                          <strong>{{ 'modals.intentGuide.preview.nothing' | translate }}</strong>
+                        </div>
+                      }
+                      @if (r.counts.errors && !previewGroups().includes('error')) {
+                        <p class="hint" data-tone="warn">
+                          {{
+                            'modals.intentGuide.preview.errors'
+                              | translate: { count: r.counts.errors }
+                          }}
+                        </p>
+                      }
+                      <button matButton type="button" (click)="runPreview()">
+                        <mat-icon svgIcon="refresh"></mat-icon>
+                        {{ 'modals.intentGuide.preview.again' | translate }}
+                      </button>
+                    }
+                  }
+                  @case ('failed') {
+                    <app-alert-banner
+                      severity="warning"
+                      [title]="'modals.intentGuide.preview.failed' | translate"
+                    />
+                  }
+                }
+              </div>
+            }
+
+            @if (applyFailed()) {
+              <app-alert-banner
+                severity="error"
+                [title]="'modals.intentGuide.applyFailed' | translate"
+              />
+            }
+
+            <p class="technical">
+              <span appPill size="xs" tone="dim">{{
+                'modals.intentGuide.review.technical' | translate
+              }}</span>
+              {{ operationLabel() | translate }}
+              <button matButton type="button" (click)="openAdvanced()">
+                {{ 'modals.intentGuide.review.advanced' | translate }}
+              </button>
+            </p>
+          </section>
+        }
+      }
+
+      <!-- ── 5. Setting up ────────────────────────────────────────────── -->
+      @case ('working') {
+        @let job = workingJob();
+        <div class="empty-state">
+          <mat-icon svgIcon="spinner"></mat-icon>
+          <span>
+            {{
+              (p?.firstRunResync && job
+                ? 'modals.intentGuide.working.firstRun'
+                : 'modals.intentGuide.working.saving'
+              ) | translate
+            }}
+          </span>
+          @if (p?.firstRunResync && job) {
+            <p>
+              {{ job.stats.bytes | formatFileSize }}
+              @if (job.stats.totalBytes) {
+                / {{ job.stats.totalBytes | formatFileSize }}
+              }
+            </p>
+            <mat-progress-bar
+              [mode]="job.stats.totalBytes ? 'determinate' : 'indeterminate'"
+              [value]="job.stats.totalBytes ? (job.stats.bytes / job.stats.totalBytes) * 100 : 0"
+            ></mat-progress-bar>
+            @if (job.stats.elapsedTime > 0) {
+              <p>
+                {{
+                  'modals.intentGuide.preview.elapsed'
+                    | translate: { time: job.stats.elapsedTime | formatEta }
+                }}
+              </p>
+            }
+            <p class="slow-note">
+              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+              {{ 'modals.intentGuide.working.slowNote' | translate }}
+            </p>
+            <p>{{ 'modals.intentGuide.working.canClose' | translate }}</p>
+          }
+        </div>
+      }
+
+      <!-- ── 6. Done ──────────────────────────────────────────────────── -->
+      @case ('done') {
+        @let r = result();
+        @if (undoState() === 'removed') {
+          <section class="guide-step done">
+            <mat-icon
+              class="done-icon"
+              svgIcon="trash"
+              data-tone="dim"
+              aria-hidden="true"
+            ></mat-icon>
+            <h2>{{ 'modals.intentGuide.undo.removedTitle' | translate }}</h2>
+            <p class="guide-summary">
+              {{ 'modals.intentGuide.undo.removed' | translate: { name: r?.name } }}
+            </p>
+            <div class="done-actions">
+              <button matButton="filled" data-tone="primary" (click)="startOver()">
+                <mat-icon svgIcon="plus"></mat-icon>
+                {{ 'modals.intentGuide.done.another' | translate }}
+              </button>
+              <button matButton (click)="close()">{{ 'common.close' | translate }}</button>
+            </div>
+          </section>
+        } @else {
+          <section class="guide-step done">
+            <mat-icon
+              class="done-icon"
+              svgIcon="check-circle"
+              data-tone="primary"
+              aria-hidden="true"
+            ></mat-icon>
+            <h2>{{ 'modals.intentGuide.done.title' | translate }}</h2>
+            <p class="guide-summary">
+              {{
+                'modals.intentGuide.done.' + doneKey()
+                  | translate
+                    : {
+                        path: r?.execution?.mountPoint || localPath(),
+                        name: shareName() || remoteName(),
+                        port: portOfAddr(r?.execution?.serveAddr) ?? sharePort(),
+                      }
+              }}
+            </p>
+            @if (failureReason(); as reason) {
+              <p class="failure-reason">
+                {{ 'modals.intentGuide.done.failureReason' | translate: { reason } }}
+              </p>
+            }
+            @let links = shareLinks();
+            @if (links.length) {
+              <div class="share-card">
+                <div class="share-block">
+                  <span class="share-label">
+                    {{ 'modals.intentGuide.done.shareAddress' | translate }}
+                  </span>
+                  <div class="share-field is-main">
+                    <code>{{ links[0] }}</code>
+                    <button
+                      type="button"
+                      class="action-button"
+                      [appCopyToClipboard]="links[0]"
+                      [attr.aria-label]="'common.copy' | translate"
+                      [attr.title]="'common.copy' | translate"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
+                  </div>
+                </div>
+                @if (links.length > 1) {
+                  <div class="share-block">
+                    <span class="share-label">
+                      {{ 'modals.intentGuide.done.shareOtherAddresses' | translate }}
+                    </span>
+                    @for (url of links.slice(1); track url) {
+                      <div class="share-field">
+                        <code>{{ url }}</code>
+                        <button
+                          type="button"
+                          class="action-button"
+                          [appCopyToClipboard]="url"
+                          [attr.aria-label]="'common.copy' | translate"
+                          [attr.title]="'common.copy' | translate"
+                        >
+                          <mat-icon svgIcon="copy"></mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+                <dl class="share-login">
+                  <div>
+                    <dt>
+                      <mat-icon svgIcon="user" aria-hidden="true"></mat-icon>
+                      {{ 'modals.intentGuide.done.shareUser' | translate }}
+                    </dt>
+                    <dd>
+                      <code>{{ shareUser() }}</code>
+                      <button
+                        type="button"
+                        class="action-button"
+                        [appCopyToClipboard]="shareUser()"
+                        [attr.aria-label]="'common.copy' | translate"
+                        [attr.title]="'common.copy' | translate"
+                      >
+                        <mat-icon svgIcon="copy"></mat-icon>
+                      </button>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <mat-icon svgIcon="key" aria-hidden="true"></mat-icon>
+                      {{ 'modals.intentGuide.done.sharePassword' | translate }}
+                    </dt>
+                    <dd class="dim">
+                      {{ 'modals.intentGuide.done.sharePasswordHint' | translate }}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              <div class="share-trouble">
+                <span class="share-label">
+                  {{ 'modals.intentGuide.done.troubleTitle' | translate }}
+                </span>
+                <ul class="detail-list">
+                  <li>
+                    <mat-icon svgIcon="globe" aria-hidden="true"></mat-icon>
+                    <span class="detail-text">
+                      @if (network()?.viaBackend) {
+                        {{
+                          'modals.intentGuide.done.troubleNetworkRemote'
+                            | translate: { host: network()?.addresses?.[0] }
+                        }}
+                      } @else {
+                        {{ 'modals.intentGuide.done.troubleNetwork' | translate }}
+                      }
+                    </span>
+                  </li>
+                  <li>
+                    <mat-icon svgIcon="shield" aria-hidden="true"></mat-icon>
+                    <span class="detail-text">
+                      {{
+                        'modals.intentGuide.done.troubleFirewall'
+                          | translate: { port: portOfAddr(r?.execution?.serveAddr) ?? sharePort() }
+                      }}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            }
+            <div class="done-actions">
+              @if (openablePath()) {
+                <button matButton="filled" data-tone="primary" (click)="openFolder()">
+                  <mat-icon svgIcon="folder-open"></mat-icon>
+                  {{ 'modals.intentGuide.done.openFolder' | translate }}
+                </button>
+              }
+              <button matButton="tonal" (click)="showWhere()">
+                <mat-icon [svgIcon]="r?.destination === 'profile' ? 'server' : 'bolt'"></mat-icon>
+                {{
+                  (r?.destination === 'profile'
+                    ? 'modals.intentGuide.done.whereProfile'
+                    : 'modals.intentGuide.done.whereQuickRun'
+                  ) | translate
+                }}
+              </button>
+              <button matButton (click)="openInFiles()">
+                <mat-icon svgIcon="cloud"></mat-icon>
+                {{ 'modals.intentGuide.done.openCloud' | translate }}
+              </button>
+              <button matButton (click)="startOver()">
+                <mat-icon svgIcon="plus"></mat-icon>
+                {{ 'modals.intentGuide.done.another' | translate }}
+              </button>
+            </div>
+            <div class="done-notes">
+              @if (r) {
+                <p class="hint">
+                  {{
+                    (r.destination === 'profile'
+                      ? 'modals.intentGuide.done.findItProfile'
+                      : 'modals.intentGuide.done.findIt'
+                    ) | translate: { name: r.name, remote: remoteName() }
+                  }}
+                </p>
+                <p class="technical">
+                  <span appPill size="xs" tone="dim">{{
+                    'modals.intentGuide.review.technical' | translate
+                  }}</span>
+                  {{ operationLabel() | translate }}
+                </p>
+              }
+            </div>
+            @if (r) {
+              <div class="undo-row">
+                @switch (undoState()) {
+                  @case ('working') {
+                    <span class="undo-question">{{
+                      'modals.intentGuide.undo.working' | translate
+                    }}</span>
+                  }
+                  @default {
+                    <button matButton (click)="undo()">
+                      <mat-icon svgIcon="trash"></mat-icon>
+                      {{ 'modals.intentGuide.undo.action' | translate }}
+                    </button>
+                  }
+                }
+              </div>
+              @if (undoState() === 'failed') {
+                <app-alert-banner
+                  severity="error"
+                  [title]="'modals.intentGuide.undo.failed' | translate"
+                />
+              }
+            }
+          </section>
+        }
+      }
+    }
+  }
+</main>
+
+<footer>
+  @if (!isLoading() && !loadFailed() && remotes().length && step() !== 'working') {
+    <button
+      type="button"
+      matButton
+      [attr.aria-pressed]="settingsOpen()"
+      [attr.title]="'modals.intentGuide.settings.title' | translate"
+      (click)="toggleSettings()"
+    >
+      <mat-icon svgIcon="gear"></mat-icon>
+      {{ 'modals.intentGuide.settings.title' | translate }}
+    </button>
+    <span class="spacer"></span>
+  }
+  @if (settingsOpen()) {
+    <button matButton="filled" data-tone="primary" (click)="toggleSettings()">
+      {{ 'modals.intentGuide.settings.done' | translate }}
+    </button>
+  } @else {
+    @switch (step()) {
+      @case ('question') {
+        <button matButton (click)="back()">{{ 'common.back' | translate }}</button>
+      }
+      @case ('setups') {
+        <button matButton (click)="back()">{{ 'common.back' | translate }}</button>
+      }
+      @case ('where') {
+        <button matButton (click)="back()">{{ 'common.back' | translate }}</button>
+        <button
+          matButton="filled"
+          data-tone="primary"
+          [disabled]="!whereValid()"
+          (click)="afterWhere()"
+        >
+          {{ 'common.continue' | translate }}
+        </button>
+      }
+      @case ('when') {
+        <button matButton (click)="back()">{{ 'common.back' | translate }}</button>
+        <button
+          matButton="filled"
+          data-tone="primary"
+          [disabled]="!scheduleValid()"
+          (click)="toReview()"
+        >
+          {{ 'common.continue' | translate }}
+        </button>
+      }
+      @case ('review') {
+        <button matButton (click)="back()">{{ 'common.back' | translate }}</button>
+        <button
+          matButton="filled"
+          data-tone="primary"
+          [disabled]="needsMountPlugin() || preview().state === 'running'"
+          (click)="apply()"
+        >
+          <mat-icon svgIcon="play"></mat-icon>
+          {{ 'modals.intentGuide.review.start' | translate }}
+        </button>
+      }
+    }
+  }
+</footer>

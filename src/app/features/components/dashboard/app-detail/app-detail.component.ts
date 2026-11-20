@@ -8,6 +8,8 @@ import {
   output,
   linkedSignal,
   signal,
+  effect,
+  untracked,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -101,6 +103,7 @@ import {
 
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 
@@ -165,6 +168,7 @@ export class AppDetailComponent {
   private readonly backendService = inject(BackendService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly systemHealth = inject(SystemHealthService);
+  private readonly uiState = inject(UiStateService);
 
   readonly mountWarningDismissed = signal(false);
 
@@ -754,6 +758,32 @@ export class AppDetailComponent {
       activity: this.transferActivityConfig(),
     };
   });
+
+  /**
+   * Opens the profile another part of the app asked for: the operation it belongs to on the
+   * operations tab, then its card. The request is taken once; this page is created after the
+   * request when the main menu was not open, so it is read when it appears, too.
+   */
+  constructor() {
+    effect(() => {
+      const request = this.uiState.profileRequest();
+      if (
+        !request ||
+        this.mode() !== 'remote' ||
+        request.remoteName !== this.selectedRemoteName()
+      ) {
+        return;
+      }
+      untracked(() => {
+        const op = request.operationType;
+        if (this.isOperationsType() && (SYNC_TYPES as readonly string[]).includes(op)) {
+          this.onSyncOpSelect(op as SyncOperationType);
+        }
+        if (this.currentOpType() === op) this.onProfileSelect(request.profile);
+        this.uiState.clearProfileRequest();
+      });
+    });
+  }
 
   // --- Public Methods ---
 

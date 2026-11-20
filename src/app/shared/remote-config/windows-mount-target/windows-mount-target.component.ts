@@ -17,6 +17,10 @@ import {
 import { FormControl, ReactiveFormsModule, Validators, type ValidatorFn } from '@angular/forms';
 import { type PathInspectionStatus } from '@app/types';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
+import {
+  inspectAfterPause,
+  PathInspectionService,
+} from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CdkOverlayAutoposDirective } from '../../directives/cdk-overlay-autopos.directive';
 import { generatePrefixedId } from '../../utils/id.util';
 import { PillDirective } from '../../directives/pill.directive';
@@ -74,14 +78,20 @@ export class WindowsMountTargetComponent {
   readonly pathControl = input.required<FormControl>();
   readonly networkModeControl = input<FormControl | null>(null);
   readonly volumeNameControl = input<FormControl | null>(null);
-  readonly inspection = input<PathInspectionStatus | null>(null);
   readonly currentRemoteName = input.required<string>();
   readonly currentProfileName = input<string | null>(null);
+  /** The Quick Run being edited, so that its own folder or letter does not count as taken. */
+  readonly currentQuickRunId = input<string | null>(null);
   readonly mountProfiles = input<Record<string, unknown>>();
   readonly folderPickerDisabled = input(false);
   readonly selectFolder = output();
 
   private readonly windowsMountTarget = inject(WindowsMountTargetService);
+  private readonly inspector = inject(PathInspectionService);
+  /** What the mount path is now: free, taken by another mount, an existing folder or a file. */
+  protected readonly inspection = signal<PathInspectionStatus | null>(null);
+  private cancelInspection: (() => void) | null = null;
+  private lastInspection: string | null = null;
   private readonly destroyRef = inject(DestroyRef);
   private readonly pathSelection = inject(PathSelectionService);
   private readonly folderField = generatePrefixedId('mount-folder');
@@ -107,11 +117,49 @@ export class WindowsMountTargetComponent {
   private readonly targetContext = computed(() => ({
     remote: this.currentRemoteName(),
     profile: this.currentProfileName(),
+    quickRunId: this.currentQuickRunId(),
     control: this.pathControl(),
   }));
 
+  private inspectPath(
+    path: string,
+    remote: string,
+    profile: string | null,
+    quickRunId: string | null
+  ): void {
+    const key = JSON.stringify([remote, profile, quickRunId, path]);
+    if (this.lastInspection === key) return;
+    this.lastInspection = key;
+    this.cancelInspection?.();
+    this.cancelInspection = null;
+    this.inspection.set(null);
+    if (!path) return;
+    this.cancelInspection = inspectAfterPause(
+      this.inspector,
+      {
+        path,
+        remoteName: remote,
+        profileName: profile ?? undefined,
+        operation: 'mount',
+        quickRunId,
+      },
+      status => {
+        if (String(this.pathControl().value ?? '').trim() === path) this.inspection.set(status);
+      }
+    );
+  }
+
   constructor() {
-    this.destroyRef.onDestroy(() => this.pathSelection.unregisterField(this.folderField));
+    this.destroyRef.onDestroy(() => {
+      this.pathSelection.unregisterField(this.folderField);
+      this.cancelInspection?.();
+    });
+    effect(() => {
+      this.pathValueVersion();
+      const context = this.targetContext();
+      const path = String(context.control.value ?? '').trim();
+      untracked(() => this.inspectPath(path, context.remote, context.profile, context.quickRunId));
+    });
     effect(() => {
       this.targetContext();
       this.mountProfiles();
@@ -229,7 +277,8 @@ export class WindowsMountTargetComponent {
         this.currentRemoteName(),
         this.currentProfileName() ?? undefined,
         this.mountProfiles(),
-        untracked(this.selectedDriveLetter)
+        untracked(this.selectedDriveLetter),
+        this.currentQuickRunId()
       );
       if (!this.destroyRef.destroyed && request === this.driveRequest) {
         this.driveOptions.set(options);

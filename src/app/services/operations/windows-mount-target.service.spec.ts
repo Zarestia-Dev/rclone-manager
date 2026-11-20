@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { type MountPathCollision } from '@app/types';
+import { type MountPathCollision, type QuickRun } from '@app/types';
 import { checkMountPathCollision } from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { QuickRunService } from '../flow/quick-run.service';
 import { FileSystemService } from './file-system.service';
 import { MountManagementService } from './mount-management.service';
 import { WindowsMountTargetService } from './windows-mount-target.service';
@@ -19,6 +20,7 @@ describe('WindowsMountTargetService', () => {
   const getSettings = vi.fn();
   const getMounts = vi.fn();
   let cachedMounts: object[] = [];
+  let quickRuns: QuickRun[] = [];
   const refreshMounts = vi.fn();
   let service: WindowsMountTargetService;
 
@@ -26,6 +28,7 @@ describe('WindowsMountTargetService', () => {
     physicalFree.mockReset().mockResolvedValue(['Y:', 'W:', 'V:', 'U:']);
     getSettings.mockReset().mockResolvedValue(settings);
     refreshMounts.mockReset().mockResolvedValue(undefined);
+    quickRuns = [];
     cachedMounts = [
       { mount_point: 'X:', fs: 'office:share', starter: { kind: 'profile', name: 'Main' } },
       { mount_point: 'U:', fs: 'office:', starter: { kind: 'profile', name: 'Other' } },
@@ -50,6 +53,7 @@ describe('WindowsMountTargetService', () => {
           },
         },
         { provide: AppSettingsService, useValue: { getRemoteSettings: getSettings } },
+        { provide: QuickRunService, useValue: { quickRuns: (): QuickRun[] => quickRuns } },
         {
           provide: PathService,
           useValue: {
@@ -58,11 +62,15 @@ describe('WindowsMountTargetService', () => {
               letter: string,
               remote: string,
               config: Record<string, unknown>,
-              name: string
+              name: string,
+              _operation?: string,
+              quick?: { runs: QuickRun[]; exceptId?: string | null }
             ): MountPathCollision[] =>
               checkMountPathCollision(letter, remote, config, () => true, name, {
                 pathStyle: 'windows',
                 currentOperation: 'mount',
+                quickRuns: quick?.runs,
+                currentQuickRunId: quick?.exceptId,
               }),
           },
         },
@@ -87,6 +95,41 @@ describe('WindowsMountTargetService', () => {
       status('V:'),
       status('U:'),
     ]).toEqual(['occupied', 'current', 'reserved', 'free', 'reserved', 'occupied']);
+  });
+
+  it('reserves the letter of a Quick Run that mounts there', async () => {
+    quickRuns = [
+      {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'office',
+        config: { app: {}, rclone: { mountPoint: 'W:' } },
+      },
+    ];
+    const options = await service.getDriveOptions('office', 'Main');
+    expect(options.find(o => o.letter === 'W:')?.status).toBe('reserved');
+    expect(options.find(o => o.letter === 'V:')?.status).toBe('free');
+  });
+
+  it('does not reserve the letter for the Quick Run that is being edited', async () => {
+    quickRuns = [
+      {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'office',
+        config: { app: {}, rclone: { mountPoint: 'W:' } },
+      },
+    ];
+    const options = await service.getDriveOptions(
+      'office',
+      undefined,
+      undefined,
+      undefined,
+      'qr-1'
+    );
+    expect(options.find(o => o.letter === 'W:')?.status).toBe('free');
   });
 
   it('previews the automatic Z-to-D assignment as rclone makes it: free letters only, fixed profiles do not matter', async () => {

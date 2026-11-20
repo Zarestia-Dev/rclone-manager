@@ -13,16 +13,16 @@
   <ng-template #addMenu>
     <div class="material-context-menu" cdkMenu>
       <button cdkMenuItem (cdkMenuItemTriggered)="newRemote()" class="menu-item">
-        <mat-icon svgIcon="server"></mat-icon>
-        <span>{{ 'flow.quickRun.editor.remote' | translate }}</span>
+        <span>{{ 'flow.addMenu.remote' | translate }}</span>
       </button>
       <button cdkMenuItem (cdkMenuItemTriggered)="newQuickRun()" class="menu-item">
-        <mat-icon svgIcon="quick-run"></mat-icon>
-        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+        <span>{{ 'flow.addMenu.quickRun' | translate }}</span>
       </button>
       <button cdkMenuItem (cdkMenuItemTriggered)="newWorkflow()" class="menu-item">
-        <mat-icon svgIcon="workflow"></mat-icon>
-        <span>{{ 'flow.tabs.workflow' | translate }}</span>
+        <span>{{ 'flow.addMenu.workflow' | translate }}</span>
+      </button>
+      <button cdkMenuItem (cdkMenuItemTriggered)="openGuide()" class="menu-item">
+        <span>{{ 'titlebar.menu.intentGuide' | translate }}</span>
       </button>
     </div>
   </ng-template>

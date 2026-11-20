@@ -8,11 +8,11 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="mount" data-tone="accent" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="mount" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.mounts' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span appPill [tone]="mountsList.length > 0 ? 'primary' : 'dim'">
+      <span appPill [tone]="mountsList.length > 0 ? tone : 'dim'">
         {{
           mountsList.length > 0
             ? ('generalOverview.mounts.activeCount' | translate: { count: mountsList.length })

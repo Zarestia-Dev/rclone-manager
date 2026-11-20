@@ -4,6 +4,7 @@ import { mountDriveLetter } from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { QuickRunService } from '../flow/quick-run.service';
 import { FileSystemService } from './file-system.service';
 import { MountManagementService } from './mount-management.service';
 
@@ -19,13 +20,15 @@ export class WindowsMountTargetService {
   private readonly files = inject(FileSystemService);
   private readonly mounts = inject(MountManagementService);
   private readonly paths = inject(PathService);
+  private readonly quickRuns = inject(QuickRunService);
   private readonly settings = inject(AppSettingsService);
 
   async getDriveOptions(
     remote: string,
     profile: string | undefined,
     draftProfiles?: Record<string, unknown>,
-    selectedLetter?: string
+    selectedLetter?: string,
+    quickRunId?: string | null
   ): Promise<MountDriveOption[]> {
     const scope = this.backend.activeBackend();
     const [freeLetters, settings] = await Promise.all([
@@ -73,6 +76,7 @@ export class WindowsMountTargetService {
           [remote]: { ...settings[remote], [REMOTE_CONFIG_KEYS.mount]: draftProfiles },
         }
       : settings;
+    const quick = { runs: this.quickRuns.quickRuns(), exceptId: quickRunId };
 
     return Array.from({ length: 26 }, (_, index): MountDriveOption => {
       const letter = String.fromCharCode(90 - index) + ':';
@@ -84,7 +88,8 @@ export class WindowsMountTargetService {
       // rclone picks the first free letter from Z down to D for `*`.
       const availableForAutomatic = letter[0] >= 'D' && free.has(letter) && atLetter.length === 0;
       const reserved =
-        this.paths.checkMountPathCollision(letter, remote, effective, profile, 'mount').length > 0;
+        this.paths.checkMountPathCollision(letter, remote, effective, profile, 'mount', quick)
+          .length > 0;
       if (reserved) return { letter, status: 'reserved', availableForAutomatic };
       return { letter, status: ownsLetter ? 'current' : 'free', availableForAutomatic };
     });

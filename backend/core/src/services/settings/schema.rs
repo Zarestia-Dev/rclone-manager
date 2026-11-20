@@ -337,6 +337,37 @@ impl Default for DeveloperSettings {
     }
 }
 
+/// The "What do you want to do?" setup guide
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[schema(category = "wizard")]
+pub struct WizardSettings {
+    #[setting(
+        label = "settings.wizard.after_remote.label",
+        description = "settings.wizard.after_remote.description"
+    )]
+    pub after_remote: bool,
+
+    #[setting(
+        label = "settings.wizard.destination.label",
+        description = "settings.wizard.destination.description",
+        options(
+            ("auto", "settings.wizard.destination.options.auto"),
+            ("quick_run", "settings.wizard.destination.options.quick_run"),
+            ("profile", "settings.wizard.destination.options.profile")
+        )
+    )]
+    pub destination: String,
+}
+
+impl Default for WizardSettings {
+    fn default() -> Self {
+        Self {
+            after_remote: true,
+            destination: "auto".to_string(),
+        }
+    }
+}
+
 /// Runtime settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "runtime")]
@@ -464,6 +495,7 @@ pub struct AppSettings {
     pub general: GeneralSettings,
     pub core: CoreSettings,
     pub developer: DeveloperSettings,
+    pub wizard: WizardSettings,
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
 }
@@ -561,6 +593,37 @@ mod feature_tests {
             .unwrap();
         assert_eq!(manager.get::<u32>("general.ui_scale").unwrap(), 100);
         assert!(!manager.get::<bool>("general.restrict").unwrap());
+    }
+
+    // The setup guide reads these three values, so the options and the defaults are fixed.
+    #[test]
+    fn wizard_settings_offer_what_the_guide_reads_and_default_on_older_files() {
+        use super::WizardSettings;
+        let metadata = WizardSettings::get_metadata();
+        let options: Vec<&str> = metadata["wizard.destination"]
+            .constraints
+            .options
+            .as_ref()
+            .expect("destination is a select setting")
+            .iter()
+            .map(|option| option.value.as_str().unwrap())
+            .collect();
+        assert_eq!(options, ["auto", "quick_run", "profile"]);
+
+        // A settings file saved before the category existed.
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"general": {"language": "en-US", "restrict": false}}"#,
+        )
+        .unwrap();
+        let manager = rcman::SettingsManager::builder("wizard", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<super::AppSettings>()
+            .build()
+            .unwrap();
+        assert!(manager.get::<bool>("wizard.after_remote").unwrap());
+        assert_eq!(manager.get::<String>("wizard.destination").unwrap(), "auto");
     }
 
     #[test]

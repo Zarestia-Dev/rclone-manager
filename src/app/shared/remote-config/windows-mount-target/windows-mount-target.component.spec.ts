@@ -154,12 +154,15 @@ describe('WindowsMountTargetComponent', () => {
       badgeClass: 'non-empty',
       labelKey: 'wizards.appOperation.mountFolderAlreadyExists',
     };
-    fixture.componentRef.setInput('inspection', status);
+    inspect.mockResolvedValue(status);
     fixture.componentRef.setInput('volumeNameControl', new FormControl('Backup'));
     fixture.detectChanges();
 
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.mount-use-parent')).not.toBeNull();
+    });
     const button = fixture.nativeElement.querySelector('.mount-use-parent') as HTMLButtonElement;
-    expect(button).not.toBeNull();
     button.click();
     fixture.detectChanges();
 

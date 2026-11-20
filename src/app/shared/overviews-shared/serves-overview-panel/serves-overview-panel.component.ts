@@ -12,7 +12,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { Origin, ServeListItem, matchesOriginFilter } from '@app/types';
+import { Origin, ServeListItem, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
 import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
@@ -34,6 +34,8 @@ import { PillDirective } from '../../directives/pill.directive';
   styleUrl: '../../../styles/_overview-card-panel.scss',
 })
 export class ServesOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.serves;
   readonly expanded = model<boolean>(false);
 
   readonly defaultOriginFilter = input<Origin | 'all'>('all');

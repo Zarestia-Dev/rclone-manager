@@ -15,6 +15,7 @@ import { AppSettingsService } from '../settings/app-settings.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
+import { ModalService } from '../ui/modal.service';
 import { NotificationService } from '../ui/notification.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
@@ -103,6 +104,8 @@ describe('RemoteCreationOrchestrator', () => {
   let startBatch: ReturnType<typeof vi.fn>;
   let notifyError: ReturnType<typeof vi.fn>;
   let notifySuccess: ReturnType<typeof vi.fn>;
+  let openIntentGuide: ReturnType<typeof vi.fn>;
+  let getSettingValue: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     remoteService = {
@@ -126,14 +129,20 @@ describe('RemoteCreationOrchestrator', () => {
     startBatch = vi.fn().mockResolvedValue(undefined);
     notifyError = vi.fn();
     notifySuccess = vi.fn();
+    openIntentGuide = vi.fn();
+    getSettingValue = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
+        { provide: ModalService, useValue: { openIntentGuide } },
         RemoteCreationOrchestrator,
         { provide: BackendService, useValue: { activeBackend: signal('Local') } },
         { provide: RemoteManagementService, useValue: remoteService },
         { provide: AuthStateService, useValue: auth },
-        { provide: AppSettingsService, useValue: { saveRemoteSettings: saveSettings } },
+        {
+          provide: AppSettingsService,
+          useValue: { saveRemoteSettings: saveSettings, getSettingValue },
+        },
         {
           provide: MountManagementService,
           useValue: { mountRemoteProfile: vi.fn().mockResolvedValue(undefined) },
@@ -256,11 +265,25 @@ describe('RemoteCreationOrchestrator', () => {
       );
     });
 
+    it('leaves the setup guide closed when the settings turn it off', async () => {
+      getSettingValue.mockResolvedValue(false);
+      expect(await service.createRemote(remote, config, stepwise)).toBe(true);
+      expect(getSettingValue).toHaveBeenCalledWith('wizard.after_remote');
+      expect(openIntentGuide).not.toHaveBeenCalled();
+    });
+
+    it('opens the setup guide when the setting cannot be read', async () => {
+      getSettingValue.mockRejectedValue(new Error('no settings'));
+      expect(await service.createRemote(remote, config, stepwise)).toBe(true);
+      expect(openIntentGuide).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
+    });
+
     it('completes a remote without questions and saves settings once', async () => {
       expect(await service.createRemote(remote, config, stepwise)).toBe(true);
       expect(remoteService.updateRemote).not.toHaveBeenCalled();
       expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, 'Local');
       expect(notifySuccess).toHaveBeenCalledOnce();
+      expect(openIntentGuide).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
       expect(auth.resetAuthState).toHaveBeenCalledOnce();
       expect(service.interactiveFlowState().isActive).toBe(false);
     });
@@ -522,6 +545,7 @@ describe('RemoteCreationOrchestrator', () => {
       expect(save).toHaveBeenCalledOnce();
       expect(saveSettings).not.toHaveBeenCalled();
       expect(notifySuccess).toHaveBeenCalledOnce();
+      expect(openIntentGuide).not.toHaveBeenCalled();
       expect(auth.resetAuthState).toHaveBeenCalledOnce();
     });
 
