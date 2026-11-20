@@ -578,7 +578,8 @@ mod tests {
             json!({"path": "drive:trash"}),
         ] {
             assert!(
-                workflow_with(&[config.clone()]).mentions_remote("drive", &quick_run_of_drive),
+                workflow_with(std::slice::from_ref(&config))
+                    .mentions_remote("drive", &quick_run_of_drive),
                 "{config}"
             );
         }
@@ -599,7 +600,8 @@ mod tests {
             json!({"delaySeconds": 5, "cronExpression": "0 2 * * *"}),
         ] {
             assert!(
-                !workflow_with(&[config.clone()]).mentions_remote("drive", &quick_run_of_drive),
+                !workflow_with(std::slice::from_ref(&config))
+                    .mentions_remote("drive", &quick_run_of_drive),
                 "{config}"
             );
         }

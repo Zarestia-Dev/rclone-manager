@@ -142,8 +142,10 @@ mod tests {
     #[tokio::test]
     async fn the_child_is_stopped_through_the_backend_it_was_spawned_for() {
         let (_directory, manager) = manager_with_active_remote().await;
-        let mut engine = RcApiEngine::default();
-        engine.process_backend = Some(LOCAL_BACKEND_NAME.to_string());
+        let mut engine = RcApiEngine {
+            process_backend: Some(LOCAL_BACKEND_NAME.to_string()),
+            ..Default::default()
+        };
 
         let owner = engine.process_owner(&manager).await;
 

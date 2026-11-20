@@ -109,6 +109,11 @@ jobs:
           for features in flatpak mobile; do
             cargo clippy --locked -p rclone-manager --no-default-features --features "$features" -- -D warnings
           done
+      - name: Test code
+        if: runner.os == 'Linux'
+        run: |
+          cargo clippy --locked -p rclone-manager-core --all-targets --features desktop,tray,updater,notifications,autostart -- -D warnings
+          cargo clippy --locked -p rclone-manager --all-targets --no-default-features --features desktop,tray,tauri-test -- -D warnings
       - name: Core and server unit tests
         if: runner.os == 'Linux'
         run: |

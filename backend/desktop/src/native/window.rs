@@ -163,7 +163,8 @@ mod tests {
         use super::portal_string;
         let plain = zbus::Variant::from("appmenu:close");
         assert_eq!(portal_string(&plain), Some("appmenu:close".to_string()));
-        let wrapped = zbus::Variant::from(zbus::Variant::from("close,minimize,maximize:"));
+        let wrapped =
+            zbus::Variant::Variant(Box::new(zbus::Variant::from("close,minimize,maximize:")));
         assert_eq!(
             portal_string(&wrapped),
             Some("close,minimize,maximize:".to_string())

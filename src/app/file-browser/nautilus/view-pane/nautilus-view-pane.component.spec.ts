@@ -149,7 +149,11 @@ describe('NautilusViewPaneComponent (SRC-UX-003)', () => {
         this: HTMLElement
       ) {
         if (this === container) return new DOMRect(0, 0, 100, 300);
-        const index = Array.from(container.querySelectorAll(selector)).indexOf(this);
+        // Items are siblings, so their DOM order is their order among the parent's children.
+        // Querying the container for every item instead made the test slow enough to time out.
+        const index = this.matches(selector)
+          ? Array.prototype.indexOf.call(this.parentElement?.children ?? [], this)
+          : -1;
         return new DOMRect(10, index * 10 - container.scrollTop, 80, 10);
       });
       let selected = new Set<string>();

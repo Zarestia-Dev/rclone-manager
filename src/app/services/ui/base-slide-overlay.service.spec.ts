@@ -38,6 +38,7 @@ describe('BaseSlideOverlayService', () => {
     attach: vi.fn(() => ({ location: { nativeElement: document.createElement('div') } })),
     dispose: vi.fn(),
     backdropClick: vi.fn(() => NEVER),
+    hostElement: document.createElement('div'),
   };
   const create = vi.fn(() => overlayRef);
 

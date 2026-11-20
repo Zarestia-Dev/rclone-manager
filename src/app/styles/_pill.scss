@@ -70,7 +70,7 @@
     // --- Tone: the colour role comes from the global tone scope in custom-theme.scss ---------
     &[data-tone] {
       --pill-rgb: var(--tone-rgb);
-      --pill-color: var(--tone);
+      --pill-color: var(--tone-text);
       --pill-on: var(--tone-on);
     }
 
