@@ -218,23 +218,28 @@ export class RemoteFacadeService {
         if (payload.isLocked) this.resetCatalogue();
       });
 
-    // Primary trigger: engine ready event (fires after caches are populated)
+    // Primary trigger: engine ready event (fires after caches are populated). The status,
+    // mount, serve and job services reload themselves on it, so only the remotes are left.
     this.eventListeners
       .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed())
-      .subscribe(() => void this.refreshAll());
+      .subscribe(() => void this.loadRemotes());
 
-    // Secondary trigger: status changes (handles reconnection after disconnects)
+    // Secondary trigger: status changes (handles reconnection after disconnects). The first
+    // reading is not a reconnection: it comes from the startup refresh itself.
     let wasAccessible = this.canLoad();
     let previousStatus = this.statusService.rcloneStatus();
+    let statusRead = false;
     effect(() => {
       const accessible = this.canLoad();
       const status = this.statusService.rcloneStatus();
-      if (accessible && (!wasAccessible || (status === 'active' && previousStatus !== 'active'))) {
+      const reconnected = statusRead && status === 'active' && previousStatus !== 'active';
+      if (accessible && (!wasAccessible || reconnected)) {
         untracked(() => void this.refreshAll());
       }
       wasAccessible = accessible;
       previousStatus = status;
+      statusRead ||= !untracked(this.statusService.isLoading);
     });
 
     // Event-driven reactive store updates:

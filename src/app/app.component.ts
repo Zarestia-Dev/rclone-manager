@@ -117,6 +117,7 @@ export class AppComponent implements OnInit {
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();
+    this.preloadMainUi();
 
     // Start listening for Android share intents (no-op on desktop/web).
     this.androidShareService.initialize();
@@ -288,6 +289,24 @@ export class AppComponent implements OnInit {
     if (defaultView === 'nautilus' || defaultView === 'flow' || defaultView === 'main_menu') {
       this.uiStateService.setDefaultView(defaultView as MainView);
     }
+  }
+
+  /**
+   * The main UI is the usual first view, and its lazy chunks are only requested once the vault
+   * and settings have loaded. Requesting them now, alongside those calls, saves several round
+   * trips when the web UI is used over a network.
+   */
+  private preloadMainUi(): void {
+    if (
+      this.modalService.isDialogStandalone() ||
+      this.nautilusService.isStandaloneWindow() ||
+      this.flowOverlayService.isStandaloneWindow()
+    ) {
+      return;
+    }
+    import('./layout/main-ui-container.component').catch(() => {
+      /* The @defer block loads it again and reports any error. */
+    });
   }
 
   private connectSseIfHeadless(): void {
