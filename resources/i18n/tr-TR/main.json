@@ -1134,6 +1134,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "URL'yi kopyalamak için tıkla",
+        "openUrl": "Tarayıcıda aç",
         "stop": "Bu sunumu durdur",
         "copyId": "Kimliği kopyalamak için tıkla"
       },
@@ -1145,6 +1146,8 @@
     },
     "mountCard": {
       "copyPath": "Bağlama noktasını kopyalamak için tıkla",
+      "mountType": "Bağlama türü",
+      "mountedOn": "Bağlanma zamanı",
       "open": "Dosya tarayıcısında aç",
       "unmount": "Bu uzak bağlantının bağlantısını kes"
     },
@@ -1523,7 +1526,6 @@
       "mountDriveTarget": "Sürücü",
       "mountFolderPathRequired": "Yeni bir alt klasörün tam yolunu girin.",
       "mountFolderQuotesRemoved": "Yolu çevreleyen tırnak işaretleri kaldırıldı.",
-      "mountFolderSubfolderAdded": "Yola bir alt klasör adı eklendi.",
       "mountFolderNameHint": "Klasör adını değiştirmek için yolun son bölümünü düzenleyin. Klasör bağlama sırasında oluşturulur.",
       "mountLocalDrive": "Yerel disk",
       "mountNetworkDrive": "Ağ sürücüsü",
@@ -1534,7 +1536,6 @@
       "mountDriveSuggestion": "Önerilen sürücü: {{letter}} · Her zaman aynı harfi kullanmak için listeden seçin.",
       "mountAutomaticDriveHint": "Bağlama sırasında boş bir sürücü harfi seçilir.",
       "mountDriveReserved": "Başka bir profil için ayrılmış",
-      "mountDriveConflict": "{{letter}} sürücüsü kullanımda veya ayrılmış. Başka bir harf seçin.",
       "mountDriveLetter": "Sürücü harfi",
       "mountParentFolder": "Üst klasörü seç",
       "mountFolderHint": "Bir klasöre bağlama yerel disk kullanır. Üst klasörü seçin ve henüz var olmayan bir klasör adı girin.",
@@ -3322,6 +3323,7 @@
       "progress": "İlerleme:",
       "of": "/",
       "eta": "Tahmini Süre:",
+      "elapsed": "Geçen süre:",
       "speed": "Transfer Hızı:",
       "transfers": "Transferler:",
       "checks": "Kontroller:",
