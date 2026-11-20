@@ -148,6 +148,17 @@
   // Dim/Muted
   --dim-color: color-mix(in srgb, var(--window-fg-color) 55%, transparent);
 
+  // Text in a tone colour, as libadwaita derives accent_color, success_color and so on from the
+  // fill: the same hue at OKLab lightness 0.5 at most here (0.85 at least in dark mode), so text
+  // stays readable while fills keep the palette colour. Read through var(--tone-text).
+  --primary-color-text: #007c3d;
+  --accent-color-text: #0461be;
+  --orange-text: #b22e00;
+  --yellow-text: #815f00;
+  --purple-text: #8939a4;
+  --warn-color-text: #c30000;
+  --dim-color-text: var(--dim-color);
+
   // Shadows
   --shadow-color: rgba(0, 0, 0, 0.08);
 
@@ -217,6 +228,13 @@
 
   // Dim/Muted
   --dim-color: color-mix(in srgb, var(--window-fg-color) 55%, transparent);
+  --primary-color-text: #64eca5;
+  --accent-color-text: #81d0ff;
+  --orange-text: #ffa34a;
+  --yellow-text: #f6d32d;
+  --purple-text: #fba7ff;
+  --warn-color-text: #ff877b;
+  --dim-color-text: var(--dim-color);
 
   // Shadows
   --shadow-color: rgba(0, 0, 0, 0.3);
@@ -655,12 +673,21 @@ $dark-theme: (
   }
 }
 
+// libadwaita's high contrast style raises dim text from 55% to 90% of the foreground. Follow the
+// system's equivalent, "increase contrast" (prefers-contrast: more).
+@media (prefers-contrast: more) {
+  .light,
+  .dark {
+    --dim-color: color-mix(in srgb, var(--window-fg-color) 90%, transparent);
+  }
+}
+
 // ============================================================================
 // TONE SCOPE
 // ============================================================================
 // [data-tone] gives an element and everything inside it one colour role: an operation (bisync is
 // purple, serve is accent), a status, a pill. Read it with var(--tone) / var(--tone-rgb), text on
-// a solid fill with var(--tone-on). It also sets --mat-sys-primary, so Material controls inside
+// a solid fill with var(--tone-on), and text on a plain or tinted background with var(--tone-text). It also sets --mat-sys-primary, so Material controls inside
 // (progress bars, toggles, filled buttons) follow the role. Roles are the PillTone values in
 // src/app/shared/types/pill.ts; the operation registry decides which operation gets which.
 @each $tone, $color, $on in ("primary" "primary-color" "warning-fg-color"),
@@ -672,6 +699,7 @@ $dark-theme: (
     --tone: var(--#{$color});
     --tone-rgb: var(--#{$color}-rgb);
     --tone-on: var(--#{$on});
+    --tone-text: var(--#{$color}-text);
     --mat-sys-primary: var(--tone);
   }
 }
@@ -848,7 +876,7 @@ button {
         [matFab],
         [data-variant="solid"]
       ):not(.app-pill) {
-      color: var(--accent-fg-color) !important;
+      color: var(--tone-on) !important;
       background: var(--tone) !important;
     }
   }
