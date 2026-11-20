@@ -1134,6 +1134,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "Clique para copiar o URL",
+        "openUrl": "Abrir no navegador",
         "stop": "Parar esse serviço",
         "copyId": "Clique para copiar o ID"
       },
@@ -1145,6 +1146,8 @@
     },
     "mountCard": {
       "copyPath": "Clique para copiar o ponto de montagem",
+      "mountType": "Tipo de montagem",
+      "mountedOn": "Montado em",
       "open": "Abrir no navegador de arquivos",
       "unmount": "Desmontar este remoto"
     },
@@ -1523,7 +1526,6 @@
       "mountDriveTarget": "Unidade",
       "mountFolderPathRequired": "Digite o caminho completo de uma nova subpasta.",
       "mountFolderQuotesRemoved": "As aspas foram removidas do caminho.",
-      "mountFolderSubfolderAdded": "Um nome de subpasta foi adicionado ao caminho.",
       "mountFolderNameHint": "Para alterar o nome da pasta, edite a última parte do caminho. A pasta é criada ao montar.",
       "mountLocalDrive": "Disco local",
       "mountNetworkDrive": "Unidade de rede",
@@ -1534,7 +1536,6 @@
       "mountDriveSuggestion": "Unidade sugerida: {{letter}} · Escolha uma letra na lista para usá-la sempre.",
       "mountAutomaticDriveHint": "Uma letra de unidade livre é escolhida ao montar.",
       "mountDriveReserved": "Reservada por outro perfil",
-      "mountDriveConflict": "A unidade {{letter}} está em uso ou reservada. Escolha outra letra.",
       "mountDriveLetter": "Letra da unidade",
       "mountParentFolder": "Escolher pasta pai",
       "mountFolderHint": "A montagem em uma pasta usa um disco local. Escolha a pasta pai e um nome de pasta que ainda não exista.",
@@ -3322,6 +3323,7 @@
       "progress": "Progresso:",
       "of": "de",
       "eta": "Tempo restante:",
+      "elapsed": "Decorrido:",
       "speed": "Velocidade de Transferência:",
       "transfers": "Transferências:",
       "checks": "Verificações:",
