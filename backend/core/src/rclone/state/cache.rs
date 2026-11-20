@@ -50,6 +50,8 @@ impl RemoteCache {
                     m.starter = e.starter.clone();
                     m.execute_id = e.execute_id.clone();
                     m.origin = e.origin.clone();
+                    m.mount_type = e.mount_type.clone();
+                    m.mounted_on = m.mounted_on.or(e.mounted_on);
                 }
                 m
             })
@@ -655,10 +657,16 @@ mod tests {
             )),
             origin: Some(crate::utils::types::origin::Origin::Dashboard),
             execute_id: Some("exec-1".to_string()),
+            mounted_on: None,
+            mount_type: Some("cmount".to_string()),
         }];
 
         // Incoming mount from rclone with trailing slash
-        let incoming = vec![MountedRemote::new("drive:", "/mnt/drive/")];
+        let mut incoming = vec![MountedRemote::new("drive:", "/mnt/drive/")];
+        let mounted_on = chrono::DateTime::parse_from_rfc3339("2026-11-19T10:00:00.5+01:00")
+            .unwrap()
+            .to_utc();
+        incoming[0].mounted_on = Some(mounted_on);
 
         let merged = RemoteCache::merge_mount_profiles(incoming, &existing);
         assert_eq!(merged.len(), 1);
@@ -680,6 +688,9 @@ mod tests {
             merged[0].origin,
             Some(crate::utils::types::origin::Origin::Dashboard)
         );
+        // rclone knows when it mounted, not which type the app asked for.
+        assert_eq!(merged[0].mounted_on, Some(mounted_on));
+        assert_eq!(merged[0].mount_type.as_deref(), Some("cmount"));
     }
 
     #[test]
@@ -710,6 +721,8 @@ mod tests {
             starter: Some(Starter::profile("profile-a")),
             origin: None,
             execute_id: None,
+            mounted_on: None,
+            mount_type: None,
         }];
 
         // Initial update: should return true (changed from empty)

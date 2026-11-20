@@ -2,38 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { mapFormToConfigProfile } from './profile-mapper.utils';
 
 describe('mapFormToConfigProfile path mapping', () => {
-  it.each([
-    ['X:/', 'X:'],
-    ['x:/', 'x:'],
-    ['X:', 'X:'],
-    ['X:\\', 'X:\\'],
-    ['X:/folder', 'X:/folder'],
-    ['X', 'X'],
-    ['*', '*'],
-    ['1:/', '1:/'],
-  ])('maps the Windows mount destination %s to %s', (path, expected) => {
-    const result = mapFormToConfigProfile(
-      'mount',
-      { dest: { type: 'local', path } },
-      { remoteName: 'drive', pathStyle: 'windows' }
-    );
-    expect(result['rclone']).toEqual({ mountPoint: expected });
-  });
-
-  it('preserves the same path on POSIX and for non-mount operations', () => {
-    const form = { dest: { type: 'local', path: 'X:/' } };
-    const mount = mapFormToConfigProfile('mount', form, {
-      remoteName: 'drive',
-      pathStyle: 'posix',
-    });
-    const copy = mapFormToConfigProfile('copy', form, {
-      remoteName: 'drive',
-      pathStyle: 'windows',
-    });
-    expect(mount['rclone']).toEqual({ mountPoint: 'X:/' });
-    expect(copy['rclone']).toEqual({ dstFs: 'X:/' });
-  });
-
   it('maps multiple local and remote sources without service dependencies', () => {
     const result = mapFormToConfigProfile(
       'copy',

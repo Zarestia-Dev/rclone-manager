@@ -1134,6 +1134,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "Click to copy URL",
+        "openUrl": "Open in the browser",
         "stop": "Stop this serve",
         "copyId": "Click to copy ID"
       },
@@ -1145,6 +1146,8 @@
     },
     "mountCard": {
       "copyPath": "Click to copy the mount point",
+      "mountType": "Mount type",
+      "mountedOn": "Mounted on",
       "open": "Open in the file browser",
       "unmount": "Unmount this remote"
     },
@@ -1523,7 +1526,6 @@
       "mountDriveTarget": "Drive letter",
       "mountFolderPathRequired": "Enter a full path to a new subfolder.",
       "mountFolderQuotesRemoved": "Quotation marks were removed from the path.",
-      "mountFolderSubfolderAdded": "A subfolder name was added to the path.",
       "mountFolderNameHint": "To change the folder name, edit the last part of the path. The folder is created when you mount.",
       "mountLocalDrive": "Local disk",
       "mountNetworkDrive": "Network drive",
@@ -1534,7 +1536,6 @@
       "mountDriveSuggestion": "Suggested drive: {{letter}} · Choose a letter from the list to use it every time.",
       "mountAutomaticDriveHint": "A free drive letter is selected when mounting.",
       "mountDriveReserved": "Reserved by another profile",
-      "mountDriveConflict": "Drive {{letter}} is occupied or reserved. Choose another letter.",
       "mountDriveLetter": "Drive letter",
       "mountParentFolder": "Choose parent folder",
       "mountFolderHint": "A folder mount uses a local disk. Choose its parent and use a folder name that does not exist yet.",
@@ -3322,6 +3323,7 @@
       "progress": "Progress:",
       "of": "of",
       "eta": "ETA:",
+      "elapsed": "Elapsed:",
       "speed": "Transfer Speed:",
       "transfers": "Transfers:",
       "checks": "Checks:",

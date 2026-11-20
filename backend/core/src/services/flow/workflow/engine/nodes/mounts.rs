@@ -76,6 +76,10 @@ pub(crate) async fn mount_node(
     mount_params.backend = Some(backend.clone());
     mount_params.starter = Some(Starter::Workflow(ctx.workflow_run(node)));
     mount_params.execute_id = Some(ctx.run_id.clone());
+    // Normalised here, not only inside `mount_remote`, to match the mounts already listed.
+    mount_params
+        .normalize_windows_mount_point(app, backend)
+        .await;
 
     if ctx.dry_run {
         info!(
@@ -91,9 +95,6 @@ pub(crate) async fn mount_node(
         })));
     }
 
-    mount_params
-        .normalize_windows_mount_point(app, backend)
-        .await;
     let backend_manager = app.state::<BackendManager>();
     let existing_mount = {
         let mounted = backend_manager

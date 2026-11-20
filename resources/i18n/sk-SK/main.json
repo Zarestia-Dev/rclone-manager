@@ -1142,6 +1142,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "Kliknutím skopírujete URL",
+        "openUrl": "Otvoriť v prehliadači",
         "stop": "Zastaviť tento server",
         "copyId": "Kliknutím skopírujete ID"
       },
@@ -1153,6 +1154,8 @@
     },
     "mountCard": {
       "copyPath": "Kliknutím skopírujete prípojný bod",
+      "mountType": "Typ pripojenia",
+      "mountedOn": "Pripojené",
       "open": "Otvoriť v prehliadači súborov",
       "unmount": "Odpojiť toto úložisko"
     },
@@ -1534,7 +1537,6 @@
       "mountDriveTarget": "Jednotka",
       "mountFolderPathRequired": "Zadaj úplnú cestu k novému podpriečinku.",
       "mountFolderQuotesRemoved": "Úvodzovky sme z cesty odstránili.",
-      "mountFolderSubfolderAdded": "Doplnili sme názov podpriečinka.",
       "mountFolderNameHint": "Ak chceš zmeniť názov priečinka, prepíš poslednú časť cesty. Priečinok vznikne pri pripojení.",
       "mountLocalDrive": "Lokálny disk",
       "mountNetworkDrive": "Sieťový disk",
@@ -1545,7 +1547,6 @@
       "mountDriveSuggestion": "Návrh jednotky: {{letter}} · Ak chceš používať stále rovnaké písmeno, vyber ho zo zoznamu.",
       "mountAutomaticDriveHint": "Voľné písmeno jednotky sa vyberie pri pripojení.",
       "mountDriveReserved": "Priradené inému profilu",
-      "mountDriveConflict": "Jednotka {{letter}} je obsadená alebo priradená inému profilu. Vyber iné písmeno.",
       "mountDriveLetter": "Písmeno jednotky",
       "mountParentFolder": "Vybrať nadradený priečinok",
       "mountFolderHint": "Pripojenie do priečinka používa lokálny disk. Vyber nadradený priečinok a zadaj názov, ktorý ešte neexistuje.",
@@ -3365,6 +3366,7 @@
       "progress": "Priebeh:",
       "of": "z",
       "eta": "Zostáva:",
+      "elapsed": "Uplynulo:",
       "speed": "Rýchlosť prenosu:",
       "transfers": "Prenosy:",
       "checks": "Kontroly:",

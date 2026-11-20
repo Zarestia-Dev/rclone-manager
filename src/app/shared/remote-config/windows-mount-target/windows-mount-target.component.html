@@ -1,6 +1,5 @@
 @let status = inspection();
 @let folder = mountLocation() === 'folder';
-@let pasteNotice = folderPasteNotice();
 
 <div class="path-list">
   <div class="path-item-row mount-path-row" data-tone="purple">
@@ -54,14 +53,7 @@
         </mat-option>
         @if (driveOptions().length) {
           @for (option of driveOptions(); track option.letter) {
-            <mat-option
-              [value]="option.letter"
-              [disabled]="
-                driveStatus() === 'unavailable' ||
-                option.status === 'occupied' ||
-                option.status === 'reserved'
-              "
-            >
+            <mat-option [value]="option.letter" [disabled]="driveStatus() === 'unavailable'">
               {{ option.letter }}
               @if (option.status !== 'free') {
                 ({{ driveStatusLabels[option.status] | translate }})
@@ -96,12 +88,7 @@
         />
       </mat-form-field>
       <div class="action-suffix">
-        @if (
-          status?.labelKey === existingFolderLabel &&
-          !checkingFolderPaste() &&
-          !folderPathInvalid() &&
-          pasteNotice !== 'subfolder'
-        ) {
+        @if (status?.state === 'exists' && !folderPathInvalid()) {
           <button
             matIconButton
             class="mount-use-parent"
@@ -136,21 +123,16 @@
     @if (folderPathInvalid()) {
       <div data-tone="warn">{{ 'wizards.appOperation.mountFolderPathRequired' | translate }}</div>
     } @else if (
-      !checkingFolderPaste() &&
       status &&
       status.state !== 'willCreate' &&
       status.state !== 'clean' &&
-      (status.state !== 'checking' || !pasteNotice)
+      (status.state !== 'checking' || !quotesRemoved())
     ) {
       <div [attr.data-tone]="status.state === 'checking' ? 'dim' : 'warn'">
         {{ status.labelKey | translate: { details: status.details || '' } }}
       </div>
-    } @else if (pasteNotice === 'subfolder') {
-      <div>{{ 'wizards.appOperation.mountFolderSubfolderAdded' | translate }}</div>
-    } @else if (pasteNotice === 'quotes') {
+    } @else if (quotesRemoved()) {
       <div>{{ 'wizards.appOperation.mountFolderQuotesRemoved' | translate }}</div>
-    } @else if (checkingFolderPaste()) {
-      <div>{{ 'remoteConfig.pathStatus.checking' | translate }}</div>
     }
   </div>
 } @else if (status?.state === 'notDirectory') {
@@ -234,7 +216,9 @@
     } @else if (status && status.state !== 'clean') {
       <span
         [attr.data-tone]="
-          status.state === 'colliding' || status.state === 'nonEmpty' ? 'warn' : 'dim'
+          status.state === 'colliding' || status.state === 'nonEmpty' || status.state === 'exists'
+            ? 'warn'
+            : 'dim'
         "
       >
         {{ status.labelKey | translate: { details: status.details || '' } }}

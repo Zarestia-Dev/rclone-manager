@@ -144,9 +144,12 @@ async fn ensure_empty_folder(folder: &str) -> Result<(), String> {
 #[tauri::command]
 #[cfg(all(desktop, target_os = "windows"))]
 pub fn get_available_drive_letters() -> Result<Vec<String>, String> {
-    rclone_manager_core::utils::io::windows_drives::occupied_or_pending_drives()
-        .map(available_drive_letters)
-        .map_err(io_error)
+    // SAFETY: GetLogicalDrives takes no arguments and returns a bit mask.
+    let occupied = unsafe { windows_sys::Win32::Storage::FileSystem::GetLogicalDrives() };
+    if occupied == 0 {
+        return Err(io_error(std::io::Error::last_os_error()));
+    }
+    Ok(available_drive_letters(occupied))
 }
 
 #[cfg(any(all(desktop, target_os = "windows"), test))]

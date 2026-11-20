@@ -1,4 +1,11 @@
-<mat-card class="serve-card" (click)="onCardClick()">
+<mat-card
+  class="serve-card"
+  role="button"
+  tabindex="0"
+  (click)="onCardClick()"
+  (keydown.enter)="onKeyActivate($event)"
+  (keydown.space)="onKeyActivate($event)"
+>
   <!-- Card Body -->
   <div class="serve-body">
     <!-- Protocol icon + info -->
@@ -34,16 +41,28 @@
       </div>
     </div>
 
-    <!-- Stop button -->
-    <button
-      matIconButton
-      class="stop-btn"
-      data-tone="warn"
-      (click)="onStopServe(); $event.stopPropagation()"
-      [attr.title]="'shared.serveCard.tooltips.stop' | translate"
-    >
-      <mat-icon svgIcon="stop"></mat-icon>
-    </button>
+    <div class="serve-actions">
+      @if (browserUrl(); as url) {
+        <a
+          class="action-button"
+          [href]="url"
+          target="_blank"
+          rel="noopener noreferrer"
+          (click)="$event.stopPropagation()"
+          [attr.title]="'shared.serveCard.tooltips.openUrl' | translate"
+        >
+          <mat-icon svgIcon="open-link"></mat-icon>
+        </a>
+      }
+      <button
+        class="action-button"
+        data-tone="warn"
+        (click)="onStopServe(); $event.stopPropagation()"
+        [attr.title]="'shared.serveCard.tooltips.stop' | translate"
+      >
+        <mat-icon svgIcon="stop"></mat-icon>
+      </button>
+    </div>
   </div>
 
   <!-- Metadata Footer -->

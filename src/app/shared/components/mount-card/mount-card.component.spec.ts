@@ -74,4 +74,45 @@ describe('MountCardComponent', () => {
     expect(unmount).toHaveBeenCalledWith(base);
     expect(click).not.toHaveBeenCalled();
   });
+
+  describe('start time and type', () => {
+    it('shows neither for a mount that reports none', () => {
+      expect(render(base).querySelector('.mount-meta')).toBeNull();
+    });
+
+    it('shows the type and the time rclone mounted it', () => {
+      const mounted_on = '2026-11-19T10:00:00+01:00';
+      const el = render({ ...base, mount_type: 'cmount', mounted_on });
+      const pills = el.querySelectorAll('.mount-meta [appPill], .mount-meta .app-pill');
+      expect(pills[0].textContent).toContain('cmount');
+      expect(pills[1].textContent).toContain(new Date(mounted_on).toLocaleString());
+    });
+
+    it('ignores a time it cannot read', () => {
+      const el = render({ ...base, mounted_on: 'yesterday' });
+      expect(el.querySelector('.mount-meta')).toBeNull();
+    });
+  });
+
+  describe('keyboard', () => {
+    const press = (target: Element, key: string): void => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    };
+
+    it.each(['Enter', ' '])('activates the card with %j', key => {
+      const el = render(base);
+      const click = vi.fn();
+      component.cardClick.subscribe(click);
+      press(el.querySelector('mat-card') as Element, key);
+      expect(click).toHaveBeenCalledWith(base);
+    });
+
+    it('leaves the keys of the buttons inside alone', () => {
+      const el = render(base);
+      const click = vi.fn();
+      component.cardClick.subscribe(click);
+      press(el.querySelector('button') as Element, 'Enter');
+      expect(click).not.toHaveBeenCalled();
+    });
+  });
 });

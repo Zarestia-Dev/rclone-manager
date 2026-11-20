@@ -1,35 +1,28 @@
 import { Injectable, inject } from '@angular/core';
+import { LocalDrive, DefaultPathOp, PathInspectionStatus, PathStyle, profileOf } from '@app/types';
 import {
-  LocalDrive,
-  DefaultPathOp,
-  PathInspectionStatus,
-  PathStyle,
-  profileOf,
-  REMOTE_CONFIG_KEYS,
-} from '@app/types';
-import { deepEqual } from '../../../shared/utils/deep-equal.util';
-import { getRcloneCfg } from '../../../shared/utils/profile-config.util';
-import { isWindowsMountNetworkPath, normalizeForPlatform } from '../../../shared/utils/path.utils';
+  isWindowsMountNetworkPath,
+  mountDriveLetter,
+  normalizeForPlatform,
+  unquoteWindowsPath,
+} from '../../../shared/utils/path.utils';
 import { TauriBaseService } from './tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
 import { MountManagementService } from '../../operations/mount-management.service';
-import { BackendService } from '../system/backend.service';
 import { PathService } from './path.service';
 
 const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
 const BISYNC_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}-bisync';
 const HOME_FALLBACK_POSIX = '/root/rclone-manager';
 const MAX_DEFAULT_PATH_ATTEMPTS = 10;
-export const WINDOWS_MOUNT_FOLDER_EXISTS = 'wizards.appOperation.mountFolderAlreadyExists';
 
 function windowsVolumeTarget(path: string): boolean {
-  return /^[a-z]:[\\/]?$/i.test(path) || path === '*' || isWindowsMountNetworkPath(path);
+  return !!mountDriveLetter(path) || path === '*' || isWindowsMountNetworkPath(path);
 }
 
 function pathForInspection(path: string, pathStyle: PathStyle): string {
-  // Windows Explorer's "Copy as path" surrounds an absolute path with quotes.
-  return pathStyle === 'windows' ? path.replace(/^"([a-z]:[\\/][^"]+)"$/i, '$1') : path;
+  return pathStyle === 'windows' ? unquoteWindowsPath(path) : path;
 }
 
 function fileTargetLabel(windowsMount: boolean): string {
@@ -51,7 +44,6 @@ export class PathInspectionService extends TauriBaseService {
   private readonly remoteFileOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly mounts = inject(MountManagementService);
-  private readonly backend = inject(BackendService);
 
   /**
    * Freshly inspects the given path and returns its status.
@@ -61,26 +53,10 @@ export class PathInspectionService extends TauriBaseService {
     path: string,
     remoteName: string,
     currentProfileName?: string,
-    currentOperation?: DefaultPathOp,
-    {
-      checkWindowsDriveRoot = false,
-      bisyncRemote,
-    }: { checkWindowsDriveRoot?: boolean; bisyncRemote?: string } = {}
+    currentOperation?: DefaultPathOp
   ): Promise<PathInspectionStatus | null> {
     const pathStyle = this.pathService.enginePathStyle();
     const windowsMount = currentOperation === 'mount' && pathStyle === 'windows';
-    const backendName = this.backend.activeBackend();
-    if (currentOperation === 'bisync' && bisyncRemote) {
-      const error = await this.inspectProfilePath(
-        bisyncRemote + ':' + path,
-        currentOperation,
-        pathStyle,
-        backendName
-      );
-      return error
-        ? { ...PATH_INSPECTION_UNAVAILABLE, state: 'notDirectory', labelKey: error }
-        : null;
-    }
     // Automatic targets share no fixed drive letter to reserve.
     if (windowsMount && path === '*') return null;
 
@@ -107,8 +83,7 @@ export class PathInspectionService extends TauriBaseService {
     // WinFsp's directory mount is a reparse point, which rclone stat can report as a file.
     if (
       windowsMount &&
-      ((windowsVolumeTarget(path) && !(checkWindowsDriveRoot && /^[a-z]:[\\/]$/i.test(path))) ||
-        (await this.isOwnMountedFolder(path, remoteName, backendName, currentProfileName)))
+      (windowsVolumeTarget(path) || this.isOwnMountedFolder(path, remoteName, currentProfileName))
     ) {
       return null;
     }
@@ -144,10 +119,10 @@ export class PathInspectionService extends TauriBaseService {
 
       if (windowsMount) {
         return {
-          state: 'nonEmpty',
+          state: 'exists',
           icon: 'folder-open',
           badgeClass: 'non-empty',
-          labelKey: WINDOWS_MOUNT_FOLDER_EXISTS,
+          labelKey: 'wizards.appOperation.mountFolderAlreadyExists',
         };
       }
 
@@ -171,107 +146,20 @@ export class PathInspectionService extends TauriBaseService {
     }
   }
 
-  /** Reject confirmed invalid paths before creating directories or persisting profiles. */
-  async profilePathError(
-    settings: Record<string, unknown>,
-    backendName: string,
-    remoteName: string,
-    baseline: Partial<Record<DefaultPathOp, Record<string, unknown>>> = {},
-    editedProfile?: { operation: DefaultPathOp; name: string }
-  ): Promise<string | undefined> {
-    const pathStyle = this.pathService.enginePathStyle();
-    for (const operation of ['mount', 'bisync'] as const) {
-      const profiles = settings[REMOTE_CONFIG_KEYS[operation]] as
-        Record<string, unknown> | undefined;
-      const windowsMount = operation === 'mount' && pathStyle === 'windows';
-      for (const [name, profile] of Object.entries(profiles ?? {})) {
-        const explicitlyEdited =
-          editedProfile?.operation === operation && editedProfile.name === name;
-        if (!profile || (!explicitlyEdited && deepEqual(profile, baseline[operation]?.[name]))) {
-          continue;
-        }
-        const config = getRcloneCfg(profile) ?? (profile as Record<string, unknown>);
-        const paths =
-          operation === 'mount' ? [config['mountPoint']] : [config['path1'], config['path2']];
-        for (const value of paths) {
-          if (typeof value !== 'string' || !value.trim()) continue;
-          const target = value.trim();
-          if (
-            windowsMount &&
-            (windowsVolumeTarget(target) ||
-              (await this.isOwnMountedFolder(target, remoteName, backendName, name)))
-          ) {
-            continue;
-          }
-          const path = pathForInspection(target, pathStyle);
-          const error = await this.inspectProfilePath(path, operation, pathStyle, backendName);
-          if (error) return error;
-        }
-      }
-    }
-    return undefined;
-  }
-
-  private async isOwnMountedFolder(
-    path: string,
-    remoteName: string,
-    backendName: string,
-    profileName?: string
-  ): Promise<boolean> {
-    if (!profileName || !remoteName || this.backend.activeBackend() !== backendName) return false;
+  /** Reads the live mount cache signal: no IPC per keystroke. */
+  private isOwnMountedFolder(path: string, remoteName: string, profileName?: string): boolean {
+    if (!profileName || !remoteName) return false;
     const normalize = (value: string): string =>
       normalizeForPlatform(value, 'windows').replace(/\\+$/, '').toLowerCase();
     const target = normalize(path);
-    try {
-      const mounts = await this.mounts.getMountedRemotes();
-      return (
-        this.backend.activeBackend() === backendName &&
-        mounts.some(
-          mount =>
-            normalize(mount.mount_point) === target &&
-            profileOf(mount) === profileName &&
-            this.pathService.getRemoteNameFromFs(mount.fs) === remoteName
-        )
+    return this.mounts
+      .mountedRemotes()
+      .some(
+        mount =>
+          normalize(mount.mount_point) === target &&
+          profileOf(mount) === profileName &&
+          this.pathService.getRemoteNameFromFs(mount.fs) === remoteName
       );
-    } catch {
-      return false;
-    }
-  }
-
-  private async inspectProfilePath(
-    path: string,
-    operation: DefaultPathOp,
-    pathStyle: PathStyle,
-    backendName: string
-  ): Promise<string | undefined> {
-    const windowsMount = operation === 'mount' && pathStyle === 'windows';
-    let target: { root: string; relative: string };
-    if (this.pathService.isTrulyLocalPath(path, pathStyle)) {
-      target = this.pathService.splitLocalForStat(path, pathStyle);
-    } else if (operation === 'bisync') {
-      const { remote, path: relative } = this.pathService.splitFsPath(path);
-      if (!remote || !relative) return undefined;
-      target = { root: this.pathService.normalizeRemoteForRclone(remote), relative };
-    } else {
-      return undefined;
-    }
-
-    try {
-      const { root, relative } = target;
-      const stat = await this.remoteFileOps.getStat(
-        root,
-        relative,
-        undefined,
-        undefined,
-        undefined,
-        backendName
-      );
-      if (stat?.item?.IsDir === false) return fileTargetLabel(windowsMount);
-      if (stat?.item?.IsDir === true && windowsMount) return WINDOWS_MOUNT_FOLDER_EXISTS;
-    } catch {
-      // Offline or unreadable paths can still be configured.
-    }
-    return undefined;
   }
 
   /**

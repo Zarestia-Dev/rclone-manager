@@ -1126,6 +1126,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "クリックしてURLをコピー",
+        "openUrl": "ブラウザーで開く",
         "stop": "この公開サーバーを停止",
         "copyId": "クリックしてIDをコピー"
       },
@@ -1137,6 +1138,8 @@
     },
     "mountCard": {
       "copyPath": "クリックしてマウントポイントをコピー",
+      "mountType": "マウントの種類",
+      "mountedOn": "マウント日時",
       "open": "ファイルブラウザーで開く",
       "unmount": "このリモートをアンマウント"
     },
@@ -1509,7 +1512,6 @@
       "mountDriveTarget": "ドライブ",
       "mountFolderPathRequired": "新しいサブフォルダーの完全なパスを入力してください。",
       "mountFolderQuotesRemoved": "パスを囲む引用符を削除しました。",
-      "mountFolderSubfolderAdded": "パスにサブフォルダー名を追加しました。",
       "mountFolderNameHint": "フォルダー名を変えるには、パスの末尾を編集してください。フォルダーはマウント時に作成されます。",
       "mountLocalDrive": "ローカルディスク",
       "mountNetworkDrive": "ネットワークドライブ",
@@ -1520,7 +1522,6 @@
       "mountDriveSuggestion": "推奨ドライブ: {{letter}}。毎回同じ文字を使うには、一覧から選択してください。",
       "mountAutomaticDriveHint": "マウント時に空いているドライブ文字が選択されます。",
       "mountDriveReserved": "別のプロファイルで予約済み",
-      "mountDriveConflict": "ドライブ {{letter}} は使用中または予約済みです。別の文字を選択してください。",
       "mountDriveLetter": "ドライブ文字",
       "mountParentFolder": "親フォルダーを選択",
       "mountFolderHint": "フォルダーへのマウントにはローカルディスクを使用します。親フォルダーと、まだ存在しないフォルダー名を指定してください。",
@@ -3238,6 +3239,7 @@
       "progress": "進捗:",
       "of": "/",
       "eta": "完了見込み:",
+      "elapsed": "経過時間:",
       "speed": "転送速度:",
       "transfers": "転送ファイル数:",
       "checks": "チェック数:",

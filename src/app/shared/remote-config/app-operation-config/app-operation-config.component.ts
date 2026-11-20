@@ -15,13 +15,7 @@ import {
 
 import { NgTemplateOutlet } from '@angular/common';
 import { merge } from 'rxjs';
-import {
-  FormGroup,
-  ReactiveFormsModule,
-  FormArray,
-  FormControl,
-  type ValidatorFn,
-} from '@angular/forms';
+import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -40,6 +34,8 @@ import {
   FileBrowserItem,
   FilePickerSelection,
   CORE_SYNC_OPS,
+  MOUNT_NETWORK_MODE_KEYS,
+  MOUNT_VOLUME_NAME_KEYS,
   type PathGroup,
   type PathInspectionStatus,
   type DefaultPathOp,
@@ -50,10 +46,6 @@ import {
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import {
-  windowsMountFolderTarget,
-  WindowsMountTargetService,
-} from 'src/app/services/operations/windows-mount-target.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import {
@@ -64,7 +56,6 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import {
   PATH_INSPECTION_UNAVAILABLE,
   PathInspectionService,
-  WINDOWS_MOUNT_FOLDER_EXISTS,
 } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
@@ -124,6 +115,7 @@ export class OperationConfigComponent {
   > = {
     clean: 'primary',
     nonEmpty: 'orange',
+    exists: 'orange',
     unavailable: 'orange',
     notDirectory: 'warn',
     colliding: 'warn',
@@ -148,7 +140,6 @@ export class OperationConfigComponent {
 
   // Services
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly pathService = inject(PathService);
   private readonly pathInspectionService = inject(PathInspectionService);
@@ -217,22 +208,14 @@ export class OperationConfigComponent {
     () => this.isMount() && this.backendService.isWindows()
   );
   protected readonly canSelectDriveLetter = computed(
-    () => this.isWindowsMount() && this.windowsMountTarget.canCheck()
+    () => this.isMount() && this.fileSystemService.canSelectDriveLetter()
   );
-  protected readonly networkModeControl = computed(() => {
-    this.formVersion();
-    const options = this.opFormGroup().get('options');
-    return (options?.get('network_mode') ??
-      options?.get('NetworkMode') ??
-      options?.get('network-mode')) as FormControl | null;
-  });
-  protected readonly volumeNameControl = computed(() => {
-    this.formVersion();
-    const options = this.opFormGroup().get('options');
-    return (options?.get('volname') ??
-      options?.get('VolName') ??
-      options?.get('VolumeName')) as FormControl | null;
-  });
+  protected readonly networkModeControl = computed(() =>
+    this.mountOptionControl(MOUNT_NETWORK_MODE_KEYS)
+  );
+  protected readonly volumeNameControl = computed(() =>
+    this.mountOptionControl(MOUNT_VOLUME_NAME_KEYS)
+  );
   readonly isServe = computed(() => this.operationType() === 'serve');
   readonly isCoreCommandOp = computed(() => this.hasFlag('coreCommand'));
   readonly otherRemotes = computed(() =>
@@ -240,6 +223,13 @@ export class OperationConfigComponent {
   );
 
   private readonly formVersion = signal<number>(0);
+
+  private mountOptionControl(keys: readonly string[]): FormControl | null {
+    this.formVersion();
+    const options = this.opFormGroup().get('options');
+    const key = keys.find(name => options?.get(name));
+    return (key ? options?.get(key) : null) as FormControl | null;
+  }
   private readonly pathVersion = signal(0);
 
   readonly isWatchSupported = computed(
@@ -280,11 +270,6 @@ export class OperationConfigComponent {
   private readonly inspectionDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly inspectionTokens = new Map<string, number>();
   private readonly lastInspectedPaths = new Map<string, { control: FormControl; key: string }>();
-  private readonly invalidInspectedPaths = new Map<FormControl, string>();
-  private readonly inspectedPathValidator: ValidatorFn = control =>
-    this.invalidInspectedPaths.get(control as FormControl) === String(control.value ?? '').trim()
-      ? { invalidInspectedPath: true }
-      : null;
   private pathResolveToken = 0;
   private readonly generatedDefaultPaths = new WeakMap<
     FormControl,
@@ -365,7 +350,7 @@ export class OperationConfigComponent {
       ) ||
         (this.canSelectDriveLetter() &&
           this.matchesSearch(
-            ['volname', 'network mode', 'network_mode', 'network-mode', 'NetworkMode'],
+            [...MOUNT_VOLUME_NAME_KEYS, ...MOUNT_NETWORK_MODE_KEYS, 'network mode'],
             [
               'volname.title',
               'network_mode.title',
@@ -598,12 +583,9 @@ export class OperationConfigComponent {
         const activeKeys = new Set(items.map(item => `${item.group}-${item.index}`));
         const inspectedControls = new Set(
           items
-            .filter(item => needsInspection && (item.type === 'local' || opType === 'bisync'))
+            .filter(item => needsInspection && item.type === 'local')
             .map(item => item.pathControl)
         );
-        for (const control of this.invalidInspectedPaths.keys()) {
-          if (!inspectedControls.has(control)) this.setInspectedPathError(control);
-        }
         for (const [key, status] of this.pathInspectionStatuses) {
           if (!activeKeys.has(key)) {
             this.cancelAndClearInspection(key, status);
@@ -619,8 +601,7 @@ export class OperationConfigComponent {
               remoteName,
               item.inspectionStatus,
               profileName,
-              opType === 'mount' ? 'mount' : 'bisync',
-              item.type === 'local' ? undefined : item.remoteName
+              opType === 'mount' ? 'mount' : 'bisync'
             );
           } else {
             this.cancelAndClearInspection(itemKey, item.inspectionStatus);
@@ -635,7 +616,6 @@ export class OperationConfigComponent {
       this.clearAutocomplete();
       this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
       this.inspectionDebounceTimers.clear();
-      for (const control of this.invalidInspectedPaths.keys()) this.setInspectedPathError(control);
     });
   }
 
@@ -702,30 +682,21 @@ export class OperationConfigComponent {
     remoteName: string,
     statusSignal: WritableSignal<PathInspectionStatus | null>,
     profileName: string | undefined,
-    operation: DefaultPathOp,
-    bisyncRemote?: string
+    operation: DefaultPathOp
   ): void {
     const trimmedPath = String(control.value ?? '').trim();
-    if (!trimmedPath || bisyncRemote === '') {
+    if (!trimmedPath) {
       this.cancelAndClearInspection(itemKey, statusSignal);
-      this.setInspectedPathError(control);
       return;
     }
 
-    const inspectionKey = JSON.stringify([
-      remoteName,
-      profileName,
-      operation,
-      bisyncRemote,
-      trimmedPath,
-    ]);
+    const inspectionKey = JSON.stringify([remoteName, profileName, operation, trimmedPath]);
     const previous = this.lastInspectedPaths.get(itemKey);
     if (previous?.control === control && previous.key === inspectionKey) {
       return;
     }
     this.lastInspectedPaths.set(itemKey, { control, key: inspectionKey });
     statusSignal.set(null);
-    this.setInspectedPathError(control);
 
     const existingTimer = this.inspectionDebounceTimers.get(itemKey);
     if (existingTimer) {
@@ -747,12 +718,8 @@ export class OperationConfigComponent {
         labelKey: 'remoteConfig.pathStatus.checking',
       });
 
-      const result = bisyncRemote
-        ? this.pathInspectionService.inspect(trimmedPath, remoteName, profileName, operation, {
-            bisyncRemote,
-          })
-        : this.pathInspectionService.inspect(trimmedPath, remoteName, profileName, operation);
-      result
+      this.pathInspectionService
+        .inspect(trimmedPath, remoteName, profileName, operation)
         .catch(() => PATH_INSPECTION_UNAVAILABLE)
         .then(status => {
           if (
@@ -761,25 +728,10 @@ export class OperationConfigComponent {
           )
             return;
           statusSignal.set(status);
-          const invalid =
-            status?.state === 'notDirectory' || status?.labelKey === WINDOWS_MOUNT_FOLDER_EXISTS;
-          this.setInspectedPathError(control, invalid ? trimmedPath : undefined);
         });
     }, 300);
 
     this.inspectionDebounceTimers.set(itemKey, timer);
-  }
-
-  private setInspectedPathError(control: FormControl, path?: string): void {
-    if (this.invalidInspectedPaths.get(control) === path) return;
-    if (path === undefined) {
-      this.invalidInspectedPaths.delete(control);
-      control.removeValidators(this.inspectedPathValidator);
-    } else {
-      this.invalidInspectedPaths.set(control, path);
-      control.addValidators(this.inspectedPathValidator);
-    }
-    control.updateValueAndValidity();
   }
 
   setType(item: PathItem, typeValue: string): void {
@@ -855,7 +807,7 @@ export class OperationConfigComponent {
     const chooseParent = isMountDestination && this.isWindowsMount();
     const requireEmpty = isMountDestination && !chooseParent && !allowNonEmpty;
     const previousPath = item.pathControl.value;
-    const previousIsDriveFolder = /^[a-z]:[\\/].+/i.test(previousPath);
+    const previousIsDriveFolder = pathUtils.isWindowsDriveFolder(previousPath);
     const initialPath = chooseParent
       ? previousIsDriveFolder
         ? this.pathService.getParentPath(previousPath)
@@ -875,7 +827,7 @@ export class OperationConfigComponent {
           item.pathControl.value !== previousPath
         )
           return;
-        const folderTarget = windowsMountFolderTarget(
+        const folderTarget = pathUtils.windowsMountFolderTarget(
           selected,
           previousPath ?? '',
           this.currentRemoteName(),

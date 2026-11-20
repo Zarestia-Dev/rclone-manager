@@ -656,3 +656,92 @@ describe('parsePathType', () => {
     expect(pathUtils.parsePathType('otherRemote:myremote')).toBe('otherRemote');
   });
 });
+
+describe('Windows mount targets', () => {
+  const { mountDriveLetter, windowsMountFolderTarget } = pathUtils;
+
+  it('recognizes a drive letter with optional trailing root separator and case', () => {
+    expect(mountDriveLetter(' x:\\ ')).toBe('X:');
+    expect(mountDriveLetter('Y:/')).toBe('Y:');
+    expect(mountDriveLetter('D:\\Mounts')).toBeUndefined();
+    expect(mountDriveLetter('*')).toBeUndefined();
+    expect(mountDriveLetter(null)).toBeUndefined();
+  });
+
+  it('classifies drive roots, drive paths and drive folders', () => {
+    // [path, root, drive path, drive folder]
+    const cases: [string, boolean, boolean, boolean][] = [
+      ['X:', true, false, false],
+      ['x:\\', true, true, false],
+      ['X:/', true, true, false],
+      ['X:\\folder', false, true, true],
+      ['X:/folder/sub', false, true, true],
+      ['X', false, false, false],
+      ['1:\\', false, false, false],
+      ['X:folder', false, false, false],
+      ['\\\\server\\share', false, false, false],
+      ['', false, false, false],
+    ];
+    for (const [path, root, drive, folder] of cases) {
+      expect(pathUtils.isWindowsDriveRoot(path)).withContext(path).toBe(root);
+      expect(pathUtils.isWindowsDrivePath(path)).withContext(path).toBe(drive);
+      expect(pathUtils.isWindowsDriveFolder(path)).withContext(path).toBe(folder);
+    }
+  });
+
+  it('unquotes only a fully quoted drive path', () => {
+    const cases: [string, string][] = [
+      ['"D:\\My Folder"', 'D:\\My Folder'],
+      ['"d:/x"', 'd:/x'],
+      ['"D:\\"', 'D:\\'],
+      ['D:\\plain', 'D:\\plain'],
+      ['"relative\\folder"', '"relative\\folder"'],
+      ['"D:\\a" "D:\\b"', '"D:\\a" "D:\\b"'],
+      ['"D:\\open', '"D:\\open'],
+      ['', ''],
+    ];
+    for (const [path, expected] of cases) {
+      expect(pathUtils.unquoteWindowsPath(path)).withContext(path).toBe(expected);
+    }
+  });
+
+  it('uses an existing parent drive or folder without changing the draft subfolder name', () => {
+    expect(windowsMountFolderTarget('D:/', '', 'Test_NAS')).toBe('D:\\Test_NAS');
+    expect(windowsMountFolderTarget('D:/Mounts/', 'C:\\Old\\Archív', 'Test_NAS', 'Backup')).toBe(
+      'D:\\Mounts\\Archív'
+    );
+    expect(windowsMountFolderTarget('C:\\', 'X:', 'Test_NAS', 'Backup')).toBe('C:\\Backup');
+    expect(windowsMountFolderTarget('\\\\server\\share', '*', 'Test_NAS')).toBeUndefined();
+    expect(windowsMountFolderTarget('D:', '', 'Test_NAS')).toBeUndefined();
+  });
+
+  it('suggests the disk name when replacing the previous default or using the typed path as parent', () => {
+    expect(
+      windowsMountFolderTarget('D:\\test', 'D:\\test\\rclone-mount', 'Test_NAS', 'Backup')
+    ).toBe('D:\\test\\Backup');
+    expect(windowsMountFolderTarget('D:/test/', 'd:\\TEST', 'Test_NAS', 'Backup')).toBe(
+      'D:\\test\\Backup'
+    );
+  });
+
+  it('uses the remote name when the disk name cannot be used as a folder name', () => {
+    for (const diskName of [
+      '\\\\cloud\\share',
+      'NUL.txt',
+      'COM¹',
+      '..',
+      'cesta/s/inou',
+      'názov.',
+    ]) {
+      expect(windowsMountFolderTarget('D:\\test', '', 'Test_NAS', diskName)).toBe(
+        'D:\\test\\Test_NAS'
+      );
+    }
+  });
+
+  it('falls back to the generic folder name when neither name is usable', () => {
+    expect(windowsMountFolderTarget('D:\\test', '', 'AUX', '\\\\cloud\\share')).toBe(
+      'D:\\test\\rclone-mount'
+    );
+  });
+});

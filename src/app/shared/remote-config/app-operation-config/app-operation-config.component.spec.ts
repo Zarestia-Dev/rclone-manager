@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, type WritableSignal } from '@angular/core';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
@@ -41,6 +41,7 @@ describe('OperationConfigComponent', () => {
     normalizeForPlatform: ReturnType<typeof vi.fn>;
   };
   let fileSystemServiceMock: {
+    canSelectDriveLetter: () => boolean;
     selectFolder: ReturnType<typeof vi.fn>;
   };
 
@@ -108,6 +109,7 @@ describe('OperationConfigComponent', () => {
     };
     fileSystemServiceMock = {
       selectFolder: vi.fn().mockResolvedValue(null),
+      canSelectDriveLetter: (): boolean => (backendServiceMock.isWindows as () => boolean)(),
     };
 
     getDriveOptions.mockReset().mockResolvedValue([
@@ -123,7 +125,7 @@ describe('OperationConfigComponent', () => {
         { provide: PathInspectionService, useValue: pathInspectionServiceMock },
         {
           provide: WindowsMountTargetService,
-          useValue: { canCheck: (): boolean => true, getDriveOptions },
+          useValue: { getDriveOptions },
         },
         { provide: BackendService, useValue: backendServiceMock },
         { provide: PathService, useValue: pathServiceMock },
@@ -203,7 +205,7 @@ describe('OperationConfigComponent', () => {
     return component.selectPath(item);
   };
 
-  it('disables occupied and reserved letters, keeps the current drive and offers folder mode', async () => {
+  it('keeps occupied and reserved letters selectable with a hint, keeps the current drive and offers folder mode', async () => {
     backendServiceMock.isWindows.mockReturnValue(true);
     const { form, fixture } = setupComponent('mount', 'example', false, 'X:');
     const loader = TestbedHarnessEnvironment.loader(fixture);
@@ -216,12 +218,19 @@ describe('OperationConfigComponent', () => {
     const letters = await picker.getOptions();
     expect(await Promise.all(letters.map(letter => letter.isDisabled()))).toEqual([
       false,
-      true,
-      true,
+      false,
+      false,
       false,
       false,
     ]);
+    // A letter taken now can be free at mount time, so it is only flagged.
     await letters[2].click();
+    expect(form.get('dest.path')?.value).toBe('Y:');
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.mount-target-hint').textContent).toContain(
+      'mountDriveReserved'
+    );
+    await letters[3].click();
     expect(form.get('dest.path')?.value).toBe('X:');
     await letters[4].click();
     expect(form.get('dest.path')?.value).toBe('W:');
@@ -285,7 +294,12 @@ describe('OperationConfigComponent', () => {
     expect(form.get('options.volname')?.value).toBe('Skúšobný disk');
     folder.value = 'D:' + String.fromCharCode(92);
     folder.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(form.get('dest.path')?.hasError('mountFolderPath')).toBe(true);
+    // A folder outside a drive is flagged, not rejected.
+    expect(form.get('dest.path')?.valid).toBe(true);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.mount-target-hint').textContent).toContain(
+      'mountFolderPathRequired'
+    );
 
     await location.open();
     await (await location.getOptions())[0].click();
@@ -332,7 +346,7 @@ describe('OperationConfigComponent', () => {
     expect(hintText()).toContain('Návrh jednotky: W:');
 
     await picker.open();
-    expect(await (await picker.getOptions({ text: /^Y:/ }))[0].isDisabled()).toBe(true);
+    expect(await (await picker.getOptions({ text: /^Y:/ }))[0].isDisabled()).toBe(false);
     await (await picker.getOptions({ text: /^W:$/ }))[0].click();
     expect(path?.value).toBe('W:');
     expect(hintText()).not.toContain('Návrh jednotky');
@@ -829,12 +843,11 @@ describe('OperationConfigComponent', () => {
     const folderHint =
       'Ak chceš zmeniť názov priečinka, prepíš poslednú časť cesty. Priečinok vznikne pri pripojení.';
     const folderQuotesRemoved = 'Úvodzovky sme z cesty odstránili.';
-    const subfolderAdded = 'Doplnili sme názov podpriečinka.';
     const folderExists = 'Priečinok pripojenia už existuje. Použi nový názov.';
     const useParent = 'Použiť ako nadradený priečinok';
     let getStat: ReturnType<typeof vi.fn>;
     let getRemoteSettings: ReturnType<typeof vi.fn>;
-    let getMountedRemotes: ReturnType<typeof vi.fn>;
+    let mountedRemotes: WritableSignal<unknown[]>;
 
     const folderInput = (fixture: ComponentFixture<OperationConfigComponent>): HTMLInputElement =>
       fixture.nativeElement.querySelector('app-windows-mount-target .path-item-row input');
@@ -851,12 +864,12 @@ describe('OperationConfigComponent', () => {
       backendServiceMock.isWindows.mockReturnValue(true);
       getStat = vi.fn();
       getRemoteSettings = vi.fn().mockResolvedValue({});
-      getMountedRemotes = vi.fn().mockResolvedValue([]);
+      mountedRemotes = signal<unknown[]>([]);
       TestBed.overrideProvider(ApiClientService, { useValue: {} });
       TestBed.overrideProvider(BackendTranslationService, { useValue: {} });
       TestBed.overrideProvider(AppSettingsService, { useValue: { getRemoteSettings } });
       TestBed.overrideProvider(RemoteFileOperationsService, { useValue: { getStat } });
-      TestBed.overrideProvider(MountManagementService, { useValue: { getMountedRemotes } });
+      TestBed.overrideProvider(MountManagementService, { useValue: { mountedRemotes } });
       TestBed.overrideProvider(PathService, { useFactory: (): PathService => new PathService() });
       TestBed.overrideProvider(PathInspectionService, {
         useFactory: (): PathInspectionService => new PathInspectionService(),
@@ -868,7 +881,6 @@ describe('OperationConfigComponent', () => {
           appOperation: {
             mountFolderNameHint: folderHint,
             mountFolderQuotesRemoved: folderQuotesRemoved,
-            mountFolderSubfolderAdded: subfolderAdded,
             mountFolderAlreadyExists: folderExists,
             mountUseParent: useParent,
           },
@@ -892,7 +904,7 @@ describe('OperationConfigComponent', () => {
       };
 
       await expectMessage(operation === 'mount' ? notDirectoryWindowsMount : notDirectory);
-      expect(form.invalid).toBe(true);
+      expect(form.valid).toBe(true);
 
       getStat.mockRejectedValueOnce(new Error('Access denied'));
       form.get('dest.path')?.setValue('D:\\unreadable');
@@ -900,25 +912,6 @@ describe('OperationConfigComponent', () => {
       await expectMessage(unavailable);
       expect(form.valid).toBe(true);
       expect(getStat).toHaveBeenLastCalledWith('D:/', 'unreadable');
-    });
-
-    it.each([
-      ['local', 'D:\\sample\\report.txt'],
-      ['currentRemote', 'sample/report.txt'],
-    ])('makes the Bisync form invalid when its %s source points to a file', async (type, path) => {
-      TestBed.inject(PathService).setRemoteNames(['example']);
-      getStat.mockResolvedValue({ item: { IsDir: false } });
-      const { form, fixture } = setupComponent('bisync', 'example', false);
-      const source = form.get(['source', 0]);
-      source?.patchValue({ type, path });
-      fixture.detectChanges();
-
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(fixture.nativeElement.textContent).toContain(notDirectory);
-        expect(source?.get('path')?.hasError('invalidInspectedPath')).toBe(true);
-        expect(form.invalid).toBe(true);
-      });
     });
 
     it('shows the folder hint in place of the generic creation status', async () => {
@@ -944,7 +937,6 @@ describe('OperationConfigComponent', () => {
       expect(field.value).toBe(path);
       expect(form.get('dest.path')?.value).toBe(path);
       expect(form.get('dest.path')?.dirty).toBe(true);
-      expect(form.get('dest.path')?.hasError('mountFolderPastePending')).toBe(true);
       expect(fixture.nativeElement.textContent).toContain(folderQuotesRemoved);
 
       await vi.waitFor(() => expect(getStat).toHaveBeenCalledWith('D:/', 'sample/Môj priečinok'));
@@ -956,74 +948,25 @@ describe('OperationConfigComponent', () => {
       expect(fixture.nativeElement.textContent).not.toContain(folderQuotesRemoved);
     });
 
-    it.each([
-      ['"D:\\sample\\shared"', 'sample/shared', 'D:\\sample\\shared\\Example NAS'],
-      ['D:\\sample\\shared', 'sample/shared', 'D:\\sample\\shared\\Example NAS'],
-      ['"D:\\"', '', 'D:\\Example NAS'],
-    ])('adds the remote name to the existing parent %s', async (pasted, relative, target) => {
-      getStat.mockImplementation((_root: string, path: string) =>
-        Promise.resolve({ item: path === relative ? { IsDir: true } : null })
-      );
-      const { form, fixture } = setupComponent('mount', 'Example NAS', false, 'D:\\sample\\old');
-      form.get('options.volname')?.setValue('Custom disk label');
-      const field = folderInput(fixture);
-      field.select();
-
-      expect(pastePath(field, pasted)).toBe(true);
-      expect(form.invalid).toBe(true);
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(form.get('dest.path')?.value).toBe(target);
-        expect(form.valid).toBe(true);
-        expect(field.value).toBe(target);
-        expect(fixture.nativeElement.textContent).toContain(subfolderAdded);
-      });
-      expect(getStat).toHaveBeenCalledWith('D:/', relative);
-    });
-
     it('handles a native paste delivered only as an input event', async () => {
       getStat.mockImplementation((_root: string, relative: string) =>
         Promise.resolve({ item: relative === 'shared' ? { IsDir: true } : null })
       );
       const { form, fixture } = setupComponent('mount', 'example', false, 'D:\\sample\\old');
       const field = folderInput(fixture);
-      field.value = 'D:\\shared';
+      field.value = '"D:\\shared"';
       field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
 
       await vi.waitFor(() => {
         fixture.detectChanges();
-        expect(form.get('dest.path')?.value).toBe('D:\\shared\\example');
+        expect(form.get('dest.path')?.value).toBe('D:\\shared');
         expect(form.valid).toBe(true);
-        expect(fixture.nativeElement.textContent).toContain(subfolderAdded);
+        expect(fixture.nativeElement.textContent).toContain(folderExists);
+        expect(fixture.nativeElement.querySelector('.mount-use-parent')).not.toBeNull();
       });
     });
 
-    it('finishes a paste even if path validation revalidates the same field first', async () => {
-      let foundParent: (result: { item: { IsDir: boolean } }) => void = () => undefined;
-      const lookup = new Promise<{ item: { IsDir: boolean } }>(resolve => (foundParent = resolve));
-      getStat
-        .mockReturnValueOnce(lookup)
-        .mockImplementation((_root: string, relative: string) =>
-          Promise.resolve({ item: relative === 'shared' ? { IsDir: true } : null })
-        );
-      const { form, fixture } = setupComponent('mount', 'example', false, 'D:\\old');
-      const field = folderInput(fixture);
-      field.select();
-
-      expect(pastePath(field, 'D:\\shared')).toBe(true);
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(form.get('dest.path')?.hasError('invalidInspectedPath')).toBe(true);
-      });
-      foundParent({ item: { IsDir: true } });
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(field.value).toBe('D:\\shared\\example');
-        expect(form.valid).toBe(true);
-      });
-    });
-
-    it('offers the entered existing folder as a parent while keeping Save unavailable', async () => {
+    it('offers the entered existing folder as a parent while Save stays available', async () => {
       getStat.mockImplementation((_root: string, relative: string) =>
         Promise.resolve({ item: relative === 'shared' ? { IsDir: true } : null })
       );
@@ -1032,7 +975,7 @@ describe('OperationConfigComponent', () => {
       await vi.waitFor(() => {
         fixture.detectChanges();
         expect(fixture.nativeElement.textContent).toContain(folderExists);
-        expect(form.invalid).toBe(true);
+        expect(form.valid).toBe(true);
       });
       const button = fixture.nativeElement.querySelector(
         '.mount-path-row .mount-use-parent'
@@ -1053,49 +996,7 @@ describe('OperationConfigComponent', () => {
       });
     });
 
-    it('warns when the proposed subfolder already exists, without adding another level', async () => {
-      getStat.mockResolvedValue({ item: { IsDir: true } });
-      const { form, fixture } = setupComponent('mount', 'example', false, 'D:\\sample\\old');
-      const field = folderInput(fixture);
-      field.select();
-
-      expect(pastePath(field, '"D:\\sample\\shared"')).toBe(true);
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(form.get('dest.path')?.value).toBe('D:\\sample\\shared\\example');
-        expect(getStat).toHaveBeenCalledWith('D:/', 'sample/shared/example');
-        expect(fixture.nativeElement.textContent).toContain(folderExists);
-        expect(fixture.nativeElement.textContent).not.toContain(subfolderAdded);
-        expect(form.invalid).toBe(true);
-        expect(fixture.nativeElement.querySelector('.mount-use-parent')).toBeNull();
-      });
-    });
-
-    it('preserves user edits while the filesystem check for a paste is outstanding', async () => {
-      let foundParent: (result: { item: { IsDir: boolean } }) => void = () => undefined;
-      const lookup = new Promise<{ item: { IsDir: boolean } }>(resolve => (foundParent = resolve));
-      getStat.mockImplementation((_root: string, relative: string) =>
-        relative === 'sample/shared' ? lookup : Promise.resolve({ item: null })
-      );
-      const { form, fixture } = setupComponent('mount', 'example', false, 'D:\\sample\\old');
-      const field = folderInput(fixture);
-      field.select();
-
-      expect(pastePath(field, 'D:\\sample\\shared')).toBe(true);
-      await vi.waitFor(() => expect(getStat).toHaveBeenCalledWith('D:/', 'sample/shared'));
-      expect(form.invalid).toBe(true);
-      field.value = 'D:\\sample\\chosen';
-      field.dispatchEvent(new Event('input', { bubbles: true }));
-      expect(form.valid).toBe(true);
-      foundParent({ item: { IsDir: true } });
-
-      await vi.waitFor(() => expect(getStat).toHaveBeenCalledWith('D:/', 'sample/chosen'));
-      fixture.detectChanges();
-      expect(form.get('dest.path')?.value).toBe('D:\\sample\\chosen');
-      expect(fixture.nativeElement.textContent).not.toContain(subfolderAdded);
-    });
-
-    it('keeps file validation when a quoted Windows file path is pasted', async () => {
+    it('keeps the file warning when a quoted Windows file path is pasted', async () => {
       getStat.mockResolvedValue({ item: { IsDir: false } });
       const { form, fixture } = setupComponent('mount', 'example', false, 'D:\\sample\\old');
       const field = folderInput(fixture);
@@ -1110,19 +1011,10 @@ describe('OperationConfigComponent', () => {
           '.mount-target-hint [data-tone="warn"]'
         );
         expect(warning?.textContent?.trim()).toBe(notDirectoryWindowsMount);
-        expect(form.invalid).toBe(true);
+        expect(form.valid).toBe(true);
       });
       expect(field.value).toBe(path);
-      expect(fixture.nativeElement.textContent).not.toContain(folderQuotesRemoved);
-      expect(fixture.nativeElement.textContent).not.toContain(subfolderAdded);
       expect(getStat).toHaveBeenCalledWith('D:/', 'sample/report.txt');
-      await expect(
-        TestBed.inject(PathInspectionService).profilePathError(
-          { mountConfigs: { Default: { mountPoint: form.get('dest.path')?.value } } },
-          'Local',
-          'example'
-        )
-      ).resolves.toBe('remoteConfig.pathStatus.notDirectoryWindowsMount');
     });
 
     it.each(['relative\\other', '"D:\\sample\\other', '"D:\\sample\\"bad"'])(
@@ -1148,7 +1040,7 @@ describe('OperationConfigComponent', () => {
 
     it('reopens an active Windows folder profile without warning that its junction is a file', async () => {
       TestBed.inject(PathService).setRemoteNames(['example']);
-      getMountedRemotes.mockResolvedValue([
+      mountedRemotes.set([
         {
           fs: 'example:share',
           mount_point: 'D:/test/Example',
@@ -1160,7 +1052,7 @@ describe('OperationConfigComponent', () => {
       fixture.componentRef.setInput('currentProfileName', 'Default');
       fixture.detectChanges();
 
-      await vi.waitFor(() => expect(getMountedRemotes).toHaveBeenCalled());
+      await fixture.whenStable();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('.mount-target-hint').textContent.trim()).toBe(
         folderHint

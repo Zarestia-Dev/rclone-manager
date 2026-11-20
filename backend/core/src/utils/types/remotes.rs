@@ -52,6 +52,13 @@ pub struct MountedRemote {
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
+    /// When rclone mounted it (`MountedOn` of `mount/listmounts`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mounted_on: Option<DateTime<Utc>>,
+    /// The `mountType` it was started with. rclone does not report it, so it is unknown for a
+    /// mount this app did not start, or one started without choosing a type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mount_type: Option<String>,
 }
 
 impl MountedRemote {
@@ -63,7 +70,17 @@ impl MountedRemote {
             starter: None,
             execute_id: None,
             origin: None,
+            mounted_on: None,
+            mount_type: None,
         }
+    }
+
+    /// One entry of the `mountPoints` list of `mount/listmounts`.
+    #[must_use]
+    pub fn from_listmounts_entry(entry: &Value) -> Option<Self> {
+        let mut mount = Self::new(entry["Fs"].as_str()?, entry["MountPoint"].as_str()?);
+        mount.mounted_on = serde_json::from_value(entry["MountedOn"].clone()).ok();
+        Some(mount)
     }
 }
 
@@ -532,6 +549,36 @@ impl RemoteSettings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn listmounts_entry_reads_the_mount_time_and_skips_entries_without_a_path() {
+        let entry = serde_json::json!({
+            "Fs": "drive:", "MountPoint": "/mnt/drive", "MountedOn": "2026-11-19T10:00:00.123456789+01:00"
+        });
+        let mount = MountedRemote::from_listmounts_entry(&entry).unwrap();
+        assert_eq!(mount.fs, "drive:");
+        assert_eq!(
+            mount.mounted_on.map(|t| t.to_rfc3339()),
+            Some("2026-11-19T09:00:00.123456789+00:00".to_string())
+        );
+        assert_eq!(mount.mount_type, None);
+
+        // A missing or malformed time is unknown, not an error.
+        for entry in [
+            serde_json::json!({"Fs": "drive:", "MountPoint": "/mnt"}),
+            serde_json::json!({"Fs": "drive:", "MountPoint": "/mnt", "MountedOn": "yesterday"}),
+        ] {
+            assert_eq!(
+                MountedRemote::from_listmounts_entry(&entry)
+                    .unwrap()
+                    .mounted_on,
+                None
+            );
+        }
+        assert!(
+            MountedRemote::from_listmounts_entry(&serde_json::json!({"Fs": "drive:"})).is_none()
+        );
+    }
 
     #[test]
     fn parse_from_value_reads_both_shapes_and_rejects_malformed_app_settings() {

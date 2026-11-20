@@ -486,7 +486,7 @@
         }
       </div>
     </div>
-    @if ((item.type === 'local' || operationType() === 'bisync') && item.pathControl.value) {
+    @if (item.type === 'local' && item.pathControl.value) {
       @if (item.inspectionStatus(); as status) {
         <div appPill style="border-radius: 0" [tone]="inspectionTone(status.state)">
           <mat-icon [svgIcon]="status.icon"></mat-icon>

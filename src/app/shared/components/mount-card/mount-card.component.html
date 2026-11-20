@@ -1,4 +1,12 @@
-<mat-card class="mount-card" [attr.data-tone]="tone" (click)="cardClick.emit(mount())">
+<mat-card
+  class="mount-card"
+  [attr.data-tone]="tone"
+  role="button"
+  tabindex="0"
+  (click)="cardClick.emit(mount())"
+  (keydown.enter)="onKeyActivate($event)"
+  (keydown.space)="onKeyActivate($event)"
+>
   <div class="mount-body">
     <div class="mount-icon-wrap">
       <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
@@ -17,6 +25,30 @@
         >{{ mount().mount_point }}</span
       >
       <span class="mount-fs truncate">{{ mount().fs }}</span>
+      @if (mount().mount_type || mountedOn()) {
+        <div class="mount-meta">
+          @if (mount().mount_type; as type) {
+            <span
+              appPill
+              tone="dim"
+              size="xs"
+              [attr.title]="'shared.mountCard.mountType' | translate"
+              >{{ type }}</span
+            >
+          }
+          @if (mountedOn(); as time) {
+            <span
+              appPill
+              tone="dim"
+              size="xs"
+              [attr.title]="'shared.mountCard.mountedOn' | translate"
+            >
+              <mat-icon svgIcon="clock" aria-hidden="true"></mat-icon>
+              <span class="truncate">{{ time }}</span>
+            </span>
+          }
+        </div>
+      }
     </div>
 
     <div class="mount-actions">

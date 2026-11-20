@@ -2,7 +2,6 @@ import { Component, inject, input, output, computed, ChangeDetectionStrategy } f
 import { UpperCasePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -16,7 +15,6 @@ import { StarterPillComponent } from '../starter-pill/starter-pill.component';
     UpperCasePipe,
     MatCardModule,
     MatIconModule,
-    MatButtonModule,
     TranslatePipe,
     CopyToClipboardDirective,
     PillDirective,
@@ -47,6 +45,11 @@ export class ServeCardComponent {
     return URL_BASED_PROTOCOLS.has(type) ? `${type}://${addr}` : null;
   });
 
+  /** The URL a browser can open: only `serve http` is a web page (`s3://` and the like are not). */
+  browserUrl = computed<string | null>(() =>
+    this.serve().params.type.toLowerCase() === 'http' ? this.serveUrl() : null
+  );
+
   /** The options the serve was started with; `fs` and `type` are what it serves, not options. */
   optionsData = computed<{ keys: string[]; tooltip: string }>(() => {
     const params = this.serve().params;
@@ -76,5 +79,13 @@ export class ServeCardComponent {
 
   onCardClick(): void {
     this.cardClick.emit(this.serve());
+  }
+
+  /** Enter or Space on the card itself acts as a click; the buttons inside keep their own. */
+  onKeyActivate(event: Event): void {
+    const card = event.currentTarget as HTMLElement;
+    if (event.target !== card) return;
+    event.preventDefault();
+    card.click();
   }
 }

@@ -7,7 +7,6 @@ import {
   APP_CONFIG_DEFAULTS,
   DEFAULT_PROFILE_NAME,
   type PathGroup,
-  type PathStyle,
 } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import {
@@ -88,7 +87,6 @@ export function getTopLevelKeysForProfile(type: string): string[] {
 
 export interface FormToConfigContext {
   remoteName: string;
-  pathStyle?: PathStyle;
   cleanData?: (
     options: Record<string, unknown>,
     fields: RcConfigOption[]
@@ -209,11 +207,10 @@ export function mapFormToConfigProfile(
   };
 
   if (mapping.destKey && formData['dest'] !== undefined) {
-    const dest = pathUtils.buildPathString(formData['dest'] as PathGroup | string, ctx.remoteName);
-    rclone[mapping.destKey] =
-      type === 'mount' && ctx.pathStyle === 'windows' && /^[a-z]:\/$/i.test(dest)
-        ? dest.slice(0, -1)
-        : dest;
+    rclone[mapping.destKey] = pathUtils.buildPathString(
+      formData['dest'] as PathGroup | string,
+      ctx.remoteName
+    );
   }
 
   Object.assign(rclone, mapMountServeType(type, formData));

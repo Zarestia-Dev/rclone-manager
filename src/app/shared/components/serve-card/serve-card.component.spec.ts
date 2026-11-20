@@ -85,6 +85,51 @@ describe('ServeCardComponent', () => {
     });
   });
 
+  describe('open link', () => {
+    it('links an http serve to its URL', () => {
+      const link = render(base).querySelector('a[target="_blank"]') as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('http://127.0.0.1:8080');
+      expect(link.rel).toContain('noopener');
+    });
+
+    it.each(['webdav', 'ftp', 'sftp', 's3', 'nfs'])('has no link for a %s serve', type => {
+      const el = render({ ...base, params: { ...base.params, type } });
+      expect(el.querySelector('a[target="_blank"]')).toBeNull();
+    });
+
+    it('does not emit a card click', () => {
+      const el = render(base);
+      const click = vi.fn();
+      component.cardClick.subscribe(click);
+      const link = el.querySelector('a[target="_blank"]') as HTMLAnchorElement;
+      link.addEventListener('click', e => e.preventDefault());
+      link.click();
+      expect(click).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('keyboard', () => {
+    const press = (target: Element, key: string): void => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    };
+
+    it.each(['Enter', ' '])('activates the card with %j', key => {
+      const el = render(base);
+      const click = vi.fn();
+      component.cardClick.subscribe(click);
+      press(el.querySelector('mat-card') as Element, key);
+      expect(click).toHaveBeenCalledWith(base);
+    });
+
+    it('leaves the keys of the buttons inside alone', () => {
+      const el = render(base);
+      const click = vi.fn();
+      component.cardClick.subscribe(click);
+      press(el.querySelector('button') as Element, 'Enter');
+      expect(click).not.toHaveBeenCalled();
+    });
+  });
+
   it('stops without also emitting a card click', () => {
     const el = render(base);
     const stop = vi.fn();
@@ -92,7 +137,7 @@ describe('ServeCardComponent', () => {
     component.stopServe.subscribe(stop);
     component.cardClick.subscribe(click);
 
-    (el.querySelector('.stop-btn') as HTMLButtonElement).click();
+    (el.querySelector('button.action-button') as HTMLButtonElement).click();
 
     expect(stop).toHaveBeenCalledWith(base);
     expect(click).not.toHaveBeenCalled();

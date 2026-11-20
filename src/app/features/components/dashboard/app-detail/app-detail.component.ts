@@ -85,7 +85,7 @@ import { SettingsPanelComponent } from '../../../../shared/detail-shared/setting
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { mountDriveLetter } from 'src/app/services/operations/windows-mount-target.service';
+import { mountDriveLetter } from 'src/app/shared/utils/path.utils';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';

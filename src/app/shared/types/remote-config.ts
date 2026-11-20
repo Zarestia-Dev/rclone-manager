@@ -197,6 +197,14 @@ export interface AppConfig {
 
 export const DEFAULT_PROFILE_NAME = 'Default';
 
+/** Form keys of the Windows mount display options (an option's name or its Go field name). */
+export const MOUNT_NETWORK_MODE_KEYS: readonly string[] = [
+  'network_mode',
+  'NetworkMode',
+  'network-mode',
+];
+export const MOUNT_VOLUME_NAME_KEYS: readonly string[] = ['volname', 'VolName', 'VolumeName'];
+
 export const APP_CONFIG_DEFAULTS: Readonly<Required<AppConfig>> = Object.freeze({
   autoStart: false,
   autoStartDelay: 0,

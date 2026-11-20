@@ -88,6 +88,18 @@ describe('JobsOverviewPanelComponent', () => {
     fixture.detectChanges();
   });
 
+  it('shows the elapsed time of a job once rclone reports one', () => {
+    const pills = (): string[] =>
+      Array.from<HTMLElement>(
+        fixture.nativeElement.querySelectorAll('.card-metrics-row .app-pill')
+      ).map(pill => pill.textContent?.trim() ?? '');
+    expect(pills().some(text => text.includes('1h 1m 5s'))).toBe(false);
+
+    jobs.set(mockJobs.map(job => ({ ...job, stats: { ...job.stats, elapsedTime: 3665 } })));
+    fixture.detectChanges();
+    expect(pills().filter(text => text.includes('1h 1m 5s'))).toHaveLength(3);
+  });
+
   it('filters running jobs correctly by flow origin', () => {
     expect(component.runningJobs().length).toBe(3);
 

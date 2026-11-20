@@ -80,10 +80,14 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
         ));
     }
 
-    // rclone/cmd/cmount/mountpoint_windows.go: "could not find unused drive letter"
-    if (raw_lower.contains("drive letter") && raw_lower.contains("already in use"))
-        || raw_lower.contains("could not find unused drive letter")
-    {
+    // rclone/cmd/cmount/mountpoint_windows.go: "could not find unused drive letter" (`*` or a UNC target)
+    if raw_lower.contains("could not find unused drive letter") {
+        return Some(crate::localized_error!(
+            "backendErrors.mount.noFreeDriveLetter"
+        ));
+    }
+
+    if raw_lower.contains("drive letter") && raw_lower.contains("already in use") {
         return Some(crate::localized_error!(
             "backendErrors.mount.driveLetterInUse"
         ));
@@ -344,6 +348,10 @@ mod tests {
         let mapped = map_rclone_error(err);
         assert_eq!(
             mapped,
+            Some("backendErrors.mount.noFreeDriveLetter".to_string())
+        );
+        assert_eq!(
+            map_rclone_error("drive letter X: is already in use"),
             Some("backendErrors.mount.driveLetterInUse".to_string())
         );
     }

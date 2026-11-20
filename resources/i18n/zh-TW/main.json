@@ -1126,6 +1126,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "點選複製 URL",
+        "openUrl": "在瀏覽器中開啟",
         "stop": "停止此服務",
         "copyId": "點選複製 ID"
       },
@@ -1137,6 +1138,8 @@
     },
     "mountCard": {
       "copyPath": "點擊複製掛載點",
+      "mountType": "掛載類型",
+      "mountedOn": "掛載時間",
       "open": "在檔案瀏覽器中開啟",
       "unmount": "卸載此遠端"
     },
@@ -1512,7 +1515,6 @@
       "mountDriveTarget": "磁碟機",
       "mountFolderPathRequired": "請輸入新子資料夾的完整路徑。",
       "mountFolderQuotesRemoved": "已移除路徑兩端的引號。",
-      "mountFolderSubfolderAdded": "已在路徑中加入子資料夾名稱。",
       "mountFolderNameHint": "如要更改資料夾名稱，請編輯路徑的最後一部分。資料夾會在掛載時建立。",
       "mountLocalDrive": "本機磁碟",
       "mountNetworkDrive": "網路磁碟機",
@@ -1523,7 +1525,6 @@
       "mountDriveSuggestion": "建議的磁碟機：{{letter}}。若要固定使用同一代號，請從清單中選取。",
       "mountAutomaticDriveHint": "掛載時會選取一個可用的磁碟機代號。",
       "mountDriveReserved": "由其他設定檔保留",
-      "mountDriveConflict": "磁碟機 {{letter}} 已被佔用或保留。請選擇其他代號。",
       "mountDriveLetter": "磁碟機代號",
       "mountParentFolder": "選擇上層資料夾",
       "mountFolderHint": "掛載到資料夾時會使用本機磁碟。請選擇上層資料夾，並使用尚不存在的資料夾名稱。",
@@ -3279,6 +3280,7 @@
       "progress": "進度：",
       "of": "/",
       "eta": "預計剩餘時間：",
+      "elapsed": "已用時間:",
       "speed": "傳輸速度：",
       "transfers": "傳輸：",
       "checks": "校驗：",

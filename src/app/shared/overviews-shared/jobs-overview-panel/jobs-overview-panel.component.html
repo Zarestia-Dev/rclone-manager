@@ -226,6 +226,18 @@
                       </div>
                     }
 
+                    @if (jStats.elapsedTime > 0) {
+                      <div
+                        appPill
+                        tone="dim"
+                        size="xs"
+                        [attr.title]="'generalOverview.jobs.elapsed' | translate"
+                      >
+                        <mat-icon svgIcon="clock-rotate-left"></mat-icon>
+                        <span>{{ jStats.elapsedTime | formatTime }}</span>
+                      </div>
+                    }
+
                     @if (jStats.totalTransfers > 0) {
                       <div
                         appPill

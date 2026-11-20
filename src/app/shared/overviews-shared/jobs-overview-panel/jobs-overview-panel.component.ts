@@ -30,6 +30,7 @@ import {
   FormatFileSizePipe,
   FormatRateValuePipe,
   FormatNumberPipe,
+  FormatTimePipe,
 } from '@app/pipes';
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
@@ -63,6 +64,7 @@ export interface RunningJobViewModel {
     MatProgressBarModule,
     TranslatePipe,
     FormatEtaPipe,
+    FormatTimePipe,
     FormatFileSizePipe,
     FormatRateValuePipe,
     CopyToClipboardDirective,

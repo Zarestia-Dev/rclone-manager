@@ -35,12 +35,7 @@ pub async fn get_mounted_remotes_for_backend(
             .as_array()
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|mp| {
-                        Some(MountedRemote::new(
-                            mp["Fs"].as_str()?,
-                            mp["MountPoint"].as_str()?,
-                        ))
-                    })
+                    .filter_map(MountedRemote::from_listmounts_entry)
                     .collect()
             })
             .unwrap_or_default();

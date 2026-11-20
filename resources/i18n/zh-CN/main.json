@@ -1126,6 +1126,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "点击复制 URL",
+        "openUrl": "在浏览器中打开",
         "stop": "停止此服务",
         "copyId": "点击复制 ID"
       },
@@ -1137,6 +1138,8 @@
     },
     "mountCard": {
       "copyPath": "点击复制挂载点",
+      "mountType": "挂载类型",
+      "mountedOn": "挂载时间",
       "open": "在文件浏览器中打开",
       "unmount": "卸载此远程"
     },
@@ -1509,7 +1512,6 @@
       "mountDriveTarget": "驱动器",
       "mountFolderPathRequired": "请输入新子文件夹的完整路径。",
       "mountFolderQuotesRemoved": "已移除路径两端的引号。",
-      "mountFolderSubfolderAdded": "已在路径中添加子文件夹名称。",
       "mountFolderNameHint": "如需更改文件夹名称，请编辑路径的最后一部分。文件夹会在挂载时创建。",
       "mountLocalDrive": "本地磁盘",
       "mountNetworkDrive": "网络驱动器",
@@ -1520,7 +1522,6 @@
       "mountDriveSuggestion": "建议的驱动器：{{letter}}。如需始终使用同一盘符，请从列表中选择。",
       "mountAutomaticDriveHint": "挂载时会选择一个空闲盘符。",
       "mountDriveReserved": "由其他配置文件保留",
-      "mountDriveConflict": "驱动器 {{letter}} 已占用或保留。请选择其他驱动器号。",
       "mountDriveLetter": "驱动器号",
       "mountParentFolder": "选择父文件夹",
       "mountFolderHint": "挂载到文件夹时使用本地磁盘。请选择父文件夹，并使用尚不存在的文件夹名称。",
@@ -3238,6 +3239,7 @@
       "progress": "进度：",
       "of": "/",
       "eta": "预计剩余时间：",
+      "elapsed": "已用时间:",
       "speed": "传输速度：",
       "transfers": "传输：",
       "checks": "校验：",

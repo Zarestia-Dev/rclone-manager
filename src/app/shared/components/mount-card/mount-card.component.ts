@@ -7,6 +7,7 @@ import { MountedRemote, OPERATION_TONE } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { StarterPillComponent } from '../starter-pill/starter-pill.component';
+import { PillDirective } from '../../directives/pill.directive';
 
 @Component({
   selector: 'app-mount-card',
@@ -17,6 +18,7 @@ import { StarterPillComponent } from '../starter-pill/starter-pill.component';
     TranslatePipe,
     CopyToClipboardDirective,
     StarterPillComponent,
+    PillDirective,
   ],
   templateUrl: './mount-card.component.html',
   styleUrl: './mount-card.component.scss',
@@ -36,4 +38,17 @@ export class MountCardComponent {
   protected readonly remoteName = computed(() =>
     this.pathService.getRemoteNameFromFs(this.mount().fs)
   );
+
+  protected readonly mountedOn = computed(() => {
+    const time = Date.parse(this.mount().mounted_on ?? '');
+    return Number.isNaN(time) ? null : new Date(time).toLocaleString();
+  });
+
+  /** Enter or Space on the card itself acts as a click; the buttons inside keep their own. */
+  protected onKeyActivate(event: Event): void {
+    const card = event.currentTarget as HTMLElement;
+    if (event.target !== card) return;
+    event.preventDefault();
+    card.click();
+  }
 }

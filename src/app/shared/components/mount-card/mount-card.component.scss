@@ -62,6 +62,14 @@
   color: var(--dim-color);
 }
 
+.mount-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
 .mount-actions {
   flex-shrink: 0;
   display: flex;

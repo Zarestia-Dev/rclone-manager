@@ -43,6 +43,10 @@ export interface MountedRemote {
   starter?: Starter;
   execute_id?: string;
   origin?: Origin;
+  /** When rclone mounted it (RFC 3339). */
+  mounted_on?: string;
+  /** The mount type it was started with; unknown for a mount this app did not start. */
+  mount_type?: string;
 }
 
 /**

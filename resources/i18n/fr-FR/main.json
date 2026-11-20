@@ -1134,6 +1134,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "Cliquer pour copier l''URL",
+        "openUrl": "Ouvrir dans le navigateur",
         "stop": "Arrêter ce partage",
         "copyId": "Cliquer pour copier l'ID"
       },
@@ -1145,6 +1146,8 @@
     },
     "mountCard": {
       "copyPath": "Cliquer pour copier le point de montage",
+      "mountType": "Type de montage",
+      "mountedOn": "Monté le",
       "open": "Ouvrir dans l'explorateur de fichiers",
       "unmount": "Démonter ce remote"
     },
@@ -1520,7 +1523,6 @@
       "mountDriveTarget": "Lecteur",
       "mountFolderPathRequired": "Saisissez le chemin complet vers un nouveau sous-dossier.",
       "mountFolderQuotesRemoved": "Les guillemets ont été retirés du chemin.",
-      "mountFolderSubfolderAdded": "Un nom de sous-dossier a été ajouté au chemin.",
       "mountFolderNameHint": "Pour changer le nom du dossier, modifiez la dernière partie du chemin. Le dossier est créé lors du montage.",
       "mountLocalDrive": "Disque local",
       "mountNetworkDrive": "Lecteur réseau",
@@ -1531,7 +1533,6 @@
       "mountDriveSuggestion": "Lecteur suggéré : {{letter}} · Choisissez une lettre dans la liste pour toujours l’utiliser.",
       "mountAutomaticDriveHint": "Une lettre de lecteur libre est choisie lors du montage.",
       "mountDriveReserved": "Réservée par un autre profil",
-      "mountDriveConflict": "Le lecteur {{letter}} est occupé ou réservé. Choisissez une autre lettre.",
       "mountDriveLetter": "Lettre de lecteur",
       "mountParentFolder": "Choisir le dossier parent",
       "mountFolderHint": "Le montage dans un dossier utilise un disque local. Choisissez son dossier parent et un nom de dossier qui n’existe pas encore.",
@@ -3281,6 +3282,7 @@
       "progress": "Progression :",
       "of": "de",
       "eta": "ETA :",
+      "elapsed": "Écoulé :",
       "speed": "Vitesse de transfert :",
       "transfers": "Transferts",
       "checks": "Vérifications :",

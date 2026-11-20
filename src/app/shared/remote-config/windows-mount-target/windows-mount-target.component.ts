@@ -16,15 +16,18 @@ import {
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators, type ValidatorFn } from '@angular/forms';
 import { type PathInspectionStatus } from '@app/types';
-import {
-  PathInspectionService,
-  WINDOWS_MOUNT_FOLDER_EXISTS,
-} from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { CdkOverlayAutoposDirective } from '../../directives/cdk-overlay-autopos.directive';
 import { generatePrefixedId } from '../../utils/id.util';
 import { PillDirective } from '../../directives/pill.directive';
-import { isWindowsMountNetworkPath } from '../../utils/path.utils';
+import {
+  isWindowsDriveFolder,
+  isWindowsDrivePath,
+  isWindowsMountNetworkPath,
+  mountDriveLetter,
+  unquoteWindowsPath,
+  windowsMountFolderTarget,
+} from '../../utils/path.utils';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,8 +36,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import {
   type MountDriveOption,
-  mountDriveLetter,
-  windowsMountFolderTarget,
   WindowsMountTargetService,
 } from 'src/app/services/operations/windows-mount-target.service';
 
@@ -81,7 +82,6 @@ export class WindowsMountTargetComponent {
   readonly selectFolder = output();
 
   private readonly windowsMountTarget = inject(WindowsMountTargetService);
-  private readonly pathInspection = inject(PathInspectionService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pathSelection = inject(PathSelectionService);
   private readonly folderField = generatePrefixedId('mount-folder');
@@ -103,18 +103,24 @@ export class WindowsMountTargetComponent {
   private reopeningFolderMenu = false;
   private readonly pathValueVersion = signal(0);
   private readonly networkModeVersion = signal(0);
-  private readonly folderPaste = signal<{ control: FormControl; path: string } | null>(null);
+  /** Changes whenever the edited remote, profile or path control changes: state tied to it resets. */
+  private readonly targetContext = computed(() => ({
+    remote: this.currentRemoteName(),
+    profile: this.currentProfileName(),
+    control: this.pathControl(),
+  }));
 
   constructor() {
     this.destroyRef.onDestroy(() => this.pathSelection.unregisterField(this.folderField));
     effect(() => {
-      this.currentRemoteName();
-      this.currentProfileName();
-      this.pathControl();
+      this.targetContext();
       this.mountProfiles();
-      this.driveOptions.set([]);
-      if (this.mountLocation() === 'letter') void this.loadDriveOptions();
-      else ++this.driveRequest;
+      // Untracked: only the context and the profiles reload the drives, not what the load reads.
+      untracked(() => {
+        this.driveOptions.set([]);
+        if (this.mountLocation() === 'letter') void this.loadDriveOptions();
+        else ++this.driveRequest;
+      });
     });
     effect(onCleanup => {
       const subscriptions = [this.networkModeControl(), this.volumeNameControl()].map(control =>
@@ -125,11 +131,9 @@ export class WindowsMountTargetComponent {
     effect(onCleanup => {
       const control = this.pathControl();
       control.addValidators(this.mountTargetRequired);
-      const subscription = control.valueChanges.subscribe(value => {
-        const paste = this.folderPaste();
-        if (paste?.control === control && paste.path !== value) this.folderPaste.set(null);
-        this.pathValueVersion.update(version => version + 1);
-      });
+      const subscription = control.valueChanges.subscribe(() =>
+        this.pathValueVersion.update(version => version + 1)
+      );
       onCleanup(() => {
         subscription.unsubscribe();
         control.removeValidators(this.mountTargetRequired);
@@ -150,32 +154,21 @@ export class WindowsMountTargetComponent {
     reserved: 'wizards.appOperation.mountDriveReserved',
     current: 'wizards.appOperation.mountDriveCurrent',
   };
-  private readonly targetDraft = linkedSignal<MountTargetDraft>(() => {
-    this.currentProfileName();
-    this.currentRemoteName();
-    this.pathControl();
-    return { location: null, paths: {}, networkDrive: false, names: {} };
+  private readonly targetDraft = linkedSignal<unknown, MountTargetDraft>({
+    source: this.targetContext,
+    computation: () => ({ location: null, paths: {}, networkDrive: false, names: {} }),
   });
   private readonly mountPath = computed(() => {
-    this.currentProfileName();
-    this.currentRemoteName();
+    this.targetContext();
     this.pathValueVersion();
     return String(this.pathControl().value ?? '').trim();
   });
-  protected readonly folderPasteNotice = linkedSignal<'quotes' | 'subfolder' | null>(() => {
-    this.currentProfileName();
-    this.currentRemoteName();
-    this.pathControl();
-    this.mountPath();
-    return null;
-  });
-  protected readonly checkingFolderPaste = computed(() => {
-    this.pathValueVersion();
-    const paste = this.folderPaste();
-    return paste?.control === this.pathControl() && paste.path === paste.control.value;
+  /** Set when a paste lost its quotes; any later change of the path clears it. */
+  protected readonly quotesRemoved = linkedSignal<unknown, boolean>({
+    source: () => ({ context: this.targetContext(), path: this.mountPath() }),
+    computation: () => false,
   });
   protected readonly automaticDrive = '*';
-  protected readonly existingFolderLabel = WINDOWS_MOUNT_FOLDER_EXISTS;
   private readonly legacyNetworkPath = computed(() => {
     const path = this.mountPath();
     return this.targetDraft().location !== 'folder' && isWindowsMountNetworkPath(path) ? path : '';
@@ -196,12 +189,12 @@ export class WindowsMountTargetComponent {
   });
   private readonly volumeName = computed(() => {
     this.networkModeVersion();
-    this.targetDraft();
+    this.targetContext();
     return String(this.volumeNameControl()?.value ?? '');
   });
   protected readonly networkDrive = computed(() => {
     this.networkModeVersion();
-    this.targetDraft();
+    this.targetContext();
     const value: unknown = this.networkModeControl()?.value;
     return (
       this.mountLocation() === 'letter' &&
@@ -219,25 +212,13 @@ export class WindowsMountTargetComponent {
     letter: 'wizards.appOperation.mountDriveTarget',
     folder: 'wizards.appOperation.mountFolder',
   };
+  /** A hint only: a folder outside a drive may still be what the user wants, so it never blocks. */
   protected readonly folderPathInvalid = computed(() => {
-    this.pathValueVersion();
-    return this.mountLocation() === 'folder' && !!this.pathControl().errors?.['mountFolderPath'];
+    const path = this.mountPath().replace(/[\\/]+$/, '');
+    return this.targetDraft().location === 'folder' && !!path && !isWindowsDriveFolder(path);
   });
-  private readonly mountTargetRequired: ValidatorFn = control => {
-    const paste = this.folderPaste();
-    if (paste?.control === control && paste.path === control.value) {
-      return { mountFolderPastePending: true };
-    }
-    const selection = this.targetDraft().location;
-    if (selection && Validators.required(control)) return { required: true };
-    const path = String(control.value ?? '')
-      .trim()
-      .replace(/[\\/]+$/, '');
-    if (selection === 'folder' && !/^[a-z]:[\\/]./i.test(path)) {
-      return { mountFolderPath: true };
-    }
-    return null;
-  };
+  private readonly mountTargetRequired: ValidatorFn = control =>
+    this.targetDraft().location && Validators.required(control) ? { required: true } : null;
   private driveRequest = 0;
 
   protected async loadDriveOptions(): Promise<void> {
@@ -323,11 +304,8 @@ export class WindowsMountTargetComponent {
   }
 
   protected selectDriveLetter(letter: string): void {
-    if (letter !== this.automaticDrive) {
-      if (this.driveStatus() === 'unavailable') return;
-      const option = this.driveOptions().find(option => option.letter === letter);
-      if (option?.status !== 'free' && option?.status !== 'current') return;
-    }
+    // A letter that is taken now (a removable or network drive) can be free at mount time, so
+    // it stays selectable and the hint below the picker names its status.
     const legacyPath = this.legacyNetworkPath();
     if (legacyPath && letter !== this.automaticDrive) {
       this.updateControl(this.networkModeControl(), true);
@@ -351,56 +329,29 @@ export class WindowsMountTargetComponent {
     if (this.acceptPastedFolderPath(pasted)) event.preventDefault();
   }
 
+  /** Mounts into a new folder inside the folder that is entered, which must not exist. */
   protected useEnteredFolderAsParent(): void {
-    this.acceptPastedFolderPath(this.mountPath());
+    const target = windowsMountFolderTarget(
+      this.mountPath(),
+      '',
+      this.currentRemoteName(),
+      this.volumeNameControl()?.value
+    );
+    if (target) this.updateControl(this.pathControl(), target);
   }
 
   private acceptPastedFolderPath(value: string): boolean {
     const pasted = value.trim();
-    const quoted = /^"([^"]*)"$/.exec(pasted);
-    const path = quoted?.[1] ?? pasted;
-    if (this.pathControl().disabled || !/^[a-z]:[\\/][^"\r\n]*$/i.test(path)) return false;
-
-    void this.resolvePastedFolder(path, !!quoted);
-    return true;
-  }
-
-  private async resolvePastedFolder(path: string, quoted: boolean): Promise<void> {
+    const path = unquoteWindowsPath(pasted);
     const control = this.pathControl();
-    const remote = this.currentRemoteName();
-    const profile = this.currentProfileName();
-    const paste = { control, path };
-    this.folderPaste.set(paste);
+    if (control.disabled || !isWindowsDrivePath(path) || /["\r\n]/.test(path)) return false;
+
     this.targetDraft.update(draft => ({ ...draft, location: 'folder' }));
     this.folderMenuTrigger()?.close();
     control.markAsDirty();
     control.setValue(path);
-    if (quoted) this.folderPasteNotice.set('quotes');
-
-    const status = await this.pathInspection
-      .inspect(path, remote, profile ?? undefined, 'mount', { checkWindowsDriveRoot: true })
-      .catch(() => null);
-
-    if (this.destroyRef.destroyed || this.folderPaste() !== paste) return;
-    this.folderPaste.set(null);
-    const stillEditingPastedPath =
-      this.pathControl() === control &&
-      this.currentRemoteName() === remote &&
-      this.currentProfileName() === profile &&
-      control.value === path &&
-      !control.disabled;
-    const subfolder =
-      stillEditingPastedPath && status?.state === 'nonEmpty'
-        ? windowsMountFolderTarget(path, '', remote)
-        : undefined;
-    if (subfolder) {
-      this.updateControl(control, subfolder);
-    } else {
-      control.updateValueAndValidity();
-    }
-    if (stillEditingPastedPath) {
-      this.folderPasteNotice.set(subfolder ? 'subfolder' : quoted ? 'quotes' : null);
-    }
+    this.quotesRemoved.set(path !== pasted);
+    return true;
   }
 
   protected typeFolderPath(event: Event, field: HTMLInputElement): void {
@@ -410,10 +361,6 @@ export class WindowsMountTargetComponent {
       this.acceptPastedFolderPath(value)
     ) {
       return;
-    }
-    if (this.folderPaste()) {
-      this.folderPaste.set(null);
-      this.pathControl().updateValueAndValidity();
     }
     if (this.targetDraft().location === null) {
       this.targetDraft.update(state => ({ ...state, location: 'folder' }));
@@ -431,7 +378,7 @@ export class WindowsMountTargetComponent {
     const path = value.trim().replaceAll('/', '\\');
     const letter = mountDriveLetter(path);
     const lastSeparator = path.lastIndexOf('\\');
-    const isAbsolute = /^[a-z]:\\/i.test(path);
+    const isAbsolute = isWindowsDrivePath(path);
     const parent = letter ? letter + '\\' : isAbsolute ? path.slice(0, lastSeparator + 1) : '';
     this.typedParent.set(parent);
     this.folderFilter.set(isAbsolute ? path.slice(lastSeparator + 1) : '');

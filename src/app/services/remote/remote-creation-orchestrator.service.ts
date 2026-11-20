@@ -16,7 +16,6 @@ import {
 import { AuthStateService } from '../security/auth-state.service';
 import { RemoteManagementService } from './remote-management.service';
 import { AppSettingsService } from '../settings/app-settings.service';
-import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
@@ -79,7 +78,6 @@ export class RemoteCreationOrchestrator {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly mountManagementService = inject(MountManagementService);
-  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
@@ -113,27 +111,6 @@ export class RemoteCreationOrchestrator {
   ): Promise<boolean> {
     if (this.authStateService.isAuthInProgress()) return false;
     const { name, type, parameters } = splitRemoteData(remoteData);
-    if (finalConfig.mountConfigs && Object.keys(finalConfig.mountConfigs).length) {
-      const targetError = await this.windowsMountTarget.changedDriveError(
-        name,
-        finalConfig.mountConfigs
-      );
-      if (targetError) {
-        this.notificationService.showWarning(
-          this.translate.instant(targetError.key, targetError.params)
-        );
-        return false;
-      }
-    }
-    const pathError = await this.pathInspectionService.profilePathError(
-      finalConfig,
-      this.backendName,
-      name
-    );
-    if (pathError) {
-      this.notificationService.showWarning(this.translate.instant(pathError));
-      return false;
-    }
     if (this.authStateService.isAuthInProgress()) return false;
     const opt = this.remoteManagementService.buildOpt(commandOptions);
     return this.runFlow({ remoteData, parameters, opt, finalConfig }, false, () =>

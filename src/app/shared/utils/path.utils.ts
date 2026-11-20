@@ -79,12 +79,75 @@ export function isWindowsMountNetworkPath(path: string): boolean {
   return /^\\\\[^\\?]+\\[^\\]/.test(path);
 }
 
+/** A drive root: `X:`, `X:\` or `X:/`. */
+export function isWindowsDriveRoot(path: string): boolean {
+  return /^[a-z]:[\\/]?$/i.test(path);
+}
+
+/** A path on a drive: a drive letter followed by a separator, such as `X:\` or `X:/folder`. */
+export function isWindowsDrivePath(path: string): boolean {
+  return /^[a-z]:[\\/]/i.test(path);
+}
+
+/** A path inside a drive (`X:\folder`), not the drive root itself. */
+export function isWindowsDriveFolder(path: string): boolean {
+  return /^[a-z]:[\\/]./i.test(path);
+}
+
+/**
+ * Explorer's "Copy as path" puts quotes around a drive path; returns the path without them,
+ * or `path` unchanged when it is not a quoted drive path.
+ */
+export function unquoteWindowsPath(path: string): string {
+  return /^"[a-z]:[\\/][^"]*"$/i.test(path) ? path.slice(1, -1) : path;
+}
+
+/** The drive letter (`X:`) of a drive-only mount target such as `x:` or `X:\`. */
+export function mountDriveLetter(path: unknown): string | undefined {
+  if (typeof path !== 'string') return undefined;
+  const target = path.trim();
+  return isWindowsDriveRoot(target) ? target.slice(0, 2).toUpperCase() : undefined;
+}
+
+function windowsFolderName(value: unknown): string | undefined {
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (!name || /[<>:"/\\|?*]/.test(name) || name.endsWith('.')) return undefined;
+  if (Array.from(name).some(character => character.charCodeAt(0) < 32)) return undefined;
+  const base = name.split('.', 1)[0].trimEnd();
+  if (/^(con|prn|aux|nul|(?:com|lpt)[1-9¹²³])$/i.test(base)) return undefined;
+  return name;
+}
+
+/** The folder to mount into under `parent`, reusing the previous folder name or the disk and remote names. */
+export function windowsMountFolderTarget(
+  parent: string,
+  previous: string,
+  remoteName: string,
+  diskName?: unknown
+): string | undefined {
+  const fallback = 'rclone-mount';
+  if (!isWindowsDrivePath(parent)) return undefined;
+  const directory = parent.replaceAll('/', '\\').replace(/\\+$/, '');
+  const oldTarget = previous.replaceAll('/', '\\').replace(/\\+$/, '');
+  const previousName =
+    isWindowsDriveFolder(oldTarget) && oldTarget.toLowerCase() !== directory.toLowerCase()
+      ? getFilename(oldTarget)
+      : '';
+  const existingName = previousName.toLowerCase() === fallback ? '' : previousName;
+  const name =
+    windowsFolderName(existingName) ??
+    windowsFolderName(diskName) ??
+    windowsFolderName(remoteName) ??
+    fallback;
+  return `${directory}\\${name}`;
+}
+
 /**
  * Returns the parent path respecting platform style.
  */
 export function getParentPath(path: string, pathStyle: PathStyle = 'posix'): string {
   if (!path || path === '/' || (pathStyle === 'windows' && path === '\\')) return '';
-  if (pathStyle === 'windows' && /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
+  if (pathStyle === 'windows' && isWindowsDriveRoot(path)) return '';
 
   const segments = (pathStyle === 'windows' ? path.replace(/\\/g, '/') : path)
     .split('/')

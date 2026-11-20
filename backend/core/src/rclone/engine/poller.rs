@@ -361,12 +361,7 @@ async fn update_mount_cache(
         .as_array()
         .map_or_else(Vec::new, |arr| {
             arr.iter()
-                .filter_map(|mp| {
-                    Some(crate::utils::types::remotes::MountedRemote::new(
-                        mp["Fs"].as_str()?,
-                        mp["MountPoint"].as_str()?,
-                    ))
-                })
+                .filter_map(crate::utils::types::remotes::MountedRemote::from_listmounts_entry)
                 .collect()
         });
 

@@ -147,27 +147,6 @@ impl BackendManager {
         (state.active().clone(), settings)
     }
 
-    #[cfg(windows)]
-    pub(crate) async fn read_mount_drive_profiles(
-        &self,
-        app: &crate::context::AppHandle,
-        backend_name: &str,
-    ) -> Result<HashMap<String, serde_json::Value>, String> {
-        let state = self.state.read().await;
-        if state.active_name() != backend_name {
-            return Err(crate::localized_error!(
-                "backendErrors.request.failed", "error" => "Backend selection changed"
-            ));
-        }
-        crate::services::settings::with_sub_settings(
-            app,
-            SUB_REMOTES,
-            "backendErrors.settings.loadFailed",
-            |store| store.get_all_values(),
-        )
-        .await
-    }
-
     /// Capture the selected backend's cache. Existing users retain this cache
     /// across backend switches, including monitors for jobs still in flight.
     pub async fn job_cache(&self) -> Arc<JobCache> {

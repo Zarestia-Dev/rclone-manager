@@ -14,7 +14,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FlagType, RcConfigOption } from '@app/types';
+import {
+  FlagType,
+  MOUNT_NETWORK_MODE_KEYS,
+  MOUNT_VOLUME_NAME_KEYS,
+  RcConfigOption,
+} from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
@@ -84,7 +89,7 @@ export class FlagConfigStepComponent {
         return (
           !this.isMount() ||
           !this.showWindowsMountTarget() ||
-          !/^(network_mode|NetworkMode|network-mode|volname|VolName|VolumeName)$/.test(key)
+          !(MOUNT_NETWORK_MODE_KEYS.includes(key) || MOUNT_VOLUME_NAME_KEYS.includes(key))
         );
       })
       .map(field => {
