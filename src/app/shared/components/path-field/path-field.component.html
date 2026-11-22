@@ -1,9 +1,5 @@
 <div class="path-row-wrapper" [class.path-list]="!inList()">
-  <div
-    class="path-item-row"
-    [class.mount-path-row]="alignWithMountTarget()"
-    [formGroup]="control()"
-  >
+  <div class="path-item-row" [formGroup]="control()">
     <div class="path-type-selector">
       @if (lock() === 'local') {
         <div appPill tone="purple">
@@ -103,25 +99,18 @@
           </button>
           <mat-divider />
         }
-        @if (state.options.length === 0) {
+        @for (entry of entries(); track entry.Path) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="onEntryPicked(entry.Name)">
+            <mat-icon
+              [svgIcon]="entry.IsDir ? 'folder' : 'file'"
+              [attr.data-tone]="entry.IsDir ? 'accent' : null"
+            ></mat-icon>
+            <span class="item-label">{{ entry.Name }}</span>
+          </button>
+        } @empty {
           <div class="empty-state">
             <span class="item-label">{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
-        }
-        @for (entry of state.options; track entry.Path) {
-          @if (entry.IsDir || pickerSelection() !== 'folders') {
-            <button
-              cdkMenuItem
-              class="menu-item"
-              (cdkMenuItemTriggered)="onEntryPicked(entry.Name)"
-            >
-              <mat-icon
-                [svgIcon]="entry.IsDir ? 'folder' : 'file'"
-                [attr.data-tone]="entry.IsDir ? 'accent' : null"
-              ></mat-icon>
-              <span class="item-label">{{ entry.Name }}</span>
-            </button>
-          }
         }
       }
     </div>

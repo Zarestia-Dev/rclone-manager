@@ -103,7 +103,10 @@ describe('PathFieldComponent', () => {
           provide: FileSystemService,
           useValue: { selectFolder, selectFile, selectPathWithNautilus },
         },
-        { provide: PathService, useValue: { resolvePathGroup } },
+        {
+          provide: PathService,
+          useValue: { resolvePathGroup, enginePathStyle: (): string => 'posix' },
+        },
         { provide: NotificationService, useValue: { showError } },
       ],
     });
@@ -212,6 +215,33 @@ describe('PathFieldComponent', () => {
       expect(component.suggestions()).toBeNull();
     });
 
+    it('offers the entries of the listed folder that hold the typed name, and only folders when asked', () => {
+      state.update(current => ({
+        ...current,
+        options: [
+          { Name: 'Documents', Path: 'Documents', IsDir: true },
+          { Name: 'docs.txt', Path: 'docs.txt', IsDir: false },
+          { Name: 'Photos', Path: 'Photos', IsDir: true },
+        ] as never,
+      }));
+      create(group('currentRemote', ''), { pickerSelection: 'both' });
+
+      expect(component.entries().map(entry => entry.Name)).toEqual([
+        'Documents',
+        'docs.txt',
+        'Photos',
+      ]);
+      component.onInput({ target: { value: 'DOC' } } as unknown as Event);
+      expect(component.entries().map(entry => entry.Name)).toEqual(['Documents', 'docs.txt']);
+
+      fixture.componentRef.setInput('pickerSelection', 'folders');
+      expect(component.entries().map(entry => entry.Name)).toEqual(['Documents']);
+
+      // Browsing a folder shows all of it again.
+      component.onMenuOpened();
+      expect(component.entries().map(entry => entry.Name)).toEqual(['Documents', 'Photos']);
+    });
+
     it('passes typing, opening, choosing and going up to the service', () => {
       const control = group('currentRemote', 'Docs');
       create(control);
@@ -219,7 +249,10 @@ describe('PathFieldComponent', () => {
       component.dirty.subscribe(dirty);
 
       component.onInput({ target: { value: 'Do' } } as unknown as Event);
-      expect(updateInput).toHaveBeenCalledWith('f1', 'Do');
+      // A name typed in the root lists the root.
+      expect(updateInput).toHaveBeenCalledWith('f1', '');
+      component.onInput({ target: { value: 'Docs/Re' } } as unknown as Event);
+      expect(updateInput).toHaveBeenLastCalledWith('f1', 'Docs/');
 
       component.onMenuOpened();
       expect(triggerLoad).toHaveBeenCalledWith('f1', 'drive', 'Docs');

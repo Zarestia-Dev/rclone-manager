@@ -930,6 +930,8 @@ export class NautilusTabService {
             ? remote.name
             : this.pathService.normalizeRemoteForRclone(remote.name);
           const readGroup = this.listReadGroups[paneIndex];
+          // The same for every entry of the listing.
+          const entryRemote = this.pathService.normalizeRemoteName(fsName);
 
           return from(
             this.remoteOps.getRemotePaths(fsName, path, {}, 'filemanager', readGroup)
@@ -945,7 +947,7 @@ export class NautilusTabService {
                   ({
                     entry: f,
                     meta: {
-                      remote: this.pathService.normalizeRemoteName(fsName),
+                      remote: entryRemote,
                       isLocal: remote.isLocal,
                       remoteType: remote.type,
                     },

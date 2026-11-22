@@ -16,6 +16,7 @@ import {
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isAndroid } from '../infrastructure/platform/api-client.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import { SystemInfoService } from '../infrastructure/system/system-info.service';
 import { BackendService } from '../infrastructure/system/backend.service';
@@ -25,7 +26,7 @@ import { FileSystemService } from '../operations/file-system.service';
 import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
 import { RemoteDiskUsageService } from '../remote/remote-disk-usage.service';
-import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
+import { NAMES_ONLY, RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { RemotePresetsService } from '../remote/remote-presets';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
@@ -65,8 +66,6 @@ export interface WizardEnvironment {
   /** The files live on another machine: a headless server or a remote rclone backend. */
   readonly isServer: boolean;
   readonly isAndroid: boolean;
-  /** Mounting needs FUSE (or WinFsp), which is not installed. */
-  readonly mountPluginMissing: boolean;
   /** A mount can go to a drive letter (Windows with a local rclone). */
   readonly canUseDriveLetter: boolean;
   /** "Start with the computer" exists on this build. */
@@ -132,6 +131,7 @@ export class WizardService extends TauriBaseService {
   private readonly systemHealth = inject(SystemHealthService);
   private readonly backend = inject(BackendService);
   private readonly appSettings = inject(AppSettingsService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly paths = inject(PathService);
   private readonly pathInspection = inject(PathInspectionService);
   private readonly fileSystem = inject(FileSystemService);
@@ -140,6 +140,14 @@ export class WizardService extends TauriBaseService {
   private readonly jobs = inject(JobManagementService);
   private readonly mounts = inject(MountManagementService);
   private readonly serves = inject(ServeManagementService);
+
+  /**
+   * Mounting needs FUSE (or WinFsp) and it is not installed. Live, not part of the environment
+   * the wizard loads once: installing the plugin from the review clears the warning.
+   */
+  readonly mountPluginMissing = this.systemHealth.mountPluginMissing;
+  /** The user turned the mount plugin check off, so a missing plugin warns but does not block. */
+  readonly mountPluginCheckSkipped = this.systemHealth.skipMountPluginCheck;
 
   async loadEnvironment(): Promise<WizardEnvironment> {
     const [configs, drives, startOnLogin] = await Promise.all([
@@ -152,7 +160,7 @@ export class WizardService extends TauriBaseService {
       type: String((config as { type?: unknown } | null)?.type ?? ''),
     }));
     const homeDrive = drives.find(d => d.label === HOME_LABEL) ?? drives[0];
-    const home = homeDrive?.name || homeDrive?.mount_point || undefined;
+    const home = homeDrive?.name || undefined;
     const android = isAndroid();
     return {
       remotes,
@@ -161,10 +169,6 @@ export class WizardService extends TauriBaseService {
       homeFree: home ? await this.localFree(home) : undefined,
       isServer: !this.isTauri || !this.backend.isLocalBackend(),
       isAndroid: android,
-      mountPluginMissing:
-        !android &&
-        !this.systemHealth.skipMountPluginCheck() &&
-        this.systemHealth.mountPluginInstalled() === false,
       canUseDriveLetter: this.fileSystem.canSelectDriveLetter(),
       canStartOnLogin: startOnLogin !== undefined,
       startsOnLogin: startOnLogin === true,
@@ -240,7 +244,7 @@ export class WizardService extends TauriBaseService {
       const { list } = await this.fileOps.getRemotePaths(
         root,
         relative,
-        { dirsOnly: true },
+        { ...NAMES_ONLY, dirsOnly: true },
         ORIGIN
       );
       return (list ?? [])
@@ -533,10 +537,8 @@ export class WizardService extends TauriBaseService {
    * the settings of all remotes; the ones it could not have made are left out.
    */
   async loadSetups(remoteNames: readonly string[]): Promise<ExistingSetup[]> {
-    const [, all] = await Promise.all([
-      this.quickRuns.refresh(),
-      this.appSettings.getRemoteSettings(),
-    ]);
+    await this.quickRuns.refresh();
+    const all = this.remoteFacade.remoteSettings();
     const setups: ExistingSetup[] = [];
     for (const qr of this.quickRuns.quickRuns()) {
       const setup = describeSetup(

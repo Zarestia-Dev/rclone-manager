@@ -399,7 +399,6 @@
       [localOnly]="isMount() && item.group === 'dest'"
       [pickerDisabled]="isItemPickerDisabled(item)"
       [showPicker]="!(isDest && isWindowsMount())"
-      [alignWithMountTarget]="canSelectDriveLetter() && !isDest"
       [suggest]="!(isNewRemote() && item.type === 'currentRemote')"
       [inspect]="inspectOp()"
       [profileName]="currentProfileName() ?? undefined"

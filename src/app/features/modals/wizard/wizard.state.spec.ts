@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Observable, of } from 'rxjs';
@@ -23,7 +24,6 @@ const ENV: WizardEnvironment = {
   homeFree: 60,
   isServer: false,
   isAndroid: false,
-  mountPluginMissing: false,
   canUseDriveLetter: false,
   canStartOnLogin: true,
   startsOnLogin: false,
@@ -31,6 +31,8 @@ const ENV: WizardEnvironment = {
 
 describe('WizardState', () => {
   const close = vi.fn();
+  const mountPluginMissing = signal(false);
+  const mountPluginCheckSkipped = signal(false);
   const wizard = {
     loadEnvironment: vi.fn(),
     cloudUsage: vi.fn(),
@@ -76,7 +78,10 @@ describe('WizardState', () => {
           useValue: { close, afterClosed: (): Observable<undefined> => of(undefined) },
         },
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: WizardService, useValue: wizard },
+        {
+          provide: WizardService,
+          useValue: { ...wizard, mountPluginMissing, mountPluginCheckSkipped },
+        },
         { provide: RemoteFacadeService, useValue: { openRemoteInFiles } },
         {
           provide: NavigationDispatcherService,
@@ -140,6 +145,8 @@ describe('WizardState', () => {
 
   beforeEach(() => {
     TestBed.resetTestingModule();
+    mountPluginMissing.set(false);
+    mountPluginCheckSkipped.set(false);
     close.mockReset();
     openRemoteInFiles.mockReset();
     openQuickRunEditor.mockReset();
@@ -1390,6 +1397,46 @@ describe('WizardState', () => {
     wizard.loadEnvironment.mockResolvedValue({ ...ENV, isAndroid: true });
     const phone = await create();
     expect(phone.localPlace()).toBe('thisDevice');
+  });
+
+  describe('a mount without the mount plugin', () => {
+    const planMount = async (missing: boolean, skipped = false): Promise<WizardState> => {
+      mountPluginMissing.set(missing);
+      mountPluginCheckSkipped.set(skipped);
+      wizard.loadEnvironment.mockResolvedValue(ENV);
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      return component;
+    };
+
+    it('warns and blocks while the plugin check is on', async () => {
+      const component = await planMount(true);
+      expect(component.needsMountPlugin()).toBe(true);
+      expect(component.blockedByMountPlugin()).toBe(true);
+    });
+
+    it('still warns but does not block when the plugin check is turned off', async () => {
+      const component = await planMount(true, true);
+      expect(component.needsMountPlugin()).toBe(true);
+      expect(component.blockedByMountPlugin()).toBe(false);
+    });
+
+    it('does not warn when the plugin is there', async () => {
+      const component = await planMount(false);
+      expect(component.needsMountPlugin()).toBe(false);
+      expect(component.blockedByMountPlugin()).toBe(false);
+    });
+
+    it('drops the warning and the block as soon as the plugin gets installed', async () => {
+      const component = await planMount(true);
+      expect(component.blockedByMountPlugin()).toBe(true);
+
+      mountPluginMissing.set(false);
+
+      expect(component.needsMountPlugin()).toBe(false);
+      expect(component.blockedByMountPlugin()).toBe(false);
+    });
   });
 
   describe('a mount on Windows', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
-import { signal } from '@angular/core';
+import { computed, Signal, signal } from '@angular/core';
 import { of } from 'rxjs';
 
 import { JobInfo } from '@app/types';
@@ -110,6 +110,7 @@ describe('AppDetailComponent', () => {
   let systemHealthMock: {
     skipMountPluginCheck: ReturnType<typeof signal<boolean>>;
     mountPluginInstalled: ReturnType<typeof signal<boolean | null>>;
+    mountPluginMissing: Signal<boolean>;
     showRepairSheet: ReturnType<typeof vi.fn>;
   };
 
@@ -165,9 +166,11 @@ describe('AppDetailComponent', () => {
     };
     uiStateMock.clearProfileRequest.mockImplementation(() => uiStateMock.profileRequest.set(null));
 
+    const mountPluginInstalled = signal<boolean | null>(true);
     systemHealthMock = {
       skipMountPluginCheck: signal(false),
-      mountPluginInstalled: signal<boolean | null>(true),
+      mountPluginInstalled,
+      mountPluginMissing: computed(() => mountPluginInstalled() === false),
       showRepairSheet: vi.fn(),
     };
 
@@ -401,9 +404,28 @@ describe('AppDetailComponent', () => {
     expect(component.showMountPluginWarning()).toBe(true);
   });
 
-  it('should show banner when on mount and skipMountPluginCheck is true and mount_warn defaults to true', () => {
+  it('should hide the banner as soon as the plugin gets installed', () => {
+    fixture.componentRef.setInput('mainOperationType', 'mount');
+    systemHealthMock.mountPluginInstalled.set(false);
+    expect(component.showMountPluginWarning()).toBe(true);
+
+    systemHealthMock.mountPluginInstalled.set(true);
+
+    expect(component.showMountPluginWarning()).toBe(false);
+  });
+
+  it('should not show banner when skipMountPluginCheck is true but the plugin is installed', () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(true);
+
+    expect(component.showMountPluginWarning()).toBe(false);
+  });
+
+  it('should show banner when on mount, plugin is missing and mount_warn defaults to true', () => {
+    fixture.componentRef.setInput('mainOperationType', 'mount');
+    systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
   });
@@ -417,6 +439,7 @@ describe('AppDetailComponent', () => {
       remoteName: 'my-remote',
     });
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
   });
@@ -424,6 +447,7 @@ describe('AppDetailComponent', () => {
   it('should not show banner when mount_warn setting is false', () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
     appSettingsServiceMock.options.set({
       'runtime.mount_warn': { value: false } as SettingMetadata,
     });
@@ -434,6 +458,7 @@ describe('AppDetailComponent', () => {
   it('should not show banner when dismissed in current session and save setting to false', async () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
 

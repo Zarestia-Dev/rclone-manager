@@ -1,4 +1,5 @@
 :host {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -38,10 +39,15 @@
     }
   }
 
+  // The close button sits in the top-right corner; the row leaves room for it.
+  &:has(> .dismiss-button) {
+    padding-right: calc(var(--space-xs) + 32px + var(--space-sm));
+  }
+
   .dismiss-button {
-    align-self: flex-start;
-    flex-shrink: 0;
-    margin-left: auto;
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
   }
 
   strong {
@@ -166,9 +172,23 @@
     padding: var(--space-sm);
     gap: var(--space-sm);
 
+    // The close button stays beside the text on the first row; the actions fill the row below it.
     .alert-actions {
-      justify-content: flex-end;
       flex-basis: 100%;
+      order: 1;
+
+      ::ng-deep > * {
+        flex: 1;
+      }
+    }
+
+    &:has(> .dismiss-button) {
+      padding-right: var(--space-sm);
+    }
+
+    .dismiss-button {
+      position: static;
+      align-self: flex-start;
     }
 
     .alert-icon {

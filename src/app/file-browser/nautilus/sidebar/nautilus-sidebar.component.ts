@@ -255,7 +255,6 @@ export class NautilusSidebarComponent {
     return {
       id: root.name,
       label: root.label || root.name,
-      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
       icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
       isVisible,
     };

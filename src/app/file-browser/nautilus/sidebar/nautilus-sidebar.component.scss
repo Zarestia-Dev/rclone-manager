@@ -134,12 +134,6 @@ mat-toolbar {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-    em {
-      font-style: normal;
-      font-size: var(--font-size-sm);
-      color: var(--dim-color);
-    }
   }
 
   &:hover {

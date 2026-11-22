@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JOB_STATUS, JobInfo, QuickRun, QuickRunInput } from '@app/types';
@@ -71,6 +71,7 @@ describe('WizardService', () => {
   const getLocalDiskUsage = vi.fn();
   const getLocalAddresses = vi.fn();
   const getRemoteSettings = vi.fn();
+  const remoteSettings = vi.fn();
   const saveRemoteSettings = vi.fn();
   const startProfileBatch = vi.fn();
   const mountRemoteProfile = vi.fn();
@@ -85,6 +86,7 @@ describe('WizardService', () => {
   const getLocalDrives = vi.fn();
   const createDirs = vi.fn();
   const mountPluginInstalled = signal<boolean | null>(true);
+  const skipMountPluginCheck = signal(false);
 
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -113,12 +115,13 @@ describe('WizardService', () => {
       fn.mockReset();
     }
     getRemoteSettings.mockReset().mockResolvedValue({});
+    remoteSettings.mockReset().mockReturnValue({});
     getDiskUsage.mockRejectedValue(new Error('about unavailable'));
     getRemotePaths.mockReset();
     getAllRemoteConfigs.mockReset().mockResolvedValue({ drive: { type: 'drive' }, box: {} });
     getLocalDrives.mockReset().mockResolvedValue([
-      { name: '/', label: 'nautilus.titles.fileSystem', available_space: 1 },
-      { name: '/home/me', label: 'titlebar.home', available_space: 0 },
+      { name: '/', label: 'nautilus.titles.fileSystem' },
+      { name: '/home/me', label: 'titlebar.home' },
     ]);
     createDirs.mockReset().mockResolvedValue(undefined);
     saveSetting.mockResolvedValue(undefined);
@@ -131,12 +134,16 @@ describe('WizardService', () => {
     mountsOf.mockReset().mockReturnValue([]);
     servesOf.mockReset().mockReturnValue([]);
     mountPluginInstalled.set(true);
+    skipMountPluginCheck.set(false);
 
     TestBed.configureTestingModule({
       providers: [
         WizardService,
         { provide: ApiClientService, useValue: { invoke } },
-        { provide: RemoteFacadeService, useValue: { startJob: facadeStart, stopJob: facadeStop } },
+        {
+          provide: RemoteFacadeService,
+          useValue: { startJob: facadeStart, stopJob: facadeStop, remoteSettings },
+        },
         { provide: NotificationService, useValue: { showError: vi.fn() } },
         { provide: TranslateService, useValue: { instant: (k: string): string => k } },
         { provide: BackendTranslationService, useValue: {} },
@@ -160,14 +167,20 @@ describe('WizardService', () => {
           provide: SystemHealthService,
           useValue: {
             mountPluginInstalled,
-            skipMountPluginCheck: signal(false),
+            mountPluginMissing: computed(() => mountPluginInstalled() === false),
+            skipMountPluginCheck,
             showRepairSheet: vi.fn(),
           },
         },
         { provide: BackendService, useValue: { isLocalBackend, backends, activeBackend } },
         {
           provide: AppSettingsService,
-          useValue: { getSettingValue, saveSetting, getRemoteSettings, saveRemoteSettings },
+          useValue: {
+            getSettingValue,
+            saveSetting,
+            getRemoteSettings,
+            saveRemoteSettings,
+          },
         },
         {
           provide: MountManagementService,
@@ -226,7 +239,6 @@ describe('WizardService', () => {
       expect(getLocalDiskUsage).toHaveBeenCalledWith('/home/me');
       expect(env.canStartOnLogin).toBe(true);
       expect(env.startsOnLogin).toBe(false);
-      expect(env.mountPluginMissing).toBe(false);
     });
 
     it('leaves the free space unknown when rclone cannot measure it', async () => {
@@ -240,12 +252,33 @@ describe('WizardService', () => {
       expect((await service.loadEnvironment()).canStartOnLogin).toBe(false);
     });
 
-    it('reports a missing mount plugin and survives unknown drives', async () => {
-      mountPluginInstalled.set(false);
+    it('survives unknown drives', async () => {
       getLocalDrives.mockRejectedValue(new Error('no drives'));
-      const env = await service.loadEnvironment();
-      expect(env.mountPluginMissing).toBe(true);
-      expect(env.home).toBeUndefined();
+      expect((await service.loadEnvironment()).home).toBeUndefined();
+    });
+  });
+
+  describe('mount plugin', () => {
+    it('is missing only once the check found it missing, not while it is unknown', () => {
+      expect(service.mountPluginMissing()).toBe(false);
+      mountPluginInstalled.set(null);
+      expect(service.mountPluginMissing()).toBe(false);
+      mountPluginInstalled.set(false);
+      expect(service.mountPluginMissing()).toBe(true);
+    });
+
+    it('stops being missing when the plugin gets installed, without reloading the environment', () => {
+      mountPluginInstalled.set(false);
+      expect(service.mountPluginMissing()).toBe(true);
+      mountPluginInstalled.set(true);
+      expect(service.mountPluginMissing()).toBe(false);
+    });
+
+    it('is flagged as skipped when the check is turned off, and still missing', () => {
+      mountPluginInstalled.set(false);
+      skipMountPluginCheck.set(true);
+      expect(service.mountPluginMissing()).toBe(true);
+      expect(service.mountPluginCheckSkipped()).toBe(true);
     });
   });
 
@@ -287,7 +320,12 @@ describe('WizardService', () => {
       ],
     });
     expect(await service.localFolders('/home/me')).toEqual(['a', 'b']);
-    expect(getRemotePaths).toHaveBeenCalledWith('/', 'home/me', { dirsOnly: true }, 'quickrun');
+    expect(getRemotePaths).toHaveBeenCalledWith(
+      '/',
+      'home/me',
+      { noModTime: true, noMimeType: true, dirsOnly: true },
+      'quickrun'
+    );
     getRemotePaths.mockRejectedValue(new Error('offline'));
     expect(await service.localFolders('/home/me')).toEqual([]);
   });
@@ -895,7 +933,7 @@ describe('WizardService', () => {
         qr('b', { srcFs: '/one', dstFs: '/two' }, 'sync'),
         qr('c', { srcFs: 'drive:x', dstFs: '/local' }, 'sync'),
       ] as never);
-      getRemoteSettings.mockResolvedValue({
+      remoteSettings.mockReturnValue({
         drive: {
           mountConfigs: {
             Folder: { rclone: { fs: 'drive:', mountPoint: '/mnt/drive' } },

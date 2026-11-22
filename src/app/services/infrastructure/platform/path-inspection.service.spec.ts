@@ -12,7 +12,11 @@ import {
 } from './path-inspection.service';
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
+import { RemoteFacadeService } from '../../facade/remote-facade.service';
+import {
+  NAMES_ONLY,
+  RemoteFileOperationsService,
+} from '../../remote/remote-file-operations.service';
 import { PathService } from './path.service';
 import { NotificationService } from '../../ui/notification.service';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
@@ -24,10 +28,8 @@ describe('PathInspectionService', () => {
   let mockApiClient: { invoke: ReturnType<typeof vi.fn> };
   let mountedRemotes: WritableSignal<unknown[]>;
   let quickRuns: WritableSignal<unknown[]>;
-  let mockAppSettings: {
-    getSettingValue: ReturnType<typeof vi.fn>;
-    getRemoteSettings: ReturnType<typeof vi.fn>;
-  };
+  let mockAppSettings: { getSettingValue: ReturnType<typeof vi.fn> };
+  let remoteSettings: ReturnType<typeof vi.fn>;
   let mockRemoteFileOps: {
     getStat: ReturnType<typeof vi.fn>;
     getSize: ReturnType<typeof vi.fn>;
@@ -50,10 +52,8 @@ describe('PathInspectionService', () => {
     mockApiClient = { invoke: vi.fn() };
     mountedRemotes = signal<unknown[]>([]);
     quickRuns = signal<unknown[]>([]);
-    mockAppSettings = {
-      getSettingValue: vi.fn().mockResolvedValue(null),
-      getRemoteSettings: vi.fn().mockResolvedValue({}),
-    };
+    mockAppSettings = { getSettingValue: vi.fn().mockResolvedValue(null) };
+    remoteSettings = vi.fn().mockReturnValue({});
     mockRemoteFileOps = {
       getStat: vi.fn().mockResolvedValue({ item: null }),
       getSize: vi.fn().mockResolvedValue({ count: 0 }),
@@ -80,6 +80,7 @@ describe('PathInspectionService', () => {
         { provide: BackendTranslationService, useValue: {} },
         { provide: ApiClientService, useValue: mockApiClient },
         { provide: AppSettingsService, useValue: mockAppSettings },
+        { provide: RemoteFacadeService, useValue: { remoteSettings } },
         { provide: RemoteFileOperationsService, useValue: mockRemoteFileOps },
         { provide: PathService, useValue: mockPathService },
         { provide: MountManagementService, useValue: { mountedRemotes } },
@@ -105,7 +106,7 @@ describe('PathInspectionService', () => {
     it('does not attempt to reserve a fixed path for an automatic Windows drive', async () => {
       mockPathService.enginePathStyle.mockReturnValue('windows');
       expect(await service.inspect('*', 'example', 'Default', 'mount')).toBeNull();
-      expect(mockAppSettings.getRemoteSettings).not.toHaveBeenCalled();
+      expect(remoteSettings).not.toHaveBeenCalled();
       expect(mockRemoteFileOps.getStat).not.toHaveBeenCalled();
     });
 
@@ -246,7 +247,7 @@ describe('PathInspectionService', () => {
       expect(mockRemoteFileOps.getRemotePaths).toHaveBeenCalledExactlyOnceWith(
         '/',
         'home/user/path',
-        { recurse: false }
+        { ...NAMES_ONLY, recurse: false }
       );
       expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
     });
@@ -328,7 +329,7 @@ describe('PathInspectionService', () => {
 
     it('should resolve default bisync path with stored setting and mount point', async () => {
       mockAppSettings.getSettingValue.mockResolvedValue('{home}/Sync/{remote}');
-      mockApiClient.invoke.mockResolvedValue([{ mount_point: '/Users/test' }]);
+      mockApiClient.invoke.mockResolvedValue([{ name: '/Users/test' }]);
 
       const result = await service.resolveDefaultPath('remote:path', 'bisync');
 
@@ -349,7 +350,7 @@ describe('PathInspectionService', () => {
 
     it('skips a folder that a saved profile already uses', async () => {
       mockApiClient.invoke.mockResolvedValue([{ name: '/home/user' }]);
-      mockAppSettings.getRemoteSettings.mockResolvedValue({ drive: { mountConfigs: {} } });
+      remoteSettings.mockReturnValue({ drive: { mountConfigs: {} } });
       mockPathService.checkMountPathCollision.mockImplementation((candidate: string) =>
         candidate.endsWith('/drive') ? [{ remoteName: 'drive', opType: 'mount' }] : []
       );
@@ -592,7 +593,11 @@ describe('PathInspectionService', () => {
       expect(await service.inspect('\\\\server\\share\\Arşiv', 'drive')).toMatchObject({
         state: 'willCreate',
       });
-      expect(mockRemoteFileOps.getStat).toHaveBeenCalledExactlyOnceWith('//server/share', 'Arşiv');
+      expect(mockRemoteFileOps.getStat).toHaveBeenCalledExactlyOnceWith(
+        '//server/share',
+        'Arşiv',
+        NAMES_ONLY
+      );
     });
 
     it('keeps profile fallback precedence, directory order, and backend ownership', async () => {

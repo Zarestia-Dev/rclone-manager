@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type MountPathCollision, type QuickRun } from '@app/types';
-import { checkMountPathCollision } from '../../shared/utils/path.utils';
+import {
+  checkMountPathCollision,
+  normalizeMountFolder,
+  usedMountFolders,
+} from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { AppSettingsService } from '../settings/app-settings.service';
+import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { FileSystemService } from './file-system.service';
 import { MountManagementService } from './mount-management.service';
@@ -26,7 +30,7 @@ describe('WindowsMountTargetService', () => {
 
   beforeEach(() => {
     physicalFree.mockReset().mockResolvedValue(['Y:', 'W:', 'V:', 'U:']);
-    getSettings.mockReset().mockResolvedValue(settings);
+    getSettings.mockReset().mockReturnValue(settings);
     refreshMounts.mockReset().mockResolvedValue(undefined);
     quickRuns = [];
     cachedMounts = [
@@ -52,12 +56,26 @@ describe('WindowsMountTargetService', () => {
             forceCheckMountedRemotes: refreshMounts,
           },
         },
-        { provide: AppSettingsService, useValue: { getRemoteSettings: getSettings } },
+        { provide: RemoteFacadeService, useValue: { remoteSettings: getSettings } },
         { provide: QuickRunService, useValue: { quickRuns: (): QuickRun[] => quickRuns } },
         {
           provide: PathService,
           useValue: {
             getRemoteNameFromFs: (fs: string): string => fs.split(':')[0],
+            normalizeMountFolder: (value: string): string => normalizeMountFolder(value, 'windows'),
+            usedMountFolders: (
+              remote: string,
+              config: Record<string, unknown>,
+              name: string,
+              _operation?: string,
+              quick?: { runs: QuickRun[]; exceptId?: string | null }
+            ): Set<string> =>
+              usedMountFolders(remote, config, () => true, name, {
+                pathStyle: 'windows',
+                currentOperation: 'mount',
+                quickRuns: quick?.runs,
+                currentQuickRunId: quick?.exceptId,
+              }),
             checkMountPathCollision: (
               letter: string,
               remote: string,

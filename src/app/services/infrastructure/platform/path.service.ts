@@ -156,6 +156,33 @@ export class PathService {
     return { type, path: entryPath, remote: normalizedRemote };
   }
 
+  /** The folders the saved profiles and Quick Runs keep, to ask about many folders at once. */
+  usedMountFolders(
+    currentRemoteName: string,
+    allSettings: Record<string, unknown> | undefined | null,
+    currentProfileName?: string,
+    currentOperation?: DefaultPathOp,
+    quick?: { runs: readonly QuickRun[]; exceptId?: string | null }
+  ): ReadonlySet<string> {
+    return pathUtils.usedMountFolders(
+      currentRemoteName,
+      allSettings,
+      p => this.isLocalPath(p),
+      currentProfileName,
+      {
+        pathStyle: this.enginePathStyle(),
+        currentOperation,
+        quickRuns: quick?.runs,
+        currentQuickRunId: quick?.exceptId,
+      }
+    );
+  }
+
+  /** A folder as the set of `usedMountFolders` holds it. */
+  normalizeMountFolder(value: string): string {
+    return pathUtils.normalizeMountFolder(value, this.enginePathStyle());
+  }
+
   checkMountPathCollision(
     proposedPath: string,
     currentRemoteName: string,

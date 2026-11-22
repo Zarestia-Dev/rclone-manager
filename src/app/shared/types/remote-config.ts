@@ -507,12 +507,8 @@ export interface LocalDrive {
   id: string;
   name: string; // The path used for rclone
   label: string;
-  show_name: boolean;
   total_space: number;
-  available_space: number;
   file_system: string;
-  is_removable: boolean;
-  mount_point: string;
 }
 
 export interface ExplorerRoot {
@@ -520,11 +516,8 @@ export interface ExplorerRoot {
   label: string;
   type: string; // Icon name
   isLocal: boolean;
-  showName?: boolean;
   totalSpace?: number;
-  availableSpace?: number;
   fileSystem?: string;
-  isRemovable?: boolean;
 }
 
 export const RCLONE_PATH_KEYS = [

@@ -104,7 +104,8 @@ export class RemoteFacadeService {
 
   private readonly remoteNames = signal<string[]>([], { equal: deepEqual });
   private readonly activeNames = computed(() => new Set(this.remoteNames()));
-  private readonly remoteSettings = computed<Record<string, RemoteSettings>>(() =>
+  /** The settings of every remote as the UI holds them; the facade refreshes them on change events. */
+  readonly remoteSettings = computed<Record<string, RemoteSettings>>(() =>
     Object.fromEntries(
       this.remoteNames().map(name => [name, this.remoteStates.get(name)?.settings() ?? {}])
     )

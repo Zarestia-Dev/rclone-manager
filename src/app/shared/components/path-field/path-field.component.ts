@@ -27,6 +27,7 @@ import type {
   PathInspectionStatus,
   PillTone,
 } from '@app/types';
+import { controlVersion } from 'src/app/shared/utils/form-signal';
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { PillDirective } from 'src/app/shared/directives/pill.directive';
@@ -117,8 +118,6 @@ export class PathFieldComponent {
   readonly pickerDisabled = input(false);
   /** Off when another control picks for this field (a Windows mount point). */
   readonly showPicker = input(true);
-  /** The type column takes the width of the Windows mount target row beneath it. */
-  readonly alignWithMountTarget = input(false);
   /** Folder suggestions are listed while typing; off for a remote that does not exist yet. */
   readonly suggest = input(true);
   /** Checks a local folder for a mount or a two-way copy; null for no check. */
@@ -139,7 +138,7 @@ export class PathFieldComponent {
   readonly removed = output<void>();
 
   /** Moves when the group changes, so the values below follow the form. */
-  private readonly version = signal(0);
+  private readonly version = controlVersion(this.control);
 
   readonly typeValue = computed(() => {
     this.version();
@@ -156,6 +155,16 @@ export class PathFieldComponent {
 
   /** The service's signal of this field's suggestions; the template reads it. */
   readonly suggestions = signal<WritableSignal<PathSelectionState> | null>(null);
+  /** The name typed so far in the folder that is listed: only the entries that hold it are shown. */
+  private readonly typedName = signal('');
+  /** What the menu offers: the listed entries that match the typed name and the kind to pick. */
+  readonly entries = computed(() => {
+    const name = this.typedName().toLowerCase();
+    const foldersOnly = this.pickerSelection() === 'folders';
+    return (this.suggestions()?.().options ?? []).filter(
+      entry => (entry.IsDir || !foldersOnly) && entry.Name.toLowerCase().includes(name)
+    );
+  });
   readonly status = signal<PathInspectionStatus | null>(null);
 
   private registeredId: string | null = null;
@@ -178,13 +187,6 @@ export class PathFieldComponent {
     INSPECTION_TONES[state];
 
   constructor() {
-    effect(onCleanup => {
-      const subscription = this.control().valueChanges.subscribe(() =>
-        this.version.update(v => v + 1)
-      );
-      onCleanup(() => subscription.unsubscribe());
-    });
-
     effect(() => {
       const id = this.fieldId();
       const remote = this.remoteName();
@@ -228,20 +230,34 @@ export class PathFieldComponent {
     this.suggestions.set(null);
   }
 
+  /**
+   * A name typed in a folder lists that folder, not the name as if it were a folder, and the
+   * entries are narrowed to it.
+   */
   onInput(event: Event): void {
-    this.selection.updateInput(this.fieldId(), (event.target as HTMLInputElement).value);
+    const style = this.type() === 'local' ? this.pathService.enginePathStyle() : 'posix';
+    const { parent, leaf } = pathUtils.splitTypedPath(
+      (event.target as HTMLInputElement).value,
+      style
+    );
+    this.typedName.set(leaf);
+    this.selection.updateInput(this.fieldId(), parent);
   }
 
+  /** Opening the menu browses the folder the path names. */
   onMenuOpened(): void {
+    this.typedName.set('');
     this.selection.triggerLoad(this.fieldId(), this.remoteName(), this.path());
   }
 
   onEntryPicked(entryName: string): void {
+    this.typedName.set('');
     this.dirty.emit();
     this.selection.selectEntry(this.fieldId(), entryName, this.control().get('path'));
   }
 
   goUp(): void {
+    this.typedName.set('');
     this.dirty.emit();
     this.selection.navigateUp(this.fieldId(), this.control().get('path'));
   }
@@ -264,7 +280,6 @@ export class PathFieldComponent {
     this.selection.resetPath(this.fieldId());
     // One update with the final values, for whoever listens to the group.
     group.updateValueAndValidity();
-    this.version.update(v => v + 1);
   }
 
   // ── Picker ───────────────────────────────────────────────────────────────

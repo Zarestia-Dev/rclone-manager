@@ -9,7 +9,8 @@ use serde_json::json;
 use sysinfo::Disks;
 
 use crate::rclone::backend::{
-    BackendManager, RcloneTransport, routing_transport::RoutingTransport, types::Backend,
+    BackendError, BackendManager, RcloneTransport, routing_transport::RoutingTransport,
+    types::Backend,
 };
 use crate::rclone::commands::common::{backend_os, is_directory, parse_fs, split_file_path};
 use crate::rclone::endpoints::core;
@@ -47,6 +48,35 @@ async fn run_fs_command_as_job(
     Ok(submission.output.unwrap_or_else(|| json!({})))
 }
 
+/// Runs a metadata query as one direct rc call. These answer in a single round trip, so running
+/// them as async jobs only added the job bookkeeping and a poll interval of 500 ms. The group
+/// stays on the call: rclone registers every call as a job, so `job/stopgroup` still cancels it.
+async fn run_fs_query(
+    app: &AppHandle,
+    endpoint: &str,
+    mut payload: serde_json::Value,
+    group: Option<String>,
+    backend: Option<Backend>,
+) -> Result<serde_json::Value, String> {
+    if let (Some(group), Some(params)) = (group, payload.as_object_mut()) {
+        params.insert("_group".to_string(), json!(group));
+    }
+    let backend = match backend {
+        Some(backend) => backend,
+        None => app.state::<BackendManager>().get_active().await,
+    };
+    RoutingTransport::for_backend(app.clone(), backend)
+        .rpc(endpoint, Some(&payload))
+        .await
+        .map_err(|error| match error {
+            // The error rclone reports, as a failed job would have carried it.
+            BackendError::Rpc { message, .. } => {
+                crate::rclone::engine::error_mapper::map_or_wrap_job_error(&message)
+            }
+            other => crate::localized_error!("backendErrors.request.failed", "error" => other),
+        })
+}
+
 fn create_fs_params(
     remote: &str,
     path: Option<&str>,
@@ -62,12 +92,8 @@ pub struct LocalDrive {
     id: String,
     name: String,
     label: String,
-    show_name: bool,
     total_space: u64,
-    available_space: u64,
     file_system: String,
-    is_removable: bool,
-    mount_point: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,36 +102,24 @@ pub struct PublicLinkParams {
     pub expire: Option<String>,
 }
 
+/// `_origin` stays in the signature for the command contract; queries are not listed as jobs.
 pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<crate::utils::types::origin::Origin>,
+    _origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
     let params = create_fs_params(&remote, path.as_deref());
-    let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
+    let mut data = run_fs_query(&app, operations::FSINFO, json!(params), group, None).await?;
 
-    let data = run_fs_command_as_job(
-        app,
-        operations::FSINFO,
-        json!(params),
-        JobMetadata::for_query(remote, source, JobType::Info, origin, group),
-        None,
-    )
-    .await?;
-
-    let data = {
-        let mut data = data;
-        if let Some(root) = data.get_mut("Root")
-            && let Some(root_str) = root.as_str()
-        {
-            *root = json!(normalize_windows_path(root_str));
-        }
-        data
-    };
+    if let Some(root) = data.get_mut("Root")
+        && let Some(root_str) = root.as_str()
+    {
+        *root = json!(normalize_windows_path(root_str));
+    }
 
     Ok(data)
 }
@@ -115,7 +129,7 @@ pub async fn get_remote_paths(
     remote: String,
     path: Option<String>,
     options: Option<ListOptions>,
-    origin: Option<crate::utils::types::origin::Origin>,
+    _origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
@@ -127,16 +141,7 @@ pub async fn get_remote_paths(
         params.insert("opt".to_string(), json!(opt));
     }
 
-    let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
-
-    run_fs_command_as_job(
-        app,
-        operations::LIST,
-        json!(params),
-        JobMetadata::for_query(remote, source, JobType::List, origin, group),
-        None,
-    )
-    .await
+    run_fs_query(&app, operations::LIST, json!(params), group, None).await
 }
 
 fn detect_home_dir() -> Option<String> {
@@ -388,12 +393,12 @@ async fn load_local_drives(
 
             let is_home = is_home_directory(&normalized_path, home.as_deref(), os);
 
-            let (label, show_name) = if normalized_path == "/storage/emulated/0" {
-                ("nautilus.titles.internalStorage".to_string(), false)
+            let label = if normalized_path == "/storage/emulated/0" {
+                "nautilus.titles.internalStorage".to_string()
             } else if is_home {
-                ("titlebar.home".to_string(), false)
+                "titlebar.home".to_string()
             } else if normalized_path == "/" || normalized_path == "C:\\" {
-                ("nautilus.titles.fileSystem".to_string(), false)
+                "nautilus.titles.fileSystem".to_string()
             } else {
                 let mut drive_label = None;
                 if let Some(d) = sys_disk {
@@ -413,17 +418,17 @@ async fn load_local_drives(
                 }
 
                 if let Some(l) = drive_label {
-                    (l, false)
+                    l
                 } else if normalized_path.starts_with(home.as_deref().unwrap_or(""))
                     && !folder_name.is_empty()
                 {
-                    (folder_name, false)
+                    folder_name
                 } else if let Some(d) = sys_disk {
-                    (d.name().to_string_lossy().into_owned(), false)
+                    d.name().to_string_lossy().into_owned()
                 } else if !folder_name.is_empty() {
-                    (folder_name, false)
+                    folder_name
                 } else {
-                    ("nautilus.titles.localDisk".to_string(), false)
+                    "nautilus.titles.localDisk".to_string()
                 }
             };
 
@@ -434,16 +439,12 @@ async fn load_local_drives(
 
             Some(LocalDrive {
                 id,
-                name: normalized_path.clone(),
+                name: normalized_path,
                 label,
-                show_name,
                 total_space: sys_disk.map_or(0, sysinfo::Disk::total_space),
-                available_space: sys_disk.map_or(0, sysinfo::Disk::available_space),
                 file_system: sys_disk
                     .map(|d| d.file_system().to_string_lossy().into_owned())
                     .unwrap_or_default(),
-                is_removable: sys_disk.is_some_and(sysinfo::Disk::is_removable),
-                mount_point: normalized_path,
             })
         })
         .collect()
@@ -453,7 +454,7 @@ pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
     path: Option<String>,
-    origin: Option<crate::utils::types::origin::Origin>,
+    _origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<DiskUsage, String> {
     let backend = app.state::<BackendManager>().get_active().await;
@@ -467,14 +468,7 @@ pub async fn get_disk_usage(
         disk_usage_root(transport.as_ref(), &remote, path.as_deref(), windows).await?;
     let fs_path = build_full_path(&remote, path.as_deref().unwrap_or(""));
     let params = create_fs_params(&target_remote, None);
-    let json = run_fs_command_as_job(
-        app,
-        operations::ABOUT,
-        json!(params),
-        JobMetadata::for_query(remote, fs_path.clone(), JobType::About, origin, group),
-        Some(backend),
-    )
-    .await?;
+    let json = run_fs_query(&app, operations::ABOUT, json!(params), group, Some(backend)).await?;
 
     let total = json["total"].as_i64().unwrap_or(0);
     let used = json["used"].as_i64().unwrap_or(0);
@@ -513,28 +507,6 @@ async fn disk_usage_root(
     }
 }
 
-pub async fn get_about_remote(
-    app: AppHandle,
-    remote: String,
-    path: Option<String>,
-    origin: Option<crate::utils::types::origin::Origin>,
-    group: Option<String>,
-) -> Result<serde_json::Value, String> {
-    debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
-
-    let params = create_fs_params(&remote, path.as_deref());
-    let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
-
-    run_fs_command_as_job(
-        app,
-        operations::ABOUT,
-        json!(params),
-        JobMetadata::for_query(remote, source, JobType::About, origin, group),
-        None,
-    )
-    .await
-}
-
 pub async fn get_size(
     app: AppHandle,
     remote: String,
@@ -563,7 +535,7 @@ pub async fn get_stat(
     remote: String,
     path: String,
     opt: Option<serde_json::Value>,
-    origin: Option<crate::utils::types::origin::Origin>,
+    _origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
@@ -572,16 +544,8 @@ pub async fn get_stat(
     if let Some(opt_val) = opt {
         params.insert("opt".to_string(), opt_val);
     }
-    let source = build_full_path(&remote, &path);
 
-    run_fs_command_as_job(
-        app,
-        operations::STAT,
-        json!(params),
-        JobMetadata::for_query(remote, source, JobType::Stat, origin, group),
-        None,
-    )
-    .await
+    run_fs_query(&app, operations::STAT, json!(params), group, None).await
 }
 
 pub async fn get_hashsum(
@@ -638,7 +602,7 @@ pub async fn get_public_link(
     remote: String,
     path: String,
     options: Option<PublicLinkParams>,
-    origin: Option<crate::utils::types::origin::Origin>,
+    _origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}");
@@ -654,16 +618,7 @@ pub async fn get_public_link(
         }
     }
 
-    let source = build_full_path(&remote, &path);
-
-    run_fs_command_as_job(
-        app,
-        operations::PUBLICLINK,
-        json!(params),
-        JobMetadata::for_query(remote, source, JobType::Info, origin, group),
-        None,
-    )
-    .await
+    run_fs_query(&app, operations::PUBLICLINK, json!(params), group, None).await
 }
 
 #[cfg(test)]
@@ -796,9 +751,7 @@ mod tests {
         assert_eq!(drives[1].label, "nautilus.titles.fileSystem");
         for drive in drives {
             assert_eq!(drive.total_space, 0);
-            assert_eq!(drive.available_space, 0);
             assert!(drive.file_system.is_empty());
-            assert_eq!(drive.mount_point, drive.name);
         }
     }
 
@@ -833,11 +786,7 @@ mod tests {
             drives.iter().map(|d| d.name.as_str()).collect::<Vec<_>>(),
             ["/", "/sdcard"]
         );
-        assert!(
-            drives
-                .iter()
-                .all(|d| d.total_space == 0 && d.available_space == 0)
-        );
+        assert!(drives.iter().all(|d| d.total_space == 0));
         let android = QueryTransport::new(
             core::DISKS,
             Some(json!({"disks": ["Downloads", "/storage/1234"]})),
@@ -958,5 +907,171 @@ mod tests {
             );
         }
         assert!(transport.requests.lock().unwrap().is_empty());
+    }
+
+    /// A one-backend app whose rc server answers the scripted `(status, body)` replies in order
+    /// and records every request as `(path, body)`.
+    async fn app_with_rc_server(
+        replies: Vec<(u16, serde_json::Value)>,
+    ) -> (
+        AppHandle,
+        tokio::task::JoinHandle<Vec<(String, serde_json::Value)>>,
+        tempfile::TempDir,
+    ) {
+        use crate::rclone::backend::CopySources;
+        use crate::services::settings::{AppSettingsManager, schema::AppSettings};
+        use crate::utils::types::state::RcloneState;
+        use std::sync::Arc;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let directory = tempfile::tempdir().unwrap();
+        let settings: AppSettingsManager = rcman::SettingsManager::builder("query-test", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<AppSettings>()
+            .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("quick_runs").with_profiles())
+            .with_sub_settings(rcman::SubSettingsConfig::singlefile("workflows").with_profiles())
+            .build()
+            .unwrap();
+        let manager = BackendManager::new();
+        manager
+            .add(
+                &settings,
+                Backend::new_remote("A", "127.0.0.1", port),
+                CopySources::default(),
+            )
+            .await
+            .unwrap();
+        manager.switch_to(&settings, "A").await.unwrap();
+        let app = AppHandle::default();
+        app.manage(manager);
+        app.manage(settings);
+        app.manage(RcloneState::new(
+            reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(2))
+                .build()
+                .unwrap(),
+            Arc::new(RoutingTransport::new(app.clone())),
+        ));
+
+        let server = crate::utils::spawn(async move {
+            let mut requests = Vec::new();
+            for (status, reply) in replies {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = Vec::new();
+                let (header_end, length) = loop {
+                    let mut buffer = [0u8; 4096];
+                    let count = stream.read(&mut buffer).await.unwrap();
+                    assert_ne!(count, 0);
+                    request.extend_from_slice(&buffer[..count]);
+                    if let Some(index) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let headers = String::from_utf8_lossy(&request[..index]);
+                        let length = headers
+                            .lines()
+                            .find_map(|line| {
+                                let (name, value) = line.split_once(':')?;
+                                name.eq_ignore_ascii_case("content-length")
+                                    .then(|| value.trim().parse::<usize>().unwrap())
+                            })
+                            .unwrap_or(0);
+                        break (index + 4, length);
+                    }
+                };
+                while request.len() < header_end + length {
+                    let mut buffer = [0u8; 4096];
+                    let count = stream.read(&mut buffer).await.unwrap();
+                    assert_ne!(count, 0);
+                    request.extend_from_slice(&buffer[..count]);
+                }
+                let headers = String::from_utf8_lossy(&request[..header_end]);
+                let path = headers.split_whitespace().nth(1).unwrap().to_string();
+                let payload = if length == 0 {
+                    json!({})
+                } else {
+                    serde_json::from_slice(&request[header_end..]).unwrap()
+                };
+                requests.push((path, payload));
+                let reply = reply.to_string();
+                let reason = if status == 200 { "OK" } else { "Error" };
+                stream
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+                            reply.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+            }
+            requests
+        });
+        (app, server, directory)
+    }
+
+    #[tokio::test]
+    async fn a_metadata_query_is_one_direct_rc_call_that_keeps_its_group() {
+        let (app, server, _directory) =
+            app_with_rc_server(vec![(200, json!({"item": {"IsDir": true}}))]).await;
+
+        let stat = get_stat(
+            app,
+            "gdrive:".into(),
+            "dir".into(),
+            None,
+            None,
+            Some("filemanager-read".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stat, json!({"item": {"IsDir": true}}));
+        let requests = server.await.unwrap();
+        assert_eq!(
+            requests.len(),
+            1,
+            "a query must not poll a job: {requests:?}"
+        );
+        let (path, body) = &requests[0];
+        assert_eq!(path, "/operations/stat");
+        assert_eq!(body["fs"], "gdrive:");
+        assert_eq!(body["remote"], "dir");
+        assert_eq!(body["_group"], "filemanager-read");
+        assert!(body.get("_async").is_none(), "{body}");
+    }
+
+    #[tokio::test]
+    async fn a_query_without_a_group_sends_none() {
+        let (app, server, _directory) = app_with_rc_server(vec![(200, json!({"list": []}))]).await;
+
+        let listing = get_remote_paths(app, "gdrive:".into(), Some("dir".into()), None, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(listing, json!({"list": []}));
+        let requests = server.await.unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].0, "/operations/list");
+        assert!(requests[0].1.get("_group").is_none(), "{}", requests[0].1);
+    }
+
+    #[tokio::test]
+    async fn a_failed_query_reports_the_mapped_rclone_error() {
+        let (app, server, _directory) = app_with_rc_server(vec![(
+            500,
+            json!({"error": "directory not found", "status": 500, "path": "operations/list", "input": {}}),
+        )])
+        .await;
+
+        let error = get_remote_paths(app, "gdrive:".into(), Some("gone".into()), None, None, None)
+            .await
+            .unwrap_err();
+
+        // The same mapping a failed job went through.
+        assert_eq!(error, "backendErrors.remote.notFound");
+        assert_eq!(server.await.unwrap().len(), 1);
     }
 }

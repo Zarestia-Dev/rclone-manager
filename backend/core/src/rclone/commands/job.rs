@@ -29,7 +29,21 @@ use super::common::redact_value;
 use super::job_parser::{JobOutcome, parse_job_response, resolve_job_outcome};
 
 const JOB_POLL_INTERVAL_MS: u64 = 500;
+/// The waits before the first polls of a job. A short job (a folder, a rename, a mount that starts
+/// at once) is done within a few hundred milliseconds, so it should not wait a whole interval to be
+/// noticed; a long one settles at `JOB_POLL_INTERVAL_MS`.
+const JOB_FIRST_POLLS_MS: [u64; 4] = [50, 100, 200, 350];
 const MAX_CONSECUTIVE_ERRORS: u8 = 3;
+
+/// The wait after the `poll`th successful poll of a job (counting from 0).
+fn poll_delay(poll: usize) -> Duration {
+    Duration::from_millis(
+        JOB_FIRST_POLLS_MS
+            .get(poll)
+            .copied()
+            .unwrap_or(JOB_POLL_INTERVAL_MS),
+    )
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -502,6 +516,7 @@ async fn monitor_job(
     );
 
     let mut consecutive_errors = 0u8;
+    let mut polls = 0usize;
     // The engine run that owns the job; a different one answering means the job id was reused.
     let mut engine_run: Option<String> = None;
 
@@ -538,6 +553,7 @@ async fn monitor_job(
             .map_err(|error| error.to_string())
             .and_then(split_poll);
 
+        let mut wait = poll_delay(polls);
         match poll_result {
             Ok(PolledJob { status, stats }) => {
                 consecutive_errors = 0;
@@ -584,6 +600,9 @@ async fn monitor_job(
                 return finish_lost_job(&context, jobid, &metadata, &app).await;
             }
             Err(error) => {
+                // A failing poll is retried at the regular pace: three quick failures in a row
+                // would end the monitoring of a job that a short hiccup left running.
+                wait = Duration::from_millis(JOB_POLL_INTERVAL_MS);
                 consecutive_errors += 1;
                 warn!(
                     "Job {jobid} monitor error ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {error}"
@@ -603,7 +622,8 @@ async fn monitor_job(
             }
         }
 
-        sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
+        polls += 1;
+        sleep(wait).await;
     }
 }
 
@@ -997,6 +1017,19 @@ pub async fn submit_batch_job_with_options(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_job_is_polled_quickly_at_first_and_then_at_the_regular_pace() {
+        let waits: Vec<u64> = (0..7)
+            .map(|poll| poll_delay(poll).as_millis() as u64)
+            .collect();
+        assert_eq!(waits, [50, 100, 200, 350, 500, 500, 500]);
+        assert!(
+            JOB_FIRST_POLLS_MS
+                .iter()
+                .all(|wait| *wait < JOB_POLL_INTERVAL_MS)
+        );
+    }
 
     #[test]
     fn monitor_validates_inner_rc_status_and_completion_fields() {

@@ -184,7 +184,7 @@
           <button
             matButton="filled"
             data-tone="primary"
-            [disabled]="s.needsMountPlugin() || s.preview().state === 'running'"
+            [disabled]="s.blockedByMountPlugin() || s.preview().state === 'running'"
             (click)="s.apply()"
           >
             <mat-icon svgIcon="play"></mat-icon>

@@ -50,6 +50,22 @@ export function normalizeForPlatform(path: string, pathStyle: PathStyle = 'posix
 }
 
 /**
+ * Splits what is being typed into the folder to list and the name typed so far in it:
+ * `home/me/Do` is `home/me/` and `Do`. A path that ends in a separator, or a drive (`C:`), is a
+ * folder to list whole; text without a separator is a name in the root.
+ */
+export function splitTypedPath(
+  value: string,
+  pathStyle: PathStyle = 'posix'
+): { parent: string; leaf: string } {
+  const windows = pathStyle === 'windows';
+  const path = windows ? value.replaceAll('/', '\\') : value;
+  if (windows && /^[a-z]:$/i.test(path)) return { parent: `${path}\\`, leaf: '' };
+  const cut = path.lastIndexOf(windows ? '\\' : '/') + 1;
+  return { parent: path.slice(0, cut), leaf: path.slice(cut) };
+}
+
+/**
  * Joins path segments into a canonical normalized POSIX path.
  */
 export function joinPath(...segments: string[]): string {
@@ -108,6 +124,27 @@ export function mountDriveLetter(path: unknown): string | undefined {
   if (typeof path !== 'string') return undefined;
   const target = path.trim();
   return isWindowsDriveRoot(target) ? target.slice(0, 2).toUpperCase() : undefined;
+}
+
+/**
+ * How File Explorer names a mounted drive: `Name (Z:)`. A network drive shows its share and its
+ * server, `share (\\server) (Z:)`; a name that is no UNC path is the share, after rclone's default
+ * `\\server\` prefix, and no name at all is `\\server\share`. `fallbackName` stands in for an empty
+ * disk name, `letter` is left out while it is not known.
+ */
+export function windowsDriveLabel(
+  letter: string | undefined,
+  name: string,
+  network: boolean,
+  fallbackName: string
+): string {
+  const suffix = letter ? ` (${letter})` : '';
+  const trimmed = name.trim();
+  if (!network) return `${trimmed || fallbackName}${suffix}`;
+  const [, server = 'server', share = trimmed || 'share'] = isWindowsMountNetworkPath(trimmed)
+    ? (/^\\\\([^\\]+)\\(.+)$/.exec(trimmed) ?? [])
+    : [];
+  return `${share} (\\\\${server})${suffix}`;
 }
 
 function windowsFolderName(value: unknown): string | undefined {
@@ -541,45 +578,36 @@ function foldersOf(opType: 'mount' | 'bisync', config: Record<string, unknown>):
   return values.filter((value): value is string => typeof value === 'string' && value !== '');
 }
 
+interface CollisionOptions {
+  pathStyle?: PathStyle;
+  currentOperation?: DefaultPathOp;
+  quickRuns?: readonly QuickRun[];
+  currentQuickRunId?: string | null;
+}
+
+/** A folder as it is compared: Windows ignores case and the kind of slash, and a last slash. */
+export function normalizeMountFolder(value: string, pathStyle?: PathStyle): string {
+  const path = (pathStyle === 'windows' ? value.replace(/\\/g, '/') : value)
+    .trim()
+    .replace(/\/+$/, '');
+  return pathStyle === 'windows' ? path.toLowerCase() : path;
+}
+
 /**
- * Finds what already uses a folder: the saved mount and bisync profiles of every remote, and the
- * Quick Runs that mount or sync a folder. Each collision names its owner, so the message can say
- * which profile or which Quick Run it is. What is being edited is left out of the search: the
+ * What keeps folders: every saved mount and bisync profile of every remote, and every Quick Run
+ * that mounts or syncs a folder, with the folders it keeps. What is being edited is left out: the
  * profile by its remote and name, the Quick Run by its id.
  */
-export function checkMountPathCollision(
-  proposedPath: string,
-  currentRemoteName: string,
+function* folderKeepers(
   allSettings: Record<string, unknown> | undefined | null,
-  isLocalPathFn: (path: string) => boolean,
-  currentProfileName?: string,
-  options: {
-    pathStyle?: PathStyle;
-    currentOperation?: DefaultPathOp;
-    quickRuns?: readonly QuickRun[];
-    currentQuickRunId?: string | null;
-  } = {}
-): MountPathCollision[] {
-  if (!proposedPath || !proposedPath.trim()) return [];
-
-  const normalize = (value: string): string => {
-    const path = (options.pathStyle === 'windows' ? value.replace(/\\/g, '/') : value)
-      .trim()
-      .replace(/\/+$/, '');
-    return options.pathStyle === 'windows' ? path.toLowerCase() : path;
-  };
-  const normTarget = normalize(proposedPath);
-  const collisions: MountPathCollision[] = [];
-  const opKeys = ['mount', 'bisync'] as const;
-  const uses = (config: Record<string, unknown>, opType: 'mount' | 'bisync'): string | undefined =>
-    foldersOf(opType, config).find(
-      folder => isLocalPathFn(folder) && normalize(folder) === normTarget
-    );
-
+  currentRemoteName: string,
+  currentProfileName: string | undefined,
+  options: CollisionOptions
+): Generator<{ owner: Omit<MountPathCollision, 'path'>; folders: string[] }> {
   for (const [rName, rConfig] of Object.entries(allSettings ?? {})) {
     if (!rConfig || typeof rConfig !== 'object') continue;
 
-    for (const opType of opKeys) {
+    for (const opType of ['mount', 'bisync'] as const) {
       const remoteConfig = rConfig as Record<string, unknown>;
       const profilesMap = (remoteConfig[REMOTE_CONFIG_KEYS[opType]] ?? remoteConfig[opType]) as
         Record<string, Record<string, unknown>> | undefined;
@@ -594,10 +622,10 @@ export function checkMountPathCollision(
         )
           continue;
 
-        const path = uses(pConfig, opType);
-        if (path !== undefined) {
-          collisions.push({ kind: 'profile', remoteName: rName, name: pName, opType, path });
-        }
+        yield {
+          owner: { kind: 'profile', remoteName: rName, name: pName, opType },
+          folders: foldersOf(opType, pConfig),
+        };
       }
     }
   }
@@ -606,17 +634,65 @@ export function checkMountPathCollision(
     const { operationType: opType } = quickRun;
     if (quickRun.id === options.currentQuickRunId) continue;
     if (opType !== 'mount' && opType !== 'bisync') continue;
-    const path = uses(quickRun.config as unknown as Record<string, unknown>, opType);
-    if (path !== undefined) {
-      collisions.push({
-        kind: 'quick_run',
-        remoteName: quickRun.remoteName,
-        name: quickRun.name,
-        opType,
-        path,
-      });
+    yield {
+      owner: { kind: 'quick_run', remoteName: quickRun.remoteName, name: quickRun.name, opType },
+      folders: foldersOf(opType, quickRun.config as unknown as Record<string, unknown>),
+    };
+  }
+}
+
+/**
+ * Finds what already uses a folder: the saved mount and bisync profiles of every remote, and the
+ * Quick Runs that mount or sync a folder. Each collision names its owner, so the message can say
+ * which profile or which Quick Run it is.
+ */
+export function checkMountPathCollision(
+  proposedPath: string,
+  currentRemoteName: string,
+  allSettings: Record<string, unknown> | undefined | null,
+  isLocalPathFn: (path: string) => boolean,
+  currentProfileName?: string,
+  options: CollisionOptions = {}
+): MountPathCollision[] {
+  if (!proposedPath || !proposedPath.trim()) return [];
+
+  const target = normalizeMountFolder(proposedPath, options.pathStyle);
+  const collisions: MountPathCollision[] = [];
+  for (const { owner, folders } of folderKeepers(
+    allSettings,
+    currentRemoteName,
+    currentProfileName,
+    options
+  )) {
+    const path = folders.find(
+      folder => isLocalPathFn(folder) && normalizeMountFolder(folder, options.pathStyle) === target
+    );
+    if (path !== undefined) collisions.push({ ...owner, path });
+  }
+  return collisions;
+}
+
+/**
+ * The folders that are kept, normalized, for asking about many at once: one walk over what is
+ * saved instead of one for each folder asked about. A folder collides when it is in the set.
+ */
+export function usedMountFolders(
+  currentRemoteName: string,
+  allSettings: Record<string, unknown> | undefined | null,
+  isLocalPathFn: (path: string) => boolean,
+  currentProfileName?: string,
+  options: CollisionOptions = {}
+): Set<string> {
+  const used = new Set<string>();
+  for (const { folders } of folderKeepers(
+    allSettings,
+    currentRemoteName,
+    currentProfileName,
+    options
+  )) {
+    for (const folder of folders) {
+      if (isLocalPathFn(folder)) used.add(normalizeMountFolder(folder, options.pathStyle));
     }
   }
-
-  return collisions;
+  return used;
 }

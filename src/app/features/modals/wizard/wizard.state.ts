@@ -409,8 +409,13 @@ export class WizardState {
     const op = this.plan()?.operationType;
     return op ? (getOperationDef(op)?.actionLabel ?? op) : '';
   });
+  /** The warning: a mount is planned and the mount plugin is missing. */
   readonly needsMountPlugin = computed(
-    () => this.plan()?.flow === 'stream' && !!this.env()?.mountPluginMissing
+    () => this.plan()?.flow === 'stream' && this.service.mountPluginMissing()
+  );
+  /** The warning stops the wizard unless the user turned the plugin check off. */
+  readonly blockedByMountPlugin = computed(
+    () => this.needsMountPlugin() && !this.service.mountPluginCheckSkipped()
   );
   readonly offersStartOnLogin = computed(() => {
     const env = this.env();

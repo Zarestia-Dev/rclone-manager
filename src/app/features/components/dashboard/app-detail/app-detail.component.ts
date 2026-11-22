@@ -279,10 +279,7 @@ export class AppDetailComponent {
   readonly showMountPluginWarning = computed(() => {
     if (this.currentOpType() !== 'mount') return false;
     if (this.mountWarningDismissed()) return false;
-    const isPluginDisabledOrMissing =
-      this.systemHealth.skipMountPluginCheck() ||
-      this.systemHealth.mountPluginInstalled() === false;
-    if (!isPluginDisabledOrMissing) return false;
+    if (!this.systemHealth.mountPluginMissing()) return false;
 
     const warnOption = this.appSettingsService.options()?.['runtime.mount_warn'];
     return warnOption !== undefined ? !!warnOption.value : true;

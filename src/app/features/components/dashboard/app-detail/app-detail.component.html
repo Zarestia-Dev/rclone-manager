@@ -81,17 +81,16 @@
       [dismissTooltip]="'banners.mountPlugin.dismissTooltip' | translate"
       (dismiss)="dismissMountPluginWarning()"
     >
-      <div class="actions">
-        <button
-          matButton="filled"
-          data-tone="accent"
-          (click)="onInstallMountPlugin()"
-          [attr.title]="'banners.mountPlugin.install' | translate"
-        >
-          <mat-icon svgIcon="wrench"></mat-icon>
-          <span>{{ 'banners.mountPlugin.install' | translate }}</span>
-        </button>
-      </div>
+      <button
+        bannerAction
+        matButton="filled"
+        data-tone="accent"
+        (click)="onInstallMountPlugin()"
+        [attr.title]="'banners.mountPlugin.install' | translate"
+      >
+        <mat-icon svgIcon="wrench"></mat-icon>
+        <span>{{ 'banners.mountPlugin.install' | translate }}</span>
+      </button>
     </app-alert-banner>
   }
 

@@ -3,10 +3,20 @@ import { profileOf, REMOTE_CONFIG_KEYS, type MountedRemote } from '@app/types';
 import { mountDriveLetter } from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { AppSettingsService } from '../settings/app-settings.service';
+import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { FileSystemService } from './file-system.service';
 import { MountManagementService } from './mount-management.service';
+
+/**
+ * The letters offered, Z: down to D:. rclone never takes A: or B: (floppy drives) or C: (the main
+ * drive) for `*`, and the app does not offer them.
+ */
+export const OFFERED_LETTERS: readonly string[] = Array.from(
+  { length: 23 },
+  (_, index) => `${String.fromCharCode(90 - index)}:`
+);
+export const isOfferedLetter = (letter: string): boolean => letter >= 'D:';
 
 export interface MountDriveOption {
   letter: string;
@@ -21,7 +31,7 @@ export class WindowsMountTargetService {
   private readonly mounts = inject(MountManagementService);
   private readonly paths = inject(PathService);
   private readonly quickRuns = inject(QuickRunService);
-  private readonly settings = inject(AppSettingsService);
+  private readonly facade = inject(RemoteFacadeService);
 
   /**
    * The letter a new mount gets by default: the highest free one that no saved profile or Quick
@@ -39,7 +49,8 @@ export class WindowsMountTargetService {
         quickRunId
       );
       return (
-        options.find(option => option.status === 'free' && option.letter[0] >= 'D')?.letter ?? null
+        options.find(option => option.status === 'free' && isOfferedLetter(option.letter))
+          ?.letter ?? null
       );
     } catch {
       // The backend changed while the letters were read; the folder default still works.
@@ -55,10 +66,8 @@ export class WindowsMountTargetService {
     quickRunId?: string | null
   ): Promise<MountDriveOption[]> {
     const scope = this.backend.activeBackend();
-    const [freeLetters, settings] = await Promise.all([
-      this.files.getAvailableDriveLetters(),
-      this.settings.getRemoteSettings(),
-    ]);
+    const freeLetters = await this.files.getAvailableDriveLetters();
+    const settings = this.facade.remoteSettings();
     const checkScope = (): void => {
       if (scope !== this.backend.activeBackend() || !this.files.canSelectDriveLetter()) {
         throw new Error('Mount target backend changed');
@@ -101,6 +110,8 @@ export class WindowsMountTargetService {
         }
       : settings;
     const quick = { runs: this.quickRuns.quickRuns(), exceptId: quickRunId };
+    // One walk over what is saved, not one for each of the 26 letters.
+    const kept = this.paths.usedMountFolders(remote, effective, profile, 'mount', quick);
 
     return Array.from({ length: 26 }, (_, index): MountDriveOption => {
       const letter = String.fromCharCode(90 - index) + ':';
@@ -110,10 +121,9 @@ export class WindowsMountTargetService {
         return { letter, status: 'occupied', availableForAutomatic: false };
       }
       // rclone picks the first free letter from Z down to D for `*`.
-      const availableForAutomatic = letter[0] >= 'D' && free.has(letter) && atLetter.length === 0;
-      const reserved =
-        this.paths.checkMountPathCollision(letter, remote, effective, profile, 'mount', quick)
-          .length > 0;
+      const availableForAutomatic =
+        isOfferedLetter(letter) && free.has(letter) && atLetter.length === 0;
+      const reserved = kept.has(this.paths.normalizeMountFolder(letter));
       if (reserved) return { letter, status: 'reserved', availableForAutomatic };
       return { letter, status: ownsLetter ? 'current' : 'free', availableForAutomatic };
     });

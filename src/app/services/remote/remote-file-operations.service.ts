@@ -15,6 +15,12 @@ import {
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
+/**
+ * Options for a listing or stat that only needs names and kinds. rclone then skips the modification
+ * time and the MIME type of every entry, which some backends must fetch with a request of their own.
+ */
+export const NAMES_ONLY = { noModTime: true, noMimeType: true } as const;
+
 export interface PendingWebUpload {
   group: string;
   remote: string;
