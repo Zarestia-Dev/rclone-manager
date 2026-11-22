@@ -189,33 +189,7 @@ app-alert-banner {
 }
 
 @container (max-width: 40rem) {
-  // Standard path item row mobile styling
-  .path-item-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    height: auto;
-
-    > .path-type-selector {
-      grid-column: 1 / span 2;
-      grid-row: 1;
-      border-right: none;
-      border-bottom: 1px solid var(--border-color);
-      padding: var(--space-xs) var(--space-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    > mat-form-field.path-input-field {
-      grid-column: 1;
-      grid-row: 2;
-      height: calc(var(--space-2xl) + var(--space-xl));
-      width: 100%;
-    }
-  }
-
-  // Overrides and styling specific to copyurl rows/wrappers
+  // The URL rows are the only path rows of this view; the path fields lay themselves out.
   .copyurl-inputs-wrapper {
     grid-column: 1 / span 2;
     grid-row: 2;
@@ -224,13 +198,14 @@ app-alert-banner {
     align-items: stretch;
     padding: 0;
 
-    .url-field,
-    .filename-field {
+    // Spelled like the shared row's own rule (`.path-item-row mat-form-field.path-input-field`,
+    // which sets `flex: 1`) so that these win: a field with `flex: 1` ignores its height.
+    .copyurl-row & mat-form-field.path-input-field {
       flex: none;
       height: calc(var(--space-2xl) + var(--space-xl));
     }
 
-    .filename-field {
+    .copyurl-row & mat-form-field.filename-field {
       border-left: none;
       border-top: 1px solid var(--border-color);
     }
@@ -242,12 +217,21 @@ app-alert-banner {
     grid-template-rows: auto auto;
     height: auto;
 
+    // The label spans the whole header and stays centred; the remove button sits on the same
+    // row at its end, over the label's empty side, instead of pushing the label to one side.
     > .path-type-selector {
-      grid-column: 1;
+      grid-column: 1 / span 2;
       grid-row: 1;
+      justify-content: center;
       border-right: none;
       border-bottom: 1px solid var(--border-color);
       padding: var(--space-xs) var(--space-md);
+    }
+
+    > .action-suffix {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
     }
   }
 }

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ComponentRef } from '@angular/core';
+import { Component, ComponentRef } from '@angular/core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 import { AlertBannerComponent } from './alert-banner.component';
@@ -67,5 +67,31 @@ describe('AlertBannerComponent', () => {
     const emitSpy = vi.spyOn(component.dismiss, 'emit');
     button.click();
     expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts a button marked bannerAction in the actions slot, and the others in the text', () => {
+    @Component({
+      imports: [AlertBannerComponent],
+      template: `
+        <app-alert-banner title="t">
+          <button class="inline">a</button>
+          <button class="action" bannerAction>b</button>
+        </app-alert-banner>
+      `,
+    })
+    class HostComponent {}
+
+    const host = TestBed.createComponent(HostComponent);
+    host.detectChanges();
+    const el = host.nativeElement as HTMLElement;
+    expect(el.querySelector('.alert-actions .action')).not.toBeNull();
+    expect(el.querySelector('.alert-actions .inline')).toBeNull();
+    expect(el.querySelector('.alert-content .inline')).not.toBeNull();
+  });
+
+  it('leaves the actions slot empty, so it takes no room, when there is no action', () => {
+    fixture.detectChanges();
+    const actions = (fixture.nativeElement as HTMLElement).querySelector('.alert-actions');
+    expect(actions?.childElementCount).toBe(0);
   });
 });

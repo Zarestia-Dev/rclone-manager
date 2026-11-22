@@ -43,6 +43,7 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { WindowsMountTargetService } from 'src/app/services/operations/windows-mount-target.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
@@ -90,7 +91,8 @@ interface PathItem {
   ],
   providers: [PathSelectionService],
   templateUrl: './app-operation-config.component.html',
-  styleUrls: ['./app-operation-config.component.scss', './operation-path-row.scss'],
+  // The shared row first: the container rules of the component's own file must come after it.
+  styleUrls: ['./operation-path-row.scss', './app-operation-config.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OperationConfigComponent {
@@ -111,6 +113,7 @@ export class OperationConfigComponent {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathService = inject(PathService);
   private readonly pathInspectionService = inject(PathInspectionService);
+  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -435,8 +438,18 @@ export class OperationConfigComponent {
 
       const context = `${type}:${rName}`;
       if (pathCtrl.value && this.generatedDefaultPaths.get(pathCtrl)?.context === context) return;
-      this.pathInspectionService
-        .resolveDefaultPath(rName, type as 'mount' | 'bisync')
+      // A mount on Windows starts on a free drive letter; the folder default is the fallback.
+      const folderDefault = (): Promise<string> =>
+        this.pathInspectionService.resolveDefaultPath(rName, type as 'mount' | 'bisync');
+      (type === 'mount' && untracked(() => this.canSelectDriveLetter())
+        ? this.windowsMountTarget
+            .defaultDriveLetter(
+              rName,
+              untracked(() => this.currentQuickRunId())
+            )
+            .then(letter => letter ?? folderDefault())
+        : folderDefault()
+      )
         .then(defaultPath => {
           if (token !== this.pathResolveToken) return;
           if (

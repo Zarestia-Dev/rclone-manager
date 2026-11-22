@@ -757,7 +757,7 @@
       "about": "關於 RClone Manager",
       "quickRemote": "快速新增遠端連線",
       "detailedRemote": "詳細新增遠端連線",
-      "intentGuide": "精靈"
+      "wizard": "精靈"
     }
   },
   "onboarding": {
@@ -2878,33 +2878,34 @@
         "clear": "清除"
       }
     },
-    "intentGuide": {
+    "wizard": {
       "title": "你想做什麼？",
       "stepOf": "第 {{current}} 步，共 {{total}} 步",
       "loadFailed": "無法載入你的雲端儲存空間。",
       "noRemotes": "請先新增一個雲端儲存空間，再回到這裡。",
       "remoteLabel": "哪個雲端？",
       "recommended": "推薦",
-      "measuring": "正在計算大小…",
       "applyFailed": "無法完成設定。請檢查資料夾後再試一次。",
       "hello": {
         "created": "{{remote}} 已就緒！你想用它做什麼？",
         "default": "你想用雲端做什麼？",
-        "subtitle": "用你自己的話選擇想做的事。其餘由我們設定，在你確認之前不會開始任何動作。"
+        "subtitle": "用你自己的話選擇想做的事。其餘由我們設定，在你確認之前不會開始任何動作。",
+        "dontShow": "新增雲端後不再自動開啟",
+        "dontShowHint": "好的。你可以隨時透過頂部的 ⚙ 按鈕重新開啟。"
       },
       "places": {
-        "computer": "這台電腦",
-        "phone": "這支手機",
+        "thisDevice": "此裝置",
         "server": "伺服器",
         "filesApp": "「檔案」應用程式",
         "tv": "電視或播放器",
         "device": "手機或電腦",
         "browser": "網頁瀏覽器",
-        "homeNetwork": "你的家庭網路"
+        "homeNetwork": "你的家庭網路",
+        "automaticDrive": "一個可用的磁碟機代號"
       },
       "goals": {
         "access": {
-          "title": "把雲端當作這台電腦上的資料夾使用",
+          "title": "把雲端當作此裝置上的資料夾使用",
           "description": "就像網路磁碟機：檔案顯示在資料夾中，開啟時才下載。",
           "descriptionApp": "就像 Windows 上的 {{app}} 應用程式：檔案顯示在資料夾中，開啟時才下載。",
           "titlePhone": "在手機的「檔案」應用程式中查看雲端",
@@ -2912,14 +2913,14 @@
         },
         "backup": {
           "title": "把檔案備份到雲端",
-          "description": "在雲端保留一個資料夾的副本，以防這台電腦出問題。"
+          "description": "在雲端保留一個資料夾的副本，以防此裝置出問題。"
         },
         "devices": {
-          "title": "在這台電腦上保留一份與雲端相同的副本",
+          "title": "在此裝置上保留一份與雲端相同的副本",
           "description": "沒有網路也能用，還能在多台裝置間保持一致：變更會雙向同步。非常適合 Obsidian 或 Logseq 筆記。"
         },
         "download": {
-          "title": "把雲端檔案下載到這台電腦",
+          "title": "把雲端檔案下載到此裝置",
           "description": "下載一個資料夾或全部內容，一次性或保持最新。"
         },
         "migrate": {
@@ -2951,13 +2952,6 @@
       },
       "about": {
         "title": "有什麼差別？",
-        "goals": {
-          "title": "哪個適合我？",
-          "access": "把雲端當資料夾：檔案留在雲端，只有你開啟時才會到這台電腦上。",
-          "devices": "這裡也留一份副本：檔案也儲存在這台電腦上，沒有網路也能用。一邊改了，另一邊也會跟著變。",
-          "backup": "備份：資料夾的一份安全副本會放到雲端。你的資料夾裡什麼都不會變。",
-          "download": "取回雲端檔案：雲端檔案的副本會來到這台電腦。雲端什麼都不會變。"
-        },
         "deleted": {
           "same": "兩種方式都會把新增和修改過的檔案複製到雲端，也都不會更動你的資料夾。",
           "differ": "「保留在雲端」：在這裡刪除檔案後，雲端仍會保留。「雲端也刪除」：雲端始終與你的資料夾保持一模一樣，所以在這裡刪除的檔案，雲端裡也會一併刪除。"
@@ -2972,12 +2966,13 @@
         },
         "explore": {
           "same": "兩種方式都不會改動任何東西。",
-          "differ": "「瀏覽我的檔案」：在此應用程式中開啟你的雲端，瀏覽其中的檔案。「將資料夾與雲端比較」：顯示這台電腦上的資料夾與雲端之間哪些檔案不一樣。"
+          "differ": "「瀏覽我的檔案」：在此應用程式中開啟你的雲端，瀏覽其中的檔案。「將資料夾與雲端比較」：顯示此裝置上的資料夾與雲端之間哪些檔案不一樣。「將一個雲端與另一個比較」：顯示兩個雲端之間哪些檔案不一樣。"
         },
         "where": {
           "stream": "這個資料夾就像一扇門：檔案留在雲端，在這裡顯示，開啟時才下載。請選一個空資料夾。你放進去的內容也會儲存到雲端。",
           "twoWay": "你可以選擇已經在用的資料夾。第一次會與雲端比較並合併，不會刪除任何內容。之後，一邊的變更（包括刪除檔案）也會出現在另一邊。",
-          "mirror": "雲端資料夾會變成與你的資料夾一模一樣的副本。其中有、但你的資料夾裡沒有的檔案會被刪除。最穩妥的做法是選擇一個新的或空的雲端資料夾。"
+          "mirror": "雲端資料夾會變成與你的資料夾一模一樣的副本。其中有、但你的資料夾裡沒有的檔案會被刪除。最穩妥的做法是選擇一個新的或空的雲端資料夾。",
+          "streamWindows": "雲端會以磁碟機的形式顯示在檔案總管中，就像隨身碟一樣。檔案仍保留在雲端，開啟時才會下載。你也可以改選一個資料夾。放進去的內容也會一併儲存到雲端。"
         }
       },
       "options": {
@@ -3023,12 +3018,17 @@
           "compare": {
             "title": "將資料夾與雲端比較",
             "description": "就像比較兩個資料夾：看看本機資料夾與雲端之間有哪些檔案不同。不會變更任何內容。"
+          },
+          "compareClouds": {
+            "title": "將一個雲端與另一個比較",
+            "description": "就像比較兩個資料夾：看看你的兩個雲端之間有哪些檔案不同。不會變更任何內容。"
           }
         }
       },
       "where": {
         "heading": "在哪裡？",
         "target": "檔案要放到哪裡？",
+        "targetCompare": "要與哪個雲端比較？",
         "noOtherRemote": "請先新增新的雲端，再回到這裡。",
         "shareLogin": "其他裝置的登入資訊",
         "shareHint": "手機或電腦連線時會要求輸入這些資訊。",
@@ -3040,7 +3040,8 @@
           "download": "檔案會下載到這裡",
           "upload": "要備份哪個資料夾？",
           "compare": "要檢查哪個資料夾？",
-          "devices": "哪個資料夾需要保持一致？"
+          "devices": "哪個資料夾需要保持一致？",
+          "streamWindows": "雲端會顯示為磁碟機或資料夾"
         },
         "cloud": {
           "stream": "雲端的哪一部分？",
@@ -3049,7 +3050,8 @@
           "upload": "備份存放在這裡",
           "cloudToCloud": "要複製什麼？",
           "share": "要分享什麼？",
-          "compare": "與這個資料夾比較"
+          "compare": "與這個資料夾比較",
+          "cloudCompare": "要檢查哪個資料夾？"
         },
         "localPlaceholder": "選擇或輸入資料夾",
         "cloudPlaceholder": "留空表示整個雲端儲存空間",
@@ -3067,7 +3069,6 @@
       },
       "review": {
         "heading": "將會這樣進行",
-        "technical": "技術名稱",
         "advanced": "在完整編輯器中開啟",
         "start": "設定並開始",
         "firstRun": "第一次執行會比較兩邊並合併。可能需要一些時間，不會刪除任何檔案。",
@@ -3089,7 +3090,19 @@
           "share_dlna": "{{cloud}} 會分享給你網路中的電視和播放器。",
           "share_webdav": "{{cloud}} 會以密碼保護的方式在你的網路中分享。",
           "share_http": "{{cloud}} 會以帶密碼的網頁形式在你的網路中分享。",
-          "compare": "{{local}} 會與 {{cloud}} 進行比較。"
+          "compare": "{{local}} 會與 {{cloud}} 進行比較。",
+          "cloudCompare": "{{cloud}} 會與 {{target}} 進行比較。",
+          "streamDrive": "{{cloud}} 會顯示為 {{local}} 磁碟機。",
+          "streamAutoDrive": "{{cloud}} 會顯示為一個新的磁碟機。磁碟機代號由 Windows 在連線時選擇。"
+        },
+        "flow": {
+          "stream": "使用時才開啟",
+          "upload": "傳送到雲端",
+          "download": "來自雲端",
+          "twoWay": "兩邊保持一致",
+          "cloudToCloud": "傳送到另一個雲端",
+          "share": "在你的網路中分享",
+          "compare": "只比較，不會變更任何內容"
         },
         "schedule": {
           "watch": "檔案變更時會自動執行。",
@@ -3100,14 +3113,14 @@
         },
         "detailsTitle": "貼心提醒",
         "destination": {
-          "title": "儲存為",
           "quickRun": "快速執行",
           "profile": "主選單中的設定檔",
           "hintQuickRun": "顯示在 Flow › 快速執行 中。",
           "hintProfile": "顯示在主選單中「{{remote}}」的頁面上，可在那裡啟動和停止。"
         },
         "wholeCloud": "整個雲端",
-        "duplicate": "你已經有一個做同樣事情的設定：「{{name}}」。"
+        "duplicate": "你已經有一個做同樣事情的設定：「{{name}}」。",
+        "duplicateShow": "開啟"
       },
       "effects": {
         "streamOpen": "開啟檔案時會從雲端下載。",
@@ -3119,7 +3132,7 @@
         "mirrorDelete": "你在這裡刪除的檔案也會從雲端刪除。",
         "mirrorExtra": "只存在於雲端資料夾中的檔案會被刪除。",
         "downloadNew": "雲端新增和修改的檔案會下載。",
-        "downloadKeep": "在雲端刪除的檔案會保留在這台電腦上。",
+        "downloadKeep": "在雲端刪除的檔案會保留在此裝置上。",
         "downloadLocalChange": "雲端的內容絕不會被變更。",
         "twoWayChange": "任一邊的變更都會複製到另一邊。",
         "twoWayDelete": "一邊刪除的檔案，另一邊也會刪除。",
@@ -3138,11 +3151,11 @@
         "browseNothing": "不會變更任何內容。"
       },
       "advice": {
-        "tooBigForDisk": "這些內容有 {{size}}，但這台電腦只剩 {{free}}。放不下。",
-        "tightOnDisk": "這些內容有 {{size}}，這台電腦剩餘 {{free}}。放得下，但磁碟會幾乎滿載。",
-        "fitsOnDisk": "這些內容有 {{size}}，這台電腦剩餘 {{free}}。完全放得下。",
+        "tooBigForDisk": "這些內容有 {{size}}，但此裝置只剩 {{free}}。放不下。",
+        "tightOnDisk": "這些內容有 {{size}}，此裝置剩餘 {{free}}。放得下，但磁碟會幾乎滿載。",
+        "fitsOnDisk": "這些內容有 {{size}}，此裝置剩餘 {{free}}。完全放得下。",
         "cloudTooFull": "該資料夾有 {{size}}，但雲端只剩 {{free}}。放不下。",
-        "streamSavesSpace": "你的雲端有 {{cloud}}，這台電腦剩餘 {{free}}，所以這是正確的選擇：只有你開啟的檔案才佔用空間。"
+        "streamSavesSpace": "你的雲端有 {{cloud}}，此裝置剩餘 {{free}}，所以這是正確的選擇：只有你開啟的檔案才佔用空間。"
       },
       "preview": {
         "title": "先看看會發生什麼",
@@ -3173,24 +3186,17 @@
           "error": "有問題",
           "untouched": "保持原樣"
         },
-        "groupHints": {
-          "delete": "這些檔案只存在於目的地，因此會在那裡被刪除。",
-          "add": "這些是新檔案，因此會被複製。",
-          "replace": "這些檔案兩邊都有但內容不同。目的地的版本將被取代。",
-          "copy": "這些檔案將被複製。",
-          "error": "這些檔案無法比較或複製。",
-          "untouched": "這些檔案只存在於目的地，會保持原樣。"
-        },
+        "groupCount": "{{label}}：{{count}}",
         "unchanged": {
           "other": "{{count}} 個檔案兩邊已經相同"
         },
-        "search": "在清單中搜尋",
-        "showMore": "顯示更多",
-        "noMatches": "沒有檔案符合你的搜尋。",
         "deleteWarning": "開始之前請先查看此清單：這些檔案將從目的地刪除。",
         "again": "重新試執行",
         "slowNote": "依檔案數量而定，這可能需要一些時間。並沒有卡住，請稍候。",
-        "elapsed": "已執行 {{time}}"
+        "elapsed": "已執行 {{time}}",
+        "andMore": {
+          "other": "…以及另外 {{count}} 個檔案"
+        }
       },
       "working": {
         "saving": "正在設定…",
@@ -3205,9 +3211,12 @@
         "twoWayReady": "第一次同步已完成。從現在起兩邊將始終保持一致。",
         "twoWayFailed": "已設定完成，但首次同步沒有完成。",
         "started": "已經開始。你可以在應用程式中查看進度。",
+        "checkStarted": "檢查已開始。完成後，你可以看到哪些檔案不一樣。",
         "findIt": "之後可以在 Flow › 快速執行 中找到「{{name}}」。",
         "openFolder": "開啟資料夾",
         "openCloud": "在檔案瀏覽器中顯示",
+        "openRun": "顯示進度與結果",
+        "openRunHint": "查看進展如何，以及涉及哪些檔案。",
         "another": "設定其他內容",
         "shareWebdav": "分享已開啟。請在手機或電腦上連線到以下任一位址：",
         "shareHttp": "分享已開啟。請在手機或電腦的瀏覽器中開啟以下任一位址：",
@@ -3216,16 +3225,15 @@
         "shareUser": "使用者名稱",
         "sharePassword": "密碼",
         "sharePasswordHint": "您設定的密碼",
-        "troubleTitle": "如果連線不上",
-        "troubleNetwork": "手機必須與這台電腦連上同一個 Wi-Fi。",
-        "troubleNetworkRemote": "手機必須處於能連到 {{host}} 的網路中。",
-        "troubleFirewall": "分享檔案的那台電腦的防火牆必須允許連接埠 {{port}}。",
         "shareDlna": "分享已開啟。請在電視或播放器的媒體清單中尋找「{{name}}」。",
-        "noAddress": "分享已開啟。請連線到這台電腦的網路位址，連接埠 {{port}}。",
+        "noAddress": "分享已開啟。請連線到此裝置的網路位址，連接埠 {{port}}。",
         "findItProfile": "之後可在主選單中「{{remote}}」的頁面找到，設定檔名稱為「{{name}}」。",
         "whereQuickRun": "在快速執行中顯示",
         "whereProfile": "在主選單中顯示",
-        "failureReason": "出錯原因：{{reason}}"
+        "failureReason": "出錯原因：{{reason}}",
+        "streamDrive": "你的雲端現在是 {{path}} 磁碟機。",
+        "streamAutoDrive": "你的雲端現在是檔案總管中的一個新磁碟機。",
+        "openFilesApp": "開啟「檔案」應用程式"
       },
       "runNames": {
         "access": "{{remote}} 資料夾",
@@ -3252,20 +3260,18 @@
           "description": "每次開啟應用程式時自動執行。",
           "descriptionMount": "每次開啟應用程式時雲端會自動連線。"
         },
-        "cloudHint": "監看只能發現這台電腦上的變更。再加上排程，這樣雲端的變更也能同步過來。",
+        "cloudHint": "監看只能發現此裝置上的變更。再加上排程，這樣雲端的變更也能同步過來。",
         "invalidCron": "此排程尚未完成。請從上方選擇一個時間。"
       },
       "details": {
-        "cache": "你開啟的檔案最多會在這台電腦上保留 {{age}}，最多佔用 {{size}} 磁碟。",
+        "cache": "你開啟的檔案最多會在此裝置上保留 {{age}}，最多佔用 {{size}} 磁碟。",
         "writeBack": "你所做的變更會在 {{time}} 後傳送到雲端。",
         "minFree": "當磁碟剩餘空間少於 {{size}} 時，快取會停止成長。",
         "address": "位址：",
-        "addressUnknown": "使用這台電腦的位址加連接埠：",
+        "addressUnknown": "使用此裝置的位址加連接埠：",
         "addressViaBackend": "這是應用程式連線到那台電腦所用的位址。位於其他網路的手機可能無法連上。",
         "port": "連接埠：",
         "user": "使用者名稱：",
-        "readOnly": "裝置可以檢視，但不能變更檔案。",
-        "canChange": "裝置也可以變更和刪除檔案。",
         "tvName": "在電視上顯示為："
       },
       "settings": {
@@ -3279,70 +3285,14 @@
       },
       "undo": {
         "action": "移除此設定",
+        "hint": "它會停止執行並從應用程式中消失。你的檔案不會受到影響。",
         "confirm": "「{{name}}」會停止執行並從應用程式中消失。你的檔案不會受到影響。",
         "working": "正在移除…",
         "failed": "無法移除。你仍可在它所在的位置移除。",
         "removedTitle": "已移除",
-        "removed": "「{{name}}」已移除。你的檔案沒有任何變更。",
+        "removed": "你的檔案沒有任何變更。",
         "title": "要移除此設定嗎？",
-        "confirmRunning": "「{{name}}」正在執行。將先停止，然後移除。你的檔案不會受到影響。"
-      },
-      "setups": {
-        "title": "已設定的內容",
-        "show": "開啟",
-        "remove": "移除",
-        "status": {
-          "stream": {
-            "running": "已掛載",
-            "idle": "未掛載"
-          },
-          "share": {
-            "running": "服務執行中",
-            "idle": "服務未執行"
-          },
-          "job": {
-            "running": "執行中",
-            "ok": "已完成 · {{when}}",
-            "failed": "失敗 · {{when}}",
-            "stopped": "已停止 · {{when}}",
-            "idle": "從未執行"
-          }
-        },
-        "subtitle": "你設定的所有內容，依雲端分組。",
-        "empty": "尚未設定任何內容。",
-        "headline": {
-          "stream": "雲端作為資料夾",
-          "streamSaf": "雲端顯示在「檔案」應用程式中",
-          "twoWay": "保持同步",
-          "upload_copy": "備份",
-          "upload_sync": "鏡像備份",
-          "upload_move": "移動到雲端",
-          "download": "下載",
-          "download_sync": "鏡像下載",
-          "download_move": "從雲端移動",
-          "cloudToCloud_copy": "複製到 {{target}}",
-          "cloudToCloud_move": "移動到 {{target}}",
-          "cloudToCloud_sync": "鏡像到 {{target}}",
-          "share_dlna": "與電視和播放器共享",
-          "share_webdav": "在你的網路中共享",
-          "share_http": "以網頁形式分享",
-          "share_other": "透過 {{type}} 分享",
-          "compare": "資料夾檢查"
-        },
-        "auto": {
-          "startup": "應用程式啟動時執行",
-          "watch": "檔案變更時執行",
-          "manual": "手動啟動",
-          "startupStream": "應用程式啟動時掛載",
-          "startupShare": "應用程式啟動時提供服務"
-        },
-        "kind": {
-          "quickRun": "快速執行",
-          "profile": "設定檔"
-        },
-        "sameAs": "與「{{name}}」相同",
-        "runningCount": "執行中：{{count}}",
-        "failedCount": "失敗：{{count}}"
+        "remove": "移除"
       }
     }
   },

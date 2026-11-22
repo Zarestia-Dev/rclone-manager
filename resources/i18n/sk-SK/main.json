@@ -759,7 +759,7 @@
       "about": "O aplikácii RClone Manager",
       "quickRemote": "Rýchle vzdialené úložisko",
       "detailedRemote": "Podrobné vzdialené úložisko",
-      "intentGuide": "Sprievodca"
+      "wizard": "Sprievodca"
     }
   },
   "onboarding": {
@@ -2928,33 +2928,34 @@
         "clear": "vymazať"
       }
     },
-    "intentGuide": {
+    "wizard": {
       "title": "Čo chcete urobiť?",
       "stepOf": "Krok {{current}} z {{total}}",
       "loadFailed": "Cloudové úložiská sa nepodarilo načítať.",
       "noRemotes": "Najprv pridajte cloudové úložisko a potom sa vráťte sem.",
       "remoteLabel": "Ktorý cloud?",
       "recommended": "Odporúčané",
-      "measuring": "Meriame veľkosti…",
       "applyFailed": "Nepodarilo sa to nastaviť. Skontrolujte priečinky a skúste to znova.",
       "hello": {
         "created": "{{remote}} je pripravené! Čo s ním chcete robiť?",
         "default": "Čo chcete robiť so svojím cloudom?",
-        "subtitle": "Vyberte, čo chcete, vlastnými slovami. Zvyšok nastavíme my a nič sa nespustí bez vášho súhlasu."
+        "subtitle": "Vyberte, čo chcete, vlastnými slovami. Zvyšok nastavíme my a nič sa nespustí bez vášho súhlasu.",
+        "dontShow": "Neotvárať po pridaní cloudu",
+        "dontShowHint": "Dobre. Znova to zapnete tlačidlom ⚙ hore."
       },
       "places": {
-        "computer": "Tento počítač",
-        "phone": "Tento telefón",
+        "thisDevice": "Toto zariadenie",
         "server": "Server",
         "filesApp": "Aplikácia Súbory",
         "tv": "TV alebo prehrávač",
         "device": "Telefón alebo počítač",
         "browser": "Webový prehliadač",
-        "homeNetwork": "Vaša domáca sieť"
+        "homeNetwork": "Vaša domáca sieť",
+        "automaticDrive": "Voľné písmeno jednotky"
       },
       "goals": {
         "access": {
-          "title": "Používať cloud ako priečinok v tomto počítači",
+          "title": "Používať cloud ako priečinok v tomto zariadení",
           "description": "Ako sieťový disk: súbory sa zobrazia v priečinku a stiahnu sa pri otvorení.",
           "descriptionApp": "Ako aplikácia {{app}} vo Windows: súbory sa zobrazia v priečinku a stiahnu sa pri otvorení.",
           "titlePhone": "Vidieť cloud v aplikácii Súbory v telefóne",
@@ -2962,14 +2963,14 @@
         },
         "backup": {
           "title": "Zálohovať súbory do cloudu",
-          "description": "Majte kópiu priečinka v cloude pre prípad, že sa počítaču niečo stane."
+          "description": "Majte kópiu priečinka v cloude pre prípad, že sa zariadeniu niečo stane."
         },
         "devices": {
-          "title": "Mať kópiu v tomto počítači rovnakú ako v cloude",
+          "title": "Mať kópiu v tomto zariadení rovnakú ako v cloude",
           "description": "Funguje bez internetu a na viacerých zariadeniach: zmeny idú oboma smermi. Ideálne pre poznámky Obsidian alebo Logseq."
         },
         "download": {
-          "title": "Stiahnuť súbory z cloudu do tohto počítača",
+          "title": "Stiahnuť súbory z cloudu do tohto zariadenia",
           "description": "Stiahnite priečinok alebo všetko, raz alebo s priebežnou aktualizáciou."
         },
         "migrate": {
@@ -3001,13 +3002,6 @@
       },
       "about": {
         "title": "Aký je rozdiel?",
-        "goals": {
-          "title": "Čo mi vyhovuje?",
-          "access": "Cloud ako priečinok: súbory zostanú v cloude a do tohto počítača prídu, až keď ich otvoríte.",
-          "devices": "Kópia tu: súbory sa uložia aj do tohto počítača, takže ich môžete používať bez internetu. Ak niečo zmeníte na jednom mieste, druhé sa upraví tiež.",
-          "backup": "Záloha: záložná kópia priečinka ide do cloudu. Vo vašom priečinku sa nič nezmení.",
-          "download": "Získať súbory z cloudu: kópia súborov z cloudu príde do tohto počítača. V cloude sa nič nezmení."
-        },
         "deleted": {
           "same": "V oboch prípadoch sa nové a zmenené súbory skopírujú do cloudu a váš priečinok zostane nedotknutý.",
           "differ": "„Ponechať v cloude“: ak tu súbor vymažete, v cloude zostane. „Vymazať aj tam“: cloud je vždy rovnaký ako váš priečinok, takže súbor vymazaný tu zmizne aj z cloudu."
@@ -3022,12 +3016,13 @@
         },
         "explore": {
           "same": "V oboch prípadoch sa nič nezmení.",
-          "differ": "„Prezrieť si súbory“: váš cloud sa otvorí v tejto aplikácii a môžete si ho pozrieť. „Porovnať priečinok s cloudom“: ukáže, ktoré súbory sa líšia medzi priečinkom v tomto počítači a cloudom."
+          "differ": "„Prezrieť si súbory“: váš cloud sa otvorí v tejto aplikácii a môžete si ho pozrieť. „Porovnať priečinok s cloudom“: ukáže, ktoré súbory sa líšia medzi priečinkom v tomto zariadení a cloudom. „Porovnať jeden cloud s iným“: ukáže, ktoré súbory sa líšia medzi dvoma cloudmi."
         },
         "where": {
           "stream": "Tento priečinok je ako dvere: súbory zostávajú v cloude, zobrazia sa tu a stiahnu sa, keď ich otvoríte. Vyberte prázdny priečinok. Všetko, čo do neho vložíte, sa uloží aj do cloudu.",
           "twoWay": "Môžete vybrať priečinok, ktorý už používate. Pri prvom spustení sa porovná s cloudom a obe strany sa spoja, nič sa nevymaže. Potom sa zmena na jednej strane, vrátane vymazania súboru, prejaví aj na druhej.",
-          "mirror": "Priečinok v cloude sa stane presnou kópiou vášho priečinka. Súbory, ktoré v ňom sú a vo vašom priečinku nie, sa vymažú. Najbezpečnejšie je vybrať nový alebo prázdny priečinok v cloude."
+          "mirror": "Priečinok v cloude sa stane presnou kópiou vášho priečinka. Súbory, ktoré v ňom sú a vo vašom priečinku nie, sa vymažú. Najbezpečnejšie je vybrať nový alebo prázdny priečinok v cloude.",
+          "streamWindows": "Cloud sa v Prieskumníkovi zobrazí ako jednotka, podobne ako USB kľúč. Vaše súbory ostanú v cloude a stiahnu sa, keď ich otvoríte. Namiesto jednotky môžete vybrať aj priečinok. Všetko, čo do nej vložíte, sa uloží aj do cloudu."
         }
       },
       "options": {
@@ -3073,12 +3068,17 @@
           "compare": {
             "title": "Porovnať priečinok s cloudom",
             "description": "Ako porovnanie dvoch priečinkov: zistite, ktoré súbory sa líšia medzi priečinkom tu a cloudom. Nič sa nemení."
+          },
+          "compareClouds": {
+            "title": "Porovnať jeden cloud s iným",
+            "description": "Ako porovnanie dvoch priečinkov: zistite, ktoré súbory sa líšia medzi dvoma vašimi cloudmi. Nič sa nemení."
           }
         }
       },
       "where": {
         "heading": "Kde?",
         "target": "Kam majú súbory ísť?",
+        "targetCompare": "S ktorým cloudom ho porovnať?",
         "noOtherRemote": "Najprv pridajte nový cloud a potom sa vráťte sem.",
         "shareLogin": "Prihlásenie pre druhé zariadenie",
         "shareHint": "Telefón alebo počítač si ich vypýta pri pripojení.",
@@ -3090,7 +3090,8 @@
           "download": "súbory sa stiahnu sem",
           "upload": "ktorý priečinok zálohovať?",
           "compare": "ktorý priečinok skontrolovať?",
-          "devices": "ktorý priečinok má zostať rovnaký?"
+          "devices": "ktorý priečinok má zostať rovnaký?",
+          "streamWindows": "cloud sa zobrazí ako jednotka alebo priečinok"
         },
         "cloud": {
           "stream": "ktorú časť cloudu?",
@@ -3099,7 +3100,8 @@
           "upload": "záloha pôjde sem",
           "cloudToCloud": "čo kopírovať?",
           "share": "čo zdieľať?",
-          "compare": "porovná sa s týmto priečinkom"
+          "compare": "porovná sa s týmto priečinkom",
+          "cloudCompare": "ktorý priečinok skontrolovať?"
         },
         "localPlaceholder": "Vyberte alebo zadajte priečinok",
         "cloudPlaceholder": "Nechajte prázdne pre celý cloud",
@@ -3117,7 +3119,6 @@
       },
       "review": {
         "heading": "Toto sa stane",
-        "technical": "Technický názov",
         "advanced": "Otvoriť v úplnom editore",
         "start": "Nastaviť a spustiť",
         "firstRun": "Prvé spustenie porovná obe strany a spojí ich. Môže to chvíľu trvať a nič sa nevymaže.",
@@ -3139,7 +3140,19 @@
           "share_dlna": "{{cloud}} sa zdieľa s televízormi a prehrávačmi vo vašej sieti.",
           "share_webdav": "{{cloud}} sa zdieľa vo vašej sieti s heslom.",
           "share_http": "{{cloud}} sa zdieľa vo vašej sieti ako webová stránka s heslom.",
-          "compare": "{{local}} sa porovná s {{cloud}}."
+          "compare": "{{local}} sa porovná s {{cloud}}.",
+          "cloudCompare": "{{cloud}} sa porovná s {{target}}.",
+          "streamDrive": "{{cloud}} sa zobrazí ako jednotka {{local}}.",
+          "streamAutoDrive": "{{cloud}} sa zobrazí ako nová jednotka. Písmeno vyberie Windows pri pripojení."
+        },
+        "flow": {
+          "stream": "Otvára sa pri používaní",
+          "upload": "Ide do cloudu",
+          "download": "Prichádza z cloudu",
+          "twoWay": "Rovnaké na oboch stranách",
+          "cloudToCloud": "Ide do iného cloudu",
+          "share": "Zdieľané vo vašej sieti",
+          "compare": "Len sa porovná, nič sa nemení"
         },
         "schedule": {
           "watch": "Spustí sa samo, keď sa súbor zmení.",
@@ -3150,14 +3163,14 @@
         },
         "detailsTitle": "Dobre vedieť",
         "destination": {
-          "title": "Uložiť ako",
           "quickRun": "Rýchle spustenie",
           "profile": "Profil v hlavnej ponuke",
           "hintQuickRun": "Zobrazí sa v Flow › Rýchle spustenia.",
           "hintProfile": "Zobrazí sa na stránke „{{remote}}“ v hlavnej ponuke, kde ho môžete spustiť a zastaviť."
         },
         "wholeCloud": "Celé cloudové úložisko",
-        "duplicate": "Už máte nastavenie, ktoré to robí: „{{name}}“."
+        "duplicate": "Už máte nastavenie, ktoré to robí: „{{name}}“.",
+        "duplicateShow": "Otvoriť"
       },
       "effects": {
         "streamOpen": "Otvorenie súboru ho stiahne z cloudu.",
@@ -3169,7 +3182,7 @@
         "mirrorDelete": "Súbory, ktoré tu vymažete, sa vymažú aj z cloudu.",
         "mirrorExtra": "Súbory, ktoré sú len v cloudovom priečinku, sa vymažú.",
         "downloadNew": "Nové a zmenené súbory z cloudu sa stiahnu.",
-        "downloadKeep": "Súbory vymazané v cloude zostanú v tomto počítači.",
+        "downloadKeep": "Súbory vymazané v cloude zostanú v tomto zariadení.",
         "downloadLocalChange": "V cloude sa nikdy nič nezmení.",
         "twoWayChange": "Zmena na ktorejkoľvek strane sa skopíruje na druhú.",
         "twoWayDelete": "Súbor vymazaný na jednej strane sa vymaže aj na druhej.",
@@ -3188,11 +3201,11 @@
         "browseNothing": "Nič sa nemení."
       },
       "advice": {
-        "tooBigForDisk": "Má to {{size}}, ale tento počítač má voľných len {{free}}. Nezmestí sa to.",
-        "tightOnDisk": "Má to {{size}} a tento počítač má voľných {{free}}. Zmestí sa to, ale disk bude takmer plný.",
-        "fitsOnDisk": "Má to {{size}} a tento počítač má voľných {{free}}. Pohodlne sa to zmestí.",
+        "tooBigForDisk": "Má to {{size}}, ale toto zariadenie má voľných len {{free}}. Nezmestí sa to.",
+        "tightOnDisk": "Má to {{size}} a toto zariadenie má voľných {{free}}. Zmestí sa to, ale disk bude takmer plný.",
+        "fitsOnDisk": "Má to {{size}} a toto zariadenie má voľných {{free}}. Pohodlne sa to zmestí.",
         "cloudTooFull": "Priečinok má {{size}}, ale cloud má voľných len {{free}}. Nezmestí sa to.",
-        "streamSavesSpace": "V cloude máte {{cloud}} a tento počítač má voľných {{free}}, preto je toto správna voľba: miesto zaberajú len súbory, ktoré otvoríte."
+        "streamSavesSpace": "V cloude máte {{cloud}} a toto zariadenie má voľných {{free}}, preto je toto správna voľba: miesto zaberajú len súbory, ktoré otvoríte."
       },
       "preview": {
         "title": "Najprv si pozrite, čo sa stane",
@@ -3231,26 +3244,21 @@
           "error": "Problémy",
           "untouched": "Zostanú, ako sú"
         },
-        "groupHints": {
-          "delete": "Tieto súbory existujú len v cieli, preto sa tam vymažú.",
-          "add": "Tieto súbory sú nové, preto sa skopírujú.",
-          "replace": "Tieto súbory existujú na oboch stranách, ale líšia sa. Verzia v cieli sa nahradí.",
-          "copy": "Tieto súbory sa skopírujú.",
-          "error": "Tieto súbory sa nepodarilo porovnať ani skopírovať.",
-          "untouched": "Tieto súbory existujú len v cieli. Zostanú, ako sú."
-        },
+        "groupCount": "{{label}}: {{count}}",
         "unchanged": {
           "one": "{{count}} súbor je už na oboch stranách rovnaký",
           "few": "{{count}} súbory sú už na oboch stranách rovnaké",
           "other": "{{count}} súborov je už na oboch stranách rovnakých"
         },
-        "search": "Hľadať v zozname",
-        "showMore": "Zobraziť viac",
-        "noMatches": "Hľadaniu nezodpovedá žiadny súbor.",
         "deleteWarning": "Pred spustením si pozrite tento zoznam: tieto súbory sa z cieľa odstránia.",
         "again": "Spustiť skúšku znova",
         "slowNote": "Môže to chvíľu trvať, podľa počtu súborov. Nezasekol sa, počkajte, prosím.",
-        "elapsed": "Beží už {{time}}"
+        "elapsed": "Beží už {{time}}",
+        "andMore": {
+          "one": "…a ešte {{count}} súbor",
+          "few": "…a ešte {{count}} súbory",
+          "other": "…a ešte {{count}} súborov"
+        }
       },
       "working": {
         "saving": "Nastavujeme…",
@@ -3265,9 +3273,12 @@
         "twoWayReady": "Prvá synchronizácia je hotová. Odteraz zostanú obe strany rovnaké.",
         "twoWayFailed": "Je to nastavené, ale prvá synchronizácia sa nedokončila.",
         "started": "Spustilo sa. Priebeh môžete sledovať v aplikácii.",
+        "checkStarted": "Kontrola sa spustila. Keď skončí, uvidíte, ktoré súbory sa líšia.",
         "findIt": "Neskôr to nájdete v časti Flow › Rýchle spustenia pod názvom „{{name}}“.",
         "openFolder": "Otvoriť priečinok",
         "openCloud": "Zobraziť v prehliadači súborov",
+        "openRun": "Zobraziť priebeh a výsledok",
+        "openRunHint": "Pozrite si, ako to dopadlo a ktorých súborov sa to týka.",
         "another": "Nastaviť niečo iné",
         "shareWebdav": "Zdieľanie je zapnuté. V telefóne alebo počítači sa pripojte na jednu z týchto adries:",
         "shareHttp": "Zdieľanie je zapnuté. V telefóne alebo počítači otvorte v prehliadači jednu z týchto adries:",
@@ -3276,16 +3287,15 @@
         "shareUser": "Používateľské meno",
         "sharePassword": "Heslo",
         "sharePasswordHint": "To, ktoré ste zvolili",
-        "troubleTitle": "Ak sa nepripojí",
-        "troubleNetwork": "Telefón musí byť v rovnakej sieti Wi-Fi ako tento počítač.",
-        "troubleNetworkRemote": "Telefón musí byť v sieti, z ktorej je dostupný {{host}}.",
-        "troubleFirewall": "Firewall počítača, ktorý zdieľa súbory, musí povoliť port {{port}}.",
         "shareDlna": "Zdieľanie je zapnuté. V zozname médií televízora alebo prehrávača hľadajte „{{name}}“.",
-        "noAddress": "Zdieľanie je zapnuté. Pripojte sa na sieťovú adresu tohto počítača, port {{port}}.",
+        "noAddress": "Zdieľanie je zapnuté. Pripojte sa na sieťovú adresu tohto zariadenia, port {{port}}.",
         "findItProfile": "Neskôr ho nájdete na stránke „{{remote}}“ v hlavnej ponuke ako profil „{{name}}“.",
         "whereQuickRun": "Zobraziť v Rýchlych spusteniach",
         "whereProfile": "Zobraziť v hlavnej ponuke",
-        "failureReason": "Čo sa pokazilo: {{reason}}"
+        "failureReason": "Čo sa pokazilo: {{reason}}",
+        "streamDrive": "Váš cloud je teraz jednotka {{path}}.",
+        "streamAutoDrive": "Váš cloud je teraz nová jednotka v Prieskumníkovi.",
+        "openFilesApp": "Otvoriť aplikáciu Súbory"
       },
       "runNames": {
         "access": "Priečinok {{remote}}",
@@ -3312,20 +3322,18 @@
           "description": "Spustí sa samo pri každom otvorení aplikácie.",
           "descriptionMount": "Váš cloud sa pripojí sám pri každom otvorení aplikácie."
         },
-        "cloudHint": "Sledovanie vidí len zmeny v tomto počítači. Pridajte aj plán, aby prišli zmeny urobené v cloude.",
+        "cloudHint": "Sledovanie vidí len zmeny v tomto zariadení. Pridajte aj plán, aby prišli zmeny urobené v cloude.",
         "invalidCron": "Tento plán ešte nie je úplný. Vyberte jednu z možností vyššie."
       },
       "details": {
-        "cache": "Súbory, ktoré otvoríte, zostanú v tomto počítači až {{age}} a zaberú najviac {{size}} disku.",
+        "cache": "Súbory, ktoré otvoríte, zostanú v tomto zariadení až {{age}} a zaberú najviac {{size}} disku.",
         "writeBack": "Vaše zmeny sa odošlú do cloudu po {{time}}.",
         "minFree": "Medzipamäť prestane rásť, keď na disku zostane menej ako {{size}} voľného miesta.",
         "address": "Adresa:",
-        "addressUnknown": "Použite adresu tohto počítača s portom:",
+        "addressUnknown": "Použite adresu tohto zariadenia s portom:",
         "addressViaBackend": "Toto je adresa, ktorou sa aplikácia pripája k tomu počítaču. Telefón v inej sieti sa k nej nemusí dostať.",
         "port": "Port:",
         "user": "Používateľské meno:",
-        "readOnly": "Zariadenia môžu pozerať, ale nie meniť súbory.",
-        "canChange": "Zariadenia môžu súbory aj meniť a mazať.",
         "tvName": "V televízore sa zobrazí ako:"
       },
       "settings": {
@@ -3339,70 +3347,14 @@
       },
       "undo": {
         "action": "Odstrániť toto nastavenie",
+        "hint": "Nastavenie prestane fungovať a zmizne z aplikácie. Vaše súbory sa nedotknú.",
         "confirm": "„{{name}}“ prestane fungovať a zmizne z aplikácie. Vaše súbory sa nedotknú.",
         "working": "Odstraňuje sa…",
         "failed": "Nepodarilo sa ho odstrániť. Stále ho môžete odstrániť tam, kde je zobrazené.",
         "removedTitle": "Odstránené",
-        "removed": "„{{name}}“ bolo odstránené. Vaše súbory sa nezmenili.",
+        "removed": "Vaše súbory sa nezmenili.",
         "title": "Odstrániť toto nastavenie?",
-        "confirmRunning": "„{{name}}“ práve beží. Najprv sa zastaví a potom odstráni. Vaše súbory sa nedotknú."
-      },
-      "setups": {
-        "title": "Už nastavené",
-        "show": "Otvoriť",
-        "remove": "Odstrániť",
-        "status": {
-          "stream": {
-            "running": "Pripojené",
-            "idle": "Nepripojené"
-          },
-          "share": {
-            "running": "Server beží",
-            "idle": "Server nebeží"
-          },
-          "job": {
-            "running": "Beží",
-            "ok": "Hotovo · {{when}}",
-            "failed": "Zlyhalo · {{when}}",
-            "stopped": "Zastavené · {{when}}",
-            "idle": "Nikdy nespustené"
-          }
-        },
-        "subtitle": "Všetko, čo ste nastavili, zoskupené podľa cloudu.",
-        "empty": "Zatiaľ nie je nič nastavené.",
-        "headline": {
-          "stream": "Cloud ako priečinok",
-          "streamSaf": "Cloud v aplikácii Súbory",
-          "twoWay": "Synchronizované",
-          "upload_copy": "Záloha",
-          "upload_sync": "Zrkadlová záloha",
-          "upload_move": "Presun do cloudu",
-          "download": "Sťahovanie",
-          "download_sync": "Zrkadlové sťahovanie",
-          "download_move": "Presun z cloudu",
-          "cloudToCloud_copy": "Kopírovanie do {{target}}",
-          "cloudToCloud_move": "Presun do {{target}}",
-          "cloudToCloud_sync": "Zrkadlenie do {{target}}",
-          "share_dlna": "Zdieľané s TV a prehrávačmi",
-          "share_webdav": "Zdieľané vo vašej sieti",
-          "share_http": "Zdieľané ako webová stránka",
-          "share_other": "Zdieľané cez {{type}}",
-          "compare": "Kontrola priečinka"
-        },
-        "auto": {
-          "startup": "Spustí sa pri štarte aplikácie",
-          "watch": "Spustí sa pri zmene súborov",
-          "manual": "Ručné spustenie",
-          "startupStream": "Pripojí sa pri štarte aplikácie",
-          "startupShare": "Server sa spustí pri štarte aplikácie"
-        },
-        "kind": {
-          "quickRun": "Rýchle spustenie",
-          "profile": "Profil"
-        },
-        "sameAs": "Rovnaké ako „{{name}}“",
-        "runningCount": "Beží: {{count}}",
-        "failedCount": "Zlyhalo: {{count}}"
+        "remove": "Odstrániť"
       }
     }
   },

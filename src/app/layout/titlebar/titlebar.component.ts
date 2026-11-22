@@ -85,8 +85,8 @@ export class TitlebarComponent implements OnInit {
         action: (): void => this.openRemoteConfigModal(),
       },
       {
-        label: 'titlebar.menu.intentGuide',
-        action: (): void => this.openIntentGuideModal(),
+        label: 'titlebar.menu.wizard',
+        action: (): void => this.openWizardModal(),
       },
     ];
 
@@ -132,8 +132,8 @@ export class TitlebarComponent implements OnInit {
     this.modalService.openRemoteConfig();
   }
 
-  openIntentGuideModal(): void {
-    this.modalService.openIntentGuide();
+  openWizardModal(): void {
+    this.modalService.openWizard();
   }
 
   // Reset Remote Selection

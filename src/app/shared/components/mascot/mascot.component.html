@@ -1,0 +1,235 @@
+<svg
+  viewBox="0 0 120 120"
+  data-tone="primary"
+  focusable="false"
+  [class.shaking]="body() === 'shake'"
+  [class.hopping]="body() === 'hop'"
+  [class.pressed]="body() === 'pressed'"
+  [class.bouncing]="body() === 'bounce'"
+  [class.blinking]="blinks() > 0"
+  [class.loving]="hearts()"
+  [attr.data-look]="look()"
+  [attr.data-hold]="hold()"
+  [style.--blinks]="blinks()"
+>
+  <defs>
+    <radialGradient id="mascot-body" cx="0.4" cy="0.3" r="0.8">
+      <stop offset="0" class="stop-light" />
+      <stop offset="0.6" class="stop-milk" />
+      <stop offset="1" class="stop-rim" />
+    </radialGradient>
+  </defs>
+
+  <ellipse class="shadow" cx="60" cy="111" rx="28" ry="3.6" />
+
+  <!-- Back halves of the two wind rings: they pass behind the body -->
+  <g transform="rotate(-8 60 88)">
+    <g class="swirl swirl-main">
+      <path
+        class="gust"
+        pathLength="100"
+        d="M6 88 A54 13 0 0 1 114 88"
+        style="--period: 420ms; --delay: 100ms"
+      />
+    </g>
+  </g>
+  <g transform="rotate(10 60 50)">
+    <g class="swirl swirl-soft">
+      <path
+        class="gust"
+        pathLength="100"
+        d="M106 50 A46 9 0 0 0 14 50"
+        style="--period: 400ms; --delay: 180ms"
+      />
+    </g>
+  </g>
+
+  <!-- Only the body and the leaves take the pointer (see .body and .leaf in the stylesheet) -->
+  <g
+    class="motion"
+    (animationend)="onBodyEnd($event)"
+    (pointerdown)="onPress($event)"
+    (pointerup)="onRelease()"
+    (pointercancel)="onRelease()"
+    (lostpointercapture)="onRelease()"
+    (contextmenu)="$event.preventDefault()"
+  >
+    <g class="turn">
+      <!-- Leaf ears, rooted behind the head; the tips curl outwards. The right ear is a mirror
+           image of the left, so the same local rotation moves both outwards. -->
+      <g class="ears">
+        <g class="ear-slot left">
+          <g transform="translate(41 51) rotate(-36) scale(0.88)">
+            <g class="ear-turn left">
+              <g
+                class="ear"
+                [class.twitching]="twitch() === 'left'"
+                (animationend)="twitch.set(null)"
+              >
+                <!-- Innermost, so the twitch rotates the leaf without skewing it -->
+                <g class="ear-edge left">
+                  <path class="leaf" d="M-8 4 C-18 -10 -18 -34 -8 -48 C8 -36 16 -12 8 4 Z" />
+                  <path class="leaf-light" d="M8 4 C16 -12 8 -36 -8 -48 Q-1 -24 0 4 Z" />
+                  <path class="vein" d="M0 2 Q-1 -24 -7 -44" />
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+        <g class="ear-slot right">
+          <g transform="translate(79 51) rotate(36) scale(-0.88 0.88)">
+            <g class="ear-turn right">
+              <g
+                class="ear"
+                [class.twitching]="twitch() === 'right'"
+                (animationend)="twitch.set(null)"
+              >
+                <!-- Innermost, so the twitch rotates the leaf without skewing it -->
+                <g class="ear-edge right">
+                  <path class="leaf" d="M-8 4 C-18 -10 -18 -34 -8 -48 C8 -36 16 -12 8 4 Z" />
+                  <path class="leaf-light" d="M8 4 C16 -12 8 -36 -8 -48 Q-1 -24 0 4 Z" />
+                  <path class="vein" d="M0 2 Q-1 -24 -7 -44" />
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <!-- Milky-white mochi body -->
+      <path
+        class="body"
+        d="M60 40 C82 40 100 56 100 78 C100 97 83 106 60 106 C37 106 20 97 20 78 C20 56 38 40 60 40 Z"
+      />
+      <g class="shine">
+        <ellipse cx="44" cy="54" rx="9" ry="5" transform="rotate(-30 44 54)" />
+      </g>
+
+      <!-- Face -->
+      <g class="face">
+        <ellipse class="blush left" cx="36" cy="89" rx="5.5" ry="3.2" />
+        <ellipse class="blush right" cx="84" cy="89" rx="5.5" ry="3.2" />
+        <g class="gaze">
+          <g class="eyes" (animationend)="blinks.set(0)">
+            <g class="eye left">
+              <rect x="40" y="69" width="10" height="18" rx="5" />
+              <g class="sparkles">
+                <circle cx="46.6" cy="73.4" r="2.4" />
+                <circle class="small" cx="43" cy="82.5" r="1" />
+              </g>
+            </g>
+            <g class="eye right">
+              <rect x="70" y="69" width="10" height="18" rx="5" />
+              <g class="sparkles">
+                <circle cx="76.6" cy="73.4" r="2.4" />
+                <circle class="small" cx="73" cy="82.5" r="1" />
+              </g>
+            </g>
+          </g>
+          <!-- Squeezed shut ( > < ) while shaking -->
+          <path class="squint left" d="M40.5 73 L49.5 78 L40.5 83" />
+          <path class="squint right" d="M79.5 73 L70.5 78 L79.5 83" />
+          <!-- Happy ( ^ ^ ) in the air -->
+          <path class="happy left" d="M40 81 Q45 71 50 81" />
+          <path class="happy right" d="M70 81 Q75 71 80 81" />
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Front halves of the wind rings -->
+  <g transform="rotate(-8 60 88)">
+    <g class="swirl swirl-main">
+      <path
+        class="gust"
+        pathLength="100"
+        d="M114 88 A54 13 0 0 1 6 88"
+        style="--period: 420ms; --delay: 310ms"
+      />
+    </g>
+  </g>
+  <g transform="rotate(10 60 50)">
+    <g class="swirl swirl-soft">
+      <path
+        class="gust"
+        pathLength="100"
+        d="M14 50 A46 9 0 0 0 106 50"
+        style="--period: 400ms; --delay: 380ms"
+      />
+    </g>
+  </g>
+
+  <!-- Hearts a long cuddle sends up; outside the body, so they float on after it is let go -->
+  <g transform="translate(50 42)">
+    <g class="heart" style="--dx: -7px; --dy: -24px; --delay: 0ms">
+      <path
+        d="M0 4.7 C-9.5 -1.4 -8.1 -9.5 -4.1 -9.5 C-1.9 -9.5 -0.5 -8.1 0 -6.5 C0.5 -8.1 1.9 -9.5 4.1 -9.5 C8.1 -9.5 9.5 -1.4 0 4.7 Z"
+      />
+      <ellipse
+        class="heart-shine"
+        cx="-2.6"
+        cy="-4.4"
+        rx="1.4"
+        ry="0.9"
+        transform="rotate(-30 -2.6 -4.4)"
+      />
+    </g>
+  </g>
+  <g transform="translate(66 36)">
+    <g class="heart" style="--dx: 5px; --dy: -26px; --delay: 350ms">
+      <path
+        d="M0 4.7 C-9.5 -1.4 -8.1 -9.5 -4.1 -9.5 C-1.9 -9.5 -0.5 -8.1 0 -6.5 C0.5 -8.1 1.9 -9.5 4.1 -9.5 C8.1 -9.5 9.5 -1.4 0 4.7 Z"
+      />
+      <ellipse
+        class="heart-shine"
+        cx="-2.6"
+        cy="-4.4"
+        rx="1.4"
+        ry="0.9"
+        transform="rotate(-30 -2.6 -4.4)"
+      />
+    </g>
+  </g>
+  <g transform="translate(58 44)">
+    <g
+      class="heart"
+      style="--dx: -2px; --dy: -28px; --delay: 700ms"
+      (animationend)="hearts.set(false)"
+    >
+      <path
+        d="M0 4.7 C-9.5 -1.4 -8.1 -9.5 -4.1 -9.5 C-1.9 -9.5 -0.5 -8.1 0 -6.5 C0.5 -8.1 1.9 -9.5 4.1 -9.5 C8.1 -9.5 9.5 -1.4 0 4.7 Z"
+      />
+      <ellipse
+        class="heart-shine"
+        cx="-2.6"
+        cy="-4.4"
+        rx="1.4"
+        ry="0.9"
+        transform="rotate(-30 -2.6 -4.4)"
+      />
+    </g>
+  </g>
+
+  <!-- Little leaves the shake throws off the ears -->
+  <g transform="translate(18 28)">
+    <path
+      class="flyleaf"
+      d="M0 4 C-4 1 -4 -5 0 -8 C4 -5 4 1 0 4 Z"
+      style="--dx: -16px; --dy: -14px; --rot: -160deg; --delay: 300ms"
+    />
+  </g>
+  <g transform="translate(102 28)">
+    <path
+      class="flyleaf"
+      d="M0 4 C-4 1 -4 -5 0 -8 C4 -5 4 1 0 4 Z"
+      style="--dx: 18px; --dy: -16px; --rot: 200deg; --delay: 380ms"
+    />
+  </g>
+  <g transform="translate(62 34)">
+    <path
+      class="flyleaf soft"
+      d="M0 4 C-4 1 -4 -5 0 -8 C4 -5 4 1 0 4 Z"
+      style="--dx: 6px; --dy: -26px; --rot: 120deg; --delay: 460ms"
+    />
+  </g>
+</svg>

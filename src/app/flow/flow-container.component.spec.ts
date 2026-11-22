@@ -52,7 +52,7 @@ describe('FlowContainerComponent', () => {
 
   let mockModalService: {
     openRemoteConfig: ReturnType<typeof vi.fn>;
-    openIntentGuide: ReturnType<typeof vi.fn>;
+    openWizard: ReturnType<typeof vi.fn>;
   };
 
   const createComponent = async (): Promise<void> => {
@@ -125,7 +125,7 @@ describe('FlowContainerComponent', () => {
 
     mockModalService = {
       openRemoteConfig: vi.fn(),
-      openIntentGuide: vi.fn(),
+      openWizard: vi.fn(),
     };
   });
 
@@ -201,8 +201,8 @@ describe('FlowContainerComponent', () => {
     expect(component.isSidebarOpen()).toBe(false);
 
     component.setSidebarOpen(true);
-    component.openGuide();
-    expect(mockModalService.openIntentGuide).toHaveBeenCalledOnce();
+    component.openWizard();
+    expect(mockModalService.openWizard).toHaveBeenCalledOnce();
     expect(component.isSidebarOpen()).toBe(false);
   });
 

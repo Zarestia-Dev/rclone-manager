@@ -1,0 +1,20 @@
+// The clouds to choose from, inside the greeting.
+.remote-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+
+  // A long cloud name wraps inside its pill instead of running out of the dialog.
+  .app-pill {
+    white-space: normal;
+  }
+}
+
+// The way to stop the wizard from opening by itself, quiet and at the end of the screen.
+.auto-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+}

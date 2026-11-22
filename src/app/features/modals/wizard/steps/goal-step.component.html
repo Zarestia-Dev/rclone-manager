@@ -1,0 +1,76 @@
+<section class="wizard-step">
+  <div class="wizard-hello">
+    <span class="hello-tile">
+      <mat-icon
+        [svgIcon]="iconService.getIconName(state.remoteType())"
+        aria-hidden="true"
+      ></mat-icon>
+    </span>
+    <div>
+      <h2>
+        @if (state.data?.remoteName === state.remoteName()) {
+          {{ 'modals.wizard.hello.created' | translate: { remote: state.remoteName() } }}
+        } @else {
+          {{ 'modals.wizard.hello.default' | translate }}
+        }
+      </h2>
+      <p>{{ 'modals.wizard.hello.subtitle' | translate }}</p>
+      @if (state.remotes().length > 1) {
+        <div
+          class="remote-row"
+          role="group"
+          [attr.aria-label]="'modals.wizard.remoteLabel' | translate"
+        >
+          @for (remote of state.remotes(); track remote.name) {
+            <button
+              appPill
+              type="button"
+              [selected]="remote.name === state.remoteName()"
+              (click)="state.selectRemote(remote.name)"
+            >
+              <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              {{ remote.name }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="choice-grid">
+    @for (card of cards(); track card.goal.id) {
+      <button
+        type="button"
+        class="choice-card"
+        [class.featured]="$first"
+        [attr.data-tone]="card.tone"
+        (click)="state.chooseGoal(card.goal.id)"
+      >
+        <span class="choice-tile">
+          <mat-icon [svgIcon]="card.goal.icon" aria-hidden="true"></mat-icon>
+        </span>
+        <span class="choice-text">
+          <span class="choice-title">{{ card.title | translate }}</span>
+          <span class="choice-description">{{ card.description | translate: card.params }}</span>
+        </span>
+        <mat-icon class="choice-chevron" svgIcon="chevron-right" aria-hidden="true"></mat-icon>
+      </button>
+    }
+  </div>
+
+  @if (state.openedAfterCloud) {
+    <!-- It opened on its own: the way to stop that is here, where the question comes up. -->
+    <div class="auto-open">
+      <mat-slide-toggle
+        data-tone="accent"
+        [checked]="!state.afterRemote()"
+        (change)="state.setAfterRemote(!$event.checked)"
+      >
+        {{ 'modals.wizard.hello.dontShow' | translate }}
+      </mat-slide-toggle>
+      @if (!state.afterRemote()) {
+        <p class="hint">{{ 'modals.wizard.hello.dontShowHint' | translate }}</p>
+      }
+    </div>
+  }
+</section>

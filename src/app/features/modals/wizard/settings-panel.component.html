@@ -1,0 +1,50 @@
+<section class="wizard-step">
+  <div class="wizard-hello">
+    <span class="hello-tile">
+      <mat-icon svgIcon="gear" aria-hidden="true"></mat-icon>
+    </span>
+    <div>
+      <h2>{{ 'modals.wizard.settings.title' | translate }}</h2>
+      <p>{{ 'modals.wizard.settings.subtitle' | translate }}</p>
+    </div>
+  </div>
+
+  <div class="detail-card">
+    <mat-slide-toggle
+      data-tone="accent"
+      [checked]="state.afterRemote()"
+      (change)="state.setAfterRemote($event.checked)"
+    >
+      {{ 'modals.wizard.settings.afterRemote' | translate }}
+    </mat-slide-toggle>
+  </div>
+
+  <div class="detail-card">
+    <span class="section-label">
+      {{ 'modals.wizard.settings.destinationTitle' | translate }}
+    </span>
+    <div class="destination-options">
+      @for (option of options; track option.id) {
+        <button
+          appPill
+          type="button"
+          [selected]="state.destinationSetting() === option.id"
+          (click)="state.setDestinationSetting(option.id)"
+        >
+          <mat-icon [svgIcon]="option.icon"></mat-icon>
+          {{ option.label | translate }}
+        </button>
+      }
+    </div>
+    <p class="hint">
+      {{
+        state.destinationSetting() === 'auto'
+          ? ('modals.wizard.settings.hintAuto' | translate)
+          : state.destinationSetting() === 'profile'
+            ? ('modals.wizard.review.destination.hintProfile'
+              | translate: { remote: state.remoteName() })
+            : ('modals.wizard.review.destination.hintQuickRun' | translate)
+      }}
+    </p>
+  </div>
+</section>

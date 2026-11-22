@@ -115,6 +115,18 @@ export const REMOTE_CONFIG_KEYS = Object.freeze({
   runtimeRemote: 'runtimeRemoteConfigs',
 }) as unknown as Readonly<RemoteConfigKeysRecord>;
 
+/**
+ * A profile that was made but not saved, for a dialog to open with: it joins the profiles of the
+ * remote as a new one, filled in and selected, and is saved with the dialog's own Save.
+ */
+export interface PendingProfile {
+  /** The operation the profile belongs to (`mount`, `sync`…). */
+  readonly type: string;
+  readonly name: string;
+  /** The settings to add, by config key (`mountConfigs`, `vfsConfigs`…), as the settings file keeps them. */
+  readonly settings: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+}
+
 export interface UIOperationMetadata {
   label: string;
   icon: string;

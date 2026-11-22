@@ -1,0 +1,155 @@
+// The sentence that says what is set up, over the list of what that means. Spelled with both
+// classes: the shared `.detail-card` comes later and would win with the same weight.
+.detail-card.review-card {
+  gap: var(--space-md);
+}
+
+// ── The dry run ─────────────────────────────────────────────────────────────
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  padding: var(--space-md);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+
+  mat-progress-bar {
+    width: 100%;
+  }
+
+  .dim {
+    color: var(--dim-color);
+  }
+}
+
+.preview-intro {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+
+  mat-icon {
+    color: var(--accent-color);
+  }
+
+  strong {
+    font-weight: 500;
+  }
+
+  p {
+    margin: var(--space-xxs) 0 0;
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.preview-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+
+  .app-pill {
+    white-space: normal;
+  }
+}
+
+// What a sync would delete: the one list worth reading before going on.
+.preview-deleted {
+  width: 100%;
+
+  summary {
+    cursor: pointer;
+    color: var(--warn-color);
+  }
+
+  ul {
+    max-height: 200px;
+    margin: var(--space-xs) 0 0;
+    padding: var(--space-xs);
+    overflow-y: auto;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    background: var(--bg-elevated-1);
+    border-radius: var(--radius-sm);
+    user-select: text;
+  }
+}
+.advanced {
+  align-self: flex-start;
+}
+
+// ── Details ─────────────────────────────────────────────────────────────────
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    min-width: 0;
+
+    > mat-icon {
+      flex: none;
+      box-sizing: content-box;
+      width: 20px;
+      height: 20px;
+      padding: var(--space-xs);
+      color: var(--dim-color);
+      background: var(--bg-elevated-2);
+      border-radius: var(--radius-sm);
+    }
+
+    .detail-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .action-button {
+      flex: none;
+    }
+  }
+
+  // Reference, not headline: one step smaller than the effects above.
+  li {
+    font-size: var(--font-size-md);
+  }
+
+  .detail-value {
+    margin-inline-start: var(--space-xs);
+    padding: var(--space-xxs) var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    background: var(--bg-elevated-2);
+    border-radius: var(--radius-xxs);
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+}
+
+// When it starts is a different kind of line from what happens to the files: set apart, quieter.
+.effect-list.when-lines {
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-color);
+}
+
+.saved-note {
+  align-items: center;
+}
+
+// The settings the wizard chose are for reference: a quieter heading than the effects above.
+.detail-card .section-label {
+  color: var(--dim-color);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+  }
+}

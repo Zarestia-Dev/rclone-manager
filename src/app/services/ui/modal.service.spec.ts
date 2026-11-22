@@ -6,10 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { VaultService } from '../security/vault.service';
 import { NavigationHistoryService } from './navigation-history.service';
-import { IntentGuideResume, ModalService } from './modal.service';
+import { WizardResume, ModalService } from './modal.service';
 
-describe('ModalService intent guide', () => {
-  const resume: IntentGuideResume = {
+describe('ModalService intent wizard', () => {
+  const resume: WizardResume = {
     remoteName: 'drive',
     goal: 'migrate',
     answers: { keepOld: 'keep' },
@@ -17,7 +17,7 @@ describe('ModalService intent guide', () => {
   let service: ModalService;
   let openModal: ReturnType<typeof vi.fn>;
 
-  const guideData = (): unknown => (openModal.mock.calls.at(-1)?.[1] as { data: unknown }).data;
+  const wizardData = (): unknown => (openModal.mock.calls.at(-1)?.[1] as { data: unknown }).data;
 
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -35,35 +35,35 @@ describe('ModalService intent guide', () => {
     (service as unknown as { openModal: unknown }).openModal = openModal;
   });
 
-  it('carries on with the choices when the added remote opens the guide', () => {
+  it('carries on with the choices when the added remote opens the wizard', () => {
     service.openQuickAddRemote(resume);
-    service.openIntentGuide({ remoteName: 'onedrive' });
-    expect(guideData()).toEqual({ remoteName: 'onedrive', resume });
+    service.openWizard({ remoteName: 'onedrive' });
+    expect(wizardData()).toEqual({ remoteName: 'onedrive', resume });
   });
 
-  it('starts fresh when the guide opens without a new remote', () => {
+  it('starts fresh when the wizard opens without a new remote', () => {
     service.openQuickAddRemote(resume);
-    service.openIntentGuide();
-    expect(guideData()).toEqual({ remoteName: undefined, resume: undefined });
+    service.openWizard();
+    expect(wizardData()).toEqual({ remoteName: undefined, resume: undefined });
   });
 
   it('does not carry on with a remote that was already in use', () => {
     service.openQuickAddRemote(resume);
-    service.openIntentGuide({ remoteName: 'drive' });
-    expect(guideData()).toEqual({ remoteName: 'drive', resume: undefined });
+    service.openWizard({ remoteName: 'drive' });
+    expect(wizardData()).toEqual({ remoteName: 'drive', resume: undefined });
   });
 
   it('carries on only once', () => {
     service.openQuickAddRemote(resume);
-    service.openIntentGuide({ remoteName: 'onedrive' });
-    service.openIntentGuide({ remoteName: 'box' });
-    expect(guideData()).toEqual({ remoteName: 'box', resume: undefined });
+    service.openWizard({ remoteName: 'onedrive' });
+    service.openWizard({ remoteName: 'box' });
+    expect(wizardData()).toEqual({ remoteName: 'box', resume: undefined });
   });
 
   it('forgets an old choice when quick add opens without one', () => {
     service.openQuickAddRemote(resume);
     service.openQuickAddRemote();
-    service.openIntentGuide({ remoteName: 'onedrive' });
-    expect(guideData()).toEqual({ remoteName: 'onedrive', resume: undefined });
+    service.openWizard({ remoteName: 'onedrive' });
+    expect(wizardData()).toEqual({ remoteName: 'onedrive', resume: undefined });
   });
 });

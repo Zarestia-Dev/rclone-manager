@@ -1,17 +1,20 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { Observable, of } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { IntentGuideModalComponent } from './intent-guide-modal.component';
+import { WizardState } from './wizard.state';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
-import { GuideEnvironment, IntentGuideService } from 'src/app/services/flow/intent-guide.service';
+import { WizardEnvironment, WizardService } from 'src/app/services/flow/wizard.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { NavigationHistoryService } from 'src/app/services/ui/navigation-history.service';
 
-const ENV: GuideEnvironment = {
+const ENV: WizardEnvironment = {
   remotes: [
     { name: 'drive', type: 'drive' },
     { name: 'onedrive', type: 'onedrive' },
@@ -21,13 +24,14 @@ const ENV: GuideEnvironment = {
   isServer: false,
   isAndroid: false,
   mountPluginMissing: false,
+  canUseDriveLetter: false,
   canStartOnLogin: true,
   startsOnLogin: false,
 };
 
-describe('IntentGuideModalComponent', () => {
+describe('WizardState', () => {
   const close = vi.fn();
-  const guide = {
+  const wizard = {
     loadEnvironment: vi.fn(),
     cloudUsage: vi.fn(),
     localFree: vi.fn(),
@@ -49,24 +53,30 @@ describe('IntentGuideModalComponent', () => {
     openFolder: vi.fn(),
     installMountPlugin: vi.fn(),
     undo: vi.fn(),
-    startSetup: vi.fn(),
-    stopSetup: vi.fn(),
+    planProfile: vi.fn(),
     loadSetups: vi.fn(),
-    setupStatus: vi.fn(),
   };
   const openRemoteInFiles = vi.fn();
   const openQuickRunEditor = vi.fn();
+  const openRemoteConfig = vi.fn();
   const openQuickAddRemote = vi.fn();
+  const openJobDetail = vi.fn();
+  let standalone = false;
   const confirmModal = vi.fn();
   const navigateToRemote = vi.fn();
   const navigateToQuickRun = vi.fn();
+  /** The history entries the wizard opened: what to call when the system takes one away, and how it gives one back. */
+  let layers: { close: () => void; release: ReturnType<typeof vi.fn> }[] = [];
 
-  const create = async (data: unknown = null): Promise<IntentGuideModalComponent> => {
+  const create = async (data: unknown = null): Promise<WizardState> => {
     TestBed.configureTestingModule({
       providers: [
-        { provide: MatDialogRef, useValue: { close } },
+        {
+          provide: MatDialogRef,
+          useValue: { close, afterClosed: (): Observable<undefined> => of(undefined) },
+        },
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: IntentGuideService, useValue: guide },
+        { provide: WizardService, useValue: wizard },
         { provide: RemoteFacadeService, useValue: { openRemoteInFiles } },
         {
           provide: NavigationDispatcherService,
@@ -76,9 +86,32 @@ describe('IntentGuideModalComponent', () => {
           provide: QuickRunService,
           useValue: { generateUniqueQuickRunName: (base: string): string => base },
         },
-        { provide: ModalService, useValue: { openQuickRunEditor, openQuickAddRemote } },
+        {
+          provide: ModalService,
+          useValue: {
+            openQuickRunEditor,
+            openRemoteConfig,
+            openQuickAddRemote,
+            openJobDetail,
+            isDialogStandalone: (): boolean => standalone,
+          },
+        },
+        {
+          provide: BackendTranslationService,
+          useValue: { translateBackendMessage: (e: unknown): string => `translated:${String(e)}` },
+        },
         { provide: IconService, useValue: { getIconName: (n: string): string => n } },
         { provide: NotificationService, useValue: { showError: vi.fn(), confirmModal } },
+        {
+          provide: NavigationHistoryService,
+          useValue: {
+            openLayer: (close: () => void): (() => void) => {
+              const release = vi.fn();
+              layers.push({ close, release });
+              return release;
+            },
+          },
+        },
         {
           provide: TranslateService,
           useValue: {
@@ -89,13 +122,13 @@ describe('IntentGuideModalComponent', () => {
         },
       ],
     });
-    const component = TestBed.runInInjectionContext(() => new IntentGuideModalComponent());
+    const component = TestBed.runInInjectionContext(() => new WizardState());
     await component.load();
     return component;
   };
 
   /** From the folders to the review, through the schedule step when there is one. */
-  const toReview = (component: IntentGuideModalComponent): void => {
+  const toReview = (component: WizardState): void => {
     component.afterWhere();
     if (component.step() === 'when') component.toReview();
   };
@@ -110,30 +143,33 @@ describe('IntentGuideModalComponent', () => {
     close.mockReset();
     openRemoteInFiles.mockReset();
     openQuickRunEditor.mockReset();
+    openRemoteConfig.mockReset();
     openQuickAddRemote.mockReset();
+    openJobDetail.mockReset();
+    standalone = false;
+    layers = [];
     confirmModal.mockReset().mockResolvedValue(true);
     navigateToRemote.mockReset();
     navigateToQuickRun.mockReset();
-    for (const fn of Object.values(guide)) fn.mockReset();
-    guide.loadEnvironment.mockResolvedValue(ENV);
-    guide.loadSetups.mockResolvedValue([]);
-    guide.setupStatus.mockReturnValue({ state: 'idle' });
-    guide.cloudUsage.mockResolvedValue({ used: 180, free: 20 });
-    guide.localFree.mockResolvedValue(60);
-    guide.folderSize.mockResolvedValue(10);
-    guide.localFolders.mockResolvedValue(['Documents', 'Notes']);
-    guide.defaultLocalPath.mockResolvedValue('/home/me/drive');
-    guide.presets.mockReturnValue({ vfs: { vfs_cache_mode: 'full' }, mount: {} });
-    guide.settings.mockResolvedValue({
+    for (const fn of Object.values(wizard)) fn.mockReset();
+    wizard.loadEnvironment.mockResolvedValue(ENV);
+    wizard.loadSetups.mockResolvedValue([]);
+    wizard.cloudUsage.mockResolvedValue({ used: 180, free: 20 });
+    wizard.localFree.mockResolvedValue(60);
+    wizard.folderSize.mockResolvedValue(10);
+    wizard.localFolders.mockResolvedValue(['Documents', 'Notes']);
+    wizard.defaultLocalPath.mockResolvedValue('/home/me/drive');
+    wizard.presets.mockReturnValue({ vfs: { vfs_cache_mode: 'full' }, mount: {} });
+    wizard.settings.mockResolvedValue({
       afterRemote: true,
       setting: 'quick_run',
       destination: 'quick_run',
     });
-    guide.saveAfterRemote.mockResolvedValue(undefined);
-    guide.saveDestination.mockResolvedValue(undefined);
-    guide.network.mockResolvedValue({ hostName: 'my-pc', addresses: ['192.168.1.20'] });
-    guide.portFree.mockResolvedValue(true);
-    guide.nextFreePort.mockResolvedValue(8081);
+    wizard.saveAfterRemote.mockResolvedValue(undefined);
+    wizard.saveDestination.mockResolvedValue(undefined);
+    wizard.network.mockResolvedValue({ hostName: 'my-pc', addresses: ['192.168.1.20'] });
+    wizard.portFree.mockResolvedValue(true);
+    wizard.nextFreePort.mockResolvedValue(8081);
   });
 
   it('starts with the remote that was just created, with its real usage', async () => {
@@ -144,12 +180,18 @@ describe('IntentGuideModalComponent', () => {
     expect(component.appBrand()).toBe('OneDrive');
   });
 
+  it('knows it opened by itself because a cloud was just added, and not when asked for', async () => {
+    expect((await create({ remoteName: 'onedrive' })).openedAfterCloud).toBe(true);
+    TestBed.resetTestingModule();
+    expect((await create()).openedAfterCloud).toBe(false);
+  });
+
   it('falls back to the first remote and reports a failed load', async () => {
     const component = await create({ remoteName: 'gone' });
     expect(component.remoteName()).toBe('drive');
 
     TestBed.resetTestingModule();
-    guide.loadEnvironment.mockRejectedValue(new Error('down'));
+    wizard.loadEnvironment.mockRejectedValue(new Error('down'));
     const failed = await create();
     expect(failed.loadFailed()).toBe(true);
   });
@@ -162,7 +204,7 @@ describe('IntentGuideModalComponent', () => {
     await settle();
     expect(component.step()).toBe('where');
     expect(component.plan()?.operationType).toBe('mount');
-    expect(guide.defaultLocalPath).toHaveBeenCalledWith('drive', 'mount');
+    expect(wizard.defaultLocalPath).toHaveBeenCalledWith('drive', 'mount');
     expect(component.localPath()).toBe('/home/me/drive');
     expect(component.whereValid()).toBe(true);
   });
@@ -200,10 +242,10 @@ describe('IntentGuideModalComponent', () => {
       component.chooseHomeFolder('Documents');
       expect(component.localPath()).toBe('/home/me/Documents');
       expect(component.remotePath()).toBe('Documents');
-      // The field holds what the guide suggested.
+      // The field holds what the wizard suggested.
       expect(component.cloudGroup.controls.path.value).toBe('Documents');
       // The folder is measured when typing pauses, not on every key.
-      expect(guide.folderSize).not.toHaveBeenCalled();
+      expect(wizard.folderSize).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(600);
       expect(component.localFolderSize()).toBe(10);
 
@@ -223,18 +265,68 @@ describe('IntentGuideModalComponent', () => {
       component.chooseGoal('backup');
       component.answer('keep');
       await settle();
-      guide.folderSize.mockClear();
+      wizard.folderSize.mockClear();
       for (const text of ['/h', '/ho', '/home', '/home/me/Docs']) {
         component.localGroup.controls.path.setValue(text);
         await vi.advanceTimersByTimeAsync(100);
       }
       await vi.advanceTimersByTimeAsync(600);
-      expect(guide.folderSize).toHaveBeenCalledTimes(1);
-      expect(guide.folderSize).toHaveBeenCalledWith('/home/me/Docs');
+      expect(wizard.folderSize).toHaveBeenCalledTimes(1);
+      expect(wizard.folderSize).toHaveBeenCalledWith('/home/me/Docs');
       expect(component.localPath()).toBe('/home/me/Docs');
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('measures the cloud folder once when typing pauses, whether typed or suggested', async () => {
+    vi.useFakeTimers();
+    try {
+      const component = await create();
+      component.chooseGoal('devices');
+      await settle();
+      wizard.folderSize.mockClear();
+      for (const text of ['/home/me/D', '/home/me/Do', '/home/me/Docs']) {
+        component.localGroup.controls.path.setValue(text);
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      // The suggested cloud folder follows the typing, but no size is asked for in the middle of it.
+      expect(component.remotePath()).toBe('Docs');
+      expect(wizard.folderSize).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(600);
+      expect(wizard.folderSize).toHaveBeenCalledTimes(1);
+      expect(wizard.folderSize).toHaveBeenCalledWith('drive:Docs');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('drops a folder suggestion that arrives after the step was left', async () => {
+    const component = await create();
+    let late!: (path: string) => void;
+    wizard.defaultLocalPath.mockReturnValueOnce(new Promise<string>(resolve => (late = resolve)));
+    component.chooseGoal('access');
+    component.back();
+    wizard.defaultLocalPath.mockResolvedValueOnce('');
+    component.chooseGoal('access');
+    await settle();
+    late('/home/me/old-suggestion');
+    await settle();
+    expect(component.localPath()).toBe('');
+  });
+
+  it('names what the local folder is for, and marks the home folder it ends in', async () => {
+    const component = await create();
+    component.chooseGoal('devices');
+    await settle();
+    expect(component.localWhereKey()).toBe('devices');
+    component.chooseHomeFolder('Documents');
+    expect(component.localFolderName()).toBe('Documents');
+
+    component.back();
+    component.chooseGoal('access');
+    await settle();
+    expect(component.localWhereKey()).toBe('stream');
   });
 
   it('checks a mount folder and a two-way folder, and nothing else', async () => {
@@ -293,6 +385,310 @@ describe('IntentGuideModalComponent', () => {
     expect(openRemoteInFiles).toHaveBeenCalledWith('drive', undefined);
   });
 
+  it('opens the file browser before closing a wizard that has a window of its own', async () => {
+    standalone = true;
+    const calls: string[] = [];
+    openRemoteInFiles.mockImplementation(async () => void calls.push('open'));
+    close.mockImplementation(() => void calls.push('close'));
+    const component = await create();
+    component.chooseGoal('explore');
+    component.answer('browse');
+    await settle();
+    expect(calls).toEqual(['open', 'close']);
+  });
+
+  describe('the back button of the system', () => {
+    /** The effect that keeps the entries in step with the screens runs on a change detection pass. */
+    const sync = async (): Promise<void> => {
+      TestBed.tick();
+      await settle();
+    };
+
+    it('opens one history entry for each step forward and gives them back going back', async () => {
+      const component = await create();
+      await sync();
+      expect(layers).toHaveLength(0);
+
+      component.chooseGoal('backup');
+      await sync();
+      expect(layers).toHaveLength(1);
+
+      component.answer('keep');
+      await settle();
+      await sync();
+      expect(component.step()).toBe('where');
+      expect(layers).toHaveLength(2);
+
+      component.back();
+      await sync();
+      expect(layers[1].release).toHaveBeenCalledTimes(1);
+      expect(layers[0].release).not.toHaveBeenCalled();
+    });
+
+    it('goes one step back, not out of the wizard, when the system takes an entry away', async () => {
+      const component = await create();
+      component.chooseGoal('backup');
+      component.answer('keep');
+      await settle();
+      await sync();
+      expect(component.step()).toBe('where');
+
+      layers[1].close();
+      expect(component.step()).toBe('question');
+      expect(close).not.toHaveBeenCalled();
+      await sync();
+      // The entry the system took is not given back a second time.
+      expect(layers).toHaveLength(2);
+    });
+
+    it('closes the wizard settings first', async () => {
+      const component = await create();
+      component.chooseGoal('backup');
+      await sync();
+      component.toggleSettings();
+      await sync();
+      expect(layers).toHaveLength(2);
+
+      layers[1].close();
+      expect(component.settingsOpen()).toBe(false);
+      expect(component.step()).toBe('question');
+    });
+
+    it('keeps the screen while it saves, and puts the entry back', async () => {
+      const component = await create();
+      component.step.set('working');
+      await sync();
+      const before = layers.length;
+      layers[before - 1].close();
+      expect(component.step()).toBe('working');
+      await settle();
+      // One new entry stands in for the one the system took.
+      expect(layers.length).toBe(before + 1);
+      expect(layers[before].release).not.toHaveBeenCalled();
+    });
+
+    it('lets the system go back from the end to the first screen', async () => {
+      const component = await create();
+      component.chooseGoal('download');
+      await settle();
+      toReview(component);
+      wizard.apply.mockResolvedValue({
+        quickRun: { id: 'qr', name: 'n' },
+        execution: { executeId: 'e' },
+      });
+      await component.apply();
+      expect(component.step()).toBe('done');
+      await sync();
+      expect(layers.filter(l => l.release.mock.calls.length === 0)).toHaveLength(1);
+
+      layers[layers.length - 1].close();
+      expect(component.step()).toBe('goal');
+    });
+
+    it('gives every entry back when the wizard goes away', async () => {
+      const component = await create();
+      component.chooseGoal('backup');
+      component.answer('keep');
+      await settle();
+      await sync();
+      TestBed.resetTestingModule();
+      expect(layers.every(l => l.release.mock.calls.length === 1)).toBe(true);
+      expect(component.step()).toBe('where');
+    });
+  });
+
+  describe('the end of the wizard', () => {
+    it('opens the cloud folder of a backup as drive:folder, never as a folder on this computer', async () => {
+      const component = await create();
+      component.chooseGoal('backup');
+      component.answer('keep');
+      await settle();
+      component.localGroup.controls.path.setValue('/home/me/Docs');
+      component.afterWhere();
+      expect(component.remotePath()).toBe('Docs');
+      await component.openInFiles();
+      expect(openRemoteInFiles).toHaveBeenCalledWith('drive', 'drive:Docs');
+    });
+
+    it('opens the cloud a move goes to, not the one it comes from', async () => {
+      const component = await create();
+      component.chooseGoal('migrate');
+      component.answer('keep');
+      await settle();
+      component.targetGroup.controls.path.setValue('old');
+      expect(component.browseTarget()).toEqual({ remote: 'onedrive', path: 'old' });
+      await component.openInFiles();
+      expect(openRemoteInFiles).toHaveBeenCalledWith('onedrive', 'onedrive:old');
+    });
+
+    it('says where the cloud button goes in words, and leads with the run of a check', async () => {
+      const component = await create();
+      component.chooseGoal('explore');
+      component.answer('compareClouds');
+      await settle();
+      expect(component.browseLabel()).toBe('');
+      expect(component.doneMain()).toBe('where');
+
+      const backup = await (async (): Promise<WizardState> => {
+        TestBed.resetTestingModule();
+        const c = await create();
+        c.chooseGoal('migrate');
+        c.answer('keep');
+        await settle();
+        c.targetGroup.controls.path.setValue('old');
+        return c;
+      })();
+      expect(backup.browseLabel()).toBe('onedrive › old');
+    });
+
+    it('has no cloud to browse after a check, and says what a check does', async () => {
+      const component = await create();
+      component.chooseGoal('explore');
+      component.answer('compare');
+      await settle();
+      expect(component.browseTarget()).toBeNull();
+      expect(component.doneKey()).toBe('checkStarted');
+      await component.openInFiles();
+      expect(openRemoteInFiles).not.toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
+    });
+
+    it('compares two clouds as they are, without a folder named after the first', async () => {
+      const component = await create();
+      component.chooseGoal('explore');
+      component.answer('compareClouds');
+      await settle();
+      expect(component.targetPath()).toBe('');
+      expect(component.browseTarget()).toBeNull();
+      expect(component.doneKey()).toBe('checkStarted');
+    });
+
+    it('still copies into a folder named after the cloud it comes from', async () => {
+      const component = await create();
+      component.chooseGoal('migrate');
+      component.answer('keep');
+      await settle();
+      expect(component.targetPath()).toBe('drive');
+    });
+
+    it('shows the run of a check', async () => {
+      const job = { jobid: 7, execute_id: 'e1' };
+      wizard.job.mockReturnValue(job);
+      const component = await create();
+      component.chooseGoal('explore');
+      component.answer('compareClouds');
+      await settle();
+      component.afterWhere();
+      wizard.apply.mockResolvedValue({
+        destination: 'quick_run',
+        name: 'drive check',
+        quickRun: { id: 'qr' },
+        execution: { executeId: 'e1' },
+      });
+      await component.apply();
+      expect(component.step()).toBe('done');
+      expect(component.resultJob()).toBe(job);
+      component.openRun();
+      expect(close).toHaveBeenCalled();
+      expect(openJobDetail).toHaveBeenCalledWith(job);
+    });
+
+    it('has no run to show for a mount', async () => {
+      wizard.job.mockReturnValue({ jobid: 7, execute_id: 'e1' });
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      toReview(component);
+      wizard.apply.mockResolvedValue({
+        destination: 'quick_run',
+        name: 'mount',
+        quickRun: { id: 'qr2' },
+        execution: { executeId: 'e1' },
+      });
+      await component.apply();
+      expect(component.resultJob()).toBeUndefined();
+    });
+
+    it('says why a setup could not be taken back, in the words of the app', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const component = await create();
+      component.chooseGoal('backup');
+      component.answer('keep');
+      await settle();
+      component.localGroup.controls.path.setValue('/home/me/Docs');
+      toReview(component);
+      wizard.apply.mockResolvedValue({
+        destination: 'quick_run',
+        name: 'drive backup',
+        quickRun: { id: 'qr' },
+        execution: null,
+      });
+      await component.apply();
+      wizard.undo.mockRejectedValue('device busy');
+      await component.undo();
+      expect(component.undoState()).toBe('failed');
+      expect(component.undoReason()).toBe('translated:device busy');
+    });
+
+    it('reads what is set up again once something was added or taken back', async () => {
+      const component = await create();
+      component.chooseGoal('backup');
+      component.answer('keep');
+      await settle();
+      component.localGroup.controls.path.setValue('/home/me/Docs');
+      toReview(component);
+      wizard.loadSetups.mockClear();
+      wizard.apply.mockResolvedValue({
+        destination: 'quick_run',
+        name: 'drive backup',
+        quickRun: { id: 'qr' },
+        execution: null,
+      });
+      await component.apply();
+      await settle();
+      expect(wizard.loadSetups).toHaveBeenCalledTimes(1);
+
+      wizard.undo.mockResolvedValue(undefined);
+      await component.undo();
+      await settle();
+      expect(wizard.loadSetups).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('draws the review in the colour, icon and direction of its operation', async () => {
+    const component = await create();
+    component.chooseGoal('devices');
+    await settle();
+    expect(component.operationTone()).toBe('purple');
+    expect(component.operationIcon()).toBe('right-left');
+    expect(component.flowDirection()).toBe('both');
+  });
+
+  it('draws a backup one way', async () => {
+    const backup = await create();
+    backup.chooseGoal('backup');
+    backup.answer('keep');
+    await settle();
+    expect(backup.flowDirection()).toBe('right');
+  });
+
+  it('draws a mount as a link, not as a copy', async () => {
+    const component = await create();
+    component.chooseGoal('access');
+    await settle();
+    expect(component.flowDirection()).toBe('link');
+    expect(component.operationIcon()).toBe('mount');
+  });
+
+  it('draws a check without a direction', async () => {
+    const component = await create();
+    component.chooseGoal('explore');
+    component.answer('compare');
+    await settle();
+    expect(component.flowDirection()).toBe('none');
+    expect(component.operationTone()).toBe('accent');
+  });
+
   it('needs a password before sharing over WebDAV', async () => {
     const component = await create();
     component.chooseGoal('share');
@@ -305,9 +701,7 @@ describe('IntentGuideModalComponent', () => {
   });
 
   describe('sharing', () => {
-    const toShare = async (
-      device: 'tv' | 'folder' | 'browser'
-    ): Promise<IntentGuideModalComponent> => {
+    const toShare = async (device: 'tv' | 'folder' | 'browser'): Promise<WizardState> => {
       const component = await create();
       component.chooseGoal('share');
       component.answer(device);
@@ -341,11 +735,11 @@ describe('IntentGuideModalComponent', () => {
     it('quietly moves the default port to a free one without a warning', async () => {
       vi.useFakeTimers();
       try {
-        guide.portFree.mockResolvedValue(false);
+        wizard.portFree.mockResolvedValue(false);
         const component = await toShare('folder');
         component.sharePassword.set('secret');
         await vi.advanceTimersByTimeAsync(10);
-        expect(guide.portFree).toHaveBeenCalledWith(8080);
+        expect(wizard.portFree).toHaveBeenCalledWith(8080);
         expect(component.sharePort()).toBe(8081);
         expect(component.sharePortBusy()).toBe(false);
         expect(component.freePortSuggestion()).toBeNull();
@@ -361,7 +755,7 @@ describe('IntentGuideModalComponent', () => {
         const component = await toShare('folder');
         await vi.advanceTimersByTimeAsync(10);
         expect(component.sharePort()).toBe(8080);
-        expect(guide.nextFreePort).not.toHaveBeenCalled();
+        expect(wizard.nextFreePort).not.toHaveBeenCalled();
       } finally {
         vi.useRealTimers();
       }
@@ -373,8 +767,8 @@ describe('IntentGuideModalComponent', () => {
         const component = await toShare('folder');
         component.sharePassword.set('secret');
         await vi.advanceTimersByTimeAsync(10);
-        guide.portFree.mockResolvedValue(false);
-        guide.nextFreePort.mockResolvedValue(9091);
+        wizard.portFree.mockResolvedValue(false);
+        wizard.nextFreePort.mockResolvedValue(9091);
 
         component.setSharePort(9090);
         await vi.advanceTimersByTimeAsync(600);
@@ -383,7 +777,7 @@ describe('IntentGuideModalComponent', () => {
         expect(component.freePortSuggestion()).toBe(9091);
         expect(component.whereValid()).toBe(false);
 
-        guide.portFree.mockResolvedValue(true);
+        wizard.portFree.mockResolvedValue(true);
         component.useFreePort();
         await vi.advanceTimersByTimeAsync(600);
         expect(component.sharePort()).toBe(9091);
@@ -399,14 +793,14 @@ describe('IntentGuideModalComponent', () => {
       try {
         const component = await toShare('folder');
         await vi.advanceTimersByTimeAsync(10);
-        guide.portFree.mockClear();
+        wizard.portFree.mockClear();
         for (const port of [9, 90, 909, 9090]) {
           component.setSharePort(port);
           await vi.advanceTimersByTimeAsync(100);
         }
         await vi.advanceTimersByTimeAsync(600);
-        expect(guide.portFree).toHaveBeenCalledTimes(1);
-        expect(guide.portFree).toHaveBeenCalledWith(9090);
+        expect(wizard.portFree).toHaveBeenCalledTimes(1);
+        expect(wizard.portFree).toHaveBeenCalledWith(9090);
       } finally {
         vi.useRealTimers();
       }
@@ -415,7 +809,7 @@ describe('IntentGuideModalComponent', () => {
     it('treats an unknown answer as a free port', async () => {
       vi.useFakeTimers();
       try {
-        guide.portFree.mockResolvedValue(null);
+        wizard.portFree.mockResolvedValue(null);
         const component = await toShare('folder');
         component.sharePassword.set('secret');
         await vi.advanceTimersByTimeAsync(600);
@@ -426,16 +820,17 @@ describe('IntentGuideModalComponent', () => {
       }
     });
 
-    it('shows where to connect, with the port, the user and what devices may do', async () => {
+    it('shows where to connect, with the port and the user, and says once what devices may do', async () => {
       const component = await toShare('folder');
       component.sharePassword.set('secret');
       component.setSharePort(9090);
       const keys = component.details().map(d => d.key);
-      expect(keys).toEqual(['address', 'address', 'port', 'user', 'readOnly']);
+      expect(keys).toEqual(['address', 'address', 'port', 'user']);
       expect(component.details()[0].value).toBe('http://192.168.1.20:9090');
 
+      expect(component.effects().map(e => e.key)).toContain('shareReadOnly');
       component.shareReadOnly.set(false);
-      expect(component.details().at(-1)?.key).toBe('canChange');
+      expect(component.details().map(d => d.key)).toEqual(keys);
       expect(component.effects().map(e => e.key)).toContain('shareWrite');
     });
 
@@ -445,12 +840,12 @@ describe('IntentGuideModalComponent', () => {
       component.setSharePort(9090);
       component.afterWhere();
       expect(component.step()).toBe('review');
-      guide.apply.mockResolvedValue({
+      wizard.apply.mockResolvedValue({
         quickRun: { id: 'qr', name: 'n' },
         execution: { serveAddr: '[::]:9090' },
       });
       await component.apply();
-      expect(guide.apply.mock.calls[0][0].config.rclone).toEqual({
+      expect(wizard.apply.mock.calls[0][0].config.rclone).toEqual({
         fs: 'drive:',
         type: 'webdav',
         addr: ':9090',
@@ -464,17 +859,12 @@ describe('IntentGuideModalComponent', () => {
     });
 
     it('says to use the machine address when none is known', async () => {
-      guide.network.mockResolvedValue(null);
+      wizard.network.mockResolvedValue(null);
       const component = await toShare('folder');
       component.sharePassword.set('secret');
-      expect(component.details().map(d => d.key)).toEqual([
-        'addressUnknown',
-        'port',
-        'user',
-        'readOnly',
-      ]);
+      expect(component.details().map(d => d.key)).toEqual(['addressUnknown', 'port', 'user']);
       component.afterWhere();
-      guide.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
+      wizard.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
       await component.apply();
       expect(component.shareLinks()).toEqual([]);
       expect(component.doneKey()).toBe('noAddress');
@@ -487,20 +877,14 @@ describe('IntentGuideModalComponent', () => {
       expect(component.whereValid()).toBe(true);
       expect(component.sharePlace()).toEqual({ icon: 'globe', key: 'browser' });
       expect(component.summaryKey()).toBe('share_http');
-      expect(component.details().map(d => d.key)).toEqual([
-        'address',
-        'address',
-        'port',
-        'user',
-        'readOnly',
-      ]);
+      expect(component.details().map(d => d.key)).toEqual(['address', 'address', 'port', 'user']);
       component.afterWhere();
-      guide.apply.mockResolvedValue({
+      wizard.apply.mockResolvedValue({
         quickRun: { id: 'qr', name: 'n' },
         execution: { serveAddr: '[::]:8080' },
       });
       await component.apply();
-      expect(guide.apply.mock.calls[0][0].config.rclone).toMatchObject({
+      expect(wizard.apply.mock.calls[0][0].config.rclone).toMatchObject({
         type: 'http',
         addr: ':8080',
         pass: 'secret',
@@ -515,9 +899,9 @@ describe('IntentGuideModalComponent', () => {
       component.shareName.set('Living room');
       expect(component.details().map(d => [d.key, d.value])).toEqual([['tvName', 'Living room']]);
       component.afterWhere();
-      guide.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
+      wizard.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
       await component.apply();
-      expect(guide.apply.mock.calls[0][0].config.rclone).toEqual({
+      expect(wizard.apply.mock.calls[0][0].config.rclone).toEqual({
         fs: 'drive:',
         type: 'dlna',
         name: 'Living room',
@@ -526,12 +910,12 @@ describe('IntentGuideModalComponent', () => {
     });
 
     it('does not look up the network for anything but a share', async () => {
-      guide.network.mockClear();
+      wizard.network.mockClear();
       const component = await create();
       component.chooseGoal('backup');
       component.answer('keep');
       await settle();
-      expect(guide.network).not.toHaveBeenCalled();
+      expect(wizard.network).not.toHaveBeenCalled();
     });
   });
 
@@ -545,7 +929,7 @@ describe('IntentGuideModalComponent', () => {
   });
 
   it('tells a mount how much disk its cache may take', async () => {
-    guide.presets.mockReturnValue({
+    wizard.presets.mockReturnValue({
       vfs: { vfs_cache_mode: 'full', vfs_cache_max_size: '250G', vfs_cache_max_age: '48h' },
       mount: {},
     });
@@ -566,79 +950,77 @@ describe('IntentGuideModalComponent', () => {
     expect(component.whereValid()).toBe(true);
   });
 
-  it('shows what the dry run found, file by file, and tolerates a failed one', async () => {
+  it('picks the other remote to check a cloud against and does not ask for a folder', async () => {
+    const component = await create();
+    component.chooseGoal('explore');
+    component.answer('compareClouds');
+    await settle();
+    expect(component.step()).toBe('where');
+    expect(component.plan()?.flow).toBe('cloudCompare');
+    expect(component.showsLocal()).toBe(false);
+    expect(component.targetRemote()).toBe('onedrive');
+    expect(component.whereValid()).toBe(true);
+  });
+
+  it('summarises what the dry run found and tolerates a failed one', async () => {
     const component = await create();
     component.chooseGoal('download');
     await settle();
     toReview(component);
     expect(component.step()).toBe('review');
 
-    const files = Array.from({ length: 120 }, (_, i) => ({ path: `photo-${i}.jpg`, size: 10 }));
-    guide.preview.mockResolvedValue({
-      counts: { transfers: 120, bytes: 1200, deletes: 1, errors: 0 },
+    const files = Array.from({ length: 120 }, (_, i) => ({ path: `old-${i}.txt` }));
+    wizard.preview.mockResolvedValue({
+      counts: { transfers: 3, bytes: 1200, deletes: 120, errors: 0 },
       matched: 7,
       fileLevel: true,
       groups: [
-        { kind: 'delete', files: [{ path: 'old.txt' }], bytes: 0 },
-        { kind: 'add', files, bytes: 1200 },
+        { kind: 'delete', files, bytes: 0 },
+        { kind: 'add', files: [{ path: 'new.txt', size: 10 }], bytes: 10 },
       ],
     });
     await component.runPreview();
 
     expect(component.preview().state).toBe('done');
-    // The deletions come first and are the group that opens.
-    expect(component.previewKind()).toBe('delete');
-    expect(component.previewDeletes()).toBe(1);
-    expect(component.previewVisible().map(f => f.path)).toEqual(['old.txt']);
+    // The files to be deleted are the one list the user must see; the rest of them are counted.
+    expect(component.previewDeleted()?.files).toHaveLength(50);
+    expect(component.previewDeleted()?.more).toBe(70);
 
-    component.selectPreviewKind('add');
-    expect(component.previewMatches()).toHaveLength(120);
-    expect(component.previewVisible()).toHaveLength(50);
-    component.previewLimit.set(component.previewLimit() + component.previewPage);
-    expect(component.previewVisible()).toHaveLength(100);
-
-    // The search looks through the whole list, not only what is shown.
-    component.setPreviewQuery('PHOTO-11');
-    expect(component.previewMatches().map(f => f.path)).toEqual([
-      'photo-11.jpg',
-      'photo-110.jpg',
-      'photo-111.jpg',
-      'photo-112.jpg',
-      'photo-113.jpg',
-      'photo-114.jpg',
-      'photo-115.jpg',
-      'photo-116.jpg',
-      'photo-117.jpg',
-      'photo-118.jpg',
-      'photo-119.jpg',
-    ]);
-    expect(component.previewVisible()).toHaveLength(11);
-
-    expect(guide.preview.mock.calls[0][0]).toMatchObject({
+    expect(wizard.preview.mock.calls[0][0]).toMatchObject({
       operationType: 'copy',
       config: { rclone: { srcFs: 'drive:', dstFs: '/home/me/drive' } },
     });
 
-    guide.preview.mockRejectedValue(new Error('denied'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    wizard.preview.mockRejectedValue(new Error('denied'));
     await component.runPreview();
     expect(component.preview().state).toBe('failed');
+    // The reason is kept for whoever reads the log; the screen offers another try.
+    expect(logged).toHaveBeenCalledWith('[Wizard] The dry run failed:', expect.any(Error));
+    logged.mockRestore();
+    wizard.preview.mockResolvedValue({
+      counts: { transfers: 0, bytes: 0, deletes: 0, errors: 0 },
+      matched: 0,
+      fileLevel: true,
+      groups: [],
+    });
+    await component.runPreview();
+    expect(component.preview().state).toBe('done');
   });
 
-  it('shows no group when the dry run would change nothing', async () => {
+  it('shows no deleted files when the dry run would change nothing', async () => {
     const component = await create();
     component.chooseGoal('download');
     await settle();
     toReview(component);
-    guide.preview.mockResolvedValue({
+    wizard.preview.mockResolvedValue({
       counts: { transfers: 0, bytes: 0, deletes: 0, errors: 0 },
       matched: 12,
       fileLevel: true,
       groups: [],
     });
     await component.runPreview();
-    expect(component.previewKind()).toBeNull();
-    expect(component.previewGroup()).toBeUndefined();
-    expect(component.previewDeletes()).toBe(0);
+    expect(component.previewDeleted()).toBeNull();
   });
 
   it('cancels a running preview', async () => {
@@ -646,7 +1028,7 @@ describe('IntentGuideModalComponent', () => {
     component.preview.set({ state: 'running', executeId: 'exec-1' });
     await component.cancelPreview();
     expect(component.preview().state).toBe('idle');
-    expect(guide.cancel).toHaveBeenCalledWith('exec-1');
+    expect(wizard.cancel).toHaveBeenCalledWith('exec-1');
   });
 
   it('sets the mount up, turns on start with the system and lands on done', async () => {
@@ -657,14 +1039,14 @@ describe('IntentGuideModalComponent', () => {
     expect(component.step()).toBe('when');
     expect(component.offersStartOnLogin()).toBe(true);
     component.toReview();
-    guide.apply.mockResolvedValue({
+    wizard.apply.mockResolvedValue({
       quickRun: { id: 'qr', name: 'n' },
       execution: { mountPoint: '/home/me/drive' },
     });
 
     await component.apply();
 
-    expect(guide.apply).toHaveBeenCalledWith(
+    expect(wizard.apply).toHaveBeenCalledWith(
       expect.objectContaining({ operationType: 'mount' }),
       expect.objectContaining({ flow: 'stream' }),
       expect.objectContaining({ startOnLogin: true })
@@ -674,15 +1056,15 @@ describe('IntentGuideModalComponent', () => {
     expect(component.openablePath()).toBe('/home/me/drive');
   });
 
-  describe("the guide's settings", () => {
+  describe("the wizard's settings", () => {
     it('reads them when it opens', async () => {
-      guide.settings.mockResolvedValue({
+      wizard.settings.mockResolvedValue({
         afterRemote: false,
         setting: 'profile',
         destination: 'profile',
       });
       const component = await create();
-      component.ngOnInit();
+      component.init();
       await settle();
       expect(component.afterRemote()).toBe(false);
       expect(component.destinationSetting()).toBe('profile');
@@ -698,25 +1080,24 @@ describe('IntentGuideModalComponent', () => {
       expect(component.step()).not.toBe('goal');
     });
 
-    it('saves whether the guide follows a new cloud', async () => {
+    it('saves whether the wizard follows a new cloud', async () => {
       const component = await create();
       component.setAfterRemote(false);
       expect(component.afterRemote()).toBe(false);
-      expect(guide.saveAfterRemote).toHaveBeenCalledWith(false);
+      expect(wizard.saveAfterRemote).toHaveBeenCalledWith(false);
     });
 
-    it('saves the destination and uses it for what the guide sets up from now on', async () => {
-      guide.resolveDestination.mockResolvedValue('profile');
+    it('saves the destination and uses it for what the wizard sets up from now on', async () => {
+      wizard.resolveDestination.mockResolvedValue('profile');
       const component = await create();
       await component.setDestinationSetting('profile');
-      expect(guide.saveDestination).toHaveBeenCalledWith('profile');
+      expect(wizard.saveDestination).toHaveBeenCalledWith('profile');
       expect(component.destinationSetting()).toBe('profile');
       expect(component.destination()).toBe('profile');
     });
   });
 
-  describe('what is already set up', () => {
-    const none = { startup: false, watch: false, cron: null };
+  describe('a setup that already exists', () => {
     const setup = {
       key: 'quick_run:qr-1',
       kind: 'quick_run',
@@ -724,173 +1105,11 @@ describe('IntentGuideModalComponent', () => {
       name: 'Docs backup',
       remoteName: 'drive',
       operationType: 'copy',
-      flow: 'upload',
-      summaryKey: 'upload_copy',
-      local: '/home/me/Docs',
-      cloud: 'drive › Docs',
-      cloudFolder: 'Docs',
-      target: '',
-      targetRemote: '',
-      automation: none,
       signature: 'upload|/home/me/Docs|drive|Docs||',
     };
-    const mount = {
-      ...setup,
-      key: 'profile:drive:mount:Default',
-      kind: 'profile',
-      id: undefined,
-      name: 'Default',
-      operationType: 'mount',
-      flow: 'stream',
-      summaryKey: 'stream',
-      local: '/home/me/drive',
-      cloudFolder: '',
-      signature: 'stream|/home/me/drive|drive||',
-    };
-
-    it('lists them with the state of their last run', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.setupStatus.mockReturnValue({
-        state: 'ok',
-        at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
-      });
-      const component = await create();
-      await settle();
-      const [row] = component.setupRows();
-      expect(guide.loadSetups).toHaveBeenCalledWith(['drive', 'onedrive']);
-      expect(row.setup.name).toBe('Docs backup');
-      expect(row.statusKey).toBe('job.ok');
-      expect(row.icon).toBe('cloud-arrow-up');
-      expect(row.statusTone).toBe('primary');
-      expect(row.when).toMatch(/2 hours ago/);
-    });
-
-    it('says a mount is connected or not instead of when it last ran', async () => {
-      guide.loadSetups.mockResolvedValue([mount]);
-      guide.setupStatus.mockReturnValue({ state: 'failed', at: '2026-11-01T10:00:00Z' });
-      const component = await create();
-      await settle();
-      expect(component.setupRows()[0].statusKey).toBe('stream.idle');
-      guide.setupStatus.mockReturnValue({ state: 'running' });
-      // The real service reads signals; the mock needs a nudge to compute again.
-      component.setups.set([...component.setups()]);
-      expect(component.setupRows()[0].statusKey).toBe('stream.running');
-    });
-
-    it('shows the real folders and lists what starts a setup by itself', async () => {
-      guide.loadSetups.mockResolvedValue([
-        { ...setup, automation: { startup: true, watch: true, cron: '0 2 * * *' } },
-        mount,
-      ]);
-      const component = await create();
-      await settle();
-      const [first, second] = component.setupRows();
-      expect(first.path).toBe('/home/me/Docs → Docs');
-      expect(first.auto.map(a => a.icon)).toEqual(['power-off', 'bolt', 'calendar']);
-      expect(first.auto[0].key).toBe('startup');
-      expect(first.auto[2].text).toBeTruthy();
-      expect(first.kind).toBe('quickRun');
-      expect(second.path).toBe('/home/me/drive');
-      expect(second.auto.map(a => a.key)).toEqual(['manual']);
-      expect(second.kind).toBe('profile');
-    });
-
-    it('writes the folders in the direction the files go', async () => {
-      const other = (flow: string, extra: object = {}): unknown => ({
-        ...setup,
-        flow,
-        local: '/home/me/Pics',
-        cloudFolder: '',
-        ...extra,
-      });
-      guide.loadSetups.mockResolvedValue([
-        other('download', { cloudFolder: 'Pics' }),
-        other('twoWay', { cloudFolder: 'Notes' }),
-        other('twoWay'),
-        other('cloudToCloud', { target: 'box › old' }),
-        other('cloudToCloud', { target: 'box', cloudFolder: 'Pics' }),
-        other('share', { local: '' }),
-        other('share', { local: '', cloudFolder: 'Photos' }),
-      ]);
-      const component = await create();
-      await settle();
-      expect(component.setupRows().map(r => r.path)).toEqual([
-        'Pics → /home/me/Pics',
-        '/home/me/Pics ⇄ Notes',
-        '/home/me/Pics',
-        '→ box › old',
-        'Pics → box',
-        '',
-        'Photos',
-      ]);
-    });
-
-    it('says a mount mounts and a share serves when the app starts', async () => {
-      guide.loadSetups.mockResolvedValue([
-        { ...mount, automation: { startup: true, watch: false, cron: null } },
-      ]);
-      const component = await create();
-      await settle();
-      expect(component.setupRows()[0].auto[0].key).toBe('startupStream');
-      guide.loadSetups.mockResolvedValue([
-        {
-          ...setup,
-          flow: 'share',
-          automation: { startup: true, watch: false, cron: null },
-        },
-        { ...setup, key: 'y', automation: { startup: true, watch: false, cron: null } },
-      ]);
-      await component.load();
-      await settle();
-      expect(component.setupRows().map(r => r.auto[0].key)).toEqual(['startupShare', 'startup']);
-    });
-
-    it('colours a mount that is up like a run that went fine', async () => {
-      guide.loadSetups.mockResolvedValue([mount, setup]);
-      guide.setupStatus.mockReturnValue({ state: 'running' });
-      const component = await create();
-      await settle();
-      expect(component.setupRows().map(r => r.statusTone)).toEqual(['primary', 'accent']);
-    });
-
-    it('groups them by cloud and counts what runs and what failed', async () => {
-      guide.loadSetups.mockResolvedValue([
-        setup,
-        { ...mount, key: 'm2', remoteName: 'onedrive' },
-        { ...setup, key: 'qr-2', id: 'qr-2', signature: 'other' },
-      ]);
-      guide.setupStatus.mockImplementation((s: { key: string }) =>
-        s.key === 'qr-2' ? { state: 'failed', error: 'no space left' } : { state: 'running' }
-      );
-      const component = await create();
-      await settle();
-      expect(component.setupGroups().map(g => [g.remote.name, g.rows.length])).toEqual([
-        ['drive', 2],
-        ['onedrive', 1],
-      ]);
-      expect(component.setupCounts()).toEqual({ running: 2, failed: 1 });
-      expect(component.setupRows()[2].status.error).toBe('no space left');
-    });
-
-    it('flags a setup that does the same as an earlier one', async () => {
-      guide.loadSetups.mockResolvedValue([mount, { ...mount, key: 'm2', name: 'drive folder' }]);
-      const component = await create();
-      await settle();
-      expect(component.setupRows().map(r => r.sameAs)).toEqual([null, 'Default']);
-    });
-
-    it('opens the list from the goals and goes back', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      const component = await create();
-      await settle();
-      component.openSetups();
-      expect(component.step()).toBe('setups');
-      component.back();
-      expect(component.step()).toBe('goal');
-    });
 
     it('works without the list when it cannot be read', async () => {
-      guide.loadSetups.mockRejectedValue(new Error('no settings'));
+      wizard.loadSetups.mockRejectedValue(new Error('no settings'));
       const component = await create();
       await settle();
       expect(component.setups()).toEqual([]);
@@ -914,126 +1133,8 @@ describe('IntentGuideModalComponent', () => {
       });
     });
 
-    it('removes a setup after the question and reads the list again', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.undo.mockResolvedValue(undefined);
-      const component = await create();
-      await settle();
-      guide.loadSetups.mockResolvedValue([]);
-      await component.removeSetup(setup as never);
-      expect(confirmModal).toHaveBeenCalledWith(
-        'modals.intentGuide.undo.title',
-        expect.stringContaining('Docs backup'),
-        'modals.intentGuide.setups.remove',
-        'common.cancel',
-        { icon: 'trash', color: 'warn' }
-      );
-      expect(guide.undo).toHaveBeenCalledWith(
-        { name: 'Docs backup', quickRun: { id: 'qr-1' } },
-        'drive',
-        'copy'
-      );
-      expect(component.removingKey()).toBeNull();
-      expect(component.setups()).toEqual([]);
-    });
-
-    it('says in the question that removing a running setup stops it first', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.undo.mockResolvedValue(undefined);
-      const component = await create();
-      await settle();
-      await component.removeSetup(setup as never);
-      expect(confirmModal.mock.calls[0][1]).toContain('undo.confirm:');
-
-      confirmModal.mockClear();
-      guide.setupStatus.mockReturnValue({ state: 'running' });
-      await component.removeSetup(setup as never);
-      expect(confirmModal.mock.calls[0][1]).toContain('undo.confirmRunning');
-    });
-
-    it('starts a setup that is not running and stops one that is', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.startSetup.mockResolvedValue(undefined);
-      guide.stopSetup.mockResolvedValue(undefined);
-      const component = await create();
-      await settle();
-      const idle = component.setupRows()[0];
-      expect(idle.running).toBe(false);
-      expect(idle.actionKey).toBe('automation.actions.run');
-      expect(idle.actionIcon).toBe('play');
-      await component.toggleSetup(idle);
-      expect(guide.startSetup).toHaveBeenCalledWith(setup);
-
-      guide.setupStatus.mockReturnValue({ state: 'running' });
-      component.setups.set([setup as never]);
-      const running = component.setupRows()[0];
-      expect(running.running).toBe(true);
-      await component.toggleSetup(running);
-      expect(guide.stopSetup).toHaveBeenCalledWith(setup);
-      expect(component.busyKey()).toBeNull();
-    });
-
-    it('words the button like the mount and serve cards', async () => {
-      const share = { ...setup, key: 'x', flow: 'share', operationType: 'serve' };
-      guide.loadSetups.mockResolvedValue([mount, share, setup]);
-      const component = await create();
-      await settle();
-      const label = (): string[][] => component.setupRows().map(r => [r.actionKey, r.actionIcon]);
-      expect(label()).toEqual([
-        ['actions.mount', 'mount'],
-        ['actions.serve', 'serve'],
-        ['automation.actions.run', 'play'],
-      ]);
-
-      guide.setupStatus.mockReturnValue({ state: 'running' });
-      component.setups.set([...component.setups()]);
-      expect(label()).toEqual([
-        ['dashboard.appDetail.unmount', 'eject'],
-        ['actions.stop', 'stop'],
-        ['actions.stop', 'stop'],
-      ]);
-    });
-
-    it('reports a failure and frees the buttons again', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.startSetup.mockRejectedValue(new Error('busy'));
-      const component = await create();
-      await settle();
-      await component.toggleSetup(component.setupRows()[0]);
-      expect(component.busyKey()).toBeNull();
-    });
-
-    it('does not start a second action while one is under way', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      const component = await create();
-      await settle();
-      component.busyKey.set('other');
-      await component.toggleSetup(component.setupRows()[0]);
-      expect(guide.startSetup).not.toHaveBeenCalled();
-    });
-
-    it('keeps the setup when the question is answered with no', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      confirmModal.mockResolvedValue(false);
-      const component = await create();
-      await settle();
-      await component.removeSetup(setup as never);
-      expect(guide.undo).not.toHaveBeenCalled();
-      expect(component.setups()).toHaveLength(1);
-    });
-
-    it('keeps the setup when removing fails', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
-      guide.undo.mockRejectedValue(new Error('busy'));
-      const component = await create();
-      await settle();
-      await component.removeSetup(setup as never);
-      expect(component.removingKey()).toBeNull();
-      expect(component.setups()).toHaveLength(1);
-    });
-
     it('points out a setup that already does what the review shows', async () => {
-      guide.loadSetups.mockResolvedValue([setup]);
+      wizard.loadSetups.mockResolvedValue([setup]);
       const component = await create();
       await settle();
       component.chooseGoal('backup');
@@ -1049,12 +1150,12 @@ describe('IntentGuideModalComponent', () => {
   });
 
   describe('taking the setup back', () => {
-    const toDone = async (): Promise<IntentGuideModalComponent> => {
+    const toDone = async (): Promise<WizardState> => {
       const component = await create();
       component.chooseGoal('access');
       await settle();
       toReview(component);
-      guide.apply.mockResolvedValue({
+      wizard.apply.mockResolvedValue({
         destination: 'quick_run',
         name: 'drive folder',
         quickRun: { id: 'qr', name: 'drive folder' },
@@ -1069,15 +1170,15 @@ describe('IntentGuideModalComponent', () => {
       confirmModal.mockResolvedValue(false);
       await component.undo();
       expect(confirmModal).toHaveBeenCalled();
-      expect(guide.undo).not.toHaveBeenCalled();
+      expect(wizard.undo).not.toHaveBeenCalled();
       expect(component.undoState()).toBe('idle');
     });
 
     it('removes what was set up and says so', async () => {
       const component = await toDone();
-      guide.undo.mockResolvedValue(undefined);
+      wizard.undo.mockResolvedValue(undefined);
       await component.undo();
-      expect(guide.undo).toHaveBeenCalledWith(
+      expect(wizard.undo).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'drive folder' }),
         'drive',
         'mount'
@@ -1087,17 +1188,17 @@ describe('IntentGuideModalComponent', () => {
 
     it('reports a failure and lets the user try again', async () => {
       const component = await toDone();
-      guide.undo.mockRejectedValue(new Error('busy'));
+      wizard.undo.mockRejectedValue(new Error('busy'));
       await component.undo();
       expect(component.undoState()).toBe('failed');
-      guide.undo.mockResolvedValue(undefined);
+      wizard.undo.mockResolvedValue(undefined);
       await component.undo();
       expect(component.undoState()).toBe('removed');
     });
 
     it('starts clean when another setup begins', async () => {
       const component = await toDone();
-      guide.undo.mockResolvedValue(undefined);
+      wizard.undo.mockResolvedValue(undefined);
       await component.undo();
       component.startOver();
       expect(component.undoState()).toBe('idle');
@@ -1110,19 +1211,19 @@ describe('IntentGuideModalComponent', () => {
     component.chooseGoal('devices');
     await settle();
     toReview(component);
-    guide.apply.mockResolvedValue({
+    wizard.apply.mockResolvedValue({
       destination: 'quick_run',
       name: 'drive sync',
       quickRun: { id: 'qr', name: 'drive sync' },
       execution: { executeId: 'exec-1' },
       firstRunDone: false,
     });
-    guide.job.mockReturnValue({ error: "  couldn't reach the cloud  " });
+    wizard.job.mockReturnValue({ error: "  couldn't reach the cloud  " });
     await component.apply();
     expect(component.doneKey()).toBe('twoWayFailed');
     expect(component.failureReason()).toBe("couldn't reach the cloud");
 
-    guide.apply.mockResolvedValue({
+    wizard.apply.mockResolvedValue({
       destination: 'quick_run',
       name: 'drive sync',
       quickRun: { id: 'qr', name: 'drive sync' },
@@ -1134,7 +1235,7 @@ describe('IntentGuideModalComponent', () => {
   });
 
   describe('where the result is kept', () => {
-    const toMountReview = async (): Promise<IntentGuideModalComponent> => {
+    const toMountReview = async (): Promise<WizardState> => {
       const component = await create();
       component.chooseGoal('access');
       await settle();
@@ -1143,13 +1244,13 @@ describe('IntentGuideModalComponent', () => {
     };
 
     it('starts from the setting and lets the review change it for this run', async () => {
-      guide.settings.mockResolvedValue({
+      wizard.settings.mockResolvedValue({
         afterRemote: true,
         setting: 'auto',
         destination: 'profile',
       });
       const component = await create();
-      component.ngOnInit();
+      component.init();
       await settle();
       expect(component.destination()).toBe('profile');
       expect(component.destinationSetting()).toBe('auto');
@@ -1158,7 +1259,7 @@ describe('IntentGuideModalComponent', () => {
       await settle();
       toReview(component);
       component.destination.set('quick_run');
-      guide.apply.mockResolvedValue({
+      wizard.apply.mockResolvedValue({
         destination: 'quick_run',
         name: 'n',
         quickRun: { id: 'qr', name: 'n' },
@@ -1166,7 +1267,7 @@ describe('IntentGuideModalComponent', () => {
       });
       await component.apply();
 
-      expect(guide.apply).toHaveBeenCalledWith(
+      expect(wizard.apply).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
         expect.objectContaining({ destination: 'quick_run' })
@@ -1175,7 +1276,7 @@ describe('IntentGuideModalComponent', () => {
 
     it('shows a profile on the remote page of its tab', async () => {
       const component = await toMountReview();
-      guide.apply.mockResolvedValue({ destination: 'profile', name: 'n', execution: {} });
+      wizard.apply.mockResolvedValue({ destination: 'profile', name: 'n', execution: {} });
       await component.apply();
       component.showWhere();
       expect(close).toHaveBeenCalled();
@@ -1199,7 +1300,7 @@ describe('IntentGuideModalComponent', () => {
 
     it('shows a Quick Run in Flow', async () => {
       const component = await toMountReview();
-      guide.apply.mockResolvedValue({
+      wizard.apply.mockResolvedValue({
         destination: 'quick_run',
         name: 'n',
         quickRun: { id: 'qr', name: 'n' },
@@ -1217,14 +1318,63 @@ describe('IntentGuideModalComponent', () => {
     component.chooseGoal('download');
     await settle();
     toReview(component);
-    guide.apply.mockResolvedValue(null);
+    wizard.apply.mockResolvedValue(null);
     await component.apply();
     expect(component.step()).toBe('review');
     expect(component.applyFailed()).toBe(true);
   });
 
+  describe('on Android', () => {
+    const phone = { ...ENV, isAndroid: true };
+
+    it('opens the Files app for a mount that lives there', async () => {
+      wizard.loadEnvironment.mockResolvedValue(phone);
+      wizard.presets.mockReturnValue({ vfs: {}, mount: { mountType: 'saf' } });
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      expect(component.usesSaf()).toBe(true);
+      expect(component.openablePath()).toBe('saf://drive');
+      expect(component.doneMain()).toBe('folder');
+
+      await component.openFolder();
+      expect(wizard.openFolder).toHaveBeenCalledWith('saf://drive');
+    });
+
+    it('has no folder to open for anything else on a phone', async () => {
+      wizard.loadEnvironment.mockResolvedValue(phone);
+      const component = await create();
+      component.chooseGoal('download');
+      await settle();
+      expect(component.openablePath()).toBeNull();
+    });
+  });
+
+  it('draws this machine as a monitor, a phone or a server, never as the mobile data switch', async () => {
+    const desktop = await create();
+    expect(desktop.localPlaceIcon()).toBe('desktop');
+
+    TestBed.resetTestingModule();
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isAndroid: true });
+    expect((await create()).localPlaceIcon()).toBe('smartphone');
+
+    TestBed.resetTestingModule();
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isServer: true });
+    expect((await create()).localPlaceIcon()).toBe('server');
+  });
+
+  it('lists what can lose files first, and keeps the order of the rest', async () => {
+    const component = await create();
+    component.chooseGoal('access');
+    await settle();
+    const keys = component.effects().map(e => e.key);
+    // A mount deletes in the cloud what is deleted here: that line leads.
+    expect(keys[0]).toBe('streamDelete');
+    expect(keys.slice(1)).toEqual(['streamOpen', 'streamSave']);
+  });
+
   it('does not offer to open a folder on a server', async () => {
-    guide.loadEnvironment.mockResolvedValue({ ...ENV, isServer: true });
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isServer: true });
     const component = await create();
     component.chooseGoal('download');
     await settle();
@@ -1232,31 +1382,142 @@ describe('IntentGuideModalComponent', () => {
     expect(component.openablePath()).toBeNull();
   });
 
-  it('hands everything it filled in to the full editor', async () => {
-    const component = await create();
-    component.chooseGoal('devices');
-    await settle();
-    component.chooseHomeFolder('Notes');
-    component.openAdvanced();
-    expect(close).toHaveBeenCalled();
-    expect(openQuickRunEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialOpType: 'bisync',
-        initialRemoteName: 'drive',
-        cloneData: expect.objectContaining({
-          config: expect.objectContaining({
-            rclone: { path1: '/home/me/Notes', path2: 'drive:Notes', resync: true },
+  it('calls any machine that is not a server "this device": it may be a Mac, a PC or a phone', async () => {
+    const desktop = await create();
+    expect(desktop.localPlace()).toBe('thisDevice');
+
+    TestBed.resetTestingModule();
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isAndroid: true });
+    const phone = await create();
+    expect(phone.localPlace()).toBe('thisDevice');
+  });
+
+  describe('a mount on Windows', () => {
+    const windows = { ...ENV, canUseDriveLetter: true };
+
+    it('goes to a drive letter by default and says so', async () => {
+      wizard.loadEnvironment.mockResolvedValue(windows);
+      wizard.defaultLocalPath.mockResolvedValue('Z:');
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      expect(component.usesDriveLetter()).toBe(true);
+      expect(component.localPath()).toBe('Z:');
+      expect(component.localIsDrive()).toBe(true);
+      expect(component.summaryKey()).toBe('streamDrive');
+      expect(component.whereAbout()).toBe('streamWindows');
+      expect(component.whereValid()).toBe(true);
+      // A drive holds the cloud, so there is no folder to measure.
+      expect(wizard.localFree).not.toHaveBeenCalledWith('Z:');
+    });
+
+    it('lets Windows choose the letter for the automatic drive', async () => {
+      wizard.loadEnvironment.mockResolvedValue(windows);
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      component.setLocalPath('*');
+      expect(component.summaryKey()).toBe('streamAutoDrive');
+      expect(component.localLabel()).toBe('modals.wizard.places.automaticDrive');
+      // There is no folder to open for a letter nobody has picked yet.
+      expect(component.openablePath()).toBeNull();
+    });
+
+    it('keeps the plain wording for a folder', async () => {
+      wizard.loadEnvironment.mockResolvedValue(windows);
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      component.setLocalPath('C:\\Users\\me\\drive');
+      expect(component.localIsDrive()).toBe(false);
+      expect(component.summaryKey()).toBe('stream');
+    });
+
+    it('starts the network drive from the presets and saves what the user chose', async () => {
+      wizard.loadEnvironment.mockResolvedValue(windows);
+      wizard.presets.mockReturnValue({ vfs: {}, mount: { network_mode: true } });
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      expect(component.mountNetworkMode.value).toBe(true);
+
+      component.mountNetworkMode.setValue(false);
+      component.mountVolumeName.setValue('My cloud');
+      toReview(component);
+      wizard.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: {} });
+      await component.apply();
+      const input = wizard.apply.mock.calls[0][0];
+      expect(input.config.rclone).toMatchObject({ network_mode: false, volname: 'My cloud' });
+    });
+
+    it('does not offer drives anywhere else', async () => {
+      const component = await create();
+      component.chooseGoal('access');
+      await settle();
+      expect(component.usesDriveLetter()).toBe(false);
+      expect(component.summaryKey()).toBe('stream');
+    });
+  });
+
+  describe('the full editor', () => {
+    const openFor = async (destination: 'quick_run' | 'profile'): Promise<WizardState> => {
+      const component = await create();
+      component.destination.set(destination);
+      component.chooseGoal('devices');
+      await settle();
+      component.chooseHomeFolder('Notes');
+      return component;
+    };
+
+    it('opens the Quick Run editor with what was filled in when it is kept as a Quick Run', async () => {
+      const component = await openFor('quick_run');
+      await component.openAdvanced();
+      expect(close).toHaveBeenCalled();
+      expect(openRemoteConfig).not.toHaveBeenCalled();
+      expect(openQuickRunEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          initialOpType: 'bisync',
+          initialRemoteName: 'drive',
+          cloneData: expect.objectContaining({
+            config: expect.objectContaining({
+              rclone: { path1: '/home/me/Notes', path2: 'drive:Notes', resync: true },
+            }),
           }),
-        }),
-      })
-    );
+        })
+      );
+    });
+
+    it('opens the profile editor of the remote, with the profile filled in, when it is kept as a profile', async () => {
+      const settings = { bisyncConfigs: { 'Drive sync': { app: {}, rclone: { path1: '/a' } } } };
+      wizard.planProfile.mockResolvedValue({ name: 'Drive sync', settings });
+      const component = await openFor('profile');
+      await component.openAdvanced();
+
+      expect(close).toHaveBeenCalled();
+      expect(openQuickRunEditor).not.toHaveBeenCalled();
+      expect(openRemoteConfig).toHaveBeenCalledWith({
+        remoteName: 'drive',
+        remoteType: 'drive',
+        editTarget: 'bisync',
+        targetProfile: 'Drive sync',
+        initialProfile: { type: 'bisync', name: 'Drive sync', settings },
+      });
+    });
+
+    it('falls back to the Quick Run editor for an operation that has no profiles', async () => {
+      wizard.planProfile.mockResolvedValue(null);
+      const component = await openFor('profile');
+      await component.openAdvanced();
+      expect(openRemoteConfig).not.toHaveBeenCalled();
+      expect(openQuickRunEditor).toHaveBeenCalled();
+    });
   });
 
   describe('when step', () => {
     const toWhen = async (
       goal: 'backup' | 'devices' | 'access' | 'share',
       answer?: string
-    ): Promise<IntentGuideModalComponent> => {
+    ): Promise<WizardState> => {
       const component = await create();
       component.chooseGoal(goal);
       if (answer) component.answer(answer);
@@ -1299,9 +1560,9 @@ describe('IntentGuideModalComponent', () => {
       expect(component.schedule()).toMatchObject({ watchDelay: 30, startupDelay: 15 });
 
       component.toReview();
-      guide.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
+      wizard.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
       await component.apply();
-      expect(guide.apply.mock.calls[0][0].config.app).toMatchObject({
+      expect(wizard.apply.mock.calls[0][0].config.app).toMatchObject({
         watchEnabled: true,
         watchDelay: 30,
         autoStart: true,
@@ -1319,9 +1580,9 @@ describe('IntentGuideModalComponent', () => {
 
     it('can be turned off completely, which means it runs only when started', async () => {
       const component = await toWhen('backup', 'keep');
-      component.toggleCron();
+      component.toggleSchedule('cron');
       expect(component.schedule().cron).toBeNull();
-      expect(component.scheduleLines()).toEqual([{ key: 'manual' }]);
+      expect(component.scheduleLines()).toEqual([{ key: 'manual', icon: 'play' }]);
     });
 
     it('does not continue while the schedule is invalid', async () => {
@@ -1343,7 +1604,7 @@ describe('IntentGuideModalComponent', () => {
         cron: '0 * * * *',
       });
       expect(component.needsCloudSchedule()).toBe(false);
-      component.toggleCron();
+      component.toggleSchedule('cron');
       expect(component.needsCloudSchedule()).toBe(true);
     });
 
@@ -1351,9 +1612,9 @@ describe('IntentGuideModalComponent', () => {
       const component = await toWhen('backup', 'keep');
       component.scheduleWatch.set(true);
       component.toReview();
-      guide.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
+      wizard.apply.mockResolvedValue({ quickRun: { id: 'qr', name: 'n' }, execution: null });
       await component.apply();
-      expect(guide.apply.mock.calls[0][0].config.app).toEqual({
+      expect(wizard.apply.mock.calls[0][0].config.app).toEqual({
         watchEnabled: true,
         cronEnabled: true,
         cronExpression: '0 2 * * *',
@@ -1404,7 +1665,7 @@ describe('IntentGuideModalComponent', () => {
     });
 
     it('carries on at the folders step with the new cloud as the target', async () => {
-      guide.loadEnvironment.mockResolvedValue({
+      wizard.loadEnvironment.mockResolvedValue({
         ...ENV,
         remotes: [
           { name: 'drive', type: 'drive' },
@@ -1434,7 +1695,7 @@ describe('IntentGuideModalComponent', () => {
   });
 
   it('offers to add a remote when there is none', async () => {
-    guide.loadEnvironment.mockResolvedValue({ ...ENV, remotes: [] });
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, remotes: [] });
     const component = await create();
     expect(component.remoteName()).toBe('');
     component.addRemote();

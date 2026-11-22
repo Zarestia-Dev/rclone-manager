@@ -1,12 +1,21 @@
 :host {
   display: block;
   width: 100%;
+  // The container its small-screen layout (type above the path) reads: the field decides by its
+  // own width, wherever it is used.
+  container-type: inline-size;
 }
 
 .path-row-wrapper {
   display: flex;
   flex-direction: column;
   width: 100%;
+}
+
+// Typing in the field or tabbing to its button is shown by a soft ring around the card. In a list
+// the row is tinted instead, and a ring around one row would be cut by the list.
+.path-row-wrapper.path-list:focus-within {
+  outline: 2px solid rgba(var(--accent-color-rgb), 0.4);
 }
 
 .path-status {

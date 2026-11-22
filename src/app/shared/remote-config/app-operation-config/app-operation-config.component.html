@@ -384,6 +384,7 @@
 <ng-template #pathRow let-item let-isDest="isDest">
   <div class="path-row-wrapper">
     <app-path-field
+      [inList]="true"
       [control]="item.control"
       [fieldId]="item.group + '-' + item.index"
       [currentRemote]="currentRemoteName()"

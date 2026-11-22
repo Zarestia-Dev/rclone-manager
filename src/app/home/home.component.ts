@@ -19,6 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { MascotComponent } from '../shared/components/mascot/mascot.component';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import {
@@ -64,6 +65,7 @@ import { quoteToken } from '../shared/utils/rc/rc-console.util';
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
+    MascotComponent,
     TranslatePipe,
   ],
   templateUrl: './home.component.html',

@@ -104,7 +104,7 @@ describe('RemoteCreationOrchestrator', () => {
   let startBatch: ReturnType<typeof vi.fn>;
   let notifyError: ReturnType<typeof vi.fn>;
   let notifySuccess: ReturnType<typeof vi.fn>;
-  let openIntentGuide: ReturnType<typeof vi.fn>;
+  let openWizard: ReturnType<typeof vi.fn>;
   let getSettingValue: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -129,12 +129,12 @@ describe('RemoteCreationOrchestrator', () => {
     startBatch = vi.fn().mockResolvedValue(undefined);
     notifyError = vi.fn();
     notifySuccess = vi.fn();
-    openIntentGuide = vi.fn();
+    openWizard = vi.fn();
     getSettingValue = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
-        { provide: ModalService, useValue: { openIntentGuide } },
+        { provide: ModalService, useValue: { openWizard } },
         RemoteCreationOrchestrator,
         { provide: BackendService, useValue: { activeBackend: signal('Local') } },
         { provide: RemoteManagementService, useValue: remoteService },
@@ -265,17 +265,17 @@ describe('RemoteCreationOrchestrator', () => {
       );
     });
 
-    it('leaves the setup guide closed when the settings turn it off', async () => {
+    it('leaves the setup wizard closed when the settings turn it off', async () => {
       getSettingValue.mockResolvedValue(false);
       expect(await service.createRemote(remote, config, stepwise)).toBe(true);
       expect(getSettingValue).toHaveBeenCalledWith('wizard.after_remote');
-      expect(openIntentGuide).not.toHaveBeenCalled();
+      expect(openWizard).not.toHaveBeenCalled();
     });
 
-    it('opens the setup guide when the setting cannot be read', async () => {
+    it('opens the setup wizard when the setting cannot be read', async () => {
       getSettingValue.mockRejectedValue(new Error('no settings'));
       expect(await service.createRemote(remote, config, stepwise)).toBe(true);
-      expect(openIntentGuide).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
+      expect(openWizard).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
     });
 
     it('completes a remote without questions and saves settings once', async () => {
@@ -283,7 +283,7 @@ describe('RemoteCreationOrchestrator', () => {
       expect(remoteService.updateRemote).not.toHaveBeenCalled();
       expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, 'Local');
       expect(notifySuccess).toHaveBeenCalledOnce();
-      expect(openIntentGuide).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
+      expect(openWizard).toHaveBeenCalledExactlyOnceWith({ remoteName: remote.name });
       expect(auth.resetAuthState).toHaveBeenCalledOnce();
       expect(service.interactiveFlowState().isActive).toBe(false);
     });
@@ -545,7 +545,7 @@ describe('RemoteCreationOrchestrator', () => {
       expect(save).toHaveBeenCalledOnce();
       expect(saveSettings).not.toHaveBeenCalled();
       expect(notifySuccess).toHaveBeenCalledOnce();
-      expect(openIntentGuide).not.toHaveBeenCalled();
+      expect(openWizard).not.toHaveBeenCalled();
       expect(auth.resetAuthState).toHaveBeenCalledOnce();
     });
 

@@ -19,6 +19,8 @@ import {
   TemplateCategory,
   OPERATION_REGISTRY,
   DEFAULT_PROFILE_NAME,
+  PendingProfile,
+  REMOTE_CONFIG_KEYS,
 } from '@app/types';
 import {
   createConfigFormGroup,
@@ -89,6 +91,7 @@ export interface DialogData {
   targetProfile?: string;
   autoAddProfile?: boolean;
   cloneFrom?: string;
+  initialProfile?: PendingProfile;
 }
 
 interface ProfileUsage {
@@ -868,6 +871,8 @@ export class RemoteConfigStateService {
           ? dialogData.targetProfile
           : (Object.keys(newProfiles[type])[0] ?? DEFAULT_PROFILE_NAME);
     }
+    const pending = dialogData?.initialProfile;
+    if (pending) this.addPendingProfile(pending, newProfiles, newSelected);
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelected);
     for (const type of PROFILE_TYPES) {
@@ -886,6 +891,25 @@ export class RemoteConfigStateService {
       PROFILE_TYPES.includes(editTarget)
     )
       this.startAddProfile(editTarget);
+  }
+
+  /**
+   * Adds a profile that was made elsewhere to the working copy, with the profiles it refers to
+   * (a VFS profile, say), and selects it. It is not in the baseline, so Save writes it.
+   */
+  private addPendingProfile(
+    pending: PendingProfile,
+    profiles: Record<string, ProfileConfigMap>,
+    selected: Record<string, string | null>
+  ): void {
+    for (const [key, entries] of Object.entries(pending.settings)) {
+      const type = PROFILE_TYPES.find(
+        t => (REMOTE_CONFIG_KEYS as Readonly<Record<string, string>>)[t] === key
+      );
+      if (type) profiles[type] = { ...profiles[type], ...structuredClone(entries) };
+    }
+    if (PROFILE_TYPES.includes(pending.type as SharedProfileType))
+      selected[pending.type] = pending.name;
   }
 
   private computeProfileActionState(

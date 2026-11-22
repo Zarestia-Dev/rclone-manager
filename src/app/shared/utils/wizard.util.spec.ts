@@ -3,12 +3,12 @@ import { OPERATION_TYPE_KEYS } from '@app/types';
 import type { QuickRunInput } from '@app/types';
 import { BASE_ICONS } from 'src/app/services/ui/constants/icon-registry';
 import {
-  GUIDE_GOALS,
-  GUIDE_QUESTIONS,
-  GuideAnswers,
-  GuideGoalId,
-  GuidePlan,
-  GuideTargets,
+  WIZARD_GOALS,
+  WIZARD_QUESTIONS,
+  WizardAnswers,
+  WizardGoalId,
+  WizardPlan,
+  WizardTargets,
   DAILY_CRON,
   HOURLY_CRON,
   MANUAL_SCHEDULE,
@@ -25,14 +25,16 @@ import {
   PREVIEW_KINDS,
   asDryRun,
   buildPreview,
-  filterPreviewFiles,
   baseName,
   describeSetup,
+  FLOW_DIRECTION,
   findSameSetup,
-  type SetupAutomation,
+  shortPath,
   type SetupSource,
   buildPlanProfile,
+  AUTOMATIC_DRIVE,
   buildPlanQuickRun,
+  isDrivePath,
   desktopAppProvider,
   fsPath,
   getGoal,
@@ -47,34 +49,34 @@ import {
   resolveDestination,
   resolvePlan,
   withoutResync,
-} from './intent-guide.util';
+} from './wizard.util';
 
-const resolved = (goal: GuideGoalId, answers: GuideAnswers): GuidePlan => {
+const resolved = (goal: WizardGoalId, answers: WizardAnswers): WizardPlan => {
   const plan = resolvePlan(goal, answers);
   if (!plan) throw new Error(`no plan for ${goal}`);
   return plan;
 };
 
-const targets = (extra: Partial<GuideTargets> = {}): GuideTargets => ({
+const targets = (extra: Partial<WizardTargets> = {}): WizardTargets => ({
   remoteName: 'drive',
   remotePath: 'Docs',
   localPath: '/home/me/Docs',
   ...extra,
 });
 
-describe('guide goals and questions', () => {
+describe('wizard goals and questions', () => {
   it('only asks questions that exist, and some goals need none', () => {
-    for (const goal of GUIDE_GOALS) {
-      for (const q of goal.questions) expect(GUIDE_QUESTIONS[q].length).toBeGreaterThan(1);
+    for (const goal of WIZARD_GOALS) {
+      for (const q of goal.questions) expect(WIZARD_QUESTIONS[q].length).toBeGreaterThan(1);
     }
     expect(getGoal('devices').questions).toEqual([]);
     expect(resolvePlan('devices', {})?.operationType).toBe('bisync');
   });
 
   it('resolves every combination of answers to a plan with a known operation', () => {
-    for (const goal of GUIDE_GOALS) {
-      const combos = goal.questions.reduce<GuideAnswers[]>(
-        (acc, q) => acc.flatMap(a => GUIDE_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
+    for (const goal of WIZARD_GOALS) {
+      const combos = goal.questions.reduce<WizardAnswers[]>(
+        (acc, q) => acc.flatMap(a => WIZARD_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
         [{}]
       );
       for (const answers of combos) {
@@ -87,9 +89,9 @@ describe('guide goals and questions', () => {
 
   it('reaches every outcome by exactly one goal and answer', () => {
     const reached: string[] = [];
-    for (const goal of GUIDE_GOALS) {
-      const combos = goal.questions.reduce<GuideAnswers[]>(
-        (acc, q) => acc.flatMap(a => GUIDE_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
+    for (const goal of WIZARD_GOALS) {
+      const combos = goal.questions.reduce<WizardAnswers[]>(
+        (acc, q) => acc.flatMap(a => WIZARD_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
         [{}]
       );
       for (const answers of combos) {
@@ -101,7 +103,7 @@ describe('guide goals and questions', () => {
   });
 
   it('throws for an unknown goal', () => {
-    expect(() => getGoal('nope' as GuideGoalId)).toThrow();
+    expect(() => getGoal('nope' as WizardGoalId)).toThrow();
   });
 
   it('asks the questions in order and ignores answers that are not options', () => {
@@ -126,7 +128,7 @@ describe('goalTone', () => {
   });
 
   it('gives every goal a different icon', () => {
-    const icons = GUIDE_GOALS.map(g => g.icon);
+    const icons = WIZARD_GOALS.map(g => g.icon);
     expect(new Set(icons).size).toBe(icons.length);
   });
 });
@@ -201,6 +203,16 @@ describe('resolvePlan', () => {
       canPreview: false,
     });
   });
+
+  it('checks one cloud against another with the second remote, not a local folder', () => {
+    expect(resolved('explore', { explore: 'compareClouds' })).toMatchObject({
+      operationType: 'check',
+      flow: 'cloudCompare',
+      needsLocal: false,
+      needsSecondRemote: true,
+      canPreview: false,
+    });
+  });
 });
 
 describe('planEffects', () => {
@@ -212,8 +224,8 @@ describe('planEffects', () => {
   });
 
   it('describes every goal', () => {
-    for (const goal of GUIDE_GOALS) {
-      const first = Object.fromEntries(goal.questions.map(q => [q, GUIDE_QUESTIONS[q][0].id]));
+    for (const goal of WIZARD_GOALS) {
+      const first = Object.fromEntries(goal.questions.map(q => [q, WIZARD_QUESTIONS[q][0].id]));
       expect(planEffects(resolved(goal.id, first)).length).toBeGreaterThan(0);
     }
   });
@@ -221,15 +233,15 @@ describe('planEffects', () => {
 
 describe('registered icons', () => {
   it('only uses icons the icon registry knows, so none fails at runtime', () => {
-    const answers = (goal: (typeof GUIDE_GOALS)[number]): GuideAnswers[] =>
-      goal.questions.reduce<GuideAnswers[]>(
-        (acc, q) => acc.flatMap(a => GUIDE_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
+    const answers = (goal: (typeof WIZARD_GOALS)[number]): WizardAnswers[] =>
+      goal.questions.reduce<WizardAnswers[]>(
+        (acc, q) => acc.flatMap(a => WIZARD_QUESTIONS[q].map(o => ({ ...a, [q]: o.id }))),
         [{}]
       );
     const icons = new Set<string>();
-    for (const goal of GUIDE_GOALS) {
+    for (const goal of WIZARD_GOALS) {
       icons.add(goal.icon);
-      for (const q of goal.questions) GUIDE_QUESTIONS[q].forEach(o => icons.add(o.icon));
+      for (const q of goal.questions) WIZARD_QUESTIONS[q].forEach(o => icons.add(o.icon));
       for (const a of answers(goal))
         planEffects(resolved(goal.id, a)).forEach(e => icons.add(e.icon));
     }
@@ -301,6 +313,17 @@ describe('desktopAppProvider', () => {
   });
 });
 
+describe('isDrivePath', () => {
+  it('knows a drive letter and the automatic drive from a folder', () => {
+    expect(isDrivePath('Z:')).toBe(true);
+    expect(isDrivePath('z:\\')).toBe(true);
+    expect(isDrivePath(AUTOMATIC_DRIVE)).toBe(true);
+    expect(isDrivePath('C:\\Users\\me\\drive')).toBe(false);
+    expect(isDrivePath('/home/me/drive')).toBe(false);
+    expect(isDrivePath('')).toBe(false);
+  });
+});
+
 describe('buildPlanQuickRun', () => {
   it('returns null for browsing and for a cloud-to-cloud copy without a target', () => {
     expect(
@@ -324,6 +347,26 @@ describe('buildPlanQuickRun', () => {
     });
   });
 
+  it('shows a Windows mount as a network drive or a disk, with the name the user gave it', () => {
+    const win = (mountNetworkMode?: boolean, mountVolumeName?: string): unknown =>
+      buildPlanQuickRun(
+        resolved('access', {}),
+        targets({ localPath: 'Z:', mountNetworkMode, mountVolumeName }),
+        'm',
+        { mount: { network_mode: true } }
+      )?.config.rclone;
+    expect(win(false, ' My cloud ')).toMatchObject({
+      mountPoint: 'Z:',
+      network_mode: false,
+      volname: 'My cloud',
+    });
+    expect(win(true)).toMatchObject({ network_mode: true });
+    // Left out, the OS preset decides and no name is made up.
+    const preset = win() as Record<string, unknown>;
+    expect(preset['network_mode']).toBe(true);
+    expect(preset).not.toHaveProperty('volname');
+  });
+
   it('mounts into the Android Files app with the SAF preset', () => {
     const run = buildPlanQuickRun(resolved('access', {}), targets(), 'm', {
       mount: { mountType: 'saf' },
@@ -340,6 +383,18 @@ describe('buildPlanQuickRun', () => {
 
     const check = buildPlanQuickRun(resolved('explore', { explore: 'compare' }), targets(), 'c');
     expect(check?.config.rclone).toEqual({ srcFs: '/home/me/Docs', dstFs: 'drive:Docs' });
+  });
+
+  it('checks between two clouds without a local folder', () => {
+    const plan = resolved('explore', { explore: 'compareClouds' });
+    const check = buildPlanQuickRun(
+      plan,
+      targets({ remotePath: 'a', targetRemote: 'box', targetPath: '/b' }),
+      'c'
+    );
+    expect(check?.operationType).toBe('check');
+    expect(check?.config.rclone).toEqual({ srcFs: 'drive:a', dstFs: 'box:b' });
+    expect(buildPlanQuickRun(plan, targets({ targetRemote: undefined }), 'c')).toBeNull();
   });
 
   it('starts a two-way copy with resync and the schedule the plan starts with', () => {
@@ -554,33 +609,30 @@ describe('planDetails', () => {
     expect(keys(planDetails(mount, { presets: {}, targets: targets() }))).toEqual([]);
   });
 
-  it('lists every address, the port, the user and whether devices can change files', () => {
+  it('lists every address, the port and the user; what devices may do is in the effects', () => {
     const details = planDetails(share, {
       presets: {},
       targets: targets({ shareUser: 'me', sharePort: 9090, shareReadOnly: true }),
       network: { hostName: 'my-pc', addresses: ['192.168.1.20'] },
     });
-    expect(keys(details)).toEqual(['address', 'address', 'port', 'user', 'readOnly']);
+    expect(keys(details)).toEqual(['address', 'address', 'port', 'user']);
     expect(details[0]).toMatchObject({ value: 'http://192.168.1.20:9090', copy: true, code: true });
     expect(details[2].value).toBe('9090');
-    expect(
-      planDetails(share, { presets: {}, targets: targets({ shareUser: 'me' }) }).at(-1)?.key
-    ).toBe('canChange');
   });
 
-  it('lists the same details for a web page, which can never change files', () => {
+  it('lists the same details for a web page', () => {
     const page = resolved('share', { device: 'browser' });
     const details = planDetails(page, {
       presets: {},
       targets: targets({ shareUser: 'me', shareReadOnly: false }),
       network: { addresses: ['192.168.1.20'] },
     });
-    expect(keys(details)).toEqual(['address', 'port', 'user', 'readOnly']);
+    expect(keys(details)).toEqual(['address', 'port', 'user']);
   });
 
   it('shows the port alone when no address is known', () => {
     const details = planDetails(share, { presets: {}, targets: targets({ shareUser: 'me' }) });
-    expect(keys(details)).toEqual(['addressUnknown', 'port', 'user', 'canChange']);
+    expect(keys(details)).toEqual(['addressUnknown', 'port', 'user']);
     expect(details[0].value).toBe(':8080');
   });
 
@@ -590,7 +642,7 @@ describe('planDetails', () => {
       targets: targets({ shareUser: 'me' }),
       network: { addresses: ['nas.example.com'], viaBackend: true },
     });
-    expect(keys(details)).toEqual(['address', 'addressViaBackend', 'port', 'user', 'canChange']);
+    expect(keys(details)).toEqual(['address', 'addressViaBackend', 'port', 'user']);
     expect(details[0].value).toBe('http://nas.example.com:8080');
   });
 
@@ -792,16 +844,6 @@ describe('buildPreview', () => {
     expect(result.groups).toEqual([]);
     expect(result.counts.transfers).toBe(4);
   });
-
-  it('filters the files of a group by a case-insensitive search of the whole list', () => {
-    const files = [{ path: 'Photos/IMG_1.jpg' }, { path: 'docs/a.txt' }, { path: 'photos/b.png' }];
-    expect(filterPreviewFiles(files, 'PHOTOS').map(f => f.path)).toEqual([
-      'Photos/IMG_1.jpg',
-      'photos/b.png',
-    ]);
-    expect(filterPreviewFiles(files, '  ')).toBe(files);
-    expect(filterPreviewFiles(files, 'zzz')).toEqual([]);
-  });
 });
 
 describe('path helpers', () => {
@@ -818,7 +860,7 @@ describe('path helpers', () => {
   });
 });
 
-describe('where the guide keeps its setups', () => {
+describe('where the wizard keeps its setups', () => {
   it('uses the destination the settings name', () => {
     expect(resolveDestination('profile', 'flow')).toBe('profile');
     expect(resolveDestination('quick_run', 'main_menu')).toBe('quick_run');
@@ -898,144 +940,79 @@ describe('describeSetup', () => {
     config: { app: {}, rclone },
   });
 
+  const signature = (operationType: string, rclone: Record<string, unknown>): string | undefined =>
+    describeSetup(source(operationType, rclone), remotes)?.signature;
+
   it('reads a backup back as an upload', () => {
     const setup = describeSetup(
       source('copy', { srcFs: '/home/me/Docs', dstFs: 'drive:Backup/Docs' }),
       remotes
     );
     expect(setup).toMatchObject({
-      flow: 'upload',
-      summaryKey: 'upload_copy',
-      local: '/home/me/Docs',
-      cloud: 'drive › Backup › Docs',
       key: 'quick_run:qr-1',
+      name: 'My setup',
+      remoteName: 'drive',
+      operationType: 'copy',
+      signature: 'upload|/home/me/Docs|drive|Backup/Docs||',
     });
-    expect(describeSetup(source('sync', { srcFs: '/a', dstFs: 'drive:' }), remotes)).toMatchObject({
-      summaryKey: 'upload_sync',
-      cloud: 'drive',
-    });
+    expect(signature('sync', { srcFs: '/a', dstFs: 'drive:' })).toBe('upload|/a|drive|||');
   });
 
   it('reads mounts, two-way folders and shares', () => {
-    expect(
-      describeSetup(source('mount', { fs: 'drive:', mountPoint: '/mnt/d' }), remotes)
-    ).toMatchObject({
-      flow: 'stream',
-      summaryKey: 'stream',
-    });
-    expect(
-      describeSetup(source('mount', { fs: 'drive:', mountPoint: 'saf://drive' }), remotes)
-        ?.summaryKey
-    ).toBe('streamSaf');
-    expect(
-      describeSetup(source('bisync', { path1: 'drive:Notes', path2: '/home/me/Notes' }), remotes)
-    ).toMatchObject({ flow: 'twoWay', local: '/home/me/Notes', cloud: 'drive › Notes' });
-    expect(describeSetup(source('serve', { fs: 'drive:', type: 'dlna' }), remotes)).toMatchObject({
-      flow: 'share',
-      summaryKey: 'share_dlna',
-      serveType: 'dlna',
-    });
-    expect(
-      describeSetup(source('serve', { fs: 'drive:', type: 'http' }), remotes)?.summaryKey
-    ).toBe('share_http');
+    expect(signature('mount', { fs: 'drive:', mountPoint: '/mnt/d' })).toBe(
+      'stream|/mnt/d|drive|||'
+    );
+    expect(signature('mount', { fs: 'drive:', mountPoint: 'saf://drive' })).toBe(
+      'stream|saf://drive|drive|||'
+    );
+    expect(signature('bisync', { path1: 'drive:Notes', path2: '/home/me/Notes' })).toBe(
+      'twoWay|/home/me/Notes|drive|Notes||'
+    );
+    expect(signature('bisync', { path1: '/home/me/Notes', path2: 'drive:Notes' })).toBe(
+      'twoWay|/home/me/Notes|drive|Notes||'
+    );
   });
 
-  it('lists a share of any other type under its own name', () => {
-    expect(describeSetup(source('serve', { fs: 'drive:', type: 'ftp' }), remotes)).toMatchObject({
-      flow: 'share',
-      summaryKey: 'share_other',
-      serveType: 'ftp',
-    });
-    expect(
-      describeSetup(source('mount', { fs: 'drive:', mountPoint: '/mnt' }), remotes)
-    ).toMatchObject({ serveType: '' });
+  it('tells shares of different types apart', () => {
+    expect(signature('serve', { fs: 'drive:', type: 'dlna' })).toBe('share||drive|||dlna');
+    expect(signature('serve', { fs: 'drive:', type: 'http' })).toBe('share||drive|||http');
+    expect(signature('serve', { fs: 'drive:', type: 'ftp' })).toBe('share||drive|||ftp');
   });
 
   it('reads downloads, comparisons and moves between clouds', () => {
-    expect(
-      describeSetup(source('copy', { srcFs: 'drive:Pics', dstFs: '/home/me/Pics' }), remotes)?.flow
-    ).toBe('download');
-    expect(describeSetup(source('check', { srcFs: '/a', dstFs: 'drive:a' }), remotes)?.flow).toBe(
-      'compare'
+    expect(signature('copy', { srcFs: 'drive:Pics', dstFs: '/home/me/Pics' })).toBe(
+      'download|/home/me/Pics|drive|Pics||'
     );
-    expect(
-      describeSetup(source('move', { srcFs: 'drive:', dstFs: 'box:old' }), remotes)
-    ).toMatchObject({
-      flow: 'cloudToCloud',
-      summaryKey: 'cloudToCloud_move',
-      target: 'box › old',
-    });
+    expect(signature('check', { srcFs: '/a', dstFs: 'drive:a' })).toBe('compare|/a|drive|a||');
+    expect(signature('move', { srcFs: 'drive:', dstFs: 'box:old' })).toBe(
+      'cloudToCloud||drive||box:old|'
+    );
   });
 
   it('also reads what the full editor makes: other directions of a sync, move or check', () => {
-    expect(
-      describeSetup(source('sync', { srcFs: 'drive:a', dstFs: '/local' }), remotes)
-    ).toMatchObject({
-      flow: 'download',
-      summaryKey: 'download_sync',
-      local: '/local',
-      cloud: 'drive › a',
-    });
-    expect(
-      describeSetup(source('move', { srcFs: 'drive:a', dstFs: '/local' }), remotes)?.summaryKey
-    ).toBe('download_move');
-    expect(describeSetup(source('move', { srcFs: '/a', dstFs: 'drive:' }), remotes)).toMatchObject({
-      flow: 'upload',
-      summaryKey: 'upload_move',
-      local: '/a',
-    });
-    expect(
-      describeSetup(source('sync', { srcFs: 'drive:', dstFs: 'box:mirror' }), remotes)
-    ).toMatchObject({
-      flow: 'cloudToCloud',
-      summaryKey: 'cloudToCloud_sync',
-      target: 'box › mirror',
-    });
-    expect(
-      describeSetup(source('check', { srcFs: 'drive:a', dstFs: '/a' }), remotes)
-    ).toMatchObject({ flow: 'compare', local: '/a', cloud: 'drive › a' });
+    // The wizard makes only some of these; the others are told apart so that a plan is never
+    // reported as already set up because of a setup that does something else.
+    expect(signature('sync', { srcFs: 'drive:a', dstFs: '/local' })).toBe(
+      'download|/local|drive|a||sync'
+    );
+    expect(signature('move', { srcFs: 'drive:a', dstFs: '/local' })).toBe(
+      'download|/local|drive|a||move'
+    );
+    expect(signature('move', { srcFs: '/a', dstFs: 'drive:' })).toBe('upload|/a|drive|||move');
+    expect(signature('sync', { srcFs: 'drive:', dstFs: 'box:mirror' })).toBe(
+      'cloudToCloud||drive||box:mirror|sync'
+    );
+    expect(signature('check', { srcFs: 'drive:a', dstFs: 'box:b' })).toBe(
+      'cloudCompare||drive|a|box:b|'
+    );
   });
 
   it('leaves out what has no cloud or folder to name', () => {
     expect(describeSetup(source('copy', { srcFs: '', dstFs: 'drive:' }), remotes)).toBeNull();
     expect(describeSetup(source('sync', { srcFs: '/a', dstFs: '/b' }), remotes)).toBeNull();
-    expect(describeSetup(source('check', { srcFs: 'drive:', dstFs: 'box:' }), remotes)).toBeNull();
     expect(describeSetup(source('serve', { fs: 'drive:', type: '' }), remotes)).toBeNull();
     expect(describeSetup(source('copy', { srcFs: '/a', dstFs: 'other:x' }), remotes)).toBeNull();
     expect(describeSetup({ ...source('copy', {}), config: null }, remotes)).toBeNull();
-  });
-
-  it('reads the folder, the second cloud and what starts it by itself', () => {
-    const rclone = { srcFs: 'drive:Photos/2024', dstFs: 'box:old' };
-    const setup = describeSetup(
-      {
-        ...source('copy', rclone),
-        config: {
-          app: {
-            autoStart: true,
-            watchEnabled: false,
-            cronEnabled: true,
-            cronExpression: ' 0 2 * * * ',
-          },
-          rclone,
-        },
-      },
-      remotes
-    );
-    expect(setup).toMatchObject({
-      cloudFolder: 'Photos › 2024',
-      targetRemote: 'box',
-      automation: { startup: true, watch: false, cron: '0 2 * * *' },
-    });
-  });
-
-  it('ignores a schedule that is switched off or empty', () => {
-    const rclone = { srcFs: '/a', dstFs: 'drive:a' };
-    const automation = (app: Record<string, unknown>): SetupAutomation | undefined =>
-      describeSetup({ ...source('copy', rclone), config: { app, rclone } }, remotes)?.automation;
-    expect(automation({ cronEnabled: false, cronExpression: '0 * * * *' })?.cron).toBeNull();
-    expect(automation({ cronEnabled: true, cronExpression: '  ' })?.cron).toBeNull();
-    expect(automation({})).toEqual({ startup: false, watch: false, cron: null });
   });
 
   it('keys a profile by remote, operation and name', () => {
@@ -1097,6 +1074,27 @@ describe('findSameSetup', () => {
     expect(findSameSetup([between], migrate, { ...same, targetPath: 'new' })).toBeNull();
   });
 
+  it('finds a saved check between two clouds, and not one with another cloud', () => {
+    const plan = resolved('explore', { explore: 'compareClouds' });
+    const saved = describeSetup(
+      {
+        kind: 'quick_run',
+        id: 'qr-3',
+        name: 'Check',
+        remoteName: 'drive',
+        operationType: 'check',
+        config: { rclone: { srcFs: 'drive:a', dstFs: 'box:b' } },
+      },
+      remotes
+    );
+    if (!saved) throw new Error('no setup');
+    const same = { remoteName: 'drive', remotePath: 'a', localPath: '', targetRemote: 'box' };
+    expect(findSameSetup([saved], plan, { ...same, targetPath: 'b' })).toBe(saved);
+    expect(
+      findSameSetup([saved], plan, { ...same, targetRemote: 'onedrive', targetPath: 'b' })
+    ).toBeNull();
+  });
+
   it('does not call a mirrored download or a move to the cloud the same as a plan', () => {
     const download = resolvePlan('download', {});
     const backup = resolvePlan('backup', { deleted: 'keep' });
@@ -1137,5 +1135,51 @@ describe('findSameSetup', () => {
     expect(findSameSetup([existing], download, targets)).toBeNull();
     expect(findSameSetup([existing], browse, targets)).toBeNull();
     expect(findSameSetup([], copy, targets)).toBeNull();
+  });
+});
+
+describe('FLOW_DIRECTION', () => {
+  it('moves files toward the cloud for a backup, toward this computer for a download', () => {
+    expect(FLOW_DIRECTION.upload).toBe('right');
+    expect(FLOW_DIRECTION.download).toBe('left');
+    expect(FLOW_DIRECTION.cloudToCloud).toBe('right');
+  });
+
+  it('broadcasts a share from this machine to the network', () => {
+    expect(FLOW_DIRECTION.share).toBe('broadcast');
+  });
+
+  it('goes both ways for a two-way copy, is a link for a mount, and nowhere for a check', () => {
+    expect(FLOW_DIRECTION.twoWay).toBe('both');
+    expect(FLOW_DIRECTION.stream).toBe('link');
+    expect(FLOW_DIRECTION.compare).toBe('none');
+    expect(FLOW_DIRECTION.cloudCompare).toBe('none');
+  });
+});
+
+describe('shortPath', () => {
+  it('leaves a short path alone', () => {
+    expect(shortPath('/home/me/Docs')).toBe('/home/me/Docs');
+  });
+
+  it('keeps the start and the last two folders, and drops the middle', () => {
+    expect(shortPath('/home/hakan/rclone-manager/drive-7')).toBe('/home/…/rclone-manager/drive-7');
+  });
+
+  it('keeps only the last folder when two do not fit', () => {
+    expect(shortPath('/home/hakan/Documents/Photos/2024/Holiday')).toBe('/home/…/2024/Holiday');
+    expect(shortPath('/home/hakan/a-very-long-folder-name/another-very-long-folder-name')).toBe(
+      '…/another-very-long-folder-name'
+    );
+  });
+
+  it('writes Windows paths with backslashes', () => {
+    expect(shortPath('C:\\Users\\hakan\\Documents\\Photos\\Holiday', 28)).toBe(
+      'C:\\…\\Photos\\Holiday'
+    );
+  });
+
+  it('cuts a path with too few folders at the end', () => {
+    expect(shortPath('/a-folder-with-a-very-long-name-indeed', 20)).toBe('/a-folder-with-a-ve…');
   });
 });

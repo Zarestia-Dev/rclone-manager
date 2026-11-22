@@ -27,10 +27,11 @@ import {
   ExplorerRoot,
   ExportType,
   ExportModalData,
+  PendingProfile,
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import type { CheckCompareData } from '../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component';
-import type { GuideAnswers, GuideGoalId } from '../../shared/utils/intent-guide.util';
+import type { WizardAnswers, WizardGoalId } from '../../shared/utils/wizard.util';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
@@ -44,21 +45,23 @@ export interface RemoteConfigModalOptions {
   targetProfile?: string;
   autoAddProfile?: boolean;
   cloneFrom?: string;
+  /** A profile made elsewhere and not saved yet; it opens filled in, as a new profile. */
+  initialProfile?: PendingProfile;
 }
 
-/** What a guide that was closed to add a cloud has chosen so far, so it can carry on afterwards. */
-export interface IntentGuideResume {
+/** What a wizard that was closed to add a cloud has chosen so far, so it can carry on afterwards. */
+export interface WizardResume {
   /** The remote the user was working with; the new remote becomes the other side. */
   remoteName: string;
-  goal: GuideGoalId;
-  answers: GuideAnswers;
+  goal: WizardGoalId;
+  answers: WizardAnswers;
 }
 
-export interface IntentGuideModalOptions {
-  /** The remote the guide starts with, for example the one that was just created. */
+export interface WizardModalOptions {
+  /** The remote the wizard starts with, for example the one that was just created. */
   remoteName?: string;
-  /** Carries on with the choices of a guide that was closed to add this remote. */
-  resume?: IntentGuideResume;
+  /** Carries on with the choices of a wizard that was closed to add this remote. */
+  resume?: WizardResume;
 }
 
 export interface ExportModalOptions {
@@ -178,8 +181,8 @@ export class StandaloneWindowRef<R = unknown> implements DialogRefLike<R> {
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
   private readonly vault = inject(VaultService);
-  /** Set while the guide is closed for the quick add dialog; the next guide may carry on. */
-  private guideResume: IntentGuideResume | null = null;
+  /** Set while the wizard is closed for the quick add dialog; the next wizard may carry on. */
+  private wizardResume: WizardResume | null = null;
   private readonly dialog = inject(MatDialog);
   private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
@@ -230,9 +233,9 @@ export class ModalService extends TauriBaseService {
       import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
         m => m.QuickAddRemoteComponent
       ),
-    'intent-guide': () =>
-      import('../../features/modals/intent-guide/intent-guide-modal.component').then(
-        m => m.IntentGuideModalComponent
+    wizard: () =>
+      import('../../features/modals/wizard/wizard-modal.component').then(
+        m => m.WizardModalComponent
       ),
     'remote-config': () =>
       import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
@@ -562,6 +565,7 @@ export class ModalService extends TauriBaseService {
       targetProfile: options.targetProfile,
       autoAddProfile: options.autoAddProfile,
       cloneFrom: options.cloneFrom,
+      initialProfile: options.initialProfile,
     };
     return this.openModal(
       'remote-config',
@@ -652,31 +656,29 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openIntentGuide<TResult = unknown>(
-    options: IntentGuideModalOptions = {}
-  ): DialogRefLike<TResult> {
-    // A guide that was closed to add a cloud continues only with the cloud that was added.
-    const resume = this.guideResume;
-    this.guideResume = null;
+  openWizard<TResult = unknown>(options: WizardModalOptions = {}): DialogRefLike<TResult> {
+    // A wizard that was closed to add a cloud continues only with the cloud that was added.
+    const resume = this.wizardResume;
+    this.wizardResume = null;
     const carriesOn = !!resume && !!options.remoteName && options.remoteName !== resume.remoteName;
     return this.openModal(
-      'intent-guide',
+      'wizard',
       {
         ...CONFIG_MODAL_SIZE,
         disableClose: true,
         data: { remoteName: options.remoteName, resume: carriesOn ? resume : undefined },
       },
       {
-        title: this.translate.instant('modals.intentGuide.title'),
+        title: this.translate.instant('modals.wizard.title'),
         width: 1024,
         height: 768,
       }
     );
   }
 
-  /** Opens the quick add dialog; the guide it was opened from can carry on with the new remote. */
-  openQuickAddRemote<TResult = unknown>(resumeGuide?: IntentGuideResume): DialogRefLike<TResult> {
-    this.guideResume = resumeGuide ?? null;
+  /** Opens the quick add dialog; the wizard it was opened from can carry on with the new remote. */
+  openQuickAddRemote<TResult = unknown>(resumeWizard?: WizardResume): DialogRefLike<TResult> {
+    this.wizardResume = resumeWizard ?? null;
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },

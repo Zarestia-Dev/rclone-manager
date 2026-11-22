@@ -642,11 +642,11 @@
     "remoteSaveFailed": "Error al guardar el remoto: {{error}}",
     "wizard": {
       "after_remote": {
-        "label": "Mostrar la guía de configuración al añadir una nube",
-        "description": "Abre la guía «¿Qué quieres hacer?» cuando terminas de añadir una nube nueva."
+        "label": "Mostrar el asistente de configuración al añadir una nube",
+        "description": "Abre el asistente «¿Qué quieres hacer?» cuando terminas de añadir una nube nueva."
       },
       "destination": {
-        "label": "Dónde guarda la guía lo que configura",
+        "label": "Dónde guarda el asistente lo que configura",
         "description": "Automático sigue la vista de inicio predeterminada: el menú principal guarda un perfil en la página de la nube; las demás vistas guardan una Quick Run.",
         "options": {
           "auto": "Automático",
@@ -758,7 +758,7 @@
       "about": "Acerca de RClone Manager",
       "quickRemote": "Remoto rápido",
       "detailedRemote": "Remoto detallado",
-      "intentGuide": "Asistente"
+      "wizard": "Asistente"
     }
   },
   "onboarding": {
@@ -2862,33 +2862,34 @@
         "clear": "limpiar"
       }
     },
-    "intentGuide": {
+    "wizard": {
       "title": "¿Qué quieres hacer?",
       "stepOf": "Paso {{current}} de {{total}}",
       "loadFailed": "No se pudieron cargar tus almacenamientos en la nube.",
       "noRemotes": "Añade primero un almacenamiento en la nube y vuelve aquí.",
       "remoteLabel": "¿Qué nube?",
       "recommended": "Recomendado",
-      "measuring": "Midiendo tamaños…",
       "applyFailed": "No se pudo configurar. Revisa las carpetas e inténtalo de nuevo.",
       "hello": {
         "created": "¡{{remote}} está listo! ¿Qué quieres hacer con él?",
         "default": "¿Qué quieres hacer con tu nube?",
-        "subtitle": "Elige lo que quieres con tus propias palabras. Nosotros configuramos el resto y nada empieza hasta que tú lo digas."
+        "subtitle": "Elige lo que quieres con tus propias palabras. Nosotros configuramos el resto y nada empieza hasta que tú lo digas.",
+        "dontShow": "No abrir al añadir una nube",
+        "dontShowHint": "Vale. Puedes volver a activarlo con el botón ⚙ de arriba."
       },
       "places": {
-        "computer": "Este equipo",
-        "phone": "Este teléfono",
+        "thisDevice": "Este dispositivo",
         "server": "El servidor",
         "filesApp": "App Archivos",
         "tv": "TV o reproductor",
         "device": "Teléfono u ordenador",
         "browser": "Navegador web",
-        "homeNetwork": "Tu red doméstica"
+        "homeNetwork": "Tu red doméstica",
+        "automaticDrive": "Una letra de unidad libre"
       },
       "goals": {
         "access": {
-          "title": "Usar mi nube como una carpeta en este equipo",
+          "title": "Usar mi nube como una carpeta en este dispositivo",
           "description": "Como una unidad de red: tus archivos aparecen en una carpeta y se descargan al abrirlos.",
           "descriptionApp": "Como la app de {{app}} en Windows: tus archivos aparecen en una carpeta y se descargan al abrirlos.",
           "titlePhone": "Ver mi nube en la app Archivos del teléfono",
@@ -2896,14 +2897,14 @@
         },
         "backup": {
           "title": "Hacer una copia de mis archivos en la nube",
-          "description": "Guarda una copia de una carpeta en la nube por si le pasa algo a este equipo."
+          "description": "Guarda una copia de una carpeta en la nube por si le pasa algo a este dispositivo."
         },
         "devices": {
-          "title": "Mantener una copia en este equipo, igual que la nube",
+          "title": "Mantener una copia en este dispositivo, igual que la nube",
           "description": "Funciona sin internet y en varios dispositivos: los cambios van en ambos sentidos. Ideal para notas de Obsidian o Logseq."
         },
         "download": {
-          "title": "Traer mis archivos de la nube a este equipo",
+          "title": "Traer mis archivos de la nube a este dispositivo",
           "description": "Descarga una carpeta o todo, una vez o siempre al día."
         },
         "migrate": {
@@ -2935,13 +2936,6 @@
       },
       "about": {
         "title": "¿Cuál es la diferencia?",
-        "goals": {
-          "title": "¿Cuál es para mí?",
-          "access": "Nube como carpeta: tus archivos se quedan en la nube y solo llegan a este equipo cuando los abres.",
-          "devices": "Una copia aquí: tus archivos también se guardan en este equipo, así que puedes usarlos sin internet. Si cambias algo en un lado, el otro se actualiza.",
-          "backup": "Copia de seguridad: se guarda en la nube una copia de una carpeta, por si pasa algo. Nada de tu carpeta cambia.",
-          "download": "Traer mis archivos de la nube: una copia de tus archivos llega a este equipo. Nada cambia en la nube."
-        },
         "deleted": {
           "same": "En ambos casos, los archivos nuevos y los modificados se copian a la nube, y tu propia carpeta nunca se toca.",
           "differ": "“Que se quede en la nube”: si borras un archivo aquí, la nube lo conserva. “Que se borre también allí”: la nube siempre queda igual que tu carpeta, así que un archivo que borres aquí desaparece también de la nube."
@@ -2956,12 +2950,13 @@
         },
         "explore": {
           "same": "En ambos casos, no cambia nada.",
-          "differ": "“Ver mis archivos”: tu nube se abre en esta aplicación para que puedas echar un vistazo. “Comparar una carpeta con la nube”: muestra qué archivos son distintos entre una carpeta de este equipo y la nube."
+          "differ": "“Ver mis archivos”: tu nube se abre en esta aplicación para que puedas echar un vistazo. “Comparar una carpeta con la nube”: muestra qué archivos son distintos entre una carpeta de este dispositivo y la nube. “Comparar una nube con otra”: muestra qué archivos son distintos entre dos nubes."
         },
         "where": {
           "stream": "Esta carpeta es como una puerta: tus archivos se quedan en la nube, aparecen aquí y se descargan al abrirlos. Elige una carpeta vacía. Todo lo que pongas en ella también se guarda en la nube.",
           "twoWay": "Puedes elegir una carpeta que ya uses. La primera vez se compara con la nube y se unen las dos, sin borrar nada. Después, un cambio en un lado, incluido borrar un archivo, se refleja en el otro.",
-          "mirror": "La carpeta de la nube quedará como una copia exacta de la tuya. Los archivos que tenga y que no estén en tu carpeta se borrarán. Lo más seguro es elegir una carpeta de la nube nueva o vacía."
+          "mirror": "La carpeta de la nube quedará como una copia exacta de la tuya. Los archivos que tenga y que no estén en tu carpeta se borrarán. Lo más seguro es elegir una carpeta de la nube nueva o vacía.",
+          "streamWindows": "La nube aparece en el Explorador de archivos como una unidad, igual que una memoria USB. Tus archivos siguen en la nube y se descargan cuando los abres. También puedes elegir una carpeta en su lugar. Todo lo que pongas en ella también se guarda en la nube."
         }
       },
       "options": {
@@ -3007,12 +3002,17 @@
           "compare": {
             "title": "Comparar una carpeta con la nube",
             "description": "Como comparar dos carpetas: mira qué archivos difieren entre una carpeta de aquí y la nube. No cambia nada."
+          },
+          "compareClouds": {
+            "title": "Comparar una nube con otra",
+            "description": "Como comparar dos carpetas: mira qué archivos difieren entre dos de tus nubes. No cambia nada."
           }
         }
       },
       "where": {
         "heading": "¿Dónde?",
         "target": "¿Adónde van los archivos?",
+        "targetCompare": "¿Con qué nube se compara?",
         "noOtherRemote": "Añade primero tu nube nueva y vuelve aquí.",
         "shareLogin": "Acceso para el otro dispositivo",
         "shareHint": "El móvil o el ordenador te los pedirá al conectarse.",
@@ -3024,7 +3024,8 @@
           "download": "los archivos se descargan aquí",
           "upload": "¿qué carpeta copiamos?",
           "compare": "¿qué carpeta comprobamos?",
-          "devices": "¿qué carpeta debe seguir igual?"
+          "devices": "¿qué carpeta debe seguir igual?",
+          "streamWindows": "la nube aparece como una unidad o una carpeta"
         },
         "cloud": {
           "stream": "¿qué parte de la nube?",
@@ -3033,7 +3034,8 @@
           "upload": "la copia va aquí",
           "cloudToCloud": "¿qué copiamos?",
           "share": "¿qué compartimos?",
-          "compare": "se compara con esta carpeta"
+          "compare": "se compara con esta carpeta",
+          "cloudCompare": "¿qué carpeta se comprueba?"
         },
         "localPlaceholder": "Elige o escribe una carpeta",
         "cloudPlaceholder": "Déjalo vacío para toda la nube",
@@ -3051,7 +3053,6 @@
       },
       "review": {
         "heading": "Esto es lo que pasará",
-        "technical": "Nombre técnico",
         "advanced": "Abrir en el editor completo",
         "start": "Configurar e iniciar",
         "firstRun": "La primera ejecución compara ambos lados y los une. Puede tardar un poco y no se borra nada.",
@@ -3073,7 +3074,19 @@
           "share_dlna": "{{cloud}} se comparte con las teles y reproductores de tu red.",
           "share_webdav": "{{cloud}} se comparte en tu red con contraseña.",
           "share_http": "{{cloud}} se comparte en tu red como una página web, con contraseña.",
-          "compare": "{{local}} se compara con {{cloud}}."
+          "compare": "{{local}} se compara con {{cloud}}.",
+          "cloudCompare": "{{cloud}} se compara con {{target}}.",
+          "streamDrive": "{{cloud}} aparece como la unidad {{local}}.",
+          "streamAutoDrive": "{{cloud}} aparece como una unidad nueva. Windows elige la letra al conectarse."
+        },
+        "flow": {
+          "stream": "Se abre cuando lo usas",
+          "upload": "Va a la nube",
+          "download": "Viene de la nube",
+          "twoWay": "Igual en los dos lados",
+          "cloudToCloud": "Va a la otra nube",
+          "share": "Compartido en tu red",
+          "compare": "Solo se compara, no cambia nada"
         },
         "schedule": {
           "watch": "Se ejecuta solo cuando cambia un archivo.",
@@ -3084,14 +3097,14 @@
         },
         "detailsTitle": "Conviene saber",
         "destination": {
-          "title": "Guardar como",
           "quickRun": "Ejecución rápida",
           "profile": "Perfil en el menú principal",
           "hintQuickRun": "Aparece en Flow › Ejecuciones rápidas.",
           "hintProfile": "Aparece en la página de «{{remote}}» en el menú principal, donde puedes iniciarlo y detenerlo."
         },
         "wholeCloud": "Toda la nube",
-        "duplicate": "Ya tienes una configuración que hace esto: «{{name}}»."
+        "duplicate": "Ya tienes una configuración que hace esto: «{{name}}».",
+        "duplicateShow": "Abrir"
       },
       "effects": {
         "streamOpen": "Al abrir un archivo, se descarga de la nube.",
@@ -3103,7 +3116,7 @@
         "mirrorDelete": "Los archivos que borres aquí también se borran de la nube.",
         "mirrorExtra": "Se borran los archivos que solo están en la carpeta de la nube.",
         "downloadNew": "Se descargan los archivos nuevos y modificados de la nube.",
-        "downloadKeep": "Los archivos borrados en la nube se quedan en este equipo.",
+        "downloadKeep": "Los archivos borrados en la nube se quedan en este dispositivo.",
         "downloadLocalChange": "Nunca se cambia nada en la nube.",
         "twoWayChange": "Un cambio en cualquiera de los lados se copia al otro.",
         "twoWayDelete": "Un archivo borrado en un lado se borra en el otro.",
@@ -3122,11 +3135,11 @@
         "browseNothing": "No cambia nada."
       },
       "advice": {
-        "tooBigForDisk": "Esto ocupa {{size}}, pero este equipo solo tiene {{free}} libres. No cabe.",
-        "tightOnDisk": "Esto ocupa {{size}} y este equipo tiene {{free}} libres. Cabe, pero el disco quedará casi lleno.",
-        "fitsOnDisk": "Esto ocupa {{size}} y este equipo tiene {{free}} libres. Cabe de sobra.",
+        "tooBigForDisk": "Esto ocupa {{size}}, pero este dispositivo solo tiene {{free}} libres. No cabe.",
+        "tightOnDisk": "Esto ocupa {{size}} y este dispositivo tiene {{free}} libres. Cabe, pero el disco quedará casi lleno.",
+        "fitsOnDisk": "Esto ocupa {{size}} y este dispositivo tiene {{free}} libres. Cabe de sobra.",
         "cloudTooFull": "La carpeta ocupa {{size}}, pero la nube solo tiene {{free}} libres. No cabe.",
-        "streamSavesSpace": "Tu nube ocupa {{cloud}} y este equipo tiene {{free}} libres, así que esta es la opción correcta: solo ocupan espacio los archivos que abras."
+        "streamSavesSpace": "Tu nube ocupa {{cloud}} y este dispositivo tiene {{free}} libres, así que esta es la opción correcta: solo ocupan espacio los archivos que abras."
       },
       "preview": {
         "title": "Mira primero lo que pasará",
@@ -3161,25 +3174,19 @@
           "error": "Problemas",
           "untouched": "Se dejan como están"
         },
-        "groupHints": {
-          "delete": "Estos archivos solo existen en el destino, así que se borrarán allí.",
-          "add": "Estos archivos son nuevos, así que se copiarán.",
-          "replace": "Estos archivos existen en ambos lados pero son distintos. Se reemplazará la versión del destino.",
-          "copy": "Estos archivos se copiarán.",
-          "error": "No se pudieron comparar ni copiar estos archivos.",
-          "untouched": "Estos archivos solo existen en el destino. Se quedan como están."
-        },
+        "groupCount": "{{label}}: {{count}}",
         "unchanged": {
           "one": "{{count}} archivo ya es igual en ambos lados",
           "other": "{{count}} archivos ya son iguales en ambos lados"
         },
-        "search": "Buscar en la lista",
-        "showMore": "Mostrar más",
-        "noMatches": "Ningún archivo coincide con tu búsqueda.",
         "deleteWarning": "Revisa esta lista antes de empezar: estos archivos se eliminarán del destino.",
         "again": "Repetir la prueba",
         "slowNote": "Esto puede tardar un rato, según cuántos archivos haya. No se ha quedado colgado, espera un momento.",
-        "elapsed": "Funcionando desde hace {{time}}"
+        "elapsed": "Funcionando desde hace {{time}}",
+        "andMore": {
+          "one": "…y {{count}} archivo más",
+          "other": "…y {{count}} archivos más"
+        }
       },
       "working": {
         "saving": "Configurando…",
@@ -3194,9 +3201,12 @@
         "twoWayReady": "La primera sincronización ha terminado. A partir de ahora ambos lados seguirán iguales.",
         "twoWayFailed": "Está configurada, pero la primera sincronización no terminó.",
         "started": "Ha empezado. Puedes seguir su progreso en la app.",
+        "checkStarted": "La comprobación ha empezado. Cuando termine, podrás ver qué archivos difieren.",
         "findIt": "Lo encontrarás después en Flow › Ejecuciones rápidas como «{{name}}».",
         "openFolder": "Abrir la carpeta",
         "openCloud": "Mostrar en el explorador de archivos",
+        "openRun": "Mostrar progreso y resultado",
+        "openRunHint": "Mira cómo fue y qué archivos intervinieron.",
         "another": "Configurar otra cosa",
         "shareWebdav": "Compartir está activado. Desde el móvil o el ordenador, conéctate a una de estas direcciones:",
         "shareHttp": "Compartir está activado. Desde el móvil o el ordenador, abre en un navegador una de estas direcciones:",
@@ -3205,16 +3215,15 @@
         "shareUser": "Nombre de usuario",
         "sharePassword": "Contraseña",
         "sharePasswordHint": "La que elegiste",
-        "troubleTitle": "Si no se conecta",
-        "troubleNetwork": "El teléfono debe estar en la misma red Wi-Fi que este equipo.",
-        "troubleNetworkRemote": "El teléfono debe estar en una red que llegue a {{host}}.",
-        "troubleFirewall": "El cortafuegos del equipo que comparte los archivos debe permitir el puerto {{port}}.",
         "shareDlna": "Compartir está activado. Busca «{{name}}» en la lista multimedia de tu tele o reproductor.",
-        "noAddress": "Compartir está activado. Conéctate a la dirección de red de este equipo, puerto {{port}}.",
+        "noAddress": "Compartir está activado. Conéctate a la dirección de red de este dispositivo, puerto {{port}}.",
         "findItProfile": "Más tarde lo encuentras en la página de «{{remote}}» del menú principal, como el perfil «{{name}}».",
         "whereQuickRun": "Mostrar en Ejecuciones rápidas",
         "whereProfile": "Mostrar en el menú principal",
-        "failureReason": "Qué falló: {{reason}}"
+        "failureReason": "Qué falló: {{reason}}",
+        "streamDrive": "Tu nube ya es la unidad {{path}}.",
+        "streamAutoDrive": "Tu nube ya es una unidad nueva en el Explorador de archivos.",
+        "openFilesApp": "Abrir la app Archivos"
       },
       "runNames": {
         "access": "Carpeta de {{remote}}",
@@ -3241,97 +3250,39 @@
           "description": "Se ejecuta solo cada vez que se abre la app.",
           "descriptionMount": "Tu nube se conecta sola cada vez que se abre la app."
         },
-        "cloudHint": "Vigilar solo detecta los cambios de este equipo. Añade también un horario para que lleguen los cambios hechos en la nube.",
+        "cloudHint": "Vigilar solo detecta los cambios de este dispositivo. Añade también un horario para que lleguen los cambios hechos en la nube.",
         "invalidCron": "Este horario aún no está completo. Elige una de las opciones de arriba."
       },
       "details": {
-        "cache": "Los archivos que abres se quedan en este equipo hasta {{age}}, usando como máximo {{size}} de disco.",
+        "cache": "Los archivos que abres se quedan en este dispositivo hasta {{age}}, usando como máximo {{size}} de disco.",
         "writeBack": "Los cambios que haces se envían a la nube pasados {{time}}.",
         "minFree": "La caché deja de crecer cuando quedan menos de {{size}} libres en el disco.",
         "address": "Dirección:",
-        "addressUnknown": "Usa la dirección de este equipo con el puerto:",
+        "addressUnknown": "Usa la dirección de este dispositivo con el puerto:",
         "addressViaBackend": "Es la dirección con la que la aplicación se conecta a ese equipo. Un teléfono en otra red puede no alcanzarla.",
         "port": "Puerto:",
         "user": "Usuario:",
-        "readOnly": "Los dispositivos pueden mirar pero no cambiar archivos.",
-        "canChange": "Los dispositivos también pueden cambiar y borrar archivos.",
         "tvName": "Se muestra en la tele como:"
       },
       "settings": {
-        "title": "Ajustes de la guía",
+        "title": "Ajustes del asistente",
         "subtitle": "Estas opciones se recuerdan para la próxima vez.",
-        "afterRemote": "Mostrar esta guía después de añadir una nube",
-        "destinationTitle": "Guardar lo que configura la guía como",
+        "afterRemote": "Mostrar este asistente después de añadir una nube",
+        "destinationTitle": "Guardar lo que configura el asistente como",
         "auto": "Automático",
         "hintAuto": "Sigue la vista de inicio: un perfil si la aplicación arranca en el menú principal, una ejecución rápida en otro caso.",
         "done": "Listo"
       },
       "undo": {
         "action": "Quitar esta configuración",
+        "hint": "Deja de ejecutarse y desaparece de la aplicación. Tus archivos no se tocan.",
         "confirm": "«{{name}}» deja de ejecutarse y desaparece de la aplicación. Tus archivos no se tocan.",
         "working": "Quitando…",
         "failed": "No se pudo quitar. Aún puedes quitarla desde el lugar donde aparece.",
         "removedTitle": "Quitada",
-        "removed": "«{{name}}» se ha quitado. Tus archivos no han cambiado.",
+        "removed": "Tus archivos no han cambiado.",
         "title": "¿Quitar esta configuración?",
-        "confirmRunning": "«{{name}}» se está ejecutando ahora. Primero se detendrá y luego se quitará. Tus archivos no se tocan."
-      },
-      "setups": {
-        "title": "Ya configurado",
-        "show": "Abrir",
-        "remove": "Quitar",
-        "status": {
-          "stream": {
-            "running": "Montado",
-            "idle": "No montado"
-          },
-          "share": {
-            "running": "Sirviendo",
-            "idle": "Sin servir"
-          },
-          "job": {
-            "running": "En marcha",
-            "ok": "Hecho · {{when}}",
-            "failed": "Falló · {{when}}",
-            "stopped": "Detenido · {{when}}",
-            "idle": "Nunca ejecutado"
-          }
-        },
-        "subtitle": "Todo lo que has configurado, agrupado por nube.",
-        "empty": "Aún no hay nada configurado.",
-        "headline": {
-          "stream": "Nube como carpeta",
-          "streamSaf": "Nube en la app Archivos",
-          "twoWay": "Sincronizado",
-          "upload_copy": "Copia de seguridad",
-          "upload_sync": "Copia espejo",
-          "upload_move": "Mover a la nube",
-          "download": "Descarga",
-          "download_sync": "Descarga espejo",
-          "download_move": "Mover desde la nube",
-          "cloudToCloud_copy": "Copiar a {{target}}",
-          "cloudToCloud_move": "Mover a {{target}}",
-          "cloudToCloud_sync": "Reflejar en {{target}}",
-          "share_dlna": "Compartido con TV y reproductores",
-          "share_webdav": "Compartido en tu red",
-          "share_http": "Compartido como página web",
-          "share_other": "Compartido mediante {{type}}",
-          "compare": "Comprobación de carpeta"
-        },
-        "auto": {
-          "startup": "Se ejecuta al iniciar la app",
-          "watch": "Se ejecuta al cambiar archivos",
-          "manual": "Inicio manual",
-          "startupStream": "Se monta al iniciar la app",
-          "startupShare": "Se sirve al iniciar la app"
-        },
-        "kind": {
-          "quickRun": "Ejecución rápida",
-          "profile": "Perfil"
-        },
-        "sameAs": "Igual que «{{name}}»",
-        "runningCount": "En marcha: {{count}}",
-        "failedCount": "Fallidos: {{count}}"
+        "remove": "Quitar"
       }
     }
   },

@@ -7,32 +7,33 @@ import type {
   QuickRunInput,
 } from '@app/types';
 import { FILE_REPORT_OPERATIONS, parseReportLine, withFileReport } from './job-report.util';
-import { getAppCfg, getRcloneCfg } from './profile-config.util';
+import { getRcloneCfg } from './profile-config.util';
+import { mountDriveLetter } from './path.utils';
 
 // ── Goals and questions ─────────────────────────────────────────────────────
 //
-// The guide asks what the user wants in their own words, then turns the answers into one rclone
-// operation. Nothing here names an rclone term; translations live under `modals.intentGuide`.
+// The wizard asks what the user wants in their own words, then turns the answers into one rclone
+// operation. Nothing here names an rclone term; translations live under `modals.wizard`.
 
-export type GuideGoalId =
+export type WizardGoalId =
   'access' | 'backup' | 'devices' | 'download' | 'migrate' | 'share' | 'explore';
 
-export type GuideQuestionId = 'deleted' | 'keepOld' | 'device' | 'explore';
+export type WizardQuestionId = 'deleted' | 'keepOld' | 'device' | 'explore';
 
-export interface GuideOption {
+export interface WizardOption {
   readonly id: string;
   readonly icon: string;
 }
 
-export interface GuideGoal {
-  readonly id: GuideGoalId;
+export interface WizardGoal {
+  readonly id: WizardGoalId;
   readonly icon: string;
   /** The operation the goal usually ends in; its colour role colours the card. */
   readonly operation?: PrimaryActionType;
-  readonly questions: readonly GuideQuestionId[];
+  readonly questions: readonly WizardQuestionId[];
 }
 
-export const GUIDE_QUESTIONS: Readonly<Record<GuideQuestionId, readonly GuideOption[]>> = {
+export const WIZARD_QUESTIONS: Readonly<Record<WizardQuestionId, readonly WizardOption[]>> = {
   deleted: [
     { id: 'keep', icon: 'shield' },
     { id: 'mirror', icon: 'sync' },
@@ -49,10 +50,11 @@ export const GUIDE_QUESTIONS: Readonly<Record<GuideQuestionId, readonly GuideOpt
   explore: [
     { id: 'browse', icon: 'folder-open' },
     { id: 'compare', icon: 'check-circle' },
+    { id: 'compareClouds', icon: 'right-left' },
   ],
 };
 
-export const GUIDE_GOALS: readonly GuideGoal[] = [
+export const WIZARD_GOALS: readonly WizardGoal[] = [
   { id: 'access', icon: 'mount', operation: 'mount', questions: [] },
   { id: 'backup', icon: 'cloud-arrow-up', operation: 'sync', questions: ['deleted'] },
   { id: 'devices', icon: 'bisync', operation: 'bisync', questions: [] },
@@ -63,36 +65,44 @@ export const GUIDE_GOALS: readonly GuideGoal[] = [
 ];
 
 /** The colour role of a goal card: the one of its operation, so it matches the dashboard. */
-export function goalTone(goal: GuideGoal): PillTone {
+export function goalTone(goal: WizardGoal): PillTone {
   return (goal.operation && getOperationDef(goal.operation)?.tone) || 'dim';
 }
 
-export type GuideAnswers = Partial<Record<GuideQuestionId, string>>;
+export type WizardAnswers = Partial<Record<WizardQuestionId, string>>;
 
-export function getGoal(id: GuideGoalId): GuideGoal {
-  const goal = GUIDE_GOALS.find(g => g.id === id);
-  if (!goal) throw new Error(`Unknown guide goal: ${id}`);
+export function getGoal(id: WizardGoalId): WizardGoal {
+  const goal = WIZARD_GOALS.find(g => g.id === id);
+  if (!goal) throw new Error(`Unknown wizard goal: ${id}`);
   return goal;
 }
 
 /** The first question of the goal that has no valid answer yet, or null once all are answered. */
-export function nextQuestion(goal: GuideGoal, answers: GuideAnswers): GuideQuestionId | null {
+export function nextQuestion(goal: WizardGoal, answers: WizardAnswers): WizardQuestionId | null {
   return (
-    goal.questions.find(q => !GUIDE_QUESTIONS[q].some(option => option.id === answers[q])) ?? null
+    goal.questions.find(q => !WIZARD_QUESTIONS[q].some(option => option.id === answers[q])) ?? null
   );
 }
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 
 /** Which way the files go, which also decides the diagram and the consequence lines. */
-export type GuideFlow =
-  'stream' | 'upload' | 'download' | 'twoWay' | 'cloudToCloud' | 'share' | 'compare' | 'browse';
+export type WizardFlow =
+  | 'stream'
+  | 'upload'
+  | 'download'
+  | 'twoWay'
+  | 'cloudToCloud'
+  | 'share'
+  | 'compare'
+  | 'cloudCompare'
+  | 'browse';
 
 /**
  * When an operation runs on its own. The three triggers are independent and can be combined; with
  * none of them it runs only when the user starts it.
  */
-export interface GuideSchedule {
+export interface WizardSchedule {
   /** Runs each time the app starts (a mount connects). */
   readonly startup: boolean;
   /** Runs when a file in the local folder changes. */
@@ -111,7 +121,7 @@ export const DAILY_CRON = '0 2 * * *';
 export const DEFAULT_WATCH_DELAY = APP_CONFIG_DEFAULTS.watchDelay;
 export const DEFAULT_STARTUP_DELAY = APP_CONFIG_DEFAULTS.autoStartDelay;
 
-export const MANUAL_SCHEDULE: GuideSchedule = {
+export const MANUAL_SCHEDULE: WizardSchedule = {
   startup: false,
   watch: false,
   cron: null,
@@ -119,29 +129,29 @@ export const MANUAL_SCHEDULE: GuideSchedule = {
   startupDelay: DEFAULT_STARTUP_DELAY,
 };
 
-/** Which triggers make sense for a plan, so the guide only offers those. */
-export interface GuideScheduleOptions {
+/** Which triggers make sense for a plan, so the wizard only offers those. */
+export interface WizardScheduleOptions {
   readonly startup: boolean;
   readonly watch: boolean;
   readonly cron: boolean;
 }
 
 /** What a share is served as: a TV or player (DLNA), a network folder (WebDAV) or a web page. */
-export type GuideServeType = 'dlna' | 'webdav' | 'http';
+export type WizardServeType = 'dlna' | 'webdav' | 'http';
 
-/** A share that asks for a user name and password, and listens on a port the guide chooses. */
-export const sharesWithLogin = (serveType: GuideServeType | undefined): boolean =>
+/** A share that asks for a user name and password, and listens on a port the wizard chooses. */
+export const sharesWithLogin = (serveType: WizardServeType | undefined): boolean =>
   serveType === 'webdav' || serveType === 'http';
 
-export interface GuidePlan {
-  readonly goal: GuideGoalId;
+export interface WizardPlan {
+  readonly goal: WizardGoalId;
   /** Undefined for the file browser, which is not an operation. */
   readonly operationType?: PrimaryActionType;
-  readonly flow: GuideFlow;
-  /** What the guide starts with; the user can change it on the "when" step. */
-  readonly schedule: GuideSchedule;
-  readonly scheduleOptions: GuideScheduleOptions;
-  readonly serveType?: GuideServeType;
+  readonly flow: WizardFlow;
+  /** What the wizard starts with; the user can change it on the "when" step. */
+  readonly schedule: WizardSchedule;
+  readonly scheduleOptions: WizardScheduleOptions;
+  readonly serveType?: WizardServeType;
   /** A local folder is part of the operation. */
   readonly needsLocal: boolean;
   /** The operation copies the files of another remote. */
@@ -152,10 +162,10 @@ export interface GuidePlan {
   readonly firstRunResync: boolean;
 }
 
-const NO_OPTIONS: GuideScheduleOptions = { startup: false, watch: false, cron: false };
+const NO_OPTIONS: WizardScheduleOptions = { startup: false, watch: false, cron: false };
 
 /** The triggers each flow offers: a watcher needs a local source, a mount only connects. */
-const SCHEDULE_OPTIONS: Readonly<Record<GuideFlow, GuideScheduleOptions>> = {
+const SCHEDULE_OPTIONS: Readonly<Record<WizardFlow, WizardScheduleOptions>> = {
   stream: { startup: true, watch: false, cron: false },
   upload: { startup: true, watch: true, cron: true },
   twoWay: { startup: true, watch: true, cron: true },
@@ -163,12 +173,16 @@ const SCHEDULE_OPTIONS: Readonly<Record<GuideFlow, GuideScheduleOptions>> = {
   cloudToCloud: NO_OPTIONS,
   share: NO_OPTIONS,
   compare: NO_OPTIONS,
+  cloudCompare: NO_OPTIONS,
   browse: NO_OPTIONS,
 };
 
 /** A whole schedule the plan allows: triggers it does not offer are dropped. */
-export function effectiveSchedule(guidePlan: GuidePlan, schedule: GuideSchedule): GuideSchedule {
-  const { startup, watch, cron } = guidePlan.scheduleOptions;
+export function effectiveSchedule(
+  wizardPlan: WizardPlan,
+  schedule: WizardSchedule
+): WizardSchedule {
+  const { startup, watch, cron } = wizardPlan.scheduleOptions;
   return {
     ...schedule,
     startup: startup && schedule.startup,
@@ -177,40 +191,40 @@ export function effectiveSchedule(guidePlan: GuidePlan, schedule: GuideSchedule)
   };
 }
 
-/** Whether the guide has anything to ask on the "when" step. */
-export const hasScheduleStep = (guidePlan: GuidePlan): boolean =>
-  Object.values(guidePlan.scheduleOptions).some(Boolean);
+/** Whether the wizard has anything to ask on the "when" step. */
+export const hasScheduleStep = (wizardPlan: WizardPlan): boolean =>
+  Object.values(wizardPlan.scheduleOptions).some(Boolean);
 
 const plan = (
-  goal: GuideGoalId,
+  goal: WizardGoalId,
   operationType: PrimaryActionType | undefined,
-  flow: GuideFlow,
-  schedule: GuideSchedule,
-  extra: Partial<GuidePlan> = {}
-): GuidePlan => ({
+  flow: WizardFlow,
+  schedule: WizardSchedule,
+  extra: Partial<WizardPlan> = {}
+): WizardPlan => ({
   goal,
   operationType,
   flow,
   schedule,
   scheduleOptions: SCHEDULE_OPTIONS[flow],
   needsLocal: ['stream', 'upload', 'download', 'twoWay', 'compare'].includes(flow),
-  needsSecondRemote: flow === 'cloudToCloud',
+  needsSecondRemote: flow === 'cloudToCloud' || flow === 'cloudCompare',
   canPreview: ['upload', 'download', 'twoWay', 'cloudToCloud'].includes(flow),
   firstRunResync: operationType === 'bisync',
   ...extra,
 });
 
 /** Both ways need a watcher for the local side and a schedule for what happens in the cloud. */
-const KEEP_IN_STEP: GuideSchedule = { ...MANUAL_SCHEDULE, watch: true, cron: HOURLY_CRON };
+const KEEP_IN_STEP: WizardSchedule = { ...MANUAL_SCHEDULE, watch: true, cron: HOURLY_CRON };
 
-const SERVE_TYPE_OF_DEVICE: Readonly<Record<string, GuideServeType>> = {
+const SERVE_TYPE_OF_DEVICE: Readonly<Record<string, WizardServeType>> = {
   folder: 'webdav',
   browser: 'http',
   tv: 'dlna',
 };
 
 /** Turns the answers into a plan; null until every question of the goal is answered. */
-export function resolvePlan(goalId: GuideGoalId, answers: GuideAnswers): GuidePlan | null {
+export function resolvePlan(goalId: WizardGoalId, answers: WizardAnswers): WizardPlan | null {
   const goal = getGoal(goalId);
   if (nextQuestion(goal, answers) !== null) return null;
 
@@ -238,9 +252,14 @@ export function resolvePlan(goalId: GuideGoalId, answers: GuideAnswers): GuidePl
         serveType: SERVE_TYPE_OF_DEVICE[answers.device ?? ''] ?? 'webdav',
       });
     case 'explore':
-      return answers.explore === 'compare'
-        ? plan(goalId, 'check', 'compare', MANUAL_SCHEDULE)
-        : plan(goalId, undefined, 'browse', MANUAL_SCHEDULE);
+      switch (answers.explore) {
+        case 'compare':
+          return plan(goalId, 'check', 'compare', MANUAL_SCHEDULE);
+        case 'compareClouds':
+          return plan(goalId, 'check', 'cloudCompare', MANUAL_SCHEDULE);
+        default:
+          return plan(goalId, undefined, 'browse', MANUAL_SCHEDULE);
+      }
   }
 }
 
@@ -248,21 +267,21 @@ export function resolvePlan(goalId: GuideGoalId, answers: GuideAnswers): GuidePl
 
 export type EffectTone = 'safe' | 'info' | 'warn';
 
-export interface GuideEffect {
-  /** `modals.intentGuide.effects.<key>` */
+export interface WizardEffect {
+  /** `modals.wizard.effects.<key>` */
   readonly key: string;
   readonly icon: string;
   readonly tone: EffectTone;
 }
 
-const effect = (key: string, icon: string, tone: EffectTone): GuideEffect => ({ key, icon, tone });
+const effect = (key: string, icon: string, tone: EffectTone): WizardEffect => ({ key, icon, tone });
 
 /** Plain sentences: what happens to a new file, to a deleted file, and to the other side. */
 export function planEffects(
-  guidePlan: GuidePlan,
+  wizardPlan: WizardPlan,
   options: { shareReadOnly?: boolean } = {}
-): readonly GuideEffect[] {
-  const { flow, operationType, serveType } = guidePlan;
+): readonly WizardEffect[] {
+  const { flow, operationType, serveType } = wizardPlan;
   switch (flow) {
     case 'stream':
       return [
@@ -320,6 +339,7 @@ export function planEffects(
             effect('shareStops', 'power-off', 'info'),
           ];
     case 'compare':
+    case 'cloudCompare':
       return [effect('compareNothing', 'shield', 'safe'), effect('compareList', 'list', 'info')];
     case 'browse':
       return [effect('browseNothing', 'shield', 'safe')];
@@ -328,7 +348,7 @@ export function planEffects(
 
 // ── Real data ───────────────────────────────────────────────────────────────
 
-export interface GuideFacts {
+export interface WizardFacts {
   /** Bytes used on the remote (rclone `about`), when the backend reports it. */
   readonly cloudUsed?: number;
   readonly cloudFree?: number;
@@ -340,12 +360,12 @@ export interface GuideFacts {
   readonly localFree?: number;
 }
 
-export type GuideAdviceKey =
+export type WizardAdviceKey =
   'tooBigForDisk' | 'tightOnDisk' | 'fitsOnDisk' | 'cloudTooFull' | 'streamSavesSpace';
 
-export interface GuideAdvice {
-  /** `modals.intentGuide.advice.<key>` */
-  readonly key: GuideAdviceKey;
+export interface WizardAdvice {
+  /** `modals.wizard.advice.<key>` */
+  readonly key: WizardAdviceKey;
   readonly tone: EffectTone;
   /** Byte counts, formatted by the view. */
   readonly bytes: Readonly<Record<string, number>>;
@@ -355,14 +375,14 @@ export interface GuideAdvice {
 const TIGHT_RATIO = 0.9;
 
 /** The amount the local side has to hold: the chosen folder, or everything the remote holds. */
-export function incomingBytes(guidePlan: GuidePlan, facts: GuideFacts): number | undefined {
-  if (guidePlan.flow !== 'download' && guidePlan.flow !== 'twoWay') return undefined;
+export function incomingBytes(wizardPlan: WizardPlan, facts: WizardFacts): number | undefined {
+  if (wizardPlan.flow !== 'download' && wizardPlan.flow !== 'twoWay') return undefined;
   return facts.remoteFolderSize ?? facts.cloudUsed;
 }
 
 /** Advice from measured numbers only. Unknown numbers give no advice; nothing is estimated. */
-export function planAdvice(guidePlan: GuidePlan, facts: GuideFacts): GuideAdvice | null {
-  if (guidePlan.flow === 'stream') {
+export function planAdvice(wizardPlan: WizardPlan, facts: WizardFacts): WizardAdvice | null {
+  if (wizardPlan.flow === 'stream') {
     if (facts.cloudUsed === undefined || facts.localFree === undefined) return null;
     return facts.cloudUsed > facts.localFree
       ? {
@@ -373,7 +393,7 @@ export function planAdvice(guidePlan: GuidePlan, facts: GuideFacts): GuideAdvice
       : null;
   }
 
-  const incoming = incomingBytes(guidePlan, facts);
+  const incoming = incomingBytes(wizardPlan, facts);
   if (incoming !== undefined && facts.localFree !== undefined) {
     const bytes = { size: incoming, free: facts.localFree };
     if (incoming > facts.localFree) return { key: 'tooBigForDisk', tone: 'warn', bytes };
@@ -384,7 +404,7 @@ export function planAdvice(guidePlan: GuidePlan, facts: GuideFacts): GuideAdvice
   }
 
   if (
-    guidePlan.flow === 'upload' &&
+    wizardPlan.flow === 'upload' &&
     facts.localFolderSize !== undefined &&
     facts.cloudFree !== undefined &&
     facts.localFolderSize > facts.cloudFree
@@ -399,7 +419,7 @@ export function planAdvice(guidePlan: GuidePlan, facts: GuideFacts): GuideAdvice
 }
 
 /** The safer answer of a question, marked as recommended. */
-export function recommendedOption(question: GuideQuestionId): string | undefined {
+export function recommendedOption(question: WizardQuestionId): string | undefined {
   switch (question) {
     case 'deleted':
     case 'keepOld':
@@ -432,7 +452,7 @@ export function desktopAppProvider(remoteType: string | undefined): string | und
 
 // ── Building the Quick Run ──────────────────────────────────────────────────
 
-export interface GuideTargets {
+export interface WizardTargets {
   readonly remoteName: string;
   /** Path inside the remote, without the `remote:` prefix; empty for the whole remote. */
   readonly remotePath: string;
@@ -449,10 +469,14 @@ export interface GuideTargets {
   readonly shareReadOnly?: boolean;
   /** The name a TV shows for a DLNA share. */
   readonly shareName?: string;
+  /** A Windows mount: shown as a network drive. Left out, the presets decide. */
+  readonly mountNetworkMode?: boolean;
+  /** A Windows mount: the name the drive shows in File Explorer. */
+  readonly mountVolumeName?: string;
 }
 
 /** OS and provider presets of `RemotePresetsService`, the same ones a new remote gets. */
-export interface GuidePresets {
+export interface WizardPresets {
   readonly vfs?: Record<string, unknown>;
   readonly mount?: Record<string, unknown>;
 }
@@ -469,7 +493,7 @@ export const isValidSharePort = (port: number): boolean =>
 
 export const shareAddr = (port: number): string => `:${port}`;
 
-function scheduleConfig(schedule: GuideSchedule): QuickRunInput['config']['app'] {
+function scheduleConfig(schedule: WizardSchedule): QuickRunInput['config']['app'] {
   const app: QuickRunInput['config']['app'] = {};
   if (schedule.startup) {
     app.autoStart = true;
@@ -487,23 +511,23 @@ function scheduleConfig(schedule: GuideSchedule): QuickRunInput['config']['app']
 }
 
 /**
- * The Quick Run the guide saves, in the shape the Quick Run editor saves: paths at the top of
+ * The Quick Run the wizard saves, in the shape the Quick Run editor saves: paths at the top of
  * `rclone`, operation options beside them and VFS options under `rclone.vfs`.
  */
 export function buildPlanQuickRun(
-  guidePlan: GuidePlan,
-  targets: GuideTargets,
+  wizardPlan: WizardPlan,
+  targets: WizardTargets,
   name: string,
-  presets: GuidePresets = {},
-  schedule: GuideSchedule = guidePlan.schedule
+  presets: WizardPresets = {},
+  schedule: WizardSchedule = wizardPlan.schedule
 ): QuickRunInput | null {
-  const operationType = guidePlan.operationType;
+  const operationType = wizardPlan.operationType;
   if (!operationType) return null;
 
   const remote = fsPath(targets.remoteName, targets.remotePath);
   const rclone: Record<string, unknown> = {};
 
-  switch (guidePlan.flow) {
+  switch (wizardPlan.flow) {
     case 'stream': {
       const { mountType, ...mountOptions } = presets.mount ?? {};
       rclone['fs'] = remote;
@@ -511,6 +535,8 @@ export function buildPlanQuickRun(
         mountType === 'saf' ? `saf://${targets.remoteName}` : targets.localPath;
       if (typeof mountType === 'string' && mountType !== 'mount') rclone['mountType'] = mountType;
       Object.assign(rclone, mountOptions);
+      if (targets.mountNetworkMode !== undefined) rclone['network_mode'] = targets.mountNetworkMode;
+      if (targets.mountVolumeName?.trim()) rclone['volname'] = targets.mountVolumeName.trim();
       if (presets.vfs && Object.keys(presets.vfs).length) rclone['vfs'] = { ...presets.vfs };
       break;
     }
@@ -527,22 +553,23 @@ export function buildPlanQuickRun(
       rclone['path1'] = targets.localPath;
       rclone['path2'] = remote;
       // Bisync refuses to run without its listings; the first run builds them.
-      if (guidePlan.firstRunResync) rclone['resync'] = true;
+      if (wizardPlan.firstRunResync) rclone['resync'] = true;
       break;
     case 'cloudToCloud':
+    case 'cloudCompare':
       if (!targets.targetRemote) return null;
       rclone['srcFs'] = remote;
       rclone['dstFs'] = fsPath(targets.targetRemote, targets.targetPath);
       break;
     case 'share':
       rclone['fs'] = remote;
-      rclone['type'] = guidePlan.serveType ?? 'webdav';
-      if (sharesWithLogin(guidePlan.serveType)) {
+      rclone['type'] = wizardPlan.serveType ?? 'webdav';
+      if (sharesWithLogin(wizardPlan.serveType)) {
         rclone['addr'] = shareAddr(targets.sharePort ?? DEFAULT_SHARE_PORT);
         if (targets.shareUser) rclone['user'] = targets.shareUser;
         if (targets.sharePassword) rclone['pass'] = targets.sharePassword;
         // A web page only lists and downloads, so only a network folder has a writable mode.
-        if (guidePlan.serveType === 'webdav' && targets.shareReadOnly) {
+        if (wizardPlan.serveType === 'webdav' && targets.shareReadOnly) {
           rclone['vfs'] = { read_only: true };
         }
       } else if (targets.shareName?.trim()) {
@@ -557,23 +584,23 @@ export function buildPlanQuickRun(
     name,
     operationType,
     remoteName: targets.remoteName,
-    config: { app: scheduleConfig(effectiveSchedule(guidePlan, schedule)), rclone },
+    config: { app: scheduleConfig(effectiveSchedule(wizardPlan, schedule)), rclone },
   };
 }
 
-// ── Where the guide keeps what it sets up ──────────────────────────────────
+// ── Where the wizard keeps what it sets up ──────────────────────────────────
 
 /** A Quick Run lives under Flow; a profile lives on the remote's page in the main menu. */
-export type GuideDestination = 'quick_run' | 'profile';
+export type WizardDestination = 'quick_run' | 'profile';
 
 /** What the settings store: a destination, or `auto` to follow the startup view. */
-export type GuideDestinationSetting = 'auto' | GuideDestination;
+export type WizardDestinationSetting = 'auto' | WizardDestination;
 
 /**
  * The destination the settings ask for. `auto` follows the startup view: the main menu keeps
  * profiles, the other views keep Quick Runs.
  */
-export function resolveDestination(setting: unknown, defaultView: unknown): GuideDestination {
+export function resolveDestination(setting: unknown, defaultView: unknown): WizardDestination {
   if (setting === 'quick_run' || setting === 'profile') return setting;
   return defaultView === 'flow' || defaultView === 'nautilus' ? 'quick_run' : 'profile';
 }
@@ -585,7 +612,7 @@ function uniqueName(name: string, taken: readonly string[]): string {
   return candidate;
 }
 
-export interface GuideProfileSave {
+export interface WizardProfileSave {
   /** The name of the new profile on the remote. */
   readonly name: string;
   /** What to save with the remote's settings: each map that changed, with the new entry added. */
@@ -601,7 +628,7 @@ export interface GuideProfileSave {
 export function buildPlanProfile(
   input: QuickRunInput,
   existing: Readonly<Record<string, unknown>> = {}
-): GuideProfileSave | null {
+): WizardProfileSave | null {
   const configKey = (REMOTE_CONFIG_KEYS as Readonly<Record<string, string | undefined>>)[
     input.operationType
   ];
@@ -656,8 +683,8 @@ export function withoutResync(config: QuickRunInput['config']): QuickRunInput['c
 
 // ── Sharing: where to connect ──────────────────────────────────────────────
 
-/** What the guide knows about this machine's place on the network. */
-export interface GuideNetwork {
+/** What the wizard knows about this machine's place on the network. */
+export interface WizardNetwork {
   readonly hostName?: string | null;
   readonly addresses: readonly string[];
   /** The address the app connects to a remote backend with, not one read from the machine. */
@@ -676,7 +703,7 @@ export function portOfAddr(addr: string | undefined): number | undefined {
  * The web addresses a phone or another computer types to reach a network folder or web page: one for each
  * network address of this machine, then its host name. Empty when nothing is known.
  */
-export function shareUrls(network: GuideNetwork | null | undefined, port: number): string[] {
+export function shareUrls(network: WizardNetwork | null | undefined, port: number): string[] {
   if (!network) return [];
   const hosts = [...network.addresses];
   const name = network.hostName?.trim();
@@ -695,8 +722,8 @@ export function isLoopbackHost(host: string): boolean {
 
 // ── Details of the setup ────────────────────────────────────────────────────
 
-export interface GuideDetail {
-  /** `modals.intentGuide.details.<key>` */
+export interface WizardDetail {
+  /** `modals.wizard.details.<key>` */
   readonly key: string;
   readonly icon: string;
   /** The value, shown as written; rows without one say everything in the label. */
@@ -727,10 +754,10 @@ export function humanDuration(value: unknown): string | undefined {
   return match ? `${match[1]} ${match[2].toLowerCase()}` : String(value);
 }
 
-export interface GuideDetailsInput {
-  readonly presets: GuidePresets;
-  readonly targets: GuideTargets;
-  readonly network?: GuideNetwork | null;
+export interface WizardDetailsInput {
+  readonly presets: WizardPresets;
+  readonly targets: WizardTargets;
+  readonly network?: WizardNetwork | null;
 }
 
 /**
@@ -738,11 +765,11 @@ export interface GuideDetailsInput {
  * and how long a change waits before it is sent; for a share, where to connect and with what.
  * Everything is read from the values that are about to be saved.
  */
-export function planDetails(guidePlan: GuidePlan, input: GuideDetailsInput): GuideDetail[] {
+export function planDetails(wizardPlan: WizardPlan, input: WizardDetailsInput): WizardDetail[] {
   const { presets, targets, network } = input;
-  const details: GuideDetail[] = [];
+  const details: WizardDetail[] = [];
 
-  if (guidePlan.flow === 'stream') {
+  if (wizardPlan.flow === 'stream') {
     const vfs = presets.vfs ?? {};
     if (vfs['vfs_cache_mode'] === 'full') {
       details.push({
@@ -770,7 +797,7 @@ export function planDetails(guidePlan: GuidePlan, input: GuideDetailsInput): Gui
     }
   }
 
-  if (guidePlan.flow === 'share' && sharesWithLogin(guidePlan.serveType)) {
+  if (wizardPlan.flow === 'share' && sharesWithLogin(wizardPlan.serveType)) {
     const port = targets.sharePort ?? DEFAULT_SHARE_PORT;
     const urls = shareUrls(network, port);
     for (const url of urls.slice(0, 3)) {
@@ -783,11 +810,9 @@ export function planDetails(guidePlan: GuidePlan, input: GuideDetailsInput): Gui
     if (targets.shareUser) {
       details.push({ key: 'user', icon: 'user', value: targets.shareUser, code: true, copy: true });
     }
-    const readOnly = guidePlan.serveType === 'http' || targets.shareReadOnly;
-    details.push({ key: readOnly ? 'readOnly' : 'canChange', icon: 'shield' });
   }
 
-  if (guidePlan.flow === 'share' && guidePlan.serveType === 'dlna') {
+  if (wizardPlan.flow === 'share' && wizardPlan.serveType === 'dlna') {
     const name = targets.shareName?.trim();
     if (name) details.push({ key: 'tvName', icon: 'tv', value: name });
   }
@@ -820,7 +845,7 @@ export function previewCounts(stats: {
 }
 
 /**
- * What a dry run would do to a file, in the order the guide lists them. `copy` is a file that is
+ * What a dry run would do to a file, in the order the wizard lists them. `copy` is a file that is
  * copied when rclone did not say whether it is new or changed (a two-way copy).
  */
 export type PreviewKind = 'delete' | 'add' | 'replace' | 'copy' | 'error' | 'untouched';
@@ -927,13 +952,23 @@ export function buildPreview(
   return { counts, matched: 0, groups, fileLevel: groups.length > 0 };
 }
 
-/** The files of a group that match a search, case-insensitively; all of them for a blank search. */
-export function filterPreviewFiles(
-  files: readonly PreviewFile[],
-  query: string
-): readonly PreviewFile[] {
-  const needle = query.trim().toLowerCase();
-  return needle ? files.filter(file => file.path.toLowerCase().includes(needle)) : files;
+/**
+ * A long folder path for the small print of the review's picture: the start and the last folders
+ * stay, the middle goes (`/home/…/rclone-manager/drive-7`). The full path belongs in a `title`.
+ */
+export function shortPath(path: string, max = 30): string {
+  if (path.length <= max) return path;
+  const parts = path.split(/[\\/]+/).filter(Boolean);
+  if (parts.length < 3) return `${path.slice(0, max - 1)}…`;
+  const sep = path.includes('\\') && !path.includes('/') ? '\\' : '/';
+  const lead = path.startsWith(sep) ? sep : '';
+  const head = `${lead}${parts[0]}${sep}…${sep}`;
+  const last = parts[parts.length - 1];
+  const two = `${parts[parts.length - 2]}${sep}${last}`;
+  const long = `${head}${two}`;
+  const short = `${head}${last}`;
+  if (long.length <= max) return long;
+  return short.length <= max ? short : `…${sep}${last}`;
 }
 
 /** The last path segment, for naming a cloud folder after the local one. */
@@ -944,6 +979,13 @@ export function baseName(path: string): string {
 
 // ── What is already set up ──────────────────────────────────────────────────
 
+/** The automatic drive of a Windows mount: rclone picks a free letter when it connects. */
+export const AUTOMATIC_DRIVE = '*';
+
+/** What a Windows mount path is: a drive (a letter or the automatic one) or a folder. */
+export const isDrivePath = (path: string): boolean =>
+  path === AUTOMATIC_DRIVE || mountDriveLetter(path) !== undefined;
+
 /** `Photos/2024` as `Photos › 2024`; the empty path (the whole cloud) stays empty. */
 export const displayFolder = (path: string): string => path.split('/').filter(Boolean).join(' › ');
 
@@ -951,8 +993,8 @@ export const displayFolder = (path: string): string => path.split('/').filter(Bo
 export const displayName = (remote: string, folder: string): string =>
   folder ? `${remote} › ${folder}` : remote;
 
-/** The operations the guide sets up, which are the ones it can describe again. */
-export const GUIDE_OPERATIONS: readonly PrimaryActionType[] = [
+/** The operations the wizard sets up, which are the ones it can describe again. */
+export const WIZARD_OPERATIONS: readonly PrimaryActionType[] = [
   'mount',
   'sync',
   'copy',
@@ -962,7 +1004,7 @@ export const GUIDE_OPERATIONS: readonly PrimaryActionType[] = [
   'check',
 ];
 
-export const FLOW_ICON: Readonly<Record<GuideFlow, string>> = {
+export const FLOW_ICON: Readonly<Record<WizardFlow, string>> = {
   stream: 'mount',
   upload: 'cloud-arrow-up',
   download: 'download',
@@ -970,18 +1012,31 @@ export const FLOW_ICON: Readonly<Record<GuideFlow, string>> = {
   cloudToCloud: 'move',
   share: 'tv',
   compare: 'search',
+  cloudCompare: 'right-left',
   browse: 'folder-open',
 };
 
-/** The triggers of a saved setup, as its app settings hold them. */
-export interface SetupAutomation {
-  readonly startup: boolean;
-  readonly watch: boolean;
-  /** The cron expression when a schedule is on. */
-  readonly cron: string | null;
-}
+/**
+ * Which way the files move between the two nodes of the review's picture: the left node is where
+ * the files are (this computer, or the first cloud), the right one where they go. `both` is a
+ * two-way copy, `link` a mount (nothing moves until a file is used), `broadcast` a share (this
+ * machine serves the files to the network), `none` only looks at the two sides.
+ */
+export type FlowDirection = 'right' | 'left' | 'both' | 'link' | 'broadcast' | 'none';
 
-/** A saved Quick Run or profile, read back into the words of the guide. */
+export const FLOW_DIRECTION: Readonly<Record<WizardFlow, FlowDirection>> = {
+  stream: 'link',
+  upload: 'right',
+  download: 'left',
+  twoWay: 'both',
+  cloudToCloud: 'right',
+  share: 'broadcast',
+  compare: 'none',
+  cloudCompare: 'none',
+  browse: 'none',
+};
+
+/** A saved Quick Run or profile, read back as one of the wizard's flows. */
 export interface ExistingSetup {
   /** Unique among setups: `quick_run:<id>` or `profile:<remote>:<operation>:<name>`. */
   readonly key: string;
@@ -991,21 +1046,6 @@ export interface ExistingSetup {
   readonly id?: string;
   readonly remoteName: string;
   readonly operationType: PrimaryActionType;
-  readonly flow: GuideFlow;
-  /** `modals.intentGuide.setups.headline.<key>` */
-  readonly summaryKey: string;
-  /** What a share is served as (`ftp`, `webdav`…); empty for anything else. */
-  readonly serveType: string;
-  readonly local: string;
-  /** The cloud and its folder, for a sentence. */
-  readonly cloud: string;
-  /** The folder inside the cloud (`Photos › 2024`); empty for the whole cloud. */
-  readonly cloudFolder: string;
-  readonly target: string;
-  /** The remote a copy between clouds goes to; empty for any other flow. */
-  readonly targetRemote: string;
-  /** What starts it on its own; all off means it runs only when the user starts it. */
-  readonly automation: SetupAutomation;
   /** What the setup does, to tell whether another one would do the same. */
   readonly signature: string;
 }
@@ -1024,15 +1064,13 @@ interface CloudSide {
   readonly path: string;
 }
 
-/** The share types the guide offers, which have a headline each; any other is `share_other`. */
-const SHARE_TYPES: ReadonlySet<string> = new Set<GuideServeType>(['dlna', 'webdav', 'http']);
-
-/** The operations the guide makes for each flow; a setup with another one is not the same setup. */
-const GUIDE_MADE: Partial<Record<GuideFlow, readonly PrimaryActionType[]>> = {
+/** The operations the wizard makes for each flow; a setup with another one is not the same setup. */
+const WIZARD_MADE: Partial<Record<WizardFlow, readonly PrimaryActionType[]>> = {
   upload: ['sync', 'copy'],
   download: ['copy'],
   cloudToCloud: ['copy', 'move'],
   compare: ['check'],
+  cloudCompare: ['check'],
   twoWay: ['bisync'],
   stream: ['mount'],
   share: ['serve'],
@@ -1052,25 +1090,15 @@ const cloudPath = (path: string): string => trimPath(path.replace(/^\/+/, ''));
 
 /** Equal signatures mean two setups would do the same thing to the same folders. */
 export function setupSignature(
-  flow: GuideFlow,
+  flow: WizardFlow,
   parts: { local?: string; remote: string; path?: string; target?: string; kind?: string }
 ): string {
   const { local = '', remote, path = '', target = '', kind = '' } = parts;
   return [flow, trimPath(local), remote, cloudPath(path), target, kind].join('|');
 }
 
-function automationOf(config: unknown): SetupAutomation {
-  const app = getAppCfg(config);
-  const cron = app?.cronEnabled ? app.cronExpression?.trim() : '';
-  return {
-    startup: !!app?.autoStart,
-    watch: !!app?.watchEnabled,
-    cron: cron || null,
-  };
-}
-
 /**
- * Reads a saved Quick Run or profile back as one of the guide's flows, whoever made it: every
+ * Reads a saved Quick Run or profile back as one of the wizard's flows, whoever made it: every
  * sync, copy, move and check between this computer and a cloud, or between two clouds. Only a
  * setup that has no cloud or folder to name gives null.
  */
@@ -1084,8 +1112,7 @@ export function describeSetup(
   const side = (value: unknown): CloudSide | null => cloudSide(value, remoteNames);
   const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 
-  let flow: GuideFlow | null = null;
-  let summaryKey = '';
+  let flow: WizardFlow | null = null;
   let local = '';
   let cloud: CloudSide | null = null;
   let target: CloudSide | null = null;
@@ -1094,17 +1121,12 @@ export function describeSetup(
   if (op === 'mount') {
     cloud = side(rclone['fs']);
     local = text(rclone['mountPoint']);
-    if (cloud && local) {
-      flow = 'stream';
-      summaryKey = local.startsWith('saf://') ? 'streamSaf' : 'stream';
-    }
+    if (cloud && local) flow = 'stream';
   } else if (op === 'serve') {
     cloud = side(rclone['fs']);
     const type = text(rclone['type']);
-    // Shares of any type are listed; only the ones the guide makes have words of their own.
     if (cloud && type) {
       flow = 'share';
-      summaryKey = SHARE_TYPES.has(type) ? `share_${type}` : 'share_other';
       kind = type;
     }
   } else if (op === 'bisync') {
@@ -1112,39 +1134,34 @@ export function describeSetup(
     const two = side(rclone['path2']);
     if (one && !two) [cloud, local] = [one, text(rclone['path2'])];
     else if (two && !one) [cloud, local] = [two, text(rclone['path1'])];
-    if (cloud && local) {
-      flow = 'twoWay';
-      summaryKey = 'twoWay';
-    }
+    if (cloud && local) flow = 'twoWay';
   } else {
     const src = side(rclone['srcFs']);
     const dst = side(rclone['dstFs']);
     const isTransfer = op === 'sync' || op === 'copy' || op === 'move';
     if (!src && dst && isTransfer) {
       flow = 'upload';
-      summaryKey = `upload_${op}`;
       [cloud, local] = [dst, text(rclone['srcFs'])];
     } else if (src && !dst && isTransfer) {
       flow = 'download';
-      summaryKey = op === 'copy' ? 'download' : `download_${op}`;
       [cloud, local] = [src, text(rclone['dstFs'])];
     } else if (src && dst && isTransfer) {
       flow = 'cloudToCloud';
-      summaryKey = `cloudToCloud_${op}`;
+      [cloud, target] = [src, dst];
+    } else if (op === 'check' && src && dst) {
+      flow = 'cloudCompare';
       [cloud, target] = [src, dst];
     } else if (op === 'check' && !src !== !dst) {
       flow = 'compare';
-      summaryKey = 'compare';
       [cloud, local] = src ? [src, text(rclone['dstFs'])] : [dst, text(rclone['srcFs'])];
     }
-    // The guide only makes some of these. The others are told apart, so that a plan is never
+    // The wizard only makes some of these. The others are told apart, so that a plan is never
     // reported as already set up because of a setup that does something else with the folders.
-    if (flow && !GUIDE_MADE[flow]?.includes(op)) kind = op;
+    if (flow && !WIZARD_MADE[flow]?.includes(op)) kind = op;
   }
 
   if (!flow || !cloud) return null;
-  if (flow !== 'cloudToCloud' && flow !== 'share' && !local) return null;
-  const folder = displayFolder(cloud.path);
+  if (flow !== 'cloudToCloud' && flow !== 'cloudCompare' && flow !== 'share' && !local) return null;
   return {
     key:
       source.kind === 'quick_run'
@@ -1155,15 +1172,6 @@ export function describeSetup(
     id: source.id,
     remoteName: source.remoteName,
     operationType: op,
-    flow,
-    summaryKey,
-    serveType: flow === 'share' ? kind : '',
-    local,
-    cloud: displayName(cloud.remote, folder),
-    cloudFolder: folder,
-    target: target ? displayName(target.remote, displayFolder(target.path)) : '',
-    targetRemote: target?.remote ?? '',
-    automation: automationOf(source.config),
     signature: setupSignature(flow, {
       local,
       remote: cloud.remote,
@@ -1175,28 +1183,28 @@ export function describeSetup(
 }
 
 /** What a plan would do, in the same terms as `describeSetup`, to find a setup that already does it. */
-export function planSignature(guidePlan: GuidePlan, targets: GuideTargets): string | null {
-  if (!guidePlan.operationType || guidePlan.flow === 'browse') return null;
+export function planSignature(wizardPlan: WizardPlan, targets: WizardTargets): string | null {
+  if (!wizardPlan.operationType || wizardPlan.flow === 'browse') return null;
   // The target fields are filled for every goal; only a copy between clouds uses them.
   const target =
-    guidePlan.needsSecondRemote && targets.targetRemote
+    wizardPlan.needsSecondRemote && targets.targetRemote
       ? `${targets.targetRemote}:${cloudPath(targets.targetPath ?? '')}`
       : '';
-  return setupSignature(guidePlan.flow, {
-    local: guidePlan.needsLocal ? targets.localPath : '',
+  return setupSignature(wizardPlan.flow, {
+    local: wizardPlan.needsLocal ? targets.localPath : '',
     remote: targets.remoteName,
     path: targets.remotePath,
     target,
-    kind: guidePlan.serveType ?? '',
+    kind: wizardPlan.serveType ?? '',
   });
 }
 
 /** The setup that already does what the plan would, if there is one. */
 export function findSameSetup(
   setups: readonly ExistingSetup[],
-  guidePlan: GuidePlan,
-  targets: GuideTargets
+  wizardPlan: WizardPlan,
+  targets: WizardTargets
 ): ExistingSetup | null {
-  const signature = planSignature(guidePlan, targets);
+  const signature = planSignature(wizardPlan, targets);
   return signature ? (setups.find(s => s.signature === signature) ?? null) : null;
 }

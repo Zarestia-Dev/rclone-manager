@@ -23,6 +23,30 @@ export class WindowsMountTargetService {
   private readonly quickRuns = inject(QuickRunService);
   private readonly settings = inject(AppSettingsService);
 
+  /**
+   * The letter a new mount gets by default: the highest free one that no saved profile or Quick
+   * Run keeps, which is also where `*` would start. Null when letters cannot be chosen here (not
+   * Windows, a remote rclone, a phone) or none is left, and the caller falls back to a folder.
+   */
+  async defaultDriveLetter(remote: string, quickRunId?: string | null): Promise<string | null> {
+    if (!this.files.canSelectDriveLetter()) return null;
+    try {
+      const options = await this.getDriveOptions(
+        remote,
+        undefined,
+        undefined,
+        undefined,
+        quickRunId
+      );
+      return (
+        options.find(option => option.status === 'free' && option.letter[0] >= 'D')?.letter ?? null
+      );
+    } catch {
+      // The backend changed while the letters were read; the folder default still works.
+      return null;
+    }
+  }
+
   async getDriveOptions(
     remote: string,
     profile: string | undefined,

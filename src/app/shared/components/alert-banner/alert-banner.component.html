@@ -1,19 +1,22 @@
-<mat-icon class="alert-icon" [svgIcon]="resolvedIcon()" />
-<div class="alert-content">
-  @if (title()) {
-    <strong>{{ title() }}</strong>
-  }
-  @if (description()) {
-    <p>{{ description() }}</p>
-  }
-  <ng-content></ng-content>
-  @if (linkUrl()) {
-    <a [href]="linkUrl()" target="_blank" rel="noopener noreferrer">
-      {{ linkText() || linkUrl() }}
-      <mat-icon svgIcon="open-link" />
-    </a>
-  }
+<div class="alert-body">
+  <mat-icon class="alert-icon" [svgIcon]="resolvedIcon()" />
+  <div class="alert-content">
+    @if (title()) {
+      <strong>{{ title() }}</strong>
+    }
+    @if (description()) {
+      <p>{{ description() }}</p>
+    }
+    <ng-content></ng-content>
+    @if (linkUrl()) {
+      <a [href]="linkUrl()" target="_blank" rel="noopener noreferrer">
+        {{ linkText() || linkUrl() }}
+        <mat-icon svgIcon="open-link" />
+      </a>
+    }
+  </div>
 </div>
+<div class="alert-actions"><ng-content select="[bannerAction]"></ng-content></div>
 @if (dismissable()) {
   <button
     type="button"

@@ -1,0 +1,197 @@
+@let s = state;
+<header data-tauri-drag-region>
+  @if (!s.isLoading() && !s.loadFailed() && s.remotes().length && s.step() !== 'working') {
+    <button
+      type="button"
+      matIconButton
+      [attr.aria-pressed]="s.settingsOpen()"
+      [attr.aria-label]="'modals.wizard.settings.title' | translate"
+      [attr.title]="'modals.wizard.settings.title' | translate"
+      (click)="s.toggleSettings()"
+    >
+      <mat-icon svgIcon="gear"></mat-icon>
+    </button>
+  } @else {
+    <span class="ghost-header-spacer" aria-hidden="true"></span>
+  }
+  <p>{{ 'modals.wizard.title' | translate }}</p>
+  <button
+    type="button"
+    matIconButton
+    (click)="s.close()"
+    [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+@if (showsProgress()) {
+  <div
+    class="wizard-progress"
+    role="progressbar"
+    [attr.aria-valuenow]="s.stepNumber()"
+    aria-valuemin="1"
+    [attr.aria-valuemax]="s.stepTotal()"
+    [attr.aria-label]="
+      'modals.wizard.stepOf' | translate: { current: s.stepNumber(), total: s.stepTotal() }
+    "
+  >
+    <span
+      class="wizard-progress-fill"
+      [style.width.%]="(s.stepNumber() / s.stepTotal()) * 100"
+    ></span>
+  </div>
+}
+
+<main data-tone="accent" [attr.aria-busy]="s.isLoading()">
+  @if (s.isLoading()) {
+    <!-- The first step's own boxes without their content, so nothing jumps when it loads. -->
+    <section
+      class="wizard-step wizard-skeleton"
+      role="status"
+      [attr.aria-label]="'common.loading' | translate"
+    >
+      <div class="wizard-hello" aria-hidden="true">
+        <span class="skeleton-box animate-shimmer hello-skeleton"></span>
+        <div class="skeleton-lines">
+          <span class="skeleton-text animate-shimmer skeleton-title"></span>
+          <span class="skeleton-text animate-shimmer skeleton-subtitle"></span>
+        </div>
+      </div>
+      <div class="choice-grid" aria-hidden="true">
+        @for (goal of s.goals; track goal.id) {
+          <div class="choice-card">
+            <span class="skeleton-box animate-shimmer choice-skeleton"></span>
+            <div class="skeleton-lines">
+              <span class="skeleton-text animate-shimmer skeleton-title"></span>
+              <span class="skeleton-text animate-shimmer skeleton-subtitle"></span>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  } @else if (s.loadFailed()) {
+    <div class="empty-state">
+      <mat-icon svgIcon="circle-exclamation"></mat-icon>
+      <span>{{ 'modals.wizard.loadFailed' | translate }}</span>
+      <button matButton (click)="s.load()">{{ 'common.retry' | translate }}</button>
+    </div>
+  } @else if (!s.remotes().length) {
+    <div class="empty-state">
+      <mat-icon svgIcon="cloud"></mat-icon>
+      <span>{{ 'modals.wizard.noRemotes' | translate }}</span>
+      <button matButton="filled" data-tone="primary" (click)="s.addRemote()">
+        {{ 'titlebar.menu.quickRemote' | translate }}
+      </button>
+    </div>
+  } @else if (s.settingsOpen()) {
+    <app-wizard-settings-panel />
+  } @else {
+    @switch (s.step()) {
+      @case ('goal') {
+        <app-wizard-goal-step />
+      }
+      @case ('question') {
+        <app-wizard-question-step />
+      }
+      @case ('where') {
+        <app-wizard-where-step />
+      }
+      @case ('when') {
+        <app-wizard-when-step />
+      }
+      @case ('review') {
+        <app-wizard-review-step />
+      }
+      @case ('working') {
+        @let job = s.workingJob();
+        @let firstRun = s.plan()?.firstRunResync && job;
+        <div class="empty-state">
+          <mat-icon svgIcon="spinner"></mat-icon>
+          <span>
+            {{
+              (firstRun ? 'modals.wizard.working.firstRun' : 'modals.wizard.working.saving')
+                | translate
+            }}
+          </span>
+          @if (firstRun && job) {
+            <p>
+              {{ job.stats.bytes | formatFileSize }}
+              @if (job.stats.totalBytes) {
+                / {{ job.stats.totalBytes | formatFileSize }}
+              }
+            </p>
+            <mat-progress-bar
+              [mode]="job.stats.totalBytes ? 'determinate' : 'indeterminate'"
+              [value]="job.stats.totalBytes ? (job.stats.bytes / job.stats.totalBytes) * 100 : 0"
+            ></mat-progress-bar>
+            @if (job.stats.elapsedTime > 0) {
+              <p>
+                {{
+                  'modals.wizard.preview.elapsed'
+                    | translate: { time: job.stats.elapsedTime | formatEta }
+                }}
+              </p>
+            }
+            <p class="slow-note">
+              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+              {{ 'modals.wizard.working.slowNote' | translate }}
+            </p>
+            <p>{{ 'modals.wizard.working.canClose' | translate }}</p>
+          }
+        </div>
+      }
+      @case ('done') {
+        <app-wizard-done-step />
+      }
+    }
+  }
+</main>
+
+@if (hasFooter()) {
+  <footer>
+    @if (s.settingsOpen()) {
+      <span class="spacer"></span>
+      <button matButton="filled" data-tone="primary" (click)="s.toggleSettings()">
+        {{ 'modals.wizard.settings.done' | translate }}
+      </button>
+    } @else {
+      <button matButton (click)="s.back()">{{ 'common.back' | translate }}</button>
+      <span class="spacer"></span>
+      @switch (s.step()) {
+        @case ('where') {
+          <button
+            matButton="filled"
+            data-tone="primary"
+            [disabled]="!s.whereValid()"
+            (click)="s.afterWhere()"
+          >
+            {{ 'common.continue' | translate }}
+          </button>
+        }
+        @case ('when') {
+          <button
+            matButton="filled"
+            data-tone="primary"
+            [disabled]="!s.scheduleValid()"
+            (click)="s.toReview()"
+          >
+            {{ 'common.continue' | translate }}
+          </button>
+        }
+        @case ('review') {
+          <button
+            matButton="filled"
+            data-tone="primary"
+            [disabled]="s.needsMountPlugin() || s.preview().state === 'running'"
+            (click)="s.apply()"
+          >
+            <mat-icon svgIcon="play"></mat-icon>
+            {{ 'modals.wizard.review.start' | translate }}
+          </button>
+        }
+      }
+    }
+  </footer>
+}

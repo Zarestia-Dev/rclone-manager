@@ -1,23 +1,9 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import { UpperCasePipe } from '@angular/common';
-import { FormControl, FormGroup, FormsModule } from '@angular/forms';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, firstValueFrom, merge } from 'rxjs';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 import { getOperationDef } from '@app/types';
 import type {
   CronValidationResponse,
@@ -25,34 +11,20 @@ import type {
   PrimaryActionType,
   QuickRunInput,
 } from '@app/types';
-import { PillDirective } from 'src/app/shared/directives/pill.directive';
-import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import * as pathUtils from 'src/app/shared/utils/path.utils';
-import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
-import { PathFieldComponent } from 'src/app/shared/components/path-field/path-field.component';
-import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { describeCron } from 'src/app/services/i18n/cron-locale.mapper';
-import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
-import { FormatEtaPipe } from 'src/app/shared/pipes/format-eta.pipe';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
-import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { NavigationHistoryService } from 'src/app/services/ui/navigation-history.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import {
-  GuideApplyResult,
-  GuideRemote,
-  GuideSetupStatus,
+  WizardApplyResult,
   SetupIdentity,
-  GuideEnvironment,
-  IntentGuideService,
-} from 'src/app/services/flow/intent-guide.service';
-import {
-  ModalService,
-  IntentGuideModalOptions,
-  IntentGuideResume,
-} from 'src/app/services/ui/modal.service';
-import { IconService } from 'src/app/services/ui/icon.service';
+  WizardEnvironment,
+  WizardService,
+} from 'src/app/services/flow/wizard.service';
+import { ModalService, WizardModalOptions, WizardResume } from 'src/app/services/ui/modal.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import {
   DAILY_CRON,
@@ -60,24 +32,23 @@ import {
   DEFAULT_STARTUP_DELAY,
   DEFAULT_WATCH_DELAY,
   EffectTone,
-  GUIDE_GOALS,
-  GUIDE_QUESTIONS,
-  GuideAnswers,
-  GuideFacts,
-  GuideGoal,
-  GuideGoalId,
-  GuideNetwork,
+  AUTOMATIC_DRIVE,
+  WIZARD_GOALS,
+  WIZARD_QUESTIONS,
+  WizardAnswers,
+  WizardFacts,
+  WizardGoal,
+  WizardGoalId,
+  WizardNetwork,
   ExistingSetup,
+  FLOW_DIRECTION,
   FLOW_ICON,
-  GuideOption,
-  GuideQuestionId,
-  GuideSchedule,
-  GuideDestination,
-  GuideDestinationSetting,
-  GuideTargets,
-  PREVIEW_KINDS,
-  PreviewFile,
-  PreviewGroup,
+  WizardOption,
+  WizardQuestionId,
+  WizardSchedule,
+  WizardDestination,
+  WizardDestinationSetting,
+  WizardTargets,
   PreviewKind,
   PreviewResult,
   baseName,
@@ -85,12 +56,11 @@ import {
   desktopAppProvider,
   displayFolder,
   displayName,
-  filterPreviewFiles,
   findSameSetup,
   fsPath,
   getGoal,
-  goalTone,
   hasScheduleStep,
+  isDrivePath,
   isValidSharePort,
   nextQuestion,
   planAdvice,
@@ -101,9 +71,9 @@ import {
   resolvePlan,
   shareUrls,
   sharesWithLogin,
-} from 'src/app/shared/utils/intent-guide.util';
+} from 'src/app/shared/utils/wizard.util';
 
-type GuideStep = 'goal' | 'question' | 'where' | 'when' | 'review' | 'working' | 'done' | 'setups';
+type WizardScreen = 'goal' | 'question' | 'where' | 'when' | 'review' | 'working' | 'done';
 
 /** A status, not an operation, so these roles are not read from the operation registry. */
 const PREVIEW_STYLE: Readonly<Record<PreviewKind, { tone: PillTone; icon: string }>> = {
@@ -118,8 +88,8 @@ const PREVIEW_STYLE: Readonly<Record<PreviewKind, { tone: PillTone; icon: string
 /** Wait this long after the last key before the folder is measured. */
 const MEASURE_PAUSE_MS = 500;
 
-/** Files shown at first, and added by each "show more". */
-const PREVIEW_PAGE = 50;
+/** Files of the delete list shown before the rest are only counted. */
+const PREVIEW_LIST = 50;
 
 type PreviewState =
   | { readonly state: 'idle' }
@@ -127,151 +97,47 @@ type PreviewState =
   | { readonly state: 'done'; readonly result: PreviewResult }
   | { readonly state: 'failed' };
 
-/** The colour of a setup's state, and `Intl` units for how long ago it last ran. */
-const SETUP_TONE: Readonly<Record<GuideSetupStatus['state'], PillTone>> = {
-  running: 'accent',
-  ok: 'primary',
-  failed: 'warn',
-  stopped: 'yellow',
-  idle: 'dim',
-};
+/** The order the review lists effects in: what can lose files, then what is new, then what is safe. */
+const EFFECT_RANK: Readonly<Record<EffectTone, number>> = { warn: 0, info: 1, safe: 2 };
 
-/** The folders a setup connects, in the direction the files go. */
-function setupPath(setup: ExistingSetup, local: string): string {
-  const folder = setup.cloudFolder;
-  switch (setup.flow) {
-    case 'upload':
-      return folder ? `${local} → ${folder}` : local;
-    case 'download':
-      return folder ? `${folder} → ${local}` : local;
-    case 'twoWay':
-      return folder ? `${local} ⇄ ${folder}` : local;
-    case 'cloudToCloud':
-      return folder ? `${folder} → ${setup.target}` : `→ ${setup.target}`;
-    case 'share':
-      return folder;
-    default:
-      return folder ? `${folder} → ${local}` : local;
-  }
-}
-
-/** What the start and stop button says and shows, with the words and icons of the mount and serve cards. */
-const SETUP_ACTION = {
-  stream: {
-    start: { actionKey: 'actions.mount', actionIcon: 'mount' },
-    stop: { actionKey: 'dashboard.appDetail.unmount', actionIcon: 'eject' },
-  },
-  share: {
-    start: { actionKey: 'actions.serve', actionIcon: 'serve' },
-    stop: { actionKey: 'actions.stop', actionIcon: 'stop' },
-  },
-  job: {
-    start: { actionKey: 'automation.actions.run', actionIcon: 'play' },
-    stop: { actionKey: 'actions.stop', actionIcon: 'stop' },
-  },
-} as const;
-
-/** One thing that starts a setup by itself, as the list shows it. */
-interface SetupChip {
-  readonly icon: string;
-  /** `modals.intentGuide.setups.auto.<key>`, or the text itself when `text` is set. */
-  readonly key?: string;
-  readonly text?: string;
-}
-
-/** A setup with everything the list needs to show it. */
-interface SetupRow {
-  readonly setup: ExistingSetup;
-  readonly status: GuideSetupStatus;
-  /** `modals.intentGuide.setups.status.<kind>.<state>`; a mount or a share is up or down. */
-  readonly statusKey: string;
-  readonly statusTone: PillTone;
-  /** `modals.intentGuide.setups.kind.<kind>`: where the setup is kept. */
-  readonly kind: 'quickRun' | 'profile';
-  readonly when: string;
-  readonly icon: string;
-  readonly tone: PillTone;
-  /** Which folders it connects, as `~/Docs → Backup`; empty when the cloud alone says it all. */
-  readonly path: string;
-  /** What starts it by itself; a single "manual" entry when nothing does. */
-  readonly auto: readonly SetupChip[];
-  /** The name of an earlier setup that does exactly the same. */
-  readonly sameAs: string | null;
-  readonly running: boolean;
-  /** The button's label and icon: what a tap does now, in the words and icons of the cards. */
-  readonly actionKey: string;
-  readonly actionIcon: string;
-}
-
-interface SetupGroup {
-  readonly remote: GuideRemote;
-  readonly rows: readonly SetupRow[];
-}
-
-const EFFECT_TONE: Readonly<Record<EffectTone, PillTone | undefined>> = {
+const EFFECT_TONE: Readonly<Record<EffectTone, PillTone>> = {
   safe: 'primary',
-  info: undefined,
+  info: 'accent',
   warn: 'warn',
 };
 
 /**
- * "What do you want to do?": asks in everyday words, shows what will happen with the user's own
- * numbers, then sets the operation up and starts it.
+ * Everything the wizard knows while it is open: the answers, the folders, the schedule, the dry
+ * run and the result. The dialog provides it, the steps read and change it.
  */
-@Component({
-  selector: 'app-intent-guide-modal',
-  hostDirectives: [EscapeCloseDirective],
-  imports: [
-    FormsModule,
-    UpperCasePipe,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatProgressBarModule,
-    MatSlideToggleModule,
-    TranslatePipe,
-    PillDirective,
-    FormatEtaPipe,
-    FormatFileSizePipe,
-    AlertBannerComponent,
-    CronInputComponent,
-    NumberInputComponent,
-    PathFieldComponent,
-    CopyToClipboardDirective,
-  ],
-  templateUrl: './intent-guide-modal.component.html',
-  styleUrls: ['./intent-guide-modal.component.scss', '../../../styles/_shared-modal.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class IntentGuideModalComponent implements OnInit {
-  private readonly dialogRef = inject(MatDialogRef<IntentGuideModalComponent>);
-  readonly data = inject<IntentGuideModalOptions | null>(MAT_DIALOG_DATA, {
+@Injectable()
+export class WizardState {
+  private readonly dialogRef = inject(MatDialogRef<unknown>);
+  readonly data = inject<WizardModalOptions | null>(MAT_DIALOG_DATA, {
     optional: true,
   });
-  private readonly guide = inject(IntentGuideService);
+  private readonly service = inject(WizardService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly navigation = inject(NavigationDispatcherService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly modalService = inject(ModalService);
   private readonly notifications = inject(NotificationService);
+  private readonly history = inject(NavigationHistoryService);
   private readonly translate = inject(TranslateService);
-  readonly iconService = inject(IconService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
-  readonly goals = GUIDE_GOALS;
-  readonly baseNameOf = baseName;
-  readonly goalTone = goalTone;
-  readonly portOfAddr = portOfAddr;
-  readonly sharesWithLogin = sharesWithLogin;
+  readonly goals = WIZARD_GOALS;
   /** A mount point and a two-way folder are checked for what is already in them. */
   readonly inspectOp = computed(() => {
     const flow = this.plan()?.flow;
     return flow === 'stream' ? 'mount' : flow === 'twoWay' ? 'bisync' : null;
   });
-  readonly previewPage = PREVIEW_PAGE;
+
+  /** The wizard opened by itself because a cloud was just added, not because the user asked for it. */
+  readonly openedAfterCloud = !!this.data?.remoteName;
 
   // ── Environment ──────────────────────────────────────────────────────────
-  readonly env = signal<GuideEnvironment | null>(null);
+  readonly env = signal<WizardEnvironment | null>(null);
   readonly isLoading = signal(true);
   readonly loadFailed = signal(false);
   readonly remoteName = signal('');
@@ -286,14 +152,18 @@ export class IntentGuideModalComponent implements OnInit {
   );
   /** "Google Drive" when the provider has a desktop app the user may know from Windows. */
   readonly appBrand = computed(() => desktopAppProvider(this.remoteType()));
-  /** The words for the machine that holds the local folder. */
-  readonly localPlace = computed(() => {
+  /**
+   * The words for the machine that holds the local folder: a server is named, anything else is
+   * "this device", because it may be a Mac, a PC, a phone or a tablet.
+   */
+  readonly localPlace = computed(() => (this.env()?.isServer ? 'server' : 'thisDevice'));
+  /** The picture of that machine: a phone is not a monitor, and not the mobile data switch. */
+  readonly localPlaceIcon = computed(() => {
     const env = this.env();
-    if (env?.isServer) return 'server';
-    return env?.isAndroid ? 'phone' : 'computer';
+    return env?.isServer ? 'server' : env?.isAndroid ? 'smartphone' : 'desktop';
   });
 
-  /** Who connects to a share, for the review's picture: icon and `modals.intentGuide.places.<key>`. */
+  /** Who connects to a share, for the review's picture: icon and `modals.wizard.places.<key>`. */
   readonly sharePlace = computed(() => {
     switch (this.plan()?.serveType) {
       case 'dlna':
@@ -306,20 +176,20 @@ export class IntentGuideModalComponent implements OnInit {
   });
 
   // ── Answers ──────────────────────────────────────────────────────────────
-  readonly step = signal<GuideStep>('goal');
-  readonly goalId = signal<GuideGoalId | null>(null);
-  readonly answers = signal<GuideAnswers>({});
-  readonly goal = computed<GuideGoal | null>(() => {
+  readonly step = signal<WizardScreen>('goal');
+  readonly goalId = signal<WizardGoalId | null>(null);
+  readonly answers = signal<WizardAnswers>({});
+  readonly goal = computed<WizardGoal | null>(() => {
     const id = this.goalId();
     return id ? getGoal(id) : null;
   });
-  readonly question = computed<GuideQuestionId | null>(() => {
+  readonly question = computed<WizardQuestionId | null>(() => {
     const goal = this.goal();
     return goal ? nextQuestion(goal, this.answers()) : null;
   });
-  readonly questionOptions = computed<readonly GuideOption[]>(() => {
+  readonly questionOptions = computed<readonly WizardOption[]>(() => {
     const q = this.question();
-    return q ? GUIDE_QUESTIONS[q] : [];
+    return q ? WIZARD_QUESTIONS[q] : [];
   });
   readonly questionNumber = computed(() => {
     const goal = this.goal();
@@ -330,6 +200,9 @@ export class IntentGuideModalComponent implements OnInit {
     const id = this.goalId();
     return id ? resolvePlan(id, this.answers()) : null;
   });
+
+  /** The share asks for a user name and a password, and listens on a port the wizard chooses. */
+  readonly sharesLogin = computed(() => sharesWithLogin(this.plan()?.serveType));
 
   // ── Where ────────────────────────────────────────────────────────────────
   readonly localPath = signal('');
@@ -353,6 +226,10 @@ export class IntentGuideModalComponent implements OnInit {
   });
   /** The cloud folder follows the local one until the user chooses it. */
   private remotePathChosen = false;
+  /** Folders the wizard proposes for the cloud; they are measured after the same pause as typing. */
+  private readonly suggestedRemotePath = new Subject<string>();
+  /** Told apart so that a slow suggestion of an earlier step does not fill the next one. */
+  private whereToken = 0;
   readonly targetRemote = signal('');
   readonly targetPath = signal('');
   readonly shareUser = signal('');
@@ -362,7 +239,7 @@ export class IntentGuideModalComponent implements OnInit {
   readonly shareReadOnly = signal(true);
   readonly shareName = signal('');
   /** This machine's addresses, for a share; null when they are not known. */
-  readonly network = signal<GuideNetwork | null>(null);
+  readonly network = signal<WizardNetwork | null>(null);
   readonly sharePortValid = computed(() => isValidSharePort(this.sharePort()));
   /** Another program already listens on the port; unknown counts as free. */
   readonly sharePortBusy = signal(false);
@@ -372,12 +249,12 @@ export class IntentGuideModalComponent implements OnInit {
   private portTimer: ReturnType<typeof setTimeout> | undefined;
   readonly startOnLogin = signal(true);
   /** Where the result is kept: the settings choose, the review step can change it for this run. */
-  readonly destination = signal<GuideDestination>('quick_run');
+  readonly destination = signal<WizardDestination>('quick_run');
 
-  // ── The guide's own settings ──────────────────────────────────────────────
+  // ── The wizard's own settings ──────────────────────────────────────────────
   readonly settingsOpen = signal(false);
   readonly afterRemote = signal(true);
-  readonly destinationSetting = signal<GuideDestinationSetting>('auto');
+  readonly destinationSetting = signal<WizardDestinationSetting>('auto');
 
   // ── When ─────────────────────────────────────────────────────────────────
   readonly scheduleStartup = signal(false);
@@ -394,7 +271,7 @@ export class IntentGuideModalComponent implements OnInit {
     const p = this.plan();
     return !!p && hasScheduleStep(p);
   });
-  readonly schedule = computed<GuideSchedule>(() => ({
+  readonly schedule = computed<WizardSchedule>(() => ({
     startup: this.scheduleStartup(),
     watch: this.scheduleWatch(),
     cron: this.scheduleCronOn() ? this.scheduleCron().trim() || null : null,
@@ -416,23 +293,43 @@ export class IntentGuideModalComponent implements OnInit {
   readonly scheduleLines = computed(() => {
     const p = this.plan();
     const s = this.schedule();
-    const lines: { key: string; when?: string }[] = [];
-    if (s.watch) lines.push({ key: 'watch' });
-    if (s.cron) lines.push({ key: 'cron', when: this.cronText() || s.cron });
-    if (s.startup) lines.push({ key: p?.flow === 'stream' ? 'startupMount' : 'startup' });
-    return lines.length ? lines : [{ key: 'manual' }];
+    const lines: { key: string; icon: string; when?: string }[] = [];
+    if (s.watch) lines.push({ key: 'watch', icon: 'bolt' });
+    if (s.cron) lines.push({ key: 'cron', icon: 'calendar', when: this.cronText() || s.cron });
+    if (s.startup) {
+      lines.push({ key: p?.flow === 'stream' ? 'startupMount' : 'startup', icon: 'power-off' });
+    }
+    return lines.length ? lines : [{ key: 'manual', icon: 'play' }];
   });
   readonly homeFolders = signal<string[] | null>(null);
   readonly usesSaf = computed(
     () =>
       this.plan()?.flow === 'stream' &&
-      this.guide.presets(this.remoteType()).mount?.['mountType'] === 'saf'
+      this.service.presets(this.remoteType()).mount?.['mountType'] === 'saf'
   );
   readonly showsLocal = computed(() => !!this.plan()?.needsLocal && !this.usesSaf());
+  /** A mount on Windows can go to a drive letter, which is where its cloud is easiest to find. */
+  readonly usesDriveLetter = computed(
+    () => this.plan()?.flow === 'stream' && !this.usesSaf() && !!this.env()?.canUseDriveLetter
+  );
+  /** The Windows mount target is a drive (a letter or the automatic one), not a folder. */
+  readonly localIsDrive = computed(() => this.usesDriveLetter() && isDrivePath(this.localPath()));
+  /** Show it as a network drive, and the name File Explorer gives the drive. */
+  readonly mountNetworkMode = new FormControl(false);
+  readonly mountVolumeName = new FormControl('');
+  /** The local folder for a sentence; the automatic drive has no letter yet. */
+  readonly localLabel = computed(() =>
+    this.localPath() === AUTOMATIC_DRIVE
+      ? this.translate.instant('modals.wizard.places.automaticDrive')
+      : this.localPath()
+  );
   /** The one thing worth knowing before choosing the folders: `about.where.<key>`. */
   readonly whereAbout = computed(() => {
     const p = this.plan();
-    if (p?.flow === 'stream') return this.usesSaf() ? null : 'stream';
+    if (p?.flow === 'stream') {
+      if (this.usesSaf()) return null;
+      return this.usesDriveLetter() ? 'streamWindows' : 'stream';
+    }
     if (p?.flow === 'twoWay') return 'twoWay';
     return p?.flow === 'upload' && p.operationType === 'sync' ? 'mirror' : null;
   });
@@ -441,12 +338,19 @@ export class IntentGuideModalComponent implements OnInit {
     const flow = this.plan()?.flow;
     return flow === 'upload' || flow === 'compare' || this.goalId() === 'devices';
   });
+  /** `modals.wizard.where.local.<key>`: what the local folder is for. */
+  readonly localWhereKey = computed(() => {
+    if (this.goalId() === 'devices') return 'devices';
+    return this.usesDriveLetter() ? 'streamWindows' : (this.plan()?.flow ?? '');
+  });
+  /** The last folder of the local path, to mark the home folder chip it matches. */
+  readonly localFolderName = computed(() => baseName(this.localPath()));
   readonly whereValid = computed(() => {
     const p = this.plan();
     if (!p) return false;
     if (this.showsLocal() && !this.localPath().trim()) return false;
     if (p.needsSecondRemote && !this.targetRemote()) return false;
-    if (sharesWithLogin(p.serveType)) {
+    if (this.sharesLogin()) {
       if (!this.shareUser().trim() || !this.sharePassword()) return false;
       if (!this.sharePortValid() || this.sharePortBusy()) return false;
     }
@@ -458,8 +362,7 @@ export class IntentGuideModalComponent implements OnInit {
   readonly localFree = signal<number | undefined>(undefined);
   readonly remoteFolderSize = signal<number | undefined>(undefined);
   readonly localFolderSize = signal<number | undefined>(undefined);
-  readonly measuring = signal(0);
-  readonly facts = computed<GuideFacts>(() => ({
+  readonly facts = computed<WizardFacts>(() => ({
     cloudUsed: this.cloud().used,
     cloudFree: this.cloud().free,
     localFree: this.localFree() ?? this.env()?.homeFree,
@@ -479,22 +382,28 @@ export class IntentGuideModalComponent implements OnInit {
     const p = this.plan();
     if (!p) return [];
     return planDetails(p, {
-      presets: this.guide.presets(this.remoteType()),
+      presets: this.service.presets(this.remoteType()),
       targets: this.targets(),
       network: this.network(),
     });
   });
   /** What to type on the other device: the port rclone reports once the share is running. */
   readonly shareLinks = computed(() => {
-    const p = this.plan();
-    if (!sharesWithLogin(p?.serveType)) return [];
-    const port = portOfAddr(this.result()?.execution?.serveAddr) ?? this.sharePort();
-    return shareUrls(this.network(), port);
+    if (!this.sharesLogin()) return [];
+    return shareUrls(this.network(), this.servePort());
   });
+  /** The port rclone reports once the share is running; until then, the one that was chosen. */
+  readonly servePort = computed(
+    () => portOfAddr(this.result()?.execution?.serveAddr) ?? this.sharePort()
+  );
 
+  /** What it does to the files, the effect that can lose something first; the rest keep their order. */
   readonly effects = computed(() => {
     const p = this.plan();
-    return p ? planEffects(p, { shareReadOnly: this.shareReadOnly() }) : [];
+    if (!p) return [];
+    return [...planEffects(p, { shareReadOnly: this.shareReadOnly() })]
+      .sort((a, b) => EFFECT_RANK[a.tone] - EFFECT_RANK[b.tone])
+      .map(effect => ({ ...effect, tone: EFFECT_TONE[effect.tone] }));
   });
   readonly operationLabel = computed(() => {
     const op = this.plan()?.operationType;
@@ -514,7 +423,14 @@ export class IntentGuideModalComponent implements OnInit {
   readonly cloudLabel = computed(() => displayName(this.remoteName(), this.cloudFolder()));
   readonly targetLabel = computed(() => displayName(this.targetRemote(), this.targetFolder()));
 
-  /** `modals.intentGuide.review.summary.<key>`: one sentence that says what was set up. */
+  /** The wording of a mount: into the Files app, to a drive, to a drive Windows names, or a folder. */
+  private streamKey(): string {
+    if (this.usesSaf()) return 'streamSaf';
+    if (!this.localIsDrive()) return 'stream';
+    return this.localPath() === AUTOMATIC_DRIVE ? 'streamAutoDrive' : 'streamDrive';
+  }
+
+  /** `modals.wizard.review.summary.<key>`: one sentence that says what was set up. */
   readonly summaryKey = computed(() => {
     const p = this.plan();
     if (!p) return '';
@@ -525,7 +441,7 @@ export class IntentGuideModalComponent implements OnInit {
       case 'share':
         return `share_${p.serveType}`;
       case 'stream':
-        return this.usesSaf() ? 'streamSaf' : 'stream';
+        return this.streamKey();
       default:
         return p.flow;
     }
@@ -549,106 +465,80 @@ export class IntentGuideModalComponent implements OnInit {
     () => 3 + (this.goal()?.questions.length ?? 0) + (this.hasWhen() ? 1 : 0)
   );
 
+  // ── The back button of the system ────────────────────────────────────────
+
+  /**
+   * How many steps the user has gone forward from the first screen. Each one is a history entry,
+   * so the back gesture of a phone (or the back button of a mouse) goes one step back instead of
+   * closing the whole wizard and losing the answers.
+   */
+  readonly depth = computed(() => {
+    const answered = Object.keys(this.answers()).length;
+    const open = this.settingsOpen() ? 1 : 0;
+    switch (this.step()) {
+      case 'goal':
+        return open;
+      case 'question':
+      case 'where':
+        return 1 + answered + open;
+      case 'when':
+        return 2 + answered + open;
+      case 'review':
+      case 'working':
+        return 2 + answered + (this.hasWhen() ? 1 : 0) + open;
+      default:
+        return 1 + open;
+    }
+  });
+  private readonly layers: (() => void)[] = [];
+
+  private syncLayers(): void {
+    const wanted = this.depth();
+    while (this.layers.length < wanted) {
+      this.layers.push(this.history.openLayer(() => this.onLayerClosed()));
+    }
+    while (this.layers.length > wanted) this.layers.pop()?.();
+  }
+
+  /** The system took the top history entry away: go back the step it stood for. */
+  private onLayerClosed(): void {
+    this.layers.pop();
+    this.back();
+    // Registering a layer while the history restores itself would be too early.
+    queueMicrotask(() => this.syncLayers());
+  }
+
   // ── Preview and result ───────────────────────────────────────────────────
   readonly preview = signal<PreviewState>({ state: 'idle' });
-  /** The group of files the preview lists, the one with the most to look at first. */
-  readonly previewKind = signal<PreviewKind | null>(null);
-  readonly previewQuery = signal('');
-  readonly previewLimit = signal(PREVIEW_PAGE);
   readonly previewResult = computed(() => {
     const p = this.preview();
     return p.state === 'done' ? p.result : null;
   });
-  readonly previewGroup = computed<PreviewGroup | undefined>(() => {
-    const kind = this.previewKind();
-    return this.previewResult()?.groups.find(group => group.kind === kind);
+  /** Files a sync would delete: the one outcome the user must see before going on. */
+  readonly previewDeleted = computed(() => {
+    const group = this.previewResult()?.groups.find(g => g.kind === 'delete');
+    return group
+      ? {
+          files: group.files.slice(0, PREVIEW_LIST),
+          more: Math.max(group.files.length - PREVIEW_LIST, 0),
+        }
+      : null;
   });
-  /** The files of the chosen group that match the search; the whole list is searched. */
-  readonly previewMatches = computed<readonly PreviewFile[]>(() =>
-    filterPreviewFiles(this.previewGroup()?.files ?? [], this.previewQuery())
-  );
-  readonly previewVisible = computed(() => this.previewMatches().slice(0, this.previewLimit()));
-  /** A sync that deletes files is the one outcome the user must look at before going on. */
-  readonly previewDeletes = computed(
-    () => this.previewResult()?.groups.find(group => group.kind === 'delete')?.files.length ?? 0
-  );
-  readonly previewKinds = PREVIEW_KINDS;
-  readonly previewGroups = computed(() => this.previewResult()?.groups.map(g => g.kind) ?? []);
   readonly previewStyle = PREVIEW_STYLE;
   readonly previewJob = computed(() => {
     const p = this.preview();
-    return p.state === 'running' && p.executeId ? this.guide.job(p.executeId) : undefined;
+    return p.state === 'running' && p.executeId ? this.service.job(p.executeId) : undefined;
   });
   readonly workingExecuteId = signal<string | null>(null);
   readonly workingJob = computed(() => {
     const id = this.workingExecuteId();
-    return id ? this.guide.job(id) : undefined;
+    return id ? this.service.job(id) : undefined;
   });
-  readonly result = signal<GuideApplyResult | null>(null);
+  readonly result = signal<WizardApplyResult | null>(null);
   readonly applyFailed = signal(false);
   // ── What is already set up ───────────────────────────────────────────────
+  /** Read to tell the user that a setup already does what the review is about to set up. */
   readonly setups = signal<ExistingSetup[]>([]);
-  readonly removingKey = signal<string | null>(null);
-  /** The setup that is being started or stopped. */
-  readonly busyKey = signal<string | null>(null);
-  readonly setupRows = computed((): SetupRow[] => {
-    const lang = this.translate.currentLang();
-    const firstOfKind = new Map<string, string>();
-    return this.setups().map(setup => {
-      const live = setup.flow === 'stream' || setup.flow === 'share';
-      const polled = this.guide.setupStatus(setup);
-      // A mount or a share is up or it is not; it has no last run to report.
-      const status: GuideSetupStatus = live
-        ? { state: polled.state === 'running' ? 'running' : 'idle' }
-        : polled;
-      const sameAs = firstOfKind.get(setup.signature) ?? null;
-      firstOfKind.set(setup.signature, sameAs ?? setup.name);
-      const { automation } = setup;
-      const auto: SetupChip[] = [];
-      if (automation.startup) {
-        auto.push({
-          icon: 'power-off',
-          key: setup.flow === 'stream' ? 'startupStream' : live ? 'startupShare' : 'startup',
-        });
-      }
-      if (automation.watch) auto.push({ icon: 'bolt', key: 'watch' });
-      if (automation.cron) {
-        auto.push({ icon: 'calendar', text: describeCron(automation.cron, lang).text });
-      }
-      if (!auto.length) auto.push({ icon: 'play', key: 'manual' });
-      const kind = setup.flow === 'stream' ? 'stream' : setup.flow === 'share' ? 'share' : 'job';
-      return {
-        setup,
-        status,
-        statusKey: `${kind}.${status.state}`,
-        // A mount or a share that is up is a good state, like a run that went fine.
-        statusTone: live && status.state === 'running' ? 'primary' : SETUP_TONE[status.state],
-        kind: setup.kind === 'quick_run' ? 'quickRun' : 'profile',
-        when: status.at ? this.timeAgo(status.at) : '',
-        icon: FLOW_ICON[setup.flow],
-        tone: getOperationDef(setup.operationType)?.tone ?? 'dim',
-        path: setupPath(setup, setup.local),
-        auto,
-        sameAs,
-        running: status.state === 'running',
-        ...SETUP_ACTION[kind][status.state === 'running' ? 'stop' : 'start'],
-      };
-    });
-  });
-  /** The setups of each cloud, in the order of the clouds. */
-  readonly setupGroups = computed((): SetupGroup[] => {
-    const rows = this.setupRows();
-    return this.remotes()
-      .map(remote => ({ remote, rows: rows.filter(row => row.setup.remoteName === remote.name) }))
-      .filter(group => group.rows.length);
-  });
-  readonly setupCounts = computed(() => {
-    const rows = this.setupRows();
-    return {
-      running: rows.filter(row => row.status.state === 'running').length,
-      failed: rows.filter(row => row.status.state === 'failed').length,
-    };
-  });
   /** A setup that already does what the review is about to set up. */
   readonly sameSetup = computed(() => {
     const p = this.plan();
@@ -657,24 +547,29 @@ export class IntentGuideModalComponent implements OnInit {
 
   /** Taking back what was set up: working, gone, or not possible. */
   readonly undoState = signal<'idle' | 'working' | 'removed' | 'failed'>('idle');
+  /** Why it could not be taken back, in the words of the app's language; empty when it is not known. */
+  readonly undoReason = signal('');
 
   /** Why the first sync stopped, as rclone reported it; null when it did not fail or said nothing. */
   readonly failureReason = computed(() => {
     const id = this.result()?.execution?.executeId;
     if (this.doneKey() !== 'twoWayFailed' || !id) return null;
-    return this.guide.job(id)?.error?.trim() || null;
+    return this.service.job(id)?.error?.trim() || null;
   });
 
-  /** `modals.intentGuide.done.<key>` */
+  /** `modals.wizard.done.<key>` */
   readonly doneKey = computed(() => {
     const p = this.plan();
     const result = this.result();
     if (!p) return 'started';
     switch (p.flow) {
       case 'stream':
-        return this.usesSaf() ? 'streamSaf' : 'stream';
+        return this.streamKey();
       case 'twoWay':
         return result?.firstRunDone ? 'twoWayReady' : 'twoWayFailed';
+      case 'compare':
+      case 'cloudCompare':
+        return 'checkStarted';
       case 'share':
         if (p.serveType === 'dlna') return 'shareDlna';
         if (!this.shareLinks().length) return 'noAddress';
@@ -684,9 +579,33 @@ export class IntentGuideModalComponent implements OnInit {
     }
   });
 
-  readonly effectTone = (tone: EffectTone): PillTone | undefined => EFFECT_TONE[tone];
+  /** The review's picture takes the colour role of its operation, like the cards of the dashboard. */
+  readonly operationTone = computed<PillTone>(() => {
+    const op = this.plan()?.operationType;
+    return (op && getOperationDef(op)?.tone) || 'dim';
+  });
+  readonly operationIcon = computed(() => {
+    const p = this.plan();
+    const op = p?.operationType;
+    return (op && getOperationDef(op)?.icon) || (p ? FLOW_ICON[p.flow] : 'search');
+  });
+  /** `modals.wizard.review.flow.<key>`: what the picture shows, in a few words. */
+  readonly flowCaption = computed(() => {
+    const flow = this.plan()?.flow;
+    return flow === 'cloudCompare' ? 'compare' : (flow ?? '');
+  });
+  /** Which way the review's picture points: one way, both ways, a link (a mount) or none (a check). */
+  readonly flowDirection = computed(() => FLOW_DIRECTION[this.plan()?.flow ?? 'browse']);
 
   constructor() {
+    effect(() => {
+      this.depth();
+      untracked(() => this.syncLayers());
+    });
+    inject(DestroyRef).onDestroy(() => {
+      while (this.layers.length) this.layers.pop()?.();
+      clearTimeout(this.portTimer);
+    });
     // The signals follow what the fields hold at once; the measurements wait for a pause in typing.
     const local = this.localGroup.controls.path;
     const cloud = this.cloudGroup.controls.path;
@@ -702,14 +621,15 @@ export class IntentGuideModalComponent implements OnInit {
     this.targetGroup.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.onTargetChanged());
-    cloud.valueChanges
-      .pipe(debounceTime(MEASURE_PAUSE_MS), distinctUntilChanged(), takeUntilDestroyed())
+    // No `distinctUntilChanged`: coming back to the step starts from a blank measurement.
+    merge(cloud.valueChanges, this.suggestedRemotePath)
+      .pipe(debounceTime(MEASURE_PAUSE_MS), takeUntilDestroyed())
       .subscribe(path => this.measureRemote(path ?? ''));
   }
 
-  ngOnInit(): void {
+  init(): void {
     void this.load();
-    void this.guide.settings().then(settings => {
+    void this.service.settings().then(settings => {
       this.afterRemote.set(settings.afterRemote);
       this.destinationSetting.set(settings.setting);
       this.destination.set(settings.destination);
@@ -720,7 +640,7 @@ export class IntentGuideModalComponent implements OnInit {
     this.isLoading.set(true);
     this.loadFailed.set(false);
     try {
-      const env = await this.guide.loadEnvironment();
+      const env = await this.service.loadEnvironment();
       this.env.set(env);
       const resume = this.data?.resume;
       const wanted = resume?.remoteName ?? this.data?.remoteName;
@@ -738,32 +658,11 @@ export class IntentGuideModalComponent implements OnInit {
 
   private async refreshSetups(names = this.remotes().map(r => r.name)): Promise<void> {
     try {
-      this.setups.set(await this.guide.loadSetups(names));
+      this.setups.set(await this.service.loadSetups(names));
     } catch (error) {
-      // The list is a convenience; the guide works without it.
-      console.debug('[IntentGuide] Could not read the existing setups:', error);
+      // The list is a convenience; the wizard works without it.
+      console.debug('[Wizard] Could not read the existing setups:', error);
     }
-  }
-
-  /** "2 hours ago" in the language of the app. */
-  private timeAgo(iso: string): string {
-    const diff = Date.parse(iso) - Date.now();
-    const minutes = Math.round(diff / 60_000);
-    const [value, unit]: [number, Intl.RelativeTimeFormatUnit] =
-      Math.abs(minutes) < 60
-        ? [minutes, 'minute']
-        : Math.abs(minutes) < 1440
-          ? [Math.round(minutes / 60), 'hour']
-          : [Math.round(minutes / 1440), 'day'];
-    return new Intl.RelativeTimeFormat(this.translate.currentLang() ?? undefined, {
-      numeric: 'auto',
-    }).format(value, unit);
-  }
-
-  /** The list of what is already set up, with its state read again. */
-  openSetups(): void {
-    this.step.set('setups');
-    void this.refreshSetups();
   }
 
   showSetup(setup: ExistingSetup): void {
@@ -784,60 +683,19 @@ export class IntentGuideModalComponent implements OnInit {
     );
   }
 
-  /**
-   * Asks in the app's confirmation dialog before something that was set up is taken back, and says
-   * so when it is running, because removing it stops it first.
-   */
+  /** Asks in the app's confirmation dialog before something that was set up is taken back. */
   private confirmRemoval(setup: SetupIdentity): Promise<boolean> {
-    const running = this.guide.setupStatus(setup).state === 'running';
     return this.notifications.confirmModal(
-      this.translate.instant('modals.intentGuide.undo.title'),
-      this.translate.instant(
-        running ? 'modals.intentGuide.undo.confirmRunning' : 'modals.intentGuide.undo.confirm',
-        { name: setup.name }
-      ),
-      'modals.intentGuide.setups.remove',
+      this.translate.instant('modals.wizard.undo.title'),
+      this.translate.instant('modals.wizard.undo.confirm', { name: setup.name }),
+      'modals.wizard.undo.remove',
       'common.cancel',
       { icon: 'trash', color: 'warn' }
     );
   }
 
-  /** Starts a setup that is not running and stops one that is. */
-  async toggleSetup(row: SetupRow): Promise<void> {
-    if (this.busyKey()) return;
-    this.busyKey.set(row.setup.key);
-    try {
-      if (row.running) await this.guide.stopSetup(row.setup);
-      else await this.guide.startSetup(row.setup);
-    } catch (error) {
-      this.notifications.showError(error);
-    } finally {
-      this.busyKey.set(null);
-    }
-  }
-
-  async removeSetup(setup: ExistingSetup): Promise<void> {
-    if (this.removingKey() || !(await this.confirmRemoval(setup))) return;
-    this.removingKey.set(setup.key);
-    try {
-      await this.guide.undo(
-        {
-          name: setup.name,
-          quickRun: setup.kind === 'quick_run' && setup.id ? { id: setup.id } : undefined,
-        },
-        setup.remoteName,
-        setup.operationType
-      );
-      await this.refreshSetups();
-    } catch (error) {
-      this.notifications.showError(error);
-    } finally {
-      this.removingKey.set(null);
-    }
-  }
-
-  /** Goes on from the choices of a guide that was closed to add the remote this one opened with. */
-  private carryOn(resume: IntentGuideResume): void {
+  /** Goes on from the choices of a wizard that was closed to add the remote this one opened with. */
+  private carryOn(resume: WizardResume): void {
     const goal = getGoal(resume.goal);
     if (nextQuestion(goal, resume.answers) !== null) return;
     this.chooseGoal(goal.id);
@@ -848,15 +706,15 @@ export class IntentGuideModalComponent implements OnInit {
     this.remoteName.set(name);
     this.cloud.set({});
     if (!name) return;
-    void this.measure(async () => {
-      const usage = await this.guide.cloudUsage(name);
+    void (async (): Promise<void> => {
+      const usage = await this.service.cloudUsage(name);
       if (this.remoteName() === name) this.cloud.set(usage);
-    });
+    })();
   }
 
   // ── Navigation ───────────────────────────────────────────────────────────
 
-  chooseGoal(id: GuideGoalId): void {
+  chooseGoal(id: WizardGoalId): void {
     this.goalId.set(id);
     this.answers.set({});
     this.preview.set({ state: 'idle' });
@@ -887,22 +745,32 @@ export class IntentGuideModalComponent implements OnInit {
 
   setAfterRemote(value: boolean): void {
     this.afterRemote.set(value);
-    void this.guide.saveAfterRemote(value).catch(error => this.notifications.showError(error));
+    void this.service.saveAfterRemote(value).catch(error => this.notifications.showError(error));
   }
 
-  /** Remembers the choice, and uses it for what the guide sets up from now on. */
-  async setDestinationSetting(setting: GuideDestinationSetting): Promise<void> {
+  /** Remembers the choice, and uses it for what the wizard sets up from now on. */
+  async setDestinationSetting(setting: WizardDestinationSetting): Promise<void> {
     this.destinationSetting.set(setting);
     try {
-      await this.guide.saveDestination(setting);
-      this.destination.set(await this.guide.resolveDestination(setting));
+      await this.service.saveDestination(setting);
+      this.destination.set(await this.service.resolveDestination(setting));
     } catch (error) {
       this.notifications.showError(error);
     }
   }
 
   back(): void {
+    if (this.settingsOpen()) {
+      this.settingsOpen.set(false);
+      return;
+    }
     switch (this.step()) {
+      case 'working':
+        // Nothing to go back to while it saves; the layer the gesture used is put back.
+        return;
+      case 'done':
+        this.startOver();
+        return;
       case 'question': {
         const goal = this.goal();
         const answered = goal?.questions.filter(q => this.answers()[q] !== undefined) ?? [];
@@ -936,7 +804,7 @@ export class IntentGuideModalComponent implements OnInit {
     }
   }
 
-  private dropAnswer(q: GuideQuestionId): void {
+  private dropAnswer(q: WizardQuestionId): void {
     this.answers.update(a => {
       const next = { ...a };
       delete next[q];
@@ -948,6 +816,7 @@ export class IntentGuideModalComponent implements OnInit {
     const p = this.plan();
     if (!p) return;
     const remote = this.remoteName();
+    const token = ++this.whereToken;
     this.step.set('where');
     this.remotePathChosen = false;
     this.localGroup.reset({ type: 'local', path: '', remote: '' }, { emitEvent: false });
@@ -960,31 +829,37 @@ export class IntentGuideModalComponent implements OnInit {
     const added = this.data?.resume ? this.data.remoteName : undefined;
     const target =
       this.otherRemotes().find(r => r.name === added)?.name ?? this.otherRemotes()[0]?.name ?? '';
+    // A copy goes into a folder named after the cloud it comes from; a check compares what exists.
+    const targetFolder = p.flow === 'cloudCompare' ? '' : remote;
     this.targetGroup.reset(
-      { type: target ? `otherRemote:${target}` : '', path: remote, remote: target },
+      { type: target ? `otherRemote:${target}` : '', path: targetFolder, remote: target },
       { emitEvent: false }
     );
     this.targetRemote.set(target);
-    this.targetPath.set(remote);
+    this.targetPath.set(targetFolder);
     this.shareUser.set(remote.replace(/[^a-zA-Z0-9_-]/g, '-'));
     this.sharePassword.set('');
     this.sharePort.set(DEFAULT_SHARE_PORT);
     this.checkSharePort(true);
     this.shareReadOnly.set(true);
+    this.mountNetworkMode.reset(
+      this.service.presets(this.remoteType()).mount?.['network_mode'] === true
+    );
+    this.mountVolumeName.reset('');
     this.shareName.set(remote);
     this.network.set(null);
-    if (p.flow === 'share') void this.guide.network().then(network => this.network.set(network));
+    if (p.flow === 'share') void this.service.network().then(network => this.network.set(network));
     this.resetSchedule(p.schedule);
 
     const home = this.env()?.home;
     if (this.localIsSource() && home && this.homeFolders() === null) {
-      void this.guide.localFolders(home).then(list => this.homeFolders.set(list));
+      void this.service.localFolders(home).then(list => this.homeFolders.set(list));
     }
 
     if (this.showsLocal() && !this.localIsSource()) {
       const kind = p.flow === 'stream' ? 'mount' : 'bisync';
-      const suggested = await this.guide.defaultLocalPath(remote, kind);
-      if (suggested && !this.localPath()) this.setLocalPath(suggested);
+      const suggested = await this.service.defaultLocalPath(remote, kind);
+      if (token === this.whereToken && suggested && !this.localPath()) this.setLocalPath(suggested);
     }
   }
 
@@ -996,7 +871,7 @@ export class IntentGuideModalComponent implements OnInit {
     this.targetPath.set(path ?? '');
   }
 
-  /** A folder chosen by the guide itself (a suggestion), written into the field. */
+  /** A folder chosen by the wizard itself (a suggestion), written into the field. */
   setLocalPath(path: string): void {
     this.localGroup.controls.path.setValue(path);
   }
@@ -1009,16 +884,42 @@ export class IntentGuideModalComponent implements OnInit {
   }
 
   private measureLocal(path: string): void {
-    if (!path) return;
-    void this.measure(async () => {
-      const free = await this.guide.localFree(path);
+    // A drive holds the cloud, not files of this device: there is nothing to measure.
+    if (!path || (this.usesDriveLetter() && isDrivePath(path))) return;
+    void (async (): Promise<void> => {
+      const free = await this.service.localFree(path);
       if (this.localPath() === path) this.localFree.set(free);
-    });
+    })();
     if (this.plan()?.flow === 'upload') {
-      void this.measure(async () => {
-        const size = await this.guide.folderSize(path);
+      void (async (): Promise<void> => {
+        const size = await this.service.folderSize(path);
         if (this.localPath() === path) this.localFolderSize.set(size);
-      });
+      })();
+    }
+  }
+
+  /** Makes a Windows mount in a new folder inside the folder the user picks. */
+  async selectMountParent(): Promise<void> {
+    const previous = this.localPath();
+    try {
+      const selected = await this.service.pickFolder();
+      if (!selected || this.localPath() !== previous) return;
+      const target = pathUtils.windowsMountFolderTarget(
+        selected,
+        previous,
+        this.remoteName(),
+        this.mountVolumeName.value
+      );
+      if (!target) {
+        this.notifications.showWarning(
+          this.translate.instant('wizards.appOperation.mountFolderLocalDrive')
+        );
+        return;
+      }
+      this.setLocalPath(target);
+    } catch (error) {
+      // Closing the picker is not a failure.
+      console.debug('[Wizard] No mount folder picked:', error);
     }
   }
 
@@ -1029,12 +930,12 @@ export class IntentGuideModalComponent implements OnInit {
     this.setLocalPath(`${home.replace(/[\\/]+$/, '')}${separator}${name}`);
   }
 
-  /** The cloud folder the guide proposes: it follows the local one until the user picks their own. */
+  /** The cloud folder the wizard proposes: it follows the local one until the user picks their own. */
   private suggestRemotePath(path: string): void {
     this.remotePath.set(path);
     this.cloudGroup.controls.path.setValue(path, { emitEvent: false });
     this.remoteFolderSize.set(undefined);
-    this.measureRemote(path);
+    this.suggestedRemotePath.next(path);
   }
 
   setRemotePath(path: string): void {
@@ -1052,19 +953,10 @@ export class IntentGuideModalComponent implements OnInit {
     const flow = this.plan()?.flow;
     if (!path || (flow !== 'download' && flow !== 'twoWay')) return;
     const fs = fsPath(this.remoteName(), path);
-    void this.measure(async () => {
-      const size = await this.guide.folderSize(fs);
+    void (async (): Promise<void> => {
+      const size = await this.service.folderSize(fs);
       if (this.remotePath() === path) this.remoteFolderSize.set(size);
-    });
-  }
-
-  private async measure(task: () => Promise<void>): Promise<void> {
-    this.measuring.update(n => n + 1);
-    try {
-      await task();
-    } finally {
-      this.measuring.update(n => n - 1);
-    }
+    })();
   }
 
   // ── Review ───────────────────────────────────────────────────────────────
@@ -1082,7 +974,7 @@ export class IntentGuideModalComponent implements OnInit {
     this.step.set('review');
   }
 
-  private resetSchedule(schedule: GuideSchedule): void {
+  private resetSchedule(schedule: WizardSchedule): void {
     this.scheduleStartup.set(schedule.startup);
     this.scheduleWatch.set(schedule.watch);
     this.scheduleCronOn.set(!!schedule.cron);
@@ -1111,7 +1003,7 @@ export class IntentGuideModalComponent implements OnInit {
 
   /**
    * Asks whether the port is free once typing pauses. A port the user typed that is taken gets a
-   * warning and a free one to pick; the guide's own default quietly moves to a free port instead.
+   * warning and a free one to pick; the wizard's own default quietly moves to a free port instead.
    */
   private checkSharePort(automatic = false): void {
     clearTimeout(this.portTimer);
@@ -1119,12 +1011,12 @@ export class IntentGuideModalComponent implements OnInit {
     const port = this.sharePort();
     this.sharePortBusy.set(false);
     this.freePortSuggestion.set(null);
-    if (!sharesWithLogin(this.plan()?.serveType) || !isValidSharePort(port)) return;
+    if (!this.sharesLogin() || !isValidSharePort(port)) return;
     this.portTimer = setTimeout(
       async () => {
-        const free = await this.guide.portFree(port);
+        const free = await this.service.portFree(port);
         if (token !== this.portToken || free !== false) return;
-        const next = await this.guide.nextFreePort(port + 1);
+        const next = await this.service.nextFreePort(port + 1);
         if (token !== this.portToken) return;
         if (automatic && next !== null) {
           this.sharePort.set(next);
@@ -1142,8 +1034,14 @@ export class IntentGuideModalComponent implements OnInit {
     if (port !== null) this.setSharePort(port);
   }
 
-  toggleCron(): void {
-    this.scheduleCronOn.update(on => !on);
+  /** Switches one way to start the operation on or off. */
+  toggleSchedule(option: 'watch' | 'cron' | 'startup'): void {
+    const flag = {
+      watch: this.scheduleWatch,
+      cron: this.scheduleCronOn,
+      startup: this.scheduleStartup,
+    }[option];
+    flag.update(on => !on);
   }
 
   onCronChange(cron: string | null): void {
@@ -1154,7 +1052,7 @@ export class IntentGuideModalComponent implements OnInit {
     this.cronValid.set(result.isValid);
   }
 
-  private targets(): GuideTargets {
+  private targets(): WizardTargets {
     return {
       remoteName: this.remoteName(),
       remotePath: this.remotePath(),
@@ -1166,13 +1064,15 @@ export class IntentGuideModalComponent implements OnInit {
       sharePort: this.sharePort(),
       shareReadOnly: this.shareReadOnly(),
       shareName: this.shareName(),
+      mountNetworkMode: this.usesDriveLetter() ? this.mountNetworkMode.value === true : undefined,
+      mountVolumeName: this.usesDriveLetter() ? (this.mountVolumeName.value ?? '') : undefined,
     };
   }
 
   private buildInput(): QuickRunInput | null {
     const p = this.plan();
     if (!p) return null;
-    const goalTitle = this.translate.instant(`modals.intentGuide.runNames.${p.goal}`, {
+    const goalTitle = this.translate.instant(`modals.wizard.runNames.${p.goal}`, {
       remote: this.remoteName(),
     });
     const name = this.quickRunService.generateUniqueQuickRunName(goalTitle);
@@ -1180,7 +1080,7 @@ export class IntentGuideModalComponent implements OnInit {
       p,
       this.targets(),
       name,
-      this.guide.presets(this.remoteType()),
+      this.service.presets(this.remoteType()),
       this.schedule()
     );
   }
@@ -1190,15 +1090,16 @@ export class IntentGuideModalComponent implements OnInit {
     if (!input) return;
     this.preview.set({ state: 'running' });
     try {
-      const result = await this.guide.preview(
+      const result = await this.service.preview(
         input,
-        this.translate.instant('modals.intentGuide.preview.runName', { name: input.name }),
+        this.translate.instant('modals.wizard.preview.runName', { name: input.name }),
         executeId => this.preview.set({ state: 'running', executeId })
       );
       if (this.preview().state === 'running') {
         this.openPreview(result);
       }
-    } catch {
+    } catch (error) {
+      console.error('[Wizard] The dry run failed:', error);
       if (this.preview().state === 'running') this.preview.set({ state: 'failed' });
     }
   }
@@ -1208,26 +1109,13 @@ export class IntentGuideModalComponent implements OnInit {
       this.preview.set({ state: 'failed' });
       return;
     }
-    this.previewKind.set(result.groups[0]?.kind ?? null);
-    this.previewQuery.set('');
-    this.previewLimit.set(PREVIEW_PAGE);
     this.preview.set({ state: 'done', result });
-  }
-
-  selectPreviewKind(kind: PreviewKind): void {
-    this.previewKind.set(kind);
-    this.previewLimit.set(PREVIEW_PAGE);
-  }
-
-  setPreviewQuery(query: string): void {
-    this.previewQuery.set(query);
-    this.previewLimit.set(PREVIEW_PAGE);
   }
 
   async cancelPreview(): Promise<void> {
     const p = this.preview();
     this.preview.set({ state: 'idle' });
-    if (p.state === 'running' && p.executeId) await this.guide.cancel(p.executeId);
+    if (p.state === 'running' && p.executeId) await this.service.cancel(p.executeId);
   }
 
   async apply(): Promise<void> {
@@ -1239,7 +1127,7 @@ export class IntentGuideModalComponent implements OnInit {
     this.undoState.set('idle');
     this.workingExecuteId.set(null);
     try {
-      const result = await this.guide.apply(input, p, {
+      const result = await this.service.apply(input, p, {
         destination: this.destination(),
         startOnLogin: this.offersStartOnLogin() && this.startOnLogin(),
         onStarted: id => this.workingExecuteId.set(id),
@@ -1247,6 +1135,7 @@ export class IntentGuideModalComponent implements OnInit {
       this.result.set(result);
       this.applyFailed.set(!result);
       this.step.set(result ? 'done' : 'review');
+      if (result) void this.refreshSetups();
     } catch (error) {
       this.applyFailed.set(true);
       this.notifications.showError(error);
@@ -1254,10 +1143,31 @@ export class IntentGuideModalComponent implements OnInit {
     }
   }
 
-  /** Opens the Quick Run editor with everything the guide filled in, for the user who wants more. */
-  openAdvanced(): void {
+  /**
+   * Opens the editor where this would be kept, with everything the wizard filled in and nothing
+   * saved yet: the remote's profile editor for a profile, the Quick Run editor otherwise.
+   */
+  async openAdvanced(): Promise<void> {
     const input = this.buildInput();
     if (!input) return;
+    if (this.destination() === 'profile') {
+      const profile = await this.service.planProfile(input);
+      if (profile) {
+        this.close();
+        this.modalService.openRemoteConfig({
+          remoteName: input.remoteName,
+          remoteType: this.remoteType(),
+          editTarget: input.operationType,
+          targetProfile: profile.name,
+          initialProfile: {
+            type: input.operationType,
+            name: profile.name,
+            settings: profile.settings,
+          },
+        });
+        return;
+      }
+    }
     this.close();
     this.modalService.openQuickRunEditor({
       cloneData: input,
@@ -1272,16 +1182,21 @@ export class IntentGuideModalComponent implements OnInit {
   readonly openablePath = computed(() => {
     const p = this.plan();
     const env = this.env();
-    if (!p || env?.isServer || env?.isAndroid) return null;
-    if (p.flow === 'stream')
-      return this.result()?.execution?.mountPoint || this.localPath() || null;
+    if (!p || env?.isServer) return null;
+    // A mount in the Files app has no folder of its own: the app opens its documents root.
+    if (p.flow === 'stream' && this.usesSaf()) return `saf://${this.remoteName()}`;
+    if (env?.isAndroid) return null;
+    if (p.flow === 'stream') {
+      const folder = this.localPath() === AUTOMATIC_DRIVE ? '' : this.localPath();
+      return this.result()?.execution?.mountPoint || folder || null;
+    }
     if (p.flow === 'download' || p.flow === 'twoWay') return this.localPath() || null;
     return null;
   });
 
   async openFolder(): Promise<void> {
     const path = this.openablePath();
-    if (path) await this.guide.openFolder(path);
+    if (path) await this.service.openFolder(path);
   }
 
   /** Opens the page the result lives on: its profile in the main menu or its Quick Run. */
@@ -1297,14 +1212,66 @@ export class IntentGuideModalComponent implements OnInit {
     }
   }
 
-  async openInFiles(): Promise<void> {
-    const remote = this.remoteName();
-    const path = this.plan()?.flow === 'cloudToCloud' ? '' : this.remotePath();
+  /** The cloud and folder the file browser opens on; null where the result is not a place to browse. */
+  readonly browseTarget = computed(() => {
+    const p = this.plan();
+    if (!p) return null;
+    switch (p.flow) {
+      case 'compare':
+      case 'cloudCompare':
+        return null;
+      case 'cloudToCloud':
+        return { remote: this.targetRemote(), path: this.targetPath() };
+      default:
+        return { remote: this.remoteName(), path: this.remotePath() };
+    }
+  });
+
+  /** What the cloud button opens, in words: `drive › Docs`; empty where there is nothing to browse. */
+  readonly browseLabel = computed(() => {
+    const target = this.browseTarget();
+    return target ? displayName(target.remote, displayFolder(target.path)) : '';
+  });
+
+  /** The action the done screen leads with: the folder, else the run, else where it is kept. */
+  readonly doneMain = computed<'folder' | 'run' | 'where'>(() =>
+    this.openablePath() ? 'folder' : this.resultJob() ? 'run' : 'where'
+  );
+
+  /** The run the wizard started, for flows that run once and have a result to look at. */
+  readonly resultJob = computed(() => {
+    const id = this.result()?.execution?.executeId;
+    const flow = this.plan()?.flow;
+    if (!id || flow === 'stream' || flow === 'share') return undefined;
+    return this.service.job(id);
+  });
+
+  openRun(): void {
+    const job = this.resultJob();
+    if (!job) return;
     this.close();
-    await this.remoteFacade.openRemoteInFiles(remote, path || undefined);
+    this.modalService.openJobDetail(job);
   }
 
-  /** Stops what the guide set up and deletes it; the user's files are not touched. */
+  async openInFiles(): Promise<void> {
+    const target = this.browseTarget();
+    if (!target) return;
+    // The browser takes a full `remote:path` (a bare folder name reads as a folder on this computer).
+    const path = target.path ? fsPath(target.remote, target.path) : undefined;
+    if (this.modalService.isDialogStandalone()) {
+      // The wizard has a window of its own, and the browser opens in one too.
+      await this.remoteFacade.openRemoteInFiles(target.remote, path);
+      this.close();
+      return;
+    }
+    // The browser opens once the wizard's history layer is gone, or closing the wizard takes it down.
+    const closed = firstValueFrom(this.dialogRef.afterClosed());
+    this.close();
+    await closed;
+    await this.remoteFacade.openRemoteInFiles(target.remote, path);
+  }
+
+  /** Stops what the wizard set up and deletes it; the user's files are not touched. */
   async undo(): Promise<void> {
     const result = this.result();
     const operationType = this.plan()?.operationType;
@@ -1317,11 +1284,14 @@ export class IntentGuideModalComponent implements OnInit {
     };
     if (!(await this.confirmRemoval(identity))) return;
     this.undoState.set('working');
+    this.undoReason.set('');
     try {
-      await this.guide.undo(result, this.remoteName(), operationType);
+      await this.service.undo(result, this.remoteName(), operationType);
       this.undoState.set('removed');
+      void this.refreshSetups();
     } catch (error) {
-      console.error('[IntentGuide] Could not remove the setup:', error);
+      console.error('[Wizard] Could not remove the setup:', error);
+      this.undoReason.set(this.backendTranslation.translateBackendMessage(error));
       this.undoState.set('failed');
     }
   }
@@ -1337,7 +1307,7 @@ export class IntentGuideModalComponent implements OnInit {
 
   addRemote(): void {
     const goal = this.goalId();
-    const resume: IntentGuideResume | undefined =
+    const resume: WizardResume | undefined =
       goal && this.remotes().length
         ? { remoteName: this.remoteName(), goal, answers: this.answers() }
         : undefined;
@@ -1346,7 +1316,7 @@ export class IntentGuideModalComponent implements OnInit {
   }
 
   installMountPlugin(): void {
-    this.guide.installMountPlugin();
+    this.service.installMountPlugin();
   }
 
   close(): void {

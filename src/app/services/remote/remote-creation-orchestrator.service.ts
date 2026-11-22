@@ -285,14 +285,14 @@ export class RemoteCreationOrchestrator {
         { name: pending.remoteData.name }
       )
     );
-    if (!pending.save && (await this.showsGuideAfterRemote())) {
-      this.modalService.openIntentGuide({ remoteName: pending.remoteData.name });
+    if (!pending.save && (await this.showsWizardAfterRemote())) {
+      this.modalService.openWizard({ remoteName: pending.remoteData.name });
     }
     return true;
   }
 
-  /** The setup guide follows a new remote unless the settings turn that off. */
-  private async showsGuideAfterRemote(): Promise<boolean> {
+  /** The setup wizard follows a new remote unless the settings turn that off. */
+  private async showsWizardAfterRemote(): Promise<boolean> {
     const setting = await this.appSettingsService
       .getSettingValue<boolean>('wizard.after_remote')
       .catch(() => true);

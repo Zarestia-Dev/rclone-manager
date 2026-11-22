@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JOB_STATUS, JobInfo, QuickRun, QuickRunInput } from '@app/types';
-import { IntentGuideService } from './intent-guide.service';
+import { WizardService } from './wizard.service';
 import { QuickRunService } from './quick-run.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { NotificationService } from '../ui/notification.service';
@@ -19,11 +19,12 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
-import { OpenerService } from '../infrastructure/platform/opener.service';
+import { FileSystemService } from '../operations/file-system.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
-import { resolvePlan } from 'src/app/shared/utils/intent-guide.util';
+import { resolvePlan } from 'src/app/shared/utils/wizard.util';
 
 const input = (rclone: Record<string, unknown> = {}): QuickRunInput => ({
   name: 'Drive backup',
@@ -41,8 +42,8 @@ const job = (status: JobInfo['status'], stats: Partial<JobInfo['stats']> = {}): 
     stats: { transfers: 0, bytes: 0, deletes: 0, errors: 0, lastError: '', ...stats },
   }) as unknown as JobInfo;
 
-describe('IntentGuideService', () => {
-  let service: IntentGuideService;
+describe('WizardService', () => {
+  let service: WizardService;
   const jobs = signal<JobInfo[]>([]);
   const save = vi.fn();
   const start = vi.fn();
@@ -60,6 +61,11 @@ describe('IntentGuideService', () => {
   const servesOf = vi.fn();
   const stopJob = vi.fn();
   const getJobReport = vi.fn();
+  const openInFiles = vi.fn();
+  const canSelectDriveLetter = vi.fn();
+  const selectFolder = vi.fn();
+  const defaultDriveLetter = vi.fn();
+  const resolveDefaultPath = vi.fn();
   const saveSetting = vi.fn();
   const getSettingValue = vi.fn();
   const getLocalDiskUsage = vi.fn();
@@ -128,7 +134,7 @@ describe('IntentGuideService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        IntentGuideService,
+        WizardService,
         { provide: ApiClientService, useValue: { invoke } },
         { provide: RemoteFacadeService, useValue: { startJob: facadeStart, stopJob: facadeStop } },
         { provide: NotificationService, useValue: { showError: vi.fn() } },
@@ -193,12 +199,16 @@ describe('IntentGuideService', () => {
         },
         {
           provide: PathInspectionService,
-          useValue: { createRequiredDirectoriesForOperation: createDirs },
+          useValue: { createRequiredDirectoriesForOperation: createDirs, resolveDefaultPath },
         },
-        { provide: OpenerService, useValue: { openPath: vi.fn() } },
+        {
+          provide: FileSystemService,
+          useValue: { openInFiles, canSelectDriveLetter, selectFolder },
+        },
+        { provide: WindowsMountTargetService, useValue: { defaultDriveLetter } },
       ],
     });
-    service = TestBed.inject(IntentGuideService);
+    service = TestBed.inject(WizardService);
   });
 
   describe('loadEnvironment', () => {
@@ -350,6 +360,37 @@ describe('IntentGuideService', () => {
       expect(remove).toHaveBeenCalledWith('tmp');
     });
 
+    it('fails and removes the dry run when its job leaves the list before it stopped', async () => {
+      save.mockResolvedValue({ id: 'tmp' });
+      start.mockResolvedValue({ executeId: 'exec-1' });
+      jobs.set([job(JOB_STATUS.Running)]);
+      const pending = service.preview(input(), 'p');
+      const outcome = expect(pending).rejects.toThrow('left the list');
+      // Let it save, start and begin to watch the list before the job is seen and then lost.
+      await new Promise(resolve => setTimeout(resolve));
+      TestBed.tick();
+      await new Promise(resolve => setTimeout(resolve));
+      jobs.set([]);
+      TestBed.tick();
+      await outcome;
+      expect(remove).toHaveBeenCalledWith('tmp');
+    });
+
+    it('fails and removes the dry run when its job never shows up', async () => {
+      vi.useFakeTimers();
+      try {
+        save.mockResolvedValue({ id: 'tmp' });
+        start.mockResolvedValue({ executeId: 'exec-1' });
+        jobs.set([]);
+        const outcome = expect(service.preview(input(), 'p')).rejects.toThrow();
+        await vi.advanceTimersByTimeAsync(31_000);
+        await outcome;
+        expect(remove).toHaveBeenCalledWith('tmp');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('gives up quietly when it cannot be saved or started', async () => {
       save.mockResolvedValue(null);
       expect(await service.preview(input(), 'p')).toBeNull();
@@ -410,6 +451,26 @@ describe('IntentGuideService', () => {
 
       expect(result?.firstRunDone).toBe(false);
       expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps resync when the job of the first two-way run is lost', async () => {
+      vi.useFakeTimers();
+      try {
+        const plan = resolvePlan('devices', {});
+        if (!plan) throw new Error('no plan');
+        save.mockResolvedValue(saved({ resync: true }));
+        start.mockResolvedValue({ executeId: 'exec-1' });
+        jobs.set([]);
+
+        const pending = service.apply(input({ resync: true }), plan);
+        await vi.advanceTimersByTimeAsync(31_000);
+        const result = await pending;
+
+        expect(result?.firstRunDone).toBe(false);
+        expect(save).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('turns on start with the system when asked', async () => {
@@ -581,7 +642,7 @@ describe('IntentGuideService', () => {
       expect((await service.settings()).destination).toBe('profile');
     });
 
-    it('uses the destination the setting names and reads whether the guide follows a new cloud', async () => {
+    it('uses the destination the setting names and reads whether the wizard follows a new cloud', async () => {
       answer({
         'wizard.after_remote': false,
         'wizard.destination': 'quick_run',
@@ -613,6 +674,83 @@ describe('IntentGuideService', () => {
       expect(await service.resolveDestination('auto')).toBe('quick_run');
       expect(await service.resolveDestination('profile')).toBe('profile');
     });
+  });
+
+  it('opens a folder through the file system service the whole app uses', async () => {
+    openInFiles.mockResolvedValue(undefined);
+    await service.openFolder('/home/me/drive');
+    expect(openInFiles).toHaveBeenCalledWith('/home/me/drive');
+  });
+
+  describe('where a mount goes by default', () => {
+    beforeEach(() => {
+      defaultDriveLetter.mockReset().mockResolvedValue(null);
+      resolveDefaultPath.mockReset().mockResolvedValue('/home/me/drive');
+    });
+
+    it('is a free drive letter on Windows', async () => {
+      defaultDriveLetter.mockResolvedValue('Z:');
+      expect(await service.defaultLocalPath('drive', 'mount')).toBe('Z:');
+      expect(defaultDriveLetter).toHaveBeenCalledWith('drive');
+      expect(resolveDefaultPath).not.toHaveBeenCalled();
+    });
+
+    it('is the folder of the settings where no letter can be chosen or none is left', async () => {
+      expect(await service.defaultLocalPath('drive', 'mount')).toBe('/home/me/drive');
+      expect(resolveDefaultPath).toHaveBeenCalledWith('drive', 'mount');
+    });
+
+    it('is always a folder for a two-way copy', async () => {
+      defaultDriveLetter.mockResolvedValue('Z:');
+      expect(await service.defaultLocalPath('drive', 'bisync')).toBe('/home/me/drive');
+      expect(defaultDriveLetter).not.toHaveBeenCalled();
+    });
+
+    it('is empty when nothing can be worked out', async () => {
+      resolveDefaultPath.mockRejectedValue(new Error('offline'));
+      expect(await service.defaultLocalPath('drive', 'mount')).toBe('');
+    });
+  });
+
+  describe('the profile it would save', () => {
+    it('is planned against the profiles the remote has, so its name is free, and saves nothing', async () => {
+      getRemoteSettings.mockResolvedValue({
+        drive: { copyConfigs: { 'Drive backup': { app: {}, rclone: {} } } },
+      });
+      const input = {
+        name: 'Drive backup',
+        operationType: 'copy',
+        remoteName: 'drive',
+        config: { app: {}, rclone: { srcFs: '/a', dstFs: 'drive:a' } },
+      } as never;
+      const plan = await service.planProfile(input);
+      expect(plan?.name).toBe('Drive backup-2');
+      expect(Object.keys(plan?.settings['copyConfigs'] ?? {})).toEqual([
+        'Drive backup',
+        'Drive backup-2',
+      ]);
+      expect(saveRemoteSettings).not.toHaveBeenCalled();
+    });
+
+    it('is nothing for an operation without profiles', async () => {
+      getRemoteSettings.mockResolvedValue({});
+      expect(
+        await service.planProfile({
+          name: 'n',
+          operationType: 'nothing',
+          remoteName: 'drive',
+          config: { app: {}, rclone: {} },
+        } as never)
+      ).toBeNull();
+    });
+  });
+
+  it('says whether a mount can go to a drive letter', async () => {
+    getSettingValue.mockResolvedValue(false);
+    canSelectDriveLetter.mockReturnValue(true);
+    expect((await service.loadEnvironment()).canUseDriveLetter).toBe(true);
+    canSelectDriveLetter.mockReturnValue(false);
+    expect((await service.loadEnvironment()).canUseDriveLetter).toBe(false);
   });
 
   describe('ports', () => {
@@ -742,46 +880,6 @@ describe('IntentGuideService', () => {
     });
   });
 
-  describe('starting and stopping a setup', () => {
-    const quickRun = {
-      key: 'quick_run:a',
-      kind: 'quick_run',
-      id: 'a',
-      name: 'Backup',
-      remoteName: 'drive',
-      operationType: 'copy',
-    } as never;
-    const profile = {
-      key: 'profile:drive:mount:Folder',
-      kind: 'profile',
-      name: 'Folder',
-      remoteName: 'drive',
-      operationType: 'mount',
-    } as never;
-
-    it('runs and stops a Quick Run through its own service', async () => {
-      await service.startSetup(quickRun);
-      expect(start).toHaveBeenCalledWith('a');
-      await service.stopSetup(quickRun);
-      expect(stop).toHaveBeenCalledWith('a');
-      expect(facadeStart).not.toHaveBeenCalled();
-      expect(facadeStop).not.toHaveBeenCalled();
-    });
-
-    it('runs and stops a profile the way the remote page does', async () => {
-      await service.startSetup(profile);
-      expect(facadeStart).toHaveBeenCalledWith('drive', 'mount', 'Folder');
-      await service.stopSetup(profile);
-      expect(facadeStop).toHaveBeenCalledWith('drive', 'mount', undefined, 'Folder');
-      expect(start).not.toHaveBeenCalled();
-    });
-
-    it('lets a failure reach the caller', async () => {
-      facadeStart.mockRejectedValue(new Error('no profile'));
-      await expect(service.startSetup(profile)).rejects.toThrow('no profile');
-    });
-  });
-
   describe('setups', () => {
     const qr = (id: string, rclone: Record<string, unknown>, op = 'copy'): unknown => ({
       id,
@@ -815,74 +913,6 @@ describe('IntentGuideService', () => {
         'quick_run:c',
         'profile:drive:mount:Folder',
       ]);
-    });
-
-    describe('status', () => {
-      const setup = {
-        key: 'quick_run:a',
-        kind: 'quick_run',
-        id: 'a',
-        name: 'Setup a',
-        remoteName: 'drive',
-      } as never;
-      const runJob = (status: JobInfo['status'], start: string, id = 'a'): JobInfo =>
-        ({
-          ...job(status),
-          start_time: start,
-          end_time: status === JOB_STATUS.Running ? undefined : start,
-          starter: { kind: 'quick_run', id, name: 'n' },
-        }) as JobInfo;
-
-      it('has not run yet without a job', () => {
-        expect(service.setupStatus(setup)).toEqual({ state: 'idle' });
-      });
-
-      it('tells how the newest job ended', () => {
-        jobs.set([
-          runJob(JOB_STATUS.Failed, '2026-11-01T10:00:00Z'),
-          runJob(JOB_STATUS.Completed, '2026-11-02T10:00:00Z'),
-          runJob(JOB_STATUS.Failed, '2026-11-03T10:00:00Z', 'other'),
-        ]);
-        expect(service.setupStatus(setup)).toEqual({ state: 'ok', at: '2026-11-02T10:00:00Z' });
-        jobs.set([{ ...runJob(JOB_STATUS.Failed, '2026-11-03T10:00:00Z'), error: ' no space ' }]);
-        expect(service.setupStatus(setup)).toEqual({
-          state: 'failed',
-          at: '2026-11-03T10:00:00Z',
-          error: 'no space',
-        });
-        jobs.set([runJob(JOB_STATUS.Stopped, '2026-11-03T10:00:00Z')]);
-        expect(service.setupStatus(setup).state).toBe('stopped');
-      });
-
-      it('is running while a job, a mount or a share of it is up', () => {
-        jobs.set([runJob(JOB_STATUS.Running, '2026-11-03T10:00:00Z')]);
-        expect(service.setupStatus(setup)).toEqual({ state: 'running' });
-        jobs.set([]);
-        mountedRemotes.set([{ starter: { kind: 'quick_run', id: 'a', name: 'n' } }]);
-        expect(service.setupStatus(setup).state).toBe('running');
-        mountedRemotes.set([]);
-        runningServes.set([{ starter: { kind: 'quick_run', id: 'a', name: 'n' } }]);
-        expect(service.setupStatus(setup).state).toBe('running');
-      });
-
-      it('matches a profile by its name on its own remote', () => {
-        const profile = {
-          key: 'profile:drive:copy:Daily',
-          kind: 'profile',
-          name: 'Daily',
-          remoteName: 'drive',
-        } as never;
-        const profileJob = (remote: string): JobInfo =>
-          ({
-            ...job(JOB_STATUS.Completed),
-            remote_name: remote,
-            starter: { kind: 'profile', name: 'Daily' },
-          }) as JobInfo;
-        jobs.set([profileJob('box')]);
-        expect(service.setupStatus(profile).state).toBe('idle');
-        jobs.set([profileJob('drive')]);
-        expect(service.setupStatus(profile).state).toBe('ok');
-      });
     });
   });
 

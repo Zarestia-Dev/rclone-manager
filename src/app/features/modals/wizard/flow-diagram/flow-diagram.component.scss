@@ -1,0 +1,264 @@
+:host {
+  --tile: 72px;
+
+  display: grid;
+  grid-template-columns: var(--tile) minmax(96px, 300px) var(--tile);
+  align-items: start;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-2xl) var(--space-md);
+  background: rgba(var(--tone-rgb), 0.06);
+  border-radius: var(--radius-md);
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  align-items: center;
+  text-align: center;
+
+  strong,
+  .text {
+    width: max-content;
+    max-width: 190px;
+  }
+
+  strong {
+    margin-top: var(--space-xs);
+    font-weight: 500;
+  }
+
+  // A place's name or its folder: plain words. Only a real path on this device is set in mono.
+  .text {
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+
+    &.path {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+    }
+  }
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  width: var(--tile);
+  height: var(--tile);
+  color: var(--dim-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+
+  mat-icon {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+// The line runs from tile to tile; the label sits above it.
+.arrow {
+  position: relative;
+  height: var(--tile);
+
+  .label {
+    position: absolute;
+    inset: auto auto calc(50% + var(--space-md)) 50%;
+    transform: translateX(-50%);
+  }
+
+  &[data-dir="both"] .label {
+    bottom: calc(50% + var(--space-lg));
+  }
+}
+
+svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+
+  path {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .track {
+    stroke: rgba(var(--tone-rgb), 0.35);
+  }
+
+  .head {
+    stroke: var(--tone);
+  }
+
+  .packet,
+  .hub {
+    fill: var(--tone);
+  }
+
+  .ring {
+    fill: none;
+    stroke: var(--tone);
+    stroke-width: 1.5;
+  }
+
+  .pulse {
+    stroke: rgba(var(--tone-rgb), 0.6);
+  }
+}
+
+// The motion is a hint, not a loop: it plays a few times and stops, which is easier on the
+// battery and on the eyes. Only transform and opacity move.
+.packet,
+.ring,
+.pulse {
+  animation-duration: 1.8s;
+  animation-iteration-count: 4;
+  animation-timing-function: ease-in-out;
+}
+
+.packet {
+  opacity: 0;
+  animation-name: travel-right;
+
+  &.left {
+    animation-name: travel-left;
+  }
+
+  &.late {
+    animation-delay: 0.9s;
+  }
+
+  &.there-and-back {
+    animation-name: there-and-back;
+    animation-duration: 3.2s;
+    opacity: 1;
+  }
+}
+
+.ring {
+  transform: scale(0.2);
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation-name: spread;
+  animation-duration: 2.4s;
+
+  &.late {
+    animation-delay: 1.2s;
+  }
+}
+
+.pulse {
+  animation-name: breathe;
+}
+
+@keyframes travel-right {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  15%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(274px);
+  }
+}
+
+@keyframes travel-left {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  15%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-274px);
+  }
+}
+
+@keyframes there-and-back {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+
+  50%,
+  62% {
+    transform: translateX(268px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes spread {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .packet,
+  .ring,
+  .pulse {
+    animation: none;
+  }
+
+  // The line and its head say the direction alone.
+  .packet:not(.there-and-back),
+  .ring {
+    display: none;
+  }
+}
+
+@media (max-width: 450px) {
+  :host {
+    --tile: 56px;
+
+    grid-template-columns: var(--tile) minmax(96px, 1fr) var(--tile);
+  }
+
+  // The picture is an illustration, not the headline: it does not take a fifth of the screen.
+  :host {
+    padding-block: var(--space-lg) var(--space-md);
+  }
+
+  .node {
+    strong,
+    .text {
+      max-width: 120px;
+    }
+  }
+}

@@ -1,0 +1,25 @@
+.where-title {
+  font-weight: 600;
+}
+
+.where-desc {
+  color: var(--dim-color);
+  font-weight: 400;
+}
+
+.folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+
+  .app-pill {
+    white-space: normal;
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-sm);
+}

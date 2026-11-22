@@ -77,9 +77,10 @@ const INSPECTION_TONES: Readonly<Record<PathInspectionStatus['state'], PillTone>
     CdkOverlayAutoposDirective,
   ],
   templateUrl: './path-field.component.html',
+  // The shared row first: the container rules of this component's own file must come after it.
   styleUrls: [
-    './path-field.component.scss',
     '../../remote-config/app-operation-config/operation-path-row.scss',
+    './path-field.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -126,6 +127,11 @@ export class PathFieldComponent {
   /** The Quick Run being edited, so that its own folders do not count as taken. */
   readonly quickRunId = input<string | null>(null);
   readonly removable = input(false);
+  /**
+   * The field sits in a `.path-list` that is the card and groups several rows. Alone, the field is
+   * the card: it takes the same `.path-list` surface from the shared row styles.
+   */
+  readonly inList = input(false);
 
   /** The user changed the field, for a form that tracks `dirty`. */
   readonly dirty = output<void>();

@@ -184,4 +184,40 @@ describe('WindowsMountTargetService', () => {
     await service.getDriveOptions('office', 'Main', undefined, 'W:');
     expect(refreshMounts).not.toHaveBeenCalled();
   });
+
+  describe('the default letter', () => {
+    it('is the highest free letter that no saved profile keeps', async () => {
+      // Z is not free, Y is kept by a saved profile, X is mounted by another profile: W is next.
+      expect(await service.defaultDriveLetter('office')).toBe('W:');
+    });
+
+    it('moves on when the letter is taken by a Quick Run too', async () => {
+      quickRuns = [
+        {
+          id: 'qr',
+          name: 'n',
+          remoteName: 'office',
+          operationType: 'mount',
+          config: { app: {}, rclone: { fs: 'office:', mountPoint: 'W:' } },
+        } as unknown as QuickRun,
+      ];
+      expect(await service.defaultDriveLetter('office')).toBe('V:');
+    });
+
+    it('is null when no letter is left, so the caller falls back to a folder', async () => {
+      physicalFree.mockResolvedValue([]);
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+    });
+
+    it('is null where letters cannot be chosen', async () => {
+      vi.spyOn(TestBed.inject(FileSystemService), 'canSelectDriveLetter').mockReturnValue(false);
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+      expect(physicalFree).not.toHaveBeenCalled();
+    });
+
+    it('is null when the letters cannot be read', async () => {
+      physicalFree.mockRejectedValue(new Error('offline'));
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+    });
+  });
 });

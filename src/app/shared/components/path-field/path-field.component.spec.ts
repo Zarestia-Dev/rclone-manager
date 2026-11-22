@@ -427,6 +427,19 @@ describe('PathFieldComponent', () => {
     });
   });
 
+  describe('the card', () => {
+    it('is drawn by the field when it stands alone', () => {
+      create(group('local', '/home/me'), { lock: 'local' });
+      expect(fixture.nativeElement.querySelector('.path-row-wrapper.path-list')).not.toBeNull();
+    });
+
+    it('is left to the list when the field sits in one', () => {
+      create(group('local', '/home/me'), { lock: 'local', inList: true });
+      expect(fixture.nativeElement.querySelector('.path-row-wrapper')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('.path-list')).toBeNull();
+    });
+  });
+
   it('offers to remove the path when it can be removed', () => {
     create(group('local', '/a'), { removable: true });
     const removed = vi.fn();

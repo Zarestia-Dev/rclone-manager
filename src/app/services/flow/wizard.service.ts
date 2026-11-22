@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { filter, firstValueFrom, map, timeout } from 'rxjs';
+import { filter, firstValueFrom, map, skipWhile, timeout } from 'rxjs';
 import {
   BATCH_OP_LABELS,
   JOB_STATUS,
@@ -13,17 +13,16 @@ import {
   RepairSheetType,
   SyncOperationType,
 } from '@app/types';
-import { HasStarter, profileOf, quickRunIdOf } from 'src/app/shared/types/starter';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isAndroid } from '../infrastructure/platform/api-client.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
-import { OpenerService } from '../infrastructure/platform/opener.service';
 import { SystemInfoService } from '../infrastructure/system/system-info.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { SystemHealthService } from '../infrastructure/maintenance/system-health.service';
 import { AppSettingsService } from '../settings/app-settings.service';
-import { RemoteFacadeService } from '../facade/remote-facade.service';
+import { FileSystemService } from '../operations/file-system.service';
+import { WindowsMountTargetService } from '../operations/windows-mount-target.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
 import { RemoteDiskUsageService } from '../remote/remote-disk-usage.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
@@ -35,12 +34,13 @@ import { QuickRunService } from './quick-run.service';
 import { FILE_REPORT_OPERATIONS } from 'src/app/shared/utils/job-report.util';
 import {
   ExistingSetup,
-  GUIDE_OPERATIONS,
-  GuideDestination,
-  GuideDestinationSetting,
-  GuideNetwork,
-  GuidePlan,
-  GuidePresets,
+  WIZARD_OPERATIONS,
+  WizardDestination,
+  WizardDestinationSetting,
+  WizardNetwork,
+  WizardPlan,
+  WizardPresets,
+  WizardProfileSave,
   PreviewResult,
   asDryRun,
   buildPlanProfile,
@@ -49,16 +49,16 @@ import {
   isLoopbackHost,
   resolveDestination,
   withoutResync,
-} from 'src/app/shared/utils/intent-guide.util';
+} from 'src/app/shared/utils/wizard.util';
 
-export interface GuideRemote {
+export interface WizardRemote {
   readonly name: string;
   readonly type: string;
 }
 
-/** Where the guide runs, which decides the words it uses and the options it offers. */
-export interface GuideEnvironment {
-  readonly remotes: readonly GuideRemote[];
+/** Where the wizard runs, which decides the words it uses and the options it offers. */
+export interface WizardEnvironment {
+  readonly remotes: readonly WizardRemote[];
   /** Home folder of the machine rclone runs on, when rclone reports one. */
   readonly home?: string;
   readonly homeFree?: number;
@@ -67,66 +67,62 @@ export interface GuideEnvironment {
   readonly isAndroid: boolean;
   /** Mounting needs FUSE (or WinFsp), which is not installed. */
   readonly mountPluginMissing: boolean;
+  /** A mount can go to a drive letter (Windows with a local rclone). */
+  readonly canUseDriveLetter: boolean;
   /** "Start with the computer" exists on this build. */
   readonly canStartOnLogin: boolean;
   readonly startsOnLogin: boolean;
 }
 
-/** What the guide learns from starting what it saved. */
-export interface GuideExecution {
+/** What the wizard learns from starting what it saved. */
+export interface WizardExecution {
   readonly executeId?: string;
   readonly serveAddr?: string;
   readonly mountPoint?: string;
 }
 
-export interface GuideSettings {
-  /** Opens the guide when a new cloud has been added. */
+export interface WizardSettings {
+  /** Opens the wizard when a new cloud has been added. */
   readonly afterRemote: boolean;
   /** What the settings say; `auto` follows the startup view. */
-  readonly setting: GuideDestinationSetting;
-  /** Where that puts what the guide sets up. */
-  readonly destination: GuideDestination;
+  readonly setting: WizardDestinationSetting;
+  /** Where that puts what the wizard sets up. */
+  readonly destination: WizardDestination;
 }
 
 /** What tells one setup from another when asking how it is doing. */
 export type SetupIdentity = Pick<ExistingSetup, 'kind' | 'id' | 'name' | 'remoteName'>;
 
-/** How a setup is doing now: running, or how its last run ended. */
-export interface GuideSetupStatus {
-  readonly state: 'running' | 'ok' | 'failed' | 'stopped' | 'idle';
-  /** When the last run ended (RFC 3339). */
-  readonly at?: string;
-  /** Why the last run failed, as rclone reported it. */
-  readonly error?: string;
-}
-
 /** What it takes to take a setup back: its name, and for a Quick Run its id. */
-export interface GuideSetupRef {
+export interface WizardSetupRef {
   readonly name: string;
-  readonly destination?: GuideDestination;
+  readonly destination?: WizardDestination;
   readonly quickRun?: { readonly id: string };
-  readonly execution?: GuideExecution | null;
+  readonly execution?: WizardExecution | null;
 }
 
-export interface GuideApplyResult {
-  readonly destination: GuideDestination;
+export interface WizardApplyResult {
+  readonly destination: WizardDestination;
   /** The name of the Quick Run or of the profile that was saved. */
   readonly name: string;
   readonly quickRun?: QuickRun;
-  readonly execution: GuideExecution | null;
+  readonly execution: WizardExecution | null;
   /** The first two-way run finished and the next runs no longer rebuild the listings. */
   readonly firstRunDone?: boolean;
 }
 
 const ORIGIN = 'quickrun';
+
+/** A job that was started shows up in the list within this long, or it is taken as lost. */
+const JOB_APPEARS_WITHIN_MS = 30_000;
 const HOME_LABEL = 'titlebar.home';
 
 /**
- * Real data and actions behind the "What do you want to do?" guide. Everything it shows comes
+ * Real data and actions behind the "What do you want to do?" wizard. Everything it shows comes
  * from rclone or the system; nothing is estimated.
  */
 @Injectable({ providedIn: 'root' })
-export class IntentGuideService extends TauriBaseService {
+export class WizardService extends TauriBaseService {
   private readonly injector = inject(Injector);
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly diskUsage = inject(RemoteDiskUsageService);
@@ -138,14 +134,14 @@ export class IntentGuideService extends TauriBaseService {
   private readonly appSettings = inject(AppSettingsService);
   private readonly paths = inject(PathService);
   private readonly pathInspection = inject(PathInspectionService);
-  private readonly opener = inject(OpenerService);
+  private readonly fileSystem = inject(FileSystemService);
+  private readonly windowsMountTarget = inject(WindowsMountTargetService);
   private readonly quickRuns = inject(QuickRunService);
   private readonly jobs = inject(JobManagementService);
   private readonly mounts = inject(MountManagementService);
   private readonly serves = inject(ServeManagementService);
-  private readonly facade = inject(RemoteFacadeService);
 
-  async loadEnvironment(): Promise<GuideEnvironment> {
+  async loadEnvironment(): Promise<WizardEnvironment> {
     const [configs, drives, startOnLogin] = await Promise.all([
       this.remoteManagement.getAllRemoteConfigs(),
       this.remoteManagement.getLocalDrives().catch((): LocalDrive[] => []),
@@ -169,6 +165,7 @@ export class IntentGuideService extends TauriBaseService {
         !android &&
         !this.systemHealth.skipMountPluginCheck() &&
         this.systemHealth.mountPluginInstalled() === false,
+      canUseDriveLetter: this.fileSystem.canSelectDriveLetter(),
       canStartOnLogin: startOnLogin !== undefined,
       startsOnLogin: startOnLogin === true,
     };
@@ -218,7 +215,7 @@ export class IntentGuideService extends TauriBaseService {
       const { free } = await this.systemInfo.getLocalDiskUsage(dir);
       if (typeof free === 'number') return free;
     } catch (error) {
-      console.error('[IntentGuide] No free space for', dir, { about: aboutError, du: error });
+      console.error('[Wizard] No free space for', dir, { about: aboutError, du: error });
     }
     return undefined;
   }
@@ -255,9 +252,16 @@ export class IntentGuideService extends TauriBaseService {
     }
   }
 
-  /** The folder the app's settings choose for a new mount or two-way copy of this remote. */
+  /**
+   * Where a new mount or two-way copy of this remote goes by default: a free drive letter for a
+   * mount on Windows, otherwise the folder the app's settings choose.
+   */
   async defaultLocalPath(remoteName: string, kind: 'mount' | 'bisync'): Promise<string> {
     try {
+      if (kind === 'mount') {
+        const letter = await this.windowsMountTarget.defaultDriveLetter(remoteName);
+        if (letter) return letter;
+      }
       return await this.pathInspection.resolveDefaultPath(remoteName, kind);
     } catch {
       return '';
@@ -270,7 +274,7 @@ export class IntentGuideService extends TauriBaseService {
    * address the app connects to it with, unless that one only works from this machine (an SSH
    * tunnel to `localhost`).
    */
-  async network(): Promise<GuideNetwork | null> {
+  async network(): Promise<WizardNetwork | null> {
     if (!this.backend.isLocalBackend()) {
       const active = this.backend.backends().find(b => b.name === this.backend.activeBackend());
       const host = active?.host.trim();
@@ -280,7 +284,7 @@ export class IntentGuideService extends TauriBaseService {
       const { hostName, addresses } = await this.systemInfo.getLocalAddresses();
       return { hostName, addresses };
     } catch (error) {
-      console.debug('[IntentGuide] No network addresses:', error);
+      console.debug('[Wizard] No network addresses:', error);
       return null;
     }
   }
@@ -309,7 +313,7 @@ export class IntentGuideService extends TauriBaseService {
   }
 
   /** Presets a new remote of this type gets on this system: VFS cache, mount type and options. */
-  presets(remoteType: string): GuidePresets {
+  presets(remoteType: string): WizardPresets {
     const { vfs, mount } = this.presetsService.resolvePresets(remoteType);
     return { vfs, mount };
   }
@@ -345,8 +349,8 @@ export class IntentGuideService extends TauriBaseService {
     }
   }
 
-  /** The guide's own settings, and where they say it keeps what it sets up. */
-  async settings(): Promise<GuideSettings> {
+  /** The wizard's own settings, and where they say it keeps what it sets up. */
+  async settings(): Promise<WizardSettings> {
     const [afterRemote, destination, defaultView] = await Promise.all([
       this.appSettings.getSettingValue<boolean>('wizard.after_remote'),
       this.appSettings.getSettingValue<string>('wizard.destination'),
@@ -361,7 +365,7 @@ export class IntentGuideService extends TauriBaseService {
   }
 
   /** `auto` becomes the destination the startup view asks for. */
-  async resolveDestination(setting: GuideDestinationSetting): Promise<GuideDestination> {
+  async resolveDestination(setting: WizardDestinationSetting): Promise<WizardDestination> {
     const defaultView = await this.appSettings
       .getSettingValue<string>('general.default_view')
       .catch(() => undefined);
@@ -372,7 +376,7 @@ export class IntentGuideService extends TauriBaseService {
     return this.appSettings.saveSetting('wizard', 'after_remote', value);
   }
 
-  saveDestination(setting: GuideDestinationSetting): Promise<void> {
+  saveDestination(setting: WizardDestinationSetting): Promise<void> {
     return this.appSettings.saveSetting('wizard', 'destination', setting);
   }
 
@@ -383,16 +387,16 @@ export class IntentGuideService extends TauriBaseService {
    */
   async apply(
     input: QuickRunInput,
-    guidePlan: GuidePlan,
+    wizardPlan: WizardPlan,
     options: {
-      destination?: GuideDestination;
+      destination?: WizardDestination;
       startOnLogin?: boolean;
       onStarted?: (executeId: string) => void;
     } = {}
-  ): Promise<GuideApplyResult | null> {
+  ): Promise<WizardApplyResult | null> {
     await this.pathInspection
       .createRequiredDirectoriesForOperation(input.operationType, input.config.rclone)
-      .catch(error => console.warn('[IntentGuide] Could not prepare the folders:', error));
+      .catch(error => console.warn('[Wizard] Could not prepare the folders:', error));
 
     const result =
       options.destination === 'profile'
@@ -403,15 +407,14 @@ export class IntentGuideService extends TauriBaseService {
     if (options.startOnLogin) {
       await this.appSettings
         .saveSetting('general', 'start_on_startup', true)
-        .catch(error =>
-          console.warn('[IntentGuide] Could not turn on start with the system:', error)
-        );
+        .catch(error => console.warn('[Wizard] Could not turn on start with the system:', error));
     }
 
     const executeId = result.execution?.executeId;
-    if (!executeId || !guidePlan.firstRunResync) return result;
-    const job = await this.waitForJob(executeId);
-    if (job.status !== JOB_STATUS.Completed) return { ...result, firstRunDone: false };
+    if (!executeId || !wizardPlan.firstRunResync) return result;
+    // A job that is lost counts as a first run that did not finish.
+    const job = await this.waitForJob(executeId).catch(() => undefined);
+    if (job?.status !== JOB_STATUS.Completed) return { ...result, firstRunDone: false };
     await this.keepWithoutResync(input, result);
     return { ...result, firstRunDone: true };
   }
@@ -419,12 +422,20 @@ export class IntentGuideService extends TauriBaseService {
   private async startQuickRun(
     input: QuickRunInput,
     onStarted?: (executeId: string) => void
-  ): Promise<GuideApplyResult | null> {
+  ): Promise<WizardApplyResult | null> {
     const quickRun = await this.quickRuns.save(input);
     if (!quickRun) return null;
     const execution = await this.quickRuns.start(quickRun.id);
     if (execution?.executeId) onStarted?.(execution.executeId);
     return { destination: 'quick_run', name: quickRun.name, quickRun, execution };
+  }
+
+  /**
+   * The profile the wizard would save for this operation, against the profiles the remote has now
+   * (so that its name is free), without saving it. Null for an operation with no profiles.
+   */
+  async planProfile(input: QuickRunInput): Promise<WizardProfileSave | null> {
+    return buildPlanProfile(input, await this.remoteSettings(input.remoteName));
   }
 
   /** The remote's settings as the settings file holds them now. */
@@ -436,13 +447,13 @@ export class IntentGuideService extends TauriBaseService {
   private async startProfile(
     input: QuickRunInput,
     onStarted?: (executeId: string) => void
-  ): Promise<GuideApplyResult | null> {
+  ): Promise<WizardApplyResult | null> {
     const { remoteName, operationType } = input;
     const profile = buildPlanProfile(input, await this.remoteSettings(remoteName));
     if (!profile) return null;
     await this.appSettings.saveRemoteSettings(remoteName, profile.settings);
 
-    let execution: GuideExecution;
+    let execution: WizardExecution;
     if (operationType === 'mount') {
       await this.mounts.mountRemoteProfile(remoteName, profile.name, 'dashboard');
       execution = {};
@@ -467,7 +478,7 @@ export class IntentGuideService extends TauriBaseService {
    * profile. The files in the cloud and on this computer are never touched.
    */
   async undo(
-    result: GuideSetupRef,
+    result: WizardSetupRef,
     remoteName: string,
     operationType: PrimaryActionType
   ): Promise<void> {
@@ -495,7 +506,7 @@ export class IntentGuideService extends TauriBaseService {
   }
 
   /** Saves the profile again without the flag that only its first run needs. */
-  private async keepWithoutResync(input: QuickRunInput, result: GuideApplyResult): Promise<void> {
+  private async keepWithoutResync(input: QuickRunInput, result: WizardApplyResult): Promise<void> {
     if (result.quickRun) {
       await this.quickRuns.save({
         id: result.quickRun.id,
@@ -518,7 +529,7 @@ export class IntentGuideService extends TauriBaseService {
   }
 
   /**
-   * Every Quick Run and profile the guide can describe, in its own words. Profiles are read from
+   * Every Quick Run and profile the wizard can describe, in its own words. Profiles are read from
    * the settings of all remotes; the ones it could not have made are left out.
    */
   async loadSetups(remoteNames: readonly string[]): Promise<ExistingSetup[]> {
@@ -542,7 +553,7 @@ export class IntentGuideService extends TauriBaseService {
       if (setup) setups.push(setup);
     }
     for (const [remoteName, settings] of Object.entries(all)) {
-      for (const operationType of GUIDE_OPERATIONS) {
+      for (const operationType of WIZARD_OPERATIONS) {
         const profiles = settings[REMOTE_CONFIG_KEYS[operationType]] as
           Record<string, unknown> | undefined;
         for (const [name, config] of Object.entries(profiles ?? {})) {
@@ -557,57 +568,6 @@ export class IntentGuideService extends TauriBaseService {
     return setups;
   }
 
-  /** Starts a setup the way its own page does: a Quick Run, or a profile of the remote. */
-  async startSetup(setup: ExistingSetup): Promise<void> {
-    if (setup.kind === 'quick_run' && setup.id) {
-      await this.quickRuns.start(setup.id);
-      return;
-    }
-    await this.facade.startJob(
-      setup.remoteName,
-      setup.operationType as SyncOperationType | 'mount' | 'serve',
-      setup.name
-    );
-  }
-
-  /** Stops what a setup runs: its job, its mount or its share. */
-  async stopSetup(setup: ExistingSetup): Promise<void> {
-    if (setup.kind === 'quick_run' && setup.id) {
-      await this.quickRuns.stop(setup.id);
-      return;
-    }
-    await this.facade.stopJob(setup.remoteName, setup.operationType, undefined, setup.name);
-  }
-
-  /**
-   * How a setup is doing, from the jobs, mounts and shares that exist now. A mount or share that is
-   * up counts as running; otherwise the newest job of the setup tells how its last run ended.
-   */
-  setupStatus(setup: SetupIdentity): GuideSetupStatus {
-    const mine = (item: HasStarter): boolean =>
-      setup.kind === 'quick_run' ? quickRunIdOf(item) === setup.id : profileOf(item) === setup.name;
-    const live =
-      this.mounts.mountedRemotes().some(mount => mine(mount)) ||
-      this.serves.runningServes().some(serve => mine(serve));
-    const last = this.jobs
-      .jobs()
-      .filter(
-        job => mine(job) && (setup.kind === 'quick_run' || job.remote_name === setup.remoteName)
-      )
-      .sort((a, b) => Date.parse(b.start_time) - Date.parse(a.start_time))[0];
-    if (live || last?.status === JOB_STATUS.Running) return { state: 'running' };
-    if (!last) return { state: 'idle' };
-    const at = last.end_time ?? last.start_time;
-    switch (last.status) {
-      case JOB_STATUS.Completed:
-        return { state: 'ok', at };
-      case JOB_STATUS.Failed:
-        return { state: 'failed', at, error: last.error?.trim() || undefined };
-      default:
-        return { state: 'stopped', at };
-    }
-  }
-
   /** The live job of an execution, for showing its progress. */
   job(executeId: string): JobInfo | undefined {
     return this.jobs.jobs().find(job => job.execute_id === executeId);
@@ -620,10 +580,14 @@ export class IntentGuideService extends TauriBaseService {
       await this.jobs.stopJob(job.jobid, job.remote_name);
   }
 
-  /** Opens a local folder in the system file manager (desktop app only). */
-  async openFolder(path: string): Promise<void> {
-    if (!this.isTauri) return;
-    await this.opener.openPath(path);
+  /** The system folder picker, for the folder a Windows mount is made in. */
+  pickFolder(initialPath?: string): Promise<string> {
+    return this.fileSystem.selectFolder(false, initialPath);
+  }
+
+  /** Opens a local folder the way the rest of the app does: the system file manager, or our own browser. */
+  openFolder(path: string): Promise<void> {
+    return this.fileSystem.openInFiles(path);
   }
 
   /** The job a profile started, which carries the profile's name as its starter. */
@@ -644,12 +608,22 @@ export class IntentGuideService extends TauriBaseService {
     ).catch(() => undefined);
   }
 
-  /** Resolves once the job of this execution has stopped running. */
+  /**
+   * Resolves once the job of this execution has stopped running. It fails when the job never shows
+   * up in the list or leaves it before it stopped, so that the screen waiting for it does not hang
+   * and the caller's cleanup runs.
+   */
   private waitForJob(executeId: string): Promise<JobInfo> {
     return firstValueFrom(
       toObservable(this.jobs.jobs, { injector: this.injector }).pipe(
         map(list => list.find(job => job.execute_id === executeId)),
-        filter((job): job is JobInfo => !!job && job.status !== JOB_STATUS.Running)
+        skipWhile(job => !job),
+        timeout({ first: JOB_APPEARS_WITHIN_MS }),
+        map(job => {
+          if (!job) throw new Error('The job left the list before it stopped.');
+          return job;
+        }),
+        filter(job => job.status !== JOB_STATUS.Running)
       )
     );
   }

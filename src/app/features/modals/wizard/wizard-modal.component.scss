@@ -1,0 +1,75 @@
+// The frame: the progress bar, the first screen's skeleton and the wait while it saves.
+
+footer {
+  justify-content: space-between;
+}
+
+.wizard-progress {
+  height: 3px;
+  background: var(--bg-elevated-2);
+
+  .wizard-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent-color);
+    transition: var(--transition-standard);
+  }
+}
+
+// The first step's boxes without their content; the shimmer comes from `.animate-shimmer`.
+.wizard-skeleton {
+  .skeleton-box {
+    display: block;
+    flex: none;
+    border-radius: var(--radius-sm);
+  }
+
+  .hello-skeleton {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-md);
+  }
+
+  .choice-skeleton {
+    width: 48px;
+    height: 48px;
+  }
+
+  .skeleton-lines {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .skeleton-title {
+    width: 55%;
+    height: var(--space-md);
+  }
+
+  .skeleton-subtitle {
+    width: 85%;
+    height: var(--space-sm);
+  }
+
+  // Like the featured card of the real step: the first goal spans the whole row.
+  .choice-card {
+    pointer-events: none;
+
+    &:first-child {
+      grid-column: 1 / -1;
+      min-height: 112px;
+    }
+  }
+}
+
+.empty-state mat-progress-bar {
+  width: min(100%, 320px);
+}
+@media (max-width: 450px) {
+  .wizard-skeleton .hello-skeleton {
+    width: 48px;
+    height: 48px;
+  }
+}

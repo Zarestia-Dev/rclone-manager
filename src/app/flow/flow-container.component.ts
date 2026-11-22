@@ -140,9 +140,9 @@ export class FlowContainerComponent {
     this.closeSidebarIfOver();
   }
 
-  /** The "What do you want to do?" guide, the same entry as the main menu's add button. */
-  openGuide(): void {
-    this.modalService.openIntentGuide();
+  /** The "What do you want to do?" wizard, the same entry as the main menu's add button. */
+  openWizard(): void {
+    this.modalService.openWizard();
     this.closeSidebarIfOver();
   }
 

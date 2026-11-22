@@ -68,9 +68,10 @@ interface MountTargetDraft {
     TranslatePipe,
   ],
   templateUrl: './windows-mount-target.component.html',
+  // The shared row first: the container rules of this component's own file must come after it.
   styleUrls: [
-    './windows-mount-target.component.scss',
     '../app-operation-config/operation-path-row.scss',
+    './windows-mount-target.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

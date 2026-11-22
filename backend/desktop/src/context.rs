@@ -1,10 +1,13 @@
 //! Native handles access one shared backend context managed by Tauri.
-use rclone_manager_core::context::{AppHandle as CoreHandle, State};
+use rclone_manager_core::context::AppHandle as CoreHandle;
+#[cfg(not(target_os = "android"))]
+use rclone_manager_core::context::State;
 pub use tauri::{AppHandle, Manager};
 pub trait BackendContext<R: tauri::Runtime>: tauri::Manager<R> {
     fn backend(&self) -> &CoreHandle {
         self.state::<CoreHandle>().inner()
     }
+    #[cfg(not(target_os = "android"))]
     fn backend_state<T: Send + Sync + 'static>(&self) -> State<T> {
         self.backend().state()
     }

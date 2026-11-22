@@ -642,11 +642,11 @@
     },
     "wizard": {
       "after_remote": {
-        "label": "Show the setup guide after adding a cloud",
-        "description": "Opens the “What do you want to do?” guide when you finish adding a new cloud."
+        "label": "Show the setup wizard after adding a cloud",
+        "description": "Opens the “What do you want to do?” wizard when you finish adding a new cloud."
       },
       "destination": {
-        "label": "Where the setup guide keeps its setups",
+        "label": "Where the setup wizard keeps its setups",
         "description": "Automatic follows the default startup view: the main menu keeps a profile on the cloud's page, the other views keep a Quick Run.",
         "options": {
           "auto": "Automatic",
@@ -758,7 +758,7 @@
       "about": "About RClone Manager",
       "quickRemote": "Quick Remote",
       "detailedRemote": "Detailed Remote",
-      "intentGuide": "Wizard"
+      "wizard": "Wizard"
     }
   },
   "onboarding": {
@@ -2903,33 +2903,34 @@
         "clear": "clear"
       }
     },
-    "intentGuide": {
+    "wizard": {
       "title": "What do you want to do?",
       "stepOf": "Step {{current}} of {{total}}",
       "loadFailed": "Could not load your cloud storages.",
       "noRemotes": "Add a cloud storage first, then come back here.",
       "remoteLabel": "Which cloud?",
       "recommended": "Recommended",
-      "measuring": "Measuring sizes…",
       "applyFailed": "It could not be set up. Check the folders and try again.",
       "hello": {
         "created": "{{remote}} is ready! What would you like to do with it?",
         "default": "What would you like to do with your cloud?",
-        "subtitle": "Pick what you want in your own words. We set up the rest, and nothing starts until you say so."
+        "subtitle": "Pick what you want in your own words. We set up the rest, and nothing starts until you say so.",
+        "dontShow": "Don't open this after I add a cloud",
+        "dontShowHint": "Okay. You can turn it back on with the ⚙ button at the top."
       },
       "places": {
-        "computer": "This computer",
-        "phone": "This phone",
+        "thisDevice": "This device",
         "server": "The server",
         "filesApp": "Files app",
         "tv": "TV or player",
         "device": "Phone or computer",
         "browser": "Web browser",
-        "homeNetwork": "Your home network"
+        "homeNetwork": "Your home network",
+        "automaticDrive": "A free drive letter"
       },
       "goals": {
         "access": {
-          "title": "Use my cloud like a folder on this computer",
+          "title": "Use my cloud like a folder on this device",
           "description": "Like a network drive: your files show up in a folder and download when you open them.",
           "descriptionApp": "Like the {{app}} app on Windows: your files show up in a folder and download when you open them.",
           "titlePhone": "See my cloud in the phone's Files app",
@@ -2937,14 +2938,14 @@
         },
         "backup": {
           "title": "Back up my files to the cloud",
-          "description": "Keep a copy of a folder in the cloud, in case something happens to this computer."
+          "description": "Keep a copy of a folder in the cloud, in case something happens to this device."
         },
         "devices": {
-          "title": "Keep a copy on this computer, the same as the cloud",
+          "title": "Keep a copy on this device, the same as the cloud",
           "description": "Works without internet and on several devices: changes go both ways. Great for Obsidian or Logseq notes."
         },
         "download": {
-          "title": "Get my cloud files onto this computer",
+          "title": "Get my cloud files onto this device",
           "description": "Download a folder or everything, once or kept up to date."
         },
         "migrate": {
@@ -2976,13 +2977,6 @@
       },
       "about": {
         "title": "What is the difference?",
-        "goals": {
-          "title": "Which one is for me?",
-          "access": "Cloud as a folder: your files stay in the cloud and only come to this computer when you open them.",
-          "devices": "A copy here: your files are kept on this computer too, so you can use them without internet. Change one place and the other follows.",
-          "backup": "Backup: a safety copy of a folder goes to the cloud. Nothing in your folder changes.",
-          "download": "Get my cloud files: a copy of your cloud files comes to this computer. Nothing in the cloud changes."
-        },
         "deleted": {
           "same": "Either way, new and changed files are copied to the cloud, and your own folder is never touched.",
           "differ": "“Keep it in the cloud”: if you delete a file here, the cloud still has it. “Delete it there too”: the cloud always matches your folder, so a file you delete here disappears from the cloud too."
@@ -2997,12 +2991,13 @@
         },
         "explore": {
           "same": "Either way, nothing is changed.",
-          "differ": "“Look through my files”: your cloud opens in this app so you can look around. “Check a folder against the cloud”: shows which files are different between a folder on this computer and the cloud."
+          "differ": "“Look through my files”: your cloud opens in this app so you can look around. “Check a folder against the cloud”: shows which files are different between a folder on this device and the cloud. “Check one cloud against another”: shows which files are different between two clouds."
         },
         "where": {
           "stream": "This folder is a doorway: your files stay in the cloud, show up here and download when you open them. Pick an empty folder. Anything you put in it is saved to the cloud too.",
           "twoWay": "You can pick a folder you already use. The first run compares it with the cloud and merges both, and nothing is deleted. After that, a change on one side, deleting a file included, shows up on the other.",
-          "mirror": "The cloud folder will become an exact copy of your folder. Files in it that are not in your folder will be deleted. A new or empty cloud folder is the safest choice."
+          "mirror": "The cloud folder will become an exact copy of your folder. Files in it that are not in your folder will be deleted. A new or empty cloud folder is the safest choice.",
+          "streamWindows": "The cloud shows up as a drive in File Explorer, like a USB stick. Your files stay in the cloud and download when you open them. You can also pick a folder instead. Anything you put in it is saved to the cloud too."
         }
       },
       "options": {
@@ -3048,12 +3043,17 @@
           "compare": {
             "title": "Check a folder against the cloud",
             "description": "Like comparing two folders: see which files differ between a folder here and the cloud. Nothing changes."
+          },
+          "compareClouds": {
+            "title": "Check one cloud against another",
+            "description": "Like comparing two folders: see which files differ between two of your clouds. Nothing changes."
           }
         }
       },
       "where": {
         "heading": "Where?",
         "target": "Where should the files go?",
+        "targetCompare": "Which cloud should it be compared with?",
         "noOtherRemote": "Add your new cloud first, then come back here.",
         "shareLogin": "Login for the other device",
         "shareHint": "The phone or computer asks for these when it connects.",
@@ -3065,7 +3065,8 @@
           "download": "files are downloaded here",
           "upload": "which folder should be backed up?",
           "compare": "which folder should be checked?",
-          "devices": "which folder should stay the same?"
+          "devices": "which folder should stay the same?",
+          "streamWindows": "the cloud appears as a drive or a folder"
         },
         "cloud": {
           "stream": "which part of the cloud?",
@@ -3074,7 +3075,8 @@
           "upload": "the backup goes here",
           "cloudToCloud": "what should be copied?",
           "share": "what should be shared?",
-          "compare": "compared with this folder"
+          "compare": "compared with this folder",
+          "cloudCompare": "which folder should be checked?"
         },
         "localPlaceholder": "Choose or type a folder",
         "cloudPlaceholder": "Leave empty for the whole cloud",
@@ -3092,7 +3094,6 @@
       },
       "review": {
         "heading": "Here is what will happen",
-        "technical": "Technical name",
         "advanced": "Open in the full editor",
         "start": "Set up and start",
         "firstRun": "The first run compares both sides and merges them. It can take a while, and nothing is deleted.",
@@ -3114,7 +3115,19 @@
           "share_dlna": "{{cloud}} is shared with the TVs and players on your network.",
           "share_webdav": "{{cloud}} is shared on your network with a password.",
           "share_http": "{{cloud}} is shared on your network as a web page, with a password.",
-          "compare": "{{local}} is compared with {{cloud}}."
+          "compare": "{{local}} is compared with {{cloud}}.",
+          "cloudCompare": "{{cloud}} is compared with {{target}}.",
+          "streamDrive": "{{cloud}} shows up as drive {{local}}.",
+          "streamAutoDrive": "{{cloud}} shows up as a new drive. Windows picks the letter when it connects."
+        },
+        "flow": {
+          "stream": "Opens as you use it",
+          "upload": "Goes to the cloud",
+          "download": "Comes from the cloud",
+          "twoWay": "Kept the same on both sides",
+          "cloudToCloud": "Goes to the other cloud",
+          "share": "Shared on your network",
+          "compare": "Only compared, nothing changes"
         },
         "schedule": {
           "watch": "It runs on its own whenever a file changes.",
@@ -3125,14 +3138,14 @@
         },
         "detailsTitle": "Good to know",
         "destination": {
-          "title": "Keep it as",
           "quickRun": "Quick Run",
           "profile": "Profile in the main menu",
           "hintQuickRun": "Listed under Flow › Quick Runs.",
           "hintProfile": "Listed on the page of “{{remote}}” in the main menu, where you can start and stop it."
         },
         "wholeCloud": "Whole cloud",
-        "duplicate": "You already have a setup that does this: “{{name}}”."
+        "duplicate": "You already have a setup that does this: “{{name}}”.",
+        "duplicateShow": "Open"
       },
       "effects": {
         "streamOpen": "Opening a file downloads it from the cloud.",
@@ -3144,7 +3157,7 @@
         "mirrorDelete": "Files you delete here are deleted from the cloud too.",
         "mirrorExtra": "Files that exist only in the cloud folder are deleted.",
         "downloadNew": "New and changed cloud files are downloaded.",
-        "downloadKeep": "Files deleted in the cloud stay on this computer.",
+        "downloadKeep": "Files deleted in the cloud stay on this device.",
         "downloadLocalChange": "Nothing in the cloud is ever changed.",
         "twoWayChange": "A change on either side is copied to the other.",
         "twoWayDelete": "A file deleted on one side is deleted on the other.",
@@ -3163,11 +3176,11 @@
         "browseNothing": "Nothing changes."
       },
       "advice": {
-        "tooBigForDisk": "This is {{size}}, but this computer has only {{free}} free. It will not fit.",
-        "tightOnDisk": "This is {{size}} and this computer has {{free}} free. It fits, but the disk will be almost full.",
-        "fitsOnDisk": "This is {{size}} and this computer has {{free}} free. It fits comfortably.",
+        "tooBigForDisk": "This is {{size}}, but this device has only {{free}} free. It will not fit.",
+        "tightOnDisk": "This is {{size}} and this device has {{free}} free. It fits, but the disk will be almost full.",
+        "fitsOnDisk": "This is {{size}} and this device has {{free}} free. It fits comfortably.",
         "cloudTooFull": "The folder is {{size}}, but the cloud has only {{free}} free. It will not fit.",
-        "streamSavesSpace": "Your cloud holds {{cloud}} and this computer has {{free}} free, so this is the right choice: only the files you open take up space."
+        "streamSavesSpace": "Your cloud holds {{cloud}} and this device has {{free}} free, so this is the right choice: only the files you open take up space."
       },
       "preview": {
         "title": "See what will happen first",
@@ -3202,25 +3215,19 @@
           "error": "Problems",
           "untouched": "Left alone"
         },
-        "groupHints": {
-          "delete": "These files exist only in the destination, so they will be deleted there.",
-          "add": "These files are new, so they will be copied.",
-          "replace": "These files exist on both sides but differ. The version in the destination will be replaced.",
-          "copy": "These files will be copied.",
-          "error": "These files could not be compared or copied.",
-          "untouched": "These files exist only in the destination. They stay as they are."
-        },
+        "groupCount": "{{label}}: {{count}}",
         "unchanged": {
           "one": "{{count}} file is already the same on both sides",
           "other": "{{count}} files are already the same on both sides"
         },
-        "search": "Search the list",
-        "showMore": "Show more",
-        "noMatches": "No file matches your search.",
         "deleteWarning": "Look through this list before you start: these files will be removed from the destination.",
         "again": "Run the test again",
         "slowNote": "This can take a while, depending on how many files there are. It is not stuck, so please wait.",
-        "elapsed": "Running for {{time}}"
+        "elapsed": "Running for {{time}}",
+        "andMore": {
+          "one": "…and {{count}} more file",
+          "other": "…and {{count}} more files"
+        }
       },
       "working": {
         "saving": "Setting it up…",
@@ -3235,9 +3242,12 @@
         "twoWayReady": "The first sync is done. From now on both sides stay the same.",
         "twoWayFailed": "It is set up, but the first sync did not finish.",
         "started": "It has started. You can follow its progress in the app.",
+        "checkStarted": "The check has started. When it ends, you can see which files differ.",
         "findIt": "You can find it later under Flow › Quick Runs as “{{name}}”.",
         "openFolder": "Open the folder",
         "openCloud": "Show in the file browser",
+        "openRun": "Show progress and result",
+        "openRunHint": "See how it went and which files were involved.",
         "another": "Set up something else",
         "shareWebdav": "Sharing is on. On the phone or computer, connect to one of these addresses:",
         "shareHttp": "Sharing is on. In a browser on the phone or computer, open one of these addresses:",
@@ -3246,16 +3256,15 @@
         "shareUser": "User name",
         "sharePassword": "Password",
         "sharePasswordHint": "The one you chose",
-        "troubleTitle": "If it does not connect",
-        "troubleNetwork": "The phone must be on the same Wi-Fi as this computer.",
-        "troubleNetworkRemote": "The phone must be on a network that can reach {{host}}.",
-        "troubleFirewall": "The firewall of the computer that shares the files must allow port {{port}}.",
         "shareDlna": "Sharing is on. Look for “{{name}}” in the media list of your TV or player.",
-        "noAddress": "Sharing is on. Connect to this computer's network address, port {{port}}.",
+        "noAddress": "Sharing is on. Connect to this device's network address, port {{port}}.",
         "findItProfile": "You can find it later on the page of “{{remote}}” in the main menu as the profile “{{name}}”.",
         "whereQuickRun": "Show in Quick Runs",
         "whereProfile": "Show in the main menu",
-        "failureReason": "What went wrong: {{reason}}"
+        "failureReason": "What went wrong: {{reason}}",
+        "streamDrive": "Your cloud is now drive {{path}}.",
+        "streamAutoDrive": "Your cloud is now a new drive in File Explorer.",
+        "openFilesApp": "Open the Files app"
       },
       "runNames": {
         "access": "{{remote}} folder",
@@ -3282,97 +3291,39 @@
           "description": "It runs by itself each time the app opens.",
           "descriptionMount": "Your cloud connects by itself each time the app opens."
         },
-        "cloudHint": "Watching only sees changes on this computer. Add a schedule too, so changes made in the cloud arrive.",
+        "cloudHint": "Watching only sees changes on this device. Add a schedule too, so changes made in the cloud arrive.",
         "invalidCron": "This schedule is not complete yet. Pick one of the times above."
       },
       "details": {
-        "cache": "Files you open stay on this computer for up to {{age}}, using at most {{size}} of disk.",
+        "cache": "Files you open stay on this device for up to {{age}}, using at most {{size}} of disk.",
         "writeBack": "Changes you make are sent to the cloud after {{time}}.",
         "minFree": "The cache stops growing when less than {{size}} is free on the disk.",
         "address": "Address:",
-        "addressUnknown": "Use this computer's address with the port:",
+        "addressUnknown": "Use this device's address with the port:",
         "addressViaBackend": "This is the address the app connects to that computer with. A phone on another network may not reach it.",
         "port": "Port:",
         "user": "User name:",
-        "readOnly": "Devices can look but not change files.",
-        "canChange": "Devices can also change and delete files.",
         "tvName": "Shown on the TV as:"
       },
       "settings": {
-        "title": "Guide settings",
+        "title": "Wizard settings",
         "subtitle": "These choices are remembered for next time.",
-        "afterRemote": "Show this guide after I add a cloud",
-        "destinationTitle": "Keep what the guide sets up as",
+        "afterRemote": "Show this wizard after I add a cloud",
+        "destinationTitle": "Keep what the wizard sets up as",
         "auto": "Automatic",
         "hintAuto": "Follows the startup view: a profile when the app starts on the main menu, a Quick Run otherwise.",
         "done": "Done"
       },
       "undo": {
         "action": "Remove this setup",
+        "hint": "It stops and disappears from the app. Your files are not touched.",
         "confirm": "“{{name}}” stops running and disappears from the app. Your files are not touched.",
         "working": "Removing…",
         "failed": "It could not be removed. You can still remove it from the place where it is listed.",
         "removedTitle": "Removed",
-        "removed": "“{{name}}” has been removed. Your files were not changed.",
+        "removed": "Your files were not changed.",
         "title": "Remove this setup?",
-        "confirmRunning": "“{{name}}” is running right now. It will be stopped first and then removed. Your files are not touched."
-      },
-      "setups": {
-        "title": "Already set up",
-        "show": "Open",
-        "remove": "Remove",
-        "status": {
-          "stream": {
-            "running": "Mounted",
-            "idle": "Not mounted"
-          },
-          "share": {
-            "running": "Serving",
-            "idle": "Not serving"
-          },
-          "job": {
-            "running": "Running",
-            "ok": "Done · {{when}}",
-            "failed": "Failed · {{when}}",
-            "stopped": "Stopped · {{when}}",
-            "idle": "Never run"
-          }
-        },
-        "subtitle": "Everything you have set up, grouped by cloud.",
-        "empty": "Nothing is set up yet.",
-        "headline": {
-          "stream": "Cloud as a folder",
-          "streamSaf": "Cloud in the Files app",
-          "twoWay": "Kept in sync",
-          "upload_copy": "Backup",
-          "upload_sync": "Mirrored backup",
-          "upload_move": "Moved to the cloud",
-          "download": "Download",
-          "download_sync": "Mirrored download",
-          "download_move": "Moved from the cloud",
-          "cloudToCloud_copy": "Copy to {{target}}",
-          "cloudToCloud_move": "Move to {{target}}",
-          "cloudToCloud_sync": "Mirror to {{target}}",
-          "share_dlna": "Shared with TVs and players",
-          "share_webdav": "Shared on your network",
-          "share_http": "Shared as a web page",
-          "share_other": "Shared over {{type}}",
-          "compare": "Folder check"
-        },
-        "auto": {
-          "startup": "Runs at app start",
-          "watch": "Runs on file changes",
-          "manual": "Starts manually",
-          "startupStream": "Mounts at app start",
-          "startupShare": "Serves at app start"
-        },
-        "kind": {
-          "quickRun": "Quick Run",
-          "profile": "Profile"
-        },
-        "sameAs": "Same as “{{name}}”",
-        "runningCount": "Running: {{count}}",
-        "failedCount": "Failed: {{count}}"
+        "remove": "Remove"
       }
     }
   },

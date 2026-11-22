@@ -1,0 +1,123 @@
+@let p = state.plan();
+
+<!-- One way to start it: a card that switches on, with its own settings under it once it is on. -->
+<ng-template
+  #option
+  let-kind="kind"
+  let-on="on"
+  let-icon="icon"
+  let-title="title"
+  let-description="description"
+  let-text="text"
+>
+  <div class="schedule-group" [class.selected]="on">
+    <button
+      type="button"
+      class="choice-card schedule-card"
+      role="switch"
+      data-tone="accent"
+      [class.selected]="on"
+      [attr.aria-checked]="on"
+      (click)="state.toggleSchedule(kind)"
+    >
+      <span class="choice-tile"><mat-icon [svgIcon]="icon" aria-hidden="true"></mat-icon></span>
+      <span class="choice-text">
+        <span class="choice-title">{{ title | translate }}</span>
+        <span class="choice-description">{{ text ?? (description | translate) }}</span>
+      </span>
+      <span class="schedule-check" aria-hidden="true">
+        <mat-icon svgIcon="check-circle"></mat-icon>
+      </span>
+    </button>
+    @if (on) {
+      @if (kind === 'cron') {
+        <app-cron-input
+          [initialValue]="state.scheduleCron()"
+          [automationName]="state.operationLabel() | translate"
+          (cronChange)="state.onCronChange($event)"
+          (validationChange)="state.onCronValidation($event)"
+        />
+      } @else {
+        @let delay = kind === 'watch' ? 'watchDelay' : 'autoStartDelay';
+        <div class="schedule-editor delay-row">
+          <div class="delay-info">
+            <span class="delay-title">{{ 'wizards.appOperation.' + delay | translate }}</span>
+            <span class="delay-hint">{{
+              'wizards.appOperation.' + delay + 'Hint' | translate
+            }}</span>
+          </div>
+          <app-number-input
+            [ngModel]="kind === 'watch' ? state.scheduleWatchDelay() : state.scheduleStartupDelay()"
+            (ngModelChange)="state.setDelay(kind, $event)"
+            [min]="0"
+            [allowNegative]="false"
+            [ariaLabel]="'wizards.appOperation.' + delay | translate"
+          />
+        </div>
+      }
+    }
+  </div>
+</ng-template>
+
+@if (p) {
+  <section class="wizard-step">
+    <h2 class="wizard-heading">{{ 'modals.wizard.when.heading' | translate }}</h2>
+    <p class="hint">{{ 'modals.wizard.when.subtitle' | translate }}</p>
+
+    <div class="schedule-list">
+      @if (state.scheduleOptions().watch) {
+        <ng-container
+          *ngTemplateOutlet="
+            option;
+            context: {
+              kind: 'watch',
+              on: state.scheduleWatch(),
+              icon: 'bolt',
+              title: 'modals.wizard.when.watch.title',
+              description: 'modals.wizard.when.watch.description',
+            }
+          "
+        />
+      }
+      @if (state.scheduleOptions().cron) {
+        <ng-container
+          *ngTemplateOutlet="
+            option;
+            context: {
+              kind: 'cron',
+              on: state.scheduleCronOn(),
+              icon: 'calendar',
+              title: 'modals.wizard.when.cron.title',
+              description: 'modals.wizard.when.cron.description',
+              text: state.scheduleCronOn() ? state.cronText() || null : null,
+            }
+          "
+        />
+      }
+      @if (state.scheduleOptions().startup) {
+        <ng-container
+          *ngTemplateOutlet="
+            option;
+            context: {
+              kind: 'startup',
+              on: state.scheduleStartup(),
+              icon: 'power-off',
+              title: 'modals.wizard.when.startup.title',
+              description:
+                p.flow === 'stream'
+                  ? 'modals.wizard.when.startup.descriptionMount'
+                  : 'modals.wizard.when.startup.description',
+            }
+          "
+        />
+      }
+    </div>
+
+    @if (state.needsCloudSchedule()) {
+      <app-alert-banner severity="info" [title]="'modals.wizard.when.cloudHint' | translate" />
+    }
+    @if (!state.scheduleValid()) {
+      <app-alert-banner severity="warning" [title]="'modals.wizard.when.invalidCron' | translate" />
+    }
+  </section>
+}
