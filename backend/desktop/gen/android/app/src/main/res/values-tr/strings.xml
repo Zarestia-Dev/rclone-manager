@@ -2,12 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Rclone SAF Depolama Servisi</string>
-    <string name="saf_keepalive_text">Aktif dosya akışı devam ediyor</string>
-    <string name="saf_keepalive_channel_name">Rclone Depolama Servisi</string>
+    <string name="saf_keepalive_text">Dosyalar başka bir uygulamada açık</string>
+    <string name="saf_upload_text">Başka bir uygulamada kaydedilen dosyalar yükleniyor</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Arka planda çalışıyor</string>
-    <string name="keepalive_stopped_text">Android arka plan servisini durdurdu. Devam etmek için dokunun.</string>
+    <string name="keepalive_locked_text">Kasa kilitli. Kilidi açmak için dokunun.</string>
     <string name="keepalive_channel_name">RClone Arka Plan Servisi</string>
     <string name="keepalive_channel_desc">Aktif diskleri, transferleri ve arka plan görevlerini sürdürür</string>
     <string name="shortcut_file_manager_short">Dosyalar</string>
@@ -20,4 +19,14 @@
     <string name="quit_confirm_title">RClone Manager uygulamasından çıkılsın mı?</string>
     <string name="quit_confirm_message">Çalışan transferler, diskler ve sunucular durdurulacak.</string>
     <string name="alerts_channel_name">Bildirimler</string>
+    <string name="app_closed_title">Uygulama arka planda kapatıldı</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="one">%d iş yarıda kaldı.</item>
+        <item quantity="other">%d iş yarıda kaldı.</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="one">%d sunucu durduruldu.</item>
+        <item quantity="other">%d sunucu durduruldu.</item>
+    </plurals>
+    <string name="autostart_restarts">Otomatik başlatılan sunucular uygulamayla birlikte yeniden başlar.</string>
 </resources>

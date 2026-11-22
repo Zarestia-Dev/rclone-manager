@@ -134,6 +134,48 @@ object RcloneSafBridge {
     context.applicationContext.getSharedPreferences(BOOT_PREFS_NAME, Context.MODE_PRIVATE)
       .getBoolean(KEY_START_ON_BOOT, false)
 
+  /**
+   * Called by the backend with the next scheduled run (epoch milliseconds, 0 for none). The
+   * device sleeps without a wake lock, so an alarm wakes it for that run.
+   */
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun setScheduleWakeup(atMillis: Long) {
+    val ctx = appContext ?: return
+    try {
+      val alarms = ctx.getSystemService(android.app.AlarmManager::class.java) ?: return
+      val wakeup = android.app.PendingIntent.getBroadcast(
+        ctx,
+        0,
+        Intent(ctx, SafBootReceiver::class.java).setAction(SafBootReceiver.ACTION_SCHEDULE_WAKEUP),
+        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+      )
+      if (atMillis <= 0) {
+        alarms.cancel(wakeup)
+      } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarms.canScheduleExactAlarms()) {
+        alarms.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, atMillis, wakeup)
+      } else {
+        alarms.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, atMillis, wakeup)
+      }
+    } catch (e: Throwable) {
+      Logger.error("Failed to set the schedule wakeup: ${e.message}")
+    }
+  }
+
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun setVaultLocked(locked: Boolean) {
+    val ctx = appContext ?: return
+    RcloneKeepAliveService.setVaultLocked(ctx, locked)
+  }
+
+  /** Called by the backend while a folder watcher has changes waiting for their run. */
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun setWatchPending(pending: Boolean) {
+    RcloneKeepAliveService.setWatchPending(pending)
+  }
+
   @JvmStatic
   @androidx.annotation.Keep
   fun syncKeepAlive(
@@ -186,6 +228,13 @@ object RcloneSafBridge {
   }
 
   private val activeHandleCount = java.util.concurrent.atomic.AtomicInteger(0)
+  // Handles opened for writing: their files upload after they are closed.
+  private val writeHandles = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+  // One thread polls the pending uploads, so a close never races a poll that is ending.
+  private val uploadPoller = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+  // The next poll; touched only on the poller thread.
+  private var nextUploadPoll: java.util.concurrent.ScheduledFuture<*>? = null
+  private const val UPLOAD_POLL_MS = 5_000L
 
   @JvmStatic
   fun getActiveHandleCount(): Int = activeHandleCount.get()
@@ -353,6 +402,15 @@ object RcloneSafBridge {
     }
   }
 
+  /** The mounts stored by [updateMountedRemotes], read by the backend when it starts again. */
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun storedMountedRemotes(): String {
+    val ctx = appContext ?: return "[]"
+    return ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .getString(KEY_MOUNTED_REMOTES, "[]") ?: "[]"
+  }
+
   @JvmStatic
   @androidx.annotation.Keep
   fun updateMountedRemotes(jsonPayload: String) {
@@ -435,8 +493,10 @@ object RcloneSafBridge {
     val res = rpc("vfs/stream/open", params)
     if (res.has("handle_id")) {
       activeHandleCount.incrementAndGet()
+      if (mode.contains('w')) writeHandles.add(res.optLong("handle_id"))
       mainHandler.removeCallbacks(stopIdleService)
       appContext?.let { RcloneKeepAliveService.startForDocuments(it) }
+      RcloneKeepAliveService.refreshLocks()
       return res
     }
     return null
@@ -464,7 +524,33 @@ object RcloneSafBridge {
       mainHandler.removeCallbacks(stopIdleService)
       mainHandler.postDelayed(stopIdleService, DOCUMENT_IDLE_STOP_MS)
     }
+    if (writeHandles.remove(handleId)) watchPendingUploads()
+    RcloneKeepAliveService.refreshLocks()
     return res.optBoolean("success", true)
+  }
+
+  // The VFS uploads a written file a few seconds after it is closed. Until every upload is done,
+  // the service keeps the device awake and does not stop.
+  private fun watchPendingUploads() {
+    uploadPoller.execute { pollPendingUploads() }
+  }
+
+  private fun pollPendingUploads() {
+    nextUploadPoll?.cancel(false)
+    nextUploadPoll = null
+    // A failed call reads as not busy, so a broken bridge cannot keep the device awake.
+    val pending = rpc("vfs/stream/busy").optBoolean("busy", false)
+    RcloneKeepAliveService.setUploadsPending(pending)
+    if (pending) {
+      nextUploadPoll = uploadPoller.schedule(
+        { pollPendingUploads() },
+        UPLOAD_POLL_MS,
+        java.util.concurrent.TimeUnit.MILLISECONDS
+      )
+    } else if (activeHandleCount.get() <= 0) {
+      mainHandler.removeCallbacks(stopIdleService)
+      mainHandler.postDelayed(stopIdleService, DOCUMENT_IDLE_STOP_MS)
+    }
   }
 
   fun createDirectory(remote: String, path: String): Boolean {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -65,39 +66,52 @@ Returns:
 	})
 }
 
-func rcIsConfigEncrypted(ctx context.Context, in rc.Params) (out rc.Params, err error) {
+// encryptedConfigBody reads the config file past comments and blank lines to its first line,
+// as rclone's config.Decrypt does. For an encrypted file it returns the base64 body after the
+// RCLONE_ENCRYPT_V0 header; a missing or plain-text file is not encrypted.
+func encryptedConfigBody() (body []byte, encrypted bool, err error) {
 	path := config.GetConfigPath()
 	if path == "" {
-		return rc.Params{"encrypted": false}, nil
+		return nil, false, nil
 	}
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, false, nil
+	}
 	if err != nil {
-		if os.IsNotExist(err) {
-			return rc.Params{"encrypted": false}, nil
-		}
-		return nil, err
+		return nil, false, fmt.Errorf("cannot read config file: %w", err)
 	}
-	defer f.Close()
-
-	reader := bufio.NewReader(f)
+	reader := bufio.NewReader(bytes.NewReader(data))
 	for {
-		line, _, err := reader.ReadLine()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
+		line, _, readErr := reader.ReadLine()
+		if readErr == io.EOF {
+			return nil, false, nil
+		}
+		if readErr != nil {
+			return nil, false, fmt.Errorf("error reading config file: %w", readErr)
 		}
 		l := strings.TrimSpace(string(line))
 		if len(l) == 0 || strings.HasPrefix(l, ";") || strings.HasPrefix(l, "#") {
 			continue
 		}
-		if l == "RCLONE_ENCRYPT_V0:" {
-			return rc.Params{"encrypted": true}, nil
+		switch {
+		case l == "RCLONE_ENCRYPT_V0:":
+			body, err = io.ReadAll(reader)
+			return body, true, err
+		case strings.HasPrefix(l, "RCLONE_ENCRYPT_V"):
+			return nil, false, errors.New("unsupported configuration encryption - update rclone for support")
+		default:
+			return nil, false, nil
 		}
-		break
 	}
-	return rc.Params{"encrypted": false}, nil
+}
+
+func rcIsConfigEncrypted(ctx context.Context, in rc.Params) (out rc.Params, err error) {
+	_, encrypted, err := encryptedConfigBody()
+	if err != nil {
+		return nil, err
+	}
+	return rc.Params{"encrypted": encrypted}, nil
 }
 
 func rcConfigEncrypt(ctx context.Context, in rc.Params) (out rc.Params, err error) {
@@ -134,7 +148,8 @@ func rcConfigDecrypt(ctx context.Context, in rc.Params) (out rc.Params, err erro
 // rcValidateConfigPassword validates a password against the encrypted config file
 // by performing a real try-decrypt with secretbox. This avoids calling LoadedData()
 // which would panic inside an RC job on a wrong/missing password.
-// It does NOT modify the in-memory config state — it only reads the file.
+// A wrong password leaves the active key alone, so the check is safe while the config is
+// unlocked; config.Decrypt would clear it. A right one becomes the active key.
 func rcValidateConfigPassword(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	password, err := in.GetString("password")
 	if err != nil {
@@ -144,40 +159,11 @@ func rcValidateConfigPassword(ctx context.Context, in rc.Params) (out rc.Params,
 		return nil, errors.New("password must not be empty")
 	}
 
-	configPath := config.GetConfigPath()
-	if configPath == "" {
-		return nil, errors.New("no config file path set")
-	}
-
-	f, err := os.Open(configPath)
+	body, encrypted, err := encryptedConfigBody()
 	if err != nil {
-		return nil, fmt.Errorf("cannot open config file: %w", err)
+		return nil, err
 	}
-	defer f.Close()
-
-	// Scan past comments/blanks to find the encryption header.
-	reader := bufio.NewReader(f)
-	encryptedFound := false
-	for {
-		line, _, readErr := reader.ReadLine()
-		if readErr != nil {
-			if readErr == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("error reading config file: %w", readErr)
-		}
-		l := strings.TrimSpace(string(line))
-		if len(l) == 0 || strings.HasPrefix(l, ";") || strings.HasPrefix(l, "#") {
-			continue
-		}
-		if l == "RCLONE_ENCRYPT_V0:" {
-			encryptedFound = true
-			break
-		}
-		// First non-blank non-comment line is not the magic — file is not encrypted.
-		return nil, errors.New("config file is not encrypted")
-	}
-	if !encryptedFound {
+	if !encrypted {
 		return nil, errors.New("config file is not encrypted")
 	}
 
@@ -188,7 +174,7 @@ func rcValidateConfigPassword(ctx context.Context, in rc.Params) (out rc.Params,
 	copy(key[:], h.Sum(nil))
 
 	// The remaining content (after the header line) is base64-encoded ciphertext.
-	dec := base64.NewDecoder(base64.StdEncoding, reader)
+	dec := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(body))
 	box, readErr := io.ReadAll(dec)
 	if readErr != nil {
 		return nil, fmt.Errorf("failed to decode ciphertext: %w", readErr)

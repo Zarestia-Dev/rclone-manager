@@ -2,13 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Úložná služba Rclone SAF</string>
-    <string name="saf_keepalive_text">Prebieha aktívny prenos súborov na pozadí</string>
-    <string name="saf_keepalive_channel_name">Úložná služba Rclone</string>
-    <string name="saf_keepalive_channel_desc">Udržiava proces Rclone aktívny počas streamovania súborov cez SAF</string>
+    <string name="saf_keepalive_text">Súbory sú otvorené v inej aplikácii</string>
+    <string name="saf_upload_text">Nahrávajú sa súbory uložené v inej aplikácii</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Beží na pozadí</string>
-    <string name="keepalive_stopped_text">Systém Android zastavil službu na pozadí. Ťuknutím ju obnovíte.</string>
+    <string name="keepalive_locked_text">Trezor je zamknutý. Ťuknutím ho odomknete.</string>
     <string name="keepalive_channel_name">Služba RClone na pozadí</string>
     <string name="keepalive_channel_desc">Udržiava aktívne pripojenia, prenosy a úlohy na pozadí</string>
     <string name="shortcut_file_manager_short">Súbory</string>
@@ -21,4 +19,18 @@
     <string name="quit_confirm_title">Ukončiť RClone Manager?</string>
     <string name="quit_confirm_message">Prebiehajúce prenosy, pripojenia a servery budú zastavené.</string>
     <string name="alerts_channel_name">Upozornenia</string>
+    <string name="app_closed_title">Aplikácia bola zatvorená na pozadí</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="one">%d úloha bola prerušená.</item>
+        <item quantity="few">%d úlohy boli prerušené.</item>
+        <item quantity="many">%d úlohy bolo prerušených.</item>
+        <item quantity="other">%d úloh bolo prerušených.</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="one">%d server bol zastavený.</item>
+        <item quantity="few">%d servery boli zastavené.</item>
+        <item quantity="many">%d servera bolo zastavených.</item>
+        <item quantity="other">%d serverov bolo zastavených.</item>
+    </plurals>
+    <string name="autostart_restarts">Servery s automatickým spustením sa znova spustia spolu s aplikáciou.</string>
 </resources>

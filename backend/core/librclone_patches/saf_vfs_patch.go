@@ -189,6 +189,17 @@ func rcSetCacheDir(ctx context.Context, in rc.Params) (out rc.Params, err error)
 	return rc.Params{"success": true, "cache_dir": config.GetCacheDir()}, nil
 }
 
+// fixBisyncWorkdir points a missing workdir, or one under /data/local/tmp (bisync's default
+// before the app sets its cache, which a profile may have saved), at the app's cache.
+func fixBisyncWorkdir(in rc.Params) {
+	if workdir, _ := in.GetString("workdir"); workdir != "" && !strings.HasPrefix(workdir, "/data/local/tmp") {
+		return
+	}
+	if cache := config.GetCacheDir(); cache != "" && !strings.HasPrefix(cache, "/data/local/tmp") {
+		in["workdir"] = filepath.Join(cache, "bisync")
+	}
+}
+
 func wrapBisyncEndpoint() {
 	originalBisync := rc.Calls.Get("sync/bisync")
 	if originalBisync != nil {
@@ -199,12 +210,7 @@ func wrapBisyncEndpoint() {
 			Help:  originalBisync.Help,
 			Fn: func(ctx context.Context, in rc.Params) (rc.Params, error) {
 				ensureWritableCacheDir()
-				if workdir, _ := in.GetString("workdir"); workdir == "" || strings.HasPrefix(workdir, "/data/local/tmp") {
-					cache := config.GetCacheDir()
-					if cache != "" && !strings.HasPrefix(cache, "/data/local/tmp") {
-						in["workdir"] = filepath.Join(cache, "bisync")
-					}
-				}
+				fixBisyncWorkdir(in)
 				return origFn(ctx, in)
 			},
 		})
@@ -268,6 +274,12 @@ func init() {
 		Fn:    rcVfsClose,
 		Title: "Close VFS handle.",
 		Help:  "Closes open VFS handle.",
+	})
+	rc.Add(rc.Call{
+		Path:  "vfs/stream/busy",
+		Fn:    rcVfsBusy,
+		Title: "Report whether a SAF VFS still has data to write.",
+		Help:  "Returns busy=true while a SAF VFS has files open for writing or waiting to be uploaded.",
 	})
 	rc.Add(rc.Call{
 		Path:  "vfs/stream/forget",
@@ -597,6 +609,25 @@ func rcVfsClose(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	}
 
 	return rc.Params{"success": true}, nil
+}
+
+// rcVfsBusy reports whether a SAF VFS still has data to write. A written file uploads after it
+// is closed (write-back), so the app keeps the device awake until no VFS is busy.
+func rcVfsBusy(ctx context.Context, in rc.Params) (out rc.Params, err error) {
+	vfsMutex.Lock()
+	instances := make([]*vfs.VFS, 0, len(vfsInstances))
+	for _, instance := range vfsInstances {
+		instances = append(instances, instance)
+	}
+	vfsMutex.Unlock()
+
+	// Busy can block while a directory is read, so it runs without the registry lock.
+	for _, instance := range instances {
+		if instance.Busy() {
+			return rc.Params{"busy": true}, nil
+		}
+	}
+	return rc.Params{"busy": false}, nil
 }
 
 func rcVfsForget(ctx context.Context, in rc.Params) (out rc.Params, err error) {

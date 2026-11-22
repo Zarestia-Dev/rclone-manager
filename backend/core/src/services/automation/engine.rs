@@ -21,6 +21,29 @@ fn scheduler_not_initialized() -> String {
     crate::localized_error!("backendErrors.automation.schedulerNotInitialized")
 }
 
+type InstalledJobs = std::collections::HashMap<String, (Uuid, String)>;
+
+/// The earliest next run of the installed cron expressions.
+#[cfg(any(target_os = "android", test))]
+fn next_wakeup(installed: &InstalledJobs) -> Option<chrono::DateTime<Utc>> {
+    installed
+        .values()
+        .filter_map(|(_, expression)| get_next_run(expression).ok())
+        .min()
+}
+
+/// Android suspends the CPU without a wake lock, and with it the scheduler's clock checks; an
+/// alarm at the next run wakes the device for it.
+#[cfg(target_os = "android")]
+fn arm_wakeup(installed: &InstalledJobs) {
+    crate::rclone::backend::saf_bridge::set_schedule_wakeup(
+        next_wakeup(installed).map_or(0, |at| at.timestamp_millis()),
+    );
+}
+
+#[cfg(not(target_os = "android"))]
+fn arm_wakeup(_installed: &InstalledJobs) {}
+
 struct SchedulerRuntime {
     scheduler: JobScheduler,
     app: AppHandle,
@@ -29,7 +52,7 @@ struct SchedulerRuntime {
 
 pub struct AutomationScheduler {
     scheduler: RwLock<Option<SchedulerRuntime>>,
-    installed: tokio::sync::Mutex<std::collections::HashMap<String, (Uuid, String)>>,
+    installed: tokio::sync::Mutex<InstalledJobs>,
 }
 
 impl AutomationScheduler {
@@ -92,6 +115,7 @@ impl AutomationScheduler {
 
         *guard = None;
         installed.clear();
+        arm_wakeup(&installed);
         info!("Cron scheduler stopped");
         Ok(())
     }
@@ -141,6 +165,8 @@ impl AutomationScheduler {
                     info!(
                         "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
+                    // This tick is due, so the alarm moves to the next one.
+                    arm_wakeup(&*app_handle.state::<AutomationScheduler>().installed.lock().await);
 
                     match execute_automation(&automation_id, &app_handle, None).await {
                         Err(e) => error!("Automation execution failed {automation_id}: {e}"),
@@ -189,6 +215,7 @@ impl AutomationScheduler {
         };
         self.remove_job(job).await?;
         installed.remove(automation_id);
+        arm_wakeup(&installed);
         Ok(())
     }
 
@@ -246,6 +273,7 @@ impl AutomationScheduler {
                 installed.remove(&automation.id);
             }
         }
+        arm_wakeup(&installed);
         Ok(())
     }
 
@@ -670,6 +698,22 @@ mod tests {
     use super::*;
     async fn scheduled(scheduler: &AutomationScheduler, id: &str) -> Option<String> {
         scheduler.scheduled_job(id).await.map(|job| job.to_string())
+    }
+
+    #[test]
+    fn next_wakeup_is_the_earliest_valid_installed_run() {
+        let mut installed = InstalledJobs::new();
+        assert_eq!(next_wakeup(&installed), None);
+
+        installed.insert("broken".into(), (Uuid::new_v4(), "not a cron".into()));
+        assert_eq!(next_wakeup(&installed), None);
+
+        installed.insert("daily".into(), (Uuid::new_v4(), "0 3 * * *".into()));
+        installed.insert("minutely".into(), (Uuid::new_v4(), "* * * * *".into()));
+        let now = Utc::now();
+        let next = next_wakeup(&installed).expect("a valid expression has a next run");
+        assert!(next > now);
+        assert!(next - now <= chrono::Duration::seconds(60));
     }
 
     #[tokio::test]
