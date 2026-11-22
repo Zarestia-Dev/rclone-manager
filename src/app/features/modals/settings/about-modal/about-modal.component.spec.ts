@@ -308,6 +308,9 @@ describe('AboutModalComponent', () => {
     const hrefs = Array.from(links).map(l => l.getAttribute('href'));
     expect(hrefs).toContain('https://github.com/DraftingDreamer');
     expect(hrefs).toContain('https://github.com/nvandamme');
+    expect(hrefs).toContain('https://github.com/repires');
+    expect(hrefs).toContain('https://github.com/Vaso73');
+    expect(hrefs).toContain('https://github.com/powerAn2020');
     expect(hrefs).toContain('https://github.com/Hakanbaban53');
   });
 
