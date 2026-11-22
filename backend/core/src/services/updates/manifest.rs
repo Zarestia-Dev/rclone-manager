@@ -15,6 +15,8 @@ pub enum ArtifactKind {
     Portable,
     Server,
     Android,
+    /// A Linux AppImage, published as the release's own `.AppImage` file.
+    Appimage,
 }
 
 impl std::fmt::Display for ArtifactKind {
@@ -23,6 +25,7 @@ impl std::fmt::Display for ArtifactKind {
             Self::Portable => "portable",
             Self::Server => "server",
             Self::Android => "android",
+            Self::Appimage => "appimage",
         })
     }
 }
@@ -222,9 +225,17 @@ impl Manifest {
             return Err(verification_failed("Invalid update artifact metadata"));
         }
         match &self.archive {
+            Some(_) if self.kind == ArtifactKind::Appimage => {
+                return Err(verification_failed("AppImage updates must not be archives"));
+            }
             Some(archive) => archive.validate(self)?,
             None if self.kind == ArtifactKind::Server => {
                 return Err(verification_failed("Server updates must be ZIP archives"));
+            }
+            None if self.kind == ArtifactKind::Appimage
+                && !(self.target.starts_with("linux-") && self.asset.ends_with(".AppImage")) =>
+            {
+                return Err(verification_failed("Invalid AppImage update metadata"));
             }
             None => {}
         }
@@ -475,6 +486,68 @@ mod tests {
     }
 
     #[test]
+    fn appimages_install_the_signed_release_bundle_itself() {
+        let key = include_str!("fixtures/appimage-public.key");
+        let (manifest, _, _) = select_manifest(
+            include_bytes!("fixtures/appimage-catalog.json"),
+            "99.0.0",
+            ArtifactKind::Appimage,
+            "linux-x86_64",
+            key,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(manifest.asset, "RClone.Manager_99.0.0_amd64.AppImage");
+        let payload = include_bytes!("fixtures/payload.txt");
+        assert_eq!(
+            manifest.prepare_download(payload.to_vec(), key).unwrap(),
+            payload
+        );
+        manifest.verify_install_payload(payload, key).unwrap();
+        assert!(manifest.verify_install_payload(b"tampered", key).is_err());
+        assert!(
+            manifest
+                .verify_install_payload(payload, PUBLIC_KEY)
+                .is_err()
+        );
+        // The catalog entry is bound to its kind and architecture.
+        for (kind, target) in [
+            (ArtifactKind::Portable, "linux-x86_64"),
+            (ArtifactKind::Appimage, "linux-aarch64"),
+        ] {
+            assert!(
+                select_manifest(
+                    include_bytes!("fixtures/appimage-catalog.json"),
+                    "99.0.0",
+                    kind,
+                    target,
+                    key
+                )
+                .unwrap()
+                .is_none()
+            );
+        }
+        let valid = |m: &Manifest| m.validate("99.0.0", ArtifactKind::Appimage, &m.target);
+        valid(&manifest).unwrap();
+        for invalid in [
+            Manifest {
+                archive: test_portable_manifest("linux-x86_64").archive,
+                ..manifest.clone()
+            },
+            Manifest {
+                asset: "RClone.Manager_99.0.0_amd64.deb".into(),
+                ..manifest.clone()
+            },
+            Manifest {
+                target: "macos-aarch64".into(),
+                ..manifest.clone()
+            },
+        ] {
+            assert!(valid(&invalid).is_err());
+        }
+    }
+
+    #[test]
     fn archive_metadata_rejects_paths_wrong_products_and_missing_authentication() {
         let manifest = test_portable_manifest("linux-x86_64");
         let archive = manifest.archive.as_ref().unwrap();
@@ -671,7 +744,11 @@ mod tests {
     fn only_android_refuses_to_leave_a_prerelease_for_an_older_stable_version() {
         let mut m = manifest();
         m.version = "0.3.3".into();
-        for kind in [ArtifactKind::Portable, ArtifactKind::Server] {
+        for kind in [
+            ArtifactKind::Portable,
+            ArtifactKind::Server,
+            ArtifactKind::Appimage,
+        ] {
             m.kind = kind;
             assert!(m.version_allowed("0.3.4-beta.1"));
             assert!(!m.version_allowed("0.3.4"));

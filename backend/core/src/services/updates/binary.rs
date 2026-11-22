@@ -28,6 +28,30 @@ pub(super) struct StagedUpdate {
     pub(super) log_directory: Option<PathBuf>,
 }
 
+/// The product this process runs as, recorded by `run_helper_if_requested`.
+static RUNNING_KIND: std::sync::OnceLock<ArtifactKind> = std::sync::OnceLock::new();
+
+/// The file an update replaces. An AppImage runs its executable from a read-only
+/// mount, so the image itself, named by `$APPIMAGE`, is what gets replaced.
+pub(super) fn installed_executable() -> std::io::Result<PathBuf> {
+    image_or_executable(RUNNING_KIND.get().copied(), std::env::var_os("APPIMAGE"))
+}
+
+fn image_or_executable(
+    kind: Option<ArtifactKind>,
+    appimage: Option<std::ffi::OsString>,
+) -> std::io::Result<PathBuf> {
+    match kind {
+        Some(ArtifactKind::Appimage) => PathBuf::from(appimage.ok_or_else(|| {
+            std::io::Error::other(crate::localized_error!(
+                "backendErrors.updater.unsupportedInstallation"
+            ))
+        })?)
+        .canonicalize(),
+        _ => std::env::current_exe()?.canonicalize(),
+    }
+}
+
 fn encode_arguments(arguments: &[std::ffi::OsString]) -> Result<String, String> {
     let encoded = serde_json::to_string(arguments).map_err(|e| e.to_string())?;
     if encoded.len() > MAX_ENCODED_ARGUMENTS {
@@ -53,9 +77,7 @@ pub(crate) fn prepare(
     payload: &[u8],
     log_directory: &Path,
 ) -> Result<InstallOutcome, String> {
-    let target = std::env::current_exe()
-        .and_then(|p| p.canonicalize())
-        .map_err(|e| e.to_string())?;
+    let target = installed_executable().map_err(|e| e.to_string())?;
     super::policy::writable_binary(&target).map_err(|e| e.to_string())?;
     let supervisor = super::health::trial_directory()
         .map(Path::to_path_buf)
@@ -425,7 +447,7 @@ pub(crate) struct FailedUpdate {
 /// Collect rollback reasons left by the supervisor for this executable and mark
 /// them reported, so each failure is announced once.
 pub(crate) fn take_failed_updates() -> Vec<FailedUpdate> {
-    let Ok(target) = std::env::current_exe().and_then(|p| p.canonicalize()) else {
+    let Ok(target) = installed_executable() else {
         return Vec::new();
     };
     installation_directory(&target)
@@ -580,6 +602,7 @@ fn remove_completed(directory: &Path) -> std::io::Result<()> {
 /// Runs before CLI/runtime/GUI setup. Never accepts elevated privileges.
 /// A process started as the update helper exits here; any other process returns.
 pub fn run_helper_if_requested(expected_kind: ArtifactKind) {
+    let _ = RUNNING_KIND.set(expected_kind);
     super::health::capture_trial();
     #[cfg(windows)]
     super::process_tree::wait_for_assignment();
@@ -602,12 +625,8 @@ pub fn run_helper_if_requested(expected_kind: ArtifactKind) {
         let name = "updater.exe";
         #[cfg(not(windows))]
         let name = "previous";
-        if std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .canonicalize()
-            .map_err(|e| e.to_string())?
-            != directory.join(name)
-        {
+        // An AppImage supervisor runs from the mounted `previous` image.
+        if installed_executable().map_err(|e| e.to_string())? != directory.join(name) {
             return Err("Invalid helper location".into());
         }
         let initial_lock = stage_lock(&directory).map_err(|e| e.to_string())?;
@@ -1029,6 +1048,33 @@ mod tests {
         drop(running);
         remove_completed(stage.path()).unwrap();
         assert!(!stage.path().exists());
+    }
+
+    #[test]
+    fn an_appimage_replaces_its_image_and_other_builds_their_executable() {
+        let root = tempfile::tempdir().unwrap();
+        let image = root.path().join("RClone Manager.AppImage");
+        std::fs::write(&image, b"image").unwrap();
+        let executable = std::env::current_exe().unwrap().canonicalize().unwrap();
+        // The staging checks compare canonical paths.
+        let relative = root.path().join(".").join("RClone Manager.AppImage");
+        assert_eq!(
+            image_or_executable(Some(ArtifactKind::Appimage), Some(relative.into())).unwrap(),
+            image.canonicalize().unwrap()
+        );
+        // Without `$APPIMAGE` the mounted executable must never become the target.
+        assert!(image_or_executable(Some(ArtifactKind::Appimage), None).is_err());
+        // Other builds ignore an `$APPIMAGE` inherited from another application.
+        for kind in [
+            None,
+            Some(ArtifactKind::Portable),
+            Some(ArtifactKind::Server),
+        ] {
+            assert_eq!(
+                image_or_executable(kind, Some(image.clone().into())).unwrap(),
+                executable
+            );
+        }
     }
 
     fn plan_with(args: &[&str]) -> StagedUpdate {

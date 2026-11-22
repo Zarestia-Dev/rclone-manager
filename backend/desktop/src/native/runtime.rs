@@ -136,7 +136,7 @@ pub fn run() {
     #[cfg(not(feature = "web-server"))]
     {
         app.run(|app_handle, event| {
-            #[cfg(feature = "portable")]
+            #[cfg(feature = "updater")]
             if matches!(&event, tauri::RunEvent::Ready) {
                 let context =
                     tauri::Manager::state::<rclone_manager_core::context::AppHandle>(app_handle);

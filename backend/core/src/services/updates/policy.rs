@@ -75,8 +75,9 @@ fn build_kind(
         // Linux builds are told apart by the package format Tauri patched into them.
         UpdateMethod::Tauri => match bundle {
             Some(kind @ (InstallationKind::Deb | InstallationKind::Rpm)) => kind,
-            // Tauri's AppImage installer also handles a build without the marker.
-            Some(InstallationKind::Appimage) | None if appimage => InstallationKind::Appimage,
+            // `$APPIMAGE` names the file that gets replaced, and child processes
+            // inherit it: only a build bundled as an AppImage may trust it.
+            Some(InstallationKind::Appimage) if appimage => InstallationKind::Appimage,
             _ => InstallationKind::Unknown,
         },
         UpdateMethod::Unavailable => InstallationKind::Unknown,
@@ -116,7 +117,12 @@ fn classify(
     let kind = declared.unwrap_or(build);
     let packaged = matches!(build, InstallationKind::Deb | InstallationKind::Rpm);
     if kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build)) {
-        (kind, method)
+        // The core replaces an AppImage itself, like a portable executable.
+        if kind == InstallationKind::Appimage {
+            (kind, UpdateMethod::Binary)
+        } else {
+            (kind, method)
+        }
     } else {
         (kind, UpdateMethod::Unavailable)
     }
@@ -455,7 +461,14 @@ mod tests {
                 Unknown
             );
             assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Unknown);
-            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, true), Appimage);
+            // An unbundled build may run with another AppImage's inherited `$APPIMAGE`.
+            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, true), Unknown);
+            for kind in [Deb, Rpm] {
+                assert_eq!(
+                    build_kind(UpdateMethod::Tauri, false, Some(kind), true),
+                    kind
+                );
+            }
         } else {
             assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Native);
         }
@@ -552,11 +565,15 @@ mod tests {
             (Portable, UpdateMethod::Binary),
             (Server, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
-            (Appimage, UpdateMethod::Tauri),
             (Native, UpdateMethod::Tauri),
         ] {
             assert_eq!(classify(method, build, None, None), (build, method));
         }
+        // Tauri bundled the AppImage, but the core replaces it.
+        assert_eq!(
+            classify(UpdateMethod::Tauri, Appimage, None, None),
+            (Appimage, UpdateMethod::Binary)
+        );
     }
 
     #[test]

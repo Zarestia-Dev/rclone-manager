@@ -45,3 +45,9 @@ is not included, and production helper entry points always use the production ke
 Formatting or editing signed files invalidates their signatures. To replace them,
 generate a disposable key outside the repository and sign the payload and manifest
 again. Never add a production private key or Android keystore here.
+
+`appimage-catalog.json` and `appimage-public.key` describe an AppImage update:
+the harmless `payload.txt`, published by `publish()` under the Tauri bundle name
+`RClone Manager_99.0.0_amd64.AppImage`, so its asset is the GitHub name
+`RClone.Manager_99.0.0_amd64.AppImage`. An AppImage is signed as one file and is
+never an archive. The disposable private key was discarded.

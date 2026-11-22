@@ -22,8 +22,10 @@ jobs:
             rust_target: "x86_64-apple-darwin"
           - platform: "ubuntu-22.04"
             args: ""
+            arch: "x86_64"
           - platform: "ubuntu-22.04-arm"
             args: ""
+            arch: "aarch64"
           - platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc"
             rust_target: "x86_64-pc-windows-msvc"
@@ -123,3 +125,59 @@ jobs:
             rm -rf "$work"
           done
           exit $status
+
+      # The core updater replaces AppImages from the signed custom catalog. The
+      # AppImage itself is the payload, so its release asset is signed as built.
+      - name: Sign AppImage for the custom updater
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_VERSION: ${{ steps.release_version.outputs.VERSION }}
+        run: |
+          shopt -s globstar nullglob
+          images=(backend/target/**/bundle/appimage/*_"$UPDATE_VERSION"_*.AppImage)
+          [ ${#images[@]} -eq 1 ] || { echo "::error::Expected one AppImage, found ${#images[@]}"; exit 1; }
+          node scripts/create-update-manifest.cjs appimage linux "$UPDATE_ARCH" "$UPDATE_VERSION" "${images[0]}" updater-catalog
+
+      - name: Collect AppImage update catalog
+        if: startsWith(matrix.platform, 'ubuntu-')
+        uses: actions/upload-artifact@v7
+        with:
+          name: appimage-linux-${{ matrix.arch }}
+          path: updater-catalog/updater.json
+          if-no-files-found: error
+
+  publish-catalog:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    # Portable and Android publish into the same updater.json. Serialize read/merge/upload.
+    concurrency:
+      group: publish-custom-updater-main
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: appimage-*
+          path: artifacts
+      - name: Read release version
+        id: release_version
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
+      - name: Publish custom update catalog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.release_version.outputs.VERSION }}
+        run: node scripts/publish-custom-updater.cjs "v$VERSION" "$VERSION" artifacts

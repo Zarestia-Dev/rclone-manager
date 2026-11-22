@@ -13,6 +13,7 @@ fn kind(policy: &UpdatePolicy) -> ArtifactKind {
     match policy.installation {
         InstallationKind::Portable => ArtifactKind::Portable,
         InstallationKind::Android => ArtifactKind::Android,
+        InstallationKind::Appimage => ArtifactKind::Appimage,
         _ => ArtifactKind::Server,
     }
 }
@@ -188,6 +189,7 @@ mod tests {
             InstallationKind::Portable,
             InstallationKind::Server,
             InstallationKind::Android,
+            InstallationKind::Appimage,
         ] {
             let policy =
                 super::super::policy::test_policy(installation, UpdateMethod::Binary, None);

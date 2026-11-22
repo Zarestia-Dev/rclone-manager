@@ -37,7 +37,7 @@ impl Host for NativeHost {
     fn restart(&self, _app: &CoreHandle) -> Result<(), String> {
         self.0.restart()
     }
-    #[cfg(all(unix, feature = "portable"))]
+    #[cfg(all(unix, feature = "updater"))]
     fn restart_updated_binary(
         &self,
         executable: &std::path::Path,

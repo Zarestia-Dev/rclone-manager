@@ -27,7 +27,8 @@ function validateSize(size) {
 }
 
 function validateIdentity({ kind, target, version, asset }) {
-  if (!['portable', 'server', 'android'].includes(kind)) throw new Error('Invalid update kind');
+  if (!['portable', 'server', 'android', 'appimage'].includes(kind))
+    throw new Error('Invalid update kind');
   if (
     typeof target !== 'string' ||
     !/^(linux|windows|macos|android)-(x86_64|aarch64|armv7|i686)$/.test(target)
@@ -36,6 +37,8 @@ function validateIdentity({ kind, target, version, asset }) {
   if (typeof version !== 'string' || !VERSION.test(version)) throw new Error('Invalid version');
   if (typeof asset !== 'string' || !/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/.test(asset))
     throw new Error('Invalid asset name');
+  if (kind === 'appimage' && (!target.startsWith('linux-') || !asset.endsWith('.AppImage')))
+    throw new Error('Invalid AppImage update metadata');
 }
 
 function validateArtifact({ size, sha256, signature }) {
@@ -148,6 +151,7 @@ function publish(kind, os, arch, version, input, output, archiveFile, binaryPath
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY)
     throw new Error('Production updates require TAURI_SIGNING_PRIVATE_KEY');
   if (kind === 'server' && !archiveFile) throw new Error('Server updates must be ZIP archives');
+  if (kind === 'appimage' && archiveFile) throw new Error('AppImage updates must not be archives');
   const target = `${os}-${arch}`;
   const extension = archiveFile
     ? '.zip'
@@ -157,7 +161,12 @@ function publish(kind, os, arch, version, input, output, archiveFile, binaryPath
         ? '.exe'
         : '';
   const prefix = kind === os ? target : `${kind}-${target}`;
-  const asset = `${prefix}-${version}${extension}`;
+  // An AppImage is the release's own Tauri bundle, uploaded under its file name
+  // with spaces replaced by dots, as GitHub stores it.
+  const asset =
+    kind === 'appimage'
+      ? path.basename(input).replaceAll(' ', '.')
+      : `${prefix}-${version}${extension}`;
   const bytes = fs.readFileSync(input);
   // Validate all untrusted arguments before using them in output paths.
   validateIdentity({ kind, target, version, asset });

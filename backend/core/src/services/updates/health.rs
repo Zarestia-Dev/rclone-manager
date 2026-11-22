@@ -69,7 +69,7 @@ pub fn host_ready(app: &AppHandle) {
     report_if_ready(&health);
 }
 
-/// The portable host enables this only when it creates a main webview. Tray-only
+/// The desktop host enables this only when it creates a main webview. Tray-only
 /// launches must not depend on a window the user did not request.
 pub fn require_frontend(app: &AppHandle) {
     app.state::<StartupHealth>()
@@ -92,7 +92,7 @@ fn report_if_ready(health: &StartupHealth) {
         return;
     };
     let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-        let executable = std::env::current_exe()?.canonicalize()?;
+        let executable = super::binary::installed_executable()?;
         let directory = directory.canonicalize()?;
         confirm_startup(&directory, &executable, token, env!("CARGO_PKG_VERSION"))?;
         Ok(())

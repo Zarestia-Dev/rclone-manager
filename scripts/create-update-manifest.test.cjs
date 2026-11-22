@@ -322,6 +322,23 @@ test('publishes multiple signed targets into one catalog without signature sidec
         'server-windows-x86_64-1.2.3.zip',
       ].sort()
     );
+    // An AppImage keeps the name GitHub gives the Tauri bundle and is never archived.
+    const appimageOutput = path.join(directory, 'appimage-output');
+    const bundle = path.join(directory, 'RClone Manager_1.2.3_amd64.AppImage');
+    fs.writeFileSync(bundle, payload);
+    const appimage = publish('appimage', 'linux', 'x86_64', '1.2.3', bundle, appimageOutput);
+    assert.equal(appimage.asset, 'RClone.Manager_1.2.3_amd64.AppImage');
+    assert.equal(appimage.kind, 'appimage');
+    assert.equal(appimage.archive, undefined);
+    const catalog = JSON.parse(fs.readFileSync(path.join(appimageOutput, MANIFEST_NAME), 'utf8'));
+    assert.deepEqual(Object.keys(mergeCatalogs('1.2.3', [catalog]).entries), [
+      'appimage-linux-x86_64',
+    ]);
+    assert.throws(() =>
+      publish('appimage', 'linux', 'x86_64', '1.2.3', bundle, appimageOutput, bundle, 'a')
+    );
+    assert.throws(() => publish('appimage', 'macos', 'aarch64', '1.2.3', bundle, appimageOutput));
+    assert.throws(() => publish('appimage', 'linux', 'x86_64', '1.2.3', inputFile, appimageOutput));
   } finally {
     if (previousKey === undefined) delete process.env.TAURI_SIGNING_PRIVATE_KEY;
     else process.env.TAURI_SIGNING_PRIVATE_KEY = previousKey;
