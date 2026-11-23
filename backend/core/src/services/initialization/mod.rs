@@ -142,7 +142,7 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
 
     #[cfg(feature = "tray")]
     {
-        if let Err(e) = app_handle.host().setup_tray().await {
+        if let Err(e) = crate::services::tray::native::start(&app_handle).await {
             error!("Failed to setup tray: {e}");
         }
     }

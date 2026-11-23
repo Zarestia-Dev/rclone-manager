@@ -4005,7 +4005,7 @@
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "このパッケージのインストールには管理者パスワードの入力手段（pkexec、zenity、kdialog）が必要ですが、見つかりませんでした。",
+      "noPrivilegePrompt": "このパッケージのインストールには管理者パスワードの入力手段（pkexec、run0、または zenity・kdialog・ssh-askpass を使う sudo）が必要ですが、見つかりませんでした。",
       "verificationFailed": "アップデートを検証できませんでした。署名、チェックサム、またはメタデータが一致しません。",
       "insecureDownload": "アップデートのダウンロードが HTTPS で提供されませんでした。",
       "downloadTooLarge": "アップデートのダウンロードが想定より大きいです。",

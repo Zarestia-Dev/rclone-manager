@@ -40,7 +40,7 @@ rust-fmt:
     cargo fmt --manifest-path {{manifest}} --all -- --check
 
 rust-test:
-    cargo test --manifest-path {{manifest}} -p rclone-manager-core --features desktop --lib
+    cargo test --manifest-path {{manifest}} -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
     for features in desktop desktop,tray,tauri-test; do \
       cargo test --manifest-path {{manifest}} -p rclone-manager --features "$features" --no-default-features --lib -- --test-threads=1; \
     done

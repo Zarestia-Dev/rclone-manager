@@ -23,6 +23,17 @@ pub(super) fn capture_trial() {
     let _ = TRIAL.set(trial);
 }
 
+/// Passes the trial on to a restart that replaces this process with `exec`. The
+/// replacement keeps the PID, so it is still the supervisor's child: it finds the
+/// supervisor for a consecutive update, and sends the startup receipt if this
+/// process had not sent it yet.
+#[cfg(unix)]
+pub fn keep_trial_across_exec(command: &mut std::process::Command) {
+    if let Some(Some((directory, token))) = TRIAL.get() {
+        command.env(DIRECTORY_ENV, directory).env(TOKEN_ENV, token);
+    }
+}
+
 /// The staging directory of the trial this process runs in, if any.
 pub(super) fn trial_directory() -> Option<&'static Path> {
     TRIAL
@@ -163,6 +174,21 @@ mod tests {
         assert_eq!(trial_directory(), Some(Path::new(&expected)));
         assert!(std::env::var_os(DIRECTORY_ENV).is_none());
         assert!(std::env::var_os(TOKEN_ENV).is_none());
+        // Only a restart by `exec` gets it back.
+        #[cfg(unix)]
+        {
+            let mut restart = std::process::Command::new("app");
+            keep_trial_across_exec(&mut restart);
+            let environment: Vec<_> = restart.get_envs().collect();
+            assert!(environment.contains(&(
+                std::ffi::OsStr::new(DIRECTORY_ENV),
+                Some(std::ffi::OsStr::new(&expected))
+            )));
+            assert!(environment.contains(&(
+                std::ffi::OsStr::new(TOKEN_ENV),
+                Some(std::ffi::OsStr::new("token"))
+            )));
+        }
     }
 
     #[test]

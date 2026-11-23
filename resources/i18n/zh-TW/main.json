@@ -4046,7 +4046,7 @@
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "安裝此套件需要管理員密碼提示工具（pkexec、zenity 或 kdialog），但找不到任何一個。",
+      "noPrivilegePrompt": "安裝此套件需要管理員密碼提示工具（pkexec、run0，或搭配 zenity、kdialog、ssh-askpass 使用的 sudo），但找不到任何一個。",
       "verificationFailed": "無法驗證更新：其簽章、總和檢查碼或中繼資料不符。",
       "insecureDownload": "更新下載未透過 HTTPS 提供。",
       "downloadTooLarge": "更新下載的大小超出預期。",

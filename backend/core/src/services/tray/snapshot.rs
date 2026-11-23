@@ -1,69 +1,13 @@
-use crate::context::BackendContext;
-pub mod actions;
-pub mod core;
-pub(crate) mod events;
-pub mod icon;
-pub mod menu;
-pub(crate) mod setup;
-pub mod tray_action;
-
+//! What the tray shows, read from the active backend and the settings.
+use crate::context::AppHandle;
 use crate::rclone::backend::BackendManager;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::json_helpers::{extract_remote_name_from_fs, normalize_remote_name};
 use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
 use crate::utils::types::remotes::{MountedRemote, OperationType, ServeInstance};
 use crate::utils::types::starter;
-use icon::TrayIconKind;
-use menu::MenuPlan;
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::sync::Mutex;
-use std::sync::atomic::AtomicBool;
-use tauri::{AppHandle, Runtime};
-
-#[derive(Default, Clone, Debug, PartialEq)]
-pub struct TrayVisualCache {
-    pub plan: Option<MenuPlan>,
-    pub tooltip: Option<String>,
-    pub icon: Option<TrayIconKind>,
-}
-
-impl TrayVisualCache {
-    /// Compare with the last successfully applied native visuals without committing changes.
-    pub fn diff(
-        &self,
-        new_plan: &MenuPlan,
-        new_tooltip: &str,
-        new_icon: TrayIconKind,
-    ) -> (bool, bool, bool) {
-        (
-            self.plan.as_ref() != Some(new_plan),
-            self.tooltip.as_deref() != Some(new_tooltip),
-            self.icon != Some(new_icon),
-        )
-    }
-}
-
-#[derive(Default)]
-pub struct TrayMenuState {
-    visuals: Mutex<TrayVisualCache>,
-    pub update_lock: tokio::sync::Mutex<()>,
-    pub has_pending: AtomicBool,
-    /// Native visibility stays available while vault-protected settings are locked.
-    pub visible: AtomicBool,
-    /// Latest visibility request, including while asynchronous setup is pending.
-    pub requested_visible: AtomicBool,
-}
-
-impl TrayMenuState {
-    /// What the native tray currently shows. It is plain data, so a lock poisoned by a
-    /// panic elsewhere is still safe to use and must not take the tray down with it.
-    pub fn visuals(&self) -> std::sync::MutexGuard<'_, TrayVisualCache> {
-        self.visuals
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-}
 
 #[derive(Clone)]
 pub struct TrayJobSummary {
@@ -173,9 +117,9 @@ pub struct TraySnapshot {
 }
 
 impl TraySnapshot {
-    pub async fn fetch<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Self> {
-        let backend_manager = app.backend_state::<BackendManager>();
-        let settings_manager = app.backend_state::<AppSettingsManager>();
+    pub async fn fetch(app: &AppHandle) -> Self {
+        let backend_manager = app.state::<BackendManager>();
+        let settings_manager = app.state::<AppSettingsManager>();
 
         let backend = backend_manager.get_active().await;
         let jobs = backend_manager.job_cache_for(&backend.name);
@@ -302,14 +246,14 @@ impl TraySnapshot {
             })
             .collect();
 
-        Ok(Self {
+        Self {
             active_jobs,
             mounted_remotes,
             active_serves,
             remotes,
             quick_runs,
             workflows,
-        })
+        }
     }
 }
 
@@ -317,14 +261,6 @@ impl TraySnapshot {
 mod tests {
     use super::*;
     use crate::utils::types::starter::Starter;
-
-    fn cached_visuals() -> TrayVisualCache {
-        TrayVisualCache {
-            plan: Some(MenuPlan { items: vec![] }),
-            tooltip: Some("Tooltip".into()),
-            icon: Some(TrayIconKind::ColorNormal),
-        }
-    }
 
     fn job(remote: &str, profile: &str, job_type: JobType) -> JobInfo {
         serde_json::from_value(serde_json::json!({
@@ -391,61 +327,5 @@ mod tests {
         assert!(!active.contains("gdrive", OperationType::Sync, "Default"));
         assert!(!active.contains("gdrive", OperationType::Mount, "Default"));
         assert!(!active.contains("gdrive", OperationType::Serve, "Default"));
-    }
-
-    #[test]
-    fn initial_visuals_require_all_native_updates() {
-        let cache = TrayVisualCache::default();
-        assert_eq!(
-            cache.diff(
-                &MenuPlan { items: vec![] },
-                "Tooltip",
-                TrayIconKind::ColorNormal
-            ),
-            (true, true, true)
-        );
-        assert_eq!(cache, TrayVisualCache::default());
-    }
-
-    #[test]
-    fn unchanged_visuals_do_not_require_native_updates() {
-        let cache = cached_visuals();
-        assert_eq!(
-            cache.diff(
-                &MenuPlan { items: vec![] },
-                "Tooltip",
-                TrayIconKind::ColorNormal
-            ),
-            (false, false, false)
-        );
-    }
-
-    #[test]
-    fn failed_or_unapplied_plan_changes_remain_pending() {
-        let cache = cached_visuals();
-        let plan = MenuPlan {
-            items: vec![menu::MenuItemKind::Separator],
-        };
-        for _ in 0..2 {
-            assert_eq!(
-                cache.diff(&plan, "Tooltip", TrayIconKind::ColorNormal),
-                (true, false, false)
-            );
-        }
-        assert_eq!(cache, cached_visuals());
-    }
-
-    #[test]
-    fn tooltip_and_icon_changes_are_independent() {
-        let cache = cached_visuals();
-        let plan = MenuPlan { items: vec![] };
-        assert_eq!(
-            cache.diff(&plan, "Changed", TrayIconKind::ColorNormal),
-            (false, true, false)
-        );
-        assert_eq!(
-            cache.diff(&plan, "Tooltip", TrayIconKind::ColorActive),
-            (false, false, true)
-        );
     }
 }

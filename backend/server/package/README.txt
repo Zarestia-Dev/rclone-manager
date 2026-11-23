@@ -6,7 +6,8 @@ Linux / macOS:   ./rclone-manager-server
 Windows:         .\rclone-manager-server.exe
 
 Then open http://localhost:8080. Run with --help for the available options
-(host, port, authentication, HTTPS).
+(host, port, authentication, HTTPS). On Windows it opens no console window: quit
+it from its tray icon, and find its output in the log files.
 
 rclone-manager-server.service (Linux only) is a systemd unit template. Its first
 lines show how to install the executable under /opt/rclone-manager, owned by the

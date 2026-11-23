@@ -41,6 +41,25 @@ function readCatalogs(directory) {
   });
 }
 
+// Installs of the RClone Manager Headless app (Tauri, 0.3.6 and older) update from
+// `latest.json`. It sends them to the server package of their own format, with the
+// signatures of the catalog.
+function tauriUpdateJson(catalog, tag, repository) {
+  const platforms = {};
+  for (const entry of Object.values(catalog.entries)) {
+    const manifest = JSON.parse(Buffer.from(entry.manifest, 'base64').toString('utf8'));
+    // Tauri names the installer formats as the catalog does.
+    if (['deb', 'rpm', 'nsis', 'msi'].includes(manifest.kind))
+      platforms[`${manifest.target}-${manifest.kind}`] = {
+        signature: manifest.signature,
+        url: `https://github.com/${repository}/releases/download/${tag}/${manifest.asset}`,
+      };
+  }
+  if (!Object.keys(platforms).length) return null;
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '')) throw new Error('Invalid repository');
+  return { version: catalog.version, pub_date: new Date().toISOString(), platforms };
+}
+
 function publishCatalog(tag, version, directory, gh = runGh) {
   validateTag(tag, version);
   const catalogs = readCatalogs(directory);
@@ -60,7 +79,13 @@ function publishCatalog(tag, version, directory, gh = runGh) {
   try {
     const file = path.join(temporary, MANIFEST_NAME);
     fs.writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
-    gh(['release', 'upload', tag, file, '--clobber']);
+    const files = [file];
+    const tauri = tauriUpdateJson(merged, tag, process.env.GH_REPO);
+    if (tauri) {
+      files.push(path.join(temporary, 'latest.json'));
+      fs.writeFileSync(files[1], `${JSON.stringify(tauri, null, 2)}\n`);
+    }
+    gh(['release', 'upload', tag, ...files, '--clobber']);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
@@ -81,4 +106,4 @@ if (require.main === module) {
     process.exitCode = 1;
   }
 }
-module.exports = { checkRelease, publishCatalog, readCatalogs };
+module.exports = { checkRelease, publishCatalog, readCatalogs, tauriUpdateJson };

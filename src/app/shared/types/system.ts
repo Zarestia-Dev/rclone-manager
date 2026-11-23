@@ -94,6 +94,8 @@ export enum BackendUpdateStatus {
 export interface UpdatePolicy {
   installation:
     | 'native'
+    | 'nsis'
+    | 'msi'
     | 'portable'
     | 'server'
     | 'android'

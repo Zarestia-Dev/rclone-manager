@@ -110,8 +110,8 @@ mod tests {
             ("v1.2.3-beta.1", "RClone Manager", "RClone.Manager"),
             (
                 "headless-v1.2.3-beta.1",
-                "RClone Manager Headless",
-                "RClone.Manager.Headless",
+                "RClone Manager Server",
+                "RClone.Manager.Server",
             ),
         ] {
             let asset = |release: &Release, kind, arch| {
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn containers_require_their_server_architecture_and_other_installations_do_not_guess() {
-        let product = "RClone Manager Headless";
+        let product = "RClone Manager Server";
         let release = release("headless-v1.2.3", &["server-linux-aarch64-1.2.3.zip"]);
         assert!(
             external_asset(

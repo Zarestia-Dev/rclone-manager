@@ -11,7 +11,7 @@ pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
     #[cfg(feature = "updater")]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
 
-    #[cfg(all(feature = "tauri-plugin-deep-link", not(feature = "web-server")))]
+    #[cfg(feature = "tauri-plugin-deep-link")]
     let builder = builder.plugin(tauri_plugin_deep_link::init());
 
     #[cfg(autostart_plugin)]
@@ -26,13 +26,12 @@ pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
     #[cfg(feature = "tauri-plugin-opener")]
     let builder = builder.plugin(tauri_plugin_opener::init());
 
-    #[cfg(not(feature = "web-server"))]
     let builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init());
 
-    #[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
+    #[cfg(feature = "tauri-plugin-window-state")]
     let builder = builder.plugin(
         tauri_plugin_window_state::Builder::default()
             .with_filter(remembers_window_state)
@@ -66,7 +65,9 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
                     );
                     let cwd = std::path::PathBuf::from(cwd);
                     crate::utils::spawn(async move {
-                        match send_to::execute(&core, remote, path, sources, Some(&cwd)).await {
+                        match send_to::execute_when_ready(&core, remote, path, sources, Some(&cwd))
+                            .await
+                        {
                             Ok(jobid) => log::info!("SendTo transfer finished. Job ID: {jobid}"),
                             Err(e) => {
                                 log::error!("SendTo transfer failed in running instance: {e}")
@@ -76,22 +77,16 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
                     return;
                 }
 
-                #[cfg(all(feature = "web-server", feature = "tray"))]
-                log::info!("Another instance attempted to run with args: {argv:?}");
+                let app_clone = app.clone();
+                crate::utils::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-                #[cfg(not(feature = "web-server"))]
-                {
-                    let app_clone = app.clone();
-                    crate::utils::spawn(async move {
-                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-                        let app_for_main = app_clone.clone();
-                        let _ = app_clone.run_on_main_thread(move || {
-                            log::info!("Second instance detected, presenting main window");
-                            crate::desktop::window::present_main_window(&app_for_main);
-                        });
+                    let app_for_main = app_clone.clone();
+                    let _ = app_clone.run_on_main_thread(move || {
+                        log::info!("Second instance detected, presenting main window");
+                        crate::desktop::window::present_main_window(&app_for_main);
                     });
-                }
+                });
             })
             .build(),
     )
@@ -100,14 +95,14 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
 /// Only long-lived windows keep their position and size. File-browser windows get a new
 /// random label every time (so remembering them would grow the state file forever), and
 /// dialogs are sized by their content.
-#[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
+#[cfg(feature = "tauri-plugin-window-state")]
 fn remembers_window_state(label: &str) -> bool {
     !label.starts_with("nautilus-") && !label.starts_with("dialog-")
 }
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "tauri-plugin-window-state", not(feature = "web-server")))]
+    #[cfg(feature = "tauri-plugin-window-state")]
     #[test]
     fn only_long_lived_windows_remember_their_state() {
         for label in ["main", "main-standalone", "flow", "nautilus"] {

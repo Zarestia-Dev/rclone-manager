@@ -223,7 +223,7 @@ These files provide translated titles and help text for Rclone options across al
 
 Instead of manually fetching and editing definitions, use the built-in sync scripts:
 
-1. **Start `rclone rcd` on Port `5572`** (or launch `npm run dev:headless` / `npm run tauri dev`).
+1. **Start `rclone rcd` on Port `5572`** (or launch `npm run dev:server` / `npm run tauri dev`).
 
    ```bash
    rclone rcd --rc-no-auth --rc-addr :5572
@@ -311,16 +311,16 @@ For detailed platform-specific prerequisites, see the [Building Wiki](https://ha
    npm run tauri dev
    ```
 
-4. **Run headless mode (development)** (optional):
+4. **Run the server (development)** (optional):
 
    ```bash
-   npm run headless-dev
+   npm run dev:server -- --host 127.0.0.1
    ```
 
-5. **Run headless mode (production)** (optional):
+5. **Build the server (release)** (optional):
 
    ```bash
-   npm run headless
+   npm run build:server
    ```
 
 ---

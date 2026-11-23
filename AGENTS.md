@@ -157,8 +157,9 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
 
 17. **Updater & Release Contracts (CRITICAL)**
-    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`, and the Tauri AppImage name that `appimage-linux-<arch>` catalog entries point to) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater (including the DEB/RPM/server-ZIP matching in `backend/core/src/services/updates/availability.rs`, which derives the `RClone.Manager[.Headless]` prefix from the Tauri product name) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
+    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`, the Tauri AppImage name that `appimage-linux-<arch>` catalog entries point to, and the server packages `RClone.Manager.Server_<version>_<amd64|arm64>.deb`, `RClone.Manager.Server-<version>-1.<x86_64|aarch64>.rpm`, `RClone.Manager.Server_<version>_<x64|arm64>-setup.exe` and `RClone.Manager.Server_<version>_<x64|arm64>_en-US.msi`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater (including the DEB/RPM/server-ZIP matching in `backend/core/src/services/updates/availability.rs`, which derives the `RClone.Manager[.Server]` prefix from the product's display name, and the AUR `PKGBUILD-server`) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
     - Validation rules exist in both `scripts/create-update-manifest.cjs` and `backend/core/src/services/updates/manifest.rs`; keep them identical and covered by the shared fixtures under `services/updates/fixtures/`.
+    - The server replaced the RClone Manager Headless app (Tauri, 0.3.6 and older). `scripts/publish-custom-updater.cjs` writes the `headless-v` release's `latest.json` from the DEB, RPM, setup and MSI entries of the catalog, so those installs move to the server package of their own format; keep that file in every release. The `rclone-manager-server` DEB and RPM replace `r-clone-manager-headless` (conflicts, replaces and obsoletes in `backend/server/package/nfpm.yaml`), the MSI keeps the old app's UpgradeCode, and the setup removes the old installation (`installer.nsi`). The old app's names stay where installs look for them: the `headless-v` tag, the data folder `com.rclone.manager.headless`, the product's `mode`, `integration_key` and `flatpak_id`, and the `/usr/bin/rclone-manager-headless[-bin]` launcher links. On start the server moves the old app's start-at-login and Send To entries (`LEGACY_NAME`).
     - Never write command-line arguments, passwords or tokens to disk. The update helper receives the launch arguments through its environment.
     - Server updates are ZIP archives only; `tar.gz` is not used for releases.
 
@@ -228,7 +229,7 @@ for features in desktop desktop,tray portable; do
   cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features -- -D warnings
 done
 
-# 2. Clippy check - Web Server target
+# 2. Clippy check - Web Server target (with its tray, except on macOS)
 mkdir -p dist/rclone-manager/browser
 cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings
 
@@ -239,7 +240,7 @@ cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features mob
 cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
 # The tray tests need the tray feature and the Tauri mock runtime; graphics tests mutate the
 # environment, so run these single-threaded.
 for features in desktop desktop,tray,tauri-test; do
@@ -269,7 +270,7 @@ npm run tauri dev
 
 # Feature-specific dev modes
 npm run dev:portable
-npm run dev:headless
+npm run dev:server
 ```
 
 ---

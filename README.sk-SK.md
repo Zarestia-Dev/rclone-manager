@@ -64,7 +64,7 @@
 - ⚙️ **Pripojenie a servery:** Jednoduché ovládanie pripojení a správa serverov (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Sledovanie úloh:** Sledovanie prenosov v reálnom čase a riadenie šírky pásma.
 - 📱 **Android SAF a DocumentsProvider:** Natívny prístup k cloudovým úložiskám v systémových výberoch súborov cez Storage Access Framework a interný most pripojenia VFS bez root.
-- 🌐 **Režim bez GUI (headless):** Spúšťajte na VPS/NAS pomocou [RClone Manager Server](backend/server/README.md). Dokumentácia servera a šablóna služby pre Linux sa nachádzajú v `backend/server/`.
+- 🌐 **Režim servera:** Spúšťajte na VPS/NAS pomocou [RClone Manager Server](backend/server/README.md). Dokumentácia servera a šablóna služby pre Linux sa nachádzajú v `backend/server/`.
 
 ---
 

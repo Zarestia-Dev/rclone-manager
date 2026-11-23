@@ -2,6 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["src/main.ts!"],
   "project": ["src/**/*.{ts,html,scss}!"],
-  "ignore": ["src/sw.js", "scripts/ensure-tauri-empty-dir.cjs"],
+  "ignore": ["src/sw.js"],
   "ignoreExportsUsedInFile": true
 }

@@ -1,16 +1,4 @@
-use tauri::image::Image;
-
-const ICON_COLOR_NORMAL: &[u8] = include_bytes!("../../../icons/rclone_symbolic.png");
-const ICON_COLOR_ACTIVE: &[u8] = include_bytes!("../../../icons/rclone_symbolic_active.png");
-
-const ICON_MONO_LIGHT_NORMAL: &[u8] = include_bytes!("../../../icons/rclone_monochrome_light.png");
-const ICON_MONO_LIGHT_ACTIVE: &[u8] =
-    include_bytes!("../../../icons/rclone_monochrome_light_active.png");
-
-const ICON_MONO_DARK_NORMAL: &[u8] = include_bytes!("../../../icons/rclone_monochrome_dark.png");
-const ICON_MONO_DARK_ACTIVE: &[u8] =
-    include_bytes!("../../../icons/rclone_monochrome_dark_active.png");
-
+//! Which tray icon shows; the host turns it into a native image.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TrayIconKind {
@@ -41,32 +29,18 @@ impl TrayIconKind {
         }
     }
 
+    /// `system_dark` is the host's theme, used when the setting follows the system.
     #[must_use]
-    pub fn resolve(is_active: bool, theme_style: &str) -> Self {
+    pub fn resolve(is_active: bool, theme_style: &str, system_dark: bool) -> Self {
         let idle = match theme_style {
             "color" => Self::ColorNormal,
             "monochrome_light" => Self::MonoLightNormal,
             "monochrome_dark" => Self::MonoDarkNormal,
             // "system" or fallback: a dark panel needs the light icon
-            _ if crate::native::theme::is_system_dark() => Self::MonoLightNormal,
+            _ if system_dark => Self::MonoLightNormal,
             _ => Self::MonoDarkNormal,
         };
         if is_active { idle.active() } else { idle }
-    }
-
-    #[must_use]
-    pub fn to_image(self) -> Image<'static> {
-        static ICONS: std::sync::LazyLock<[Image<'static>; 6]> = std::sync::LazyLock::new(|| {
-            [
-                Image::from_bytes(ICON_COLOR_NORMAL).expect("embedded icon PNG is valid"),
-                Image::from_bytes(ICON_COLOR_ACTIVE).expect("embedded icon PNG is valid"),
-                Image::from_bytes(ICON_MONO_LIGHT_NORMAL).expect("embedded icon PNG is valid"),
-                Image::from_bytes(ICON_MONO_LIGHT_ACTIVE).expect("embedded icon PNG is valid"),
-                Image::from_bytes(ICON_MONO_DARK_NORMAL).expect("embedded icon PNG is valid"),
-                Image::from_bytes(ICON_MONO_DARK_ACTIVE).expect("embedded icon PNG is valid"),
-            ]
-        });
-        ICONS[self as usize].clone()
     }
 }
 
@@ -105,44 +79,42 @@ mod tests {
     #[test]
     fn test_tray_icon_kind_resolve_fixed_themes() {
         assert_eq!(
-            TrayIconKind::resolve(false, "color"),
+            TrayIconKind::resolve(false, "color", false),
             TrayIconKind::ColorNormal
         );
         assert_eq!(
-            TrayIconKind::resolve(true, "color"),
+            TrayIconKind::resolve(true, "color", false),
             TrayIconKind::ColorActive
         );
         assert_eq!(
-            TrayIconKind::resolve(false, "monochrome_light"),
+            TrayIconKind::resolve(false, "monochrome_light", false),
             TrayIconKind::MonoLightNormal
         );
         assert_eq!(
-            TrayIconKind::resolve(true, "monochrome_light"),
+            TrayIconKind::resolve(true, "monochrome_light", true),
             TrayIconKind::MonoLightActive
         );
         assert_eq!(
-            TrayIconKind::resolve(false, "monochrome_dark"),
+            TrayIconKind::resolve(false, "monochrome_dark", true),
             TrayIconKind::MonoDarkNormal
         );
         assert_eq!(
-            TrayIconKind::resolve(true, "monochrome_dark"),
+            TrayIconKind::resolve(true, "monochrome_dark", false),
             TrayIconKind::MonoDarkActive
         );
     }
 
     #[test]
-    fn test_tray_icon_kind_to_image_valid() {
-        for kind in [
-            TrayIconKind::ColorNormal,
-            TrayIconKind::ColorActive,
-            TrayIconKind::MonoLightNormal,
-            TrayIconKind::MonoLightActive,
-            TrayIconKind::MonoDarkNormal,
-            TrayIconKind::MonoDarkActive,
-        ] {
-            let img = kind.to_image();
-            assert!(img.width() > 0);
-            assert!(img.height() > 0);
+    fn the_system_theme_only_decides_when_the_setting_follows_it() {
+        for theme in ["system", ""] {
+            assert_eq!(
+                TrayIconKind::resolve(false, theme, true),
+                TrayIconKind::MonoLightNormal
+            );
+            assert_eq!(
+                TrayIconKind::resolve(true, theme, false),
+                TrayIconKind::MonoDarkActive
+            );
         }
     }
 }

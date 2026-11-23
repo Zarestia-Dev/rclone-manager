@@ -4097,7 +4097,7 @@
       "unsupportedInstallation": "Bu kurulum otomatik güncelleme yüklemeyi desteklemiyor.",
       "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
       "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır.",
-      "noPrivilegePrompt": "Bu paketin kurulması için bir yönetici parolası istemi (pkexec, zenity veya kdialog) gerekiyor, ancak hiçbiri bulunamadı.",
+      "noPrivilegePrompt": "Bu paketin kurulması için bir yönetici parolası istemi (pkexec, run0 ya da zenity, kdialog veya ssh-askpass ile sudo) gerekiyor, ancak hiçbiri bulunamadı.",
       "verificationFailed": "Güncelleme doğrulanamadı: imzası, sağlama toplamı veya meta verileri eşleşmiyor.",
       "insecureDownload": "Güncelleme indirmesi HTTPS üzerinden sunulmadı.",
       "downloadTooLarge": "Güncelleme indirmesi beklenenden büyük.",

@@ -5,20 +5,15 @@ mod runtime;
 pub(crate) mod setup;
 pub use runtime::run;
 
-#[cfg(not(feature = "web-server"))]
 mod ipc;
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 mod portal;
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod protocol;
-#[cfg(any(not(feature = "web-server"), feature = "tray"))]
 pub(crate) mod theme;
-#[cfg(all(not(feature = "web-server"), desktop))]
+#[cfg(desktop)]
 mod window;
 
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod events;
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod files;
 
 #[cfg(target_os = "android")]

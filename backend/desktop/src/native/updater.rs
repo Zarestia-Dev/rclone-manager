@@ -124,17 +124,13 @@ mod tests {
     use super::{manifest_matches_release, release_has_download};
 
     #[test]
-    fn native_configs_share_the_production_verification_key() {
-        for config in [
-            include_str!("../../tauri.conf.json"),
-            include_str!("../../tauri.conf.headless.json"),
-        ] {
-            let config: serde_json::Value = serde_json::from_str(config).unwrap();
-            assert_eq!(
-                config["plugins"]["updater"]["pubkey"].as_str().unwrap(),
-                include_str!("../../../../resources/updater.pub").trim()
-            );
-        }
+    fn native_config_shares_the_production_verification_key() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
+        assert_eq!(
+            config["plugins"]["updater"]["pubkey"].as_str().unwrap(),
+            include_str!("../../../../resources/updater.pub").trim()
+        );
     }
 
     #[test]

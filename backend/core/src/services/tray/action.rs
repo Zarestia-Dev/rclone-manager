@@ -26,7 +26,6 @@ pub enum TrayAction {
     StopAllServes,
     OpenFileBrowser,
     ShowApp,
-    OpenWebUI,
     Quit,
 }
 
@@ -42,7 +41,7 @@ fn decode_part(part: &str) -> String {
 impl TrayAction {
     /// Actions that do not expose configuration or control operations while locked.
     pub fn allowed_when_locked(&self) -> bool {
-        matches!(self, Self::ShowApp | Self::OpenWebUI | Self::Quit)
+        matches!(self, Self::ShowApp | Self::Quit)
     }
 
     /// Converts a tray action into its unique string ID.
@@ -82,7 +81,6 @@ impl TrayAction {
             Self::StopAllServes => "stop_all_serves".to_string(),
             Self::OpenFileBrowser => "open_file_browser".to_string(),
             Self::ShowApp => "show_app".to_string(),
-            Self::OpenWebUI => "open_web_ui".to_string(),
             Self::Quit => "quit".to_string(),
         }
     }
@@ -97,7 +95,6 @@ impl TrayAction {
             "stop_all_serves" => return Some(Self::StopAllServes),
             "open_file_browser" => return Some(Self::OpenFileBrowser),
             "show_app" => return Some(Self::ShowApp),
-            "open_web_ui" => return Some(Self::OpenWebUI),
             "quit" => return Some(Self::Quit),
             _ => {}
         }
@@ -181,7 +178,6 @@ mod tests {
             TrayAction::StopAllServes,
             TrayAction::OpenFileBrowser,
             TrayAction::ShowApp,
-            TrayAction::OpenWebUI,
             TrayAction::Quit,
         ];
 

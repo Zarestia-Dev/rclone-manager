@@ -1,4 +1,3 @@
-#[cfg(not(feature = "web-server"))]
 use crate::context::BackendContext;
 
 /// XDG autostart entries launch right after `graphical-session.target`, which
@@ -7,7 +6,7 @@ use crate::context::BackendContext;
 /// initialization fails hard in that window (`tao` panics on `gtk::init`
 /// failure), so wait for a display socket before building the Tauri app.
 /// Bounded: at most ~60s, then proceed and let GTK report the real error.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(desktop, target_os = "linux"))]
 fn wait_for_display_ready() {
     if display_socket_ready() {
         return;
@@ -24,7 +23,7 @@ fn wait_for_display_ready() {
 /// True when the session's Wayland socket or X display socket is reachable.
 /// Honors explicit `GDK_BACKEND`/`WAYLAND_DISPLAY`/`DISPLAY` overrides the
 /// same way GTK backend selection does.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(desktop, target_os = "linux"))]
 fn display_socket_ready() -> bool {
     let candidates = display_socket_candidates(
         std::env::var("GDK_BACKEND").ok().as_deref(),
@@ -43,7 +42,7 @@ fn display_socket_ready() -> bool {
 /// empty list when there is no local socket to wait for (Wayland without
 /// `XDG_RUNTIME_DIR`, or a remote `DISPLAY` such as `host:0`), which
 /// `display_socket_ready` treats as ready so startup is not delayed.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(desktop, target_os = "linux"))]
 fn display_socket_candidates(
     gdk_backend: Option<&str>,
     wayland_display: Option<&str>,
@@ -94,17 +93,14 @@ pub fn run() {
     };
 
     // After CLI parsing so `--help`, `--version` and invalid arguments never wait.
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    #[cfg(all(desktop, target_os = "linux"))]
     wait_for_display_ready();
 
     let mut builder = super::plugins::register(tauri::Builder::default());
 
-    #[cfg(not(feature = "web-server"))]
-    {
-        builder = crate::native::protocol::register_protocols(builder);
-    }
+    builder = crate::native::protocol::register_protocols(builder);
 
-    #[cfg(all(desktop, not(feature = "web-server")))]
+    #[cfg(desktop)]
     {
         builder = super::window::configure(builder);
     }
@@ -114,28 +110,24 @@ pub fn run() {
     #[cfg(all(desktop, feature = "tray"))]
     {
         builder = builder.on_menu_event(|app, event| {
-            crate::desktop::tray::events::handle_tray_menu_event(app, &event)
+            use crate::context::BackendContext;
+            crate::services::tray::actions::handle_menu_id(app.backend(), event.id.as_ref());
         });
     }
 
-    #[cfg(not(feature = "web-server"))]
-    {
-        builder = builder.invoke_handler(super::ipc::dispatch_invoke);
-    }
+    builder = builder.invoke_handler(super::ipc::dispatch_invoke);
 
     let app = builder
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    #[cfg(feature = "web-server")]
-    {
-        log::info!("Tauri event loop starting (Web Server Mode)");
-        app.run(|_app_handle, _event| {});
-    }
-
-    #[cfg(not(feature = "web-server"))]
     {
         app.run(|app_handle, event| {
+            // The tray is not Tauri's, so Tauri's exit cleanup does not remove it.
+            #[cfg(feature = "tray")]
+            if matches!(&event, tauri::RunEvent::Exit) {
+                crate::services::tray::native::remove();
+            }
             #[cfg(feature = "updater")]
             if matches!(&event, tauri::RunEvent::Ready) {
                 let context =
@@ -166,7 +158,7 @@ pub fn run() {
 
 /// Closing the last window leaves WebKit's helper processes running; stop our own
 /// children so a tray-resident app does not keep the web engine's memory.
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
+#[cfg(target_os = "linux")]
 fn kill_webkit_children() {
     use sysinfo::{ProcessesToUpdate, System};
 
@@ -184,7 +176,7 @@ fn kill_webkit_children() {
     }
 }
 
-#[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(test, desktop, target_os = "linux"))]
 mod display_readiness_tests {
     use super::display_socket_candidates;
     use std::path::PathBuf;

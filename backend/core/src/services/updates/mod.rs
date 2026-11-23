@@ -12,6 +12,8 @@ pub mod install;
 #[cfg(feature = "updater")]
 mod manifest;
 #[cfg(feature = "updater")]
+mod package;
+#[cfg(feature = "updater")]
 pub use manifest::ArtifactKind;
 pub mod policy;
 #[cfg(feature = "updater")]
@@ -61,12 +63,14 @@ use crate::utils::version::{clean_app_version, is_update_candidate, is_version_n
 
 /// Installers that replace the running build may move a pre-release to a stable
 /// release with a lower version number. Packages (including DEB/RPM installed by
-/// Tauri) only move forward: `rpm -U` refuses downgrades, package managers decide
+/// Tauri) only move forward: `rpm -U` and an MSI refuse downgrades, package managers decide
 /// for themselves, and Android version codes cannot decrease.
 fn is_offered(installation: &policy::UpdatePolicy, current: &str, release: &str) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
-        (_, InstallationKind::Deb | InstallationKind::Rpm) => is_version_newer(current, release),
+        (_, InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Msi) => {
+            is_version_newer(current, release)
+        }
         (UpdateMethod::Tauri | UpdateMethod::Binary, _) => is_update_candidate(current, release),
         _ => is_version_newer(current, release),
     }

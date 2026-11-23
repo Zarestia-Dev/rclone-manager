@@ -16,7 +16,13 @@ pub enum UpdateMethod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstallationKind {
+    /// The desktop app on Windows and macOS, updated by Tauri. On Linux the
+    /// package format names it instead.
     Native,
+    /// The server setup, installed for the current user.
+    Nsis,
+    /// The server MSI, installed for all users.
+    Msi,
     Portable,
     Server,
     Android,
@@ -114,6 +120,17 @@ fn classify(
     declared: Option<InstallationKind>,
     owner: Option<InstallationKind>,
 ) -> (InstallationKind, UpdateMethod) {
+    // The server packages hold the server build: the one that installed it is the
+    // build the core replaces.
+    let build = match owner {
+        Some(
+            package @ (InstallationKind::Deb
+            | InstallationKind::Rpm
+            | InstallationKind::Nsis
+            | InstallationKind::Msi),
+        ) if build == InstallationKind::Server => package,
+        _ => build,
+    };
     let kind = declared.unwrap_or(build);
     let packaged = matches!(build, InstallationKind::Deb | InstallationKind::Rpm);
     if kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build)) {
@@ -195,11 +212,15 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
             {
                 Some(crate::localized_error!("backendErrors.updater.notWritable"))
             }
-            // Tauri asks for the administrator password through one of these.
+            // Tauri also reads the password through zenity or kdialog itself.
             InstallationKind::Deb | InstallationKind::Rpm
-                if !["pkexec", "zenity", "kdialog"]
-                    .iter()
-                    .any(|tool| which::which(tool).is_ok()) =>
+                if !(if method == UpdateMethod::Tauri {
+                    ["pkexec", "zenity", "kdialog"]
+                        .iter()
+                        .any(|tool| which::which(tool).is_ok())
+                } else {
+                    can_install_as_root()
+                }) =>
             {
                 Some(crate::localized_error!(
                     "backendErrors.updater.noPrivilegePrompt"
@@ -304,10 +325,10 @@ fn package_owner(
         ("dpkg-query", "-S", InstallationKind::Deb),
         ("rpm", "-qf", InstallationKind::Rpm),
     ];
-    for (tool, flag, kind) in queries
-        .into_iter()
-        .filter(|(_, _, kind)| *kind == InstallationKind::Pacman || *kind == build)
-    {
+    // The server build is in the server DEB and RPM.
+    for (tool, flag, kind) in queries.into_iter().filter(|(_, _, kind)| {
+        *kind == InstallationKind::Pacman || *kind == build || build == InstallationKind::Server
+    }) {
         match query_owner(tool, flag, path) {
             Ok(Some(name)) => {
                 owner = Some((kind, name));
@@ -363,6 +384,61 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
     }
 }
 
+/// How the core installs a package as root. Each way asks for the password in a
+/// process of its own and hands it to the privileged one, so it never reaches the
+/// application: pkexec and run0 through the session's polkit agent, `sudo -A`
+/// through the askpass program sudo starts.
+#[cfg(target_os = "linux")]
+pub(super) fn can_install_as_root() -> bool {
+    ["pkexec", "run0"]
+        .iter()
+        .any(|tool| which::which(tool).is_ok())
+        || (which::which("sudo").is_ok() && askpass().is_some())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn can_install_as_root() -> bool {
+    false
+}
+
+/// The program `sudo -A` asks for the password with.
+#[cfg(target_os = "linux")]
+#[derive(Debug, PartialEq)]
+pub(super) enum Askpass {
+    /// `SUDO_ASKPASS` is already set; sudo reads it from the environment.
+    Inherited,
+    /// Takes the prompt as its argument, as sudo calls it.
+    Program(std::path::PathBuf),
+    /// Needs a script that passes the prompt on: zenity or kdialog.
+    Dialog(&'static str),
+}
+
+#[cfg(target_os = "linux")]
+pub(super) fn askpass() -> Option<Askpass> {
+    if std::env::var_os("SUDO_ASKPASS").is_some_and(|path| std::path::Path::new(&path).is_file()) {
+        return Some(Askpass::Inherited);
+    }
+    ["ksshaskpass", "ssh-askpass", "lxqt-openssh-askpass"]
+        .iter()
+        .find_map(|name| which::which(name).ok())
+        .or_else(|| {
+            [
+                "/usr/lib/ssh/ssh-askpass",
+                "/usr/libexec/openssh/ssh-askpass",
+            ]
+            .iter()
+            .map(std::path::PathBuf::from)
+            .find(|path| path.is_file())
+        })
+        .map(Askpass::Program)
+        .or_else(|| {
+            ["zenity", "kdialog"]
+                .into_iter()
+                .find(|tool| which::which(tool).is_ok())
+                .map(Askpass::Dialog)
+        })
+}
+
 /// `pacman -Qqo` prints the name; `dpkg-query -S` prints `name: path`.
 #[cfg(target_os = "linux")]
 fn owner_name(output: &str) -> String {
@@ -373,7 +449,41 @@ fn owner_name(output: &str) -> String {
         .to_owned()
 }
 
-#[cfg(not(target_os = "linux"))]
+/// The server setup (for the current user) and MSI (for all users) record the
+/// folder they installed in (`backend/server/package/`).
+#[cfg(windows)]
+fn package_owner(
+    path: &std::path::Path,
+    build: InstallationKind,
+) -> Option<(InstallationKind, String)> {
+    use winreg::{RegKey, enums::*};
+    if build != InstallationKind::Server {
+        return None;
+    }
+    let directory = std::fs::canonicalize(path.parent()?).ok()?;
+    let installed_by = |root, value: &str| {
+        [KEY_WOW64_64KEY, KEY_WOW64_32KEY].into_iter().any(|view| {
+            RegKey::predef(root)
+                .open_subkey_with_flags(
+                    r"Software\Zarestia Dev\RClone Manager Server",
+                    KEY_READ | view,
+                )
+                .and_then(|key| key.get_value::<String, _>(value))
+                .ok()
+                .and_then(|folder| std::fs::canonicalize(folder).ok())
+                .is_some_and(|folder| folder == directory)
+        })
+    };
+    if installed_by(HKEY_CURRENT_USER, "") {
+        Some((InstallationKind::Nsis, String::new()))
+    } else if installed_by(HKEY_LOCAL_MACHINE, "MsiInstallFolder") {
+        Some((InstallationKind::Msi, String::new()))
+    } else {
+        None
+    }
+}
+
+#[cfg(not(any(target_os = "linux", windows)))]
 fn package_owner(
     _path: &std::path::Path,
     _build: InstallationKind,
@@ -514,7 +624,7 @@ mod tests {
     #[test]
     fn package_ownership_overrides_repackaged_and_portable_builds() {
         for owner in [Pacman, Deb, Rpm] {
-            for build in [Portable, Server, Appimage, Native] {
+            for build in [Portable, Appimage, Native] {
                 let declared = declared_kind(None, false, Some(owner));
                 assert_eq!(
                     classify(UpdateMethod::Binary, build, declared, Some(owner)),
@@ -522,6 +632,41 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_server_packages_update_the_server_build_they_installed() {
+        for owner in [Deb, Rpm, Nsis, Msi] {
+            let declared = declared_kind(None, false, Some(owner));
+            assert_eq!(
+                classify(UpdateMethod::Binary, Server, declared, Some(owner)),
+                (owner, UpdateMethod::Binary)
+            );
+        }
+        // An AUR package, a container or a declaration without an owner is not ours.
+        let pacman = declared_kind(None, false, Some(Pacman));
+        assert_eq!(
+            classify(UpdateMethod::Binary, Server, pacman, Some(Pacman)),
+            (Pacman, UpdateMethod::Unavailable)
+        );
+        assert_eq!(
+            classify(
+                UpdateMethod::Binary,
+                Server,
+                declared_kind(Some("docker"), false, Some(Deb)),
+                Some(Deb)
+            ),
+            (Container, UpdateMethod::Unavailable)
+        );
+        assert_eq!(
+            classify(
+                UpdateMethod::Binary,
+                Server,
+                declared_kind(Some("deb"), false, None),
+                None
+            ),
+            (Deb, UpdateMethod::Unavailable)
+        );
     }
 
     #[test]
@@ -584,8 +729,8 @@ mod tests {
             "paru -S rclone-manager"
         );
         assert_eq!(
-            update_command(Pacman, Some("rclone-manager-headless"), None, id).unwrap(),
-            "git clone https://aur.archlinux.org/rclone-manager-headless.git && cd rclone-manager-headless && makepkg -si"
+            update_command(Pacman, Some("rclone-manager-server"), None, id).unwrap(),
+            "git clone https://aur.archlinux.org/rclone-manager-server.git && cd rclone-manager-server && makepkg -si"
         );
         assert!(update_command(Pacman, None, Some("yay"), id).is_none());
         assert_eq!(

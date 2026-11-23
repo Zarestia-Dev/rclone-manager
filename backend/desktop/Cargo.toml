@@ -23,7 +23,6 @@ rcman = { workspace = true }
 
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false }
-rclone-manager-server = { path = "../server", optional = true, default-features = false }
 tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -63,7 +62,7 @@ tauri-plugin-window-state = { version = "2", optional = true, default-features =
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
-# Application builds. Server/mobile builds require --no-default-features.
+# Application builds. Mobile builds require --no-default-features.
 default = ["desktop", "tray"]
 desktop = [
     "rclone-manager-core/desktop",
@@ -76,17 +75,14 @@ desktop = [
     "dep:zbus",
 ]
 mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile", "rclone-manager-core/updater"]
-web-server = ["dep:rclone-manager-server"]
 
 # Distribution variants retain all default desktop functionality.
 portable = ["desktop", "tray", "rclone-manager-core/portable"]
 flatpak = ["desktop", "tray", "rclone-manager-core/flatpak"]
 
-# Optional native integrations, also usable with the web server.
+# Optional native integrations.
 tray = [
-    "rclone-manager-core/tray",
-    "tauri/tray-icon",
-    "tauri/image-png",
+    "rclone-manager-core/tray-gtk",
     "tauri-plugin-opener",
     "tauri-plugin-autostart",
     "tauri-plugin-single-instance",

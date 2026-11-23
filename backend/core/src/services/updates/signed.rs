@@ -14,6 +14,10 @@ fn kind(policy: &UpdatePolicy) -> ArtifactKind {
         InstallationKind::Portable => ArtifactKind::Portable,
         InstallationKind::Android => ArtifactKind::Android,
         InstallationKind::Appimage => ArtifactKind::Appimage,
+        InstallationKind::Deb => ArtifactKind::Deb,
+        InstallationKind::Rpm => ArtifactKind::Rpm,
+        InstallationKind::Nsis => ArtifactKind::Nsis,
+        InstallationKind::Msi => ArtifactKind::Msi,
         _ => ArtifactKind::Server,
     }
 }
@@ -95,13 +99,16 @@ struct SignedUpdate {
 }
 
 impl SignedUpdate {
-    /// Android's installer only opens `.apk` files, so the verified cache doubles
-    /// as the installer input instead of a second copy.
+    /// Installers open their own file types, so the verified cache doubles as the
+    /// installer input instead of a second copy.
     fn cache_path(&self) -> std::path::PathBuf {
-        let extension = if self.manifest.kind == ArtifactKind::Android {
-            "apk"
-        } else {
-            "payload"
+        let extension = match self.manifest.kind {
+            ArtifactKind::Android => "apk",
+            ArtifactKind::Deb => "deb",
+            ArtifactKind::Rpm => "rpm",
+            ArtifactKind::Nsis => "exe",
+            ArtifactKind::Msi => "msi",
+            _ => "payload",
         };
         self.cache_directory.join(format!(
             "{}-{}.{extension}",
@@ -163,6 +170,12 @@ impl AppUpdate for SignedUpdate {
             return Err(crate::localized_error!(
                 "backendErrors.updater.unsupportedInstallation"
             ));
+        }
+        if matches!(
+            self.manifest.kind,
+            ArtifactKind::Deb | ArtifactKind::Rpm | ArtifactKind::Nsis | ArtifactKind::Msi
+        ) {
+            return super::package::install(self.manifest.kind, &self.cache_path());
         }
         super::binary::prepare(
             self.manifest.kind,

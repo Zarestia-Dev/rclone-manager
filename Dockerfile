@@ -1,5 +1,5 @@
 # =============================================================================
-# RClone Manager Headless — Multi-stage Docker Build
+# RClone Manager Server — Multi-stage Docker Build
 # =============================================================================
 #
 # Usage:
@@ -50,7 +50,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy project source and build headless binary
+# Copy project source and build the server binary
 COPY . .
 RUN npm run build && cargo build --manifest-path backend/Cargo.toml \
     --release -p rclone-manager-server
@@ -62,7 +62,7 @@ FROM debian:bookworm-slim
 
 LABEL maintainer="Zarestia-Dev" \
       org.opencontainers.image.title="RClone Manager" \
-      org.opencontainers.image.description="Web-based rclone management interface (headless)" \
+      org.opencontainers.image.description="Web-based rclone management interface (server)" \
       org.opencontainers.image.source="https://github.com/Zarestia-Dev/rclone-manager"
 
 # Install runtime dependencies

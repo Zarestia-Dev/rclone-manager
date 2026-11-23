@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createManifest, MANIFEST_NAME } = require('./create-update-manifest.cjs');
-const { checkRelease, publishCatalog } = require('./publish-custom-updater.cjs');
+const { createManifest, mergeCatalogs, MANIFEST_NAME } = require('./create-update-manifest.cjs');
+const { checkRelease, publishCatalog, tauriUpdateJson } = require('./publish-custom-updater.cjs');
 
 test('preflight permits new and draft releases and rejects published releases before uploads', () => {
   for (const tag of ['v1.2.3', 'headless-v1.2.3']) {
@@ -86,26 +86,56 @@ test('preflight handles empty pages and rejects published or invalid records on 
   );
 });
 
-function catalog(kind) {
+function catalog(kind, target = 'linux-x86_64', asset = `${kind}-${target}-1.2.3`) {
   const manifest = createManifest({
     kind,
-    target: 'linux-x86_64',
+    target,
     version: '1.2.3',
-    asset: `${kind}-linux-x86_64-1.2.3`,
+    asset,
     bytes: Buffer.from('abc'),
-    signature: 'payload-signature',
+    signature: `${kind}-payload-signature`,
   });
   return {
     schemaVersion: 1,
     version: '1.2.3',
     entries: {
-      [`${kind}-linux-x86_64`]: {
+      [`${kind}-${target}`]: {
         manifest: Buffer.from(JSON.stringify(manifest)).toString('base64'),
         signature: 'manifest-signature',
       },
     },
   };
 }
+
+test('sends Tauri headless installs to the packages with the catalog signatures', () => {
+  const merged = mergeCatalogs('1.2.3', [
+    catalog('server'),
+    catalog('deb', 'linux-x86_64', 'RClone.Manager.Server_1.2.3_amd64.deb'),
+    catalog('nsis', 'windows-aarch64', 'RClone.Manager.Server_1.2.3_arm64-setup.exe'),
+    catalog('msi', 'windows-aarch64', 'RClone.Manager.Server_1.2.3_arm64_en-US.msi'),
+  ]);
+  const json = tauriUpdateJson(merged, 'headless-v1.2.3', 'owner/repo');
+  const download = 'https://github.com/owner/repo/releases/download/headless-v1.2.3/';
+  assert.equal(json.version, '1.2.3');
+  assert.ok(!Number.isNaN(Date.parse(json.pub_date)));
+  assert.deepEqual(json.platforms, {
+    'linux-x86_64-deb': {
+      signature: 'deb-payload-signature',
+      url: `${download}RClone.Manager.Server_1.2.3_amd64.deb`,
+    },
+    'windows-aarch64-nsis': {
+      signature: 'nsis-payload-signature',
+      url: `${download}RClone.Manager.Server_1.2.3_arm64-setup.exe`,
+    },
+    'windows-aarch64-msi': {
+      signature: 'msi-payload-signature',
+      url: `${download}RClone.Manager.Server_1.2.3_arm64_en-US.msi`,
+    },
+  });
+  // Desktop and server releases keep their own updater files.
+  assert.equal(tauriUpdateJson(catalog('server'), 'headless-v1.2.3', undefined), null);
+  assert.throws(() => tauriUpdateJson(merged, 'headless-v1.2.3', undefined), /repository/);
+});
 
 test('preserves another workflow entries and uploads only the separate custom catalog', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-merge-test-'));

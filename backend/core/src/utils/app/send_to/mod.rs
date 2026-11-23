@@ -47,6 +47,21 @@ pub async fn unregister_send_to(
     Ok(())
 }
 
+/// Moves the entries a product called `display_name`, a former name of this one,
+/// registered to this product's name and executable.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+pub async fn adopt_entries(app: crate::context::AppHandle, display_name: &str) {
+    for (name, remote, path) in platform::entries_named(display_name, app.product()) {
+        let path = (!path.is_empty()).then_some(path);
+        match register_send_to(app.clone(), remote, path).await {
+            Ok(()) => {
+                let _ = platform::unregister(&name, app.product());
+            }
+            Err(error) => log::warn!("Failed to move the Send To entry {name}: {error}"),
+        }
+    }
+}
+
 pub async fn is_send_to_registered(
     app: crate::context::AppHandle,
     remote: String,

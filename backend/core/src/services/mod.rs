@@ -10,6 +10,8 @@ pub mod lifecycle;
 pub mod paths;
 pub mod security;
 pub mod settings;
+#[cfg(feature = "tray")]
+pub mod tray;
 
 #[cfg(not(feature = "librclone"))]
 pub mod check_binaries;

@@ -1,14 +1,10 @@
-use tauri::{
-    AppHandle, Runtime,
-    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
-};
-
-use super::tray_action::TrayAction;
-use super::{
+//! The tray menu as plain data: what it shows and which action each entry runs.
+use super::action::TrayAction;
+use super::snapshot::{
     TrayProfileSummary, TrayQuickRunSummary, TrayRemoteSummary, TraySnapshot, TrayWorkflowSummary,
 };
+use crate::t;
 use crate::utils::types::remotes::OperationType;
-use rclone_manager_core::t;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RegularItem {
@@ -47,7 +43,7 @@ pub struct MenuPlan {
 
 impl MenuPlan {
     /// A locked tray exposes no remote names, profiles, or operational controls.
-    pub fn locked() -> Self {
+    pub fn locked(web_ui: bool) -> Self {
         let mut plan = Self::build(
             &TraySnapshot {
                 active_jobs: vec![],
@@ -58,6 +54,7 @@ impl MenuPlan {
                 workflows: vec![],
             },
             0,
+            web_ui,
         );
         plan.items.retain(|item| match item {
             MenuItemKind::Regular(item) => {
@@ -68,20 +65,17 @@ impl MenuPlan {
         plan
     }
 
-    pub fn build(snapshot: &TraySnapshot, max_tray_items: usize) -> Self {
+    /// `web_ui` is set when the interface is the web UI in a browser, not a window.
+    pub fn build(snapshot: &TraySnapshot, max_tray_items: usize, web_ui: bool) -> Self {
         let mut items: Vec<MenuItemKind> = Vec::new();
 
-        #[cfg(not(feature = "web-server"))]
         items.push(MenuItemKind::Regular(RegularItem {
             id: TrayAction::ShowApp.to_id(),
-            label: t!("tray.showApp"),
-            enabled: true,
-        }));
-
-        #[cfg(feature = "web-server")]
-        items.push(MenuItemKind::Regular(RegularItem {
-            id: TrayAction::OpenWebUI.to_id(),
-            label: t!("tray.openWebUI"),
+            label: if web_ui {
+                t!("tray.openWebUI")
+            } else {
+                t!("tray.showApp")
+            },
             enabled: true,
         }));
 
@@ -401,75 +395,26 @@ fn build_workflows_submenu(workflows: &[&TrayWorkflowSummary]) -> SubmenuPlan {
     counted_submenu("tray.workflowsCount", active, items)
 }
 
-// Tauri object construction (main thread only)
-
-pub fn create_tray_menu_from_plan<R: Runtime>(
-    app: &AppHandle<R>,
-    plan: &MenuPlan,
-) -> tauri::Result<Menu<R>> {
-    let items = plan
-        .items
-        .iter()
-        .map(|kind| kind_to_tauri(app, kind))
-        .collect::<tauri::Result<Vec<_>>>()?;
-
-    let refs: Vec<&dyn tauri::menu::IsMenuItem<R>> =
-        items.iter().map(std::convert::AsRef::as_ref).collect();
-    Menu::with_items(app, &refs)
-}
-
-fn kind_to_tauri<R: Runtime>(
-    app: &AppHandle<R>,
-    kind: &MenuItemKind,
-) -> tauri::Result<Box<dyn tauri::menu::IsMenuItem<R>>> {
-    match kind {
-        MenuItemKind::Separator => Ok(Box::new(PredefinedMenuItem::separator(app)?)),
-
-        MenuItemKind::Regular(item) => Ok(Box::new(MenuItem::with_id(
-            app,
-            &item.id,
-            &item.label,
-            item.enabled,
-            None::<&str>,
-        )?)),
-
-        MenuItemKind::Check(item) => Ok(Box::new(CheckMenuItem::with_id(
-            app,
-            &item.id,
-            &item.label,
-            item.enabled,
-            item.checked,
-            None::<&str>,
-        )?)),
-
-        MenuItemKind::Submenu(s) => {
-            let children = s
-                .items
-                .iter()
-                .map(|k| kind_to_tauri(app, k))
-                .collect::<tauri::Result<Vec<_>>>()?;
-            let refs: Vec<&dyn tauri::menu::IsMenuItem<R>> =
-                children.iter().map(std::convert::AsRef::as_ref).collect();
-            Ok(Box::new(Submenu::with_items(
-                app, &s.label, s.enabled, &refs,
-            )?))
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn locked_menu_only_exposes_open_and_quit() {
-        let plan = MenuPlan::locked();
-        assert_eq!(plan.items.len(), 2);
-        for item in plan.items {
-            let MenuItemKind::Regular(item) = item else {
+        for (web_ui, label) in [(false, t!("tray.showApp")), (true, t!("tray.openWebUI"))] {
+            let plan = MenuPlan::locked(web_ui);
+            assert_eq!(plan.items.len(), 2);
+            let MenuItemKind::Regular(first) = &plan.items[0] else {
                 panic!("unexpected locked menu item")
             };
-            assert!(TrayAction::from_id(&item.id).unwrap().allowed_when_locked());
+            assert_eq!(first.id, TrayAction::ShowApp.to_id());
+            assert_eq!(first.label, label);
+            for item in plan.items {
+                let MenuItemKind::Regular(item) = item else {
+                    panic!("unexpected locked menu item")
+                };
+                assert!(TrayAction::from_id(&item.id).unwrap().allowed_when_locked());
+            }
         }
         assert!(!TrayAction::OpenFileBrowser.allowed_when_locked());
         assert!(!TrayAction::StopAllJobs.allowed_when_locked());
@@ -521,7 +466,7 @@ mod tests {
 
     fn plan_ids(snapshot: &TraySnapshot, max_items: usize) -> Vec<String> {
         let mut ids = Vec::new();
-        collect_ids(&MenuPlan::build(snapshot, max_items).items, &mut ids);
+        collect_ids(&MenuPlan::build(snapshot, max_items, false).items, &mut ids);
         ids
     }
 

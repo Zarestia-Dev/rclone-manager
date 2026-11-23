@@ -17,6 +17,26 @@ pub enum ArtifactKind {
     Android,
     /// A Linux AppImage, published as the release's own `.AppImage` file.
     Appimage,
+    /// The server packages, installed by their installer.
+    Deb,
+    Rpm,
+    Nsis,
+    Msi,
+}
+
+impl ArtifactKind {
+    /// The platform and file name ending of a kind published as its own release
+    /// file rather than inside a ZIP.
+    pub(super) fn release_file(self) -> Option<(&'static str, &'static str)> {
+        match self {
+            Self::Appimage => Some(("linux-", ".AppImage")),
+            Self::Deb => Some(("linux-", ".deb")),
+            Self::Rpm => Some(("linux-", ".rpm")),
+            Self::Nsis => Some(("windows-", "-setup.exe")),
+            Self::Msi => Some(("windows-", ".msi")),
+            Self::Portable | Self::Server | Self::Android => None,
+        }
+    }
 }
 
 impl std::fmt::Display for ArtifactKind {
@@ -26,6 +46,10 @@ impl std::fmt::Display for ArtifactKind {
             Self::Server => "server",
             Self::Android => "android",
             Self::Appimage => "appimage",
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+            Self::Nsis => "nsis",
+            Self::Msi => "msi",
         })
     }
 }
@@ -224,20 +248,22 @@ impl Manifest {
         {
             return Err(verification_failed("Invalid update artifact metadata"));
         }
-        match &self.archive {
-            Some(_) if self.kind == ArtifactKind::Appimage => {
-                return Err(verification_failed("AppImage updates must not be archives"));
+        match (&self.archive, self.kind.release_file()) {
+            (Some(_), Some(_)) => {
+                return Err(verification_failed(
+                    "Release file updates must not be archives",
+                ));
             }
-            Some(archive) => archive.validate(self)?,
-            None if self.kind == ArtifactKind::Server => {
+            (Some(archive), None) => archive.validate(self)?,
+            (None, None) if self.kind == ArtifactKind::Server => {
                 return Err(verification_failed("Server updates must be ZIP archives"));
             }
-            None if self.kind == ArtifactKind::Appimage
-                && !(self.target.starts_with("linux-") && self.asset.ends_with(".AppImage")) =>
+            (None, Some((platform, ending)))
+                if !(self.target.starts_with(platform) && self.asset.ends_with(ending)) =>
             {
-                return Err(verification_failed("Invalid AppImage update metadata"));
+                return Err(verification_failed("Invalid release file update metadata"));
             }
-            None => {}
+            _ => {}
         }
         Ok(())
     }
@@ -544,6 +570,113 @@ mod tests {
             },
         ] {
             assert!(valid(&invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn packages_are_their_own_release_files_for_their_platform() {
+        let appimage = select_manifest(
+            include_bytes!("fixtures/appimage-catalog.json"),
+            "99.0.0",
+            ArtifactKind::Appimage,
+            "linux-x86_64",
+            include_str!("fixtures/appimage-public.key"),
+        )
+        .unwrap()
+        .unwrap()
+        .0;
+        let package = |kind, target: &str, asset: &str| Manifest {
+            kind,
+            target: target.into(),
+            asset: asset.into(),
+            ..appimage.clone()
+        };
+        let valid = |m: &Manifest| m.validate("99.0.0", m.kind, &m.target);
+        for manifest in [
+            package(
+                ArtifactKind::Deb,
+                "linux-x86_64",
+                "RClone.Manager.Server_99.0.0_amd64.deb",
+            ),
+            package(
+                ArtifactKind::Deb,
+                "linux-aarch64",
+                "RClone.Manager.Server_99.0.0_arm64.deb",
+            ),
+            package(
+                ArtifactKind::Rpm,
+                "linux-x86_64",
+                "RClone.Manager.Server-99.0.0-1.x86_64.rpm",
+            ),
+            package(
+                ArtifactKind::Nsis,
+                "windows-x86_64",
+                "RClone.Manager.Server_99.0.0_x64-setup.exe",
+            ),
+            package(
+                ArtifactKind::Nsis,
+                "windows-aarch64",
+                "RClone.Manager.Server_99.0.0_arm64-setup.exe",
+            ),
+            package(
+                ArtifactKind::Msi,
+                "windows-x86_64",
+                "RClone.Manager.Server_99.0.0_x64_en-US.msi",
+            ),
+        ] {
+            valid(&manifest).unwrap();
+        }
+        for invalid in [
+            package(
+                ArtifactKind::Deb,
+                "windows-x86_64",
+                "RClone.Manager.Server_99.0.0_amd64.deb",
+            ),
+            package(
+                ArtifactKind::Deb,
+                "linux-x86_64",
+                "RClone.Manager.Server-99.0.0-1.x86_64.rpm",
+            ),
+            package(
+                ArtifactKind::Rpm,
+                "macos-aarch64",
+                "RClone.Manager.Server-99.0.0-1.aarch64.rpm",
+            ),
+            package(
+                ArtifactKind::Nsis,
+                "linux-x86_64",
+                "RClone.Manager.Server_99.0.0_x64-setup.exe",
+            ),
+            package(
+                ArtifactKind::Nsis,
+                "windows-x86_64",
+                "RClone.Manager.Server_99.0.0_x64.msi",
+            ),
+            package(
+                ArtifactKind::Msi,
+                "windows-x86_64",
+                "RClone.Manager.Server_99.0.0_x64-setup.exe",
+            ),
+            package(
+                ArtifactKind::Msi,
+                "linux-x86_64",
+                "RClone.Manager.Server_99.0.0_x64_en-US.msi",
+            ),
+            Manifest {
+                archive: test_portable_manifest("linux-x86_64").archive,
+                ..package(
+                    ArtifactKind::Deb,
+                    "linux-x86_64",
+                    "server-linux-x86_64-99.0.0.zip",
+                )
+            },
+        ] {
+            assert!(
+                valid(&invalid).is_err(),
+                "{} {}",
+                invalid.kind,
+                invalid.asset
+            );
         }
     }
 

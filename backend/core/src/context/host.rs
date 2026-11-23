@@ -58,14 +58,25 @@ pub trait Host: Send + Sync {
     ) -> ExitDecision {
         ExitDecision::Proceed
     }
+    /// Runs `task` on the thread that owns the UI event loop, where native tray
+    /// objects must be created and changed.
     #[cfg(feature = "tray")]
-    async fn setup_tray(&self) -> Result<(), String> {
-        Ok(())
+    fn run_on_main_thread(&self, _task: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+        Err("This host has no UI thread".into())
     }
+    /// Opens the part of the interface a tray entry points to.
     #[cfg(feature = "tray")]
-    fn update_tray(&self) {}
+    fn open_view(&self, _view: crate::services::tray::actions::TrayView<'_>) {}
+    /// Opens a local folder, such as a mount point, in the file manager.
     #[cfg(feature = "tray")]
-    fn set_tray_visible(&self, _enabled: bool) {}
+    fn open_folder(&self, _path: &std::path::Path) -> Result<(), String> {
+        Err("Opening folders is unavailable".into())
+    }
+    /// Whether the system uses a dark theme, for a tray icon that follows it.
+    #[cfg(feature = "tray")]
+    fn is_system_dark(&self) -> bool {
+        false
+    }
     #[cfg(any(feature = "autostart", feature = "flatpak"))]
     fn set_autostart(&self, _enabled: bool) {}
     /// Re-register the OS autostart entry when the setting is on but the entry is gone,

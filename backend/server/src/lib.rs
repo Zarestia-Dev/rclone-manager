@@ -8,10 +8,12 @@ pub use web::startup::start;
 mod cli;
 pub use cli::HttpArgs;
 
-/// Metadata for the headless release family, also used by the native tray host.
+/// The server's product. Its release tag, data folder, `mode` and registry key keep
+/// the name of the RClone Manager Headless app it replaced, so earlier installations
+/// update and keep their settings.
 pub const PRODUCT: rclone_manager_core::context::ProductInfo =
     rclone_manager_core::context::ProductInfo {
-        display_name: "RClone Manager Headless",
+        display_name: "RClone Manager Server",
         mode: "headless",
         release_prefix: "headless-v",
         integration_key: "RCloneManagerHeadless",

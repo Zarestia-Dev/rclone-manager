@@ -84,6 +84,16 @@ jobs:
         id: release_version
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
 
+      # WiX takes only a numeric pre-release, so a beta's MSI carries its release's
+      # version (0.3.7-beta.1 -> 0.3.7). The MSI allows downgrades, so the release
+      # still installs over the beta. TAURI_CONFIG is merged into tauri.conf.json.
+      - name: MSI version of a pre-release
+        if: runner.os == 'Windows' && steps.release_version.outputs.PRERELEASE == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.release_version.outputs.VERSION }}
+        run: echo "TAURI_CONFIG={\"bundle\":{\"windows\":{\"wix\":{\"version\":\"${VERSION%%-*}\"}}}}" >> "$GITHUB_ENV"
+
       - uses: tauri-apps/tauri-action@v1
         env:
           TAURI_FRONTEND_PATH: ${{ github.workspace }}

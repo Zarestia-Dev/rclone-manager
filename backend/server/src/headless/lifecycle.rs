@@ -1,8 +1,17 @@
 use rclone_manager_core::context::AppHandle;
 
+/// Read at startup: once a package update replaces the file, Linux names the
+/// running executable as deleted.
+static EXECUTABLE: std::sync::LazyLock<std::io::Result<std::path::PathBuf>> =
+    std::sync::LazyLock::new(std::env::current_exe);
+
+/// The executable this process was started from.
+pub(super) fn executable() -> Result<&'static std::path::Path, String> {
+    EXECUTABLE.as_deref().map_err(|error| error.to_string())
+}
+
 fn relaunch_command() -> Result<std::process::Command, String> {
-    let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-    let mut command = std::process::Command::new(executable);
+    let mut command = std::process::Command::new(executable()?);
     command.args(std::env::args_os().skip(1));
     Ok(command)
 }
@@ -12,7 +21,9 @@ pub(crate) fn restart(_app: &AppHandle) -> Result<(), String> {
     // Replace the process so containers keep their PID and listening sockets
     // close before the new server starts binding its ports.
     use std::os::unix::process::CommandExt;
-    Err(relaunch_command()?.exec().to_string())
+    let mut command = relaunch_command()?;
+    rclone_manager_core::services::updates::health::keep_trial_across_exec(&mut command);
+    Err(command.exec().to_string())
 }
 
 /// Set once a restart is requested; the process relaunches after its HTTP

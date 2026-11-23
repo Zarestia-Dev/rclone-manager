@@ -4097,7 +4097,7 @@
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "Installing this package needs an administrator password prompt (pkexec, zenity or kdialog), but none was found.",
+      "noPrivilegePrompt": "Installing this package needs an administrator password prompt (pkexec, run0 or sudo with zenity, kdialog or ssh-askpass), but none was found.",
       "verificationFailed": "The update could not be verified: its signature, checksum or metadata does not match.",
       "insecureDownload": "The update download was not served over HTTPS.",
       "downloadTooLarge": "The update download is larger than expected.",

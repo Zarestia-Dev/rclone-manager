@@ -5,26 +5,33 @@ runs your transfers and automations; the browser provides the interface.
 
 ## Choose the right build
 
-| Build                    | Use it when                                                            | Native desktop libraries       | Updating the application                                 |
-| ------------------------ | ---------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------- |
-| **Docker / pure server** | You want a background service on a server or NAS                       | No Tauri, GTK, WebKit, or Xvfb | Replace the container or server binary                   |
-| **Server with tray**     | You want the web interface plus a local system tray and native updater | Required by Tauri              | Native updater where supported, or reinstall the package |
-| **Desktop app**          | You want the interface in a local application window                   | Required by Tauri              | Native updater where supported, or reinstall the package |
+| Build                    | Use it when                                                    | Native desktop libraries     | Updating the application                   |
+| ------------------------ | -------------------------------------------------------------- | ---------------------------- | ------------------------------------------ |
+| **Docker / pure server** | You want a background service on a server or NAS               | None                         | In-app for the ZIP; pull the Docker image  |
+| **Server packages**      | You want the web interface on your desktop, with a system tray | None (no GTK, WebKit or X11) | In-app: installs the new DEB, RPM or setup |
+| **Desktop app**          | You want the interface in a local application window           | Required by Tauri            | Native updater where supported             |
 
-The desktop executable is `rclone-manager`. The pure server is
-`rclone-manager-server`; the tray-enabled server remains `rclone-manager-headless`.
-Windows adds `.exe`.
+The desktop executable is `rclone-manager`. The server is `rclone-manager-server`
+in the ZIPs and the packages; Windows adds `.exe`. On Linux and Windows it shows a
+system tray whenever a desktop session is there to show it; macOS builds have no
+tray. The server replaces the RClone Manager Headless app (0.3.6 and older); see
+[Moving from RClone Manager Headless](#moving-from-rclone-manager-headless).
 
-Two independent workflows upload to the same `headless-v<version>` release:
-`release-server.yml` builds Server packages; `release-headless.yml` builds
-Server + Tray installers. A failure in one does not block the other.
+`release-headless.yml` builds everything in the `headless-v<version>` release:
 
 - **Server:** `server-<os>-<arch>-<version>.zip`. It contains the
   `rclone-manager-server` executable (`.exe` on Windows), `LICENSE`, a short
   `README.txt` and, on Linux, the systemd service template. The executable embeds
   the UI, translations, and HTML templates. The same ZIP is used for downloads and
   updates; the updater extracts only the executable.
-- **Server + Tray:** native installers named `rclone-manager-headless`.
+- **Server packages:** `RClone.Manager.Server_<version>_<amd64|arm64>.deb`,
+  `RClone.Manager.Server-<version>-1.<x86_64|aarch64>.rpm` and
+  `RClone.Manager.Server_<version>_<x64|arm64>-setup.exe` (per user, no
+  administrator rights) or `RClone.Manager.Server_<version>_<x64|arm64>_en-US.msi`
+  (for all users; installing and every update ask for administrator approval).
+  The tray shows over D-Bus on Linux and needs no other library; without a desktop
+  session the server runs without it. The DEB and RPM update through `pkexec`,
+  which asks for the administrator password in the desktop session.
 
 Server packages target Linux, Windows, and macOS on x86_64 and aarch64.
 Download the ZIP for your operating system and processor, extract it, and run
@@ -88,7 +95,7 @@ frontend embedded in the executable. For a direct `cargo build --release`, run
 `npm run build` first; compilation fails if the frontend is missing.
 
 Builds with `debug_assertions` enabled serve files from disk; builds without it
-embed the frontend. This also applies to the server with a native tray.
+embed the frontend.
 
 For development, after building the frontend:
 
@@ -128,7 +135,7 @@ variables also work for standalone binaries. Run `--help` for the complete list.
 Prefer `RCLONE_MANAGER_PASS` over `--pass`: command-line arguments are visible to
 other users in the process list. Repeated wrong passwords are slowed down; the
 correct password is never delayed.
-The pure server has no `--tray` option and no Tauri updater. It updates itself from
+The server has no `--tray` option and no Tauri updater. It updates itself from
 the signed release ZIP when its executable and directory belong to the user running it.
 
 ### Uploads and reverse proxies
@@ -158,25 +165,39 @@ needs no desktop session or virtual display.
 yay -S rclone-manager-server
 ```
 
-The package installs the pure server to `/usr/bin`, the systemd unit, and the
-`rclone-manager` service user (home `/var/lib/rclone-manager`). It depends only on
-`glibc`, `gcc-libs` and `dbus`. Put `RCLONE_MANAGER_USER` and `RCLONE_MANAGER_PASS`
-in `/etc/rclone-manager/server.env` (mode 600), then run
+The package installs the server to `/usr/bin` with its menu entry, the systemd
+unit, and the `rclone-manager` service user (home `/var/lib/rclone-manager`). It
+depends only on `glibc`, `gcc-libs` and `dbus`. On a desktop, start it from the
+menu. As a service, put `RCLONE_MANAGER_USER` and `RCLONE_MANAGER_PASS` in
+`/etc/rclone-manager/server.env` (mode 600), then run
 `sudo systemctl enable --now rclone-manager-server`. Pacman owns the executable, so
-the application only announces new versions; update with `yay -Syu rclone-manager-server`.
-`rclone-manager-headless` (server with tray) is also on the AUR but needs GTK and WebKit.
+the application only announces new versions; update with `yay -Syu`.
 
-## Build the server with a native tray
+## Moving from RClone Manager Headless
 
-```bash
-npm run dev:headless
-npm run build:headless
-```
+The server replaces the RClone Manager Headless app (0.3.6 and older). It keeps
+its settings, remotes and data folder (`com.rclone.manager.headless`), and on its
+first start it moves the app's start-at-login and file manager (Send To) entries
+to its own name.
 
-These scripts select the Tauri application with `web-server,tray,updater`.
-They do not build the pure server. On Linux, this variant needs the native GUI
-runtime and a display environment. Use the pure server for a service without a
-desktop session.
+- **DEB and RPM:** the in-app update installs `rclone-manager-server`, which
+  removes the `r-clone-manager-headless` package. The paths the old app ran from
+  (`/usr/bin/rclone-manager-headless` and `rclone-manager-headless-bin`) start the
+  server until the package is removed.
+- **Windows setup:** the in-app update removes the old installation, keeping its
+  settings, and starts the server.
+- **Windows MSI:** the in-app update replaces the old MSI. Start
+  **RClone Manager Server** once from the Start menu; until then, the old
+  start-at-login entry points to the removed program.
+- **AUR:** `rclone-manager-headless` is replaced by `rclone-manager-server`. Run
+  `yay -S rclone-manager-server` once and let pacman remove the old package.
+
+## Server packages
+
+For live reloading of the UI, run `npm run dev:server -- --host 127.0.0.1` and
+`npx ng serve --configuration headless`, then open port 1420. The DEB, RPM,
+Windows setup and MSI are made from `backend/server/package/` by
+`release-headless.yml`.
 
 ## Downloads and updates
 

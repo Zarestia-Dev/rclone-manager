@@ -51,6 +51,21 @@ pub async fn execute(
     crate::rclone::commands::upload::execute_upload_batch(app.clone(), params).await
 }
 
+/// [`execute`] once the engine runs, for a transfer that may arrive during startup.
+pub async fn execute_when_ready(
+    app: &crate::context::AppHandle,
+    remote: String,
+    path: Option<String>,
+    sources: Vec<std::path::PathBuf>,
+    cwd: Option<&std::path::Path>,
+) -> Result<String, String> {
+    // A locked vault never starts the engine; `execute` refuses at once.
+    if !crate::services::settings::access::is_locked(app) && !wait_for_engine(app).await {
+        return Err("the engine did not start in time".into());
+    }
+    execute(app, remote, path, sources, cwd).await
+}
+
 /// Handles `--send-to-remote` for a process that only exists to run the transfer:
 /// waits for the engine, uploads, then shuts down gracefully (the host ignores an exit
 /// that is not preceded by a shutdown).
@@ -61,32 +76,23 @@ pub fn start(app: &crate::context::AppHandle, cli_args: crate::services::cli::Ge
     };
     let app = app.clone();
     crate::utils::spawn(async move {
-        // A locked vault never starts the engine; do not wait for it.
-        let code = match crate::services::settings::access::is_locked(&app)
-            || !wait_for_engine(&app).await
-        {
-            true => {
-                log::error!("SendTo failed: the engine is locked or did not start in time");
+        let result = execute_when_ready(
+            &app,
+            remote,
+            cli_args.send_to_path,
+            cli_args.send_to_sources,
+            None,
+        )
+        .await;
+        let code = match result {
+            Ok(jobid) => {
+                log::info!("SendTo transfer completed successfully. Job ID: {jobid}");
+                0
+            }
+            Err(e) => {
+                log::error!("SendTo transfer failed: {e}");
                 1
             }
-            false => match execute(
-                &app,
-                remote,
-                cli_args.send_to_path,
-                cli_args.send_to_sources,
-                None,
-            )
-            .await
-            {
-                Ok(jobid) => {
-                    log::info!("SendTo transfer completed successfully. Job ID: {jobid}");
-                    0
-                }
-                Err(e) => {
-                    log::error!("SendTo transfer failed: {e}");
-                    1
-                }
-            },
         };
         handle_shutdown(app.clone()).await;
         app.exit(code);

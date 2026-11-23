@@ -339,6 +339,34 @@ test('publishes multiple signed targets into one catalog without signature sidec
     );
     assert.throws(() => publish('appimage', 'macos', 'aarch64', '1.2.3', bundle, appimageOutput));
     assert.throws(() => publish('appimage', 'linux', 'x86_64', '1.2.3', inputFile, appimageOutput));
+    // The headless packages are signed under their own file names too.
+    const packageOutput = path.join(directory, 'package-output');
+    for (const [kind, os, name] of [
+      ['deb', 'linux', 'RClone Manager Server_1.2.3_amd64.deb'],
+      ['rpm', 'linux', 'RClone Manager Server-1.2.3-1.x86_64.rpm'],
+      ['nsis', 'windows', 'RClone Manager Server_1.2.3_x64-setup.exe'],
+      ['msi', 'windows', 'RClone Manager Server_1.2.3_x64_en-US.msi'],
+    ]) {
+      const file = path.join(directory, name);
+      fs.writeFileSync(file, payload);
+      const manifest = publish(kind, os, 'x86_64', '1.2.3', file, packageOutput);
+      assert.equal(manifest.asset, name.replaceAll(' ', '.'));
+      assert.equal(manifest.archive, undefined);
+      assert.throws(() => publish(kind, os, 'x86_64', '1.2.3', file, packageOutput, file, 'a'));
+    }
+    assert.deepEqual(
+      Object.keys(
+        mergeCatalogs('1.2.3', [
+          JSON.parse(fs.readFileSync(path.join(packageOutput, MANIFEST_NAME), 'utf8')),
+        ]).entries
+      ).sort(),
+      ['deb-linux-x86_64', 'msi-windows-x86_64', 'nsis-windows-x86_64', 'rpm-linux-x86_64']
+    );
+    // A package for another platform, or of another format, is refused.
+    assert.throws(() => publish('deb', 'windows', 'x86_64', '1.2.3', bundle, packageOutput));
+    const msi = path.join(packageOutput, 'RClone.Manager.Server_1.2.3_x64_en-US.msi');
+    assert.throws(() => publish('nsis', 'windows', 'x86_64', '1.2.3', msi, packageOutput));
+    assert.throws(() => publish('msi', 'linux', 'x86_64', '1.2.3', msi, packageOutput));
   } finally {
     if (previousKey === undefined) delete process.env.TAURI_SIGNING_PRIVATE_KEY;
     else process.env.TAURI_SIGNING_PRIVATE_KEY = previousKey;

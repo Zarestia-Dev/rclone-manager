@@ -12,10 +12,11 @@ disk cache entries remain available for a later retry.
 
 | Installation                                                           | Installer                                                 |
 | ---------------------------------------------------------------------- | --------------------------------------------------------- |
-| Native desktop / native headless with tray (Windows, macOS)            | Tauri updater                                             |
+| Native desktop (Windows, macOS)                                        | Tauri updater                                             |
 | Linux AppImage in an owned, writable location                          | Tauri updater                                             |
 | Linux DEB or RPM owned by dpkg or rpm                                  | Tauri updater (password prompt via pkexec/zenity/kdialog) |
 | Portable executable / standalone server in an owned, writable location | Core signed-artifact installer                            |
+| Server DEB or RPM owned by dpkg or rpm, server setup or MSI            | Core signed-package installer (pkexec, setup or msiexec)  |
 | Direct Android APK                                                     | Core verification followed by Android's system installer  |
 | AUR/pacman                                                             | AUR availability check and the AUR helper command         |
 | Flatpak, Docker                                                        | Release checks and the update command only                |
@@ -33,7 +34,7 @@ availability, while installation remains disabled.
 
 External installations announce upstream availability using a matching Linux
 server ZIP for Docker and a matching DEB for Flatpak (or DEB/RPM installations
-the app cannot install itself). Desktop and headless products and package
+the app cannot install itself). Desktop and server products and package
 architecture names are matched separately. This does not confirm that the
 corresponding container image or Flathub build has already been published there.
 
@@ -95,7 +96,7 @@ by production installation code.
 
 ## Prerelease versions
 
-Keep the Cargo workspace, main/headless Tauri configurations and package version
+Keep the Cargo workspace, Tauri configuration and package version
 in sync, for example `0.3.3`. All five release workflows use
 `scripts/release-version.cjs` to set the GitHub prerelease flag from the version.
 Releases remain drafts until explicitly published. The stable update channel
@@ -184,7 +185,10 @@ it; after the receipt the update is kept. After commit,
 a clean ordinary exit allows a platform-spawned restart process to survive, and on
 Windows ending the waiting helper no longer ends the application. The trial
 application removes the receipt directory and token from its environment at
-startup, so rclone, scripts and restarted processes never inherit them.
+startup, so rclone, scripts and restarted processes never inherit them. The one
+exception is the server's restart on Unix, which replaces the process with `exec`:
+it keeps the PID and stays the supervisor's child, so it gets them back to find the
+supervisor for a consecutive update and to send a receipt that is still due.
 
 Removing a variable does not erase the block the process was started with, so on
 Linux `/proc/<pid>/environ` keeps showing `RCMAN_UPDATE_ARGS` (in the supervisor)

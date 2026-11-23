@@ -1,4 +1,4 @@
-name: Build and Push Docker Image (Headless)
+name: Build and Push Docker Image (Server)
 
 on:
   workflow_dispatch:

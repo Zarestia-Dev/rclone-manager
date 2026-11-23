@@ -4148,7 +4148,7 @@
       "unsupportedInstallation": "Pre túto inštaláciu nie je automatická inštalácia podporovaná.",
       "androidInstallPermission": "V nastaveniach systému Android povoľte tejto aplikácii inštalovať aktualizácie a potom inštaláciu zopakujte.",
       "invalidAndroidPackage": "APK musí byť novšia verzia tejto aplikácie podpísaná tým istým vydavateľom.",
-      "noPrivilegePrompt": "Inštalácia tohto balíka vyžaduje výzvu na zadanie hesla správcu (pkexec, zenity alebo kdialog), no žiadna sa nenašla.",
+      "noPrivilegePrompt": "Inštalácia tohto balíka vyžaduje výzvu na zadanie hesla správcu (pkexec, run0 alebo sudo so zenity, kdialog alebo ssh-askpass), no žiadna sa nenašla.",
       "verificationFailed": "Aktualizáciu sa nepodarilo overiť: jej podpis, kontrolný súčet alebo metadáta sa nezhodujú.",
       "insecureDownload": "Aktualizácia nebola stiahnutá cez HTTPS.",
       "downloadTooLarge": "Stiahnutá aktualizácia je väčšia, ako sa očakávalo.",

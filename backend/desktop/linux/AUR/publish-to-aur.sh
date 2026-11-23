@@ -4,8 +4,11 @@
 # Packages (PKGBUILD templates live next to this script):
 #   rclone-manager           PKGBUILD           desktop .deb from the v<version> release
 #   rclone-manager-git       PKGBUILD-git       built from source, follows the stable version
-#   rclone-manager-headless  PKGBUILD-headless  server + tray .deb from the headless-v<version> release
-#   rclone-manager-server    PKGBUILD-server    pure server zip (no GTK/WebKit) from headless-v<version>
+#   rclone-manager-server    PKGBUILD-server    server .deb and systemd unit from the headless-v<version> release
+#
+# rclone-manager-server replaced rclone-manager-headless, the RClone Manager Headless
+# app (0.3.6 and older). Releases up to headless-v0.3.6 have no RClone.Manager.Server
+# .deb, so the package waits for the first release that has one.
 #
 # For every package it finds the newest stable GitHub release, takes the asset sha256 sums
 # from the release, rewrites a copy of the template, regenerates .SRCINFO and pushes to the AUR
@@ -159,6 +162,13 @@ asset_sha256() {
     return 0
 }
 
+# sha256 of a file at a URL. Prints nothing when it cannot be downloaded.
+url_sha256() {
+    curl -fsSL -o "$WORK_DIR/file" "$1" || return 0
+    sha256sum "$WORK_DIR/file" | cut -d' ' -f1
+    rm -f "$WORK_DIR/file"
+}
+
 pkgbuild_var() { grep -m1 "^$2=" "$1" | cut -d= -f2- | tr -d "'\"[:space:]"; }
 
 # Stage a release-based PKGBUILD at $WORK_DIR/<name>/PKGBUILD. Returns 2 when the release is not ready.
@@ -191,6 +201,18 @@ stage_release_pkgbuild() {
         -e "s/^(sha256sums_x86_64=\().*(\))/\1'${sha_x86}'\2/" \
         -e "s/^(sha256sums_aarch64=\().*(\))/\1'${sha_arm}'\2/" "$out"
     print_info "$name: $tag"
+}
+
+# The systemd unit comes from the release tag, so it matches the release's executable.
+stage_service_unit() {
+    local out="$WORK_DIR/$1/PKGBUILD" tag sha
+    tag="headless-v$(pkgbuild_var "$out" releasetag)"
+    sha=$(url_sha256 "https://raw.githubusercontent.com/$REPO/$tag/backend/server/linux/rclone-manager-server.service")
+    if [ -z "$sha" ]; then
+        print_error "$tag has no backend/server/linux/rclone-manager-server.service"
+        return 1
+    fi
+    sed -i -E "s/^(sha256sums=\().*(\))/\1'${sha}'\2/" "$out"
 }
 
 # The -git package builds from source; its pkgver() is recomputed on every build, so only follow the stable version.
@@ -305,7 +327,7 @@ main() {
     fetch_releases || exit 1
     LATEST_STABLE_VERSION=$(latest_release "v" | cut -d' ' -f2)
 
-    local packages=(rclone-manager rclone-manager-git rclone-manager-headless rclone-manager-server)
+    local packages=(rclone-manager rclone-manager-git rclone-manager-server)
     local failed=() name rc
     for name in "${packages[@]}"; do
         if [ ${#ONLY[@]} -gt 0 ] && [[ ! " ${ONLY[*]} " == *" $name "* ]]; then continue; fi
@@ -317,12 +339,10 @@ main() {
                     'RClone.Manager_%s_amd64.deb' 'RClone.Manager_%s_arm64.deb' || rc=$? ;;
             rclone-manager-git)
                 stage_git_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-git" || rc=$? ;;
-            rclone-manager-headless)
-                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-headless" "headless-v" \
-                    'RClone.Manager.Headless_%s_amd64.deb' 'RClone.Manager.Headless_%s_arm64.deb' || rc=$? ;;
             rclone-manager-server)
                 stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-server" "headless-v" \
-                    'server-linux-x86_64-%s.zip' 'server-linux-aarch64-%s.zip' || rc=$? ;;
+                    'RClone.Manager.Server_%s_amd64.deb' 'RClone.Manager.Server_%s_arm64.deb' || rc=$?
+                if [ "$rc" = 0 ]; then stage_service_unit "$name" || rc=$?; fi ;;
         esac
         [ "$rc" = 2 ] && continue   # release not ready, retry on the next run
         if [ "$rc" != 0 ] || ! publish_package "$name"; then failed+=("$name"); fi

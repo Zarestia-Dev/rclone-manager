@@ -9,6 +9,15 @@ const MAX_MANIFEST_SIZE = 64 * 1024;
 
 const MAX_ARTIFACT_SIZE = 512 * 1024 * 1024;
 const VERSION = /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/;
+// The platform and file name ending of kinds published as their own release
+// file rather than inside a ZIP (`ArtifactKind::release_file` in manifest.rs).
+const RELEASE_FILES = {
+  appimage: ['linux-', '.AppImage'],
+  deb: ['linux-', '.deb'],
+  rpm: ['linux-', '.rpm'],
+  nsis: ['windows-', '-setup.exe'],
+  msi: ['windows-', '.msi'],
+};
 
 function requireFields(value, required, optional = []) {
   if (
@@ -27,7 +36,7 @@ function validateSize(size) {
 }
 
 function validateIdentity({ kind, target, version, asset }) {
-  if (!['portable', 'server', 'android', 'appimage'].includes(kind))
+  if (!['portable', 'server', 'android', ...Object.keys(RELEASE_FILES)].includes(kind))
     throw new Error('Invalid update kind');
   if (
     typeof target !== 'string' ||
@@ -37,8 +46,9 @@ function validateIdentity({ kind, target, version, asset }) {
   if (typeof version !== 'string' || !VERSION.test(version)) throw new Error('Invalid version');
   if (typeof asset !== 'string' || !/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/.test(asset))
     throw new Error('Invalid asset name');
-  if (kind === 'appimage' && (!target.startsWith('linux-') || !asset.endsWith('.AppImage')))
-    throw new Error('Invalid AppImage update metadata');
+  const file = RELEASE_FILES[kind];
+  if (file && (!target.startsWith(file[0]) || !asset.endsWith(file[1])))
+    throw new Error('Invalid release file update metadata');
 }
 
 function validateArtifact({ size, sha256, signature }) {
@@ -151,7 +161,8 @@ function publish(kind, os, arch, version, input, output, archiveFile, binaryPath
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY)
     throw new Error('Production updates require TAURI_SIGNING_PRIVATE_KEY');
   if (kind === 'server' && !archiveFile) throw new Error('Server updates must be ZIP archives');
-  if (kind === 'appimage' && archiveFile) throw new Error('AppImage updates must not be archives');
+  if (RELEASE_FILES[kind] && archiveFile)
+    throw new Error('Release file updates must not be archives');
   const target = `${os}-${arch}`;
   const extension = archiveFile
     ? '.zip'
@@ -161,12 +172,11 @@ function publish(kind, os, arch, version, input, output, archiveFile, binaryPath
         ? '.exe'
         : '';
   const prefix = kind === os ? target : `${kind}-${target}`;
-  // An AppImage is the release's own Tauri bundle, uploaded under its file name
-  // with spaces replaced by dots, as GitHub stores it.
-  const asset =
-    kind === 'appimage'
-      ? path.basename(input).replaceAll(' ', '.')
-      : `${prefix}-${version}${extension}`;
+  // An AppImage or package is the release's own file, uploaded under its name with
+  // spaces replaced by dots, as GitHub stores it.
+  const asset = RELEASE_FILES[kind]
+    ? path.basename(input).replaceAll(' ', '.')
+    : `${prefix}-${version}${extension}`;
   const bytes = fs.readFileSync(input);
   // Validate all untrusted arguments before using them in output paths.
   validateIdentity({ kind, target, version, asset });
