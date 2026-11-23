@@ -127,35 +127,18 @@ pub fn deliverable_visuals(
     }
 }
 
+/// The tray translates its own texts without plural forms, so each count is a
+/// `Label: {{count}}` text.
 fn build_tooltip(snapshot: &TraySnapshot) -> String {
-    let mut parts: Vec<String> = Vec::new();
-
-    if !snapshot.active_jobs.is_empty() {
-        let count = snapshot.active_jobs.len().to_string();
-        parts.push(if snapshot.active_jobs.len() > 1 {
-            crate::t!("tray.tooltipTasks", "count" => &count)
-        } else {
-            crate::t!("tray.tooltipTask")
-        });
-    }
-
-    if !snapshot.mounted_remotes.is_empty() {
-        let count = snapshot.mounted_remotes.len().to_string();
-        parts.push(if snapshot.mounted_remotes.len() > 1 {
-            crate::t!("tray.tooltipMounts", "count" => &count)
-        } else {
-            crate::t!("tray.tooltipMount")
-        });
-    }
-
-    if !snapshot.active_serves.is_empty() {
-        let count = snapshot.active_serves.len().to_string();
-        parts.push(if snapshot.active_serves.len() > 1 {
-            crate::t!("tray.tooltipServes", "count" => &count)
-        } else {
-            crate::t!("tray.tooltipServe")
-        });
-    }
+    let parts: Vec<String> = [
+        ("tray.tooltipTasks", snapshot.active_jobs.len()),
+        ("tray.tooltipMounts", snapshot.mounted_remotes.len()),
+        ("tray.tooltipServes", snapshot.active_serves.len()),
+    ]
+    .into_iter()
+    .filter(|(_, count)| *count > 0)
+    .map(|(key, count)| crate::t!(key, "count" => count))
+    .collect();
 
     if parts.is_empty() {
         crate::t!("tray.tooltipDefault")

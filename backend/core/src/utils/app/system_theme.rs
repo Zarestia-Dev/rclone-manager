@@ -1,10 +1,13 @@
 //! The system's light or dark theme, read from the places each desktop keeps it.
 //! The desktop app also follows changes; the server reads it once, for the tray.
+//! Each platform defines `detect`: whether the theme is dark, or `None` when no
+//! source answers.
 
-/// Whether the system theme is dark, or `None` when no source answers.
+/// Whether the panel that shows tray icons is dark. Elsewhere it follows the theme.
+#[cfg(not(windows))]
 #[must_use]
-pub fn detect() -> Option<bool> {
-    detect_platform_theme()
+pub fn detect_panel() -> Option<bool> {
+    detect()
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +49,8 @@ const THEME_SOURCES: [ThemeSource; 4] = [
 ];
 
 #[cfg(target_os = "linux")]
-fn detect_platform_theme() -> Option<bool> {
+#[must_use]
+pub fn detect() -> Option<bool> {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP")
         .or_else(|_| std::env::var("DESKTOP_SESSION"))
         .unwrap_or_default()
@@ -222,23 +226,27 @@ fn detect_other_de_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-fn detect_platform_theme() -> Option<bool> {
-    use winreg::RegKey;
-    use winreg::enums::HKEY_CURRENT_USER;
+#[must_use]
+pub fn detect() -> Option<bool> {
+    uses_dark("AppsUseLightTheme").or_else(|| uses_dark("SystemUsesLightTheme"))
+}
 
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let key = hkcu
+/// The taskbar, where tray icons sit, follows the Windows mode, which can differ
+/// from the app mode (a dark taskbar with light apps).
+#[cfg(windows)]
+#[must_use]
+pub fn detect_panel() -> Option<bool> {
+    uses_dark("SystemUsesLightTheme").or_else(|| uses_dark("AppsUseLightTheme"))
+}
+
+/// Reads one of the `*UsesLightTheme` settings.
+#[cfg(windows)]
+fn uses_dark(value: &str) -> Option<bool> {
+    winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER)
         .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
-        .ok()?;
-
-    if let Ok(apps_light) = key.get_value::<u32, _>("AppsUseLightTheme") {
-        return Some(apps_light == 0);
-    }
-    if let Ok(sys_light) = key.get_value::<u32, _>("SystemUsesLightTheme") {
-        return Some(sys_light == 0);
-    }
-
-    None
+        .and_then(|key| key.get_value::<u32, _>(value))
+        .ok()
+        .map(|light| light == 0)
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +254,8 @@ fn detect_platform_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-fn detect_platform_theme() -> Option<bool> {
+#[must_use]
+pub fn detect() -> Option<bool> {
     if let Ok(output) = std::process::Command::new("defaults")
         .args(["read", "-g", "AppleInterfaceStyle"])
         .output()

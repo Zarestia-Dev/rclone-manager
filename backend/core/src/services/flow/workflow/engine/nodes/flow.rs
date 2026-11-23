@@ -7,11 +7,12 @@ use chrono::Utc;
 use log::info;
 use serde_json::{Value, json};
 
-use crate::services::flow::workflow::engine::cancel::{CancelToken, sleep_unless_cancelled};
 use crate::services::flow::workflow::types::{
     NodeExecutionOutput, NodeKind, WorkflowDefinition, WorkflowEdge, WorkflowNode, config_u64,
     parse_delay_seconds,
 };
+use crate::utils::types::state::sleep_unless_cancelled;
+use tokio_util::sync::CancellationToken;
 
 /// Evaluates a 'stop' node. A graceful stop reports `stopped: true`; the run then
 /// starts no further nodes but lets those already running finish.
@@ -200,7 +201,7 @@ fn delay_seconds(config: &Value) -> u64 {
 /// (5 when unset). A simulation does not wait.
 pub(crate) async fn execute_delay_node(
     config: &Value,
-    cancel: &CancelToken,
+    cancel: &CancellationToken,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     let seconds = delay_seconds(config);
@@ -231,7 +232,7 @@ const SCHEDULE_RECHECK: Duration = Duration::from_secs(30);
 /// Respects dry_run simulation, process cancellation, and emits execution metrics.
 pub(crate) async fn execute_schedule_wait_node(
     config: &Value,
-    cancel: &CancelToken,
+    cancel: &CancellationToken,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     let cron_expr = config
@@ -292,7 +293,7 @@ pub(crate) async fn execute_schedule_wait_node(
 /// periodically checking the cancellation flag to ensure prompt responsiveness.
 pub(crate) async fn handle_app_start_node(
     config: &Value,
-    cancel: &CancelToken,
+    cancel: &CancellationToken,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     let delay = parse_delay_seconds(config);
@@ -709,7 +710,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_simulated_delay_does_not_wait() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         let started = std::time::Instant::now();
         let output = execute_delay_node(&json!({ "delaySeconds": 3600 }), &cancel, true)
             .await
@@ -747,7 +748,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_delay_node_zero_seconds() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         let config = json!({ "delaySeconds": 0 });
         let result = execute_delay_node(&config, &cancel, false).await;
         let output = result.expect("Zero delay should succeed immediately");
@@ -759,7 +760,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_delay_node_cancelled() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         cancel.cancel();
         let config = json!({ "seconds": 10 });
         let result = execute_delay_node(&config, &cancel, false).await;
@@ -772,7 +773,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_schedule_wait_dry_run() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         let config = json!({ "cronExpression": "0 2 * * *" });
         let result = execute_schedule_wait_node(&config, &cancel, true).await;
         let output = result.expect("Dry run should succeed immediately");
@@ -797,7 +798,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_schedule_wait_invalid_cron() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         let config = json!({ "cronExpression": "invalid cron syntax" });
         let result = execute_schedule_wait_node(&config, &cancel, false).await;
         assert!(result.is_err());
@@ -810,7 +811,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_schedule_wait_cancelled() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
         cancel.cancel();
         let config = json!({ "cronExpression": "0 2 * * *" });
         let result = execute_schedule_wait_node(&config, &cancel, false).await;
@@ -823,7 +824,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_app_start_node_execution() {
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         // 1. Zero delay executes immediately
         let config_zero = json!({ "delaySeconds": 0 });
@@ -877,7 +878,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_enormous_delay_stays_cancellable_instead_of_overflowing() {
-        let cancelled = CancelToken::new();
+        let cancelled = CancellationToken::new();
         cancelled.cancel();
         let config = json!({"delaySeconds": u64::MAX});
         assert!(

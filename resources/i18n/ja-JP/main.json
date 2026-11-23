@@ -4180,11 +4180,8 @@
     "serveCount": "公開サーバー [{{active}}/{{total}}]",
     "quickRunsCount": "クイック実行 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "ジョブ 1件",
     "tooltipTasks": "ジョブ {{count}}件",
-    "tooltipMount": "マウント 1件",
     "tooltipMounts": "マウント {{count}}件",
-    "tooltipServe": "公開サーバー 1件",
     "tooltipServes": "公開サーバー {{count}}件",
     "workflowsCount": "ワークフロー [{{active}}/{{total}}]",
     "indexCount": "ディレクトリ一覧 [{{active}}/{{total}}]"

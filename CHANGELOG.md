@@ -13,7 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Windows setup**: The update removes the old installation, keeping its settings, installs RClone Manager Server and starts it.
   - **Windows MSI**: The update replaces the old MSI. Start **RClone Manager Server** once from the Start menu; until then, starting at login does not work.
   - **AUR**: `rclone-manager-headless` is replaced by `rclone-manager-server`. Run `yay -S rclone-manager-server` once and let pacman remove the old package. The AUR `rclone-manager-server` package now also installs the menu entry.
-  - **Server ZIP and Docker**: Nothing changes; they update as before.
+  - **Server ZIP and Docker**: They update as before.
+- **The Server Listens Only on This Computer by Default**: Started without `--host` (or `RCLONE_MANAGER_HOST`), the server now accepts connections from this computer only (`127.0.0.1`) instead of the whole network (`0.0.0.0`), so the Start menu entry and starting at login no longer open it to the network without a password. The Docker image and the systemd service still listen on every address. If you reach a server ZIP from another device, start it with `--host 0.0.0.0` and set `--user` and `--pass`.
 
 ### Added
 
@@ -51,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Battery Drain With Run in Background (Android)**: The background service kept the phone awake (a wake lock and a high-performance Wi-Fi lock) for as long as it ran, even with nothing to do; on a test phone it used more battery than the screen. The phone now stays awake only while jobs or servers run, a folder watcher is about to start its run, or another app has files open or is still uploading files saved through the app. Schedules set an exact alarm that wakes the phone for their next run (`USE_EXACT_ALARM`, granted at install).
 - **Locked Vault in the Background Notification (Android)**: When the app started in the background with a locked vault (after a boot, or after Android closed it), nothing ran until the vault was unlocked, but the notification said "Running in background". It now says the vault is locked and opens the app to unlock it. A vault that locks itself while the app runs stops nothing, and the notification keeps showing what runs.
 - **Clearer Notification for Open Files (Android)**: While another app had files open through RClone Manager, the notification read "Rclone SAF Storage Service". It now says that files are open in another app, or that files saved there are uploading.
+- **Beta Channel Offered an Older Stable Release**: A beta build whose own release was not on GitHub (a local build, or a withdrawn beta) was offered the latest stable release on the beta channel, although it is older. The beta channel now offers only newer releases; switching to the stable channel still moves a beta build to the latest stable release.
+- **Tray Icon on a Dark Taskbar (Windows)**: With the **System** tray icon theme, the icon followed the app mode, so with a dark Windows mode and light apps (the Windows 11 default for **Custom**) it was dark on the dark taskbar. It now follows the Windows mode, as the taskbar does.
 - **Update Rolled Back After Quitting Right Away**: Closing or stopping the updated app within 10 seconds of its start undid the update, even though it had started correctly. The update is now kept as soon as the new version confirms its startup, without the extra 10-second wait; a version that crashes or never confirms its startup (90 seconds) still restores the previous one.
 
 ### Security

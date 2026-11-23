@@ -41,7 +41,6 @@ urlencoding = "2"
 futures = { workspace = true }
 http = "1"
 tokio-util = { workspace = true }
-mime_guess = { workspace = true }
 # Keep per-call recursive reads for librclone cancellation; 0.13 removes this API.
 parking_lot = "0.12"
 minisign-verify = { version = "0.3", optional = true }

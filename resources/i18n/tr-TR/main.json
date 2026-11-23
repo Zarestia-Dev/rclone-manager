@@ -4274,11 +4274,8 @@
     "quickRunsCount": "Hızlı Çalıştırmalar [{{active}}/{{total}}]",
     "workflowsCount": "İş Akışları [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Yöneticisi",
-    "tooltipTask": "1 İş",
     "tooltipTasks": "{{count}} İş",
-    "tooltipMount": "1 Bağlama",
     "tooltipMounts": "{{count}} Bağlama",
-    "tooltipServe": "1 Sunucu",
     "tooltipServes": "{{count}} Sunucu",
     "indexCount": "Dizin Listeleri [{{active}}/{{total}}]"
   },

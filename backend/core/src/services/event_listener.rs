@@ -534,6 +534,10 @@ mod tests {
         /// An app with a tray whose interface is locked and that has no UI thread:
         /// tray work stops there, so what is left to check is the visibility request.
         fn tray_app() -> (AppHandle, tempfile::TempDir) {
+            locked_tray_app(AppHandle::default())
+        }
+
+        fn locked_tray_app(app: AppHandle) -> (AppHandle, tempfile::TempDir) {
             use crate::services::settings::access::VaultAccess;
             let directory = tempfile::tempdir().unwrap();
             let manager = rcman::SettingsManager::builder("tray-events-test", "1")
@@ -543,7 +547,6 @@ mod tests {
                 .unwrap();
             let access = std::sync::Arc::new(VaultAccess::new(directory.path(), &manager).unwrap());
             access.lock();
-            let app = AppHandle::default();
             app.manage(manager);
             app.manage(access);
             app.manage(TrayMenuState::default());
@@ -564,6 +567,67 @@ mod tests {
                     payload,
                 },
             );
+        }
+
+        /// A host whose UI thread counts the tray updates it is given.
+        #[derive(Default)]
+        struct UiThread {
+            updates: std::sync::atomic::AtomicUsize,
+        }
+
+        #[async_trait::async_trait]
+        impl crate::context::Host for UiThread {
+            fn resolve_paths(
+                &self,
+                _app: &AppHandle,
+            ) -> Result<crate::services::paths::AppPaths, String> {
+                Err("not used by tray events".into())
+            }
+            fn restart(&self, _app: &AppHandle) -> Result<(), String> {
+                Err("not used by tray events".into())
+            }
+            fn run_on_main_thread(&self, task: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+                self.updates.fetch_add(1, Ordering::SeqCst);
+                task();
+                Ok(())
+            }
+        }
+
+        #[tokio::test]
+        async fn refresh_events_rebuild_a_shown_tray_and_unknown_events_do_not() {
+            use std::time::Duration;
+            let host = std::sync::Arc::new(UiThread::default());
+            let (app, _directory) = locked_tray_app(AppHandle::new(
+                host.clone(),
+                crate::context::ProductInfo::default(),
+            ));
+            let state = app.state::<TrayMenuState>();
+            state.built.store(true, Ordering::SeqCst);
+            state.requested_visible.store(true, Ordering::SeqCst);
+            for (event, payload, expected) in [
+                (UPDATE_TRAY_MENU, Value::Null, 1),
+                ("unknown event & 旅行", Value::Null, 1),
+                (BACKEND_SWITCHED, json!("NAS & 旅行"), 2),
+            ] {
+                dispatch_bridge_event(
+                    &app,
+                    &BridgeEvent {
+                        event: event.into(),
+                        payload,
+                    },
+                );
+                // The refresh runs in the background: wait for it, then make sure no
+                // other one follows.
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    while host.updates.load(Ordering::SeqCst) < expected {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                })
+                .await
+                .unwrap_or_else(|_| panic!("{event} did not refresh the tray"));
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                assert_eq!(host.updates.load(Ordering::SeqCst), expected, "{event}");
+            }
         }
 
         #[test]

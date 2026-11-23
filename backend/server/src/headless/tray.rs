@@ -9,25 +9,13 @@ use std::sync::{OnceLock, mpsc};
 
 type Task = Box<dyn FnOnce() + Send>;
 
-/// Where the tray's entries open the web UI.
-static HTTP: OnceLock<crate::HttpArgs> = OnceLock::new();
-
-/// The system theme, read once at startup for the tray's "system" icon theme, as
-/// the RClone Manager Headless app did. Unread systems count as light.
-static SYSTEM_DARK: OnceLock<bool> = OnceLock::new();
-
-pub(super) fn read_system_theme() {
-    let dark = rclone_manager_core::utils::app::system_theme::detect().unwrap_or(false);
-    let _ = SYSTEM_DARK.set(dark);
-}
-
-pub(super) fn is_system_dark() -> bool {
-    SYSTEM_DARK.get().copied().unwrap_or(false)
-}
+/// Where the tray's entries open the web UI: its origin only, not the HTTP
+/// options, which hold the password.
+static WEB_UI: OnceLock<String> = OnceLock::new();
 
 /// Lets core show the tray. Call before startup.
 pub(super) fn init(app: &AppHandle, http: &crate::HttpArgs) {
-    let _ = HTTP.set(http.clone());
+    let _ = WEB_UI.set(http.web_ui_url(""));
     app.manage(TrayMenuState::default());
     native::handle_menu_events(app);
 }
@@ -41,7 +29,7 @@ pub(super) fn open_view(view: TrayView<'_>) {
             percent_encoding::utf8_percent_encode(remote, percent_encoding::NON_ALPHANUMERIC)
         ),
     };
-    let Some(url) = HTTP.get().map(|http| http.web_ui_url(&path)) else {
+    let Some(url) = WEB_UI.get().map(|origin| format!("{origin}{path}")) else {
         return;
     };
     if let Err(error) = open::that_detached(&url) {

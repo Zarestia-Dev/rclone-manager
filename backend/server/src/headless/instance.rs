@@ -66,13 +66,25 @@ pub(super) fn claim(app: &AppHandle, paths: &AppPaths) -> Result<(), String> {
 
 /// Written under a temporary name and renamed, so the owner never reads half a file.
 fn hand_over(inbox: &Path, request: &Request) -> std::io::Result<()> {
-    std::fs::create_dir_all(inbox)?;
+    create_inbox(inbox)?;
     let mut file = tempfile::Builder::new()
         .prefix("send-to-")
         .tempfile_in(inbox)?;
     serde_json::to_writer(&mut file, request)?;
     let request = file.path().with_extension("json");
     file.persist(request)?;
+    Ok(())
+}
+
+/// A request in the inbox uploads the files it names, so only this user may write
+/// there, also when the data directory is shared.
+fn create_inbox(inbox: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(inbox)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(inbox, std::fs::Permissions::from_mode(0o700))?;
+    }
     Ok(())
 }
 
@@ -105,7 +117,7 @@ pub(super) fn serve(app: &AppHandle) {
 
 fn watch(app: &AppHandle, inbox: &Path) -> Result<notify::RecommendedWatcher, String> {
     use notify::Watcher;
-    std::fs::create_dir_all(inbox).map_err(|error| error.to_string())?;
+    create_inbox(inbox).map_err(|error| error.to_string())?;
     let owner = app.clone();
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
         for path in event.map(|event| event.paths).unwrap_or_default() {
@@ -126,7 +138,7 @@ fn watch(app: &AppHandle, inbox: &Path) -> Result<notify::RecommendedWatcher, St
     Ok(watcher)
 }
 
-/// Each request runs once: the file is removed before the transfer starts.
+/// Each request runs once: the file is taken before the transfer starts.
 fn run(app: &AppHandle, path: &Path) {
     let Some(request) = take(path) else {
         return;
@@ -148,12 +160,17 @@ fn run(app: &AppHandle, path: &Path) {
     });
 }
 
+/// The startup scan and the watcher can both see a request; renaming it is atomic,
+/// so only one of them gets it.
 fn take(path: &Path) -> Option<Request> {
     if path.extension().is_none_or(|extension| extension != "json") {
         return None;
     }
-    let bytes = std::fs::read(path).ok()?;
-    std::fs::remove_file(path).ok()?;
+    let taken = path.with_extension("taken");
+    std::fs::rename(path, &taken).ok()?;
+    let bytes = std::fs::read(&taken);
+    let _ = std::fs::remove_file(&taken);
+    let bytes = bytes.ok()?;
     serde_json::from_slice(&bytes)
         .inspect_err(|error| log::warn!("Ignoring invalid SendTo request: {error}"))
         .ok()
@@ -181,6 +198,49 @@ mod tests {
         assert_eq!(files[0].extension().unwrap(), "json");
         assert_eq!(take(&files[0]), Some(request));
         assert_eq!(take(&files[0]), None);
+    }
+
+    #[test]
+    fn only_one_of_two_readers_gets_a_request() {
+        let inbox = tempfile::tempdir().unwrap();
+        let request = Request {
+            remote: "r:".into(),
+            path: None,
+            sources: vec!["a".into()],
+            cwd: "/".into(),
+        };
+        hand_over(inbox.path(), &request).unwrap();
+        let file = std::fs::read_dir(inbox.path())
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let readers: Vec<_> = (0..2)
+            .map(|_| {
+                let file = file.clone();
+                std::thread::spawn(move || take(&file))
+            })
+            .collect();
+        let taken: Vec<_> = readers
+            .into_iter()
+            .filter_map(|reader| reader.join().unwrap())
+            .collect();
+        assert_eq!(taken, [request]);
+        assert_eq!(std::fs::read_dir(inbox.path()).unwrap().count(), 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn only_this_user_can_leave_requests() {
+        use std::os::unix::fs::PermissionsExt;
+        let data = tempfile::tempdir().unwrap();
+        let inbox = data.path().join("send-to");
+        std::fs::create_dir(&inbox).unwrap();
+        std::fs::set_permissions(&inbox, std::fs::Permissions::from_mode(0o777)).unwrap();
+        create_inbox(&inbox).unwrap();
+        let mode = std::fs::metadata(&inbox).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o700);
     }
 
     #[test]

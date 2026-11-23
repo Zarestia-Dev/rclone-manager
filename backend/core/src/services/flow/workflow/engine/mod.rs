@@ -13,7 +13,6 @@
 //! - [`cancel`] is the cancellation token every wait respects.
 
 pub(crate) mod active;
-pub(crate) mod cancel;
 pub(crate) mod graph;
 pub(crate) mod nodes;
 pub(crate) mod record;
@@ -28,9 +27,9 @@ use serde_json::Value;
 
 use crate::context::AppHandle;
 use crate::rclone::backend::types::Backend;
-use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::types::{NodeKind, WorkflowNode};
 use crate::utils::types::starter::WorkflowRun;
+use tokio_util::sync::CancellationToken;
 
 pub use active::{
     forget_workflow_runs, get_active_workflow_ids, has_active_workflows, run_snapshots,
@@ -45,7 +44,7 @@ pub(crate) struct RunContext {
     pub(crate) app: AppHandle,
     pub(crate) backend: Backend,
     pub(crate) snapshot: Arc<crate::services::automation::runtime::WorkflowSnapshot>,
-    pub(crate) cancel: CancelToken,
+    pub(crate) cancel: CancellationToken,
     pub(crate) active_jobs: Arc<RwLock<HashSet<u64>>>,
     pub(crate) node_results: Arc<RwLock<HashMap<String, Value>>>,
     /// Identifies this execution, unlike the workflow id shared by every run.

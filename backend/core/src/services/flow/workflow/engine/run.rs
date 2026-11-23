@@ -19,7 +19,6 @@ use crate::services::flow::workflow::engine::{
     active::{
         ActiveWorkflowState, cleanup_workflow_resources, register_active_run, remember_refused_run,
     },
-    cancel::CancelToken,
     graph::{NodeFinishedEvent, RunGraph, RunState},
     nodes::execute_single_node,
     record::RunHandle,
@@ -31,6 +30,7 @@ use crate::services::flow::workflow::types::{
 use crate::services::settings::AppSettingsManager;
 use crate::utils::app::notification::{NotificationEvent, WorkflowStage, notify};
 use crate::utils::types::origin::Origin;
+use tokio_util::sync::CancellationToken;
 
 /// Most items of a list in an output that go out with a node-state event. The run
 /// keeps the whole output for the nodes after it; the interface only needs a glimpse.
@@ -186,7 +186,7 @@ async fn execute_workflow_inner(
         return Err(message);
     }
 
-    let cancel = CancelToken::new();
+    let cancel = CancellationToken::new();
     let active_job_ids = Arc::new(RwLock::new(HashSet::new()));
     let active_run = register_active_run(
         &workflow.name,
@@ -767,7 +767,7 @@ mod tests {
         };
         let state = |backend: &str| ActiveWorkflowState {
             backend: Backend::new_remote(backend, "127.0.0.1", 0),
-            cancel: crate::services::flow::workflow::engine::cancel::CancelToken::new(),
+            cancel: tokio_util::sync::CancellationToken::new(),
             active_job_ids: Arc::new(RwLock::new(HashSet::new())),
         };
         let handle = || Arc::new(RunHandle::new("copied-id", "test-run", false));

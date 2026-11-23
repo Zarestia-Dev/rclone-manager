@@ -4326,11 +4326,8 @@
     "quickRunsCount": "Rýchle spustenia [{{active}}/{{total}}]",
     "workflowsCount": "Pracovné postupy [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 úloha",
     "tooltipTasks": "Úlohy: {{count}}",
-    "tooltipMount": "1 pripojenie",
     "tooltipMounts": "Pripojenia: {{count}}",
-    "tooltipServe": "1 server",
     "tooltipServes": "Servery: {{count}}",
     "indexCount": "Výpisy priečinkov [{{active}}/{{total}}]"
   },

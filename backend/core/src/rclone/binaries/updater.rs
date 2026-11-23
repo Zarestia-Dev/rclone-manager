@@ -768,10 +768,21 @@ async fn check_rclone_selfupdate(
         _ => info.stable,
     };
 
-    let update_available =
-        !info.current.is_empty() && clean_version(&info.current) != clean_version(&target_version);
+    let update_available = rclone_update_available(channel, &info.current, &target_version);
 
     Ok((update_available, target_version))
+}
+
+/// The rule of the app's own updates (`services::updates::is_offered`): the beta
+/// channel only moves forward, and the stable channel also takes a beta or
+/// development build back to the latest stable release.
+fn rclone_update_available(channel: &UpdateChannel, current: &str, target: &str) -> bool {
+    use crate::utils::version::{is_update_candidate, is_version_newer};
+    !current.is_empty()
+        && match channel {
+            UpdateChannel::Beta => is_version_newer(current, target),
+            UpdateChannel::Stable => is_update_candidate(current, target),
+        }
 }
 
 /// Release notes, date and page of a found update.
@@ -1073,6 +1084,41 @@ mod tests {
     #[test]
     fn test_clean_version_no_prefix() {
         assert_eq!(clean_version("1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn rclone_updates_follow_the_channel_like_app_updates() {
+        let beta = UpdateChannel::Beta;
+        let stable = UpdateChannel::Stable;
+        // Newer releases on either channel.
+        assert!(rclone_update_available(&stable, "v1.71.0", "v1.72.0"));
+        assert!(rclone_update_available(
+            &beta,
+            "v1.72.0-beta.9100.aaaaaaa",
+            "v1.72.0-beta.9155.2bc155a96"
+        ));
+        // Leaving beta for stable goes back to the latest stable release.
+        assert!(rclone_update_available(
+            &stable,
+            "v1.73.0-beta.9200.bbbbbbb",
+            "v1.72.0"
+        ));
+        // The beta channel never goes back, also when it lists no beta and the
+        // stable release stands in for it.
+        assert!(!rclone_update_available(
+            &beta,
+            "v1.72.0-beta.9200.bbbbbbb",
+            "v1.72.0-beta.9155.2bc155a96"
+        ));
+        assert!(!rclone_update_available(
+            &beta,
+            "v1.73.0-beta.9200.bbbbbbb",
+            "v1.72.0"
+        ));
+        // The same version, an older stable one, or an unknown current version.
+        assert!(!rclone_update_available(&stable, "v1.72.0", "v1.72.0"));
+        assert!(!rclone_update_available(&stable, "v1.73.0", "v1.72.0"));
+        assert!(!rclone_update_available(&stable, "", "v1.72.0"));
     }
 
     #[test]

@@ -99,20 +99,14 @@ struct SignedUpdate {
 }
 
 impl SignedUpdate {
-    /// Installers open their own file types, so the verified cache doubles as the
-    /// installer input instead of a second copy.
+    /// Android's installer opens only its own file type, so the verified cache
+    /// doubles as its input instead of a second copy.
     fn cache_path(&self) -> std::path::PathBuf {
-        let extension = match self.manifest.kind {
-            ArtifactKind::Android => "apk",
-            ArtifactKind::Deb => "deb",
-            ArtifactKind::Rpm => "rpm",
-            ArtifactKind::Nsis => "exe",
-            ArtifactKind::Msi => "msi",
-            _ => "payload",
-        };
         self.cache_directory.join(format!(
-            "{}-{}.{extension}",
-            self.manifest.kind, self.manifest.target
+            "{}-{}.{}",
+            self.manifest.kind,
+            self.manifest.target,
+            self.manifest.kind.extension()
         ))
     }
 }
@@ -175,7 +169,7 @@ impl AppUpdate for SignedUpdate {
             self.manifest.kind,
             ArtifactKind::Deb | ArtifactKind::Rpm | ArtifactKind::Nsis | ArtifactKind::Msi
         ) {
-            return super::package::install(self.manifest.kind, &self.cache_path());
+            return super::package::install(self.manifest.kind, payload);
         }
         super::binary::prepare(
             self.manifest.kind,

@@ -51,7 +51,8 @@ pub async fn unregister_send_to(
 /// registered to this product's name and executable.
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 pub async fn adopt_entries(app: crate::context::AppHandle, display_name: &str) {
-    for (name, remote, path) in platform::entries_named(display_name, app.product()) {
+    for common::Entry { name, remote, path } in platform::entries_named(display_name, app.product())
+    {
         let path = (!path.is_empty()).then_some(path);
         match register_send_to(app.clone(), remote, path).await {
             Ok(()) => {

@@ -4274,11 +4274,8 @@
     "quickRunsCount": "Quick Runs [{{active}}/{{total}}]",
     "workflowsCount": "Workflows [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Job",
     "tooltipTasks": "Jobs: {{count}}",
-    "tooltipMount": "1 Mount",
     "tooltipMounts": "Mounts: {{count}}",
-    "tooltipServe": "1 Serve",
     "tooltipServes": "Serves: {{count}}",
     "indexCount": "Directory Listings [{{active}}/{{total}}]"
   },

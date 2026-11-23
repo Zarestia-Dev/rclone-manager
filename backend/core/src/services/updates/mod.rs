@@ -62,16 +62,27 @@ impl Drop for CheckingGuard<'_> {
 use crate::utils::version::{clean_app_version, is_update_candidate, is_version_newer};
 
 /// Installers that replace the running build may move a pre-release to a stable
-/// release with a lower version number. Packages (including DEB/RPM installed by
-/// Tauri) only move forward: `rpm -U` and an MSI refuse downgrades, package managers decide
-/// for themselves, and Android version codes cannot decrease.
-fn is_offered(installation: &policy::UpdatePolicy, current: &str, release: &str) -> bool {
+/// release with a lower version number, so that leaving the beta channel does not
+/// wait for the next stable version. On the beta channel that would be a
+/// downgrade: its newest release is older than this build only when this build's
+/// own release is missing (a local build, or a release that was withdrawn).
+/// Packages (including DEB/RPM installed by Tauri) only move forward: `rpm -U` and
+/// an MSI refuse downgrades, package managers decide for themselves, and Android
+/// version codes cannot decrease.
+fn is_offered(
+    installation: &policy::UpdatePolicy,
+    channel: &str,
+    current: &str,
+    release: &str,
+) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
         (_, InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Msi) => {
             is_version_newer(current, release)
         }
-        (UpdateMethod::Tauri | UpdateMethod::Binary, _) => is_update_candidate(current, release),
+        (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
+            is_update_candidate(current, release)
+        }
         _ => is_version_newer(current, release),
     }
 }
@@ -179,7 +190,12 @@ async fn update_for_release(
     let current_version_str = env!("CARGO_PKG_VERSION").to_string();
     let release_version_str = clean_app_version(&release.tag_name);
 
-    if !is_offered(&installation, &current_version_str, release_version_str) {
+    if !is_offered(
+        &installation,
+        channel,
+        &current_version_str,
+        release_version_str,
+    ) {
         info!("App is up to date (current: {current_version_str}, latest: {release_version_str})");
         return Ok(None);
     }
@@ -483,7 +499,20 @@ mod tests {
         };
         use policy::UpdateMethod;
         let offered = |kind, method, current, release| {
-            is_offered(&policy::test_policy(kind, method, None), current, release)
+            is_offered(
+                &policy::test_policy(kind, method, None),
+                "stable",
+                current,
+                release,
+            )
+        };
+        let offered_on_beta = |kind, method, current, release| {
+            is_offered(
+                &policy::test_policy(kind, method, None),
+                "beta",
+                current,
+                release,
+            )
         };
         for (kind, method) in [
             (Native, UpdateMethod::Tauri),
@@ -494,6 +523,16 @@ mod tests {
             assert!(offered(kind, method, "0.3.4-beta.1", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4-beta.2", "0.3.4-beta.1"));
+            // The beta channel never goes back to an older stable release, as when
+            // this build's own release is missing; newer releases are still offered.
+            assert!(!offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.6"));
+            assert!(offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.7"));
+            assert!(offered_on_beta(
+                kind,
+                method,
+                "0.3.7-beta.1",
+                "0.3.7-beta.2"
+            ));
         }
         // Packages only move forward, even when Tauri installs them: `rpm -U`
         // refuses downgrades. Android version codes cannot decrease.

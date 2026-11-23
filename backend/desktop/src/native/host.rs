@@ -160,8 +160,14 @@ impl Host for NativeHost {
             .open_path(path.to_string_lossy(), None::<&str>)
             .map_err(|e| e.to_string())
     }
+    /// The Windows taskbar follows the Windows mode, not the app mode the window
+    /// uses, so the tray reads it there (one registry read per rebuild).
     #[cfg(feature = "tray")]
     fn is_system_dark(&self) -> bool {
+        #[cfg(windows)]
+        if let Some(dark) = crate::utils::app::system_theme::detect_panel() {
+            return dark;
+        }
         super::theme::is_system_dark()
     }
     #[cfg(any(autostart_plugin, autostart_portal))]

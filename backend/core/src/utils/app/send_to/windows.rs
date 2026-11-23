@@ -192,20 +192,19 @@ pub fn unregister(name: &str, product: &crate::context::ProductInfo) -> Result<(
 pub fn entries_named(
     display_name: &str,
     product: &crate::context::ProductInfo,
-) -> Vec<(String, String, String)> {
-    use crate::utils::app::send_to::common::{is_named_for, send_to_arguments};
+) -> Vec<crate::utils::app::send_to::common::Entry> {
+    use crate::utils::app::send_to::common::{Entry, is_named_for, send_to_arguments};
     use winreg::RegKey;
     use winreg::enums::HKEY_CURRENT_USER;
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let registry_key = product.integration_key;
-    let mut entries: Vec<(String, String, String)> = Vec::new();
+    let mut entries: Vec<Entry> = Vec::new();
     for root_path in [r"Software\Classes\*", r"Software\Classes\Directory"] {
         let Ok(shell) = hkcu.open_subkey(format!(r"{root_path}\shell\{registry_key}\shell")) else {
             continue;
         };
         for name in shell.enum_keys().flatten() {
-            if !is_named_for(&name, display_name)
-                || entries.iter().any(|(known, ..)| *known == name)
+            if !is_named_for(&name, display_name) || entries.iter().any(|entry| entry.name == name)
             {
                 continue;
             }
@@ -213,7 +212,7 @@ pub fn entries_named(
                 .open_subkey(format!(r"{name}\command"))
                 .and_then(|key| key.get_value::<String, _>(""));
             if let Some((remote, path)) = command.ok().as_deref().and_then(send_to_arguments) {
-                entries.push((name, remote, path));
+                entries.push(Entry { name, remote, path });
             }
         }
     }

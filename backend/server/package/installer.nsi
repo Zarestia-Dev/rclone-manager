@@ -2,8 +2,9 @@
 ; the RClone Manager Headless app (0.3.6 and older), which shares its settings. The
 ; MSI, for all users, is built from nfpm.yaml. release-headless.yml builds it with:
 ;   makensis /DVERSION=<version> /DBINARY=<rclone-manager-server.exe> /DOUTFILE=<setup.exe> installer.nsi
-; /P runs it without questions and /R then starts the app; the in-app and Tauri
-; updaters pass both. Tauri's also passes /UPDATE and /ARGS, which change nothing.
+; /P runs it without questions and /R then starts the app. The Tauri updater of the
+; Headless app passes both, and also /UPDATE and /ARGS, which change nothing. The
+; in-app updater passes only /P and starts the app itself, with its launch arguments.
 Unicode true
 ManifestDPIAware true
 SetCompressor /SOLID lzma

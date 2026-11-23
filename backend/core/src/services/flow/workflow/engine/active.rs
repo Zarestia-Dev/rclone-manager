@@ -9,15 +9,15 @@ use serde_json::Value;
 
 use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
-use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::engine::record::{RunHandle, WorkflowRunSnapshot};
 use crate::utils::types::starter;
+use tokio_util::sync::CancellationToken;
 
 /// What stops a running workflow.
 #[derive(Clone)]
 pub(crate) struct ActiveWorkflowState {
     pub(crate) backend: Backend,
-    pub(crate) cancel: CancelToken,
+    pub(crate) cancel: CancellationToken,
     pub(crate) active_job_ids: Arc<RwLock<HashSet<u64>>>,
 }
 
@@ -293,17 +293,17 @@ mod tests {
     use parking_lot::RwLock;
 
     use crate::rclone::backend::types::Backend;
-    use crate::services::flow::workflow::engine::cancel::CancelToken;
     use crate::services::flow::workflow::types::{
         WorkflowExecutionState, WorkflowNodeExecutionState,
     };
+    use tokio_util::sync::CancellationToken;
 
     use super::*;
 
     fn active_state() -> ActiveWorkflowState {
         ActiveWorkflowState {
             backend: Backend::new_local("Local"),
-            cancel: CancelToken::new(),
+            cancel: CancellationToken::new(),
             active_job_ids: Arc::new(RwLock::new(HashSet::new())),
         }
     }

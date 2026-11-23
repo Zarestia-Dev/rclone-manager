@@ -37,6 +37,18 @@ impl ArtifactKind {
             Self::Portable | Self::Server | Self::Android => None,
         }
     }
+
+    /// The extension the kind's installer needs its file to have.
+    pub(super) fn extension(self) -> &'static str {
+        match self {
+            Self::Android => "apk",
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+            Self::Nsis => "exe",
+            Self::Msi => "msi",
+            Self::Portable | Self::Server | Self::Appimage => "payload",
+        }
+    }
 }
 
 impl std::fmt::Display for ArtifactKind {

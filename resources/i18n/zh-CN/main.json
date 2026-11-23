@@ -4180,11 +4180,8 @@
     "serveCount": "服务 [{{active}}/{{total}}]",
     "quickRunsCount": "快捷运行 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 个作业",
     "tooltipTasks": "{{count}} 个作业",
-    "tooltipMount": "1 个挂载",
     "tooltipMounts": "{{count}} 个挂载",
-    "tooltipServe": "1 个服务",
     "tooltipServes": "{{count}} 个服务",
     "workflowsCount": "工作流 [{{active}}/{{total}}]",
     "indexCount": "目录列表 [{{active}}/{{total}}]"

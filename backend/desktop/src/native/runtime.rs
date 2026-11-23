@@ -146,7 +146,8 @@ pub fn run() {
 
                 #[cfg(target_os = "linux")]
                 if !app_handle
-                    .backend_state::<crate::utils::types::state::RcloneState>()
+                    .backend()
+                    .state::<crate::utils::types::state::RcloneState>()
                     .is_shutting_down()
                 {
                     std::thread::spawn(kill_webkit_children);

@@ -1,7 +1,8 @@
 #!/bin/sh
-# Removes what postinstall.sh linked and the file manager entries the app created
-# for each user, under its name and the RClone Manager Headless name it replaced,
-# only when the package goes away: DEB passes "remove" or "purge", RPM passes 0.
+# Removes what postinstall.sh linked and the file manager and start-at-login
+# entries the app created for each user, under its name and the RClone Manager
+# Headless name it replaced, only when the package goes away: DEB passes "remove"
+# or "purge", RPM passes 0.
 case "$1" in
     remove | purge | 0) ;;
     *) exit 0 ;;
@@ -16,7 +17,8 @@ for home in /root /home/*; do
         rm -f "$home/.local/share/nautilus/scripts/"*" ($product)" \
             "$home/.local/share/nautilus-python/extensions/"*" ($product).py" \
             "$home/.local/share/kio/servicemenus/"*" ($product).desktop" \
-            "$home/.local/share/nemo/actions/"*" ($product).nemo_action"
+            "$home/.local/share/nemo/actions/"*" ($product).nemo_action" \
+            "$home/.config/autostart/$product.desktop"
     done
 done
 exit 0

@@ -24,12 +24,13 @@ impl CliArgs {
 /// Headless web server specific arguments
 #[derive(Args, Debug, Clone)]
 pub struct HttpArgs {
-    /// Host address to bind to
+    /// Host address to bind to. Only this computer can connect unless another
+    /// address, such as 0.0.0.0, is given
     #[arg(
         short = 'H',
         long,
         env = "RCLONE_MANAGER_HOST",
-        default_value = "0.0.0.0"
+        default_value = "127.0.0.1"
     )]
     pub host: String,
 
@@ -113,6 +114,16 @@ impl HttpArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Start menu, start at login and the setup's restart pass no arguments; without
+    /// a password the server must not be reachable from the network then.
+    #[test]
+    fn without_arguments_only_this_computer_can_connect() {
+        let args = CliArgs::parse_from(["server"]);
+        assert!(crate::web::address::is_loopback_host(&args.headless.host));
+        assert_eq!(args.headless.auth_credentials(), None);
+    }
+
     #[test]
     fn tray_links_use_the_http_configuration_and_preserve_the_route() {
         let mut args = CliArgs::parse_from(["server", "--host", "::", "--port", "8443"]);

@@ -4336,11 +4336,8 @@
     "serveCount": "Серверы [{{active}}/{{total}}]",
     "quickRunsCount": "Быстрые запуски [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 задание",
     "tooltipTasks": "Заданий: {{count}}",
-    "tooltipMount": "1 подключённый диск",
     "tooltipMounts": "Подключённых дисков: {{count}}",
-    "tooltipServe": "1 сервер",
     "tooltipServes": "Серверов: {{count}}",
     "workflowsCount": "Рабочие процессы [{{active}}/{{total}}]",
     "indexCount": "Списки каталогов [{{active}}/{{total}}]"

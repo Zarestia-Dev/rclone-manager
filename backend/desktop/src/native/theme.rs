@@ -2,10 +2,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static SYSTEM_THEME_IS_DARK: AtomicBool = AtomicBool::new(true);
 
-/// Initialize the system theme during startup before UI loads
+/// Initialize the system theme during startup before UI loads. Mobile systems
+/// report it through `set_theme` instead.
 pub fn init_system_theme() {
-    let is_dark = detect_system_dark();
-    SYSTEM_THEME_IS_DARK.store(is_dark, Ordering::Relaxed);
+    #[cfg(any(target_os = "linux", windows, target_os = "macos"))]
+    SYSTEM_THEME_IS_DARK.store(detect().unwrap_or(false), Ordering::Relaxed);
+    let is_dark = SYSTEM_THEME_IS_DARK.load(Ordering::Relaxed);
     log::info!(
         "Initialized native system theme: {}",
         if is_dark { "dark" } else { "light" }
@@ -54,19 +56,8 @@ pub fn apply_theme_change(is_dark: bool) {
     }
 }
 
-/// Detects whether the current OS theme is dark.
-#[must_use]
-pub fn detect_system_dark() -> bool {
-    detect_platform_theme().unwrap_or(false)
-}
-
 #[cfg(any(target_os = "linux", windows, target_os = "macos"))]
-use crate::utils::app::system_theme::detect as detect_platform_theme;
-
-#[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
-fn detect_platform_theme() -> Option<bool> {
-    Some(is_system_dark())
-}
+use crate::utils::app::system_theme::detect;
 
 // ---------------------------------------------------------------------------
 // Linux Portal Value
@@ -136,8 +127,7 @@ async fn run_theme_watcher() {
         };
         if let Some(is_dark) = extract_portal_color_scheme(&value) {
             apply_theme_change(is_dark);
-        } else if let Ok(Some(is_dark)) = crate::utils::spawn_blocking(detect_platform_theme).await
-        {
+        } else if let Ok(Some(is_dark)) = crate::utils::spawn_blocking(detect).await {
             apply_theme_change(is_dark);
         }
     }
@@ -193,7 +183,7 @@ async fn run_theme_watcher() {
                 }
 
                 if WaitForSingleObject(event, INFINITE) == WAIT_OBJECT_0 {
-                    apply_theme_change(detect_platform_theme().unwrap_or(false));
+                    apply_theme_change(detect().unwrap_or(false));
                 }
             }
 
@@ -238,7 +228,7 @@ async fn run_theme_watcher() {
         _object: *const c_void,
         _user_info: *const c_void,
     ) {
-        apply_theme_change(detect_platform_theme().unwrap_or(false));
+        apply_theme_change(detect().unwrap_or(false));
     }
 
     unsafe {

@@ -4232,11 +4232,8 @@
     "serveCount": "Partage [{{active}}/{{total}}]",
     "quickRunsCount": "Exécutions rapides [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 job",
     "tooltipTasks": "Jobs : {{count}}",
-    "tooltipMount": "1 montage",
     "tooltipMounts": "Montages : {{count}}",
-    "tooltipServe": "1 Partage",
     "tooltipServes": "Partages : {{count}}",
     "workflowsCount": "Flux de travail [{{active}}/{{total}}]",
     "indexCount": "Listes de répertoire [{{active}}/{{total}}]"

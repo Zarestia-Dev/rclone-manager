@@ -2,23 +2,51 @@
 //! with the installer its package format uses, as the user would by hand.
 use super::manifest::ArtifactKind;
 use crate::utils::types::updater::InstallOutcome;
+#[cfg(any(target_os = "linux", windows))]
 use std::path::Path;
 
-pub(super) fn install(kind: ArtifactKind, package: &Path) -> Result<InstallOutcome, String> {
-    log::info!("Installing {kind} package {}", package.display());
+/// Installs `payload`, the package's verified bytes.
+pub(super) fn install(kind: ArtifactKind, payload: &[u8]) -> Result<InstallOutcome, String> {
+    log::info!("Installing {kind} package ({} bytes)", payload.len());
     match kind {
         #[cfg(target_os = "linux")]
-        ArtifactKind::Deb => install_as_root("dpkg", "-i", package),
-        #[cfg(target_os = "linux")]
-        ArtifactKind::Rpm => install_as_root("rpm", "-U", package),
+        ArtifactKind::Deb | ArtifactKind::Rpm => {
+            let (tool, flag) = if kind == ArtifactKind::Deb {
+                ("dpkg", "-i")
+            } else {
+                ("rpm", "-U")
+            };
+            let package = write_package(kind, payload).map_err(|e| e.to_string())?;
+            install_as_root(tool, flag, &package)
+        }
         #[cfg(windows)]
-        ArtifactKind::Nsis => run_setup(package),
-        #[cfg(windows)]
-        ArtifactKind::Msi => run_msi(package),
+        ArtifactKind::Nsis | ArtifactKind::Msi => {
+            // The script that runs the installer removes the file afterwards.
+            let package = write_package(kind, payload)
+                .and_then(|package| package.keep().map_err(|e| e.error))
+                .map_err(|e| e.to_string())?;
+            run_installer(kind, &package)
+        }
         _ => Err(crate::localized_error!(
             "backendErrors.updater.unsupportedInstallation"
         )),
     }
+}
+
+/// Writes the verified bytes to a new file that only this user can open, so the
+/// installer runs what was verified and not the download cache, which may have
+/// changed since. Removed when the returned path is dropped.
+#[cfg(any(target_os = "linux", windows))]
+fn write_package(kind: ArtifactKind, payload: &[u8]) -> std::io::Result<tempfile::TempPath> {
+    use std::io::Write;
+    let mut file = tempfile::Builder::new()
+        .prefix("rclone-manager-update-")
+        .suffix(&format!(".{}", kind.extension()))
+        .tempfile()?;
+    file.write_all(payload)?;
+    file.as_file().sync_all()?;
+    // Closed, so that the installer can open it on Windows.
+    Ok(file.into_temp_path())
 }
 
 /// Runs the package tool as root in the first way that can ask for the password
@@ -26,10 +54,13 @@ pub(super) fn install(kind: ArtifactKind, package: &Path) -> Result<InstallOutco
 /// running build keeps running from the replaced file until it restarts.
 #[cfg(target_os = "linux")]
 fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutcome, String> {
+    use super::policy::system_program;
     use std::process::Command;
+    let tool = system_program(tool)
+        .ok_or_else(|| crate::localized_error!("backendErrors.updater.unsupportedInstallation"))?;
     let run = |mut command: Command| -> Result<(), (Option<i32>, String)> {
         let output = command
-            .arg(tool)
+            .arg(&tool)
             .arg(flag)
             .arg(package)
             .stdin(std::process::Stdio::null())
@@ -43,8 +74,8 @@ fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutc
         }
     };
     let mut failure = None;
-    if which::which("pkexec").is_ok() {
-        match run(Command::new("pkexec")) {
+    if let Some(pkexec) = system_program("pkexec") {
+        match run(Command::new(pkexec)) {
             Ok(()) => return Ok(InstallOutcome::Restart),
             // 127: no polkit agent could ask (or authorization failed); 126 means the
             // user dismissed the dialog, which is no reason to ask again.
@@ -55,10 +86,10 @@ fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutc
             Err((_, error)) => return Err(error),
         }
     }
-    if which::which("sudo").is_ok()
+    if let Some(sudo) = system_program("sudo")
         && let Some(askpass) = super::policy::askpass()
     {
-        let mut command = Command::new("sudo");
+        let mut command = Command::new(sudo);
         // -k: neither use nor leave a cached sudo login, so the password is asked for
         // this install only and nothing this process starts later runs as root.
         command.args(["-A", "-k"]);
@@ -80,8 +111,8 @@ fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutc
             .map(|()| InstallOutcome::Restart)
             .map_err(|(_, error)| error);
     }
-    if which::which("run0").is_ok() {
-        return run(Command::new("run0"))
+    if let Some(run0) = system_program("run0") {
+        return run(Command::new(run0))
             .map(|()| InstallOutcome::Restart)
             .map_err(|(_, error)| error);
     }
@@ -115,41 +146,117 @@ fn dialog_script(dialog: &str) -> std::io::Result<tempfile::TempPath> {
     Ok(script.into_temp_path())
 }
 
-/// The setup waits for this process to exit, replaces it in place and starts the
-/// new version, like the Start menu entry does.
+/// Carries the launch arguments to the PowerShell script that restarts the app.
+/// They may hold secrets such as `--pass`, so they travel in its private
+/// environment, never on its command line or on disk.
 #[cfg(windows)]
-fn run_setup(setup: &Path) -> Result<InstallOutcome, String> {
-    std::process::Command::new(setup)
-        .args(["/P", "/R"])
-        .spawn()
-        .map_err(|error| error.to_string())?;
-    Ok(InstallOutcome::Exit)
-}
+const LAUNCH_ARGS_ENV: &str = "RCMAN_LAUNCH_ARGS";
+#[cfg(windows)]
+const INSTALLER_ENV: &str = "RCMAN_INSTALLER";
+#[cfg(windows)]
+const EXECUTABLE_ENV: &str = "RCMAN_EXE";
+/// Windows limits a command line to 32,767 characters.
+#[cfg(any(windows, test))]
+const MAX_COMMAND_LINE: usize = 32_000;
 
-/// An MSI installs for all users: msiexec asks for administrator approval and
-/// replaces the files once this process has exited. The app then starts again as
-/// the user, also when the update was cancelled.
+/// The setup (for the current user) or the MSI (for all users: msiexec asks for
+/// administrator approval) replaces the files once this process has exited. The
+/// app then starts again as the user with the arguments it was started with, also
+/// when the update was cancelled.
 #[cfg(windows)]
-fn run_msi(msi: &Path) -> Result<InstallOutcome, String> {
+fn run_installer(kind: ArtifactKind, installer: &Path) -> Result<InstallOutcome, String> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let arguments: Vec<Vec<u16>> = std::env::args_os()
+        .skip(1)
+        .map(|argument| argument.encode_wide().collect())
+        .collect();
+    let command_line = quote_command_line(&arguments)?;
+    // /P without /R: the script starts the app itself, with its arguments. The
+    // system's own msiexec and PowerShell, never a program of the same name in the
+    // app's folder, which the setup installs where the user can write.
+    let install = match kind {
+        ArtifactKind::Msi => {
+            "Start-Process \"$env:SystemRoot\\System32\\msiexec.exe\" -Wait -ArgumentList ('/i \"' + $installer + '\" /passive')"
+        }
+        _ => "Start-Process $installer -Wait -ArgumentList '/P'",
+    };
+    // The variables are read and removed first, so neither the installer nor the
+    // restarted app inherits them.
     let script = format!(
-        "Wait-Process -Id {} -ErrorAction SilentlyContinue; \
-         Start-Process msiexec -Wait -ArgumentList '/i', ('\"' + $env:RCMAN_MSI + '\"'), '/passive'; \
-         Start-Process $env:RCMAN_EXE",
+        "$installer = $env:{INSTALLER_ENV}; $exe = $env:{EXECUTABLE_ENV}; \
+         $arguments = $env:{LAUNCH_ARGS_ENV}; \
+         Remove-Item Env:{INSTALLER_ENV}, Env:{EXECUTABLE_ENV}, Env:{LAUNCH_ARGS_ENV} -ErrorAction SilentlyContinue; \
+         Wait-Process -Id {} -ErrorAction SilentlyContinue; \
+         {install}; \
+         Remove-Item -LiteralPath $installer -ErrorAction SilentlyContinue; \
+         if ($arguments) {{ Start-Process $exe -ArgumentList $arguments }} else {{ Start-Process $exe }}",
         std::process::id()
     );
-    std::process::Command::new("powershell")
+    let powershell =
+        std::path::PathBuf::from(std::env::var_os("SystemRoot").ok_or_else(|| {
+            crate::localized_error!("backendErrors.updater.unsupportedInstallation")
+        })?)
+        .join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+    std::process::Command::new(powershell)
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .env("RCMAN_MSI", msi)
+        .env(INSTALLER_ENV, installer)
         .env(
-            "RCMAN_EXE",
+            EXECUTABLE_ENV,
             std::env::current_exe().map_err(|e| e.to_string())?,
+        )
+        .env(
+            LAUNCH_ARGS_ENV,
+            std::ffi::OsString::from_wide(&command_line),
         )
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|error| error.to_string())?;
     Ok(InstallOutcome::Exit)
+}
+
+/// Joins arguments into a Windows command line that `CommandLineToArgvW` (and
+/// Rust's `std::env::args`) splits back into the same arguments.
+#[cfg(any(windows, test))]
+fn quote_command_line(arguments: &[Vec<u16>]) -> Result<Vec<u16>, String> {
+    const SPACE: u16 = b' ' as u16;
+    const TAB: u16 = b'\t' as u16;
+    const QUOTE: u16 = b'"' as u16;
+    const BACKSLASH: u16 = b'\\' as u16;
+    let mut line = Vec::new();
+    for argument in arguments {
+        if !line.is_empty() {
+            line.push(SPACE);
+        }
+        if !argument.is_empty() && !argument.iter().any(|c| [SPACE, TAB, QUOTE].contains(c)) {
+            line.extend_from_slice(argument);
+            continue;
+        }
+        line.push(QUOTE);
+        let mut backslashes = 0;
+        for &c in argument {
+            if c == BACKSLASH {
+                backslashes += 1;
+            } else {
+                // Backslashes before a quote are escaped, and so is the quote.
+                if c == QUOTE {
+                    line.extend(std::iter::repeat_n(BACKSLASH, backslashes + 1));
+                }
+                backslashes = 0;
+            }
+            line.push(c);
+        }
+        // So that the closing quote is not escaped.
+        line.extend(std::iter::repeat_n(BACKSLASH, backslashes));
+        line.push(QUOTE);
+    }
+    if line.len() > MAX_COMMAND_LINE {
+        return Err(crate::localized_error!(
+            "backendErrors.updater.argumentsTooLong"
+        ));
+    }
+    Ok(line)
 }
 
 #[cfg(test)]
@@ -158,16 +265,82 @@ mod tests {
 
     #[test]
     fn other_kinds_and_platforms_are_not_packages() {
-        let path = Path::new("update.payload");
+        let payload = b"payload";
         for kind in [ArtifactKind::Server, ArtifactKind::Portable] {
-            assert!(install(kind, path).is_err());
+            assert!(install(kind, payload).is_err());
         }
         #[cfg(not(windows))]
         for kind in [ArtifactKind::Nsis, ArtifactKind::Msi] {
-            assert!(install(kind, path).is_err());
+            assert!(install(kind, payload).is_err());
         }
         #[cfg(not(target_os = "linux"))]
-        assert!(install(ArtifactKind::Deb, path).is_err());
+        assert!(install(ArtifactKind::Deb, payload).is_err());
+    }
+
+    #[cfg(any(target_os = "linux", windows))]
+    #[test]
+    fn the_installer_gets_a_private_file_holding_the_verified_bytes() {
+        for kind in [
+            ArtifactKind::Deb,
+            ArtifactKind::Rpm,
+            ArtifactKind::Nsis,
+            ArtifactKind::Msi,
+        ] {
+            let package = write_package(kind, b"verified bytes").unwrap();
+            assert_eq!(std::fs::read(&package).unwrap(), b"verified bytes");
+            assert_eq!(
+                package.extension().unwrap(),
+                kind.extension(),
+                "the installer opens its file type"
+            );
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = std::fs::metadata(&package).unwrap().permissions().mode();
+                assert_eq!(mode & 0o077, 0, "only this user can open {kind}");
+            }
+            let path = package.to_path_buf();
+            drop(package);
+            assert!(!path.exists());
+        }
+    }
+
+    fn command_line(arguments: &[&str]) -> Result<String, String> {
+        let wide: Vec<Vec<u16>> = arguments
+            .iter()
+            .map(|a| a.encode_utf16().collect())
+            .collect();
+        quote_command_line(&wide).map(|line| String::from_utf16(&line).unwrap())
+    }
+
+    #[test]
+    fn launch_arguments_keep_their_boundaries_on_the_windows_command_line() {
+        assert_eq!(command_line(&[]).unwrap(), "");
+        assert_eq!(
+            command_line(&["--port", "9000", "--pass", "p@ss;word"]).unwrap(),
+            "--port 9000 --pass p@ss;word"
+        );
+        // Spaces, tabs and empty arguments are quoted.
+        assert_eq!(
+            command_line(&["--data-dir", r"C:\My Data", "", "a\tb"]).unwrap(),
+            "--data-dir \"C:\\My Data\" \"\" \"a\tb\""
+        );
+        // Backslashes are literal unless they precede a quote.
+        assert_eq!(command_line(&[r"C:\dir\"]).unwrap(), r"C:\dir\");
+        assert_eq!(command_line(&[r"C:\a dir\"]).unwrap(), r#""C:\a dir\\""#);
+        assert_eq!(command_line(&[r#"say "hi""#]).unwrap(), r#""say \"hi\"""#);
+        assert_eq!(command_line(&[r#"a\"b"#]).unwrap(), r#""a\\\"b""#);
+        assert_eq!(
+            command_line(&["pass\u{00e7}\u{011f}"]).unwrap(),
+            "pass\u{00e7}\u{011f}"
+        );
+    }
+
+    #[test]
+    fn launch_arguments_too_long_for_windows_are_refused() {
+        let long = "x".repeat(MAX_COMMAND_LINE + 1);
+        assert!(command_line(&[&long]).is_err());
+        assert!(command_line(&[&long[..MAX_COMMAND_LINE]]).is_ok());
     }
 
     #[cfg(target_os = "linux")]

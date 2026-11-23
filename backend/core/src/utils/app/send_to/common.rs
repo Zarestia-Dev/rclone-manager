@@ -26,7 +26,15 @@ pub fn get_sanitized_name(remote: &str, path: Option<&str>, display_name: &str) 
     sanitize_name(&format!("{remote}{path_suffix} ({display_name})"))
 }
 
-/// The name an entry of the product called `display_name` has, if `name` is one.
+/// A registered Send To entry: its name, and the remote and path it sends to.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Entry {
+    pub name: String,
+    pub remote: String,
+    pub path: String,
+}
+
+/// Whether `name` is the name of an entry of the product called `display_name`.
 pub fn is_named_for(name: &str, display_name: &str) -> bool {
     name.ends_with(&format!(" ({display_name})"))
 }

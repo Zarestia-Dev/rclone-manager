@@ -13,7 +13,7 @@ fn explicit_dir(cli: Option<&PathBuf>, env_var: &str) -> Option<PathBuf> {
 }
 
 pub(crate) fn resolve_paths(app: &AppHandle) -> Result<AppPaths, String> {
-    let cli_args = app.backend_state::<crate::services::cli::GeneralArgs>();
+    let cli_args = app.backend().state::<crate::services::cli::GeneralArgs>();
 
     let cache_dir = match explicit_dir(cli_args.cache_dir.as_ref(), "RCLONE_MANAGER_CACHE_DIR") {
         Some(dir) => dir,

@@ -1,5 +1,5 @@
 use crate::utils::app::send_to::common::{
-    apply_template, get_home_dir, is_named_for, send_to_arguments,
+    Entry, apply_template, get_home_dir, is_named_for, send_to_arguments,
 };
 use std::path::{Path, PathBuf};
 
@@ -141,10 +141,7 @@ pub fn unregister(name: &str, _product: &crate::context::ProductInfo) -> Result<
 }
 
 /// The entries a product called `display_name` registered: name, remote and path.
-pub fn entries_named(
-    display_name: &str,
-    _product: &crate::context::ProductInfo,
-) -> Vec<(String, String, String)> {
+pub fn entries_named(display_name: &str, _product: &crate::context::ProductInfo) -> Vec<Entry> {
     get_home_dir()
         .map(|home| entries_named_in(&LinuxPaths::new(&home), display_name))
         .unwrap_or_default()
@@ -152,8 +149,8 @@ pub fn entries_named(
 
 /// The Nautilus extension is skipped: it lists its arguments as separate strings,
 /// and the other three files of the same entry carry them too.
-fn entries_named_in(paths: &LinuxPaths, display_name: &str) -> Vec<(String, String, String)> {
-    let mut entries: Vec<(String, String, String)> = Vec::new();
+fn entries_named_in(paths: &LinuxPaths, display_name: &str) -> Vec<Entry> {
+    let mut entries: Vec<Entry> = Vec::new();
     for (directory, extension) in [
         (&paths.nautilus, ""),
         (&paths.dolphin, ".desktop"),
@@ -167,8 +164,7 @@ fn entries_named_in(paths: &LinuxPaths, display_name: &str) -> Vec<(String, Stri
             let Some(name) = file_name.strip_suffix(extension) else {
                 continue;
             };
-            if !is_named_for(name, display_name) || entries.iter().any(|(known, ..)| known == name)
-            {
+            if !is_named_for(name, display_name) || entries.iter().any(|entry| entry.name == name) {
                 continue;
             }
             let arguments = std::fs::read_to_string(file.path())
@@ -176,7 +172,11 @@ fn entries_named_in(paths: &LinuxPaths, display_name: &str) -> Vec<(String, Stri
                 .as_deref()
                 .and_then(send_to_arguments);
             if let Some((remote, path)) = arguments {
-                entries.push((name.to_string(), remote, path));
+                entries.push(Entry {
+                    name: name.to_string(),
+                    remote,
+                    path,
+                });
             }
         }
     }
@@ -222,12 +222,16 @@ mod tests {
         assert_eq!(
             found,
             [
-                (old.to_string(), "gdrive".to_string(), "a".to_string()),
-                (
-                    dolphin_only.to_string(),
-                    "photos".to_string(),
-                    String::new()
-                ),
+                Entry {
+                    name: old.into(),
+                    remote: "gdrive".into(),
+                    path: "a".into(),
+                },
+                Entry {
+                    name: dolphin_only.into(),
+                    remote: "photos".into(),
+                    path: String::new(),
+                },
             ]
         );
         assert!(entries_named_in(&LinuxPaths::new(&home.path().join("none")), "x").is_empty());

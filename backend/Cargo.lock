@@ -4837,7 +4837,6 @@ dependencies = [
  "url",
  "urlencoding",
  "windows-sys 0.61.2",
- "winreg",
  "zbus 6.1.0",
 ]
 
@@ -4859,7 +4858,6 @@ dependencies = [
  "libc",
  "lofty",
  "log",
- "mime_guess",
  "minisign-verify",
  "netstat2",
  "notify",

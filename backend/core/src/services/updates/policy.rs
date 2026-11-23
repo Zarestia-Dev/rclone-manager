@@ -391,9 +391,20 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
 #[cfg(target_os = "linux")]
 pub(super) fn can_install_as_root() -> bool {
     ["pkexec", "run0"]
-        .iter()
-        .any(|tool| which::which(tool).is_ok())
-        || (which::which("sudo").is_ok() && askpass().is_some())
+        .into_iter()
+        .any(|tool| system_program(tool).is_some())
+        || (system_program("sudo").is_some() && askpass().is_some())
+}
+
+/// A program that runs as root, looked up in the system folders only: a folder on
+/// the user's `PATH` could hold a program of the same name, which the password the
+/// user types would then run as root.
+#[cfg(target_os = "linux")]
+pub(super) fn system_program(name: &str) -> Option<std::path::PathBuf> {
+    ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]
+        .into_iter()
+        .map(|directory| std::path::Path::new(directory).join(name))
+        .find(|path| path.is_file())
 }
 
 #[cfg(not(target_os = "linux"))]

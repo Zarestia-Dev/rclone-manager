@@ -149,7 +149,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
     - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
     - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
-    - Whether an installed build may be replaced by a release is decided by `is_update_candidate`, not `is_version_newer` alone: a pre-release build can move to any stable release, so leaving the beta channel never waits for the next stable version. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions, including DEB and RPM installs that Tauri updates (`rpm -U` refuses downgrades).
+    - Whether an installed build may be replaced by a release is decided by `is_offered` (`services/updates/mod.rs`), not `is_version_newer` alone: on the stable channel a pre-release build can move to any stable release (`is_update_candidate`), so leaving the beta channel never waits for the next stable version. On the beta channel only a newer release is offered; an older stable one there would be a downgrade. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions, including DEB and RPM installs that Tauri updates (`rpm -U` refuses downgrades).
 
 16. **Default Profile Name (CRITICAL)**
     - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
@@ -168,6 +168,14 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - After `npm run sync:endpoints`, read its "RC console lists to review" output and update these lists for every call it names: a new call is read-only, dangerous or neither, and its required parameters are read from rclone's Go source (the handler returns an error when a key is missing), never guessed from the help text.
     - Whenever you edit one of these lists, or add a call that takes other calls (like `job/batch`), check it against rclone and keep a call out of `READ_ONLY_COMMANDS` if it can write. A call may not be in both lists. Update `rc-console.util.spec.ts` and `rc-schema.util.spec.ts` to match.
     - `scripts/update-endpoints.cjs` reads these two files with patterns (`new Set([...])` and `'path': ['a', 'b'],` lines); keep that shape, or update the script and `scripts/update-endpoints.test.cjs` together.
+
+19. **No Pass-Through Layers or Speculative Abstraction (CRITICAL)**
+    - A function, method, type alias or module earns its place only when it does at least one of these: hides a platform or target difference, is used from two or more places, or gives a name to a rule its body does not make obvious. Anything else is inlined or removed.
+    - **DO NOT** write a function whose body only calls another function (`pub fn detect() -> Option<bool> { detect_platform_theme() }`), a `use … as …` alias that only renames, a wrapper that hands its arguments on unchanged, or a helper with one caller that names nothing. Each layer is one more place to read, and one more item that a feature or target combination can leave unused (see Rule 12).
+    - A trait method the trait requires (for example a `Host` method) is not a pass-through, but its body belongs in the impl: do not add a second function and a `static` behind it that exist only for that method.
+    - Before writing a helper or a type, search the codebase and the existing dependencies for one (`tokio_util::sync::CancellationToken` instead of a hand-written cancellation token, `crate::utils::spawn`, `generatePrefixedId`).
+    - Do not build for needs that do not exist yet: no configurable lists, generic parameters, builder types or one-variant enums for a single current use.
+    - Do not add a dependency or a dependency feature only for a test that CI never runs.
 
 ---
 

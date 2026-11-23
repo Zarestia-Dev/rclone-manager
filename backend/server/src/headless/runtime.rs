@@ -10,7 +10,7 @@ pub fn run() {
         std::process::exit(1);
     }
     let app = rclone_manager_core::context::AppHandle::new(
-        std::sync::Arc::new(ServerHost),
+        std::sync::Arc::new(ServerHost::default()),
         crate::PRODUCT,
     );
     app.manage(cli_args.general.clone());
@@ -61,7 +61,13 @@ pub fn run() {
     std::process::exit(code);
 }
 
-struct ServerHost;
+#[derive(Default)]
+struct ServerHost {
+    /// Whether the panel the tray icon sits on is dark, read once at startup for
+    /// the "system" icon theme. Unread systems count as light.
+    #[cfg(not(target_os = "macos"))]
+    panel_dark: std::sync::OnceLock<bool>,
+}
 #[async_trait::async_trait]
 impl rclone_manager_core::context::Host for ServerHost {
     fn update_method(&self) -> services::updates::policy::UpdateMethod {
@@ -99,11 +105,12 @@ impl rclone_manager_core::context::Host for ServerHost {
     }
     #[cfg(not(target_os = "macos"))]
     fn init_theme(&self) {
-        super::tray::read_system_theme();
+        let dark = rclone_manager_core::utils::app::system_theme::detect_panel();
+        let _ = self.panel_dark.set(dark.unwrap_or(false));
     }
     #[cfg(not(target_os = "macos"))]
     fn is_system_dark(&self) -> bool {
-        super::tray::is_system_dark()
+        self.panel_dark.get().copied().unwrap_or(false)
     }
     #[cfg(not(target_os = "macos"))]
     fn open_view(&self, view: services::tray::actions::TrayView<'_>) {
@@ -174,7 +181,7 @@ mod tests {
         ])
         .unwrap();
         let app = rclone_manager_core::context::AppHandle::new(
-            std::sync::Arc::new(ServerHost),
+            std::sync::Arc::new(ServerHost::default()),
             crate::PRODUCT,
         );
         app.manage(args.general);

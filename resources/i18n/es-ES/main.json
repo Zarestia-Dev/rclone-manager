@@ -4232,11 +4232,8 @@
     "serveCount": "Servicio [{{active}}/{{total}}]",
     "quickRunsCount": "Ejecuciones rápidas [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Trabajo",
     "tooltipTasks": "Trabajos: {{count}}",
-    "tooltipMount": "1 Montaje",
     "tooltipMounts": "Montajes: {{count}}",
-    "tooltipServe": "1 Servicio",
     "tooltipServes": "Servicios: {{count}}",
     "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]",
     "indexCount": "Listados de directorio [{{active}}/{{total}}]"

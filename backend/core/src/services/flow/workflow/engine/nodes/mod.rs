@@ -115,8 +115,8 @@ mod tests {
     use parking_lot::RwLock;
 
     use crate::rclone::backend::types::Backend;
-    use crate::services::flow::workflow::engine::cancel::CancelToken;
     use std::collections::HashMap;
+    use tokio_util::sync::CancellationToken;
 
     use serde_json::{Value, json};
 
@@ -135,7 +135,7 @@ mod tests {
             app: app.clone(),
             backend: Backend::new_local("Local"),
             snapshot: Arc::new(snapshot),
-            cancel: CancelToken::new(),
+            cancel: CancellationToken::new(),
             active_jobs: Arc::new(RwLock::new(HashSet::new())),
             node_results: Arc::new(RwLock::new(node_results)),
             run_id: "test-run".into(),

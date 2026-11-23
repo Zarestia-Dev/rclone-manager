@@ -16,15 +16,14 @@ use crate::rclone::commands::{
 };
 use crate::rclone::state::job::JobPoll;
 use crate::rclone::state::job_stats::check_reports;
+use crate::services::flow::workflow::engine::RunContext;
 use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
-use crate::services::flow::workflow::engine::{
-    RunContext,
-    cancel::{CancelToken, sleep_unless_cancelled},
-};
 use crate::services::flow::workflow::types::{NodeExecutionOutput, WorkflowNode};
 use crate::utils::format::format_file_size;
 use crate::utils::types::starter::Starter;
+use crate::utils::types::state::sleep_unless_cancelled;
 use crate::utils::types::{jobs::JobType, remotes::OperationType};
+use tokio_util::sync::CancellationToken;
 
 /// Helper RAII guard ensuring a job ID is removed from the active jobs set upon exit.
 struct ActiveJobGuard {
@@ -260,7 +259,7 @@ async fn await_rclone_job(
     app: &AppHandle,
     backend: &Backend,
     job_id: u64,
-    cancel: &CancelToken,
+    cancel: &CancellationToken,
     active_jobs: &Arc<RwLock<HashSet<u64>>>,
     workflow_id: &str,
 ) -> Result<NodeExecutionOutput, String> {
@@ -584,7 +583,7 @@ mod tests {
             &app,
             &backend,
             7,
-            &CancelToken::new(),
+            &CancellationToken::new(),
             &active_jobs,
             "workflow",
         )
@@ -896,7 +895,7 @@ mod tests {
             &app,
             &backend,
             404,
-            &CancelToken::new(),
+            &CancellationToken::new(),
             &Arc::new(RwLock::new(HashSet::new())),
             "workflow",
         )

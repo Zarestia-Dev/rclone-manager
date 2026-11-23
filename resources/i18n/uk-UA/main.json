@@ -4336,11 +4336,8 @@
     "serveCount": "Роздача [{{active}}/{{total}}]",
     "quickRunsCount": "Швидкі запуски [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 завдання",
     "tooltipTasks": "Завдань: {{count}}",
-    "tooltipMount": "1 монтування",
     "tooltipMounts": "Монтувань: {{count}}",
-    "tooltipServe": "1 роздача",
     "tooltipServes": "Роздач: {{count}}",
     "workflowsCount": "Робочі процеси [{{active}}/{{total}}]",
     "indexCount": "Списки каталогів [{{active}}/{{total}}]"
