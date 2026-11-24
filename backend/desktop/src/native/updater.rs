@@ -88,31 +88,14 @@ pub(crate) async fn check_native_updater(
         Err(error) => return Err(error.to_string()),
     };
 
-    if let Some(u) = check_result {
-        if !release_has_download(release, &u.download_url) {
-            log::debug!(
-                "Native update references an absent release asset: {}",
-                u.download_url
-            );
-            return Ok(None);
-        }
+    Ok(check_result.map(|u| {
         log::debug!(
-            "Native update matched version {} and asset {}",
+            "Native update matched version {} at {}",
             u.version,
             u.download_url
         );
-        Ok(Some(std::sync::Arc::new(NativeUpdate(u))))
-    } else {
-        Ok(None)
-    }
-}
-
-fn release_has_download(release: &github_client::Release, download: &url::Url) -> bool {
-    release.assets.iter().any(|asset| {
-        std::iter::once(asset.browser_download_url.as_str())
-            .chain(asset.api_url.as_deref())
-            .any(|candidate| candidate.parse::<url::Url>().ok().as_ref() == Some(download))
-    })
+        std::sync::Arc::new(NativeUpdate(u)) as PendingAppUpdate
+    }))
 }
 
 fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bool {
@@ -121,7 +104,7 @@ fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bo
 
 #[cfg(test)]
 mod tests {
-    use super::{manifest_matches_release, release_has_download};
+    use super::manifest_matches_release;
 
     #[test]
     fn native_config_shares_the_production_verification_key() {
@@ -131,48 +114,6 @@ mod tests {
             config["plugins"]["updater"]["pubkey"].as_str().unwrap(),
             include_str!("../../../../resources/updater.pub").trim()
         );
-    }
-
-    #[test]
-    fn native_update_requires_its_actual_asset_in_the_selected_release() {
-        use crate::utils::github_client::{Asset, Release};
-        let download =
-            "https://github.com/Zarestia-Dev/rclone-manager/releases/download/v1.2.3/app.AppImage";
-        let mut release = Release {
-            tag_name: "v1.2.3".into(),
-            ..Default::default()
-        };
-        let url = download.parse().unwrap();
-        assert!(!release_has_download(&release, &url));
-        for other in [
-            "not a URL",
-            &format!("{download}.sig"),
-            &download.replace("v1.2.3", "v1.2.4"),
-        ] {
-            release.assets = vec![Asset {
-                name: "app.AppImage".into(),
-                browser_download_url: other.into(),
-                ..Default::default()
-            }];
-            assert!(!release_has_download(&release, &url));
-        }
-        release.assets = vec![Asset {
-            name: "app.AppImage".into(),
-            browser_download_url: download.into(),
-            api_url: Some(
-                "https://api.github.com/repos/Zarestia-Dev/rclone-manager/releases/assets/42"
-                    .into(),
-            ),
-        }];
-        assert!(release_has_download(&release, &url));
-        let api = release.assets[0].api_url.as_ref().unwrap().parse().unwrap();
-        assert!(release_has_download(&release, &api));
-        assert!(!release_has_download(
-            &release,
-            &"https://api.github.com/repos/Zarestia-Dev/rclone-manager/releases/assets/43"
-                .parse()
-                .unwrap()
-        ));
     }
 
     #[test]

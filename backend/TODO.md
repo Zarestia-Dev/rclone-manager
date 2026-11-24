@@ -1,3 +1,45 @@
+# After 0.3.7: from Headless to Server
+
+0.3.7 is the release that moves RClone Manager Headless (0.3.6 and older) to
+RClone Manager Server. Once it is published, the transition scaffolding goes and
+the server's releases get their own tag.
+
+**Before 0.3.7 ships**
+
+- [ ] Let the server also recognise `server-v` tags. Its update check only looks
+  for `headless-v` (`release_prefix` in `server/src/lib.rs`, matched in
+  `core/src/services/updates/mod.rs`); a 0.3.7 server would never see a
+  `server-v` release and stay where it is without an error.
+
+**After 0.3.7 is published**
+
+- [ ] Tag the server's releases `server-v<version>` instead of `headless-v<version>`,
+  changing together: `release-server.yml` (`tag_name`, the three `RELEASE_TAG`s,
+  the `--check` and publish arguments), `validateTag` in
+  `scripts/publish-custom-updater.cjs`, `RELEASE_URL` in
+  `scripts/create-update-manifest.cjs`, the prefix in `publish-to-aur.sh` and the
+  source URLs in `PKGBUILD-server`, the website's `isHeadlessRelease`
+  (`release.utils.ts`, it looks for "headless" in the tag), the tests and fixtures
+  that use `headless-v`, AGENTS.md Rule 17 and the docs.
+- [ ] Keep the 0.3.7 `headless-v` release published: it is the last one the Headless
+  app 0.3.6 looks for, and its `latest.json` moves those installs to the server.
+  Delete the older `headless-v` releases that are no longer needed.
+- [ ] Stop writing `latest.json` into server releases (`tauriUpdateJson` in
+  `publish-custom-updater.cjs`, its tests, UPDATER.md and AGENTS.md Rule 17): only
+  the Headless app reads it, and only from `headless-v` releases.
+- [ ] Remove the 0.3.7-only Headless-named DEB and RPM copies: the step at the end of
+  "Package and sign DEB, RPM and Arch package" in `release-server.yml`, the skip
+  rule in the website's `downloads.utils.ts` and its spec, and the AGENTS.md
+  Rule 17 bullet.
+
+**Stays after the cleanup** (installed versions or existing installs depend on it):
+the data folder `com.rclone.manager.headless`, the product's `mode`,
+`integration_key` and `flatpak_id`, the `/usr/bin/rclone-manager-headless[-bin]`
+launcher links, the start-at-login and Send To migration (`LEGACY_NAME`), the MSI
+UpgradeCode, the packages' conflicts/replaces of the Headless package, the
+manifest's `asset` field (versions before `url` download by it) and the legacy
+supervisor receipt in `binary.rs` (versions before 0.3.7-beta.3).
+
 # Server platform support
 
 `release-server.yml` builds `rclone-manager-server` archives for Linux, Windows,

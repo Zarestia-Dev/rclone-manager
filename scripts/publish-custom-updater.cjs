@@ -41,23 +41,34 @@ function readCatalogs(directory) {
   });
 }
 
+const manifests = catalog =>
+  Object.values(catalog.entries).map(entry =>
+    JSON.parse(Buffer.from(entry.manifest, 'base64').toString('utf8'))
+  );
+
 // Installs of the RClone Manager Headless app (Tauri, 0.3.6 and older) update from
 // `latest.json`. It sends them to the server package of their own format, with the
 // signatures of the catalog.
 function tauriUpdateJson(catalog, tag, repository) {
   const platforms = {};
-  for (const entry of Object.values(catalog.entries)) {
-    const manifest = JSON.parse(Buffer.from(entry.manifest, 'base64').toString('utf8'));
-    // Tauri names the installer formats as the catalog does.
+  // Tauri names the installer formats as the catalog does.
+  for (const manifest of manifests(catalog))
     if (['deb', 'rpm', 'nsis', 'msi'].includes(manifest.kind))
       platforms[`${manifest.target}-${manifest.kind}`] = {
         signature: manifest.signature,
         url: `https://github.com/${repository}/releases/download/${tag}/${manifest.asset}`,
       };
-  }
   if (!Object.keys(platforms).length) return null;
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '')) throw new Error('Invalid repository');
   return { version: catalog.version, pub_date: new Date().toISOString(), platforms };
+}
+
+// Clients download each entry's file from this release by its name: one that is
+// missing would leave every installation that needs it without its update.
+function checkAssets(catalog, tag, assets) {
+  for (const { asset } of manifests(catalog))
+    if (!assets.some(file => file.name === asset))
+      throw new Error(`${tag} has no ${asset}; upload it before the catalog`);
 }
 
 function publishCatalog(tag, version, directory, gh = runGh) {
@@ -75,6 +86,7 @@ function publishCatalog(tag, version, directory, gh = runGh) {
     catalogs.unshift(existing);
   }
   const merged = mergeCatalogs(version, catalogs);
+  checkAssets(merged, tag, release.assets);
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-catalog-'));
   try {
     const file = path.join(temporary, MANIFEST_NAME);

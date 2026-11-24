@@ -603,7 +603,7 @@ export class AboutModalComponent implements OnInit {
     const labels: Record<string, string> = {
       deb: 'DEB',
       rpm: 'RPM',
-      pacman: 'AUR',
+      pacman: 'Pacman',
       flatpak: 'Flatpak',
       portable: 'Portable',
       container: 'Docker',

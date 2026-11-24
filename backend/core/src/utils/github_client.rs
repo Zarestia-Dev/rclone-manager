@@ -61,8 +61,6 @@ pub enum Error {
 pub struct Asset {
     pub name: String,
     pub browser_download_url: String,
-    #[serde(default, rename = "url")]
-    pub api_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -193,8 +191,6 @@ pub async fn get_raw_file_content(
 
 #[cfg(test)]
 mod tests {
-    use super::Asset;
-
     #[tokio::test]
     async fn an_unchanged_release_list_is_revalidated_with_its_etag() {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -221,18 +217,5 @@ mod tests {
         let requests = server.await.unwrap();
         assert!(!requests[0].contains("if-none-match"));
         assert!(requests[1].contains("if-none-match: \"v1\""));
-    }
-
-    #[test]
-    fn assets_retain_api_urls_used_by_tauri_and_accept_legacy_fixtures() {
-        let mut input = serde_json::json!({"name":"app.exe", "browser_download_url":"https://github.com/example/app.exe"});
-        let legacy: Asset = serde_json::from_value(input.clone()).unwrap();
-        assert!(legacy.api_url.is_none());
-        input["url"] = "https://api.github.com/repos/example/app/releases/assets/42".into();
-        let asset: Asset = serde_json::from_value(input).unwrap();
-        assert_eq!(
-            asset.api_url.as_deref(),
-            Some("https://api.github.com/repos/example/app/releases/assets/42")
-        );
     }
 }

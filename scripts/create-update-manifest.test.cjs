@@ -117,6 +117,36 @@ test('accepts Rust fixtures and rejects unknown catalog, entry, and archive fiel
   }
 });
 
+test('catalogs keep exactly the fields versions up to 0.3.7-beta.1 accept', () => {
+  // Those versions reject any field they do not know and never update again.
+  const fixtures = path.join(__dirname, '../backend/core/src/services/updates/fixtures');
+  for (const file of ['portable-catalog.json', 'server-catalog.json', 'appimage-catalog.json']) {
+    const catalog = JSON.parse(fs.readFileSync(path.join(fixtures, file), 'utf8'));
+    assert.deepEqual(Object.keys(catalog).sort(), ['entries', 'schemaVersion', 'version']);
+    for (const entry of Object.values(catalog.entries)) {
+      assert.deepEqual(Object.keys(entry).sort(), ['manifest', 'signature']);
+      const manifest = JSON.parse(Buffer.from(entry.manifest, 'base64'));
+      const { archive, ...fields } = manifest;
+      assert.deepEqual(Object.keys(fields).sort(), [
+        'asset',
+        'kind',
+        'sha256',
+        'signature',
+        'size',
+        'target',
+        'version',
+      ]);
+      if (archive)
+        assert.deepEqual(Object.keys(archive).sort(), [
+          'binaryPath',
+          'sha256',
+          'signature',
+          'size',
+        ]);
+    }
+  }
+});
+
 test('server ZIP metadata accepts the shared catalog format and rejects unsafe or non-ZIP archives', () => {
   const fixtures = path.join(__dirname, '../backend/core/src/services/updates/fixtures');
   const source = JSON.parse(fs.readFileSync(path.join(fixtures, 'server-catalog.json'), 'utf8'));

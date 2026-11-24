@@ -1,6 +1,5 @@
 //! Bounded HTTPS downloads and an authenticated, atomically written payload cache.
 use super::manifest::Manifest;
-use crate::utils::github_client::{OWNER, REPO, Release};
 use crate::utils::types::updater::DownloadProgress;
 use std::path::{Path, PathBuf};
 
@@ -61,25 +60,6 @@ pub(super) async fn fetch(
     }
     log::debug!("Update resource download complete: {} bytes", bytes.len());
     Ok(bytes)
-}
-
-pub(super) fn release_asset(release: &Release, name: &str) -> Result<url::Url, String> {
-    if !release.assets.iter().any(|asset| asset.name == name) {
-        return Err(crate::localized_error!(
-            "backendErrors.updater.missingAsset",
-            "name" => name
-        ));
-    }
-    let mut url = url::Url::parse(&format!(
-        "https://github.com/{OWNER}/{REPO}/releases/download/"
-    ))
-    .map_err(|e| e.to_string())?;
-    url.path_segments_mut()
-        .map_err(|_| "Invalid release URL")?
-        .pop_if_empty()
-        .push(&release.tag_name)
-        .push(name);
-    Ok(url)
 }
 
 pub(super) async fn cached_payload(manifest: &Manifest, path: &Path, key: &str) -> Option<Vec<u8>> {
@@ -239,28 +219,6 @@ mod tests {
             .is_err()
         );
     }
-    #[test]
-    fn release_assets_are_downloaded_from_the_selected_repository_and_tag() {
-        let url = format!(
-            "https://github.com/{OWNER}/{REPO}/releases/download/v99.0.0/portable-linux-x86_64.json"
-        );
-        let release = Release {
-            tag_name: "v99.0.0".into(),
-            assets: vec![crate::utils::github_client::Asset {
-                name: "portable-linux-x86_64.json".into(),
-                ..Default::default()
-            }],
-            ..Default::default()
-        };
-        assert_eq!(
-            release_asset(&release, "portable-linux-x86_64.json")
-                .unwrap()
-                .as_str(),
-            url
-        );
-        assert!(release_asset(&release, "missing.json").is_err());
-    }
-
     #[tokio::test]
     async fn cached_downloads_require_the_expected_size_hash_and_signature() {
         let dir = tempfile::tempdir().unwrap();

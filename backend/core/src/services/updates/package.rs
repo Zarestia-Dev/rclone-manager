@@ -1,5 +1,6 @@
 //! Installs a server package update (DEB, RPM, Arch package, the Windows setup or
 //! the MSI) with the installer its package format uses, as the user would by hand.
+#[cfg(any(target_os = "linux", windows))]
 use super::manifest::ArtifactKind;
 use super::policy::InstallationKind;
 use crate::utils::types::updater::InstallOutcome;

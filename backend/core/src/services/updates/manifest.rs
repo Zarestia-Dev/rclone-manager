@@ -2,8 +2,9 @@
 //!
 //! `scripts/create-update-manifest.cjs` checks what it signs. Here the signature,
 //! the payload checksum and the version, kind and target asked for are checked;
-//! fields this version does not know are ignored, so a field a later release adds
-//! never stops an installed version from updating.
+//! fields this version does not know are ignored, and only this installation's
+//! entry is read, so nothing a later release adds stops an installed version from
+//! updating.
 use crate::utils::archive::read_zip_member;
 use base64::Engine;
 use sha2::{Digest, Sha256};
@@ -66,7 +67,9 @@ impl std::fmt::Display for ArtifactKind {
 struct Catalog {
     schema_version: u32,
     version: String,
-    entries: std::collections::HashMap<String, SignedManifest>,
+    /// Read only for this installation's entry, so another entry's shape never
+    /// matters here.
+    entries: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(serde::Deserialize)]
@@ -82,15 +85,16 @@ pub(super) fn select_manifest(
     target: &str,
     key: &str,
 ) -> Result<Option<Manifest>, String> {
-    let catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
+    let mut catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
     if catalog.schema_version != 1 || catalog.version != version {
         return Err(verification_failed(
             "Custom update catalog schema or version does not match",
         ));
     }
-    let Some(entry) = catalog.entries.get(&format!("{kind}-{target}")) else {
+    let Some(entry) = catalog.entries.remove(&format!("{kind}-{target}")) else {
         return Ok(None);
     };
+    let entry: SignedManifest = serde_json::from_value(entry).map_err(verification_failed)?;
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&entry.manifest)
         .map_err(verification_failed)?;
@@ -99,12 +103,19 @@ pub(super) fn select_manifest(
     Ok(Some(manifest))
 }
 
+/// Versions up to 0.3.7-beta.1 reject a catalog, an entry or a manifest with a
+/// field they do not know, and never update again. The catalog keeps exactly
+/// `schemaVersion`, `version` and `entries`, every entry exactly `manifest` and
+/// `signature`, and the manifests of the kinds they read (portable, server,
+/// android, appimage, deb, rpm, nsis, msi) these fields. Only a new kind's
+/// manifest may differ: those versions never decode it.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Manifest {
     pub version: String,
     pub kind: ArtifactKind,
     pub target: String,
+    /// The release file, downloaded from the release by this name.
     pub asset: String,
     pub size: u64,
     pub sha256: String,
@@ -207,26 +218,13 @@ impl Manifest {
             self.verify_payload_with_key(bytes, key)
         }
     }
-    /// Android version codes cannot decrease, so only that kind refuses a channel switch.
-    pub(super) fn version_allowed(&self, current: &str) -> bool {
-        if self.kind == ArtifactKind::Android {
-            super::is_version_newer(current, &self.version)
-        } else {
-            super::is_update_candidate(current, &self.version)
-        }
-    }
-
     pub(super) fn validate(
         &self,
         version: &str,
         kind: ArtifactKind,
         target: &str,
     ) -> Result<(), String> {
-        if self.version != version
-            || self.kind != kind
-            || self.target != target
-            || !self.version_allowed(env!("CARGO_PKG_VERSION"))
-        {
+        if self.version != version || self.kind != kind || self.target != target {
             return Err(verification_failed(
                 "Update product, version or architecture does not match",
             ));
@@ -332,6 +330,8 @@ mod tests {
         let mut catalog = catalog_fixture();
         catalog["added"] = serde_json::json!(true);
         catalog["entries"]["portable-linux-x86_64"]["added"] = serde_json::json!(true);
+        // An entry of a kind this version does not know, in a shape of its own.
+        catalog["entries"]["future-linux-x86_64"] = serde_json::json!({ "parts": [1, 2] });
         assert!(
             select_manifest(
                 &serde_json::to_vec(&catalog).unwrap(),
@@ -643,24 +643,6 @@ mod tests {
             archive: None,
         }
     }
-    #[test]
-    fn only_android_refuses_to_leave_a_prerelease_for_an_older_stable_version() {
-        let mut m = manifest();
-        m.version = "0.3.3".into();
-        for kind in [
-            ArtifactKind::Portable,
-            ArtifactKind::Server,
-            ArtifactKind::Appimage,
-        ] {
-            m.kind = kind;
-            assert!(m.version_allowed("0.3.4-beta.1"));
-            assert!(!m.version_allowed("0.3.4"));
-        }
-        m.kind = ArtifactKind::Android;
-        assert!(!m.version_allowed("0.3.4-beta.1"));
-        assert!(m.version_allowed("0.3.2"));
-    }
-
     #[test]
     fn metadata_is_bound_to_product_version_and_architecture() {
         let m = manifest();

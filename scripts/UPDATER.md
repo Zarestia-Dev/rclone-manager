@@ -23,8 +23,14 @@ Tauri never writes this file. Each release has its own catalog:
 ```
 
 Each decoded manifest retains the existing `version`, `kind`, `target`, `asset`,
-`size`, `sha256`, and payload `signature` fields. The app verifies the exact
-signed bytes, so they are encoded rather than re-serialized.
+`size`, `sha256`, and payload `signature` fields. The app downloads the release
+file named `asset` from the address GitHub gives it. It verifies the exact signed
+bytes, so they are encoded rather than re-serialized, and it reads only its own
+entry. Versions up to 0.3.7-beta.1 reject any field they do not know in the
+catalog, an entry or a manifest, and never update again: the catalog keeps its
+three fields, every entry `manifest` and `signature`, and the manifests of the
+kinds those versions read keep these fields. Only a new kind's manifest may add
+one.
 Both metadata and payload signatures are verified with the production public key.
 The catalog's version and selected entry's signed version, product, and architecture
 must match the selected release and installation. Unsupported schemas or invalid
@@ -34,7 +40,9 @@ signatures fail; a valid catalog without the requested target offers no update.
 retain separate artifact directories until upload, avoiding same-name overwrites.
 `publish-custom-updater.cjs` combines their catalogs with any existing draft-release
 catalog, replacing rebuilt targets while preserving other products and architectures.
-It refuses to modify a published release. Payloads must be uploaded before the catalog.
+It refuses to modify a published release. Payloads must be uploaded before the catalog:
+it fails when an entry's `asset` is not a file of the release, so a renamed or missing
+file stops the release instead of every installation that would download it.
 Portable and Android workflows run the publisher's `--check tag version` mode
 before uploading any release payloads. This read-only check allows a missing or
 draft release and fails on a published release or an API error. Catalog publication

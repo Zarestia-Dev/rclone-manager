@@ -194,7 +194,7 @@ describe('AboutModalComponent', () => {
     expect(component.updateInstructions()?.links[0].url).toBe(
       'https://aur.archlinux.org/packages/rclone-manager-headless'
     );
-    expect(component.getPlatformLabel('pacman')).toBe('AUR');
+    expect(component.getPlatformLabel('pacman')).toBe('Pacman');
   });
 
   it('labels the release by its pre-release flag rather than its tag text', () => {

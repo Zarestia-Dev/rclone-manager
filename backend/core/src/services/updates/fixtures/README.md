@@ -34,17 +34,10 @@ bundle. The Windows ZIP carries DOS attributes and no Unix mode bits, like the
 They were signed by `publish()` in `scripts/create-update-manifest.cjs` with a
 separate disposable key whose private half was discarded.
 
-`process-app.sh`, `process-99.0.0.json`, `process-99.0.1.json`, their manifest
-signatures, and `process-public.key` form a second fixture set. Linux x86_64
-process tests install this signed shell script and exercise startup commitment,
-crash recovery, tamper rejection, consecutive updates, and administrative stops.
-The script simulates the application's startup receipt and update handoff. It
-does not access user configuration or the network. Its disposable private key
-is not included, and production helper entry points always use the production key.
-
 Formatting or editing signed files invalidates their signatures. To replace them,
 generate a disposable key outside the repository and sign the payload and manifest
-again. Never add a production private key or Android keystore here.
+again: the catalogs with `publish()`, and `manifest.json` and its signature with
+`tauri signer sign`. Never add a production private key or Android keystore here.
 
 `appimage-catalog.json` and `appimage-public.key` describe an AppImage update:
 the harmless `payload.txt`, published by `publish()` under the Tauri bundle name

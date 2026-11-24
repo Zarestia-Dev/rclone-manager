@@ -9,7 +9,18 @@ const {
   androidVersionCode,
   androidBuildArgs,
   releaseMetadata,
+  checkVersions,
 } = require('./release-version.cjs');
+
+// The Cargo workspace and package.json of a repository at `root`.
+function writeVersions(root, cargo, npm = cargo) {
+  fs.mkdirSync(path.join(root, 'backend'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'backend/Cargo.toml'),
+    `[workspace]\nmembers = ["core"]\n\n[workspace.package]\nversion = "${cargo}"\nedition = "2024"\n\n[workspace.dependencies]\nversion = "9.9.9"\n`
+  );
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version: npm }));
+}
 
 function configDirectory(t, version = '0.3.4-beta.1') {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-release-'));
@@ -166,7 +177,9 @@ test('metadata CLI writes GitHub outputs and fails without partial output on inv
   const file = path.join(directory, 'tauri.conf.json');
   const output = path.join(directory, 'output');
   const cli = path.join(__dirname, 'release-version.cjs');
+  writeVersions(directory, '0.3.4-beta.1');
   const result = spawnSync(process.execPath, [cli, file], {
+    cwd: directory,
     encoding: 'utf8',
     env: { ...process.env, GITHUB_OUTPUT: output },
   });
@@ -174,9 +187,27 @@ test('metadata CLI writes GitHub outputs and fails without partial output on inv
   assert.equal(fs.readFileSync(output, 'utf8'), 'VERSION=0.3.4-beta.1\nPRERELEASE=true\n');
   fs.writeFileSync(file, JSON.stringify({ version: 'invalid\nPRERELEASE=false' }));
   const failed = spawnSync(process.execPath, [cli, file], {
+    cwd: directory,
     encoding: 'utf8',
     env: { ...process.env, GITHUB_OUTPUT: output },
   });
   assert.notEqual(failed.status, 0);
   assert.equal(fs.readFileSync(output, 'utf8'), 'VERSION=0.3.4-beta.1\nPRERELEASE=true\n');
+});
+
+test('refuses a release whose Cargo or package.json version differs from tauri.conf.json', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-versions-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  writeVersions(root, '0.3.7-beta.3');
+  checkVersions('0.3.7-beta.3', root);
+  writeVersions(root, '0.3.7-beta.2', '0.3.7-beta.3');
+  assert.throws(() => checkVersions('0.3.7-beta.3', root), /backend\/Cargo.toml 0.3.7-beta.2/);
+  writeVersions(root, '0.3.7-beta.3', '0.3.6');
+  assert.throws(() => checkVersions('0.3.7-beta.3', root), /package.json 0.3.6/);
+  // The real repository agrees with itself.
+  const repository = path.join(__dirname, '..');
+  const { version } = JSON.parse(
+    fs.readFileSync(path.join(repository, 'backend/desktop/tauri.conf.json'), 'utf8')
+  );
+  checkVersions(version, repository);
 });

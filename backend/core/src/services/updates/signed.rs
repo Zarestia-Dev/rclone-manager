@@ -1,5 +1,5 @@
 //! Discover custom updates and adapt verified artifacts to platform installers.
-use super::download::{cached_payload, fetch, release_asset, store_payload};
+use super::download::{cached_payload, fetch, store_payload};
 use super::manifest::{
     ArtifactKind, CATALOG_NAME, MAX_MANIFEST_SIZE, Manifest, PUBLIC_KEY, select_manifest, target,
 };
@@ -35,16 +35,11 @@ pub(crate) async fn check(
         "Looking for signed update: release={}, kind={kind}, target={target}",
         release.tag_name
     );
-    if !release.assets.iter().any(|a| a.name == CATALOG_NAME) {
+    let Some(catalog) = release_file(release, CATALOG_NAME)? else {
         log::debug!("Release {} has no {CATALOG_NAME}", release.tag_name);
         return Ok(None);
-    }
-    let catalog = fetch(
-        release_asset(release, CATALOG_NAME)?,
-        MAX_MANIFEST_SIZE,
-        Box::new(|_, _| {}),
-    )
-    .await?;
+    };
+    let catalog = fetch(catalog, MAX_MANIFEST_SIZE, Box::new(|_, _| {})).await?;
     log::debug!("Read {} bytes from {}", catalog.len(), CATALOG_NAME);
     let selected = select_manifest(
         &catalog,
@@ -60,18 +55,11 @@ pub(crate) async fn check(
         );
         return Ok(None);
     };
-    if !release
-        .assets
-        .iter()
-        .any(|asset| asset.name == manifest.asset)
-    {
-        log::debug!(
-            "Signed manifest references absent release asset: {}",
-            manifest.asset
-        );
-        return Ok(None);
-    }
-    let download_url = release_asset(release, &manifest.asset)?;
+    // The release workflows upload every file of the catalog before it, so a
+    // missing one is an error, never a release without an update.
+    let download_url = release_file(release, &manifest.asset)?.ok_or_else(
+        || crate::localized_error!("backendErrors.updater.missingAsset", "name" => &manifest.asset),
+    )?;
     log::debug!(
         "Verified signed manifest: asset={}, download_bytes={}, installed_bytes={}",
         manifest.asset,
@@ -86,6 +74,21 @@ pub(crate) async fn check(
         method: policy.method,
         installation: policy.installation,
     })))
+}
+
+/// The address GitHub gives the release file `name`.
+fn release_file(release: &Release, name: &str) -> Result<Option<url::Url>, String> {
+    release
+        .assets
+        .iter()
+        .find(|asset| asset.name == name)
+        .map(|asset| {
+            asset
+                .browser_download_url
+                .parse()
+                .map_err(|e: url::ParseError| e.to_string())
+        })
+        .transpose()
 }
 
 struct SignedUpdate {
@@ -149,12 +152,10 @@ impl AppUpdate for SignedUpdate {
         );
         store_payload(cache_path, bytes).await
     }
+    /// `download` verified `payload`; it is checked again, as Tauri does, so bytes
+    /// that changed in memory since are never installed.
     fn install(&self, payload: &[u8]) -> Result<InstallOutcome, String> {
         self.manifest.verify_install_payload(payload, PUBLIC_KEY)?;
-        log::debug!(
-            "Reverified update payload before installation: {}",
-            self.manifest.asset
-        );
         if self.method == UpdateMethod::Android {
             #[cfg(target_os = "android")]
             return super::android::install(&self.cache_path(), payload);

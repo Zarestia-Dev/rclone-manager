@@ -137,6 +137,24 @@ test('sends Tauri headless installs to the packages with the catalog signatures'
   assert.throws(() => tauriUpdateJson(merged, 'headless-v1.2.3', undefined), /repository/);
 });
 
+test('refuses a catalog that names a file the release does not have', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-merge-test-'));
+  try {
+    fs.writeFileSync(path.join(directory, MANIFEST_NAME), JSON.stringify(catalog('portable')));
+    const publish = assets =>
+      publishCatalog('v1.2.3', '1.2.3', directory, args => {
+        if (args[1] === 'view') return JSON.stringify({ isDraft: true, assets });
+        return '';
+      });
+    assert.throws(() => publish([]), /v1.2.3 has no portable-linux-x86_64-1.2.3/);
+    // GitHub stores spaces as dots: a file uploaded under another name is missing.
+    assert.throws(() => publish([{ name: 'portable linux-x86_64-1.2.3' }]), /has no/);
+    publish([{ name: 'portable-linux-x86_64-1.2.3' }]);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('preserves another workflow entries and uploads only the separate custom catalog', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-merge-test-'));
   try {
@@ -151,7 +169,12 @@ test('preserves another workflow entries and uploads only the separate custom ca
       if (args[1] === 'view')
         return JSON.stringify({
           isDraft: true,
-          assets: [{ name: MANIFEST_NAME }, { name: 'latest.json' }],
+          assets: [
+            { name: MANIFEST_NAME },
+            { name: 'latest.json' },
+            { name: 'portable-linux-x86_64-1.2.3' },
+            { name: 'server-linux-x86_64-1.2.3' },
+          ],
         });
       if (args[1] === 'download') return JSON.stringify(catalog('server'));
       assert.equal(path.basename(args[3]), MANIFEST_NAME);
@@ -187,7 +210,8 @@ test('creates the first catalog, rejects empty inputs and propagates download fa
     fs.writeFileSync(path.join(directory, MANIFEST_NAME), JSON.stringify(catalog('server')));
     let uploaded = false;
     publishCatalog('headless-v1.2.3', '1.2.3', directory, args => {
-      if (args[1] === 'view') return JSON.stringify({ isDraft: true, assets: [] });
+      if (args[1] === 'view')
+        return JSON.stringify({ isDraft: true, assets: [{ name: 'server-linux-x86_64-1.2.3' }] });
       assert.equal(args[1], 'upload');
       uploaded = true;
       return '';
