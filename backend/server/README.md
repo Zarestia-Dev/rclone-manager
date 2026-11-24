@@ -99,14 +99,16 @@ frontend embedded in the executable. For a direct `cargo build --release`, run
 Builds with `debug_assertions` enabled serve files from disk; builds without it
 embed the frontend.
 
-For development, after building the frontend:
+For development:
 
 ```bash
 npm run dev:server -- --host 127.0.0.1 --port 8080
 ```
 
-This runs the server through Cargo. Rebuild the frontend after UI changes; this
-command does not start Angular's development server or enable automatic reload.
+This starts Angular's development server (open port 1420, it proxies `/api` to the server on
+port 8080) and runs the server through Cargo. The UI reloads when `src/` changes, and the
+server is built and started again when a Rust file under `backend/core` or `backend/server`, or a `main.json` translation,
+changes. Arguments after `--` go to the server.
 
 ### Deploy outside the source checkout
 
@@ -197,8 +199,7 @@ to its own name.
 
 ## Server packages
 
-For live reloading of the UI, run `npm run dev:server -- --host 127.0.0.1` and
-`npx ng serve --configuration headless`, then open port 1420. The DEB, RPM, Arch
+The DEB, RPM, Arch
 package, Windows setup and MSI are made from `backend/server/package/` by
 `release-server.yml`.
 

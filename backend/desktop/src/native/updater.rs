@@ -3,7 +3,7 @@ use crate::context::{AppHandle, BackendContext};
 use crate::services::lifecycle::shutdown::handle_shutdown;
 use crate::utils::{
     github_client,
-    types::updater::{AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate},
+    types::updater::{AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact},
 };
 use log::{info, warn};
 use tauri_plugin_updater::UpdaterExt;
@@ -40,13 +40,13 @@ pub(crate) async fn check_native_updater(
     app: &AppHandle,
     release: &github_client::Release,
     expected: &str,
-) -> Result<Option<PendingAppUpdate>, String> {
+) -> Result<ReleaseArtifact, String> {
     let Some(manifest) = release.assets.iter().find(|a| a.name == "latest.json") else {
         log::debug!(
             "Release {} has no native updater manifest",
             release.tag_name
         );
-        return Ok(None);
+        return Ok(ReleaseArtifact::Unpublished);
     };
     let json_url = &manifest.browser_download_url;
 
@@ -83,18 +83,19 @@ pub(crate) async fn check_native_updater(
         Ok(update) => update,
         Err(tauri_plugin_updater::Error::TargetNotFound(target)) => {
             log::debug!("Native updater manifest has no matching target: {target}");
-            return Ok(None);
+            return Ok(ReleaseArtifact::NotBuilt);
         }
         Err(error) => return Err(error.to_string()),
     };
 
-    Ok(check_result.map(|u| {
+    // No update: the manifest belongs to another version than the release.
+    Ok(check_result.map_or(ReleaseArtifact::Unpublished, |u| {
         log::debug!(
             "Native update matched version {} at {}",
             u.version,
             u.download_url
         );
-        std::sync::Arc::new(NativeUpdate(u)) as PendingAppUpdate
+        ReleaseArtifact::Found(std::sync::Arc::new(NativeUpdate(u)))
     }))
 }
 

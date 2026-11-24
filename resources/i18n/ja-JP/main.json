@@ -48,10 +48,7 @@
     "unknown": "不明",
     "notAvailable": "該当なし",
     "unlimited": "無制限",
-    "limitedTo": "{{rate}} に制限",
-    "none": "なし",
-    "add": "追加",
-    "select": "選択"
+    "limitedTo": "{{rate}} に制限"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "サイズ形式が無効です。使用例: 100Ki, 16Mi, 1Gi, または \"off\"",
     "tristate": "値は true、false、または未設定である必要があります",
     "time": "日時形式が無効です。ISO 8601 形式を使用してください: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "リストを空白のみにすることはできません",
     "bwTimetable": "帯域幅の形式が無効です",
     "fileMode": "8進数形式（0〜7の3〜4桁）である必要があります。例: 755",
-    "enum": "次のいずれかである必要があります: {{values}}",
     "urlArray": "全てのURLは有効で、http:// または https:// で始まる必要があります",
     "bandwidth": "帯域幅の形式が無効です。使用例: 10M, 1G, 100K またはその組み合わせ",
     "passwordMismatch": "パスワードが一致しません",
@@ -85,10 +80,6 @@
       "invalidStart": "リモート名の先頭にハイフンやスペースを使用することはできません",
       "invalidEnd": "リモート名の末尾にスペースを使用することはできません",
       "nameTaken": "このリモート名は既に使用されています"
-    },
-    "password": {
-      "minLength": "パスワードは3文字以上である必要があります",
-      "invalidChars": "パスワードに引用符を含めることはできません"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "URLコピー 実行中",
     "archivecreateActive": "圧縮 実行中",
     "archivecreating": "圧縮中",
-    "syncSummary": "同期中 ({{count}})",
     "toggleSync": "クイックアクションとして同期を切り替え",
     "toggleCopy": "クイックアクションとしてコピーを切り替え",
     "toggleMove": "クイックアクションとして移動を切り替え",
@@ -135,7 +125,6 @@
     "serving": "公開中",
     "servingWithProfile": "公開中 ({{profile}}): {{addr}} 上の {{type}}",
     "servingMultiple": "公開サーバー ({{count}}): {{profiles}}",
-    "serveSummary": "公開中 ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "クイックアクションとして公開を切り替え",
     "successStart": "{{remote}} ({{profile}}) の {{addr}} での公開サーバーを開始しました",
@@ -277,11 +266,8 @@
     "cancelled": "Rcloneアップデートのダウンロードがキャンセルされました。",
     "cancelFailed": "Rcloneアップデートのダウンロードのキャンセルに失敗しました。",
     "failed": "アップデートに失敗しました: {{error}}",
-    "channelChanged": "Rcloneアップデートチャンネルが {{channel}} に変更されました",
     "skipped": "Rclone バージョン {{version}} をスキップしました",
-    "restored": "Rclone バージョン {{version}} を元に戻しました",
-    "autoCheckEnabled": "Rcloneの自動アップデートチェックが有効になりました",
-    "autoCheckDisabled": "Rcloneの自動アップデートチェックが無効になりました"
+    "restored": "Rclone バージョン {{version}} を元に戻しました"
   },
   "alerts": {
     "title": "アラートと通知",
@@ -864,8 +850,7 @@
       "destination": "宛先",
       "openViewer": "ビューアで開く",
       "openViewerTooltip": "全画面メディアプレビューを開く",
-      "inferredFromUrl": "URLから推測",
-      "imageAlt": "プレビュー"
+      "inferredFromUrl": "URLから推測"
     },
     "installationOptions": {
       "tabs": {
@@ -931,14 +916,7 @@
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み",
-        "file": "ファイル",
-        "direction": "方向",
-        "took": "所要時間",
-        "when": "日時",
-        "progress": "進捗",
-        "speed": "速度",
-        "eta": "残り時間"
+        "transferred": "転送済み"
       },
       "status": {
         "failed": "失敗",
@@ -1297,8 +1275,7 @@
       "unknownWarning": {
         "other": "{{count}} 件の不明なオプション: {{keys}}。これらはrcloneによって無視される可能性があります。"
       },
-      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。",
-      "fieldsOverview": "設定フィールドの概要"
+      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。"
     },
     "passwordManager": {
       "placeholder": "rclone設定のパスワードを入力",
@@ -1381,8 +1358,7 @@
       "applyToTask": "タスクに適用",
       "appliedToast": {
         "other": "{{count}} 件の設定を正常にインポートしました"
-      },
-      "profileNamePlaceholder": "例: daily-backup"
+      }
     },
     "obscure": {
       "title": "パスワードの難読化",
@@ -1778,9 +1754,7 @@
       "confirm": "適用",
       "cancel": "キャンセル"
     },
-    "restored": "アップデート {{version}} を元に戻しました",
-    "restoreFailed": "アップデートの復元に失敗しました",
-    "channelChanged": "更新チャンネルが {{channel}} に変更されました。"
+    "restored": "アップデート {{version}} を元に戻しました"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "この項目のリモートを解決できませんでした",
@@ -1966,8 +1940,7 @@
       "zoomIn": "拡大",
       "zoomOut": "縮小",
       "resetZoom": "ズームをリセット",
-      "hexPreview": "16進プレビュー",
-      "playVideo": "動画プレーヤーで再生"
+      "hexPreview": "16進プレビュー"
     }
   },
   "dashboard": {
@@ -2208,6 +2181,7 @@
       "skipVersion": "このバージョンをスキップ",
       "upToDate": "最新状態です",
       "latestVersionMsg": "最新バージョンを使用しています",
+      "statusUnknown": "アップデートの状態は不明です",
       "checkUpdates": "アップデートを確認",
       "checking": "確認中...",
       "updateSettings": "アップデート設定",
@@ -2224,11 +2198,9 @@
       "whatsNewRclone": "Rcloneの新機能・更新内容",
       "updateRclone": "Rcloneアップデートをダウンロード",
       "rcloneUpToDate": "Rcloneは最新状態です",
-      "checkRcloneUpdates": "Rcloneのアップデートを確認",
       "rcloneUpdateSettings": "Rcloneのアップデート設定",
       "skippedRcloneUpdates": "スキップされたRcloneアップデート",
       "devTeam": "開発チーム",
-      "leadDeveloper": "リードデベロッパー",
       "contributors": "コントリビューター",
       "acknowledgments": "謝辞",
       "ackText": "本アプリケーションはモダンなWeb技術で構築されており、クラウドストレージ管理のために優れた Rclone プロジェクトを利用しています。",
@@ -2239,6 +2211,7 @@
       "updateSettingFailed": "設定の更新に失敗しました",
       "channelStable": "安定版 (Stable)",
       "channelBeta": "ベータ版 (Beta)",
+      "channelDev": "開発版",
       "channelStableDesc": "ほとんどのユーザーに推奨",
       "channelBetaDesc": "最新機能（テスト用）",
       "downloadPage": "ダウンロードページ",
@@ -3401,9 +3374,7 @@
         "statsUnchanged": "{{count}} 件の未変更",
         "statsConflicts": {
           "other": "{{count}} 件の競合"
-        },
-        "findPlaceholder": "検索するテキスト",
-        "replacePlaceholder": "置換後のテキスト"
+        }
       },
       "index": {
         "title": "ディレクトリ一覧を生成",
@@ -3607,9 +3578,6 @@
       "generic": "予期しないエラーが発生しました。詳細についてはログを確認してください。",
       "openFailed": "{{name}} を開けませんでした"
     }
-  },
-  "transfer": {
-    "error": "転送エラー"
   },
   "generalOverview": {
     "panels": {
@@ -3826,7 +3794,6 @@
       "profileNotMounted": "{{remote}} のプロファイル「{{profile}}」はマウントされていません"
     },
     "operations": {
-      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です",
       "singleSourceOnly": "{{operation}} は単一のソースパスのみ対応しています",
       "directoriesOnly": "{{operation}} はディレクトリのみ対応しており、ファイルには対応していません: {{source}}",
       "sourcePathInvalid": "ソースパスを解析できませんでした: {{path}}",
@@ -3836,7 +3803,6 @@
       "destinationMissing": "宛先が指定されていません"
     },
     "serve": {
-      "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
       "remoteEmpty": "リモート名を空欄にすることはできません",
       "addressAlreadyInUse": "選択したポートまたはアドレスは他のアプリケーションによって使用されています。別のポートを選択してください。",
       "privilegedPort": "1024 未満のポートには管理者権限が必要です。1024 以上のポートを選択してください。",
@@ -3880,11 +3846,7 @@
       "notFound": "{{path}} にRclone実行ファイルが見つかりません",
       "spawnFailed": "rcloneプロセスの開始に失敗しました: {{error}}",
       "invalidPath": "無効なrcloneパスが指定されました",
-      "killFailed": "rcloneプロセスの終了に失敗しました: {{error}}",
-      "portCleanupFailed": "rcloneポートのクリーンアップに失敗しました: {{error}}",
       "configValidationFailed": "Rclone設定の検証に失敗しました: {{error}}",
-      "lockFailed": "Rclone設定のロック取得に失敗しました: {{error}}",
-      "cacheRefreshFailed": "Rcloneキャッシュの更新に失敗しました: {{error}}",
       "invalidFlags": "無効なrcloneフラグが検出されました: {{error}}",
       "updateRemoteUnsupported": "このrcloneバージョンではリモート更新はサポートされていません",
       "backupFailed": "現在のrclone実行ファイルのバックアップに失敗しました: {{error}}",
@@ -3994,7 +3956,8 @@
       "ioError": "入出力(IO)エラー: {{error}}",
       "externallyManaged": "このインストールはパッケージマネージャーまたはデプロイシステムによって更新されます。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "このインストールは自動インストールに対応していません。",
+      "notBuilt": "このリリースには、このインストール向けの自動アップデートがありません。手動でインストールしてください。",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "ここでは管理者パスワードを求める手段がありません（polkit エージェントと pkexec、または zenity か kdialog と sudo）。「GitHub で表示」からパッケージをダウンロードし、ターミナルでインストールしてください: {{command}}",
@@ -4793,8 +4756,6 @@
         "appStartDesc": "RClone Managerの起動時に自動でトリガー",
         "cleanup": "ゴミ箱のクリーンアップ",
         "cleanupDesc": "リモートのゴミ箱を空にする",
-        "cryptcheck": "暗号化整合性チェック",
-        "cryptcheckDesc": "暗号化されたリモートの整合性を検証",
         "execScript": "スクリプト実行",
         "execScriptDesc": "ローカルのシェルコマンドまたはスクリプトを実行",
         "quickRun": "クイック実行",

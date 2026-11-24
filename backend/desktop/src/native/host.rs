@@ -174,7 +174,7 @@ impl Host for NativeHost {
         &self,
         release: &crate::utils::github_client::Release,
         expected_version: &str,
-    ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
+    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
         super::updater::check_native_updater(&self.0, release, expected_version).await
     }
 }

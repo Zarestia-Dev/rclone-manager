@@ -212,9 +212,10 @@ async fn update_for_release(
     }
 
     #[cfg(feature = "updater")]
-    let pending_action = if externally_managed {
-        None
+    let (pending_action, installation) = if externally_managed {
+        (None, installation)
     } else {
+        use crate::utils::types::updater::ReleaseArtifact;
         let result = match installation.method {
             policy::UpdateMethod::Tauri => {
                 app.host()
@@ -224,13 +225,28 @@ async fn update_for_release(
             policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
                 signed::check(app, release, &installation).await
             }
-            policy::UpdateMethod::Unavailable => Ok(None),
+            policy::UpdateMethod::Unavailable => Ok(ReleaseArtifact::Unpublished),
         };
         match result {
-            Ok(Some(action)) => installation.can_install.then_some(action),
-            Ok(None) => {
+            Ok(ReleaseArtifact::Found(action)) => {
+                (installation.can_install.then_some(action), installation)
+            }
+            // A build that is no longer made must not hear "up to date" forever.
+            Ok(ReleaseArtifact::NotBuilt) => {
                 info!(
-                    "No compatible update artifact in {}; suppressing update announcement",
+                    "{} has no update for this installation; announcing it as a manual update",
+                    release.tag_name
+                );
+                let installation = policy::UpdatePolicy {
+                    can_install: false,
+                    reason: Some(crate::localized_error!("backendErrors.updater.notBuilt")),
+                    ..installation
+                };
+                (None, installation)
+            }
+            Ok(ReleaseArtifact::Unpublished) => {
+                info!(
+                    "No update manifest in {}; suppressing update announcement",
                     release.tag_name
                 );
                 return Ok(None);
@@ -302,6 +318,23 @@ async fn update_for_release(
 
 pub async fn get_app_update_info(app: AppHandle) -> Result<UpdaterSnapshot> {
     Ok(app.state::<AppUpdaterState>().data.lock().snapshot())
+}
+
+/// The release this build came from, for its release notes.
+pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
+    let version = env!("CARGO_PKG_VERSION");
+    let tag = format!("{}{version}", app.product().release_prefix);
+    let release = github_client::get_release_by_tag(OWNER, REPO, &tag).await?;
+    Ok(UpdateMetadata {
+        version: version.to_string(),
+        current_version: version.to_string(),
+        prerelease: is_prerelease(&release),
+        release_notes: release.body,
+        release_date: release.published_at,
+        release_url: Some(release.html_url),
+        release_tag: Some(release.tag_name),
+        ..Default::default()
+    })
 }
 
 fn is_release_for_channel(
@@ -540,7 +573,7 @@ mod tests {
     mod native_discovery {
         use super::*;
         use crate::utils::types::updater::{
-            AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate,
+            AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact,
         };
         use std::sync::Arc;
 
@@ -548,6 +581,7 @@ mod tests {
         enum Check {
             Found,
             Missing,
+            NotBuilt,
             Failed,
         }
         struct TestHost(Check);
@@ -579,11 +613,12 @@ mod tests {
                 &self,
                 _: &github_client::Release,
                 _: &str,
-            ) -> std::result::Result<Option<PendingAppUpdate>, String> {
+            ) -> std::result::Result<ReleaseArtifact, String> {
                 match self.0 {
-                    Check::Missing => Ok(None),
+                    Check::Missing => Ok(ReleaseArtifact::Unpublished),
+                    Check::NotBuilt => Ok(ReleaseArtifact::NotBuilt),
                     Check::Failed => Err("Invalid manifest signature".into()),
-                    Check::Found => Ok(Some(Arc::new(TestUpdate))),
+                    Check::Found => Ok(ReleaseArtifact::Found(Arc::new(TestUpdate))),
                 }
             }
         }
@@ -605,7 +640,7 @@ mod tests {
                 match check {
                     Check::Missing => assert!(result.unwrap().is_none()),
                     Check::Failed => assert!(result.is_err()),
-                    Check::Found => unreachable!(),
+                    Check::Found | Check::NotBuilt => unreachable!(),
                 }
                 let data = state.data.lock();
                 assert_eq!(data.state, UpdateState::Idle);
@@ -641,6 +676,34 @@ mod tests {
             assert_eq!(data.state, UpdateState::Available);
             assert_eq!(data.info().unwrap().metadata.version, "98.0.0");
             assert!(data.pending_action.is_some());
+        }
+
+        #[tokio::test]
+        async fn a_release_without_this_installation_is_announced_as_a_manual_update() {
+            let app = AppHandle::new(Arc::new(TestHost(Check::NotBuilt)), Default::default());
+            let state = AppUpdaterState::default();
+            let policy = policy::test_policy(
+                policy::InstallationKind::Native,
+                policy::UpdateMethod::Tauri,
+                None,
+            );
+            let info = update_for_release(&app, "beta", &candidate(), policy, &state)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(info.metadata.update_available);
+            let installation = info.installation.unwrap();
+            assert!(!installation.can_install);
+            assert!(
+                installation
+                    .reason
+                    .unwrap()
+                    .contains("backendErrors.updater.notBuilt")
+            );
+            let data = state.data.lock();
+            assert_eq!(data.state, UpdateState::Available);
+            assert!(data.pending_action.is_none());
+            assert!(!data.policy.as_ref().unwrap().can_install);
         }
 
         #[tokio::test]

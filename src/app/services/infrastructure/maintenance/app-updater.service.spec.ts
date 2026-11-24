@@ -273,6 +273,36 @@ describe('AppUpdaterService state restoration', () => {
     progress.next({ ...download, downloadedBytes: 60, percentage: 60 });
     expect(service.downloadStatus().percentage).toBe(60);
     expect(service.updateInProgress()).toBe(true);
+    expect(service.downloading()).toBe(true);
+  });
+
+  it('is downloading only while bytes arrive, not while a complete download installs', async () => {
+    info = {
+      ...available,
+      status: BackendUpdateStatus.Installing,
+      download: { ...download, state: { status: DownloadStateStatus.Complete } },
+    };
+    await service.initialize();
+    expect(service.updateInProgress()).toBe(true);
+    expect(service.downloading()).toBe(false);
+  });
+
+  it('keeps the channel and does not check again when saving the channel fails', async () => {
+    info = null;
+    await service.initialize();
+    invoke.mockClear();
+    saveSetting.mockRejectedValueOnce(new Error('disk full'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await service.setChannel('beta');
+    expect(service.updateChannel()).toBe('stable');
+    expect(showError).toHaveBeenCalledWith('modals.about.updateSettingFailed');
+    expect(invoke).not.toHaveBeenCalledWith('fetch_update', expect.anything());
+  });
+
+  it('reads the notes of the installed release from the backend', async () => {
+    invoke.mockResolvedValueOnce({ version: '0.3.7', releaseNotes: 'notes' });
+    await expect(service.installedRelease()).resolves.toMatchObject({ releaseNotes: 'notes' });
+    expect(invoke).toHaveBeenCalledWith('get_app_release_notes', undefined);
   });
 
   it('restores state even if capability detection fails', async () => {

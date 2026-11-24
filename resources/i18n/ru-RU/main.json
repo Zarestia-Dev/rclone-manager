@@ -48,10 +48,7 @@
     "unknown": "Неизвестно",
     "notAvailable": "Н/Д",
     "unlimited": "Без ограничений",
-    "limitedTo": "Ограничено: {{rate}}",
-    "none": "Нет",
-    "add": "Добавить",
-    "select": "Выбрать"
+    "limitedTo": "Ограничено: {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Некорректный формат размера. Используйте: 100Ki, 16Mi, 1Gi или \"off\"",
     "tristate": "Значение должно быть true, false или не задано",
     "time": "Некорректный формат даты и времени. Используйте ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Список не может состоять только из пробелов",
     "bwTimetable": "Некорректный формат ограничения скорости",
     "fileMode": "Требуется восьмеричный формат (3–4 цифры от 0 до 7). Пример: 755",
-    "enum": "Допустимые значения: {{values}}",
     "urlArray": "Все URL должны быть корректными и начинаться с http:// или https://",
     "bandwidth": "Некорректный формат скорости. Используйте: 10M, 1G, 100K или их сочетания",
     "passwordMismatch": "Пароли не совпадают",
@@ -85,10 +80,6 @@
       "invalidStart": "Название подключения не может начинаться с дефиса или пробела",
       "invalidEnd": "Название подключения не может заканчиваться пробелом",
       "nameTaken": "Подключение с таким названием уже существует"
-    },
-    "password": {
-      "minLength": "Пароль должен содержать не менее 3 символов",
-      "invalidChars": "Пароль не может содержать кавычки"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "Копирование по URL активно",
     "archivecreateActive": "Архивация активна",
     "archivecreating": "Архивация",
-    "syncSummary": "Синхронизация ({{count}})",
     "toggleSync": "Добавить или убрать синхронизацию из быстрых действий",
     "toggleCopy": "Добавить или убрать копирование из быстрых действий",
     "toggleMove": "Добавить или убрать перемещение из быстрых действий",
@@ -135,7 +125,6 @@
     "serving": "Сервер запущен",
     "servingWithProfile": "Сервер ({{profile}}): {{type}} на {{addr}}",
     "servingMultiple": "Серверы ({{count}}): {{profiles}}",
-    "serveSummary": "Серверы ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Добавить или убрать сервер из быстрых действий",
     "successStart": "Сервер для {{remote}} успешно запущен ({{profile}}) на {{addr}}",
@@ -280,11 +269,8 @@
     "cancelled": "Загрузка обновления Rclone отменена.",
     "cancelFailed": "Не удалось отменить загрузку обновления Rclone.",
     "failed": "Ошибка обновления: {{error}}",
-    "channelChanged": "Канал обновлений Rclone изменён на {{channel}}",
     "skipped": "Версия Rclone {{version}} пропущена",
-    "restored": "Версия Rclone {{version}} восстановлена",
-    "autoCheckEnabled": "Автоматическая проверка обновлений Rclone включена",
-    "autoCheckDisabled": "Автоматическая проверка обновлений Rclone отключена"
+    "restored": "Версия Rclone {{version}} восстановлена"
   },
   "alerts": {
     "title": "Оповещения и уведомления",
@@ -867,8 +853,7 @@
       "destination": "Назначение",
       "openViewer": "Открыть в просмотрщике",
       "openViewerTooltip": "Открыть полный предпросмотр медиа",
-      "inferredFromUrl": "Извлечено из URL",
-      "imageAlt": "Предпросмотр"
+      "inferredFromUrl": "Извлечено из URL"
     },
     "installationOptions": {
       "tabs": {
@@ -934,14 +919,7 @@
       },
       "table": {
         "size": "Размер",
-        "transferred": "передано",
-        "file": "Файл",
-        "direction": "Направление",
-        "took": "Длительность",
-        "when": "Когда",
-        "progress": "Прогресс",
-        "speed": "Скорость",
-        "eta": "Осталось"
+        "transferred": "передано"
       },
       "status": {
         "failed": "Ошибка",
@@ -1327,8 +1305,7 @@
         "many": "{{count}} неизвестных параметров: {{keys}}. Rclone может их проигнорировать.",
         "other": "{{count}} неизвестного параметра: {{keys}}. Rclone может его проигнорировать."
       },
-      "invalidArrayPath": "Свойство «{{key}}» не поддерживает несколько путей. Укажите один путь строкой.",
-      "fieldsOverview": "Обзор полей конфигурации"
+      "invalidArrayPath": "Свойство «{{key}}» не поддерживает несколько путей. Укажите один путь строкой."
     },
     "passwordManager": {
       "placeholder": "Введите пароль конфигурации rclone",
@@ -1414,8 +1391,7 @@
         "few": "Успешно импортированы {{count}} настройки",
         "many": "Успешно импортировано {{count}} настроек",
         "other": "Успешно импортировано {{count}} настройки"
-      },
-      "profileNamePlaceholder": "например, daily-backup"
+      }
     },
     "obscure": {
       "title": "Обфускация пароля",
@@ -1817,9 +1793,7 @@
       "confirm": "Установить",
       "cancel": "Отмена"
     },
-    "restored": "Обновление {{version}} снова доступно",
-    "restoreFailed": "Не удалось вернуть обновление в список доступных",
-    "channelChanged": "Канал обновлений изменён на {{channel}}."
+    "restored": "Обновление {{version}} снова доступно"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Не удалось определить подключение для этого элемента",
@@ -2011,8 +1985,7 @@
       "zoomIn": "Увеличить",
       "zoomOut": "Уменьшить",
       "resetZoom": "Сбросить масштаб",
-      "hexPreview": "Шестнадцатеричный просмотр",
-      "playVideo": "Воспроизвести в видеоплеере"
+      "hexPreview": "Шестнадцатеричный просмотр"
     }
   },
   "dashboard": {
@@ -2256,6 +2229,7 @@
       "skipVersion": "Пропустить версию",
       "upToDate": "Установлена актуальная версия",
       "latestVersionMsg": "Вы используете последнюю версию",
+      "statusUnknown": "Состояние обновлений неизвестно",
       "checkUpdates": "Проверить обновления",
       "checking": "Проверка...",
       "updateSettings": "Настройки обновления",
@@ -2272,11 +2246,9 @@
       "whatsNewRclone": "Что нового в Rclone",
       "updateRclone": "Скачать обновление Rclone",
       "rcloneUpToDate": "Установлена актуальная версия Rclone",
-      "checkRcloneUpdates": "Проверить обновления Rclone",
       "rcloneUpdateSettings": "Настройки обновления Rclone",
       "skippedRcloneUpdates": "Пропущенные обновления Rclone",
       "devTeam": "Команда разработки",
-      "leadDeveloper": "Ведущий разработчик",
       "contributors": "Участники разработки",
       "acknowledgments": "Благодарности",
       "ackText": "Приложение создано с использованием современных веб-технологий и опирается на проект Rclone для управления облачными хранилищами.",
@@ -2287,6 +2259,7 @@
       "updateSettingFailed": "Не удалось изменить настройку",
       "channelStable": "Стабильный",
       "channelBeta": "Бета",
+      "channelDev": "Разработка",
       "channelStableDesc": "Рекомендуется большинству пользователей",
       "channelBetaDesc": "Новейшие функции",
       "downloadPage": "Страница загрузки",
@@ -3509,9 +3482,7 @@
           "few": "{{count}} конфликта",
           "many": "{{count}} конфликтов",
           "other": "{{count}} конфликта"
-        },
-        "findPlaceholder": "искомый текст",
-        "replacePlaceholder": "текст замены"
+        }
       },
       "index": {
         "title": "Создание списков каталогов",
@@ -3752,9 +3723,6 @@
       "openFailed": "Не удалось открыть {{name}}"
     }
   },
-  "transfer": {
-    "error": "Ошибка передачи"
-  },
   "generalOverview": {
     "panels": {
       "remotes": "Быстрый доступ к подключениям",
@@ -3979,7 +3947,6 @@
       "profileNotMounted": "Профиль «{{profile}}» не подключён на {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью",
       "singleSourceOnly": "{{operation}} поддерживает только один исходный путь",
       "directoriesOnly": "{{operation}} поддерживает только каталоги, а не файлы: {{source}}",
       "sourcePathInvalid": "Не удалось разобрать исходный путь: {{path}}",
@@ -3989,7 +3956,6 @@
       "destinationMissing": "Назначение не указано"
     },
     "serve": {
-      "parseFailed": "Не удалось разобрать ответ: {{error}}",
       "remoteEmpty": "Название подключения не может быть пустым",
       "addressAlreadyInUse": "Выбранный порт или адрес уже используется другим приложением. Выберите другой порт.",
       "privilegedPort": "Порты ниже 1024 требуют прав администратора. Выберите порт 1024 или выше.",
@@ -4033,11 +3999,7 @@
       "notFound": "Исполняемый файл Rclone не найден по пути {{path}}",
       "spawnFailed": "Не удалось запустить процесс rclone: {{error}}",
       "invalidPath": "Указан некорректный путь к rclone",
-      "killFailed": "Не удалось завершить процесс rclone: {{error}}",
-      "portCleanupFailed": "Не удалось освободить порты rclone: {{error}}",
       "configValidationFailed": "Конфигурация Rclone не прошла проверку: {{error}}",
-      "lockFailed": "Не удалось заблокировать конфигурацию rclone: {{error}}",
-      "cacheRefreshFailed": "Не удалось обновить кэш rclone: {{error}}",
       "invalidFlags": "Обнаружены некорректные флаги rclone: {{error}}",
       "updateRemoteUnsupported": "Удалённое обновление не поддерживается этой версией rclone",
       "backupFailed": "Не удалось создать резервную копию текущего исполняемого файла rclone: {{error}}",
@@ -4147,7 +4109,8 @@
       "ioError": "Ошибка ввода-вывода: {{error}}",
       "externallyManaged": "Эта установка обновляется через менеджер пакетов или систему развёртывания.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "Автоматическая установка не поддерживается для этой установки.",
+      "notBuilt": "В этом выпуске нет автоматического обновления для этой установки. Установите его вручную.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Здесь нечем запросить пароль администратора (pkexec с агентом polkit или sudo с zenity или kdialog). Скачайте пакет через «Открыть на GitHub» и установите его в терминале: {{command}}",
@@ -4949,8 +4912,6 @@
         "appStartDesc": "Автоматический запуск при старте RClone Manager",
         "cleanup": "Очистка корзины",
         "cleanupDesc": "Очистить корзину удаленного хранилища",
-        "cryptcheck": "Проверка шифрования",
-        "cryptcheckDesc": "Проверить целостность зашифрованного хранилища",
         "execScript": "Выполнить скрипт",
         "execScriptDesc": "Запустить локальную команду оболочки или скрипт",
         "quickRun": "Быстрый запуск",

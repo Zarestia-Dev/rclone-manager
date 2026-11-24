@@ -1,17 +1,21 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../system/event-listeners.service';
-import { UpdateInfo, UpdateResult, BackendUpdateStatus, UpdaterSnapshot } from '@app/types';
-import { AppSettingsService } from '../../settings/app-settings.service';
+import {
+  UpdateInfo,
+  UpdateResult,
+  BackendUpdateStatus,
+  UpdaterSnapshot,
+  UpdateMetadata,
+} from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import { UpdateSettingsManager, isUpdateInFlight } from './update-settings-manager';
+import { UpdateChannel, UpdateSettingsManager, isUpdateInFlight } from './update-settings-manager';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneUpdateService extends TauriBaseService {
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly appSettingsService = inject(AppSettingsService);
 
-  private readonly settings = new UpdateSettingsManager(this.appSettingsService, {
+  private readonly settings = new UpdateSettingsManager({
     namespace: 'runtime',
     skippedVersionsKey: 'rclone_skipped_updates',
     updateChannelKey: 'rclone_update_channel',
@@ -148,35 +152,33 @@ export class RcloneUpdateService extends TauriBaseService {
     }
   }
 
-  async setChannel(channel: string): Promise<void> {
+  async setChannel(channel: UpdateChannel): Promise<void> {
     if (this.downloading() || this.readyToRestart() || this.isChecking()) return;
-    await this.settings.setChannel(channel);
+    if (!(await this.settings.setChannel(channel))) return;
     this._snapshot.update(snapshot => (snapshot ? { ...snapshot, update: null } : snapshot));
-
-    this.notificationService.showInfo(
-      this.translate.instant('rcloneUpdate.channelChanged', { channel })
-    );
     void this.checkForUpdates();
   }
 
   async skipVersion(version: string): Promise<void> {
-    await this.settings.skipVersion(version);
+    if (!(await this.settings.skipVersion(version))) return;
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
   }
 
   async unskipVersion(version: string): Promise<void> {
-    await this.settings.unskipVersion(version);
-    this.notificationService.showInfo(this.translate.instant('rcloneUpdate.restored', { version }));
+    if (!(await this.settings.unskipVersion(version))) return;
+    this.notificationService.showSuccess(
+      this.translate.instant('rcloneUpdate.restored', { version })
+    );
     void this.checkForUpdates();
   }
 
   async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     await this.settings.setAutoCheckEnabled(enabled);
-    this.notificationService.showInfo(
-      this.translate.instant(
-        enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
-      )
-    );
+  }
+
+  /** The notes of the installed rclone `version`, read from GitHub. */
+  installedRelease(version: string): Promise<UpdateMetadata> {
+    return this.invokeCommand<UpdateMetadata>('get_rclone_release_notes', { version });
   }
 
   async initialize(): Promise<void> {

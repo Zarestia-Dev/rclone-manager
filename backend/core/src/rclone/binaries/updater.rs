@@ -197,6 +197,7 @@ async fn perform_check_rclone_update(
 
     let metadata = UpdateMetadata {
         current_version: current_version.clone(),
+        prerelease: latest_version.contains("-beta"),
         version: latest_version,
         update_available,
         channel: Some(channel.to_string()),
@@ -807,6 +808,26 @@ async fn fetch_rclone_release_info(version: &str, channel: &UpdateChannel) -> Re
         *cache = Some((key, info.clone()));
     }
     info
+}
+
+/// The notes of the installed rclone release. Beta and development builds have
+/// none: they are never published as GitHub releases.
+pub async fn get_rclone_release_notes(version: String) -> Result<UpdateMetadata> {
+    let tag = format!("v{}", clean_version(&version));
+    let release = github_client::get_release_by_tag("rclone", "rclone", &tag).await?;
+    let notes = fetch_stable_changelog(&version, &release.html_url)
+        .await
+        .ok()
+        .or(release.body);
+    Ok(UpdateMetadata {
+        current_version: version.clone(),
+        version,
+        release_notes: notes,
+        release_date: release.published_at,
+        release_url: Some(release.html_url),
+        release_tag: Some(release.tag_name),
+        ..Default::default()
+    })
 }
 
 async fn lookup_rclone_release_info(version: &str, channel: &UpdateChannel) -> ReleaseInfo {

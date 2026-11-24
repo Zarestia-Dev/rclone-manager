@@ -124,6 +124,19 @@ pub enum InstallOutcome {
 #[cfg(feature = "updater")]
 pub type PendingAppUpdate = std::sync::Arc<dyn AppUpdate>;
 
+/// What a release offers this installation.
+#[cfg(feature = "updater")]
+pub enum ReleaseArtifact {
+    /// A verified update for this installation.
+    Found(PendingAppUpdate),
+    /// The release publishes updates, but none for this installation's kind or
+    /// target (a dropped build). It is announced as an update to install by hand.
+    NotBuilt,
+    /// The release has no update manifest for this updater (yet, or for another
+    /// version), as when it was published before its workflows finished.
+    Unpublished,
+}
+
 /// Tracks the in-flight app self-update download and its staged payload.
 #[derive(Default)]
 pub struct AppUpdaterState {
@@ -155,7 +168,7 @@ pub struct UpdateMetadata {
     pub version: String,
     pub current_version: String,
     pub update_available: bool,
-    /// The release is a pre-release (beta channel only).
+    /// The release is a pre-release.
     #[serde(default)]
     pub prerelease: bool,
 

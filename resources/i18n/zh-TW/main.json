@@ -48,10 +48,7 @@
     "unknown": "未知",
     "notAvailable": "不適用",
     "unlimited": "無限制",
-    "limitedTo": "限制為 {{rate}}",
-    "none": "無",
-    "add": "新增",
-    "select": "選取"
+    "limitedTo": "限制為 {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "大小格式無效。示例：100Ki、16Mi、1Gi 或 off",
     "tristate": "值必須為 true、false 或 unset",
     "time": "日期時間格式無效，請使用 ISO 8601：YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "列表不能僅包含空白字元",
     "bwTimetable": "頻寬格式無效",
     "fileMode": "必須為八進位制格式（3–4 位數字，每位 0–7）。示例：755",
-    "enum": "必須為以下值之一：{{values}}",
     "urlArray": "所有 URL 必須有效並以 http:// 或 https:// 開頭",
     "bandwidth": "頻寬格式無效。示例：10M、1G、100K 或組合格式",
     "passwordMismatch": "兩次輸入的密碼不一致",
@@ -85,10 +80,6 @@
       "invalidStart": "遠端連線名稱不能以橫槓或空格開頭",
       "invalidEnd": "遠端連線名稱不能以空格結尾",
       "nameTaken": "該遠端連線名稱已被使用"
-    },
-    "password": {
-      "minLength": "密碼長度至少 3 位",
-      "invalidChars": "密碼不能包含引號"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "複製 URL 進行中",
     "archivecreateActive": "封存進行中",
     "archivecreating": "封存中",
-    "syncSummary": "同步中（{{count}}）",
     "toggleSync": "切換同步快捷操作",
     "toggleCopy": "切換複製快捷操作",
     "toggleMove": "切換移動快捷操作",
@@ -135,7 +125,6 @@
     "serving": "服務執行中",
     "servingWithProfile": "服務執行中（{{profile}}）：{{type}} 在 {{addr}}",
     "servingMultiple": "服務執行中（{{count}}）：{{profiles}}",
-    "serveSummary": "服務執行中（{{count}}）",
     "profileInfo": "{{profile}}（{{type}}）",
     "toggleAction": "切換服務快捷操作",
     "successStart": "{{remote}}（{{profile}}）服務已在 {{addr}} 啟動",
@@ -277,11 +266,8 @@
     "cancelled": "Rclone 更新下載已取消。",
     "cancelFailed": "取消 Rclone 更新下載失敗。",
     "failed": "更新失敗：{{error}}",
-    "channelChanged": "Rclone 更新通道已切換為 {{channel}}",
     "skipped": "已跳過 Rclone 版本 {{version}}",
-    "restored": "已恢復 Rclone 版本 {{version}}",
-    "autoCheckEnabled": "已啟用 Rclone 自動檢查更新",
-    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新"
+    "restored": "已恢復 Rclone 版本 {{version}}"
   },
   "alerts": {
     "title": "警報與通知",
@@ -864,8 +850,7 @@
       "destination": "目標路徑",
       "openViewer": "在檢視器中開啟",
       "openViewerTooltip": "開啟完整媒體預覽",
-      "inferredFromUrl": "由 URL 推斷",
-      "imageAlt": "預覽"
+      "inferredFromUrl": "由 URL 推斷"
     },
     "installationOptions": {
       "tabs": {
@@ -931,14 +916,7 @@
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸",
-        "file": "檔案",
-        "direction": "方向",
-        "took": "耗時",
-        "when": "時間",
-        "progress": "進度",
-        "speed": "速度",
-        "eta": "剩餘時間"
+        "transferred": "已傳輸"
       },
       "status": {
         "failed": "失敗",
@@ -1297,8 +1275,7 @@
       "unknownWarning": {
         "other": "{{count}} 個未知選項：{{keys}}。這些選項可能被 rclone 忽略。"
       },
-      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。",
-      "fieldsOverview": "設定欄位概覽"
+      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。"
     },
     "passwordManager": {
       "placeholder": "輸入 rclone 設定密碼",
@@ -1381,8 +1358,7 @@
       "applyToTask": "應用到任務",
       "appliedToast": {
         "other": "已成功匯入 {{count}} 個設定專案"
-      },
-      "profileNamePlaceholder": "例如：daily-backup"
+      }
     },
     "obscure": {
       "title": "混淆密碼",
@@ -1778,9 +1754,7 @@
       "confirm": "應用",
       "cancel": "取消"
     },
-    "restored": "已恢復版本 {{version}}",
-    "restoreFailed": "恢復更新失敗",
-    "channelChanged": "更新通道已切換為 {{channel}}."
+    "restored": "已恢復版本 {{version}}"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "無法解析此專案的遠端連線",
@@ -1966,8 +1940,7 @@
       "zoomIn": "放大",
       "zoomOut": "縮小",
       "resetZoom": "重設縮放",
-      "hexPreview": "十六進位預覽",
-      "playVideo": "在影片播放器中播放"
+      "hexPreview": "十六進位預覽"
     }
   },
   "dashboard": {
@@ -2249,6 +2222,7 @@
       "skipVersion": "跳過此版本",
       "upToDate": "已是最新",
       "latestVersionMsg": "當前已是最新版本",
+      "statusUnknown": "更新狀態未知",
       "checkUpdates": "檢查更新",
       "checking": "檢查中...",
       "updateSettings": "更新設定",
@@ -2265,11 +2239,9 @@
       "whatsNewRclone": "Rclone 更新內容",
       "updateRclone": "下載 Rclone 更新",
       "rcloneUpToDate": "Rclone 已是最新",
-      "checkRcloneUpdates": "檢查 Rclone 更新",
       "rcloneUpdateSettings": "Rclone 更新設定",
       "skippedRcloneUpdates": "已跳過的 Rclone 更新",
       "devTeam": "開發團隊",
-      "leadDeveloper": "主開發者",
       "contributors": "貢獻者",
       "acknowledgments": "致謝",
       "ackText": "本應用基於現代 Web 技術構建，並依賴優秀的 Rclone 專案進行雲端儲存管理。",
@@ -2280,6 +2252,7 @@
       "updateSettingFailed": "更新設定失敗",
       "channelStable": "穩定版",
       "channelBeta": "測試版",
+      "channelDev": "開發版",
       "channelStableDesc": "推薦大多數使用者使用",
       "channelBetaDesc": "最新功能",
       "downloadPage": "下載頁面",
@@ -3442,9 +3415,7 @@
         "statsUnchanged": "{{count}} 個未變更",
         "statsConflicts": {
           "other": "{{count}} 個衝突"
-        },
-        "findPlaceholder": "要尋找的文字",
-        "replacePlaceholder": "取代文字"
+        }
       },
       "index": {
         "title": "產生目錄清單",
@@ -3648,9 +3619,6 @@
       "generic": "發生意外錯誤。請檢查日誌取得更多詳細資訊。",
       "openFailed": "開啟 {{name}} 失敗"
     }
-  },
-  "transfer": {
-    "error": "傳輸錯誤"
   },
   "generalOverview": {
     "panels": {
@@ -3867,7 +3835,6 @@
       "profileNotMounted": "設定檔案 '{{profile}}' 未在 {{remote}} 上掛載"
     },
     "operations": {
-      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整",
       "singleSourceOnly": "{{operation}} 僅支援單一來源路徑",
       "directoriesOnly": "{{operation}} 僅支援目錄，不支援檔案：{{source}}",
       "sourcePathInvalid": "無法解析來源路徑：{{path}}",
@@ -3877,7 +3844,6 @@
       "destinationMissing": "未指定目的地"
     },
     "serve": {
-      "parseFailed": "解析響應失敗：{{error}}",
       "remoteEmpty": "遠端連線名稱不能為空",
       "addressAlreadyInUse": "所選連線埠或地址已被其他程式佔用。請更換連線埠。",
       "privilegedPort": "1024 以下的連線埠需要管理員許可權。請選擇 1024 或更高的連線埠。",
@@ -3923,11 +3889,7 @@
       "notFound": "在 {{path}} 未找到 Rclone 可執行檔案",
       "spawnFailed": "啟動 rclone 處理程式失敗: {{error}}",
       "invalidPath": "指定了無效的 rclone 路徑",
-      "killFailed": "終止 rclone 處理程式失敗: {{error}}",
-      "portCleanupFailed": "清理 rclone 連線埠失敗: {{error}}",
       "configValidationFailed": "Rclone 設定驗證失敗: {{error}}",
-      "lockFailed": "取得 rclone 設定鎖失敗: {{error}}",
-      "cacheRefreshFailed": "重新整理 rclone 快取失敗: {{error}}",
       "invalidFlags": "檢測到無效的 rclone 旗標: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支援遠端更新",
       "backupFailed": "備份當前 rclone 二進位制檔案失敗：{{error}}",
@@ -4035,7 +3997,8 @@
       "ioError": "IO 錯誤：{{error}}",
       "externallyManaged": "此安裝由其套件管理程式或部署系統負責更新。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "此安裝不支援自動安裝。",
+      "notBuilt": "此版本未包含適用於此安裝的自動更新。請手動安裝。",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "這裡無法要求管理員密碼（需要搭配 polkit 代理程式的 pkexec，或搭配 zenity 或 kdialog 的 sudo）。請透過「在 GitHub 檢視」下載套件，然後在終端機中安裝：{{command}}",
@@ -4840,8 +4803,6 @@
         "appStartDesc": "RClone Manager 啟動時自動觸發",
         "cleanup": "清理垃圾桶",
         "cleanupDesc": "清空遠端垃圾桶或資源回收筒",
-        "cryptcheck": "加密完整性檢查",
-        "cryptcheckDesc": "驗證加密遠端連線的完整性",
         "execScript": "執行指令碼",
         "execScriptDesc": "執行本機 Shell 命令或指令碼",
         "quickRun": "快捷執行",

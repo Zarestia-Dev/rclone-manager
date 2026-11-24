@@ -25,7 +25,7 @@
     "sync:endpoints": "node scripts/update-endpoints.cjs",
     "optimize:svg": "svgo -f src/assets -r && node scripts/fix-svg-ids.cjs",
     "prepare": "husky",
-    "dev:server": "cargo run --manifest-path backend/Cargo.toml -p rclone-manager-server --",
+    "dev:server": "node scripts/dev-server.cjs",
     "build:server": "npm run build && cargo build --manifest-path backend/Cargo.toml -p rclone-manager-server --release"
   },
   "private": true,

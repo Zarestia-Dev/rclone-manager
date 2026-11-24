@@ -48,10 +48,7 @@
     "unknown": "Desconhecido",
     "notAvailable": "N/D",
     "unlimited": "Ilimitado",
-    "limitedTo": "Limitado a {{rate}}",
-    "none": "Nenhum",
-    "add": "Adicionar",
-    "select": "Selecionar"
+    "limitedTo": "Limitado a {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Tamanho de dados inválido. Utilize: 100ki, 16mi, 1gi ou \"off\"",
     "tristate": "O valor deve ser verdadeiro, falso ou indefinido",
     "time": "Formato de data/hora inválido. Utilize o formato ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "A lista não pode conter apenas espaços em branco",
     "bwTimetable": "Formato de banda larga inválido",
     "fileMode": "Deve ser formato octal (3-4 dígitos, cada um de 0 a 7). Exemplo: 755",
-    "enum": "Deve ser uma das opções: {{values}}",
     "urlArray": "Todos os URLs devem ser válidos e começar com http:// ou https://",
     "bandwidth": "Formato de largura de banda inválido. Utilize: 10M, 1G, 100K ou combinações",
     "passwordMismatch": "As senhas não correspondem",
@@ -85,10 +80,6 @@
       "invalidStart": "O nome remoto não pode começar com traço ou espaço",
       "invalidEnd": "Nome remoto não pode terminar com espaço",
       "nameTaken": "Este nome remoto já está em uso"
-    },
-    "password": {
-      "minLength": "A senha deve ter pelo menos 3 caracteres",
-      "invalidChars": "A senha não pode conter aspas"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "Copiar URL Ativo",
     "archivecreateActive": "Arquivo Ativo",
     "archivecreating": "Arquivamento",
-    "syncSummary": "Sincronizando ({{count}})",
     "toggleSync": "Alternar Sincronização como Ação Rápida",
     "toggleCopy": "Copiar como Ação Rápida",
     "toggleMove": "Alternar Deslocamento como Ação Rápida",
@@ -135,7 +125,6 @@
     "serving": "Servindo",
     "servingWithProfile": "Servindo {{profile}}: {{type}} em {{addr}}",
     "servingMultiple": "Serviços ({{count}}): {{profiles}}",
-    "serveSummary": "Servindo ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Alternar Servir como Ação Rápida",
     "successStart": "Iniciou com sucesso o serviço para {{remote}} ({{profile}}) em {{addr}}.",
@@ -278,11 +267,8 @@
     "cancelled": "Download da atualização do Rclone cancelado.",
     "cancelFailed": "Falha ao cancelar o download de atualização do Rclone.",
     "failed": "Atualização falhou: {{error}}}",
-    "channelChanged": "Canal de atualização do Rclone alterado para {{channel}}",
     "skipped": "Versão do Rclone {{version}} ignorada",
-    "restored": "Versão do Rclone {{version}} restaurada",
-    "autoCheckEnabled": "Atualização automática de Rclone habilitada",
-    "autoCheckDisabled": "Atualização automática do Rclone desabilitada"
+    "restored": "Versão do Rclone {{version}} restaurada"
   },
   "alerts": {
     "title": "Alertas e Notificações",
@@ -865,8 +851,7 @@
       "destination": "Destino",
       "openViewer": "Abrir no visualizador",
       "openViewerTooltip": "Abrir pré-visualização completa de mídia",
-      "inferredFromUrl": "Inferido a partir da URL",
-      "imageAlt": "Pré-visualização"
+      "inferredFromUrl": "Inferido a partir da URL"
     },
     "installationOptions": {
       "tabs": {
@@ -932,14 +917,7 @@
       },
       "table": {
         "size": "Tamanho",
-        "transferred": "transferido",
-        "file": "Arquivo",
-        "direction": "Direção",
-        "took": "Duração",
-        "when": "Quando",
-        "progress": "Progresso",
-        "speed": "Velocidade",
-        "eta": "Tempo restante"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Falhou",
@@ -1307,8 +1285,7 @@
         "one": "{{count}} opção desconhecida: {{keys}}. Isso pode ser ignorado pelo rclone.",
         "other": "{{count}} opções desconhecidas: {{keys}}. Isso pode ser ignorado pelo rclone."
       },
-      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso.",
-      "fieldsOverview": "Visão geral dos campos de configuração"
+      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso."
     },
     "passwordManager": {
       "placeholder": "Insira sua senha de configuração do rclone",
@@ -1392,8 +1369,7 @@
       "appliedToast": {
         "one": "{{count}} opção importada com sucesso",
         "other": "{{count}} opções importadas com sucesso"
-      },
-      "profileNamePlaceholder": "p. ex. daily-backup"
+      }
     },
     "obscure": {
       "title": "Senha Obscura",
@@ -1791,9 +1767,7 @@
       "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
-    "restored": "Atualização {{version}} restaurada",
-    "restoreFailed": "Falha ao restaurar atualização",
-    "channelChanged": "O canal de atualização foi alterado para {{channel}}."
+    "restored": "Atualização {{version}} restaurada"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Não foi possível resolver o endereço remoto para esse item",
@@ -1981,8 +1955,7 @@
       "zoomIn": "Aumentar zoom",
       "zoomOut": "Diminuir zoom",
       "resetZoom": "Redefinir zoom",
-      "hexPreview": "Pré-visualização hexadecimal",
-      "playVideo": "Reproduzir no reprodutor de vídeo"
+      "hexPreview": "Pré-visualização hexadecimal"
     }
   },
   "dashboard": {
@@ -2224,6 +2197,7 @@
       "skipVersion": "Ignorar Versão",
       "upToDate": "Atualizado",
       "latestVersionMsg": "Você está executando a versão mais atualizada",
+      "statusUnknown": "Status da atualização desconhecido",
       "checkUpdates": "Verificar por Atualizações",
       "checking": "Verificando...",
       "updateSettings": "Atualizar Configurações",
@@ -2240,11 +2214,9 @@
       "whatsNewRclone": "O que há de novo no Rclone",
       "updateRclone": "Baixar atualização do Rclone",
       "rcloneUpToDate": "Rclone está atualizado",
-      "checkRcloneUpdates": "Verificar por Atualizações do Rclone",
       "rcloneUpdateSettings": "Configurações de Atualização do Rclone",
       "skippedRcloneUpdates": "Atualizações do Rclone Ignoradas",
       "devTeam": "Equipe de Desenvolvimento",
-      "leadDeveloper": "Desenvolvedor Sênior ou Líder de Desenvolvimento",
       "contributors": "Colaboradores",
       "acknowledgments": "Reconhecidos",
       "ackText": "Essa aplicação é desenvolvida com tecnologias web modernas e depende do excelente projeto Rclone para o gerenciamento de armazenamento em nuvem.",
@@ -2255,6 +2227,7 @@
       "updateSettingFailed": "Não foi possível atualizar as configurações",
       "channelStable": "Estável",
       "channelBeta": "Beta",
+      "channelDev": "Desenvolvimento",
       "channelStableDesc": "Recomendado para a maioria dos usuários",
       "channelBetaDesc": "Últimas novidades",
       "downloadPage": "Página de Download",
@@ -3437,9 +3410,7 @@
         "statsConflicts": {
           "one": "{{count}} conflito",
           "other": "{{count}} conflitos"
-        },
-        "findPlaceholder": "texto a localizar",
-        "replacePlaceholder": "texto de substituição"
+        }
       },
       "index": {
         "title": "Gerar listagens de diretório",
@@ -3655,9 +3626,6 @@
       "generic": "Um erro inesperado ocorreu. Por favor, verifique os logs para mais detalhes.",
       "openFailed": "Não foi possível abrir {{name}}"
     }
-  },
-  "transfer": {
-    "error": "Erro de transferência"
   },
   "generalOverview": {
     "panels": {
@@ -3877,7 +3845,6 @@
       "profileNotMounted": "O perfil '{{profile}}' não está montado em {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'",
       "singleSourceOnly": "{{operation}} aceita apenas um caminho de origem",
       "directoriesOnly": "{{operation}} aceita apenas diretórios, não arquivos: {{source}}",
       "sourcePathInvalid": "Não foi possível ler o caminho de origem: {{path}}",
@@ -3887,7 +3854,6 @@
       "destinationMissing": "Nenhum destino especificado"
     },
     "serve": {
-      "parseFailed": "Falha ao processar resposta: {{error}}",
       "remoteEmpty": "O nome remoto não pode estar vazio",
       "addressAlreadyInUse": "A porta ou endereço selecionado já está em uso por outro aplicativo. Escolha uma porta diferente.",
       "privilegedPort": "Portas abaixo de 1024 requerem privilégios de administrador. Escolha uma porta 1024 ou superior.",
@@ -3931,11 +3897,7 @@
       "notFound": "Erro do Rclone: binário não encontrado em {{path}}",
       "spawnFailed": "Falha ao iniciar o processo do Rclone: {{error}}",
       "invalidPath": "Caminho inválido de Rclone especificado",
-      "killFailed": "Falha ao encerrar o processo rclone: {{error}}",
-      "portCleanupFailed": "Falha ao limpar os porta rclone: {{error}}",
       "configValidationFailed": "Validação da configuração do Rclone falhou: {{error}}",
-      "lockFailed": "Falha ao adquirir o bloqueio de configuração do Rclone: {{error}}",
-      "cacheRefreshFailed": "Falha ao atualizar o cache do Rclone: {{error}}",
       "invalidFlags": "Flags inválidas do rclone detectadas: {{error}}",
       "updateRemoteUnsupported": "Atualização remota não é suportada para essa versão do Rclone",
       "backupFailed": "Falha ao fazer o backup da binário atual do Rclone: {{error}}",
@@ -4045,7 +4007,8 @@
       "ioError": "Erro de E/S: {{error}}",
       "externallyManaged": "Esta instalação é atualizada pelo gerenciador de pacotes ou pelo sistema de implantação.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "A instalação automática não é suportada nesta instalação.",
+      "notBuilt": "Esta versão não inclui uma atualização automática para esta instalação. Instale-a manualmente.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Não há como pedir a senha de administrador aqui (pkexec com um agente do polkit, ou sudo com zenity ou kdialog). Baixe o pacote em “Ver no GitHub” e instale-o em um terminal: {{command}}",
@@ -4845,8 +4808,6 @@
         "appStartDesc": "Acionado automaticamente quando o RClone Manager inicia",
         "cleanup": "Esvaziar lixeira",
         "cleanupDesc": "Esvazia a lixeira do armazenamento remoto",
-        "cryptcheck": "Verificação de criptografia",
-        "cryptcheckDesc": "Verifica a integridade do remoto criptografado",
         "execScript": "Executar script",
         "execScriptDesc": "Executa um comando de terminal ou script local",
         "quickRun": "Execução rápida",

@@ -48,10 +48,7 @@
     "unknown": "Unknown",
     "notAvailable": "N/A",
     "unlimited": "Unlimited",
-    "limitedTo": "Limited to {{rate}}",
-    "none": "None",
-    "add": "Add",
-    "select": "Select"
+    "limitedTo": "Limited to {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Invalid size format. Use: 100Ki, 16Mi, 1Gi, or \"off\"",
     "tristate": "Value must be true, false, or unset",
     "time": "Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "List cannot contain only whitespace",
     "bwTimetable": "Invalid bandwidth format",
     "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
-    "enum": "Must be one of: {{values}}",
     "urlArray": "All URLs must be valid and start with http:// or https://",
     "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
     "passwordMismatch": "Passwords do not match",
@@ -85,10 +80,6 @@
       "invalidStart": "Remote name cannot start with dash or space",
       "invalidEnd": "Remote name cannot end with space",
       "nameTaken": "This remote name is already in use"
-    },
-    "password": {
-      "minLength": "Password must be at least 3 characters",
-      "invalidChars": "Password cannot contain quotes"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "Copy URL Active",
     "archivecreateActive": "Archive Active",
     "archivecreating": "Archiving",
-    "syncSummary": "Syncing ({{count}})",
     "toggleSync": "Toggle Sync as Quick Action",
     "toggleCopy": "Toggle Copy as Quick Action",
     "toggleMove": "Toggle Move as Quick Action",
@@ -135,7 +125,6 @@
     "serving": "Serving",
     "servingWithProfile": "Serving ({{profile}}): {{type}} on {{addr}}",
     "servingMultiple": "Serves ({{count}}): {{profiles}}",
-    "serveSummary": "Serving ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Toggle Serve as Quick Action",
     "successStart": "Successfully started serve for {{remote}} ({{profile}}) on {{addr}}",
@@ -278,11 +267,8 @@
     "cancelled": "Rclone update download cancelled.",
     "cancelFailed": "Failed to cancel Rclone update download.",
     "failed": "Update failed: {{error}}",
-    "channelChanged": "Rclone update channel changed to {{channel}}",
     "skipped": "Rclone version {{version}} skipped",
-    "restored": "Rclone version {{version}} restored",
-    "autoCheckEnabled": "Rclone auto-check updates enabled",
-    "autoCheckDisabled": "Rclone auto-check updates disabled"
+    "restored": "Rclone version {{version}} restored"
   },
   "alerts": {
     "title": "Alerts & Notifications",
@@ -865,8 +851,7 @@
       "destination": "Destination",
       "openViewer": "Open in Viewer",
       "openViewerTooltip": "Open full media preview",
-      "inferredFromUrl": "Inferred from URL",
-      "imageAlt": "Preview"
+      "inferredFromUrl": "Inferred from URL"
     },
     "installationOptions": {
       "tabs": {
@@ -932,14 +917,7 @@
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred",
-        "file": "File",
-        "direction": "Direction",
-        "took": "Took",
-        "when": "When",
-        "progress": "Progress",
-        "speed": "Speed",
-        "eta": "ETA"
+        "transferred": "transferred"
       },
       "status": {
         "failed": "Failed",
@@ -1307,8 +1285,7 @@
         "one": "{{count}} unknown option: {{keys}}. It might be ignored by rclone.",
         "other": "{{count}} unknown options: {{keys}}. These might be ignored by rclone."
       },
-      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead.",
-      "fieldsOverview": "Config fields overview"
+      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead."
     },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
@@ -1392,8 +1369,7 @@
       "appliedToast": {
         "one": "Successfully imported {{count}} option",
         "other": "Successfully imported {{count}} options"
-      },
-      "profileNamePlaceholder": "e.g. daily-backup"
+      }
     },
     "obscure": {
       "title": "Obscure Password",
@@ -1791,9 +1767,7 @@
       "confirm": "Apply",
       "cancel": "Cancel"
     },
-    "restored": "Update {{version}} restored",
-    "restoreFailed": "Failed to restore update",
-    "channelChanged": "Update channel changed to {{channel}}."
+    "restored": "Update {{version}} restored"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Could not resolve remote for this item",
@@ -1981,8 +1955,7 @@
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
       "resetZoom": "Reset Zoom",
-      "hexPreview": "Hex Preview",
-      "playVideo": "Play in Video Player"
+      "hexPreview": "Hex Preview"
     }
   },
   "dashboard": {
@@ -2265,6 +2238,7 @@
       "skipVersion": "Skip Version",
       "upToDate": "Up to Date",
       "latestVersionMsg": "You're running the latest version",
+      "statusUnknown": "Update Status Unknown",
       "checkUpdates": "Check for Updates",
       "checking": "Checking...",
       "updateSettings": "Update Settings",
@@ -2281,11 +2255,9 @@
       "whatsNewRclone": "What's New in Rclone",
       "updateRclone": "Download Rclone Update",
       "rcloneUpToDate": "Rclone Up to Date",
-      "checkRcloneUpdates": "Check for Rclone Updates",
       "rcloneUpdateSettings": "Rclone Update Settings",
       "skippedRcloneUpdates": "Skipped Rclone Updates",
       "devTeam": "Development Team",
-      "leadDeveloper": "Lead Developer",
       "contributors": "Contributors",
       "acknowledgments": "Acknowledgments",
       "ackText": "This application is built with modern web technologies and relies on the excellent Rclone project for cloud storage management.",
@@ -2296,6 +2268,7 @@
       "updateSettingFailed": "Failed to update setting",
       "channelStable": "Stable",
       "channelBeta": "Beta",
+      "channelDev": "Dev",
       "channelStableDesc": "Recommended for most users",
       "channelBetaDesc": "Latest features",
       "downloadPage": "Download Page",
@@ -3478,9 +3451,7 @@
         "statsConflicts": {
           "one": "{{count}} conflict",
           "other": "{{count}} conflicts"
-        },
-        "findPlaceholder": "text to find",
-        "replacePlaceholder": "replacement text"
+        }
       },
       "index": {
         "title": "Generate Directory Listings",
@@ -3696,9 +3667,6 @@
       "generic": "An unexpected error occurred. Please check the logs for more details.",
       "openFailed": "Failed to open {{name}}"
     }
-  },
-  "transfer": {
-    "error": "Transfer error"
   },
   "generalOverview": {
     "panels": {
@@ -3918,7 +3886,6 @@
       "profileNotMounted": "Profile '{{profile}}' is not mounted on {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuration incomplete for profile '{{profile}}'",
       "singleSourceOnly": "{{operation}} supports only a single source path",
       "directoriesOnly": "{{operation}} supports only directories, not files: {{source}}",
       "sourcePathInvalid": "Could not read the source path: {{path}}",
@@ -3928,7 +3895,6 @@
       "destinationMissing": "No destination specified"
     },
     "serve": {
-      "parseFailed": "Failed to parse response: {{error}}",
       "remoteEmpty": "Remote name cannot be empty",
       "addressAlreadyInUse": "The selected port or address is already in use by another application. Please choose a different port.",
       "privilegedPort": "Ports below 1024 require administrator privileges. Please choose a port numbered 1024 or higher.",
@@ -3974,11 +3940,7 @@
       "notFound": "Rclone binary not found at {{path}}",
       "spawnFailed": "Failed to start rclone process: {{error}}",
       "invalidPath": "Invalid rclone path specified",
-      "killFailed": "Failed to terminate rclone process: {{error}}",
-      "portCleanupFailed": "Failed to clean up rclone ports: {{error}}",
       "configValidationFailed": "Rclone configuration validation failed: {{error}}",
-      "lockFailed": "Failed to acquire rclone configuration lock: {{error}}",
-      "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
       "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
       "backupFailed": "Failed to backup current rclone binary: {{error}}",
@@ -4087,6 +4049,7 @@
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "notBuilt": "This release has no automatic update for this installation. Install it by hand.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "No administrator password prompt is available here (pkexec with a polkit agent, or sudo with zenity or kdialog). Download the package with “View on GitHub” and install it in a terminal: {{command}}",
@@ -4892,8 +4855,6 @@
         "appStartDesc": "Trigger automatically when RClone Manager starts",
         "cleanup": "Cleanup Trash",
         "cleanupDesc": "Empty remote trash or recycle bin",
-        "cryptcheck": "Cryptcheck",
-        "cryptcheckDesc": "Verify integrity of encrypted remote",
         "execScript": "Execute Script",
         "execScriptDesc": "Run local shell command or script",
         "quickRun": "Quick Run",

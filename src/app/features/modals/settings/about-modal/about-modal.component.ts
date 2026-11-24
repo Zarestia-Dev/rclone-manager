@@ -4,6 +4,7 @@ import {
   computed,
   inject,
   signal,
+  Signal,
   ChangeDetectionStrategy,
   SecurityContext,
 } from '@angular/core';
@@ -13,8 +14,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { version as appVersion } from '../../../../../../package.json';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSelectModule } from '@angular/material/select';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe, FormatRelativeDatePipe, FormatNumberPipe } from '@app/pipes';
@@ -32,7 +31,8 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
-import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
+import { ViewId, OverlayView, PillTone, UpdateMetadata } from '@app/types';
+import { UpdateChannel } from 'src/app/services/infrastructure/maintenance/update-settings-manager';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import {
@@ -41,6 +41,22 @@ import {
 } from 'src/app/services/infrastructure/platform/api-client.service';
 
 import { PillDirective } from '../../../../shared/directives/pill.directive';
+
+type UpdateTarget = 'app' | 'rclone';
+
+/** Installation kinds the about page names, with the tone of their pill. */
+const PLATFORMS: Record<string, { label: string; tone: PillTone }> = {
+  deb: { label: 'DEB', tone: 'warn' },
+  rpm: { label: 'RPM', tone: 'orange' },
+  pacman: { label: 'Pacman', tone: 'accent' },
+  flatpak: { label: 'Flatpak', tone: 'accent' },
+  portable: { label: 'Portable', tone: 'accent' },
+  container: { label: 'Docker', tone: 'accent' },
+};
+
+/** rclone's changelog is a page of rclone.org, so its links (`/dosya/`, `#anchor`) are relative to it. */
+const RCLONE_CHANGELOG_URL = 'https://rclone.org/changelog/';
+
 // Configure renderer once at module level
 const renderer = new Renderer();
 renderer.link = ({ href, title, text }): string => {
@@ -57,8 +73,6 @@ renderer.link = ({ href, title, text }): string => {
     MatIconModule,
     MatButtonModule,
     MatSlideToggleModule,
-    MatSelectModule,
-    MatFormFieldModule,
     MatBadgeModule,
     MatProgressBarModule,
     FormatFileSizePipe,
@@ -75,12 +89,14 @@ renderer.link = ({ href, title, text }): string => {
 })
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
+  /** Pre-release builds carry a suffix such as `-beta.4`. */
+  readonly isPrereleaseBuild = appVersion.includes('-');
 
   private readonly dialogRef = inject(MatDialogRef<AboutModalComponent>);
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly notificationService = inject(NotificationService);
-  protected readonly appUpdaterService = inject(AppUpdaterService);
-  protected readonly rcloneUpdateService = inject(RcloneUpdateService);
+  protected readonly appUpdater = inject(AppUpdaterService);
+  protected readonly rcloneUpdater = inject(RcloneUpdateService);
   private readonly debugService = inject(DebugService);
   private readonly appLifecycle = inject(AppLifecycleService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -102,66 +118,12 @@ export class AboutModalComponent implements OnInit {
     return stack.length > 0 ? stack[stack.length - 1] : { id: 'main' as const };
   });
 
-  // ---------------------------------------------------------------------------
-  // App updater signals
-  // ---------------------------------------------------------------------------
-
-  // Directly alias service signals — no local mirror needed.
-  readonly appAutoCheckUpdates = this.appUpdaterService.autoCheckEnabled;
-  readonly appUpdateAvailable = this.appUpdaterService.updateAvailable;
-  readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
-  readonly appUpdateChannel = this.appUpdaterService.updateChannel;
-  readonly appSkippedVersions = this.appUpdaterService.skippedVersions;
-  readonly appReadyToRestart = this.appUpdaterService.readyToRestart;
-  readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
-  readonly appIsChecking = this.appUpdaterService.isChecking;
-  readonly appIsCancelling = this.appUpdaterService.isCancelling;
-  readonly appInstallationReason = this.appUpdaterService.installationReason;
-  readonly appInstallationFailure = this.appUpdaterService.installationFailure;
-  readonly appLastCheckedAt = this.appUpdaterService.lastCheckedAt;
-  readonly appCheckError = this.appUpdaterService.checkError;
-
-  readonly appUpdateReleaseChannel = computed(() => {
-    const update = this.appUpdateAvailable();
-    if (!update) return null;
-    return update.prerelease ? 'beta' : 'stable';
-  });
-
-  readonly appDownloadProgress = computed(() => this.appDownloadStatus()?.downloadedBytes ?? 0);
-  readonly appDownloadTotal = computed(() => this.appDownloadStatus()?.totalBytes ?? 0);
-  readonly appDownloadPercentage = computed(() => this.appDownloadStatus()?.percentage ?? 0);
-  readonly appDownloadInProgress = computed(() => {
-    const status = this.appDownloadStatus();
-    return (
-      !!this.appUpdateInProgress() &&
-      status?.state.status !== DownloadStateStatus.Complete &&
-      status?.state.status !== DownloadStateStatus.Failed
-    );
-  });
-
-  // ---------------------------------------------------------------------------
-  // Rclone updater signals
-  // ---------------------------------------------------------------------------
-
-  readonly rcloneUpdateAvailable = this.rcloneUpdateService.updateAvailable;
-  readonly rcloneHasUpdates = this.rcloneUpdateService.hasUpdates;
-  readonly rcloneUpdateInProgress = this.rcloneUpdateService.downloading;
-  readonly rcloneIsChecking = this.rcloneUpdateService.isChecking;
-  readonly rcloneIsCancelling = this.rcloneUpdateService.isCancelling;
-  readonly rcloneReadyToRestart = this.rcloneUpdateService.readyToRestart;
-  readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
-  readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
-  readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheckEnabled;
-  readonly rcloneLastCheckedAt = this.rcloneUpdateService.lastCheckedAt;
-  readonly rcloneUpdateError = this.rcloneUpdateService.error;
-  readonly rcloneNotice = this.rcloneUpdateService.notice;
-
   readonly restartingApp = signal(false);
   readonly restartingRcloneEngine = signal(false);
 
-  readonly isHeadless: boolean = isHeadlessMode();
+  readonly isHeadless = isHeadlessMode();
   /** The OS owns a native mobile app's process, so it can neither restart itself nor open DevTools. */
-  readonly isNativeMobile: boolean = !this.isHeadless && isMobile();
+  readonly isNativeMobile = !this.isHeadless && isMobile();
 
   // ---------------------------------------------------------------------------
   // Rclone info
@@ -189,8 +151,7 @@ export class AboutModalComponent implements OnInit {
   // Platform / fscache
   // ---------------------------------------------------------------------------
 
-  readonly buildType = this.appUpdaterService.buildType;
-  readonly rcloneUpdateEnabled = this.rcloneUpdateService.isUpdaterEnabled;
+  readonly buildType = this.appUpdater.buildType;
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
   readonly isLibrclone = signal(false);
@@ -202,42 +163,66 @@ export class AboutModalComponent implements OnInit {
   readonly debugInfo = signal<DebugInfo | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Memoized markdown rendering
+  // Release notes view
   // ---------------------------------------------------------------------------
 
-  readonly formattedAppReleaseNotes = computed(() =>
-    this.formatReleaseNotes(this.appUpdateAvailable()?.releaseNotes)
-  );
+  /** The release the notes view shows; null while the installed one loads. */
+  readonly shownRelease = signal<UpdateMetadata | null>(null);
+  /** Whose notes the view shows; the links of rclone's notes are relative to rclone.org. */
+  private readonly shownTarget = signal<UpdateTarget>('app');
+  readonly releaseNotesError = signal('');
+  private releaseNotesRequest = 0;
 
-  readonly formattedRcloneReleaseNotes = computed(() =>
-    this.formatReleaseNotes(this.rcloneUpdateAvailable()?.releaseNotes)
+  readonly formattedReleaseNotes = computed(() =>
+    this.formatReleaseNotes(
+      this.shownRelease()?.releaseNotes,
+      this.shownTarget() === 'rclone' ? RCLONE_CHANGELOG_URL : undefined
+    )
   );
 
   // ---------------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------------
 
-  readonly channels = [
+  readonly channels: {
+    value: UpdateChannel;
+    label: string;
+    description: string;
+    tone: PillTone;
+  }[] = [
     {
       value: 'stable',
       label: 'modals.about.channelStable',
       description: 'modals.about.channelStableDesc',
+      tone: 'primary',
     },
     {
       value: 'beta',
       label: 'modals.about.channelBeta',
       description: 'modals.about.channelBetaDesc',
+      tone: 'orange',
     },
   ];
 
-  readonly navItems: { label: string; viewId: ViewId; icon: string }[] = [
-    { label: 'modals.about.details', viewId: 'details', icon: 'chevron-right' },
-    { label: 'modals.about.aboutRclone', viewId: 'about-rclone', icon: 'chevron-right' },
+  readonly navItems: { label: string; viewId: ViewId; badge?: Signal<boolean> }[] = [
+    { label: 'modals.about.details', viewId: 'details' },
+    {
+      label: 'modals.about.aboutRclone',
+      viewId: 'about-rclone',
+      badge: computed(() => this.rcloneUpdater.hasUpdates() || this.rcloneUpdater.readyToRestart()),
+    },
+    {
+      label: 'modals.about.aboutApp',
+      viewId: 'about-app',
+      badge: computed(
+        () => !!this.appUpdater.updateAvailable() || this.appUpdater.readyToRestart()
+      ),
+    },
   ];
 
-  readonly bottomNavItems: { label: string; viewId: ViewId; icon: string }[] = [
-    { label: 'modals.about.credits', viewId: 'credits', icon: 'chevron-right' },
-    { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
+  readonly bottomNavItems: { label: string; viewId: ViewId }[] = [
+    { label: 'modals.about.credits', viewId: 'credits' },
+    { label: 'modals.about.legal', viewId: 'legal' },
   ];
 
   readonly contributors = [
@@ -255,20 +240,15 @@ export class AboutModalComponent implements OnInit {
     { name: 'Renato Pires', github: 'repires' },
   ] as const;
 
-  readonly rcloneNavBadge = computed(() => {
-    return this.rcloneHasUpdates() || this.rcloneReadyToRestart();
-  });
-
-  // Static lookup — extracted to a field so getPageTitle() doesn't allocate a
-  // new object literal on every call.
-  private readonly pageTitleMap: Partial<Record<ViewId | 'main', string>> = {
+  readonly pageTitles: Record<ViewId, string> = {
     details: 'modals.about.details',
     'about-app': 'modals.about.aboutApp',
     'about-rclone': 'modals.about.aboutRclone',
+    'app-update-settings': 'modals.about.updateSettings',
+    'rclone-update-settings': 'modals.about.rcloneUpdateSettings',
     credits: 'modals.about.credits',
     legal: 'modals.about.legal',
-    'whats-new-app': 'modals.about.whatsNew',
-    'whats-new-rclone': 'modals.about.whatsNew',
+    'release-notes': 'modals.about.whatsNew',
     memory: 'modals.about.memoryStats',
     debugging: 'modals.about.debugTools',
   };
@@ -303,8 +283,35 @@ export class AboutModalComponent implements OnInit {
     this.overlayStack.update(stack => stack.slice(0, -1));
   }
 
-  showWhatsNew(type: 'app' | 'rclone'): void {
-    this.navigateTo(`whats-new-${type}` as ViewId);
+  showReleaseNotes(release: UpdateMetadata, target: UpdateTarget): void {
+    ++this.releaseNotesRequest;
+    this.shownTarget.set(target);
+    this.shownRelease.set(release);
+    this.releaseNotesError.set('');
+    this.navigateTo('release-notes');
+  }
+
+  /** Shows the notes of the installed version, which only GitHub has. */
+  async showInstalledReleaseNotes(target: UpdateTarget): Promise<void> {
+    const request = ++this.releaseNotesRequest;
+    this.shownTarget.set(target);
+    this.shownRelease.set(null);
+    this.releaseNotesError.set('');
+    this.navigateTo('release-notes');
+    try {
+      const release =
+        target === 'app'
+          ? await this.appUpdater.installedRelease()
+          : await this.rcloneUpdater.installedRelease(this.rcloneInfo()?.version ?? '');
+      if (request === this.releaseNotesRequest) this.shownRelease.set(release);
+    } catch (error) {
+      if (request !== this.releaseNotesRequest) return;
+      console.error('Failed to load release notes:', error);
+      this.releaseNotesError.set(
+        this.backendTranslation.translateBackendMessage(error) ||
+          this.translate.instant('common.error')
+      );
+    }
   }
 
   close(): void {
@@ -315,27 +322,13 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  getPageTitle(viewId?: ViewId): string {
-    const id = viewId ?? this.currentView().id;
-    return this.pageTitleMap[id] ?? '';
-  }
-
   // ---------------------------------------------------------------------------
-  // App updater actions
+  // Updater actions
   // ---------------------------------------------------------------------------
 
-  async checkForUpdates(): Promise<void> {
-    if (this.appIsChecking()) return;
-    await this.appUpdaterService.checkForUpdates();
-  }
-
-  async installUpdate(): Promise<void> {
-    if (this.appUpdateInProgress()) return;
-    await this.appUpdaterService.installUpdate();
-  }
-
-  async cancelAppUpdate(): Promise<void> {
-    await this.appUpdaterService.cancelUpdate();
+  /** The updater a shared template section acts on. */
+  updater(target: UpdateTarget): AppUpdaterService | RcloneUpdateService {
+    return target === 'app' ? this.appUpdater : this.rcloneUpdater;
   }
 
   async finishUpdate(): Promise<void> {
@@ -343,7 +336,7 @@ export class AboutModalComponent implements OnInit {
     this.restartingApp.set(true);
     try {
       // The service reports failures itself.
-      await this.appUpdaterService.finishUpdate();
+      await this.appUpdater.finishUpdate();
     } finally {
       this.restartingApp.set(false);
     }
@@ -367,96 +360,15 @@ export class AboutModalComponent implements OnInit {
     }
   }
 
-  async skipUpdate(): Promise<void> {
-    const update = this.appUpdateAvailable();
-    if (!update) return;
-    await this.appUpdaterService.skipVersion(update.version);
-  }
-
-  async unskipVersion(version: string): Promise<void> {
-    // Note: no loading state needed — the button has no disabled binding.
-    try {
-      await this.appUpdaterService.unskipVersion(version);
-      this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
-    } catch (error) {
-      console.error('Failed to unskip version:', error);
-      this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
-    }
-  }
-
-  async toggleAutoCheck(): Promise<void> {
-    try {
-      await this.appUpdaterService.setAutoCheckEnabled(!this.appAutoCheckUpdates());
-    } catch (error) {
-      console.error('Failed to toggle auto-check:', error);
-      this.notificationService.showError(
-        this.translate.instant('modals.about.updateSettingFailed')
-      );
-    }
-  }
-
-  async changeChannel(channel: string): Promise<void> {
-    await this.appUpdaterService.setChannel(channel);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Rclone updater actions
-  // ---------------------------------------------------------------------------
-
-  async checkForRcloneUpdates(): Promise<void> {
-    if (this.rcloneIsChecking()) return;
-    await this.rcloneUpdateService.checkForUpdates();
-  }
-
-  async installRcloneUpdate(): Promise<void> {
-    if (this.rcloneUpdateInProgress()) return;
-    await this.rcloneUpdateService.performUpdate();
-  }
-
-  async cancelRcloneUpdate(): Promise<void> {
-    await this.rcloneUpdateService.cancelUpdate();
-  }
-
   async applyRcloneUpdate(): Promise<void> {
-    if (!this.rcloneReadyToRestart() || this.restartingRcloneEngine()) return;
+    if (!this.rcloneUpdater.readyToRestart() || this.restartingRcloneEngine()) return;
     this.restartingRcloneEngine.set(true);
     try {
       // The service reports failures itself.
-      await this.rcloneUpdateService.applyUpdate();
+      await this.rcloneUpdater.applyUpdate();
     } finally {
       this.restartingRcloneEngine.set(false);
     }
-  }
-
-  async skipRcloneUpdate(): Promise<void> {
-    const info = this.rcloneUpdateAvailable();
-    if (!info) return;
-    await this.rcloneUpdateService.skipVersion(info.version);
-  }
-
-  async unskipRcloneVersion(version: string): Promise<void> {
-    try {
-      await this.rcloneUpdateService.unskipVersion(version);
-      this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
-    } catch (error) {
-      console.error('Failed to unskip rclone version:', error);
-      this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
-    }
-  }
-
-  async toggleRcloneAutoCheck(): Promise<void> {
-    try {
-      await this.rcloneUpdateService.setAutoCheckEnabled(!this.rcloneAutoCheck());
-    } catch (error) {
-      console.error('Failed to toggle rclone auto-check:', error);
-      this.notificationService.showError(
-        this.translate.instant('modals.about.updateSettingFailed')
-      );
-    }
-  }
-
-  async changeRcloneChannel(channel: string): Promise<void> {
-    await this.rcloneUpdateService.setChannel(channel);
   }
 
   // ---------------------------------------------------------------------------
@@ -464,13 +376,13 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   readonly updateInstructions = computed(() => {
-    if (this.appUpdaterService.canAutoInstall()) return null;
+    if (this.appUpdater.canAutoInstall()) return null;
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
     // The backend builds the command for the detected installation (AUR helper, Flatpak ID).
-    const command = this.appUpdaterService.installationCommand() || undefined;
+    const command = this.appUpdater.installationCommand() || undefined;
     switch (this.buildType()) {
       case 'pacman': {
-        const pkg = this.appUpdaterService.installationPackage();
+        const pkg = this.appUpdater.installationPackage();
         const url = pkg
           ? `https://aur.archlinux.org/packages/${encodeURIComponent(pkg)}`
           : 'https://aur.archlinux.org/packages?K=rclone-manager';
@@ -496,7 +408,7 @@ export class AboutModalComponent implements OnInit {
             {
               label: 'modals.about.viewOnGithub',
               url:
-                this.appUpdateAvailable()?.releaseUrl ||
+                this.appUpdater.updateAvailable()?.releaseUrl ||
                 'https://github.com/Zarestia-Dev/rclone-manager/releases/latest',
             },
           ],
@@ -582,42 +494,33 @@ export class AboutModalComponent implements OnInit {
   }
 
   formatReleaseDate(dateString: string): string {
-    try {
-      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang() ?? 'en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
+    return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang() ?? 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   }
 
-  getChannelLabel(channel: string | null | undefined): string {
-    if (!channel) return '';
-    return this.channels.find(c => c.value === channel)?.label ?? channel;
+  getPlatform(buildType: string): { label: string; tone: PillTone } {
+    return PLATFORMS[buildType] ?? { label: buildType.toUpperCase(), tone: 'accent' };
   }
 
-  getPlatformLabel(buildType: string | null | undefined): string {
-    if (!buildType) return '';
-    const labels: Record<string, string> = {
-      deb: 'DEB',
-      rpm: 'RPM',
-      pacman: 'Pacman',
-      flatpak: 'Flatpak',
-      portable: 'Portable',
-      container: 'Docker',
-    };
-    return labels[buildType] ?? buildType.toUpperCase();
-  }
-
-  private formatReleaseNotes(markdown: string | undefined | null): SafeHtml {
+  private formatReleaseNotes(markdown: string | undefined | null, linkBase?: string): SafeHtml {
     if (!markdown) {
       return this.sanitizer.bypassSecurityTrustHtml(
         `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
       );
     }
-    const rawHtml = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
+    const rawHtml = marked.parse(markdown, {
+      gfm: true,
+      breaks: true,
+      renderer,
+      walkTokens: token => {
+        if (linkBase && token.type === 'link' && /^[/#]/.test(token.href)) {
+          token.href = new URL(token.href, linkBase).href;
+        }
+      },
+    }) as string;
     const sanitizedHtml = this.sanitizer.sanitize(SecurityContext.HTML, rawHtml) ?? '';
     return this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml);
   }

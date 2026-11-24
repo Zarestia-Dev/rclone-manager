@@ -48,10 +48,7 @@
     "unknown": "Bilinmiyor",
     "notAvailable": "Yok",
     "unlimited": "Sınırsız",
-    "limitedTo": "{{rate}} ile sınırlı",
-    "none": "Yok",
-    "add": "Ekle",
-    "select": "Seç"
+    "limitedTo": "{{rate}} ile sınırlı"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Geçersiz boyut formatı. Kullanım: 100Ki, 16Mi, 1Gi veya \"off\"",
     "tristate": "Değer true, false veya boş olmalıdır",
     "time": "Geçersiz tarih/saat formatı. ISO 8601 kullanın: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Liste sadece boşluk içeremez",
     "bwTimetable": "Geçersiz bant genişliği formatı",
     "fileMode": "Sekizli formatta olmalıdır (3-4 rakam, her biri 0-7). Örnek: 755",
-    "enum": "Şunlardan biri olmalıdır: {{values}}",
     "urlArray": "Tüm URL'ler geçerli olmalı ve http:// veya https:// ile başlamalıdır",
     "bandwidth": "Geçersiz bant genişliği formatı. Kullanım: 10M, 1G, 100K veya kombinasyonlar",
     "passwordMismatch": "Şifreler eşleşmiyor",
@@ -85,10 +80,6 @@
       "invalidStart": "Uzak sunucu adı tire veya boşlukla başlayamaz",
       "invalidEnd": "Uzak sunucu adı boşlukla bitemez",
       "nameTaken": "Bu uzak sunucu adı zaten kullanılıyor"
-    },
-    "password": {
-      "minLength": "Şifre en az 3 karakter olmalıdır",
-      "invalidChars": "Şifre tırnak işareti içeremez"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "URL Kopyalama Etkin",
     "archivecreateActive": "Arşiv Eylemi Etkin",
     "archivecreating": "Arşivleniyor",
-    "syncSummary": "Senkronize Ediliyor ({{count}})",
     "toggleSync": "Senkronizasyonu Hızlı İşlem Olarak Değiştir",
     "toggleCopy": "Kopyalamayı Hızlı İşlem Olarak Değiştir",
     "toggleMove": "Taşımayı Hızlı İşlem Olarak Değiştir",
@@ -135,7 +125,6 @@
     "serving": "Sunuluyor",
     "servingWithProfile": "Sunuluyor ({{profile}}): {{addr}} üzerinde {{type}}",
     "servingMultiple": "Sunumlar ({{count}}): {{profiles}}",
-    "serveSummary": "Sunuluyor ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Sunumu Hızlı İşlem Olarak Değiştir",
     "successStart": "{{remote}} ({{profile}}) için sunum {{addr}} üzerinde başarıyla başlatıldı",
@@ -278,11 +267,8 @@
     "cancelled": "Rclone güncelleme indirmesi iptal edildi.",
     "cancelFailed": "Rclone güncelleme indirmesi iptal edilemedi.",
     "failed": "Güncelleme başarısız: {{error}}",
-    "channelChanged": "Rclone güncelleme kanalı {{channel}} olarak değiştirildi",
     "skipped": "Rclone sürümü {{version}} atlandı",
-    "restored": "Rclone sürümü {{version}} geri yüklendi",
-    "autoCheckEnabled": "Rclone otomatik güncelleme kontrolü etkinleştirildi",
-    "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı"
+    "restored": "Rclone sürümü {{version}} geri yüklendi"
   },
   "alerts": {
     "title": "Uyarılar ve Bildirimler",
@@ -865,8 +851,7 @@
       "destination": "Hedef",
       "openViewer": "Görüntüleyicide Aç",
       "openViewerTooltip": "Tam medya önizlemesini aç",
-      "inferredFromUrl": "URL'den çıkarıldı",
-      "imageAlt": "Önizleme"
+      "inferredFromUrl": "URL'den çıkarıldı"
     },
     "installationOptions": {
       "tabs": {
@@ -932,14 +917,7 @@
       },
       "table": {
         "size": "Boyut",
-        "transferred": "aktarıldı",
-        "file": "Dosya",
-        "direction": "Yön",
-        "took": "Süre",
-        "when": "Zaman",
-        "progress": "İlerleme",
-        "speed": "Hız",
-        "eta": "Kalan süre"
+        "transferred": "aktarıldı"
       },
       "status": {
         "failed": "Başarısız",
@@ -1307,8 +1285,7 @@
         "one": "{{count}} bilinmeyen seçenek: {{keys}}. Bu, rclone tarafından yoksayılabilir.",
         "other": "{{count}} bilinmeyen seçenek: {{keys}}. Bunlar rclone tarafından yoksayılabilir."
       },
-      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin.",
-      "fieldsOverview": "Yapılandırma alanlarına genel bakış"
+      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin."
     },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -1392,8 +1369,7 @@
       "appliedToast": {
         "one": "{{count}} ayar başarıyla içe aktarıldı",
         "other": "{{count}} ayar başarıyla içe aktarıldı"
-      },
-      "profileNamePlaceholder": "ör. daily-backup"
+      }
     },
     "obscure": {
       "title": "Şifreyi Gizle (Obscure)",
@@ -1791,9 +1767,7 @@
       "confirm": "Uygula",
       "cancel": "İptal"
     },
-    "restored": "Güncelleme {{version}} geri yüklendi",
-    "restoreFailed": "Güncelleme geri yüklenemedi",
-    "channelChanged": "Güncelleme kanalı {{channel}} olarak değiştirildi."
+    "restored": "Güncelleme {{version}} geri yüklendi"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Bu öğe için uzak bağlantı çözümlenemedi",
@@ -1981,8 +1955,7 @@
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
       "resetZoom": "Yakınlaştırmayı Sıfırla",
-      "hexPreview": "Hex Önizleme",
-      "playVideo": "Videoyu Oynat"
+      "hexPreview": "Hex Önizleme"
     }
   },
   "dashboard": {
@@ -2265,6 +2238,7 @@
       "skipVersion": "Sürümü Atla",
       "upToDate": "Güncel",
       "latestVersionMsg": "En son sürümü çalıştırıyorsunuz",
+      "statusUnknown": "Güncelleme Durumu Bilinmiyor",
       "checkUpdates": "Güncellemeleri Kontrol Et",
       "checking": "Kontrol ediliyor...",
       "updateSettings": "Güncelleme Ayarları",
@@ -2281,11 +2255,9 @@
       "whatsNewRclone": "Rclone'daki Yenilikler",
       "updateRclone": "Rclone Güncellemesini İndir",
       "rcloneUpToDate": "Rclone Güncel",
-      "checkRcloneUpdates": "Rclone Güncellemelerini Kontrol Et",
       "rcloneUpdateSettings": "Rclone Güncelleme Ayarları",
       "skippedRcloneUpdates": "Atlanan Rclone Güncellemeleri",
       "devTeam": "Geliştirme Ekibi",
-      "leadDeveloper": "Baş Geliştirici",
       "contributors": "Katkıda Bulunanlar",
       "acknowledgments": "Teşekkürler",
       "ackText": "Bu uygulama modern web teknolojileri ile geliştirilmiştir ve bulut depolama yönetimi için mükemmel Rclone projesini temel alır.",
@@ -2296,6 +2268,7 @@
       "updateSettingFailed": "Ayar güncellenemedi",
       "channelStable": "Kararlı",
       "channelBeta": "Beta",
+      "channelDev": "Geliştirme",
       "channelStableDesc": "Çoğu kullanıcı için önerilir",
       "channelBetaDesc": "En yeni özellikler",
       "downloadPage": "İndirme Sayfası",
@@ -3478,9 +3451,7 @@
         "statsConflicts": {
           "one": "{{count}} çakışma",
           "other": "{{count}} çakışma"
-        },
-        "findPlaceholder": "aranacak metin",
-        "replacePlaceholder": "yerine konacak metin"
+        }
       },
       "index": {
         "title": "Dizin Listeleri Oluştur",
@@ -3696,9 +3667,6 @@
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
       "openFailed": "{{name}} açılamadı"
     }
-  },
-  "transfer": {
-    "error": "Transfer hatası"
   },
   "generalOverview": {
     "panels": {
@@ -3918,7 +3886,6 @@
       "profileNotMounted": "'{{profile}}' profili {{remote}} üzerinde bağlı değil"
     },
     "operations": {
-      "configIncomplete": "'{{profile}}' profili için yapılandırma eksik",
       "singleSourceOnly": "{{operation}} yalnızca tek bir kaynak yolunu destekler",
       "directoriesOnly": "{{operation}} yalnızca dizinleri destekler, dosyaları değil: {{source}}",
       "sourcePathInvalid": "Kaynak yolu okunamadı: {{path}}",
@@ -3928,7 +3895,6 @@
       "destinationMissing": "Hedef belirtilmedi"
     },
     "serve": {
-      "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
       "remoteEmpty": "Uzak bağlantı adı boş olamaz",
       "addressAlreadyInUse": "Seçilen port veya adres başka bir uygulama tarafından kullanılıyor. Lütfen farklı bir port seçin.",
       "privilegedPort": "1024'ten küçük portlar yönetici ayrıcalığı gerektirir. Lütfen 1024 veya üzeri bir port seçin.",
@@ -3974,11 +3940,7 @@
       "notFound": "Rclone ikili dosyası {{path}} konumunda bulunamadı",
       "spawnFailed": "Rclone işlemi başlatılamadı: {{error}}",
       "invalidPath": "Geçersiz rclone yolu belirtildi",
-      "killFailed": "Rclone işlemi sonlandırılamadı: {{error}}",
-      "portCleanupFailed": "Rclone bağlantı noktaları temizlenemedi: {{error}}",
       "configValidationFailed": "Rclone yapılandırma doğrulaması başarısız oldu: {{error}}",
-      "lockFailed": "Rclone yapılandırma kilidi alınamadı: {{error}}",
-      "cacheRefreshFailed": "Rclone önbelleği yenilenemedi: {{error}}",
       "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
       "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor",
       "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}",
@@ -4087,6 +4049,7 @@
       "externallyManaged": "Bu kurulum paket yöneticisi veya dağıtım sistemi üzerinden güncellenir.",
       "disabledByAdministrator": "Uygulama güncellemeleri yönetici tarafından devre dışı bırakıldı.",
       "unsupportedInstallation": "Bu kurulum otomatik güncelleme yüklemeyi desteklemiyor.",
+      "notBuilt": "Bu sürümde bu kurulum için otomatik güncelleme yok. Lütfen manuel olarak yükleyin.",
       "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
       "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır.",
       "noPrivilegePrompt": "Burada yönetici parolasını soracak bir araç yok (polkit ajanıyla pkexec ya da zenity veya kdialog ile sudo). Paketi “GitHub'da Göster” ile indirip terminalde kurun: {{command}}",
@@ -4892,8 +4855,6 @@
         "appStartDesc": "RClone Manager başladığında otomatik tetiklenir",
         "cleanup": "Çöp Kutusunu Temizle",
         "cleanupDesc": "Uzak depolamadaki çöp kutusunu boşalt",
-        "cryptcheck": "Şifreli Bütünlük Kontrolü",
-        "cryptcheckDesc": "Şifrelenmiş remote bütünlüğünü doğrula",
         "execScript": "Betik / Komut Çalıştır",
         "execScriptDesc": "Yerel kabuk komutu veya betik çalıştır",
         "quickRun": "Hızlı İşlem",

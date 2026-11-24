@@ -115,13 +115,11 @@ export interface UpdatePolicy {
   command?: string;
 }
 
-export interface UpdateInfo {
+/** A release as the backend describes it: an update found, or the installed version. */
+export interface UpdateMetadata {
   version: string;
   currentVersion: string;
   updateAvailable: boolean;
-  status: BackendUpdateStatus;
-  download?: DownloadStatus;
-  installation?: UpdatePolicy;
   releaseTag?: string;
   releaseNotes?: string;
   releaseDate?: string;
@@ -129,6 +127,12 @@ export interface UpdateInfo {
   channel?: string;
   /** The release is a pre-release. */
   prerelease?: boolean;
+}
+
+export interface UpdateInfo extends UpdateMetadata {
+  status: BackendUpdateStatus;
+  download?: DownloadStatus;
+  installation?: UpdatePolicy;
 }
 
 /** The backend's updater state, complete enough to rebuild the view after a reload. */
@@ -241,10 +245,11 @@ export type ViewId =
   | 'details'
   | 'about-app'
   | 'about-rclone'
+  | 'app-update-settings'
+  | 'rclone-update-settings'
   | 'credits'
   | 'legal'
-  | 'whats-new-app'
-  | 'whats-new-rclone'
+  | 'release-notes'
   | 'memory'
   | 'debugging';
 

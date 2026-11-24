@@ -81,8 +81,8 @@ pub trait Host: Send + Sync {
         &self,
         _release: &crate::utils::github_client::Release,
         _expected_version: &str,
-    ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
-        Ok(None)
+    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
+        Ok(crate::utils::types::updater::ReleaseArtifact::Unpublished)
     }
 }
 

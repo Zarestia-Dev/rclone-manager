@@ -48,10 +48,7 @@
     "unknown": "Neznáme",
     "notAvailable": "Nedostupné",
     "unlimited": "Bez obmedzenia",
-    "limitedTo": "Obmedzené na {{rate}}",
-    "none": "Žiadne",
-    "add": "Pridať",
-    "select": "Vybrať"
+    "limitedTo": "Obmedzené na {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Neplatný formát veľkosti. Použite: 100Ki, 16Mi, 1Gi alebo \"off\"",
     "tristate": "Hodnota musí byť true, false alebo nenastavená",
     "time": "Neplatný formát dátumu a času. Použite ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Zoznam nemôže obsahovať iba medzery",
     "bwTimetable": "Neplatný formát šírky pásma",
     "fileMode": "Musí byť v osmičkovom formáte (3 – 4 číslice, každá 0 – 7). Príklad: 755",
-    "enum": "Musí byť jedna z hodnôt: {{values}}",
     "urlArray": "Všetky URL adresy musia byť platné a začínať na http:// alebo https://",
     "bandwidth": "Neplatný formát šírky pásma. Použite: 10M, 1G, 100K alebo ich kombinácie",
     "passwordMismatch": "Heslá sa nezhodujú",
@@ -85,10 +80,6 @@
       "invalidStart": "Názov vzdialeného úložiska nemôže začínať pomlčkou ani medzerou",
       "invalidEnd": "Názov vzdialeného úložiska nemôže končiť medzerou",
       "nameTaken": "Tento názov vzdialeného úložiska sa už používa"
-    },
-    "password": {
-      "minLength": "Heslo musí mať aspoň 3 znaky",
-      "invalidChars": "Heslo nemôže obsahovať úvodzovky"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "Kopírovanie URL je aktívne",
     "archivecreateActive": "Archivácia je aktívna",
     "archivecreating": "Archivuje sa",
-    "syncSummary": "Synchronizuje sa ({{count}})",
     "toggleSync": "Prepnúť synchronizáciu ako rýchlu akciu",
     "toggleCopy": "Prepnúť kopírovanie ako rýchlu akciu",
     "toggleMove": "Prepnúť presun ako rýchlu akciu",
@@ -135,7 +125,6 @@
     "serving": "Server beží",
     "servingWithProfile": "Server ({{profile}}): {{type}} na {{addr}}",
     "servingMultiple": "Servery ({{count}}): {{profiles}}",
-    "serveSummary": "Servery ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Prepnúť server ako rýchlu akciu",
     "successStart": "Server pre {{remote}} ({{profile}}) bol úspešne spustený na {{addr}}",
@@ -279,11 +268,8 @@
     "cancelled": "Sťahovanie aktualizácie rclone bolo zrušené.",
     "cancelFailed": "Zrušenie sťahovania aktualizácie rclone zlyhalo.",
     "failed": "Aktualizácia zlyhala: {{error}}",
-    "channelChanged": "Kanál aktualizácií rclone bol zmenený na {{channel}}",
     "skipped": "Verzia rclone {{version}} bola preskočená",
-    "restored": "Verzia rclone {{version}} bola obnovená",
-    "autoCheckEnabled": "Automatická kontrola aktualizácií rclone je zapnutá",
-    "autoCheckDisabled": "Automatická kontrola aktualizácií rclone je vypnutá"
+    "restored": "Verzia rclone {{version}} bola obnovená"
   },
   "alerts": {
     "title": "Výstrahy a upozornenia",
@@ -866,8 +852,7 @@
       "destination": "Cieľ",
       "openViewer": "Otvoriť v prehliadači",
       "openViewerTooltip": "Otvoriť úplný náhľad média",
-      "inferredFromUrl": "Odvodené z URL",
-      "imageAlt": "Náhľad"
+      "inferredFromUrl": "Odvodené z URL"
     },
     "installationOptions": {
       "tabs": {
@@ -933,14 +918,7 @@
       },
       "table": {
         "size": "Veľkosť",
-        "transferred": "prenesené",
-        "file": "Súbor",
-        "direction": "Smer",
-        "took": "Trvalo",
-        "when": "Kedy",
-        "progress": "Priebeh",
-        "speed": "Rýchlosť",
-        "eta": "Zostáva"
+        "transferred": "prenesené"
       },
       "status": {
         "failed": "Zlyhalo",
@@ -1317,8 +1295,7 @@
         "few": "{{count}} neznáme možnosti: {{keys}}. Rclone ich môže ignorovať.",
         "other": "{{count}} neznámych možností: {{keys}}. Rclone ich môže ignorovať."
       },
-      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec.",
-      "fieldsOverview": "Prehľad konfiguračných polí"
+      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec."
     },
     "passwordManager": {
       "placeholder": "Zadajte heslo ku konfigurácii rclone",
@@ -1403,8 +1380,7 @@
         "one": "Úspešne importovaná {{count}} možnosť",
         "few": "Úspešne importované {{count}} možnosti",
         "other": "Úspešne importovaných {{count}} možností"
-      },
-      "profileNamePlaceholder": "napr. daily-backup"
+      }
     },
     "obscure": {
       "title": "Zamaskovať heslo",
@@ -1804,9 +1780,7 @@
       "confirm": "Použiť",
       "cancel": "Zrušiť"
     },
-    "restored": "Aktualizácia {{version}} bola obnovená",
-    "restoreFailed": "Obnovenie aktualizácie zlyhalo",
-    "channelChanged": "Kanál aktualizácií bol zmenený na {{channel}}."
+    "restored": "Aktualizácia {{version}} bola obnovená"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Pre túto položku sa nepodarilo určiť vzdialené úložisko",
@@ -1996,8 +1970,7 @@
       "zoomIn": "Priblížiť",
       "zoomOut": "Oddialiť",
       "resetZoom": "Obnoviť priblíženie",
-      "hexPreview": "Hexadecimálny náhľad",
-      "playVideo": "Prehrať v prehrávači videa"
+      "hexPreview": "Hexadecimálny náhľad"
     }
   },
   "dashboard": {
@@ -2281,6 +2254,7 @@
       "skipVersion": "Preskočiť verziu",
       "upToDate": "Aktuálne",
       "latestVersionMsg": "Používate najnovšiu verziu",
+      "statusUnknown": "Stav aktualizácií neznámy",
       "checkUpdates": "Skontrolovať aktualizácie",
       "checking": "Kontroluje sa...",
       "updateSettings": "Nastavenia aktualizácií",
@@ -2297,11 +2271,9 @@
       "whatsNewRclone": "Čo je nové v rclone",
       "updateRclone": "Stiahnuť aktualizáciu rclone",
       "rcloneUpToDate": "Rclone je aktuálny",
-      "checkRcloneUpdates": "Skontrolovať aktualizácie rclone",
       "rcloneUpdateSettings": "Nastavenia aktualizácií rclone",
       "skippedRcloneUpdates": "Preskočené aktualizácie rclone",
       "devTeam": "Vývojový tím",
-      "leadDeveloper": "Hlavný vývojár",
       "contributors": "Prispievatelia",
       "acknowledgments": "Poďakovanie",
       "ackText": "Táto aplikácia je postavená na moderných webových technológiách a pri správe cloudových úložísk sa spolieha na vynikajúci projekt rclone.",
@@ -2312,6 +2284,7 @@
       "updateSettingFailed": "Aktualizácia nastavenia zlyhala",
       "channelStable": "Stabilný",
       "channelBeta": "Beta",
+      "channelDev": "Vývojová",
       "channelStableDesc": "Odporúča sa pre väčšinu používateľov",
       "channelBetaDesc": "Najnovšie funkcie",
       "downloadPage": "Stránka na stiahnutie",
@@ -3514,9 +3487,7 @@
           "one": "{{count}} konflikt",
           "few": "{{count}} konflikty",
           "other": "{{count}} konfliktov"
-        },
-        "findPlaceholder": "hľadaný text",
-        "replacePlaceholder": "nahradzujúci text"
+        }
       },
       "index": {
         "title": "Generovať výpisy priečinkov",
@@ -3745,9 +3716,6 @@
       "openFailed": "Otvorenie {{name}} zlyhalo"
     }
   },
-  "transfer": {
-    "error": "Chyba prenosu"
-  },
   "generalOverview": {
     "panels": {
       "remotes": "Rýchly prístup k úložiskám",
@@ -3969,7 +3937,6 @@
       "profileNotMounted": "Profil '{{profile}}' nie je pripojený na {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Konfigurácia pre profil '{{profile}}' je neúplná",
       "singleSourceOnly": "{{operation}} podporuje iba jednu zdrojovú cestu",
       "directoriesOnly": "{{operation}} podporuje iba priečinky, nie súbory: {{source}}",
       "sourcePathInvalid": "Zdrojovú cestu sa nepodarilo prečítať: {{path}}",
@@ -3979,7 +3946,6 @@
       "destinationMissing": "Nebol zadaný žiadny cieľ"
     },
     "serve": {
-      "parseFailed": "Spracovanie odpovede zlyhalo: {{error}}",
       "remoteEmpty": "Názov vzdialeného úložiska nemôže byť prázdny",
       "addressAlreadyInUse": "Vybraný port alebo adresu už používa iná aplikácia. Vyberte iný port.",
       "privilegedPort": "Porty pod 1024 vyžadujú oprávnenia správcu. Vyberte port s číslom 1024 alebo vyšším.",
@@ -4025,11 +3991,7 @@
       "notFound": "Binárny súbor rclone sa nenašiel v {{path}}",
       "spawnFailed": "Spustenie procesu rclone zlyhalo: {{error}}",
       "invalidPath": "Bola zadaná neplatná cesta k rclone",
-      "killFailed": "Ukončenie procesu rclone zlyhalo: {{error}}",
-      "portCleanupFailed": "Uvoľnenie portov rclone zlyhalo: {{error}}",
       "configValidationFailed": "Overenie konfigurácie rclone zlyhalo: {{error}}",
-      "lockFailed": "Získanie zámku konfigurácie rclone zlyhalo: {{error}}",
-      "cacheRefreshFailed": "Obnovenie vyrovnávacej pamäte rclone zlyhalo: {{error}}",
       "invalidFlags": "Zistené neplatné prepínače rclone: {{error}}",
       "updateRemoteUnsupported": "Pre túto verziu rclone nie je aktualizácia na diaľku podporovaná",
       "backupFailed": "Zálohovanie aktuálneho binárneho súboru rclone zlyhalo: {{error}}",
@@ -4138,6 +4100,7 @@
       "externallyManaged": "Táto inštalácia sa aktualizuje cez správcu balíkov alebo systém nasadzovania.",
       "disabledByAdministrator": "Aktualizácie aplikácie zakázal správca.",
       "unsupportedInstallation": "Pre túto inštaláciu nie je automatická inštalácia podporovaná.",
+      "notBuilt": "Toto vydanie neobsahuje automatickú aktualizáciu pre túto inštaláciu. Nainštalujte ho ručne.",
       "androidInstallPermission": "V nastaveniach systému Android povoľte tejto aplikácii inštalovať aktualizácie a potom inštaláciu zopakujte.",
       "invalidAndroidPackage": "APK musí byť novšia verzia tejto aplikácie podpísaná tým istým vydavateľom.",
       "noPrivilegePrompt": "Tu sa nedá vyžiadať heslo správcu (pkexec s agentom polkit alebo sudo so zenity či kdialog). Stiahnite balík cez „Zobraziť na GitHube“ a nainštalujte ho v termináli: {{command}}",
@@ -4944,8 +4907,6 @@
         "appStartDesc": "Spustiť automaticky pri štarte RClone Managera",
         "cleanup": "Vyčistiť kôš",
         "cleanupDesc": "Vyprázdniť kôš vzdialeného úložiska",
-        "cryptcheck": "Cryptcheck",
-        "cryptcheckDesc": "Overiť integritu šifrovaného vzdialeného úložiska",
         "execScript": "Spustiť skript",
         "execScriptDesc": "Spustiť lokálny príkaz shellu alebo skript",
         "quickRun": "Rýchle spustenie",

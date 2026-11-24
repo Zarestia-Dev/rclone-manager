@@ -6,7 +6,7 @@ use super::manifest::{
 use super::policy::{InstallationKind, UpdateMethod, UpdatePolicy};
 use crate::context::AppHandle;
 use crate::utils::github_client::Release;
-use crate::utils::types::updater::{AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate};
+use crate::utils::types::updater::{AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact};
 use std::sync::Arc;
 
 /// The artifact that updates an installation.
@@ -28,7 +28,7 @@ pub(crate) async fn check(
     app: &AppHandle,
     release: &Release,
     policy: &UpdatePolicy,
-) -> Result<Option<PendingAppUpdate>, String> {
+) -> Result<ReleaseArtifact, String> {
     let kind = artifact_kind(policy.installation);
     let target = target();
     log::debug!(
@@ -37,7 +37,7 @@ pub(crate) async fn check(
     );
     let Some(catalog) = release_file(release, CATALOG_NAME)? else {
         log::debug!("Release {} has no {CATALOG_NAME}", release.tag_name);
-        return Ok(None);
+        return Ok(ReleaseArtifact::Unpublished);
     };
     let catalog = fetch(catalog, MAX_MANIFEST_SIZE, Box::new(|_, _| {})).await?;
     log::debug!("Read {} bytes from {}", catalog.len(), CATALOG_NAME);
@@ -53,7 +53,7 @@ pub(crate) async fn check(
             "No signed manifest for {kind}-{target} in {}",
             release.tag_name
         );
-        return Ok(None);
+        return Ok(ReleaseArtifact::NotBuilt);
     };
     // The release workflows upload every file of the catalog before it, so a
     // missing one is an error, never a release without an update.
@@ -67,7 +67,7 @@ pub(crate) async fn check(
         manifest.install_size()
     );
     let paths = crate::services::paths::AppPaths::from_app_handle(app)?;
-    Ok(Some(Arc::new(SignedUpdate {
+    Ok(ReleaseArtifact::Found(Arc::new(SignedUpdate {
         manifest,
         download_url,
         cache_directory: paths.cache_dir.join("app-updates"),
@@ -197,7 +197,10 @@ mod tests {
         ] {
             let policy =
                 super::super::policy::test_policy(installation, UpdateMethod::Binary, None);
-            assert!(check(&app, &release, &policy).await.unwrap().is_none());
+            assert!(matches!(
+                check(&app, &release, &policy).await,
+                Ok(ReleaseArtifact::Unpublished)
+            ));
         }
     }
 }

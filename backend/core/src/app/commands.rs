@@ -41,6 +41,8 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(not(feature = "librclone"))]
             (get_rclone_update_info, $crate::rclone::binaries::updater::get_rclone_update_info, []);
             #[cfg(not(feature = "librclone"))]
+            (get_rclone_release_notes, $crate::rclone::binaries::updater::get_rclone_release_notes, [version: String], [no_app]);
+            #[cfg(not(feature = "librclone"))]
             (update_rclone, $crate::rclone::binaries::updater::update_rclone, [channel: Option<String>]);
             #[cfg(not(feature = "librclone"))]
             (cancel_rclone_update, $crate::rclone::binaries::updater::cancel_rclone_update, []);
@@ -289,6 +291,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // DESKTOP & HEADLESS UTILITIES
             (fetch_update, $crate::services::updates::fetch_update, [channel: String]);
             (get_app_update_info, $crate::services::updates::get_app_update_info, []);
+            (get_app_release_notes, $crate::services::updates::get_app_release_notes, []);
             #[cfg(feature = "updater")]
             (install_update, $crate::services::updates::install::install_update, []);
             #[cfg(feature = "updater")]

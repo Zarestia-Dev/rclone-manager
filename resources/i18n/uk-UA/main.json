@@ -48,10 +48,7 @@
     "unknown": "Невідомо",
     "notAvailable": "Н/Д",
     "unlimited": "Без обмежень",
-    "limitedTo": "Обмежено: {{rate}}",
-    "none": "Немає",
-    "add": "Додати",
-    "select": "Вибрати"
+    "limitedTo": "Обмежено: {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -73,10 +70,8 @@
     "sizeSuffix": "Невірний формат розміру. Приклад: 100Ki, 16Mi, 1Gi або «off»",
     "tristate": "Значення має бути true, false або не задано",
     "time": "Невірний формат дати й часу. Використовуйте ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Список не може містити лише пробіли",
     "bwTimetable": "Невірний формат пропускної здатності",
     "fileMode": "Має бути вісімковий формат (3–4 цифри, кожна 0–7). Приклад: 755",
-    "enum": "Має бути одне з: {{values}}",
     "urlArray": "Усі URL мають бути коректними та починатися з http:// або https://",
     "bandwidth": "Невірний формат пропускної здатності. Приклад: 10M, 1G, 100K або комбінації",
     "passwordMismatch": "Паролі не збігаються",
@@ -85,10 +80,6 @@
       "invalidStart": "Назва сховища не може починатися з дефіса або пробілу",
       "invalidEnd": "Назва сховища не може закінчуватися пробілом",
       "nameTaken": "Ця назва сховища вже використовується"
-    },
-    "password": {
-      "minLength": "Пароль має містити щонайменше 3 символи",
-      "invalidChars": "Пароль не може містити лапки"
     }
   },
   "mount": {
@@ -115,7 +106,6 @@
     "copyurlActive": "Копіювання URL активне",
     "archivecreateActive": "Архівування активне",
     "archivecreating": "Архівування",
-    "syncSummary": "Синхронізація ({{count}})",
     "toggleSync": "Перемкнути синхронізацію як швидку дію",
     "toggleCopy": "Перемкнути копіювання як швидку дію",
     "toggleMove": "Перемкнути переміщення як швидку дію",
@@ -135,7 +125,6 @@
     "serving": "Надання доступу",
     "servingWithProfile": "Надання доступу ({{profile}}): {{type}} на {{addr}}",
     "servingMultiple": "Роздачі ({{count}}): {{profiles}}",
-    "serveSummary": "Надання доступу ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Перемкнути надання доступу як швидку дію",
     "successStart": "Успішно запущено надання доступу для {{remote}} ({{profile}}) на {{addr}}",
@@ -280,11 +269,8 @@
     "cancelled": "Завантаження оновлення Rclone скасовано.",
     "cancelFailed": "Не вдалося скасувати завантаження оновлення Rclone.",
     "failed": "Не вдалося оновити: {{error}}",
-    "channelChanged": "Канал оновлень Rclone змінено на {{channel}}",
     "skipped": "Версію Rclone {{version}} пропущено",
-    "restored": "Версію Rclone {{version}} відновлено",
-    "autoCheckEnabled": "Автоматичну перевірку оновлень Rclone увімкнено",
-    "autoCheckDisabled": "Автоматичну перевірку оновлень Rclone вимкнено"
+    "restored": "Версію Rclone {{version}} відновлено"
   },
   "alerts": {
     "title": "Сповіщення та повідомлення",
@@ -867,8 +853,7 @@
       "destination": "Призначення",
       "openViewer": "Відкрити у переглядачі",
       "openViewerTooltip": "Відкрити повний попередній перегляд медіа",
-      "inferredFromUrl": "Визначено з URL",
-      "imageAlt": "Попередній перегляд"
+      "inferredFromUrl": "Визначено з URL"
     },
     "installationOptions": {
       "tabs": {
@@ -934,14 +919,7 @@
       },
       "table": {
         "size": "Розмір",
-        "transferred": "передано",
-        "file": "Файл",
-        "direction": "Напрямок",
-        "took": "Тривалість",
-        "when": "Коли",
-        "progress": "Прогрес",
-        "speed": "Швидкість",
-        "eta": "Залишилось"
+        "transferred": "передано"
       },
       "status": {
         "failed": "Не вдалося",
@@ -1327,8 +1305,7 @@
         "many": "{{count}} невідомих параметрів: {{keys}}. Rclone може їх проігнорувати.",
         "other": "{{count}} невідомого параметра: {{keys}}. Rclone може його проігнорувати."
       },
-      "invalidArrayPath": "Властивість «{{key}}» не підтримує кілька шляхів. Вкажіть один рядковий шлях.",
-      "fieldsOverview": "Огляд полів конфігурації"
+      "invalidArrayPath": "Властивість «{{key}}» не підтримує кілька шляхів. Вкажіть один рядковий шлях."
     },
     "passwordManager": {
       "placeholder": "Введіть пароль конфігурації rclone",
@@ -1414,8 +1391,7 @@
         "few": "Успішно імпортовано {{count}} параметри",
         "many": "Успішно імпортовано {{count}} параметрів",
         "other": "Успішно імпортовано {{count}} параметра"
-      },
-      "profileNamePlaceholder": "наприклад, daily-backup"
+      }
     },
     "obscure": {
       "title": "Замаскувати пароль",
@@ -1817,9 +1793,7 @@
       "confirm": "Застосувати",
       "cancel": "Скасувати"
     },
-    "restored": "Оновлення {{version}} відновлено",
-    "restoreFailed": "Не вдалося відновити оновлення",
-    "channelChanged": "Канал оновлень змінено на {{channel}}."
+    "restored": "Оновлення {{version}} відновлено"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Не вдалося визначити сховище для цього елемента",
@@ -2011,8 +1985,7 @@
       "zoomIn": "Наблизити",
       "zoomOut": "Віддалити",
       "resetZoom": "Скинути масштаб",
-      "hexPreview": "Шістнадцятковий перегляд",
-      "playVideo": "Відтворити у відеоплеєрі"
+      "hexPreview": "Шістнадцятковий перегляд"
     }
   },
   "dashboard": {
@@ -2256,6 +2229,7 @@
       "skipVersion": "Пропустити версію",
       "upToDate": "Актуальна версія",
       "latestVersionMsg": "Ви використовуєте найновішу версію",
+      "statusUnknown": "Стан оновлень невідомий",
       "checkUpdates": "Перевірити оновлення",
       "checking": "Перевірка...",
       "updateSettings": "Налаштування оновлень",
@@ -2272,11 +2246,9 @@
       "whatsNewRclone": "Що нового в Rclone",
       "updateRclone": "Завантажити оновлення Rclone",
       "rcloneUpToDate": "Rclone актуальний",
-      "checkRcloneUpdates": "Перевірити оновлення Rclone",
       "rcloneUpdateSettings": "Налаштування оновлень Rclone",
       "skippedRcloneUpdates": "Пропущені оновлення Rclone",
       "devTeam": "Команда розробки",
-      "leadDeveloper": "Провідний розробник",
       "contributors": "Учасники розробки",
       "acknowledgments": "Подяки",
       "ackText": "Цей застосунок створено за допомогою сучасних вебтехнологій і він спирається на чудовий проєкт Rclone для керування хмарними сховищами.",
@@ -2287,6 +2259,7 @@
       "updateSettingFailed": "Не вдалося оновити налаштування",
       "channelStable": "Стабільний",
       "channelBeta": "Бета",
+      "channelDev": "Розробка",
       "channelStableDesc": "Рекомендовано для більшості користувачів",
       "channelBetaDesc": "Найновіші функції",
       "downloadPage": "Сторінка завантаження",
@@ -3509,9 +3482,7 @@
           "few": "{{count}} конфлікти",
           "many": "{{count}} конфліктів",
           "other": "{{count}} конфлікту"
-        },
-        "findPlaceholder": "текст для пошуку",
-        "replacePlaceholder": "текст заміни"
+        }
       },
       "index": {
         "title": "Створення списків каталогів",
@@ -3752,9 +3723,6 @@
       "openFailed": "Не вдалося відкрити {{name}}"
     }
   },
-  "transfer": {
-    "error": "Помилка передавання"
-  },
   "generalOverview": {
     "panels": {
       "remotes": "Швидкий доступ до сховищ",
@@ -3979,7 +3947,6 @@
       "profileNotMounted": "Профіль «{{profile}}» не змонтовано на {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»",
       "singleSourceOnly": "{{operation}} підтримує лише один вихідний шлях",
       "directoriesOnly": "{{operation}} підтримує лише каталоги, а не файли: {{source}}",
       "sourcePathInvalid": "Не вдалося розібрати вихідний шлях: {{path}}",
@@ -3989,7 +3956,6 @@
       "destinationMissing": "Призначення не вказано"
     },
     "serve": {
-      "parseFailed": "Не вдалося розібрати відповідь: {{error}}",
       "remoteEmpty": "Назва сховища не може бути порожньою",
       "addressAlreadyInUse": "Вибраний порт або адреса вже використовується іншою програмою. Виберіть інший порт.",
       "privilegedPort": "Порти нижче 1024 вимагають прав адміністратора. Виберіть порт 1024 або вище.",
@@ -4033,11 +3999,7 @@
       "notFound": "Виконуваний файл Rclone не знайдено за шляхом {{path}}",
       "spawnFailed": "Не вдалося запустити процес rclone: {{error}}",
       "invalidPath": "Вказано невірний шлях до rclone",
-      "killFailed": "Не вдалося завершити процес rclone: {{error}}",
-      "portCleanupFailed": "Не вдалося звільнити порти rclone: {{error}}",
       "configValidationFailed": "Перевірка конфігурації Rclone не вдалася: {{error}}",
-      "lockFailed": "Не вдалося отримати блокування конфігурації rclone: {{error}}",
-      "cacheRefreshFailed": "Не вдалося оновити кеш rclone: {{error}}",
       "invalidFlags": "Виявлено невірні flags rclone: {{error}}",
       "updateRemoteUnsupported": "Оновлення сховища не підтримується для цієї версії rclone",
       "backupFailed": "Не вдалося створити резервну копію поточного виконуваного файлу rclone: {{error}}",
@@ -4147,7 +4109,8 @@
       "ioError": "Помилка вводу-виводу: {{error}}",
       "externallyManaged": "Ця інсталяція оновлюється через менеджер пакетів або систему розгортання.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "Автоматичне встановлення не підтримується для цієї інсталяції.",
+      "notBuilt": "У цьому випуску немає автоматичного оновлення для цієї інсталяції. Встановіть його вручну.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Тут немає чим запитати пароль адміністратора (pkexec з агентом polkit або sudo із zenity чи kdialog). Завантажте пакет через «Переглянути на GitHub» і встановіть його в терміналі: {{command}}",
@@ -4949,8 +4912,6 @@
         "appStartDesc": "Автоматичний запуск при старті RClone Manager",
         "cleanup": "Очищення кошика",
         "cleanupDesc": "Очистити кошик віддаленого сховища",
-        "cryptcheck": "Перевірка шифрування",
-        "cryptcheckDesc": "Перевірити цілісність зашифрованого сховища",
         "execScript": "Виконати скрипт",
         "execScriptDesc": "Запустити локальну команду оболонки або скрипт",
         "quickRun": "Швидкий запуск",
