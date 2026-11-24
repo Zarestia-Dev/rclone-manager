@@ -61,6 +61,7 @@ windows = { version = "0.62", features = ["Foundation", "UI", "UI_ViewManagement
 [target.'cfg(target_os = "macos")'.dependencies]
 # Reads the system accent colour (see native/accent.rs).
 block2 = { version = "0.6", optional = true }
+objc2 = { version = "0.6", optional = true }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSColor", "NSColorSpace"], optional = true }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSNotification", "NSString", "NSObject", "NSOperation"], optional = true }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
@@ -83,6 +84,7 @@ desktop = [
     "dep:zbus",
     "dep:windows",
     "dep:block2",
+    "dep:objc2",
     "dep:objc2-app-kit",
     "dep:objc2-foundation",
 ]

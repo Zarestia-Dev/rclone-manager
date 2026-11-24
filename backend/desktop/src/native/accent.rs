@@ -131,11 +131,13 @@ mod platform {
             }
             Ok(())
         });
-        match settings.ColorValuesChanged(&handler) {
-            // The event only fires while this UISettings lives, which is as long as the app.
-            Ok(_) => std::mem::forget(settings),
-            Err(e) => log::warn!("Cannot follow the system accent colour: {e}"),
+        if let Err(e) = settings.ColorValuesChanged(&handler) {
+            log::warn!("Cannot follow the system accent colour: {e}");
+            return;
         }
+        // The event only fires while this UISettings lives, so it is kept for the app's life.
+        static WATCHED: std::sync::OnceLock<UISettings> = std::sync::OnceLock::new();
+        let _ = WATCHED.set(settings);
     }
 }
 
@@ -172,9 +174,9 @@ mod platform {
                 &block,
             )
         };
-        // The observer stays registered while the returned token lives, which is as long as
-        // the app.
-        std::mem::forget(observer);
+        // The observer stays registered while the returned token lives, so ownership is given
+        // up to keep it for the app's life.
+        let _ = objc2::rc::Retained::into_raw(observer);
     }
 }
 
