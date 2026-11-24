@@ -344,6 +344,7 @@ test('publishes multiple signed targets into one catalog without signature sidec
     for (const [kind, os, name] of [
       ['deb', 'linux', 'RClone Manager Server_1.2.3_amd64.deb'],
       ['rpm', 'linux', 'RClone Manager Server-1.2.3-1.x86_64.rpm'],
+      ['pacman', 'linux', 'RClone Manager Server-1.2.3-1-x86_64.pkg.tar.zst'],
       ['nsis', 'windows', 'RClone Manager Server_1.2.3_x64-setup.exe'],
       ['msi', 'windows', 'RClone Manager Server_1.2.3_x64_en-US.msi'],
     ]) {
@@ -360,7 +361,13 @@ test('publishes multiple signed targets into one catalog without signature sidec
           JSON.parse(fs.readFileSync(path.join(packageOutput, MANIFEST_NAME), 'utf8')),
         ]).entries
       ).sort(),
-      ['deb-linux-x86_64', 'msi-windows-x86_64', 'nsis-windows-x86_64', 'rpm-linux-x86_64']
+      [
+        'deb-linux-x86_64',
+        'msi-windows-x86_64',
+        'nsis-windows-x86_64',
+        'pacman-linux-x86_64',
+        'rpm-linux-x86_64',
+      ]
     );
     // A package for another platform, or of another format, is refused.
     assert.throws(() => publish('deb', 'windows', 'x86_64', '1.2.3', bundle, packageOutput));

@@ -106,31 +106,6 @@ describe('AppUpdaterService state restoration', () => {
     service = TestBed.inject(AppUpdaterService);
   });
 
-  it('confirms a rendered native frontend without waiting for vault unlock or updater settings', async () => {
-    Object.defineProperty(service, 'isTauri', { value: true });
-    await service.confirmStartup();
-    expect(invoke).toHaveBeenCalledWith('confirm_app_update_startup', undefined);
-    expect(invoke).not.toHaveBeenCalledWith('get_update_policy', undefined);
-  });
-
-  it('does not use browser sessions to confirm server startup', async () => {
-    Object.defineProperty(service, 'isTauri', { value: false });
-    await service.confirmStartup();
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('handles a missing native startup command without rejecting frontend startup', async () => {
-    Object.defineProperty(service, 'isTauri', { value: true });
-    invoke.mockRejectedValueOnce(new Error('IPC unavailable'));
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    try {
-      await expect(service.confirmStartup()).resolves.toBeUndefined();
-      expect(error).toHaveBeenCalled();
-    } finally {
-      error.mockRestore();
-    }
-  });
-
   it('restores an active download with auto-check disabled and a skipped release', async () => {
     await service.initialize();
     expect(service.autoCheckEnabled()).toBe(false);
@@ -196,7 +171,7 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.readyToRestart()).toBe(true);
   });
 
-  it('shows checks, failures and rollbacks the backend recorded, also after a reload', async () => {
+  it('shows checks and failures the backend recorded, also after a reload', async () => {
     invoke.mockImplementation(async (command: string) => {
       if (command === 'get_app_update_info') {
         return {
@@ -204,7 +179,6 @@ describe('AppUpdaterService state restoration', () => {
           checking: true,
           lastCheckedAt: '2026-11-05T10:00:00Z',
           error: 'backendErrors.updater.githubRateLimit',
-          rolledBack: [{ version: '1.2.0', reason: 'did not start' }],
         } satisfies UpdaterSnapshot;
       }
       if (command === 'get_update_policy') return policy;
@@ -215,7 +189,6 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.isChecking()).toBe(true);
     expect(service.lastCheckedAt()).toBe('2026-11-05T10:00:00Z');
     expect(service.checkError()).toBe('backendErrors.updater.githubRateLimit');
-    expect(service.rolledBack()).toEqual([{ version: '1.2.0', reason: 'did not start' }]);
   });
 
   it('keeps the active state when a status request fails', async () => {

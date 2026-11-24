@@ -2,9 +2,10 @@
 # Removes what postinstall.sh linked and the file manager and start-at-login
 # entries the app created for each user, under its name and the RClone Manager
 # Headless name it replaced, only when the package goes away: DEB passes "remove"
-# or "purge", RPM passes 0.
+# or "purge", RPM passes 0, and pacman, which runs it only on removal, the
+# removed version.
 case "$1" in
-    remove | purge | 0) ;;
+    remove | purge | 0 | *.*) ;;
     *) exit 0 ;;
 esac
 for name in rclone-manager-headless rclone-manager-headless-bin; do

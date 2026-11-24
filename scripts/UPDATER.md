@@ -23,8 +23,8 @@ Tauri never writes this file. Each release has its own catalog:
 ```
 
 Each decoded manifest retains the existing `version`, `kind`, `target`, `asset`,
-`size`, `sha256`, and payload `signature` fields. Encoding the exact signed bytes
-lets the existing installation helper verify them again without re-serialization.
+`size`, `sha256`, and payload `signature` fields. The app verifies the exact
+signed bytes, so they are encoded rather than re-serialized.
 Both metadata and payload signatures are verified with the production public key.
 The catalog's version and selected entry's signed version, product, and architecture
 must match the selected release and installation. Unsupported schemas or invalid
@@ -46,7 +46,7 @@ Portable and Android upload jobs share the `publish-custom-updater-main` concurr
 group to serialize the catalog's read/merge/upload operation. Their builds run outside
 the lock; Android transfers its APKs and signed catalog together as a workflow artifact.
 Server builds also run outside the lock, and their upload job prepares the shared
-draft and publishes the catalog and `latest.json` under the `release-headless` group. Both groups use `queue: max` so additional pending publishers
+draft and publishes the catalog and `latest.json` under the `release-server` group. Both groups use `queue: max` so additional pending publishers
 do not replace earlier queued jobs. Any additional writer must join the relevant
 group. These jobs do not publish the local signature sidecars or individual per-target
 JSON files.
@@ -94,7 +94,6 @@ existing `size`, `sha256`, and `signature` describe the executable. Its `archive
 object contains the ZIP's own `size`, `sha256`, `signature`, and the exact
 `binaryPath` inside it. The updater verifies the ZIP, reads the named executable
 using the shared ZIP helpers, and verifies that executable separately.
-The existing install helper verifies the signed metadata and staged payload again.
 No additional archive dependencies or sidecar files are needed.
 
 The custom updater's public key lives in `resources/updater.pub`. Tests require
@@ -103,7 +102,7 @@ both native Tauri configurations to contain the same key. Within the Rust update
 HTTPS and cache I/O, and `signed.rs` adapts these to the shared installation flow.
 ZIP operations shared with Rclone provisioning live in `utils/archive.rs`.
 `utils/app/paths.rs` resolves the installation directory for portable data,
-permission checks, staging, and startup receipts, including macOS app bundles.
+permission checks and the replacement, including macOS app bundles.
 
 Windows/Linux packages include `RCloneManager/` with the executable, initial
 settings, and localized READMEs. Updates extract only the executable, so the
@@ -111,9 +110,8 @@ packaged default settings never overwrite the user's configuration.
 
 macOS packages contain the complete `RClone Manager.app` bundle. Config and cache
 directories are created beside the `.app`, outside its signed contents. Updates
-verify the ZIP and its executable, stage the entire app, and replace the complete
-bundle, including `Info.plist` and code-signing resources. The existing startup
-supervisor restores the previous bundle if startup fails. User data is never
+verify the ZIP and its executable, extract the entire app beside it, and replace the
+complete bundle, including `Info.plist` and code-signing resources. User data is never
 inside the replaced bundle. Apple signing/notarization remains separate from
 the updater's Tauri signatures; macOS builds need validation on a Mac.
 
@@ -124,7 +122,5 @@ second copy and no archive. The `publish-catalog` job merges these entries under
 `publish-custom-updater-main` group, after every bundle has been uploaded. The core
 updater only treats a build as an AppImage when Tauri bundled it as one and the
 AppImage runtime set `$APPIMAGE`; it replaces that file, never the executable in the
-read-only mount. The update helper and supervisor are the previous AppImage, started
-from the staging directory, so the startup receipt and rollback work as for portable
-builds. Replacing an AppImage never asks for a password: it must be owned by the
+read-only mount, and restarts from it as portable builds do. Replacing an AppImage never asks for a password: it must be owned by the
 current user in a writable folder.

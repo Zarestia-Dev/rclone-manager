@@ -4032,14 +4032,6 @@
       "updateUnavailable": "更新檔案不再可用：{{error}}",
       "relaunchFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
-      "rollback": {
-        "exited": "更新後的應用程式在確認啟動前結束（代碼 {{code}}）。",
-        "couldNotStart": "無法啟動更新後的應用程式：{{error}}",
-        "interrupted": "更新後應用程式的啟動被關機中斷。",
-        "notConfirmed": "更新後的應用程式未能及時確認啟動。",
-        "installFailed": "無法安裝更新：{{error}}"
-      },
-      "rolledBack": "更新 {{version}} 已還原：{{reason}}",
       "ioError": "IO 錯誤：{{error}}",
       "externallyManaged": "此安裝由其套件管理程式或部署系統負責更新。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4052,13 +4044,8 @@
       "downloadTooLarge": "更新下載的大小超出預期。",
       "missingAsset": "此版本沒有名為 {{name}} 的更新檔案。",
       "argumentsTooLong": "啟動參數過長，無法在更新後保留。",
-      "startupPending": "上一次更新仍在確認啟動。請幾秒後再試一次。",
-      "versionMustIncrease": "後續更新必須是較新的版本。",
       "invalidBundle": "可攜版應用程式不是完整的 macOS 應用程式套件。",
-      "missingBackup": "目前版本的備份遺失。",
       "invalidStagingDirectory": "更新暫存資料夾無效。",
-      "helperFailed": "無法啟動更新協助程式（{{error}}），且重新啟動應用程式失敗：{{restart}}",
-      "processUnavailable": "無法監控已更新應用程式的處理程序。",
       "ownedByAnotherUser": "應用程式檔案屬於其他使用者。"
     },
     "settings": {

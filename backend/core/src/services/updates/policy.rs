@@ -126,13 +126,17 @@ fn classify(
         Some(
             package @ (InstallationKind::Deb
             | InstallationKind::Rpm
+            | InstallationKind::Pacman
             | InstallationKind::Nsis
             | InstallationKind::Msi),
         ) if build == InstallationKind::Server => package,
         _ => build,
     };
     let kind = declared.unwrap_or(build);
-    let packaged = matches!(build, InstallationKind::Deb | InstallationKind::Rpm);
+    let packaged = matches!(
+        build,
+        InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
+    );
     if kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build)) {
         // The core replaces an AppImage itself, like a portable executable.
         if kind == InstallationKind::Appimage {
@@ -213,7 +217,7 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
                 Some(crate::localized_error!("backendErrors.updater.notWritable"))
             }
             // Tauri also reads the password through zenity or kdialog itself.
-            InstallationKind::Deb | InstallationKind::Rpm
+            InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
                 if !(if method == UpdateMethod::Tauri {
                     ["pkexec", "zenity", "kdialog"]
                         .iter()
@@ -222,7 +226,7 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
                     can_install_as_root()
                 }) =>
             {
-                Some(no_privilege_prompt(kind == InstallationKind::Rpm))
+                Some(no_privilege_prompt(kind))
             }
             // Native installers and Android own their authorization flows.
             _ => None,
@@ -391,14 +395,28 @@ fn can_install_as_root() -> bool {
         || (system_program("sudo").is_some() && password_dialog().is_some())
 }
 
+/// The tool that installs a Linux package as root, its arguments as the user would
+/// type them, and the package's extension. rpm 6 (Fedora 45 and later) refuses a
+/// package without a signature its keyring knows: the RPM is unsigned, the signed
+/// catalog verifies it, and rpm still checks its digests.
+pub(super) fn linux_installer(
+    kind: InstallationKind,
+) -> (&'static str, &'static [&'static str], &'static str) {
+    match kind {
+        InstallationKind::Rpm => ("rpm", &["-U", "--nosignature"], "rpm"),
+        InstallationKind::Pacman => ("pacman", &["-U", "--noconfirm"], "pkg.tar.zst"),
+        _ => ("dpkg", &["-i"], "deb"),
+    }
+}
+
 /// No way to ask for the administrator password here: the command that installs
 /// the package downloaded from the release page instead.
-pub(super) fn no_privilege_prompt(rpm: bool) -> String {
-    let command = if rpm {
-        "sudo rpm -U RClone.Manager*.rpm"
-    } else {
-        "sudo dpkg -i RClone.Manager*.deb"
-    };
+pub(super) fn no_privilege_prompt(kind: InstallationKind) -> String {
+    let (tool, flags, extension) = linux_installer(kind);
+    let command = format!(
+        "sudo {tool} {} RClone.Manager*.{extension}",
+        flags.join(" ")
+    );
     crate::localized_error!("backendErrors.updater.noPrivilegePrompt", "command" => command)
 }
 
@@ -624,19 +642,15 @@ mod tests {
 
     #[test]
     fn the_server_packages_update_the_server_build_they_installed() {
-        for owner in [Deb, Rpm, Nsis, Msi] {
+        // The AUR package holds the same files as the release's Arch package.
+        for owner in [Deb, Rpm, Pacman, Nsis, Msi] {
             let declared = declared_kind(None, false, Some(owner));
             assert_eq!(
                 classify(UpdateMethod::Binary, Server, declared, Some(owner)),
                 (owner, UpdateMethod::Binary)
             );
         }
-        // An AUR package, a container or a declaration without an owner is not ours.
-        let pacman = declared_kind(None, false, Some(Pacman));
-        assert_eq!(
-            classify(UpdateMethod::Binary, Server, pacman, Some(Pacman)),
-            (Pacman, UpdateMethod::Unavailable)
-        );
+        // A container or a declaration without an owner is not ours.
         assert_eq!(
             classify(
                 UpdateMethod::Binary,
@@ -728,6 +742,24 @@ mod tests {
         assert!(update_command(Container, None, None, id).is_some());
         for kind in [Deb, Rpm, Unknown, Portable] {
             assert!(update_command(kind, None, Some("paru"), id).is_none());
+        }
+    }
+
+    #[test]
+    fn without_a_password_prompt_the_user_gets_the_install_command() {
+        for (kind, command) in [
+            (Deb, "sudo dpkg -i RClone.Manager*.deb"),
+            (Rpm, "sudo rpm -U --nosignature RClone.Manager*.rpm"),
+            (
+                Pacman,
+                "sudo pacman -U --noconfirm RClone.Manager*.pkg.tar.zst",
+            ),
+        ] {
+            assert!(
+                no_privilege_prompt(kind).contains(command),
+                "{kind:?}: {}",
+                no_privilege_prompt(kind)
+            );
         }
     }
 

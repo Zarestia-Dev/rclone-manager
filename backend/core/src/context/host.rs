@@ -25,21 +25,6 @@ pub trait Host: Send + Sync {
     }
     fn resolve_paths(&self, app: &AppHandle) -> Result<AppPaths, String>;
     fn restart(&self, app: &AppHandle) -> Result<(), String>;
-    #[cfg(all(feature = "updater", unix))]
-    fn restart_updated_binary(
-        &self,
-        executable: &std::path::Path,
-        previous: &std::path::Path,
-        arguments: &[std::ffi::OsString],
-        working_directory: &std::path::Path,
-    ) -> Result<(), String> {
-        crate::services::updates::binary::restart(
-            executable,
-            previous,
-            arguments,
-            working_directory,
-        )
-    }
     fn exit(&self, _code: i32) {}
     /// Main window HWND, if this host has a native Windows window.
     #[cfg(all(target_os = "windows", feature = "desktop"))]

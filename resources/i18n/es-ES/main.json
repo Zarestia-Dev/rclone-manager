@@ -4042,14 +4042,6 @@
       "updateUnavailable": "El archivo de actualización ya no está disponible: {{error}}",
       "relaunchFailed": "Error al reiniciar la aplicación: {{error}}",
       "notWritable": "La ruta de actualización no tiene permisos de escritura",
-      "rollback": {
-        "exited": "La aplicación actualizada se cerró antes de confirmar el inicio (código {{code}}).",
-        "couldNotStart": "No se pudo iniciar la aplicación actualizada: {{error}}",
-        "interrupted": "El inicio de la aplicación actualizada se interrumpió por un apagado.",
-        "notConfirmed": "La aplicación actualizada no confirmó el inicio a tiempo.",
-        "installFailed": "No se pudo instalar la actualización: {{error}}"
-      },
-      "rolledBack": "Se revirtió la actualización {{version}}: {{reason}}",
       "ioError": "Error de E/S: {{error}}",
       "externallyManaged": "Esta instalación se actualiza a través de su gestor de paquetes o sistema de despliegue.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4062,13 +4054,8 @@
       "downloadTooLarge": "La descarga de la actualización es más grande de lo esperado.",
       "missingAsset": "La versión no tiene ningún archivo de actualización llamado {{name}}.",
       "argumentsTooLong": "Los argumentos de inicio son demasiado largos para conservarlos durante una actualización.",
-      "startupPending": "La actualización anterior aún está confirmando que se inició. Inténtalo de nuevo en unos segundos.",
-      "versionMustIncrease": "Una actualización posterior debe tener una versión más reciente.",
       "invalidBundle": "La aplicación portátil no es un paquete de aplicación de macOS completo.",
-      "missingBackup": "Falta la copia de seguridad de la versión actual.",
       "invalidStagingDirectory": "La carpeta de preparación de la actualización no es válida.",
-      "helperFailed": "No se pudo iniciar el asistente de actualización ({{error}}) y falló el reinicio de la aplicación: {{restart}}",
-      "processUnavailable": "No se pudo supervisar el proceso de la aplicación actualizada.",
       "ownedByAnotherUser": "El archivo de la aplicación pertenece a otro usuario."
     },
     "settings": {

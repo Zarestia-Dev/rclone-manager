@@ -1,6 +1,7 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 # The server for a desktop session (menu entry and tray) and as a system service
-# (systemd unit and service user). It replaces rclone-manager-headless, the
+# (systemd unit and service user). The app updates it with the release's Arch
+# package, which holds the same files. It replaces rclone-manager-headless, the
 # RClone Manager Headless app (0.3.6 and older), whose settings it keeps using.
 pkgname=rclone-manager-server
 appname='RClone.Manager.Server'
@@ -19,58 +20,14 @@ conflicts=('rclone-manager-headless')
 replaces=('rclone-manager-headless')
 options=('!strip' '!debug')
 install=rclone-manager-server.install
-source=("rclone-manager-server-${pkgver}.service::https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/headless-v${releasetag}/backend/server/linux/rclone-manager-server.service")
-sha256sums=('SKIP')
-source_x86_64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_amd64.deb")
-source_aarch64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('e9aa55825925ab2e93560ff919672a8dde81f50cb2e14e34c9d1448049892bc5')
-sha256sums_aarch64=('8ab54a7f242fc4c4f8a2a7debe987de4f4576cf25870b7aaea7842bf70e6dcdb')
-
-prepare() {
-  cd "${srcdir}"
-  
-  # Extract the .deb package
-  if [ -f "${appname}_${pkgver}_amd64.deb" ]; then
-    ar x "${appname}_${pkgver}_amd64.deb"
-  elif [ -f "${appname}_${pkgver}_arm64.deb" ]; then
-    ar x "${appname}_${pkgver}_arm64.deb"
-  fi
-}
+# The release's Arch package (backend/server/package/nfpm.yaml): the server, the
+# systemd unit, its user and state folder, and the path the RClone Manager Headless
+# app ran from. makepkg unpacks it; its metadata files are left behind.
+source_x86_64=("${url}/releases/download/headless-v${releasetag}/${appname}-${pkgver}-1-x86_64.pkg.tar.zst")
+source_aarch64=("${url}/releases/download/headless-v${releasetag}/${appname}-${pkgver}-1-aarch64.pkg.tar.zst")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
 
 package() {
-  cd "${srcdir}"
-  
-  # Robust extraction for different compression types used in .deb files
-  if [ -f "data.tar.gz" ]; then
-    tar -xf data.tar.gz -C "${pkgdir}"
-  elif [ -f "data.tar.xz" ]; then
-    tar -xf data.tar.xz -C "${pkgdir}"
-  elif [ -f "data.tar.zst" ]; then
-    tar -xf data.tar.zst -C "${pkgdir}"
-  else
-    msg "Error: data.tar archive not found inside deb package."
-    return 1
-  fi
-  
-  # Fix permissions
-  find "${pkgdir}" -type d -exec chmod 755 {} \;
-
-  # The path the RClone Manager Headless app ran from, which its start-at-login and
-  # file manager entries call (the launcher drops their --tray); the server moves
-  # those entries to its own name on its first start.
-  ln -s /usr/lib/rclone-manager-server/rclone-manager-headless "${pkgdir}/usr/bin/rclone-manager-headless"
-
-  # Reuse the upstream unit, minus its manual /opt install notes, pointing at the packaged binary.
-  sed -e '1,/^$/d' \
-      -e 's|/opt/rclone-manager/rclone-manager-server|/usr/bin/rclone-manager-server|' \
-      "rclone-manager-server-${pkgver}.service" > unit.service
-  grep -q '^ExecStart=/usr/bin/rclone-manager-server' unit.service
-  install -Dm644 unit.service "${pkgdir}/usr/lib/systemd/system/rclone-manager-server.service"
-
-  # Service account and its state directory, created by pacman's systemd hooks.
-  install -dm755 "${pkgdir}/usr/lib/sysusers.d" "${pkgdir}/usr/lib/tmpfiles.d"
-  echo 'u rclone-manager - "RClone Manager Server" /var/lib/rclone-manager /usr/bin/nologin' \
-    > "${pkgdir}/usr/lib/sysusers.d/${pkgname}.conf"
-  echo 'd /var/lib/rclone-manager 0750 rclone-manager rclone-manager -' \
-    > "${pkgdir}/usr/lib/tmpfiles.d/${pkgname}.conf"
+  cp -a "${srcdir}/usr" "${pkgdir}/"
 }

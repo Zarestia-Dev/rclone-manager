@@ -4042,14 +4042,6 @@
       "updateUnavailable": "La mise à jour de l'artefact n'est plus disponible : {{error}}",
       "relaunchFailed": "La relance a échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
-      "rollback": {
-        "exited": "L'application mise à jour s'est arrêtée avant de confirmer son démarrage (code {{code}}).",
-        "couldNotStart": "Impossible de démarrer l'application mise à jour : {{error}}",
-        "interrupted": "Le démarrage de l'application mise à jour a été interrompu par un arrêt.",
-        "notConfirmed": "L'application mise à jour n'a pas confirmé son démarrage à temps.",
-        "installFailed": "Impossible d'installer la mise à jour : {{error}}"
-      },
-      "rolledBack": "La mise à jour {{version}} a été annulée : {{reason}}",
       "ioError": "IO erreur : {{error}}",
       "externallyManaged": "Cette installation est mise à jour par son gestionnaire de paquets ou son système de déploiement.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4062,13 +4054,8 @@
       "downloadTooLarge": "Le téléchargement de la mise à jour est plus volumineux que prévu.",
       "missingAsset": "La version ne contient aucun fichier de mise à jour nommé {{name}}.",
       "argumentsTooLong": "Les arguments de lancement sont trop longs pour être conservés lors d'une mise à jour.",
-      "startupPending": "La mise à jour précédente confirme encore son démarrage. Réessayez dans quelques secondes.",
-      "versionMustIncrease": "Une mise à jour suivante doit avoir une version plus récente.",
       "invalidBundle": "L'application portable n'est pas un paquet d'application macOS complet.",
-      "missingBackup": "La sauvegarde de la version actuelle est introuvable.",
       "invalidStagingDirectory": "Le dossier de préparation de la mise à jour n'est pas valide.",
-      "helperFailed": "L'assistant de mise à jour n'a pas pu démarrer ({{error}}) et le redémarrage de l'application a échoué : {{restart}}",
-      "processUnavailable": "Le processus de l'application mise à jour n'a pas pu être surveillé.",
       "ownedByAnotherUser": "Le fichier de l'application appartient à un autre utilisateur."
     },
     "settings": {

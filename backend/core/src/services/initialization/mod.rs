@@ -45,8 +45,6 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
                 .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
                 .language(),
         );
-        #[cfg(feature = "updater")]
-        crate::services::updates::health::core_ready(&app_handle);
         return Ok(());
     }
 
@@ -105,10 +103,6 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
         error!("Phase 1 Bootstrap failed: {e}");
         return Err(e);
     }
-
-    // Required local startup succeeded. Remote availability is not an update failure.
-    #[cfg(feature = "updater")]
-    crate::services::updates::health::core_ready(&app_handle);
 
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;

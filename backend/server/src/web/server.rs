@@ -50,7 +50,6 @@ pub(super) async fn start_web_server(
     let ready_app = app_handle.clone();
     let ready = crate::utils::spawn(async move {
         if ready_handle.listening().await.is_some() {
-            crate::services::updates::health::host_ready(&ready_app);
             // Only the instance that owns the port may discard leftovers of a crash.
             super::handlers::clear_stale_upload_staging(&ready_app).await;
         }

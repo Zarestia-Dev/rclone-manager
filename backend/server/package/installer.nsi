@@ -1,6 +1,6 @@
 ; The server's Windows setup, for the current user. It replaces an installation of
 ; the RClone Manager Headless app (0.3.6 and older), which shares its settings. The
-; MSI, for all users, is built from nfpm.yaml. release-headless.yml builds it with:
+; MSI, for all users, is built from nfpm.yaml. release-server.yml builds it with:
 ;   makensis /DVERSION=<version> /DBINARY=<rclone-manager-server.exe> /DOUTFILE=<setup.exe> installer.nsi
 ; /P runs it without questions and /R then starts the app. The Tauri updater of the
 ; Headless app passes both, and also /UPDATE and /ARGS, which change nothing. The
@@ -135,6 +135,21 @@ Function .onInstSuccess
 FunctionEnd
 
 Section Uninstall
+  ; Nothing quits the app during an uninstall: offer to close it, with the rclone
+  ; processes it started. A running executable cannot be opened for writing.
+  ${If} ${FileExists} "$INSTDIR\${EXE}"
+    ClearErrors
+    FileOpen $0 "$INSTDIR\${EXE}" a
+    ${If} ${Errors}
+      ${IfNot} ${Cmd} `MessageBox MB_OKCANCEL|MB_ICONQUESTION "${PRODUCTNAME} is running. Close it and uninstall?" /SD IDOK IDOK`
+        Abort
+      ${EndIf}
+      nsExec::Exec 'taskkill /F /T /IM "${EXE}"'
+      Pop $0
+    ${Else}
+      FileClose $0
+    ${EndIf}
+  ${EndIf}
   !insertmacro WAIT_FOR_APP "$INSTDIR\${EXE}" "${PRODUCTNAME}"
   Delete "$INSTDIR\${EXE}"
   Delete "$INSTDIR\uninstall.exe"

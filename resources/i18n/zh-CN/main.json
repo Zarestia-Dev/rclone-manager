@@ -3991,14 +3991,6 @@
       "updateUnavailable": "更新文件不再可用：{{error}}",
       "relaunchFailed": "重新启动失败：{{error}}",
       "notWritable": "更新路径不可写",
-      "rollback": {
-        "exited": "更新后的应用在确认启动前退出（代码 {{code}}）。",
-        "couldNotStart": "无法启动更新后的应用：{{error}}",
-        "interrupted": "更新后应用的启动被关机中断。",
-        "notConfirmed": "更新后的应用未能及时确认启动。",
-        "installFailed": "无法安装更新：{{error}}"
-      },
-      "rolledBack": "更新 {{version}} 已回滚：{{reason}}",
       "ioError": "IO 错误：{{error}}",
       "externallyManaged": "此安装由其软件包管理器或部署系统负责更新。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4011,13 +4003,8 @@
       "downloadTooLarge": "更新下载的大小超出预期。",
       "missingAsset": "该版本没有名为 {{name}} 的更新文件。",
       "argumentsTooLong": "启动参数过长，无法在更新后保留。",
-      "startupPending": "上一次更新仍在确认启动。请几秒钟后重试。",
-      "versionMustIncrease": "后续更新必须是更新的版本。",
       "invalidBundle": "便携版应用不是完整的 macOS 应用包。",
-      "missingBackup": "当前版本的备份缺失。",
       "invalidStagingDirectory": "更新暂存文件夹无效。",
-      "helperFailed": "无法启动更新助手（{{error}}），并且重启应用失败：{{restart}}",
-      "processUnavailable": "无法监控已更新应用的进程。",
       "ownedByAnotherUser": "应用文件属于其他用户。"
     },
     "settings": {

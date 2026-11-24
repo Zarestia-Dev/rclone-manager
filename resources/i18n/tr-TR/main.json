@@ -4083,14 +4083,6 @@
       "updateUnavailable": "Güncelleme dosyası artık mevcut değil: {{error}}",
       "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",
       "notWritable": "Güncelleme yolu yazılabilir değil",
-      "rollback": {
-        "exited": "Güncellenen uygulama, başlatmayı doğrulamadan kapandı (kod {{code}}).",
-        "couldNotStart": "Güncellenen uygulama başlatılamadı: {{error}}",
-        "interrupted": "Güncellenen uygulamanın başlatılması bir kapatma nedeniyle kesildi.",
-        "notConfirmed": "Güncellenen uygulama başlatmayı zamanında doğrulamadı.",
-        "installFailed": "Güncelleme yüklenemedi: {{error}}"
-      },
-      "rolledBack": "{{version}} güncellemesi geri alındı: {{reason}}",
       "ioError": "Giriş/Çıkış hatası: {{error}}",
       "externallyManaged": "Bu kurulum paket yöneticisi veya dağıtım sistemi üzerinden güncellenir.",
       "disabledByAdministrator": "Uygulama güncellemeleri yönetici tarafından devre dışı bırakıldı.",
@@ -4103,13 +4095,8 @@
       "downloadTooLarge": "Güncelleme indirmesi beklenenden büyük.",
       "missingAsset": "Sürümde {{name}} adlı bir güncelleme dosyası yok.",
       "argumentsTooLong": "Başlatma argümanları, güncelleme boyunca korunamayacak kadar uzun.",
-      "startupPending": "Önceki güncelleme hâlâ başlatıldığını doğruluyor. Birkaç saniye sonra tekrar deneyin.",
-      "versionMustIncrease": "Ardından gelen bir güncellemenin daha yeni bir sürümü olmalıdır.",
       "invalidBundle": "Taşınabilir uygulama eksiksiz bir macOS uygulama paketi değil.",
-      "missingBackup": "Geçerli sürümün yedeği bulunamadı.",
       "invalidStagingDirectory": "Güncelleme hazırlık klasörü geçersiz.",
-      "helperFailed": "Güncelleme yardımcısı başlatılamadı ({{error}}) ve uygulama yeniden başlatılamadı: {{restart}}",
-      "processUnavailable": "Güncellenen uygulamanın işlemi izlenemedi.",
       "ownedByAnotherUser": "Uygulama dosyası başka bir kullanıcıya ait."
     },
     "settings": {

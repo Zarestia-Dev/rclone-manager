@@ -65,7 +65,6 @@ describe('AboutModalComponent', () => {
       installationPackage,
       lastCheckedAt: signal(null),
       checkError: signal(''),
-      rolledBack: signal([]),
     };
 
     const mockRcloneUpdateService = {

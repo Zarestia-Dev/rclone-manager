@@ -66,14 +66,6 @@ impl serde::Serialize for UpdaterError {
     }
 }
 
-/// An update the supervisor rolled back, shown until the application exits.
-#[derive(serde::Serialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct RolledBackUpdate {
-    pub version: String,
-    pub reason: String,
-}
-
 /// Everything a viewer needs to rebuild the updater view, also after a reload.
 #[derive(serde::Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -84,8 +76,6 @@ pub struct UpdaterSnapshot {
     pub last_checked_at: Option<String>,
     /// The localized failure of the last check (or, for rclone, the last update).
     pub error: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub rolled_back: Vec<RolledBackUpdate>,
     /// A localized note that outlives the action that produced it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
@@ -127,13 +117,6 @@ pub trait AppUpdate: Send + Sync {
 #[cfg(feature = "updater")]
 pub enum InstallOutcome {
     Restart,
-    #[cfg(unix)]
-    RestartBinary {
-        executable: std::path::PathBuf,
-        previous: std::path::PathBuf,
-        arguments: Vec<std::ffi::OsString>,
-        working_directory: std::path::PathBuf,
-    },
     Exit,
     AwaitingUser,
 }
@@ -163,7 +146,6 @@ pub struct AppUpdaterData {
     pub download_handle: Option<tokio::task::JoinHandle<()>>,
     pub last_checked_at: Option<String>,
     pub last_error: Option<String>,
-    pub rolled_back: Vec<RolledBackUpdate>,
 }
 
 /// Static update metadata — used for both App and Rclone updates.
@@ -321,7 +303,6 @@ impl AppUpdaterData {
             checking: self.state == UpdateState::Checking,
             last_checked_at: self.last_checked_at.clone(),
             error: self.last_error.clone(),
-            rolled_back: self.rolled_back.clone(),
             notice: None,
         }
     }
@@ -408,7 +389,6 @@ impl RcloneUpdaterData {
             checking: self.state == UpdateState::Checking,
             last_checked_at: self.last_checked_at.clone(),
             error: self.last_error.clone(),
-            rolled_back: Vec::new(),
             notice: self.notice.clone(),
         }
     }
@@ -720,10 +700,6 @@ mod tests {
         data.state = UpdateState::Idle;
         data.last_checked_at = Some(check_finished_at());
         data.last_error = Some("backendErrors.updater.githubRateLimit".into());
-        data.rolled_back.push(RolledBackUpdate {
-            version: "1.2.0".into(),
-            reason: "did not start".into(),
-        });
         let json = serde_json::to_value(data.snapshot()).unwrap();
         assert_eq!(json["checking"], false);
         assert!(json["update"].is_null());
@@ -731,7 +707,6 @@ mod tests {
             chrono::DateTime::parse_from_rfc3339(json["lastCheckedAt"].as_str().unwrap()).is_ok()
         );
         assert_eq!(json["error"], "backendErrors.updater.githubRateLimit");
-        assert_eq!(json["rolledBack"][0]["version"], "1.2.0");
         assert!(json.get("notice").is_none());
     }
 

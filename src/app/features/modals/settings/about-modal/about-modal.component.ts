@@ -120,15 +120,6 @@ export class AboutModalComponent implements OnInit {
   readonly appInstallationFailure = this.appUpdaterService.installationFailure;
   readonly appLastCheckedAt = this.appUpdaterService.lastCheckedAt;
   readonly appCheckError = this.appUpdaterService.checkError;
-  /** Rolled-back updates, kept by the backend for viewers without OS notifications. */
-  readonly appRolledBack = computed(() =>
-    this.appUpdaterService.rolledBack().map(({ version, reason }) =>
-      this.translate.instant('backendErrors.updater.rolledBack', {
-        version,
-        reason: this.backendTranslation.translateBackendMessage(reason),
-      })
-    )
-  );
 
   readonly appUpdateReleaseChannel = computed(() => {
     const update = this.appUpdateAvailable();

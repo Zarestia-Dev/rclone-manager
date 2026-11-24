@@ -192,12 +192,9 @@ pub fn can_deliver_event(
             })
 }
 
-/// A closed interface only accepts status, password entry and the updater receipt.
+/// A closed interface only accepts status and password entry.
 pub fn allowed_when_locked(command: &str) -> bool {
-    matches!(
-        command,
-        "get_vault_info" | "unlock_vault" | "confirm_app_update_startup"
-    )
+    matches!(command, "get_vault_info" | "unlock_vault")
 }
 
 #[cfg(test)]

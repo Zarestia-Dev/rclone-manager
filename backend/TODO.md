@@ -1,8 +1,8 @@
 # Server platform support
 
-`release-headless.yml` builds `rclone-manager-server` archives for Linux, Windows,
-and macOS on x86_64 and aarch64, and the same server as DEB, RPM, Windows setup
-and MSI packages for Linux and Windows. Confirm the builds and their runtime
+`release-server.yml` builds `rclone-manager-server` archives for Linux, Windows,
+and macOS on x86_64 and aarch64, and the same server as DEB, RPM, Arch, Windows
+setup and MSI packages for Linux and Windows. Confirm the builds and their runtime
 dependencies on CI before publishing the draft release.
 
 Only add targets supported by both Rclone and this application's dependencies.

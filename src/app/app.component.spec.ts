@@ -30,7 +30,6 @@ class StartupContext {
   };
   applyDefaultView = vi.fn().mockResolvedValue(undefined);
   navigation = { initialize: vi.fn() };
-  confirmStartupAfterRender = vi.fn();
 }
 
 function startup(): { context: StartupContext; initialize: () => Promise<void> } {
@@ -42,8 +41,8 @@ function startup(): { context: StartupContext; initialize: () => Promise<void> }
   return { context, initialize };
 }
 
-describe('Application update startup confirmation', () => {
-  it('waits for settings and navigation before scheduling the receipt', async () => {
+describe('Application startup', () => {
+  it('waits for settings before starting navigation', async () => {
     const { context, initialize } = startup();
     let finish!: () => void;
     context.appSettingsService.loadSettings.mockReturnValue(
@@ -51,30 +50,30 @@ describe('Application update startup confirmation', () => {
     );
     const pending = initialize();
     await Promise.resolve();
-    expect(context.confirmStartupAfterRender).not.toHaveBeenCalled();
+    expect(context.navigation.initialize).not.toHaveBeenCalled();
     finish();
     await pending;
     expect(context.appInitialized).toBe(true);
     expect(context.navigation.initialize).toHaveBeenCalled();
-    expect(context.confirmStartupAfterRender).toHaveBeenCalledOnce();
   });
 
-  it('does not confirm an unknown vault state', async () => {
+  it('does not load settings for an unknown vault state', async () => {
     const { context, initialize } = startup();
     context.vaultService.isStatusKnown.mockReturnValue(false);
     await initialize();
-    expect(context.confirmStartupAfterRender).not.toHaveBeenCalled();
+    expect(context.appSettingsService.loadSettings).not.toHaveBeenCalled();
+    expect(context.appInitialized).toBe(false);
   });
 
-  it('accepts the known locked-vault screen without loading protected settings', async () => {
+  it('shows the locked-vault screen without loading protected settings', async () => {
     const { context, initialize } = startup();
     context.vaultService.isVaultLocked.mockReturnValue(true);
     await initialize();
     expect(context.appSettingsService.loadSettings).not.toHaveBeenCalled();
-    expect(context.confirmStartupAfterRender).toHaveBeenCalledOnce();
+    expect(context.appInitialized).toBe(false);
   });
 
-  it('does not confirm failed initialization and allows a successful retry', async () => {
+  it('reports failed initialization and allows a successful retry', async () => {
     const { context, initialize } = startup();
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
@@ -82,15 +81,14 @@ describe('Application update startup confirmation', () => {
       await initialize();
       expect(context.appInitialized).toBe(false);
       expect(context.initializationFailed.set).toHaveBeenLastCalledWith(true);
-      expect(context.confirmStartupAfterRender).not.toHaveBeenCalled();
       await initialize();
-      expect(context.confirmStartupAfterRender).toHaveBeenCalledOnce();
+      expect(context.appInitialized).toBe(true);
     } finally {
       log.mockRestore();
     }
   });
 
-  it('does not confirm when navigation cannot initialize', async () => {
+  it('reports a failure when navigation cannot initialize', async () => {
     const { context, initialize } = startup();
     context.navigation.initialize.mockImplementation(() => {
       throw new Error('navigation failed');
@@ -104,7 +102,6 @@ describe('Application update startup confirmation', () => {
     } finally {
       log.mockRestore();
     }
-    expect(context.confirmStartupAfterRender).not.toHaveBeenCalled();
   });
 
   it('stops a pending startup after the vault locks', async () => {

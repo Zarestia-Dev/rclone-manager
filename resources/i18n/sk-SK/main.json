@@ -4134,14 +4134,6 @@
       "updateUnavailable": "Súbor aktualizácie už nie je k dispozícii: {{error}}",
       "relaunchFailed": "Opätovné spustenie zlyhalo: {{error}}",
       "notWritable": "Do cesty aktualizácie nie je možné zapisovať",
-      "rollback": {
-        "exited": "Aktualizovaná aplikácia sa ukončila skôr, ako potvrdila spustenie (kód {{code}}).",
-        "couldNotStart": "Aktualizovanú aplikáciu sa nepodarilo spustiť: {{error}}",
-        "interrupted": "Spúšťanie aktualizovanej aplikácie prerušilo vypnutie.",
-        "notConfirmed": "Aktualizovaná aplikácia nepotvrdila spustenie včas.",
-        "installFailed": "Aktualizáciu sa nepodarilo nainštalovať: {{error}}"
-      },
-      "rolledBack": "Aktualizácia {{version}} bola vrátená späť: {{reason}}",
       "ioError": "Chyba vstupu/výstupu: {{error}}",
       "externallyManaged": "Táto inštalácia sa aktualizuje cez správcu balíkov alebo systém nasadzovania.",
       "disabledByAdministrator": "Aktualizácie aplikácie zakázal správca.",
@@ -4154,13 +4146,8 @@
       "downloadTooLarge": "Stiahnutá aktualizácia je väčšia, ako sa očakávalo.",
       "missingAsset": "Vydanie neobsahuje súbor aktualizácie s názvom {{name}}.",
       "argumentsTooLong": "Argumenty spustenia sú príliš dlhé na to, aby sa zachovali počas aktualizácie.",
-      "startupPending": "Predchádzajúca aktualizácia ešte potvrdzuje svoje spustenie. Skúste to znova o niekoľko sekúnd.",
-      "versionMustIncrease": "Nadväzujúca aktualizácia musí mať novšiu verziu.",
       "invalidBundle": "Prenosná aplikácia nie je úplný balík aplikácie macOS.",
-      "missingBackup": "Chýba záloha aktuálnej verzie.",
       "invalidStagingDirectory": "Prípravný priečinok aktualizácie je neplatný.",
-      "helperFailed": "Pomocný program aktualizácie sa nepodarilo spustiť ({{error}}) a reštart aplikácie zlyhal: {{restart}}",
-      "processUnavailable": "Proces aktualizovanej aplikácie nebolo možné dozorovať.",
       "ownedByAnotherUser": "Súbor aplikácie patrí inému používateľovi."
     },
     "settings": {

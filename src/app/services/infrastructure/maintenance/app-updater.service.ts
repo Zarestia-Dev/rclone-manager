@@ -7,7 +7,6 @@ import {
   DownloadStatus,
   BackendUpdateStatus,
   DownloadStateStatus,
-  RolledBackUpdate,
   UpdaterSnapshot,
 } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
@@ -47,7 +46,6 @@ export class AppUpdaterService extends TauriBaseService {
   private readonly _backendChecking = signal<boolean>(false);
   private readonly _lastCheckedAt = signal<string | null>(null);
   private readonly _checkError = signal<string>('');
-  private readonly _rolledBack = signal<RolledBackUpdate[]>([]);
 
   public readonly isCancelling = this._isCancelling.asReadonly();
   private readonly installationPolicy = computed(
@@ -80,7 +78,6 @@ export class AppUpdaterService extends TauriBaseService {
   /** Why the last check failed, translated. */
   public readonly checkError = this._checkError.asReadonly();
   /** Updates the supervisor rolled back in this session. */
-  public readonly rolledBack = this._rolledBack.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
 
   public readonly updateAvailable = computed(() =>
@@ -267,20 +264,10 @@ export class AppUpdaterService extends TauriBaseService {
       this._checkError.set(
         snapshot.error ? this.backendTranslation.translateBackendMessage(snapshot.error) : ''
       );
-      this._rolledBack.set(snapshot.rolledBack ?? []);
       return snapshot.update ?? null;
     } catch (error) {
       console.error('Failed to sync app update status:', error);
       return this._updateState();
-    }
-  }
-
-  async confirmStartup(): Promise<void> {
-    if (!this.isTauri) return;
-    try {
-      await this.invokeCommand<void>('confirm_app_update_startup');
-    } catch (error) {
-      console.error('Failed to confirm application startup:', error);
     }
   }
 

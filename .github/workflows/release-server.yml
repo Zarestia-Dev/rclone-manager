@@ -1,7 +1,7 @@
 name: "Release Server"
 
 # The headless-v<version> release is the server: ZIPs for servers, and the same
-# executable as the DEB, RPM, Windows setup and MSI for desktops. One signed catalog
+# executable as the DEB, RPM, Arch package, Windows setup and MSI for desktops. One signed catalog
 # updates all of them; latest.json moves installs of the RClone Manager Headless app
 # (0.3.6 and older) to the package of their format. The tag keeps the headless name,
 # which those installs and the server's updater look for.
@@ -85,7 +85,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./backend -> target"
-          key: headless-${{ matrix.os }}-${{ matrix.arch }}
+          key: server-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
         run: npm ci
@@ -146,7 +146,7 @@ jobs:
           esac
           echo "$dir" >> "$GITHUB_PATH"
 
-      - name: Package and sign DEB and RPM
+      - name: Package and sign DEB, RPM and Arch package
         if: matrix.os == 'linux'
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
@@ -155,12 +155,19 @@ jobs:
         run: |
           mkdir -p backend/target/package packages
           cp "backend/target/$TARGET/release/rclone-manager-server" backend/target/package/
+          # The Arch package's unit, without the manual /opt install notes.
+          sed -e '1,/^$/d' -e 's|/opt/rclone-manager/rclone-manager-server|/usr/bin/rclone-manager-server|' \
+            backend/server/linux/rclone-manager-server.service > backend/target/package/rclone-manager-server.service
+          grep -q '^ExecStart=/usr/bin/rclone-manager-server' backend/target/package/rclone-manager-server.service
           deb="packages/RClone.Manager.Server_${VERSION}_$PACKAGE_ARCH.deb"
           rpm="packages/RClone.Manager.Server-$VERSION-1.$UPDATE_ARCH.rpm"
+          pacman="packages/RClone.Manager.Server-$VERSION-1-$UPDATE_ARCH.pkg.tar.zst"
           nfpm package -f backend/server/package/nfpm.yaml -p deb --target "$deb"
           nfpm package -f backend/server/package/nfpm.yaml -p rpm --target "$rpm"
+          VERSION="${VERSION//-/}" nfpm package -f backend/server/package/nfpm.yaml -p archlinux --target "$pacman"
           node scripts/create-update-manifest.cjs deb linux "$UPDATE_ARCH" "$VERSION" "$deb" updater-assets
           node scripts/create-update-manifest.cjs rpm linux "$UPDATE_ARCH" "$VERSION" "$rpm" updater-assets
+          node scripts/create-update-manifest.cjs pacman linux "$UPDATE_ARCH" "$VERSION" "$pacman" updater-assets
           # RClone Manager Headless 0.3.6 cannot install its DEB or RPM itself and
           # announces only a release holding these files under its own name. The same
           # packages, outside the catalog; remove after the 0.3.7 releases.
@@ -191,7 +198,7 @@ jobs:
       - name: Collect release artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: headless-${{ matrix.os }}-${{ matrix.arch }}
+          name: server-${{ matrix.os }}-${{ matrix.arch }}
           path: updater-assets/*
           if-no-files-found: error
 
@@ -202,7 +209,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: release-headless
+      group: release-server
       cancel-in-progress: false
       queue: max
     env:
@@ -217,7 +224,7 @@ jobs:
           node-version: lts/*
       - uses: actions/download-artifact@v8
         with:
-          pattern: headless-*
+          pattern: server-*
           path: artifacts
       - name: Get Version
         id: get_version
@@ -238,6 +245,7 @@ jobs:
             artifacts/**/*.zip
             artifacts/**/*.deb
             artifacts/**/*.rpm
+            artifacts/**/*.pkg.tar.zst
             artifacts/**/*-setup.exe
             artifacts/**/*.msi
       - name: Publish update catalog and latest.json

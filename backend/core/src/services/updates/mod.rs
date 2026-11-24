@@ -5,8 +5,6 @@ pub mod binary;
 #[cfg(feature = "updater")]
 mod download;
 #[cfg(feature = "updater")]
-pub mod health;
-#[cfg(feature = "updater")]
 pub mod install;
 #[cfg(feature = "updater")]
 mod manifest;
@@ -16,11 +14,7 @@ mod package;
 pub use manifest::ArtifactKind;
 pub mod policy;
 #[cfg(feature = "updater")]
-mod process_tree;
-#[cfg(feature = "updater")]
 mod signed;
-#[cfg(feature = "updater")]
-mod supervisor;
 
 use crate::context::AppHandle;
 use crate::services::settings::AppSettingsManager;
@@ -66,8 +60,8 @@ use crate::utils::version::{clean_app_version, is_update_candidate, is_version_n
 /// downgrade: its newest release is older than this build only when this build's
 /// own release is missing (a local build, or a release that was withdrawn).
 /// Packages (including DEB/RPM installed by Tauri) only move forward: `rpm -U` and
-/// an MSI refuse downgrades, package managers decide for themselves, and Android
-/// version codes cannot decrease.
+/// an MSI refuse downgrades, pacman would downgrade without asking, package
+/// managers decide for themselves, and Android version codes cannot decrease.
 fn is_offered(
     installation: &policy::UpdatePolicy,
     channel: &str,
@@ -76,9 +70,13 @@ fn is_offered(
 ) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
-        (_, InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Msi) => {
-            is_version_newer(current, release)
-        }
+        (
+            _,
+            InstallationKind::Deb
+            | InstallationKind::Rpm
+            | InstallationKind::Pacman
+            | InstallationKind::Msi,
+        ) => is_version_newer(current, release),
         (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
             is_update_candidate(current, release)
         }
@@ -302,62 +300,6 @@ async fn update_for_release(
     Ok(Some(update_info))
 }
 
-/// Announce updates the supervisor rolled back and stop offering those versions,
-/// so a release that cannot start here does not loop through download and rollback.
-#[cfg(feature = "updater")]
-pub fn report_failed_updates(app: &AppHandle) {
-    let failures = binary::take_failed_updates();
-    let reported = !failures.is_empty();
-    for failure in failures {
-        log::warn!(
-            "Update {} was rolled back: {}",
-            failure.version,
-            failure.reason
-        );
-        // Kept for viewers without OS notifications, such as the headless web UI.
-        if let Some(state) = app.try_state::<AppUpdaterState>() {
-            state
-                .data
-                .lock()
-                .rolled_back
-                .push(crate::utils::types::updater::RolledBackUpdate {
-                    version: failure.version.clone(),
-                    reason: failure.reason.clone(),
-                });
-        }
-        notify(
-            app,
-            NotificationEvent::AppUpdate(UpdateStage::Failed {
-                error: crate::localized_error!(
-                    "backendErrors.updater.rolledBack",
-                    "version" => failure.version,
-                    "reason" => failure.reason
-                ),
-            }),
-        );
-        let Some(manager) = app.try_state::<AppSettingsManager>() else {
-            continue;
-        };
-        let mut skipped = manager
-            .get_all()
-            .map(|c| c.runtime.app_skipped_updates)
-            .unwrap_or_default();
-        if !skipped.contains(&failure.version) {
-            skipped.push(failure.version);
-            if let Err(error) = manager.save_setting(
-                "runtime",
-                "app_skipped_updates",
-                &serde_json::json!(skipped),
-            ) {
-                log::warn!("Could not remember the failed update: {error}");
-            }
-        }
-    }
-    if reported {
-        emit_state_changed();
-    }
-}
-
 pub async fn get_app_update_info(app: AppHandle) -> Result<UpdaterSnapshot> {
     Ok(app.state::<AppUpdaterState>().data.lock().snapshot())
 }
@@ -455,6 +397,7 @@ mod tests {
             (Deb, UpdateMethod::Tauri),
             (Rpm, UpdateMethod::Tauri),
             (Pacman, UpdateMethod::Unavailable),
+            (Pacman, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
         ] {
             assert!(!offered(kind, method, "0.3.4-beta.1", "0.3.3"));

@@ -1,6 +1,9 @@
-# The server's DEB, RPM and MSI. release-headless.yml copies the release build to
+# The server's DEB, RPM, Arch package and MSI. release-server.yml copies the
+# release build (and, for Arch, the systemd unit pointing at /usr/bin) to
 # backend/target/package/ and runs, from the repository root:
-#   VERSION=<version> ARCH=<amd64|arm64> nfpm package -f backend/server/package/nfpm.yaml -p <deb|rpm|msi>
+#   VERSION=<version> ARCH=<amd64|arm64> nfpm package -f backend/server/package/nfpm.yaml -p <deb|rpm|archlinux|msi>
+# pacman versions have no "-": the Arch package gets 0.3.7beta.3 for 0.3.7-beta.3
+# (nfpm 2.49 drops the pre-release of an Arch version without an epoch).
 name: rclone-manager-server
 arch: ${ARCH}
 version: ${VERSION}
@@ -32,10 +35,27 @@ contents:
     dst: /usr/share/icons/hicolor/128x128/apps/rclone-manager-server.png
   - src: backend/desktop/icons/128x128@2x.png
     dst: /usr/share/icons/hicolor/256x256/apps/rclone-manager-server.png
+  # The files the AUR package added to the DEB: the service, its user and state
+  # folder (created by pacman's systemd hooks), and the path the RClone Manager
+  # Headless app ran from (see legacy-launcher.sh).
+  - src: backend/target/package/rclone-manager-server.service
+    dst: /usr/lib/systemd/system/rclone-manager-server.service
+    packager: archlinux
+  - src: backend/server/package/sysusers.conf
+    dst: /usr/lib/sysusers.d/rclone-manager-server.conf
+    packager: archlinux
+  - src: backend/server/package/tmpfiles.conf
+    dst: /usr/lib/tmpfiles.d/rclone-manager-server.conf
+    packager: archlinux
+  - src: /usr/lib/rclone-manager-server/rclone-manager-headless
+    dst: /usr/bin/rclone-manager-headless
+    type: symlink
+    packager: archlinux
 # These packages replace r-clone-manager-headless, the RClone Manager Headless app
-# (0.3.6 and older; the Tauri bundles split "RClone" in kebab case): installing one
-# removes it. dpkg removes a package that this one both conflicts with and replaces;
-# rpm removes one this one obsoletes (nfpm writes `replaces` as Obsoletes).
+# (0.3.6 and older; the Tauri bundles split "RClone" in kebab case), and on Arch its
+# AUR package rclone-manager-headless: installing one removes it. dpkg removes a
+# package that this one both conflicts with and replaces; rpm removes one this one
+# obsoletes (nfpm writes `replaces` as Obsoletes).
 overrides:
   deb:
     conflicts:
@@ -54,6 +74,24 @@ overrides:
       - r-clone-manager-headless
     scripts:
       preremove: backend/server/package/preremove.sh
+  archlinux:
+    depends:
+      - glibc
+      - gcc-libs
+      - dbus
+      - hicolor-icon-theme
+    recommends:
+      - "rclone: for cloud storage operations"
+      - "fuse3: for mounting remote filesystems"
+    conflicts:
+      - rclone-manager-headless
+    replaces:
+      - rclone-manager-headless
+    provides:
+      - rclone-manager-headless
+    scripts:
+      # pacman runs it after removing the files, never on an upgrade.
+      postremove: backend/server/package/preremove.sh
   msi:
     contents:
       - src: backend/target/package/rclone-manager-server.exe
@@ -61,6 +99,8 @@ overrides:
 rpm:
   scripts:
     posttrans: backend/server/package/postinstall.sh
+archlinux:
+  packager: Zarestia Dev
 msi:
   product_name: RClone Manager Server
   manufacturer: Zarestia Dev
@@ -75,6 +115,12 @@ msi:
       target: /Program Files/RClone Manager Server/rclone-manager-server.exe
       icon: backend/target/package/rclone-manager-server.exe
   registry:
+    # The icon of the uninstall entry in Settings › Apps. nfpm has no ARPPRODUCTICON
+    # setting, and the Icon row it adds for the shortcut has a generated name.
+    - root: HKLM
+      key: Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]
+      name: DisplayIcon
+      value: "[INSTALLFOLDER]rclone-manager-server.exe,0"
     # The updater reads it to know that this folder belongs to the MSI.
     - root: HKLM
       key: Software\Zarestia Dev\RClone Manager Server

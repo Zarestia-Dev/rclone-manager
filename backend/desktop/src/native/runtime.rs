@@ -128,15 +128,6 @@ pub fn run() {
             if matches!(&event, tauri::RunEvent::Exit) {
                 crate::services::tray::native::remove();
             }
-            #[cfg(feature = "updater")]
-            if matches!(&event, tauri::RunEvent::Ready) {
-                let context =
-                    tauri::Manager::state::<rclone_manager_core::context::AppHandle>(app_handle);
-                if tauri::Manager::get_webview_window(app_handle, "main").is_some() {
-                    crate::services::updates::health::require_frontend(context.inner());
-                }
-                crate::services::updates::health::host_ready(context.inner());
-            }
             if let tauri::RunEvent::ExitRequested { api, .. } = event
                 && !rclone_manager_core::services::lifecycle::shutdown::is_shutdown_complete(
                     app_handle.backend(),

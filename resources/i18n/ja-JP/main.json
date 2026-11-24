@@ -3991,14 +3991,6 @@
       "updateUnavailable": "アップデートファイルは利用できなくなりました: {{error}}",
       "relaunchFailed": "再起動に失敗しました: {{error}}",
       "notWritable": "アップデート先のパスに書き込み権限がありません",
-      "rollback": {
-        "exited": "更新後のアプリケーションは、起動を確認する前に終了しました (コード {{code}})。",
-        "couldNotStart": "更新後のアプリケーションを起動できませんでした: {{error}}",
-        "interrupted": "更新後のアプリケーションの起動はシャットダウンにより中断されました。",
-        "notConfirmed": "更新後のアプリケーションが時間内に起動を確認しませんでした。",
-        "installFailed": "アップデートをインストールできませんでした: {{error}}"
-      },
-      "rolledBack": "アップデート {{version}} を元に戻しました: {{reason}}",
       "ioError": "入出力(IO)エラー: {{error}}",
       "externallyManaged": "このインストールはパッケージマネージャーまたはデプロイシステムによって更新されます。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4011,13 +4003,8 @@
       "downloadTooLarge": "アップデートのダウンロードが想定より大きいです。",
       "missingAsset": "このリリースには {{name}} という名前のアップデートファイルがありません。",
       "argumentsTooLong": "起動引数が長すぎるため、アップデート後に引き継げません。",
-      "startupPending": "前回のアップデートの起動確認がまだ完了していません。数秒後にもう一度お試しください。",
-      "versionMustIncrease": "続けて適用するアップデートは、より新しいバージョンである必要があります。",
       "invalidBundle": "ポータブルアプリが完全な macOS アプリバンドルではありません。",
-      "missingBackup": "現在のバージョンのバックアップが見つかりません。",
       "invalidStagingDirectory": "アップデートの準備フォルダーが無効です。",
-      "helperFailed": "アップデートヘルパーを起動できず（{{error}}）、アプリの再起動にも失敗しました: {{restart}}",
-      "processUnavailable": "更新されたアプリのプロセスを監視できませんでした。",
       "ownedByAnotherUser": "アプリのファイルは別のユーザーが所有しています。"
     },
     "settings": {

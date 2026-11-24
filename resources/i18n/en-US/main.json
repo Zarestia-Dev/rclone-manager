@@ -4083,14 +4083,6 @@
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",
       "notWritable": "Update path is not writable",
-      "rollback": {
-        "exited": "The updated application exited before it confirmed startup (code {{code}}).",
-        "couldNotStart": "The updated application could not be started: {{error}}",
-        "interrupted": "Startup of the updated application was interrupted by a shutdown.",
-        "notConfirmed": "The updated application did not confirm startup in time.",
-        "installFailed": "The update could not be installed: {{error}}"
-      },
-      "rolledBack": "Update {{version}} was rolled back: {{reason}}",
       "ioError": "IO error: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4103,13 +4095,8 @@
       "downloadTooLarge": "The update download is larger than expected.",
       "missingAsset": "The release has no update file named {{name}}.",
       "argumentsTooLong": "The launch arguments are too long to keep across an update.",
-      "startupPending": "The previous update is still confirming that it started. Try again in a few seconds.",
-      "versionMustIncrease": "A follow-up update must have a newer version.",
       "invalidBundle": "The portable app is not a complete macOS app bundle.",
-      "missingBackup": "The backup of the current version is missing.",
       "invalidStagingDirectory": "The update staging folder is invalid.",
-      "helperFailed": "The update helper could not start ({{error}}), and restarting the application failed: {{restart}}",
-      "processUnavailable": "The updated application's process could not be supervised.",
       "ownedByAnotherUser": "The application file belongs to another user."
     },
     "settings": {

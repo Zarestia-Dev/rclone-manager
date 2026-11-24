@@ -9,13 +9,15 @@ use crate::utils::github_client::Release;
 use crate::utils::types::updater::{AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate};
 use std::sync::Arc;
 
-fn kind(policy: &UpdatePolicy) -> ArtifactKind {
-    match policy.installation {
+/// The artifact that updates an installation.
+pub(super) fn artifact_kind(installation: InstallationKind) -> ArtifactKind {
+    match installation {
         InstallationKind::Portable => ArtifactKind::Portable,
         InstallationKind::Android => ArtifactKind::Android,
         InstallationKind::Appimage => ArtifactKind::Appimage,
         InstallationKind::Deb => ArtifactKind::Deb,
         InstallationKind::Rpm => ArtifactKind::Rpm,
+        InstallationKind::Pacman => ArtifactKind::Pacman,
         InstallationKind::Nsis => ArtifactKind::Nsis,
         InstallationKind::Msi => ArtifactKind::Msi,
         _ => ArtifactKind::Server,
@@ -27,7 +29,7 @@ pub(crate) async fn check(
     release: &Release,
     policy: &UpdatePolicy,
 ) -> Result<Option<PendingAppUpdate>, String> {
-    let kind = kind(policy);
+    let kind = artifact_kind(policy.installation);
     let target = target();
     log::debug!(
         "Looking for signed update: release={}, kind={kind}, target={target}",
@@ -51,7 +53,7 @@ pub(crate) async fn check(
         &target,
         PUBLIC_KEY,
     )?;
-    let Some((manifest, bytes, signature)) = selected else {
+    let Some(manifest) = selected else {
         log::debug!(
             "No signed manifest for {kind}-{target} in {}",
             release.tag_name
@@ -79,23 +81,19 @@ pub(crate) async fn check(
     let paths = crate::services::paths::AppPaths::from_app_handle(app)?;
     Ok(Some(Arc::new(SignedUpdate {
         manifest,
-        manifest_bytes: bytes,
-        manifest_signature: signature,
         download_url,
-        log_directory: paths.get_app_log_dir(),
         cache_directory: paths.cache_dir.join("app-updates"),
         method: policy.method,
+        installation: policy.installation,
     })))
 }
 
 struct SignedUpdate {
     manifest: Manifest,
-    manifest_bytes: Vec<u8>,
-    manifest_signature: String,
     download_url: url::Url,
     cache_directory: std::path::PathBuf,
-    log_directory: std::path::PathBuf,
     method: UpdateMethod,
+    installation: InstallationKind,
 }
 
 impl SignedUpdate {
@@ -167,17 +165,15 @@ impl AppUpdate for SignedUpdate {
         }
         if matches!(
             self.manifest.kind,
-            ArtifactKind::Deb | ArtifactKind::Rpm | ArtifactKind::Nsis | ArtifactKind::Msi
+            ArtifactKind::Deb
+                | ArtifactKind::Rpm
+                | ArtifactKind::Pacman
+                | ArtifactKind::Nsis
+                | ArtifactKind::Msi
         ) {
-            return super::package::install(self.manifest.kind, payload);
+            return super::package::install(self.installation, payload);
         }
-        super::binary::prepare(
-            self.manifest.kind,
-            &self.manifest_bytes,
-            &self.manifest_signature,
-            payload,
-            &self.log_directory,
-        )
+        super::binary::install(&self.manifest, payload)
     }
 }
 

@@ -40,22 +40,6 @@ impl Host for NativeHost {
         crate::services::tray::native::remove_before_exit(_app);
         self.0.restart()
     }
-    #[cfg(all(unix, feature = "updater"))]
-    fn restart_updated_binary(
-        &self,
-        executable: &std::path::Path,
-        previous: &std::path::Path,
-        arguments: &[std::ffi::OsString],
-        working_directory: &std::path::Path,
-    ) -> Result<(), String> {
-        self.0.cleanup_before_exit();
-        crate::services::updates::binary::restart(
-            executable,
-            previous,
-            arguments,
-            working_directory,
-        )
-    }
     fn exit(&self, code: i32) {
         self.0.exit(code);
     }

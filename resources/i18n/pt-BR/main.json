@@ -4042,14 +4042,6 @@
       "updateUnavailable": "O artefato de atualização não está mais disponível: {{error}}",
       "relaunchFailed": "Reinício falhou: {{error}}",
       "notWritable": "O caminho de atualização não é gravável",
-      "rollback": {
-        "exited": "O aplicativo atualizado foi encerrado antes de confirmar a inicialização (código {{code}}).",
-        "couldNotStart": "Não foi possível iniciar o aplicativo atualizado: {{error}}",
-        "interrupted": "A inicialização do aplicativo atualizado foi interrompida por um desligamento.",
-        "notConfirmed": "O aplicativo atualizado não confirmou a inicialização a tempo.",
-        "installFailed": "Não foi possível instalar a atualização: {{error}}"
-      },
-      "rolledBack": "A atualização {{version}} foi revertida: {{reason}}",
       "ioError": "Erro de E/S: {{error}}",
       "externallyManaged": "Esta instalação é atualizada pelo gerenciador de pacotes ou pelo sistema de implantação.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
@@ -4062,13 +4054,8 @@
       "downloadTooLarge": "O download da atualização é maior do que o esperado.",
       "missingAsset": "A versão não tem nenhum arquivo de atualização chamado {{name}}.",
       "argumentsTooLong": "Os argumentos de inicialização são longos demais para serem mantidos durante uma atualização.",
-      "startupPending": "A atualização anterior ainda está confirmando que iniciou. Tente novamente em alguns segundos.",
-      "versionMustIncrease": "Uma atualização seguinte deve ter uma versão mais recente.",
       "invalidBundle": "O aplicativo portátil não é um pacote de aplicativo macOS completo.",
-      "missingBackup": "O backup da versão atual está ausente.",
       "invalidStagingDirectory": "A pasta de preparação da atualização é inválida.",
-      "helperFailed": "O assistente de atualização não pôde ser iniciado ({{error}}) e a reinicialização do aplicativo falhou: {{restart}}",
-      "processUnavailable": "Não foi possível supervisionar o processo do aplicativo atualizado.",
       "ownedByAnotherUser": "O arquivo do aplicativo pertence a outro usuário."
     },
     "settings": {

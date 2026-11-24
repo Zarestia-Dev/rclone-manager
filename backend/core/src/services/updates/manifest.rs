@@ -24,6 +24,8 @@ pub enum ArtifactKind {
     /// The server packages, installed by their installer.
     Deb,
     Rpm,
+    /// The server's Arch Linux package.
+    Pacman,
     Nsis,
     Msi,
 }
@@ -35,6 +37,7 @@ impl ArtifactKind {
             Self::Android => "apk",
             Self::Deb => "deb",
             Self::Rpm => "rpm",
+            Self::Pacman => "pkg.tar.zst",
             Self::Nsis => "exe",
             Self::Msi => "msi",
             Self::Portable | Self::Server | Self::Appimage => "payload",
@@ -51,6 +54,7 @@ impl std::fmt::Display for ArtifactKind {
             Self::Appimage => "appimage",
             Self::Deb => "deb",
             Self::Rpm => "rpm",
+            Self::Pacman => "pacman",
             Self::Nsis => "nsis",
             Self::Msi => "msi",
         })
@@ -77,7 +81,7 @@ pub(super) fn select_manifest(
     kind: ArtifactKind,
     target: &str,
     key: &str,
-) -> Result<Option<(Manifest, Vec<u8>, String)>, String> {
+) -> Result<Option<Manifest>, String> {
     let catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
     if catalog.schema_version != 1 || catalog.version != version {
         return Err(verification_failed(
@@ -92,7 +96,7 @@ pub(super) fn select_manifest(
         .map_err(verification_failed)?;
     let manifest = Manifest::from_signed(&bytes, &entry.signature, key)?;
     manifest.validate(version, kind, target)?;
-    Ok(Some((manifest, bytes, entry.signature.clone())))
+    Ok(Some(manifest))
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -290,7 +294,6 @@ pub(super) fn test_portable_manifest(target: &str) -> Manifest {
     )
     .unwrap()
     .unwrap()
-    .0
 }
 
 #[cfg(test)]
@@ -398,7 +401,6 @@ mod tests {
         )
         .unwrap()
         .unwrap()
-        .0
     }
 
     #[test]
@@ -441,7 +443,7 @@ mod tests {
     #[test]
     fn appimages_install_the_signed_release_bundle_itself() {
         let key = include_str!("fixtures/appimage-public.key");
-        let (manifest, _, _) = select_manifest(
+        let manifest = select_manifest(
             include_bytes!("fixtures/appimage-catalog.json"),
             "99.0.0",
             ArtifactKind::Appimage,
@@ -499,9 +501,9 @@ mod tests {
     }
 
     #[test]
-    fn catalog_preserves_exact_signed_bytes_for_the_existing_install_helper() {
+    fn catalog_entries_are_bound_to_their_kind_target_version_and_key() {
         let catalog = serde_json::to_vec(&catalog_fixture()).unwrap();
-        let (manifest, bytes, signature) = select_manifest(
+        let manifest = select_manifest(
             &catalog,
             "99.0.0",
             ArtifactKind::Portable,
@@ -510,8 +512,6 @@ mod tests {
         )
         .unwrap()
         .unwrap();
-        assert_eq!(bytes, include_bytes!("fixtures/manifest.json"));
-        assert_eq!(signature, include_str!("fixtures/manifest.json.sig").trim());
         manifest
             .verify_payload_with_key(
                 include_bytes!("fixtures/payload.txt"),

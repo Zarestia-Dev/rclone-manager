@@ -131,12 +131,6 @@ export interface UpdateInfo {
   prerelease?: boolean;
 }
 
-/** An update the supervisor rolled back because the new version did not start. */
-export interface RolledBackUpdate {
-  version: string;
-  reason: string;
-}
-
 /** The backend's updater state, complete enough to rebuild the view after a reload. */
 export interface UpdaterSnapshot {
   update: UpdateInfo | null;
@@ -145,7 +139,6 @@ export interface UpdaterSnapshot {
   lastCheckedAt?: string | null;
   /** Localized failure of the last check (rclone: or update). */
   error?: string | null;
-  rolledBack?: RolledBackUpdate[];
   /** Localized note that outlives the action that caused it. */
   notice?: string;
 }

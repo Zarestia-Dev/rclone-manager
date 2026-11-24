@@ -1,23 +1,23 @@
-//! Installs a server package update (DEB, RPM, the Windows setup or the MSI)
-//! with the installer its package format uses, as the user would by hand.
+//! Installs a server package update (DEB, RPM, Arch package, the Windows setup or
+//! the MSI) with the installer its package format uses, as the user would by hand.
 use super::manifest::ArtifactKind;
+use super::policy::InstallationKind;
 use crate::utils::types::updater::InstallOutcome;
 #[cfg(any(target_os = "linux", windows))]
 use std::path::Path;
 
 /// Installs `payload`, the package's verified bytes.
-pub(super) fn install(kind: ArtifactKind, payload: &[u8]) -> Result<InstallOutcome, String> {
+pub(super) fn install(
+    installation: InstallationKind,
+    payload: &[u8],
+) -> Result<InstallOutcome, String> {
+    let kind = super::signed::artifact_kind(installation);
     log::info!("Installing {kind} package ({} bytes)", payload.len());
     match kind {
         #[cfg(target_os = "linux")]
-        ArtifactKind::Deb | ArtifactKind::Rpm => {
-            let (tool, flag) = if kind == ArtifactKind::Deb {
-                ("dpkg", "-i")
-            } else {
-                ("rpm", "-U")
-            };
+        ArtifactKind::Deb | ArtifactKind::Rpm | ArtifactKind::Pacman => {
             let package = write_package(kind, payload).map_err(|e| e.to_string())?;
-            install_as_root(tool, flag, &package)
+            install_as_root(installation, &package)
         }
         #[cfg(windows)]
         ArtifactKind::Nsis | ArtifactKind::Msi => {
@@ -54,15 +54,19 @@ fn write_package(kind: ArtifactKind, payload: &[u8]) -> std::io::Result<tempfile
 /// password never reaches this process. The running build keeps running from the
 /// replaced file until it restarts.
 #[cfg(target_os = "linux")]
-fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutcome, String> {
+fn install_as_root(
+    installation: InstallationKind,
+    package: &Path,
+) -> Result<InstallOutcome, String> {
     use super::policy::system_program;
     use std::process::Command;
+    let (tool, flags, _) = super::policy::linux_installer(installation);
     let tool = system_program(tool)
         .ok_or_else(|| crate::localized_error!("backendErrors.updater.unsupportedInstallation"))?;
     let run = |mut command: Command| -> Result<(), (Option<i32>, String)> {
         let output = command
             .arg(&tool)
-            .arg(flag)
+            .args(flags)
             .arg(package)
             .stdin(std::process::Stdio::null())
             .output()
@@ -100,7 +104,7 @@ fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutc
             .map(|()| InstallOutcome::Restart)
             .map_err(|(_, error)| error);
     }
-    Err(super::policy::no_privilege_prompt(tool.ends_with("rpm")))
+    Err(super::policy::no_privilege_prompt(installation))
 }
 
 /// An askpass script for sudo: it shows the dialog with sudo's prompt, and the
@@ -249,15 +253,21 @@ mod tests {
     #[test]
     fn other_kinds_and_platforms_are_not_packages() {
         let payload = b"payload";
-        for kind in [ArtifactKind::Server, ArtifactKind::Portable] {
+        for kind in [InstallationKind::Server, InstallationKind::Portable] {
             assert!(install(kind, payload).is_err());
         }
         #[cfg(not(windows))]
-        for kind in [ArtifactKind::Nsis, ArtifactKind::Msi] {
+        for kind in [InstallationKind::Nsis, InstallationKind::Msi] {
             assert!(install(kind, payload).is_err());
         }
         #[cfg(not(target_os = "linux"))]
-        assert!(install(ArtifactKind::Deb, payload).is_err());
+        for kind in [
+            InstallationKind::Deb,
+            InstallationKind::Rpm,
+            InstallationKind::Pacman,
+        ] {
+            assert!(install(kind, payload).is_err());
+        }
     }
 
     #[cfg(any(target_os = "linux", windows))]
@@ -266,14 +276,16 @@ mod tests {
         for kind in [
             ArtifactKind::Deb,
             ArtifactKind::Rpm,
+            ArtifactKind::Pacman,
             ArtifactKind::Nsis,
             ArtifactKind::Msi,
         ] {
             let package = write_package(kind, b"verified bytes").unwrap();
             assert_eq!(std::fs::read(&package).unwrap(), b"verified bytes");
-            assert_eq!(
-                package.extension().unwrap(),
-                kind.extension(),
+            assert!(
+                package
+                    .to_string_lossy()
+                    .ends_with(&format!(".{}", kind.extension())),
                 "the installer opens its file type"
             );
             #[cfg(unix)]

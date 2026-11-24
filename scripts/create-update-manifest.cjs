@@ -15,6 +15,7 @@ const RELEASE_FILES = {
   appimage: ['linux-', '.AppImage'],
   deb: ['linux-', '.deb'],
   rpm: ['linux-', '.rpm'],
+  pacman: ['linux-', '.pkg.tar.zst'],
   nsis: ['windows-', '-setup.exe'],
   msi: ['windows-', '.msi'],
 };

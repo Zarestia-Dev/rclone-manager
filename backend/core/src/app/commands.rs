@@ -12,8 +12,6 @@ macro_rules! MASTER_COMMAND_LIST {
     ($action:ident) => {
         $action! {
             // PLATFORM
-            #[cfg(feature = "updater")]
-            (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [sync, infallible]);
             (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
             (get_local_addresses, $crate::utils::app::platform::get_local_addresses, [], [sync, no_app]);

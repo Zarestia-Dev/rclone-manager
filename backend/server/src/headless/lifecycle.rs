@@ -21,9 +21,7 @@ pub(crate) fn restart(_app: &AppHandle) -> Result<(), String> {
     // Replace the process so containers keep their PID and listening sockets
     // close before the new server starts binding its ports.
     use std::os::unix::process::CommandExt;
-    let mut command = relaunch_command()?;
-    rclone_manager_core::services::updates::health::keep_trial_across_exec(&mut command);
-    Err(command.exec().to_string())
+    Err(relaunch_command()?.exec().to_string())
 }
 
 /// Set once a restart is requested; the process relaunches after its HTTP
