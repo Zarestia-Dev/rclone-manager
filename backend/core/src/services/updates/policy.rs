@@ -222,9 +222,7 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
                     can_install_as_root()
                 }) =>
             {
-                Some(crate::localized_error!(
-                    "backendErrors.updater.noPrivilegePrompt"
-                ))
+                Some(no_privilege_prompt(kind == InstallationKind::Rpm))
             }
             // Native installers and Android own their authorization flows.
             _ => None,
@@ -384,16 +382,33 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
     }
 }
 
-/// How the core installs a package as root. Each way asks for the password in a
-/// process of its own and hands it to the privileged one, so it never reaches the
-/// application: pkexec and run0 through the session's polkit agent, `sudo -A`
-/// through the askpass program sudo starts.
+/// The core installs a package as root through pkexec, whose polkit agent asks for
+/// the password, or, where no agent runs, through `sudo -A` with a zenity or
+/// kdialog password dialog. Either way the password never reaches the application.
 #[cfg(target_os = "linux")]
-pub(super) fn can_install_as_root() -> bool {
-    ["pkexec", "run0"]
+fn can_install_as_root() -> bool {
+    system_program("pkexec").is_some()
+        || (system_program("sudo").is_some() && password_dialog().is_some())
+}
+
+/// No way to ask for the administrator password here: the command that installs
+/// the package downloaded from the release page instead.
+pub(super) fn no_privilege_prompt(rpm: bool) -> String {
+    let command = if rpm {
+        "sudo rpm -U RClone.Manager*.rpm"
+    } else {
+        "sudo dpkg -i RClone.Manager*.deb"
+    };
+    crate::localized_error!("backendErrors.updater.noPrivilegePrompt", "command" => command)
+}
+
+/// The dialog `sudo -A` asks for the password with. It runs as the user, so the
+/// `PATH` may choose it.
+#[cfg(target_os = "linux")]
+pub(super) fn password_dialog() -> Option<&'static str> {
+    ["zenity", "kdialog"]
         .into_iter()
-        .any(|tool| system_program(tool).is_some())
-        || (system_program("sudo").is_some() && askpass().is_some())
+        .find(|dialog| which::which(dialog).is_ok())
 }
 
 /// A program that runs as root, looked up in the system folders only: a folder on
@@ -410,44 +425,6 @@ pub(super) fn system_program(name: &str) -> Option<std::path::PathBuf> {
 #[cfg(not(target_os = "linux"))]
 fn can_install_as_root() -> bool {
     false
-}
-
-/// The program `sudo -A` asks for the password with.
-#[cfg(target_os = "linux")]
-#[derive(Debug, PartialEq)]
-pub(super) enum Askpass {
-    /// `SUDO_ASKPASS` is already set; sudo reads it from the environment.
-    Inherited,
-    /// Takes the prompt as its argument, as sudo calls it.
-    Program(std::path::PathBuf),
-    /// Needs a script that passes the prompt on: zenity or kdialog.
-    Dialog(&'static str),
-}
-
-#[cfg(target_os = "linux")]
-pub(super) fn askpass() -> Option<Askpass> {
-    if std::env::var_os("SUDO_ASKPASS").is_some_and(|path| std::path::Path::new(&path).is_file()) {
-        return Some(Askpass::Inherited);
-    }
-    ["ksshaskpass", "ssh-askpass", "lxqt-openssh-askpass"]
-        .iter()
-        .find_map(|name| which::which(name).ok())
-        .or_else(|| {
-            [
-                "/usr/lib/ssh/ssh-askpass",
-                "/usr/libexec/openssh/ssh-askpass",
-            ]
-            .iter()
-            .map(std::path::PathBuf::from)
-            .find(|path| path.is_file())
-        })
-        .map(Askpass::Program)
-        .or_else(|| {
-            ["zenity", "kdialog"]
-                .into_iter()
-                .find(|tool| which::which(tool).is_ok())
-                .map(Askpass::Dialog)
-        })
 }
 
 /// `pacman -Qqo` prints the name; `dpkg-query -S` prints `name: path`.

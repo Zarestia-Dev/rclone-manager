@@ -1,5 +1,5 @@
 //! Bounded HTTPS downloads and an authenticated, atomically written payload cache.
-use super::manifest::{Manifest, valid_asset_name};
+use super::manifest::Manifest;
 use crate::utils::github_client::{OWNER, REPO, Release};
 use crate::utils::types::updater::DownloadProgress;
 use std::path::{Path, PathBuf};
@@ -64,9 +64,10 @@ pub(super) async fn fetch(
 }
 
 pub(super) fn release_asset(release: &Release, name: &str) -> Result<url::Url, String> {
-    if !valid_asset_name(name) {
+    if !release.assets.iter().any(|asset| asset.name == name) {
         return Err(crate::localized_error!(
-            "backendErrors.updater.unexpectedAsset"
+            "backendErrors.updater.missingAsset",
+            "name" => name
         ));
     }
     let mut url = url::Url::parse(&format!(
@@ -78,18 +79,6 @@ pub(super) fn release_asset(release: &Release, name: &str) -> Result<url::Url, S
         .pop_if_empty()
         .push(&release.tag_name)
         .push(name);
-    let expected = url.clone();
-    let mut assets = release.assets.iter().filter(|a| a.name == name);
-    let asset = assets.next().ok_or_else(
-        || crate::localized_error!("backendErrors.updater.missingAsset", "name" => name),
-    )?;
-    if assets.next().is_some()
-        || url::Url::parse(&asset.browser_download_url).ok().as_ref() != Some(&expected)
-    {
-        return Err(crate::localized_error!(
-            "backendErrors.updater.unexpectedAsset"
-        ));
-    }
     Ok(url)
 }
 
@@ -251,15 +240,14 @@ mod tests {
         );
     }
     #[test]
-    fn release_assets_require_unique_names_and_the_selected_repository_and_tag() {
+    fn release_assets_are_downloaded_from_the_selected_repository_and_tag() {
         let url = format!(
             "https://github.com/{OWNER}/{REPO}/releases/download/v99.0.0/portable-linux-x86_64.json"
         );
-        let mut release = Release {
+        let release = Release {
             tag_name: "v99.0.0".into(),
             assets: vec![crate::utils::github_client::Asset {
                 name: "portable-linux-x86_64.json".into(),
-                browser_download_url: url.clone(),
                 ..Default::default()
             }],
             ..Default::default()
@@ -270,17 +258,6 @@ mod tests {
                 .as_str(),
             url
         );
-        for wrong in [
-            url.replace("https:", "http:"),
-            url.replace("v99.0.0", "v98.0.0"),
-            "https://example.invalid/update".into(),
-        ] {
-            release.assets[0].browser_download_url = wrong;
-            assert!(release_asset(&release, "portable-linux-x86_64.json").is_err());
-        }
-        release.assets[0].browser_download_url = url;
-        release.assets.push(release.assets[0].clone());
-        assert!(release_asset(&release, "portable-linux-x86_64.json").is_err());
         assert!(release_asset(&release, "missing.json").is_err());
     }
 

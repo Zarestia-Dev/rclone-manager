@@ -146,8 +146,6 @@ jobs:
           esac
           echo "$dir" >> "$GITHUB_PATH"
 
-      # The asset names are the ones the Tauri bundles had; the website and the
-      # updater's availability checks match them.
       - name: Package and sign DEB and RPM
         if: matrix.os == 'linux'
         env:
@@ -163,6 +161,11 @@ jobs:
           nfpm package -f backend/server/package/nfpm.yaml -p rpm --target "$rpm"
           node scripts/create-update-manifest.cjs deb linux "$UPDATE_ARCH" "$VERSION" "$deb" updater-assets
           node scripts/create-update-manifest.cjs rpm linux "$UPDATE_ARCH" "$VERSION" "$rpm" updater-assets
+          # RClone Manager Headless 0.3.6 cannot install its DEB or RPM itself and
+          # announces only a release holding these files under its own name. The same
+          # packages, outside the catalog; remove after the 0.3.7 releases.
+          cp "$deb" "updater-assets/RClone.Manager.Headless_${VERSION}_$PACKAGE_ARCH.deb"
+          cp "$rpm" "updater-assets/RClone.Manager.Headless-$VERSION-1.$UPDATE_ARCH.rpm"
 
       - name: Build and sign Windows setup and MSI
         if: matrix.os == 'windows'

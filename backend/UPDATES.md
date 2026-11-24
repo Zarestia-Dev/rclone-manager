@@ -25,25 +25,18 @@ disk cache entries remain available for a later retry.
 `get_update_policy` returns the installation kind, installer method, eligibility,
 localized reason, and for external installations the command that updates them
 (and the AUR package name).
-An update is announced only after a compatible artifact is found for the current
-installation and architecture. Direct installers require valid updater metadata
-and its referenced release asset. Missing targets produce no update; network or
-metadata validation failures report a check error without announcing an update.
-Read-only or administratively disabled installations still check artifact
-availability, while installation remains disabled.
+For an installation the app updates itself, an update is announced only after a
+compatible artifact is found for the current installation and architecture: valid
+updater metadata and its referenced release asset. Missing targets produce no
+update; network or metadata validation failures report a check error without
+announcing an update. Read-only or administratively disabled installations still
+check artifact availability, while installation remains disabled.
 
-External installations announce upstream availability using a matching Linux
-server ZIP for Docker and a matching DEB for Flatpak (or DEB/RPM installations
-the app cannot install itself). Desktop and server products and package
-architecture names are matched separately. This does not confirm that the
-corresponding container image or Flathub build has already been published there.
-
-AUR packages are published separately from GitHub releases, and only for stable
-releases, so an AUR install is offered the release whose version the AUR
-(`aur.archlinux.org/rpc/v5/info`) currently publishes for the owning package,
-whatever the update channel. `-git` packages build the default branch and are
-never announced. The UI shows `paru -S <package>` or `yay -S <package>`
-when one of those helpers is installed, and the `makepkg` steps otherwise.
+External installations (Docker, Flatpak, AUR, and DEB/RPM installations the app
+cannot install itself) announce the newest release of their channel and leave the
+installation to their own package source, which may publish it later. The UI shows
+`paru -S <package>` or `yay -S <package>` for an AUR package when one of those
+helpers is installed, and the `makepkg` steps otherwise.
 
 Linux detection checks ownership of the running executable using the available
 package managers: `pacman -Qqo` always, and `dpkg-query -S` or `rpm -qf` for a
@@ -78,7 +71,10 @@ files belong to `v...` releases. The native Tauri `latest.json` remains separate
 The signed manifest binds version, product, target, asset name, byte size,
 SHA-256, and artifact signature. The installer verifies both signatures using
 the pinned production public key and rejects mismatched or non-increasing
-versions. Downloads use HTTPS, bounded redirects and size limits. Requests fail
+versions. `scripts/create-update-manifest.cjs` checks file names and formats
+before signing; the app does not check them again, and it ignores catalog and
+manifest fields it does not know, so a field added later never blocks an update
+of an installed version. Downloads use HTTPS, bounded redirects and size limits. Requests fail
 when a connection stalls (30 s to connect, 120 s without data) but have no total
 deadline, so large downloads finish on slow links; the native Tauri check and
 download use the same limits. Release lists are revalidated with their ETag.
@@ -282,9 +278,11 @@ The custom installer does not collect root/admin passwords or provision a
 privileged maintenance service. Protected portable/server paths remain blocked;
 administrators must use deployment tooling or arrange an owned, writable
 installation. Tauri's native installers retain their platform authorization flows.
-DEB and RPM updates need a session that can show Tauri's password prompt
-(pkexec, zenity or kdialog); a headless service without one reports the failure
-and keeps the verified download for a retry.
+DEB and RPM updates need a session that can show the password prompt: Tauri's
+(pkexec, zenity or kdialog) for the desktop app; for the server pkexec's polkit
+agent or, where no agent runs, `sudo -A` with a zenity or kdialog dialog. A
+headless service without one reports the failure and keeps the
+verified download for a retry.
 
 The startup trial covers the direct portable/server installer. Native Tauri
 installers and Android's package installer do not acquire this supervisor or a

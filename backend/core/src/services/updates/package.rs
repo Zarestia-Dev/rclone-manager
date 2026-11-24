@@ -49,9 +49,10 @@ fn write_package(kind: ArtifactKind, payload: &[u8]) -> std::io::Result<tempfile
     Ok(file.into_temp_path())
 }
 
-/// Runs the package tool as root in the first way that can ask for the password
-/// (`policy::can_install_as_root`); the password never reaches this process. The
-/// running build keeps running from the replaced file until it restarts.
+/// Runs the package tool as root through pkexec, or `sudo -A` with a password
+/// dialog where no polkit agent can ask (`policy::can_install_as_root`); the
+/// password never reaches this process. The running build keeps running from the
+/// replaced file until it restarts.
 #[cfg(target_os = "linux")]
 fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutcome, String> {
     use super::policy::system_program;
@@ -73,51 +74,33 @@ fn install_as_root(tool: &str, flag: &str, package: &Path) -> Result<InstallOutc
             Err((output.status.code(), stderr))
         }
     };
-    let mut failure = None;
     if let Some(pkexec) = system_program("pkexec") {
         match run(Command::new(pkexec)) {
             Ok(()) => return Ok(InstallOutcome::Restart),
             // 127: no polkit agent could ask (or authorization failed); 126 means the
             // user dismissed the dialog, which is no reason to ask again.
             Err((Some(127), error)) => {
-                log::info!("pkexec could not authorize the package update: {error}");
-                failure = Some(error);
+                log::warn!("pkexec could not authorize the package update: {error}");
             }
             Err((_, error)) => return Err(error),
         }
     }
     if let Some(sudo) = system_program("sudo")
-        && let Some(askpass) = super::policy::askpass()
+        && let Some(dialog) = super::policy::password_dialog()
     {
+        let script = dialog_script(dialog).map_err(|error| error.to_string())?;
         let mut command = Command::new(sudo);
         // -k: neither use nor leave a cached sudo login, so the password is asked for
         // this install only and nothing this process starts later runs as root.
-        command.args(["-A", "-k"]);
-        // Lives until sudo, which runs it, has finished.
-        let _script;
-        match askpass {
-            super::policy::Askpass::Inherited => {}
-            super::policy::Askpass::Program(program) => {
-                command.env("SUDO_ASKPASS", program);
-            }
-            super::policy::Askpass::Dialog(dialog) => {
-                let script = dialog_script(dialog).map_err(|error| error.to_string())?;
-                command.env("SUDO_ASKPASS", &*script);
-                _script = script;
-            }
-        }
-        command.arg("--");
+        command
+            .args(["-A", "-k"])
+            .env("SUDO_ASKPASS", &*script)
+            .arg("--");
         return run(command)
             .map(|()| InstallOutcome::Restart)
             .map_err(|(_, error)| error);
     }
-    if let Some(run0) = system_program("run0") {
-        return run(Command::new(run0))
-            .map(|()| InstallOutcome::Restart)
-            .map_err(|(_, error)| error);
-    }
-    Err(failure
-        .unwrap_or_else(|| crate::localized_error!("backendErrors.updater.noPrivilegePrompt")))
+    Err(super::policy::no_privilege_prompt(tool.ends_with("rpm")))
 }
 
 /// An askpass script for sudo: it shows the dialog with sudo's prompt, and the

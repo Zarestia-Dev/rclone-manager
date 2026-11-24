@@ -1,6 +1,5 @@
 #[cfg(all(feature = "updater", target_os = "android"))]
 mod android;
-mod availability;
 #[cfg(feature = "updater")]
 pub mod binary;
 #[cfg(feature = "updater")]
@@ -149,14 +148,7 @@ async fn check_releases(
 
     let releases = github_client::get_releases(OWNER, REPO).await?;
     log::debug!("Received {} releases", releases.len());
-    let release = select_release(
-        &releases,
-        channel,
-        app.product().release_prefix,
-        &installation,
-    )
-    .await?;
-    let Some(release) = release else {
+    let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
         forget_update(updater_state);
         return Ok(None);
@@ -214,11 +206,8 @@ async fn update_for_release(
         channel: Some(channel.to_string()),
     };
 
-    // No installer of ours applies: announce what the owning package source offers.
+    // No installer of ours applies: announce it, the owning package source installs it.
     let externally_managed = installation.method == policy::UpdateMethod::Unavailable;
-    if externally_managed && !external_update_published(app, release, &installation).await? {
-        return Ok(None);
-    }
     #[cfg(not(feature = "updater"))]
     if !externally_managed {
         return Ok(None);
@@ -313,40 +302,6 @@ async fn update_for_release(
     Ok(Some(update_info))
 }
 
-/// Whether the source that updates an external installation already has `release`:
-/// other packages are matched to the release's assets.
-async fn external_update_published(
-    app: &AppHandle,
-    release: &github_client::Release,
-    installation: &policy::UpdatePolicy,
-) -> Result<bool> {
-    let (os, arch) = (std::env::consts::OS, std::env::consts::ARCH);
-    // `select_release` already chose the release the AUR publishes.
-    if aur_package(installation).is_some() {
-        return Ok(true);
-    }
-    let asset = availability::external_asset(
-        release,
-        installation.installation,
-        app.product().display_name,
-        os,
-        arch,
-    );
-    match asset {
-        Some(asset) => {
-            log::debug!("External update announcement matched upstream asset: {asset}");
-            Ok(true)
-        }
-        None => {
-            info!(
-                "No matching upstream package in {} for {:?} on {os}-{arch}",
-                release.tag_name, installation.installation
-            );
-            Ok(false)
-        }
-    }
-}
-
 /// Announce updates the supervisor rolled back and stop offering those versions,
 /// so a release that cannot start here does not loop through download and rollback.
 #[cfg(feature = "updater")]
@@ -427,46 +382,6 @@ fn is_prerelease(release: &github_client::Release) -> bool {
         ))
         .1
         .is_some()
-}
-
-/// The pacman package that owns an AUR installation.
-fn aur_package(installation: &policy::UpdatePolicy) -> Option<&str> {
-    (installation.installation == policy::InstallationKind::Pacman)
-        .then_some(installation.package.as_deref())
-        .flatten()
-}
-
-/// The release to offer. The AUR publishes stable releases on its own schedule, so
-/// an AUR installation is offered the release the AUR has, whatever the channel.
-/// A `-git` package builds the default branch, which no release describes.
-async fn select_release<'a>(
-    releases: &'a [github_client::Release],
-    channel: &str,
-    release_prefix: &str,
-    installation: &policy::UpdatePolicy,
-) -> Result<Option<&'a github_client::Release>> {
-    let Some(package) = aur_package(installation) else {
-        return Ok(latest_release(releases, channel, release_prefix));
-    };
-    if package.ends_with("-git") {
-        return Ok(None);
-    }
-    let published = availability::aur_version(package)
-        .await
-        .map_err(crate::utils::types::updater::UpdaterError::UpdateUnavailable)?;
-    info!("AUR package {package} publishes {published:?}");
-    Ok(published.and_then(|version| release_with_version(releases, release_prefix, &version)))
-}
-
-fn release_with_version<'a>(
-    releases: &'a [github_client::Release],
-    release_prefix: &str,
-    version: &str,
-) -> Option<&'a github_client::Release> {
-    let tag = format!("{release_prefix}{version}").to_lowercase();
-    releases
-        .iter()
-        .find(|release| !release.draft && release.tag_name.to_lowercase() == tag)
 }
 
 fn latest_release<'a>(
@@ -641,49 +556,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn externally_managed_installations_do_not_announce_unrelated_packages() {
-        let app = AppHandle::default();
+    async fn external_installations_announce_releases_without_an_in_app_installer() {
         for installation in [
             policy::InstallationKind::Flatpak,
             policy::InstallationKind::Pacman,
             policy::InstallationKind::Container,
             policy::InstallationKind::Deb,
             policy::InstallationKind::Rpm,
-        ] {
-            let state = AppUpdaterState::default();
-            let mut release = candidate();
-            release.assets.push(github_client::Asset {
-                name: "android-aarch64-99.0.0.apk".into(),
-                ..Default::default()
-            });
-            let policy = policy::test_policy(
-                installation,
-                policy::UpdateMethod::Unavailable,
-                Some("Externally managed"),
-            );
-            assert!(
-                update_for_release(&app, "stable", &release, policy, &state)
-                    .await
-                    .unwrap()
-                    .is_none()
-            );
-            assert_eq!(state.data.lock().state, UpdateState::Idle);
-            assert!(state.data.lock().last_metadata.is_none());
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    #[tokio::test]
-    async fn matching_external_packages_announce_without_an_in_app_installer() {
-        let arch = match std::env::consts::ARCH {
-            "x86_64" => "amd64",
-            "aarch64" => "arm64",
-            _ => return,
-        };
-        for installation in [
-            policy::InstallationKind::Flatpak,
-            policy::InstallationKind::Pacman,
-            policy::InstallationKind::Deb,
         ] {
             struct NoHost;
             #[async_trait::async_trait]
@@ -698,27 +577,14 @@ mod tests {
                     Err("Not needed".into())
                 }
             }
-            // Bundles name packages after the Tauri product name.
-            let app = AppHandle::new(
-                std::sync::Arc::new(NoHost),
-                crate::context::ProductInfo {
-                    display_name: "RClone Manager",
-                    release_prefix: "v",
-                    ..Default::default()
-                },
-            );
+            let app = AppHandle::new(std::sync::Arc::new(NoHost), Default::default());
             let state = AppUpdaterState::default();
-            let mut release = candidate();
-            release.assets.push(github_client::Asset {
-                name: format!("RClone.Manager_99.0.0_{arch}.deb"),
-                ..Default::default()
-            });
             let policy = policy::test_policy(
                 installation,
                 policy::UpdateMethod::Unavailable,
                 Some("Externally managed"),
             );
-            let info = update_for_release(&app, "stable", &release, policy, &state)
+            let info = update_for_release(&app, "stable", &candidate(), policy, &state)
                 .await
                 .unwrap()
                 .unwrap();
@@ -854,64 +720,6 @@ mod tests {
                 assert_eq!(state.data.lock().pending_action.is_some(), can_install);
             }
         }
-    }
-
-    #[test]
-    fn aur_installations_follow_the_release_the_aur_publishes() {
-        let releases: Vec<_> = ["v0.3.6-beta.1", "v0.3.5", "v0.3.4", "headless-v0.3.5"]
-            .into_iter()
-            .map(|tag| github_client::Release {
-                tag_name: tag.into(),
-                prerelease: tag.contains("beta"),
-                ..Default::default()
-            })
-            .collect();
-        // The beta channel's newest release is a beta the AUR never publishes.
-        assert_eq!(
-            latest_release(&releases, "beta", "v").unwrap().tag_name,
-            "v0.3.6-beta.1"
-        );
-        assert_eq!(
-            release_with_version(&releases, "v", "0.3.5")
-                .unwrap()
-                .tag_name,
-            "v0.3.5"
-        );
-        assert_eq!(
-            release_with_version(&releases, "headless-v", "0.3.5")
-                .unwrap()
-                .tag_name,
-            "headless-v0.3.5"
-        );
-        assert!(release_with_version(&releases, "v", "0.3.7").is_none());
-
-        let mut aur = policy::test_policy(
-            policy::InstallationKind::Pacman,
-            policy::UpdateMethod::Unavailable,
-            Some("Externally managed"),
-        );
-        assert!(aur_package(&aur).is_none());
-        aur.package = Some("rclone-manager".into());
-        assert_eq!(aur_package(&aur), Some("rclone-manager"));
-        aur.installation = policy::InstallationKind::Deb;
-        assert!(aur_package(&aur).is_none());
-    }
-
-    #[tokio::test]
-    async fn git_packages_are_never_offered_a_release() {
-        let mut aur = policy::test_policy(
-            policy::InstallationKind::Pacman,
-            policy::UpdateMethod::Unavailable,
-            Some("Externally managed"),
-        );
-        aur.package = Some("rclone-manager-git".into());
-        let releases = [candidate()];
-        assert!(
-            select_release(&releases, "stable", "v", &aur)
-                .await
-                .unwrap()
-                .is_none()
-        );
     }
 
     #[test]
