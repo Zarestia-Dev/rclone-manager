@@ -657,7 +657,12 @@ export class ModalService extends TauriBaseService {
   openPreferences<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'preferences',
-      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      // The header shows the tabs instead of a title on wide windows.
+      {
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        ariaLabel: this.translate.instant('modals.preferences.title'),
+      },
       {
         title: this.translate.instant('modals.preferences.title'),
         width: 680,
