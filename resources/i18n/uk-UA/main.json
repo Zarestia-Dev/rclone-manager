@@ -1105,8 +1105,7 @@
       "cancel": "Скасувати"
     },
     "overviewHeader": {
-      "manageBackends": "Керувати бекендами",
-      "backendSwitchAria": "Поточний режим: {{title}} - натисніть, щоб перемкнути бекенд"
+      "manageBackends": "Керувати бекендами"
     },
     "settingControl": {
       "default": "Типово: {{value}}",
