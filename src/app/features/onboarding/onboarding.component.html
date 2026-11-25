@@ -1,4 +1,4 @@
-<div
+<main
   class="onboarding-container"
   data-tauri-drag-region
   animate.enter="onboarding-entrance-enter"
@@ -6,13 +6,14 @@
 >
   <div class="card-container">
     <div class="onboarding-header" data-tauri-drag-region>
-      <div class="page-indicators" role="tablist">
+      <div class="page-indicators">
         @for (card of cards(); track card.key; let i = $index) {
           <button
             type="button"
             class="indicator-btn"
             [class.active]="i === currentCardIndex()"
             [class.completed]="i < currentCardIndex()"
+            [attr.aria-current]="i === currentCardIndex() ? 'step' : null"
             [disabled]="!canNavigateToCard(i)"
             (click)="goToCard(i)"
             [attr.aria-label]="card.title | translate"
@@ -30,16 +31,18 @@
         [style.transform]="'translate3d(-' + currentCardIndex() * 100 + '%, 0, 0)'"
       >
         @for (card of cards(); track card.key; let i = $index) {
-          <div #slide class="slide-page" [class.active]="i === currentCardIndex()">
+          <div
+            #slide
+            class="slide-page"
+            [class.active]="i === currentCardIndex()"
+            [inert]="i !== currentCardIndex()"
+          >
             <div class="card-content">
               <div class="icon-container">
-                <img
-                  [src]="card.image || defaultImage"
-                  [alt]="(card.title | translate) + ' icon'"
-                />
+                <img [src]="card.image || defaultImage" alt="" />
               </div>
               <div class="text-content">
-                <h2 class="card-title">{{ card.title | translate }}</h2>
+                <h1 class="card-title">{{ card.title | translate }}</h1>
                 <p class="card-description">{{ card.content | translate }}</p>
               </div>
 
@@ -88,9 +91,9 @@
                         <mat-icon svgIcon="hard-drive"></mat-icon>
                       </div>
                       <div class="toggle-body">
-                        <h3 class="toggle-title">
+                        <h2 class="toggle-title">
                           {{ 'onboarding.cards.installPlugin.skipMountTitle' | translate }}
-                        </h3>
+                        </h2>
                         <p class="toggle-desc">
                           {{ 'onboarding.cards.installPlugin.skipMountDesc' | translate }}
                         </p>
@@ -116,7 +119,7 @@
                         <mat-icon svgIcon="folder-open"></mat-icon>
                       </div>
                       <div class="toggle-body">
-                        <h3 class="toggle-title">{{ 'banners.storage.title' | translate }}</h3>
+                        <h2 class="toggle-title">{{ 'banners.storage.title' | translate }}</h2>
                         <p class="toggle-desc">{{ 'banners.storage.subtitle' | translate }}</p>
                       </div>
                       @if (storageAccess.allFilesAccessGranted()) {
@@ -139,7 +142,7 @@
                         <mat-icon svgIcon="bolt"></mat-icon>
                       </div>
                       <div class="toggle-body">
-                        <h3 class="toggle-title">{{ 'banners.battery.title' | translate }}</h3>
+                        <h2 class="toggle-title">{{ 'banners.battery.title' | translate }}</h2>
                         <p class="toggle-desc">{{ 'banners.battery.subtitle' | translate }}</p>
                       </div>
                       @if (keepAlive.isBatteryOptimizationIgnored()) {
@@ -177,7 +180,7 @@
                           <mat-icon [svgIcon]="option.icon"></mat-icon>
                         </div>
                         <div class="option-body">
-                          <h3 class="option-title">{{ option.titleKey | translate }}</h3>
+                          <h2 class="option-title">{{ option.titleKey | translate }}</h2>
                           <p class="option-desc">{{ option.descKey | translate }}</p>
                         </div>
                         <div class="option-check">
@@ -231,4 +234,4 @@
       </button>
     </div>
   </div>
-</div>
+</main>
