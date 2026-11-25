@@ -497,6 +497,10 @@
         "label": "Boîte de dialogue détachée",
         "description": "Ouvre des boîtes de dialogue (modals) dans des fenêtres distinctes de l'OS natif."
       },
+      "system_accent_color": {
+        "label": "Couleur d'accentuation du système",
+        "description": "Utilise la couleur d'accentuation des paramètres du système pour les couleurs de l'application au lieu du vert et du bleu par défaut. Sous Linux, nécessite GNOME 47 ou ultérieur, ou KDE Plasma 6."
+      },
       "prevent_sleep": {
         "label": "Empêcher la mise en veille du système",
         "description": "Empêche la mise en veille automatique du système pendant que des transferts, des montages ou des serveurs sont actifs."
