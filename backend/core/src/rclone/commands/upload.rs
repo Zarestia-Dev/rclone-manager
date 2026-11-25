@@ -1,7 +1,6 @@
 //! Custom upload commands for streaming and batch processing to rclone remotes.
 
 use crate::context::AppHandle;
-use crate::rclone::backend::RcloneTransport;
 use crate::utils::types::jobs::JobCache;
 use futures::StreamExt;
 use log::debug;
@@ -18,12 +17,18 @@ use tokio_util::sync::CancellationToken;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::TransportKind;
 use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
-use crate::rclone::commands::job::JobMetadata;
+use crate::rclone::commands::filesystem::{
+    FsItem, TransferMode, submit_transfer_job, transfer_inputs,
+};
+use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions};
+use crate::rclone::commands::sync::lookup_dry_run;
 use crate::rclone::endpoints::operations;
+use crate::services::settings::operations::templates::transfer_options;
 use crate::utils::app::notification::notify;
 use crate::utils::json_helpers::build_full_path;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
+use crate::utils::types::remotes::OperationType;
 use crate::utils::types::state::RcloneState;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -35,12 +40,9 @@ pub struct UploadBatchParams {
     pub local_paths: Vec<String>,
     pub origin: Option<Origin>,
     pub group: Option<String>,
-    pub existing_jobid: Option<u64>,
-    pub no_cache: bool,
-    /// Empty directory paths (relative to `path`) to create on the remote.
-    /// Used by the web upload handler for directories that contain no files.
-    #[serde(default)]
-    pub empty_dirs: Vec<String>,
+    /// The user template to transfer with: `None` for the file browser's default,
+    /// empty for none.
+    pub template: Option<String>,
 }
 
 // Upload jobs are local synthetic jobs, separate from rclone's job IDs.
@@ -213,102 +215,40 @@ impl Drop for UploadRegistration {
     }
 }
 
-struct UploadCopyJob {
-    transport: Arc<dyn RcloneTransport>,
-    id: u64,
-    finished: bool,
-}
-
-impl UploadCopyJob {
-    async fn stop(&mut self) -> Result<(), String> {
-        self.transport
-            .rpc_with_timeout(
-                crate::rclone::endpoints::job::STOP,
-                Some(&json!({"jobid": self.id})),
-                Duration::from_secs(10),
-            )
-            .await
-            .map_err(|error| error.to_string())?;
-        self.finished = true;
-        Ok(())
+/// Files and folders on the engine's own disk as transfer items: a file is copied
+/// from its folder, a folder as a whole.
+async fn local_upload_items(local_paths: &[String]) -> Result<Vec<FsItem>, String> {
+    let mut items = Vec::with_capacity(local_paths.len());
+    for raw in local_paths {
+        let path = std::path::Path::new(raw);
+        let metadata = tokio::fs::metadata(path).await.map_err(|e| {
+            crate::localized_error!("backendErrors.request.failed", "error" => format!("{}: {e}", path.display()))
+        })?;
+        let name = path
+            .file_name()
+            .ok_or_else(|| crate::localized_error!("backendErrors.upload.invalidPath"))?
+            .to_string_lossy()
+            .into_owned();
+        items.push(if metadata.is_dir() {
+            FsItem {
+                remote: raw.clone(),
+                path: String::new(),
+                name,
+                is_dir: true,
+            }
+        } else {
+            FsItem {
+                remote: path
+                    .parent()
+                    .map(|parent| parent.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                path: name.clone(),
+                name,
+                is_dir: false,
+            }
+        });
     }
-}
-
-impl Drop for UploadCopyJob {
-    fn drop(&mut self) {
-        if !self.finished {
-            let transport = self.transport.clone();
-            let id = self.id;
-            crate::utils::spawn(async move {
-                let _ = transport
-                    .rpc_with_timeout(
-                        crate::rclone::endpoints::job::STOP,
-                        Some(&json!({"jobid": id})),
-                        Duration::from_secs(10),
-                    )
-                    .await;
-            });
-        }
-    }
-}
-
-async fn copy_upload_file(
-    transport: Arc<dyn RcloneTransport>,
-    mut payload: serde_json::Value,
-    cancellation: &CancellationToken,
-    stop_errors: &Mutex<Vec<String>>,
-) -> Result<(), String> {
-    payload["_async"] = json!(true);
-    let response = transport
-        .rpc(operations::COPYFILE, Some(&payload))
-        .await
-        .map_err(|error| error.to_string())?;
-    let id = super::job_parser::parse_job_response(&response)?;
-    let mut job = UploadCopyJob {
-        transport: transport.clone(),
-        id,
-        finished: false,
-    };
-    let status_params = json!({"jobid": id});
-    loop {
-        let status = tokio::select! {
-            biased;
-            _ = cancellation.cancelled() => {
-                if let Err(error) = job.stop().await {
-                    stop_errors.lock().push(error.clone());
-                    return Err(error);
-                }
-                return Err("Upload cancelled".into());
-            },
-            status = transport.rpc(crate::rclone::endpoints::job::STATUS, Some(&status_params)) => status.map_err(|error| error.to_string())?,
-        };
-        let finished = status
-            .get("finished")
-            .and_then(serde_json::Value::as_bool)
-            .ok_or_else(|| "Invalid upload copy job status".to_string())?;
-        if finished {
-            job.finished = true;
-            return if status["success"] == true {
-                Ok(())
-            } else {
-                Err(status["error"]
-                    .as_str()
-                    .unwrap_or("Upload copy failed")
-                    .to_string())
-            };
-        }
-        tokio::select! {
-            biased;
-            _ = cancellation.cancelled() => {
-                if let Err(error) = job.stop().await {
-                    stop_errors.lock().push(error.clone());
-                    return Err(error);
-                }
-                return Err("Upload cancelled".into());
-            },
-            _ = tokio::time::sleep(Duration::from_millis(200)) => {},
-        }
-    }
+    Ok(items)
 }
 
 struct UploadDiscoveryResult {
@@ -442,11 +382,13 @@ pub async fn execute_upload_batch(
         local_paths,
         origin,
         group,
-        existing_jobid,
-        no_cache,
-        empty_dirs,
+        template,
     } = params;
+    if local_paths.is_empty() {
+        return Err(crate::localized_error!("backendErrors.upload.noFiles"));
+    }
 
+    let path = if path == "/" { String::new() } else { path };
     let mut remote = remote;
     if !remote.is_empty()
         && !remote.ends_with(':')
@@ -467,30 +409,51 @@ pub async fn execute_upload_batch(
         None => backend_manager.get_active().await,
     };
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
+    let destination = build_full_path(&remote, &path);
+    let mut metadata = JobMetadata::new(
+        remote.clone(),
+        JobType::Upload,
+        local_paths.clone(),
+        destination,
+    )
+    .with_origin(origin)
+    .with_group(group);
+    let options = transfer_options(&app, template, TransferMode::Copy).await;
+
+    // An engine on this machine reads the files itself, as one rclone job like any
+    // copy. Only an engine elsewhere cannot see them and needs their bytes sent.
+    if backend.is_local || matches!(transport.kind().await, TransportKind::Librclone) {
+        let items = local_upload_items(&local_paths).await?;
+        return submit_transfer_job(
+            app,
+            transfer_inputs(&items, &remote, &path, TransferMode::Copy),
+            options,
+            metadata,
+            SubmitJobOptions {
+                wait_for_completion: true,
+                backend: Some(backend),
+            },
+        )
+        .await;
+    }
+    // rclone reads the options of an upload from its query, as flat names or as
+    // `_config` and `_filter` in JSON.
+    let option_query = upload_query(&options.options);
+    metadata = metadata
+        .with_dry_run(lookup_dry_run(
+            &serde_json::Value::Object(options.options),
+            None,
+            OperationType::Copy,
+        ))
+        .with_template(options.template);
+
     let client = app.state::<RcloneState>().client.clone();
     let job_cache = backend_manager.job_cache_for(&backend.name);
 
-    let discovery = discover_upload_entries(local_paths.clone(), path.clone()).await?;
+    let discovery = discover_upload_entries(local_paths, path).await?;
 
-    let path_prefix = path.trim_end_matches('/');
     for remote_dir in &discovery.empty_dir_remotes {
         let payload = json!({ "fs": &remote, "remote": remote_dir });
-        transport
-            .rpc(operations::MKDIR, Some(&payload))
-            .await
-            .map_err(|e| {
-                crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
-            })?;
-    }
-    // Web-upload empty dirs are relative to the destination path and need the
-    // prefix prepended so they match the format used by discover_upload_entries.
-    for dir in &empty_dirs {
-        let remote_dir = if path_prefix.is_empty() {
-            dir.clone()
-        } else {
-            format!("{path_prefix}/{dir}")
-        };
-        let payload = json!({ "fs": &remote, "remote": &remote_dir });
         transport
             .rpc(operations::MKDIR, Some(&payload))
             .await
@@ -512,18 +475,7 @@ pub async fn execute_upload_batch(
         })?.len();
     }
 
-    let destination = build_full_path(&remote, &path);
-    let jobid = existing_jobid.unwrap_or_else(next_upload_jobid);
-    let mut metadata = JobMetadata::new(
-        remote.clone(),
-        JobType::Upload,
-        local_paths.clone(),
-        destination,
-    )
-    .with_origin(origin.clone())
-    .with_group(group)
-    .with_no_cache(no_cache);
-
+    let jobid = next_upload_jobid();
     metadata.prepare_execution();
     let group_name = metadata.group_name();
     let cancellation = CancellationToken::new();
@@ -550,23 +502,16 @@ pub async fn execute_upload_batch(
         result: cancel_result.clone(),
     };
 
-    if existing_jobid.is_none() {
-        job_cache
-            .create_job(jobid, metadata.clone(), backend.name.clone())
-            .await;
-        job_cache.prune_finished(Some(&app)).await;
-    }
+    job_cache
+        .create_job(jobid, metadata.clone(), backend.name.clone())
+        .await;
+    job_cache.prune_finished(Some(&app)).await;
+    notify(&app, metadata.started_event(backend.name.clone()));
 
-    if !metadata.no_cache {
-        notify(&app, metadata.started_event(backend.name.clone()));
-    }
-
-    let stop_errors = Arc::new(Mutex::new(Vec::new()));
     let progress = Arc::new(Mutex::new(UploadProgress::new()));
 
     let mut stream = futures::stream::iter(file_entries)
         .map(|(file_path, remote_dir, rel_name)| {
-            let transport = transport.clone();
             let backend = backend.clone();
             let client = client.clone();
             let remote = remote.clone();
@@ -574,7 +519,7 @@ pub async fn execute_upload_batch(
             let job_cache = job_cache.clone();
             let group_name = group_name.clone();
             let cancellation = cancellation.clone();
-            let stop_errors = stop_errors.clone();
+            let option_query = option_query.clone();
 
             async move {
                 if cancellation.is_cancelled() {
@@ -635,85 +580,60 @@ pub async fn execute_upload_batch(
                     .to_string_lossy()
                     .to_string();
 
-                let result = if backend.is_local
-                    || matches!(transport.kind().await, TransportKind::Librclone)
-                {
-                    let dst_remote = if remote_dir.is_empty() {
-                        base_filename.clone()
-                    } else if remote_dir.ends_with('/') {
-                        format!("{remote_dir}{base_filename}")
-                    } else {
-                        format!("{remote_dir}/{base_filename}")
-                    };
-                    let payload = json!({
-                        "srcFs": src_fs,
-                        "srcRemote": base_filename,
-                        "dstFs": remote,
-                        "dstRemote": dst_remote,
-                        "_group": group_name,
-                    });
+                let part_res = reqwest::multipart::Part::stream(reqwest::Body::from(file))
+                    .file_name(base_filename)
+                    .mime_str("application/octet-stream");
 
-                    match copy_upload_file(transport.clone(), payload, &cancellation, &stop_errors)
-                        .await
-                    {
-                        Ok(_) => Ok(size),
-                        Err(e) => Err(format!("Upload failed for {filename}: {e}")),
-                    }
-                } else {
-                    let part_res = reqwest::multipart::Part::stream(reqwest::Body::from(file))
-                        .file_name(base_filename)
-                        .mime_str("application/octet-stream");
-
-                    let part = match part_res {
-                        Ok(p) => p,
-                        Err(e) => {
-                            // Build JSON outside the lock to minimize contention.
-                            let err_msg = format!("Multipart error for {filename}: {e}");
-                            let completed_entry = entry.completed(size, 0, &err_msg);
-                            let stats = {
-                                let mut state = progress.lock();
-                                state.remove_transferring(&filename);
-                                state.errors.push(err_msg);
-                                state.completed.push(completed_entry);
-                                state.progress_stats(total_bytes, total_files)
-                            };
-                            if let Some(stats) = stats {
-                                let _ = job_cache.update_job_stats(jobid, stats).await;
-                            }
-                            return;
+                let part = match part_res {
+                    Ok(p) => p,
+                    Err(e) => {
+                        // Build JSON outside the lock to minimize contention.
+                        let err_msg = format!("Multipart error for {filename}: {e}");
+                        let completed_entry = entry.completed(size, 0, &err_msg);
+                        let stats = {
+                            let mut state = progress.lock();
+                            state.remove_transferring(&filename);
+                            state.errors.push(err_msg);
+                            state.completed.push(completed_entry);
+                            state.progress_stats(total_bytes, total_files)
+                        };
+                        if let Some(stats) = stats {
+                            let _ = job_cache.update_job_stats(jobid, stats).await;
                         }
-                    };
-
-                    let request = backend
-                        .inject_auth(
-                            client
-                                .post(backend.url_for(operations::UPLOADFILE))
-                                .query(&[("fs", &remote), ("remote", &remote_dir)]),
-                        )
-                        .multipart(reqwest::multipart::Form::new().part("file", part))
-                        .send();
-                    let resp = tokio::select! {
-                        biased;
-                        _ = cancellation.cancelled() => return,
-                        result = request => result,
-                    };
-
-                    match resp {
-                        Ok(r) if r.status().is_success() => Ok(size),
-                        Ok(r) => {
-                            let status = r.status();
-                            let err_text = tokio::select! {
-                                biased;
-                                _ = cancellation.cancelled() => return,
-                                text = r.text() => text.unwrap_or_default(),
-                            };
-                            let err_msg = parse_rclone_error(&err_text);
-                            Err(format!(
-                                "Upload failed for {filename}: {status} - {err_msg}"
-                            ))
-                        }
-                        Err(e) => Err(format!("Network error for {filename}: {e}")),
+                        return;
                     }
+                };
+
+                let request = backend
+                    .inject_auth(
+                        client
+                            .post(backend.url_for(operations::UPLOADFILE))
+                            .query(&[("fs", &remote), ("remote", &remote_dir)])
+                            .query(&option_query),
+                    )
+                    .multipart(reqwest::multipart::Form::new().part("file", part))
+                    .send();
+                let resp = tokio::select! {
+                    biased;
+                    _ = cancellation.cancelled() => return,
+                    result = request => result,
+                };
+
+                let result = match resp {
+                    Ok(r) if r.status().is_success() => Ok(size),
+                    Ok(r) => {
+                        let status = r.status();
+                        let err_text = tokio::select! {
+                            biased;
+                            _ = cancellation.cancelled() => return,
+                            text = r.text() => text.unwrap_or_default(),
+                        };
+                        let err_msg = parse_rclone_error(&err_text);
+                        Err(format!(
+                            "Upload failed for {filename}: {status} - {err_msg}"
+                        ))
+                    }
+                    Err(e) => Err(format!("Network error for {filename}: {e}")),
                 };
 
                 {
@@ -754,25 +674,9 @@ pub async fn execute_upload_batch(
     };
     let _ = job_cache.update_job_stats(jobid, stats).await;
     if cancellation.is_cancelled() {
-        let stop_error = {
-            let errors = stop_errors.lock();
-            (!errors.is_empty()).then(|| errors.join("; "))
-        };
-        if let Some(error) = stop_error {
-            cancel_result.send_replace(Some(Err(error.clone())));
-            job_cache
-                .complete_job(jobid, false, Some(error.clone()))
-                .await?;
-            if !metadata.no_cache {
-                notify(&app, metadata.failed_event(backend.name.clone(), &error));
-            }
-            return Err(error);
-        }
         job_cache.stop_job(jobid).await?;
         cancel_result.send_replace(Some(Ok(())));
-        if !metadata.no_cache {
-            notify(&app, metadata.stopped_event(backend.name.clone()));
-        }
+        notify(&app, metadata.stopped_event(backend.name.clone()));
         return Err(crate::localized_error!("backendErrors.job.stopped"));
     }
 
@@ -788,17 +692,13 @@ pub async fn execute_upload_batch(
         .complete_job(jobid, success, error_msg.clone())
         .await?;
     if final_status == crate::utils::types::jobs::JobStatus::Stopped {
-        if !metadata.no_cache {
-            notify(&app, metadata.stopped_event(backend.name.clone()));
-        }
+        notify(&app, metadata.stopped_event(backend.name.clone()));
         return Err(crate::localized_error!("backendErrors.job.stopped"));
     }
-    if !metadata.no_cache {
-        if success {
-            notify(&app, metadata.completed_event(backend.name.clone()));
-        } else if let Some(ref m) = error_msg {
-            notify(&app, metadata.failed_event(backend.name.clone(), m));
-        }
+    if success {
+        notify(&app, metadata.completed_event(backend.name.clone()));
+    } else if let Some(ref m) = error_msg {
+        notify(&app, metadata.failed_event(backend.name.clone(), m));
     }
 
     error_msg.map_or(Ok(jobid.to_string()), Err)
@@ -811,6 +711,7 @@ pub async fn upload_local_drop_paths(
     local_paths: Vec<String>,
     origin: Option<Origin>,
     group: Option<String>,
+    template: Option<String>,
 ) -> Result<String, String> {
     execute_upload_batch(
         app,
@@ -821,12 +722,24 @@ pub async fn upload_local_drop_paths(
             local_paths,
             origin,
             group,
-            existing_jobid: None,
-            no_cache: false,
-            empty_dirs: Vec::new(),
+            template,
         },
     )
     .await
+}
+
+/// Options as query parameters: a text as it is, anything else as JSON.
+fn upload_query(options: &serde_json::Map<String, serde_json::Value>) -> Vec<(String, String)> {
+    options
+        .iter()
+        .map(|(key, value)| {
+            let value = match value {
+                serde_json::Value::String(text) => text.clone(),
+                other => other.to_string(),
+            };
+            (key.clone(), value)
+        })
+        .collect()
 }
 
 pub async fn upload_file(
@@ -946,64 +859,82 @@ fn parse_rclone_error(err_text: &str) -> String {
 mod tests {
     use super::*;
 
-    struct CopyTransport {
-        fail_stop: bool,
+    #[tokio::test]
+    async fn local_files_are_copied_from_their_folder_and_folders_whole() {
+        let temp = tempfile::tempdir().unwrap();
+        let folder = temp.path().join("özel klasör");
+        let file = temp.path().join("report..txt");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(&file, "x").unwrap();
+        let folder_raw = folder.to_string_lossy().into_owned();
+        let items = local_upload_items(&[folder_raw.clone(), file.to_string_lossy().into_owned()])
+            .await
+            .unwrap();
+        assert_eq!(
+            (
+                items[0].remote.as_str(),
+                items[0].path.as_str(),
+                items[0].name.as_str(),
+                items[0].is_dir
+            ),
+            (folder_raw.as_str(), "", "özel klasör", true)
+        );
+        assert_eq!(
+            (
+                items[1].remote.as_str(),
+                items[1].path.as_str(),
+                items[1].name.as_str(),
+                items[1].is_dir
+            ),
+            (
+                temp.path().to_string_lossy().as_ref(),
+                "report..txt",
+                "report..txt",
+                false
+            )
+        );
+        // The folder lands under its own name, created first so an empty one arrives.
+        let inputs = transfer_inputs(&items, "drive:", "target", TransferMode::Copy);
+        assert_eq!(inputs[0]["remote"], "target/özel klasör");
+        assert_eq!(inputs[1]["srcFs"], folder_raw.as_str());
+        assert_eq!(inputs[1]["dstFs"], "drive:target/özel klasör");
+        assert_eq!(inputs[2]["dstRemote"], "target/report..txt");
     }
 
-    #[async_trait::async_trait]
-    impl RcloneTransport for CopyTransport {
-        async fn kind(&self) -> TransportKind {
-            TransportKind::Librclone
-        }
-        async fn rpc(
-            &self,
-            endpoint: &str,
-            _: Option<&serde_json::Value>,
-        ) -> Result<serde_json::Value, crate::rclone::backend::BackendError> {
-            if endpoint == operations::COPYFILE {
-                return Ok(json!({"jobid": 7}));
-            }
-            if endpoint == crate::rclone::endpoints::job::STOP && self.fail_stop {
-                return Err(crate::rclone::backend::BackendError::Other(
-                    "stop denied".into(),
-                ));
-            }
-            Ok(json!({}))
-        }
-        async fn read_file(
-            &self,
-            _: &str,
-            _: &str,
-            _: Option<(u64, Option<u64>)>,
-        ) -> Result<
-            Box<dyn tokio::io::AsyncRead + Unpin + Send>,
-            crate::rclone::backend::BackendError,
-        > {
-            unreachable!()
-        }
+    #[test]
+    fn upload_options_travel_in_the_query_as_rclone_reads_them() {
+        let options = serde_json::json!({
+            "checksum": true,
+            "low_level_retries": 20,
+            "max_transfer": "1G",
+            "_config": {"LowLevelRetries": 20},
+        });
+        let mut query = upload_query(options.as_object().unwrap());
+        query.sort();
+        assert_eq!(
+            query,
+            [
+                ("_config", r#"{"LowLevelRetries":20}"#),
+                ("checksum", "true"),
+                ("low_level_retries", "20"),
+                ("max_transfer", "1G"),
+            ]
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+        );
     }
 
     #[tokio::test]
-    async fn cancellation_reports_copy_stop_failure() {
-        for fail_stop in [false, true] {
-            let token = CancellationToken::new();
-            token.cancel();
-            let errors = Mutex::new(Vec::new());
-            let result = copy_upload_file(
-                Arc::new(CopyTransport { fail_stop }),
-                json!({}),
-                &token,
-                &errors,
-            )
-            .await
-            .unwrap_err();
-            assert_eq!(errors.lock().is_empty(), !fail_stop);
-            assert!(result.contains(if fail_stop {
-                "stop denied"
-            } else {
-                "Upload cancelled"
-            }));
-        }
+    async fn local_items_refuse_missing_sources_and_nameless_roots() {
+        let temp = tempfile::tempdir().unwrap();
+        let missing = temp.path().join("missing").to_string_lossy().into_owned();
+        assert!(local_upload_items(&[missing]).await.is_err());
+        let root = if cfg!(windows) { "C:\\" } else { "/" };
+        assert!(
+            local_upload_items(&[root.into()])
+                .await
+                .unwrap_err()
+                .contains("backendErrors.upload.invalidPath")
+        );
     }
 
     #[tokio::test]

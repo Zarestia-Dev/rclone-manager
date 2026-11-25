@@ -8,9 +8,13 @@ import { AppSettingsService } from 'src/app/services/settings/app-settings.servi
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { UserTemplateService } from 'src/app/services/remote/user-template.service';
+import { UserPresetTemplate } from '@app/types';
+import { signal } from '@angular/core';
 
 describe('PreferencesModalComponent search', () => {
   let component: PreferencesModalComponent;
+  const userTemplates = signal<UserPresetTemplate[]>([]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -21,6 +25,7 @@ describe('PreferencesModalComponent search', () => {
         { provide: FileSystemService, useValue: {} },
         { provide: LocalStorageService, useValue: {} },
         { provide: ValidatorRegistryService, useValue: {} },
+        { provide: UserTemplateService, useValue: { userTemplates } },
         {
           provide: AppSettingsService,
           useValue: {
@@ -35,6 +40,11 @@ describe('PreferencesModalComponent search', () => {
                 },
               },
               'unknown.hidden': { default: false, metadata: { label: 'settings.backgroundLabel' } },
+              'file_browser.transfer_template': {
+                default: '',
+                value: 'usr-tpl-1',
+                metadata: { label: 'settings.templateLabel' },
+              },
             }),
           },
         },
@@ -57,6 +67,18 @@ describe('PreferencesModalComponent search', () => {
   ])('finds translated settings and technical keys using %s', query => {
     component.onSearchTextChange(query);
     expect(component.searchResults()).toEqual([{ category: 'general', key: 'background_enabled' }]);
+  });
+
+  it("lists the user's templates as the choices of the transfer template", () => {
+    userTemplates.set([{ id: 'usr-tpl-1', name: 'checksum.verify', values: {} }]);
+    component.selectedTabIndex.set(component.tabs.findIndex(tab => tab.key === 'file_browser'));
+    const setting = component.selectedTabViewModels()[0];
+    expect(setting.meta?.value_type).toBe('select');
+    // A template name is shown as it is, even when it looks like a translation key.
+    expect(setting.options.map(option => [option.value, option.label])).toEqual([
+      ['', 'settings.file_browser.transfer_template.none'],
+      ['usr-tpl-1', 'checksum.verify'],
+    ]);
   });
 
   it('treats whitespace as an empty search and requires all words', () => {

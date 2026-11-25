@@ -640,6 +640,25 @@
           "profile": "Profil du cloud (menu principal)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "Taille maximale d'une requête de téléversement (Mio)",
+        "description": "Les téléversements depuis l'interface web sont envoyés en requêtes qui ne dépassent pas cette taille. Réglez-la sur la limite de requête du proxy inverse placé devant le serveur (nginx accepte 1 Mio tant que client_max_body_size n'est pas augmenté). Si un proxy refuse une requête, des requêtes plus petites sont essayées automatiquement. Une valeur plus élevée peut accélérer le téléversement d'un seul gros fichier sur une connexion rapide à forte latence."
+      },
+      "parallel_uploads": {
+        "label": "Fichiers téléversés simultanément",
+        "description": "Nombre de fichiers que l'interface web envoie au serveur en même temps. Une connexion lente s'accommode mieux d'un nombre réduit."
+      },
+      "transfer_template": {
+        "label": "Modèle de transfert",
+        "description": "Les copies, déplacements et téléversements de l'Explorateur de fichiers utilisent les options de copie ou de déplacement, de filtre et de backend de ce modèle. Les modèles se créent dans Gérer les modèles. Un modèle supprimé est ignoré.",
+        "none": "Aucun modèle"
+      },
+      "ask_transfer_template": {
+        "label": "Demander le modèle à chaque transfert",
+        "description": "Avant un téléversement, ou une copie ou un déplacement vers un autre dépôt distant, demander quel modèle utiliser. Le modèle de transfert ci-dessus est sélectionné d'abord."
+      }
     }
   },
   "banners": {
@@ -1890,7 +1909,8 @@
         "movedFiles": "Fichiers déplacés",
         "copiedFiles": "Fichiers copiés",
         "syncedFiles": "Fichiers synchronisés",
-        "processedFiles": "Fichiers traités"
+        "processedFiles": "Fichiers traités",
+        "template": "Modèle"
       },
       "running": "En cours",
       "filesCount": {
@@ -2327,6 +2347,7 @@
       "tabs": {
         "general": "Général",
         "core": "Moteur",
+        "file_browser": "Explorateur de fichiers",
         "developer": "Développeur",
         "vault": "Coffre-fort"
       },
@@ -3580,6 +3601,29 @@
       "cancelLoading": "Annuler le chargement",
       "star": "Ajouter aux favoris",
       "unstar": "Retirer des favoris"
+    },
+    "transferTemplate": {
+      "title": "Options de transfert",
+      "summary": {
+        "upload": {
+          "one": "{{count}} élément sera téléversé vers {{destination}}.",
+          "other": "{{count}} éléments seront téléversés vers {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} élément sera copié vers {{destination}}.",
+          "other": "{{count}} éléments seront copiés vers {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} élément sera déplacé vers {{destination}}.",
+          "other": "{{count}} éléments seront déplacés vers {{destination}}."
+        }
+      },
+      "noOptions": "Ce modèle n'a aucune option qui s'applique à ce transfert.",
+      "noTemplateChosen": "Sans modèle, le transfert n'utilise que les options définies dans Options Rclone.",
+      "whatTemplatesDo": "Un modèle conserve des options rclone, comme la vérification des sommes de contrôle ou les nouvelles tentatives, pour qu'un transfert les utilise sans les changer pour tous les autres.",
+      "useAsDefault": "Utiliser ce modèle par défaut",
+      "dontAskAgain": "Ne plus demander (Préférences › Explorateur de fichiers)",
+      "start": "Démarrer"
     }
   },
   "home": {
@@ -3880,7 +3924,10 @@
       "legacyBatch": "Ce téléversement a été lancé par une page obsolète. Rechargez l'application et réessayez.",
       "noFiles": "Le téléversement ne contient aucun fichier.",
       "invalidPath": "Le téléversement contient un chemin de fichier ou de dossier non valide.",
-      "invalidModifiedTime": "Le téléversement contient une date de modification non valide."
+      "invalidModifiedTime": "Le téléversement contient une date de modification non valide.",
+      "sessionGone": "Le serveur n'a plus ce téléversement, car il a été annulé ou est resté inactif trop longtemps. Relancez-le.",
+      "invalidChunk": "Le téléversement a envoyé des données qui n'appartiennent à aucun de ses fichiers.",
+      "incomplete": "Le téléversement a été terminé avant l'arrivée de tous ses fichiers."
     },
     "rclone": {
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",

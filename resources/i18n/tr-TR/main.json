@@ -640,6 +640,25 @@
           "profile": "Bulut profili (ana menü)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "En Büyük Yükleme İsteği (MiB)",
+        "description": "Web arayüzünden yapılan yüklemeler bu boyutu aşmayan isteklerle gönderilir. Sunucunun önünde bir ters vekil sunucu (reverse proxy) varsa onun istek sınırına ayarlayın (nginx, client_max_body_size artırılmadıkça 1 MiB'a izin verir). Vekil sunucu bir isteği reddederse daha küçük istekler kendiliğinden denenir. Daha büyük bir değer, hızlı ama gecikmesi yüksek bir bağlantıda tek bir büyük dosyanın yüklenmesini hızlandırabilir."
+      },
+      "parallel_uploads": {
+        "label": "Aynı Anda Yüklenen Dosya",
+        "description": "Web arayüzünün sunucuya aynı anda kaç dosya gönderdiği. Yavaş bir bağlantıda daha az dosya daha uygundur."
+      },
+      "transfer_template": {
+        "label": "Aktarım Şablonu",
+        "description": "Dosya Gezgini'ndeki kopyalama, taşıma ve yüklemeler bu şablonun kopyalama ya da taşıma, filtre ve arka uç seçenekleriyle çalışır. Şablonlar Şablonları Yönet bölümünde oluşturulur. Silinmiş bir şablon atlanır.",
+        "none": "Şablon yok"
+      },
+      "ask_transfer_template": {
+        "label": "Her Aktarımda Şablonu Sor",
+        "description": "Bir yüklemeden ya da başka bir uzak bağlantıya kopyalama veya taşımadan önce hangi şablonun kullanılacağını sor. Başta yukarıdaki aktarım şablonu seçili gelir."
+      }
     }
   },
   "banners": {
@@ -1890,7 +1909,8 @@
         "movedFiles": "Taşınan dosyalar",
         "copiedFiles": "Kopyalanan dosyalar",
         "syncedFiles": "Senkronize edilen dosyalar",
-        "processedFiles": "İşlenen dosyalar"
+        "processedFiles": "İşlenen dosyalar",
+        "template": "Şablon"
       },
       "running": "Çalışıyor",
       "filesCount": {
@@ -2368,6 +2388,7 @@
       "tabs": {
         "general": "Genel",
         "core": "Çekirdek",
+        "file_browser": "Dosya Gezgini",
         "developer": "Geliştirici",
         "vault": "Kasa"
       },
@@ -3621,6 +3642,29 @@
       "cancelLoading": "Yüklemeyi iptal et",
       "star": "Yıldızlılara ekle",
       "unstar": "Yıldızlılardan kaldır"
+    },
+    "transferTemplate": {
+      "title": "Aktarım Seçenekleri",
+      "summary": {
+        "upload": {
+          "one": "{{count}} öge {{destination}} konumuna yüklenecek.",
+          "other": "{{count}} öge {{destination}} konumuna yüklenecek."
+        },
+        "copy": {
+          "one": "{{count}} öge {{destination}} konumuna kopyalanacak.",
+          "other": "{{count}} öge {{destination}} konumuna kopyalanacak."
+        },
+        "move": {
+          "one": "{{count}} öge {{destination}} konumuna taşınacak.",
+          "other": "{{count}} öge {{destination}} konumuna taşınacak."
+        }
+      },
+      "noOptions": "Bu şablonda bu aktarıma uygulanan bir seçenek yok.",
+      "noTemplateChosen": "Şablon olmadan aktarım yalnızca Rclone Bayrakları'nda ayarlanan seçenekleri kullanır.",
+      "whatTemplatesDo": "Şablon, sağlama toplamı denetimi ya da yeniden deneme gibi rclone seçeneklerini saklar. Böylece bir aktarım bu seçenekleri diğer aktarımları değiştirmeden kullanabilir.",
+      "useAsDefault": "Bu şablonu varsayılan olarak kullan",
+      "dontAskAgain": "Bir daha sorma (Tercihler › Dosya Gezgini)",
+      "start": "Başlat"
     }
   },
   "home": {
@@ -3921,7 +3965,10 @@
       "legacyBatch": "Bu yükleme eski bir sayfa tarafından başlatıldı. Uygulamayı yeniden yükleyip tekrar deneyin.",
       "noFiles": "Yüklemede dosya yok.",
       "invalidPath": "Yükleme geçersiz bir dosya veya klasör yolu içeriyor.",
-      "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor."
+      "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor.",
+      "sessionGone": "Bu yükleme iptal edildiği veya çok uzun süre hareketsiz kaldığı için artık sunucuda yok. Yeniden başlatın.",
+      "invalidChunk": "Yükleme, dosyalarının hiçbirine ait olmayan veri gönderdi.",
+      "incomplete": "Yükleme, tüm dosyaları ulaşmadan bitirildi."
     },
     "rclone": {
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",

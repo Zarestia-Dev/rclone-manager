@@ -640,6 +640,25 @@
           "profile": "Perfil da nuvem (menu principal)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "Tamanho máximo da requisição de envio (MiB)",
+        "description": "Os envios feitos pela interface web são mandados em requisições que não passam deste tamanho. Ajuste-o ao limite de requisição do proxy reverso que fica na frente do servidor (o nginx aceita 1 MiB, a menos que client_max_body_size seja aumentado). Se um proxy recusar uma requisição, requisições menores são tentadas automaticamente. Um valor maior pode acelerar o envio de um único arquivo grande por uma conexão rápida com alta latência."
+      },
+      "parallel_uploads": {
+        "label": "Arquivos enviados ao mesmo tempo",
+        "description": "Quantos arquivos a interface web manda ao servidor ao mesmo tempo. Em uma conexão lenta, menos arquivos funcionam melhor."
+      },
+      "transfer_template": {
+        "label": "Modelo de transferência",
+        "description": "As cópias, movimentações e envios do Gerenciador de Arquivos usam as opções de cópia ou movimentação, filtros e backend deste modelo. Os modelos são criados em Gerenciar Modelos. Um modelo excluído é ignorado.",
+        "none": "Nenhum modelo"
+      },
+      "ask_transfer_template": {
+        "label": "Perguntar o modelo a cada transferência",
+        "description": "Antes de um envio, ou de uma cópia ou movimentação para outro remoto, perguntar qual modelo usar. O modelo de transferência acima vem selecionado primeiro."
+      }
     }
   },
   "banners": {
@@ -1890,7 +1909,8 @@
         "movedFiles": "Arquivos movidos",
         "copiedFiles": "Arquivos copiados",
         "syncedFiles": "Arquivos sincronizados",
-        "processedFiles": "Arquivos processados"
+        "processedFiles": "Arquivos processados",
+        "template": "Modelo"
       },
       "running": "Em execução",
       "filesCount": {
@@ -2327,6 +2347,7 @@
       "tabs": {
         "general": "Geral",
         "core": "Núcleo",
+        "file_browser": "Gerenciador de Arquivos",
         "developer": "Desenvolvedor",
         "vault": "Cofre"
       },
@@ -3580,6 +3601,29 @@
       "cancelLoading": "Cancelar carregamento",
       "star": "Adicionar aos favoritos",
       "unstar": "Remover dos favoritos"
+    },
+    "transferTemplate": {
+      "title": "Opções de transferência",
+      "summary": {
+        "upload": {
+          "one": "{{count}} item será enviado para {{destination}}.",
+          "other": "{{count}} itens serão enviados para {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} item será copiado para {{destination}}.",
+          "other": "{{count}} itens serão copiados para {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} item será movido para {{destination}}.",
+          "other": "{{count}} itens serão movidos para {{destination}}."
+        }
+      },
+      "noOptions": "Este modelo não tem opções que se apliquem a esta transferência.",
+      "noTemplateChosen": "Sem modelo, a transferência usa apenas as opções definidas em Flags do Rclone.",
+      "whatTemplatesDo": "Um modelo guarda opções do rclone, como a verificação de checksums ou as novas tentativas, para que uma transferência as use sem mudá-las para todas as outras.",
+      "useAsDefault": "Usar este modelo por padrão",
+      "dontAskAgain": "Não perguntar de novo (Preferências › Gerenciador de Arquivos)",
+      "start": "Iniciar"
     }
   },
   "home": {
@@ -3880,7 +3924,10 @@
       "legacyBatch": "Este envio foi iniciado por uma página desatualizada. Recarregue o aplicativo e tente novamente.",
       "noFiles": "O envio não contém arquivos.",
       "invalidPath": "O envio contém um caminho de arquivo ou pasta inválido.",
-      "invalidModifiedTime": "O envio contém uma data de modificação inválida."
+      "invalidModifiedTime": "O envio contém uma data de modificação inválida.",
+      "sessionGone": "O servidor não tem mais este envio, porque ele foi cancelado ou ficou inativo por tempo demais. Inicie-o novamente.",
+      "invalidChunk": "O envio mandou dados que não pertencem a nenhum de seus arquivos.",
+      "incomplete": "O envio foi concluído antes de todos os seus arquivos chegarem."
     },
     "rclone": {
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",

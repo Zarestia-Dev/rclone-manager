@@ -7,6 +7,7 @@ import { NotificationService } from '../ui/notification.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { FilePickerResult } from '@app/types';
 
 describe('FileSystemService', () => {
   let service: FileSystemService;
@@ -66,6 +67,45 @@ describe('FileSystemService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  describe('upload pickers', () => {
+    const picked = (paths: string[], cancelled = false): FilePickerResult => ({
+      paths,
+      items: [],
+      cancelled,
+    });
+
+    it('use the native dialogs on the desktop even with a remote engine', async () => {
+      Object.defineProperty(service, 'isTauri', { value: true, configurable: true });
+      backendServiceMock.activeBackend.mockReturnValue('NAS');
+      const nautilus = vi.spyOn(service, 'selectPathWithNautilus');
+      apiClientMock.invoke.mockResolvedValueOnce(['/home/me/a.txt']).mockResolvedValueOnce(null);
+
+      expect(await service.selectFilesForUpload()).toEqual(['/home/me/a.txt']);
+      expect(await service.selectFolderForUpload()).toBeNull();
+      expect(apiClientMock.invoke.mock.calls.map(call => call[0])).toEqual([
+        'get_files_location',
+        'get_folder_location',
+      ]);
+      expect(nautilus).not.toHaveBeenCalled();
+    });
+
+    it('use the local file browser on mobile and return null when it is cancelled', async () => {
+      Object.defineProperty(service, 'isTauri', { value: true, configurable: true });
+      vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8)'
+      );
+      const nautilus = vi
+        .spyOn(service, 'selectPathWithNautilus')
+        .mockResolvedValueOnce(picked(['/storage/emulated/0/DCIM']))
+        .mockResolvedValueOnce(picked([], true));
+
+      expect(await service.selectFolderForUpload()).toBe('/storage/emulated/0/DCIM');
+      expect(await service.selectFolderForUpload()).toBeNull();
+      expect(nautilus).toHaveBeenCalledWith({ mode: 'local', selection: 'folders', multi: false });
+      expect(apiClientMock.invoke).not.toHaveBeenCalled();
+    });
   });
 
   describe('openInFiles', () => {

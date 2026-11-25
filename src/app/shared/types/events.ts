@@ -29,6 +29,7 @@ export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+export const APP_SHUTTING_DOWN = 'app_shutting_down' as const;
 /** `status` values of updater app events; see `app_event_status` in events.rs. */
 export const APP_EVENT_STATUS = {
   updateFound: 'update_found',

@@ -33,6 +33,7 @@ import { NumberInputComponent } from '../../../../shared/components/number-input
 
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { UserTemplateService } from 'src/app/services/remote/user-template.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
@@ -44,6 +45,9 @@ import {
   PendingChangeDisplay,
   ConfigValue,
 } from '@app/types';
+
+/** A setting whose choices are the user's templates, not options of the schema. */
+const TRANSFER_TEMPLATE_KEY = 'file_browser.transfer_template';
 
 import { PillDirective } from '../../../../shared/directives/pill.directive';
 interface OptionViewModel {
@@ -100,6 +104,7 @@ interface SettingViewModel {
 export class PreferencesModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly userTemplates = inject(UserTemplateService).userTemplates;
   private readonly localStorageService = inject(LocalStorageService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
@@ -132,6 +137,7 @@ export class PreferencesModalComponent {
   readonly tabs: SettingTab[] = [
     { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
     { label: 'modals.preferences.tabs.core', icon: 'core', key: 'core' },
+    { label: 'modals.preferences.tabs.file_browser', icon: 'folder-open', key: 'file_browser' },
     { label: 'modals.preferences.tabs.developer', icon: 'experiment', key: 'developer' },
   ];
 
@@ -252,6 +258,11 @@ export class PreferencesModalComponent {
   ): Record<string, SettingMetadata> {
     const enriched: Record<string, SettingMetadata> = {};
     for (const [fullKey, meta] of Object.entries(options)) {
+      // Its choices are the user's templates, which `toSettingViewModel` lists.
+      if (fullKey === TRANSFER_TEMPLATE_KEY) {
+        enriched[fullKey] = { ...meta, value_type: 'select' };
+        continue;
+      }
       const [, key] = fullKey.split('.');
       let value_type = meta.value_type || this.inferValueType(meta, key);
       // A 'string' field with options is semantically a 'select' — normalize it
@@ -604,7 +615,16 @@ export class PreferencesModalComponent {
     }
 
     const options: OptionViewModel[] = [];
-    if (meta?.options?.length) {
+    if (`${category}.${key}` === TRANSFER_TEMPLATE_KEY) {
+      // Template names are the user's own text, shown as they are.
+      options.push(
+        {
+          value: '',
+          label: this.translate.instant('settings.file_browser.transfer_template.none'),
+        },
+        ...this.userTemplates().map(template => ({ value: template.id, label: template.name }))
+      );
+    } else if (meta?.options?.length) {
       for (const option of meta.options) {
         const opt = option as { label?: unknown; value?: unknown };
         options.push({

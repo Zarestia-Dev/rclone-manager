@@ -63,6 +63,9 @@ pub struct JobMetadata {
     pub parent_job_id: Option<u64>,
     #[serde(default)]
     pub execute_id: Option<String>,
+    /// The name of the user template whose options the job runs with.
+    #[serde(default)]
+    pub template: Option<String>,
 }
 
 impl JobMetadata {
@@ -85,6 +88,7 @@ impl JobMetadata {
             dry_run: false,
             parent_job_id: None,
             execute_id: None,
+            template: None,
         }
     }
 
@@ -121,6 +125,12 @@ impl JobMetadata {
     #[must_use]
     pub fn with_no_cache(mut self, no_cache: bool) -> Self {
         self.no_cache = no_cache;
+        self
+    }
+
+    #[must_use]
+    pub fn with_template(mut self, template: Option<String>) -> Self {
+        self.template = template;
         self
     }
 

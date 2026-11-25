@@ -26,17 +26,36 @@
                   'fileBrowser.operations.types.upload' | translate
                 }}</span>
               </div>
+              <button
+                type="button"
+                class="action-button"
+                (click)="remoteOps.cancelWebUpload(upload.group)"
+                [attr.title]="'fileBrowser.operations.cancelJob' | translate"
+                [attr.aria-label]="'fileBrowser.operations.cancelJob' | translate"
+              >
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
             </div>
             <span class="truncate" [title]="upload.remote + upload.path">{{
               upload.remote + upload.path
             }}</span>
-            <span class="percentage-text preparing">{{
-              'shared.transferActivity.status.preparing' | translate
-            }}</span>
-            <mat-progress-bar
-              mode="indeterminate"
-              [attr.aria-label]="'shared.transferActivity.status.preparing' | translate"
-            ></mat-progress-bar>
+            @if (upload.sent > 0) {
+              <span class="percentage-text"
+                >{{ upload.sent | formatFileSize }} / {{ upload.total | formatFileSize }}</span
+              >
+              <mat-progress-bar
+                mode="determinate"
+                [value]="(upload.sent / upload.total) * 100"
+              ></mat-progress-bar>
+            } @else {
+              <span class="percentage-text preparing">{{
+                'shared.transferActivity.status.preparing' | translate
+              }}</span>
+              <mat-progress-bar
+                mode="indeterminate"
+                [attr.aria-label]="'shared.transferActivity.status.preparing' | translate"
+              ></mat-progress-bar>
+            }
           </div>
         }
         @for (vm of jobViewModels(); track vm.job.execute_id || vm.job.jobid) {
@@ -221,6 +240,15 @@
             'fileBrowser.operations.details.destination' | translate
           }}</span>
           <span class="value">{{ vm.job.destination }}</span>
+        </div>
+      }
+
+      @if (vm.job.template) {
+        <div class="detail-item">
+          <span class="detail-label">{{
+            'fileBrowser.operations.details.template' | translate
+          }}</span>
+          <span class="value">{{ vm.job.template }}</span>
         </div>
       }
 

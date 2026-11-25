@@ -22,9 +22,7 @@ pub fn build_send_to_params(
         local_paths,
         origin: Some(crate::utils::types::origin::Origin::FileManager),
         group: Some("send_to".to_string()),
-        existing_jobid: None,
-        no_cache: false,
-        empty_dirs: Vec::new(),
+        template: None,
     }
 }
 /// Runs a "Send to" transfer: builds the upload from the command line and starts it.

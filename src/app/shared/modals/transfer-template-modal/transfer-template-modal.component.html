@@ -1,0 +1,121 @@
+<header data-tauri-drag-region>
+  <button tabindex="-1" aria-hidden="true">
+    <mat-icon svgIcon="bookmark"></mat-icon>
+  </button>
+  <p>{{ 'nautilus.transferTemplate.title' | translate }}</p>
+  <button
+    matIconButton
+    type="button"
+    (click)="cancel()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <p class="summary">
+    {{
+      'nautilus.transferTemplate.summary.' + data.operation
+        | translate: { count: data.count, destination: data.destination }
+    }}
+  </p>
+
+  @if (templates().length) {
+    <div class="template-row">
+      <mat-form-field>
+        <mat-label>{{ 'settings.file_browser.transfer_template.label' | translate }}</mat-label>
+        <mat-select [value]="selected()" (selectionChange)="select($event.value)">
+          <mat-option value="">{{
+            'settings.file_browser.transfer_template.none' | translate
+          }}</mat-option>
+          @for (template of templates(); track template.id) {
+            <mat-option [value]="template.id">{{ template.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button
+        matButton
+        type="button"
+        (click)="openTemplateManager('manage')"
+        [attr.title]="'templates.manageTitle' | translate"
+      >
+        {{ 'templates.manageTemplates' | translate }}
+      </button>
+    </div>
+
+    @if (chosen(); as template) {
+      <section class="preview" [attr.aria-label]="template.name">
+        @if (template.description) {
+          <p class="description">{{ template.description }}</p>
+        }
+        @for (group of optionGroups(); track group.category) {
+          <div class="option-group">
+            <span appPill tone="primary" size="xs">{{ group.category }}</span>
+            @for (entry of group.entries; track entry.key) {
+              <div class="option">
+                <span class="key truncate" [title]="entry.key">{{ entry.key }}</span>
+                <span class="value truncate" [title]="entry.value">{{ entry.value }}</span>
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <span>{{ 'nautilus.transferTemplate.noOptions' | translate }}</span>
+          </div>
+        }
+      </section>
+    } @else {
+      <p class="hint">{{ 'nautilus.transferTemplate.noTemplateChosen' | translate }}</p>
+    }
+
+    <div class="choices">
+      <mat-checkbox [checked]="useAsDefault()" (change)="useAsDefault.set($event.checked)">
+        {{ 'nautilus.transferTemplate.useAsDefault' | translate }}
+      </mat-checkbox>
+      <mat-checkbox [checked]="dontAskAgain()" (change)="dontAskAgain.set($event.checked)">
+        {{ 'nautilus.transferTemplate.dontAskAgain' | translate }}
+      </mat-checkbox>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <mat-icon svgIcon="bookmark"></mat-icon>
+      <span>{{ 'templates.noUserTemplates' | translate }}</span>
+      <p>{{ 'nautilus.transferTemplate.whatTemplatesDo' | translate }}</p>
+      <button
+        matButton="filled"
+        data-tone="primary"
+        type="button"
+        (click)="openTemplateManager('save')"
+        [attr.title]="'templates.newTitle' | translate"
+      >
+        {{ 'templates.newTitle' | translate }}
+      </button>
+    </div>
+  }
+</main>
+
+<footer>
+  <button
+    matButton="filled"
+    data-tone="accent"
+    type="button"
+    (click)="cancel()"
+    [attr.title]="'common.cancel' | translate"
+    [attr.aria-label]="'common.cancel' | translate"
+  >
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    matButton="filled"
+    data-tone="primary"
+    type="button"
+    cdkFocusInitial
+    (click)="start()"
+    [attr.title]="'nautilus.transferTemplate.start' | translate"
+    [attr.aria-label]="'nautilus.transferTemplate.start' | translate"
+  >
+    {{ 'nautilus.transferTemplate.start' | translate }}
+  </button>
+</footer>

@@ -640,6 +640,25 @@
           "profile": "Perfil de la nube (menú principal)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "Tamaño máximo de solicitud de subida (MiB)",
+        "description": "Las subidas desde la interfaz web se envían en solicitudes que no superan este tamaño. Ajústalo al límite de solicitud del proxy inverso que haya delante del servidor (nginx admite 1 MiB salvo que se aumente client_max_body_size). Si un proxy rechaza una solicitud, se prueban solicitudes más pequeñas automáticamente. Un valor mayor puede acelerar la subida de un solo archivo grande por una conexión rápida con mucha latencia."
+      },
+      "parallel_uploads": {
+        "label": "Archivos subidos a la vez",
+        "description": "Cuántos archivos envía la interfaz web al servidor al mismo tiempo. Con una conexión lenta conviene usar menos."
+      },
+      "transfer_template": {
+        "label": "Plantilla de transferencia",
+        "description": "Las copias, los movimientos y las subidas del Explorador de archivos usan las opciones de copia o movimiento, filtros y backend de esta plantilla. Las plantillas se crean en Administrar plantillas. Si la plantilla se ha eliminado, se omite.",
+        "none": "Sin plantilla"
+      },
+      "ask_transfer_template": {
+        "label": "Preguntar la plantilla en cada transferencia",
+        "description": "Antes de una subida, o de copiar o mover a otro remoto, pregunta qué plantilla usar. Primero aparece seleccionada la plantilla de transferencia de arriba."
+      }
     }
   },
   "banners": {
@@ -1890,7 +1909,8 @@
         "movedFiles": "Archivos movidos",
         "copiedFiles": "Archivos copiados",
         "syncedFiles": "Archivos sincronizados",
-        "processedFiles": "Archivos procesados"
+        "processedFiles": "Archivos procesados",
+        "template": "Plantilla"
       },
       "running": "En ejecución",
       "filesCount": {
@@ -2327,6 +2347,7 @@
       "tabs": {
         "general": "General",
         "core": "Núcleo",
+        "file_browser": "Explorador de archivos",
         "developer": "Desarrollador",
         "vault": "Bóveda"
       },
@@ -3580,6 +3601,29 @@
       "cancelLoading": "Cancelar carga",
       "star": "Añadir a destacados",
       "unstar": "Eliminar de destacados"
+    },
+    "transferTemplate": {
+      "title": "Opciones de transferencia",
+      "summary": {
+        "upload": {
+          "one": "Se subirá {{count}} elemento a {{destination}}.",
+          "other": "Se subirán {{count}} elementos a {{destination}}."
+        },
+        "copy": {
+          "one": "Se copiará {{count}} elemento a {{destination}}.",
+          "other": "Se copiarán {{count}} elementos a {{destination}}."
+        },
+        "move": {
+          "one": "Se moverá {{count}} elemento a {{destination}}.",
+          "other": "Se moverán {{count}} elementos a {{destination}}."
+        }
+      },
+      "noOptions": "Esta plantilla no tiene opciones que se apliquen a esta transferencia.",
+      "noTemplateChosen": "Sin plantilla, la transferencia solo usa las opciones definidas en Banderas de Rclone.",
+      "whatTemplatesDo": "Una plantilla guarda opciones de rclone, como la comprobación de sumas o los reintentos, para que una transferencia las use sin cambiarlas en las demás.",
+      "useAsDefault": "Usar esta plantilla de forma predeterminada",
+      "dontAskAgain": "No volver a preguntar (Preferencias › Explorador de archivos)",
+      "start": "Iniciar"
     }
   },
   "home": {
@@ -3880,7 +3924,10 @@
       "legacyBatch": "Esta subida la inició una página desactualizada. Recarga la aplicación e inténtalo de nuevo.",
       "noFiles": "La subida no contiene archivos.",
       "invalidPath": "La subida contiene una ruta de archivo o carpeta no válida.",
-      "invalidModifiedTime": "La subida contiene una fecha de modificación no válida."
+      "invalidModifiedTime": "La subida contiene una fecha de modificación no válida.",
+      "sessionGone": "El servidor ya no tiene esta subida porque se canceló o estuvo inactiva demasiado tiempo. Iníciala de nuevo.",
+      "invalidChunk": "La subida envió datos que no pertenecen a ninguno de sus archivos.",
+      "incomplete": "La subida se terminó antes de que llegaran todos sus archivos."
     },
     "rclone": {
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",

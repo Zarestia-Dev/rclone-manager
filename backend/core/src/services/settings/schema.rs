@@ -487,6 +487,62 @@ pub struct NautilusSettings {
     pub bookmarks: Vec<Value>,
 }
 
+/// File browser preferences shown in the preferences window. Starred items and
+/// bookmarks are data the file browser keeps, so they stay in [`NautilusSettings`].
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[cfg_attr(any(feature = "desktop", feature = "mobile"), derive(Default))]
+#[schema(category = "file_browser")]
+pub struct FileBrowserSettings {
+    /// The id of the user template whose copy or move, filter and backend options every
+    /// copy, move and upload of the file browser uses; empty for none. A template that
+    /// no longer exists is skipped.
+    #[setting(
+        label = "settings.file_browser.transfer_template.label",
+        description = "settings.file_browser.transfer_template.description"
+    )]
+    pub transfer_template: String,
+
+    #[setting(
+        label = "settings.file_browser.ask_transfer_template.label",
+        description = "settings.file_browser.ask_transfer_template.description"
+    )]
+    pub ask_transfer_template: bool,
+
+    /// Uploads from the web interface are sent in requests no larger than this,
+    /// so they pass a proxy that limits a request's body (nginx: 1 MiB by default).
+    /// The server writes a chunk to disk as it arrives, so the size costs it no
+    /// memory; larger chunks help a single large file over a fast, distant link.
+    #[setting(
+        label = "settings.file_browser.upload_request_mib.label",
+        description = "settings.file_browser.upload_request_mib.description",
+        min = 1,
+        step = 1
+    )]
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    pub upload_request_mib: u32,
+
+    #[setting(
+        label = "settings.file_browser.parallel_uploads.label",
+        description = "settings.file_browser.parallel_uploads.description",
+        min = 1,
+        step = 1
+    )]
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    pub parallel_uploads: u32,
+}
+
+#[cfg(not(any(feature = "desktop", feature = "mobile")))]
+impl Default for FileBrowserSettings {
+    fn default() -> Self {
+        Self {
+            transfer_template: String::new(),
+            ask_transfer_template: false,
+            upload_request_mib: 8,
+            parallel_uploads: 3,
+        }
+    }
+}
+
 // Main AppSettings - Uses nested struct flattening
 
 /// The complete settings model
@@ -498,6 +554,7 @@ pub struct AppSettings {
     pub wizard: WizardSettings,
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
+    pub file_browser: FileBrowserSettings,
 }
 
 /// User preset template schema for `rcman`
@@ -624,6 +681,33 @@ mod feature_tests {
             .unwrap();
         assert!(manager.get::<bool>("wizard.after_remote").unwrap());
         assert_eq!(manager.get::<String>("wizard.destination").unwrap(), "auto");
+    }
+
+    // The web interface sizes its upload requests from these.
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    #[test]
+    fn upload_settings_stay_within_what_the_server_takes_and_default_on_older_files() {
+        let metadata = super::FileBrowserSettings::get_metadata();
+        // Only values that cannot work are refused; how much is too much is the user's call.
+        for (key, default) in [
+            ("file_browser.upload_request_mib", 8),
+            ("file_browser.parallel_uploads", 3),
+        ] {
+            let number = &metadata[key].constraints.number;
+            assert_eq!((number.min, number.max), (Some(1.0), None), "{key}");
+            let directory = tempfile::tempdir().unwrap();
+            std::fs::write(
+                directory.path().join("settings.json"),
+                r#"{"general": {"language": "en-US", "restrict": false}}"#,
+            )
+            .unwrap();
+            let manager = rcman::SettingsManager::builder("file-browser", "1.0.0")
+                .with_config_dir(directory.path())
+                .with_schema::<super::AppSettings>()
+                .build()
+                .unwrap();
+            assert_eq!(manager.get::<u32>(key).unwrap(), default, "{key}");
+        }
     }
 
     #[test]

@@ -11,6 +11,7 @@ import {
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
   APP_EVENT_STATUS,
+  APP_SHUTTING_DOWN,
   UPDATER_STATE_CHANGED,
   UpdaterStateChanged,
   APP_EXIT_REQUESTED,
@@ -191,10 +192,7 @@ export class EventListenersService extends TauriBaseService {
   }
 
   listenToAppShuttingDown(): Observable<void> {
-    return this.listenToAppEvents().pipe(
-      filter(event => event.status === 'shutting_down'),
-      map(() => undefined)
-    );
+    return this.listenToEvent<void>(APP_SHUTTING_DOWN);
   }
 
   listenToLanguageChanged(): Observable<string> {

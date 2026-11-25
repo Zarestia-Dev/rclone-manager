@@ -640,6 +640,25 @@
           "profile": "Cloud profile (main menu)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "Largest Upload Request (MiB)",
+        "description": "Uploads from the web interface are sent in requests no larger than this. Set it to the request limit of a reverse proxy in front of the server (nginx allows 1 MiB unless client_max_body_size is raised). When a proxy refuses a request, smaller ones are tried on their own. A larger value can speed up a single large file over a fast connection with high latency."
+      },
+      "parallel_uploads": {
+        "label": "Files Uploaded at Once",
+        "description": "How many files the web interface sends to the server at the same time. Fewer suit a slow connection."
+      },
+      "transfer_template": {
+        "label": "Transfer Template",
+        "description": "Copies, moves and uploads in the File Browser run with the copy or move, filter and backend options of this template. Templates are created in Manage Templates. A template that has been deleted is skipped.",
+        "none": "No template"
+      },
+      "ask_transfer_template": {
+        "label": "Ask for the Template on Each Transfer",
+        "description": "Before an upload, or a copy or move to another remote, ask which template to use. The transfer template above is selected first."
+      }
     }
   },
   "banners": {
@@ -1890,7 +1909,8 @@
         "movedFiles": "Moved files",
         "copiedFiles": "Copied files",
         "syncedFiles": "Synced files",
-        "processedFiles": "Processed files"
+        "processedFiles": "Processed files",
+        "template": "Template"
       },
       "running": "Running",
       "filesCount": {
@@ -2368,6 +2388,7 @@
       "tabs": {
         "general": "General",
         "core": "Core",
+        "file_browser": "File Browser",
         "developer": "Developer",
         "vault": "Vault"
       },
@@ -3621,6 +3642,29 @@
       "cancelLoading": "Cancel loading",
       "star": "Add to starred",
       "unstar": "Remove from starred"
+    },
+    "transferTemplate": {
+      "title": "Transfer Options",
+      "summary": {
+        "upload": {
+          "one": "{{count}} item will be uploaded to {{destination}}.",
+          "other": "{{count}} items will be uploaded to {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} item will be copied to {{destination}}.",
+          "other": "{{count}} items will be copied to {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} item will be moved to {{destination}}.",
+          "other": "{{count}} items will be moved to {{destination}}."
+        }
+      },
+      "noOptions": "This template has no options that apply to this transfer.",
+      "noTemplateChosen": "Without a template the transfer uses only the options set in RClone Flags.",
+      "whatTemplatesDo": "A template keeps rclone options, such as checksum checks or retries, so a transfer can use them without changing them for every other transfer.",
+      "useAsDefault": "Use this template by default",
+      "dontAskAgain": "Don't ask again (Preferences › File Browser)",
+      "start": "Start"
     }
   },
   "home": {
@@ -3921,7 +3965,10 @@
       "legacyBatch": "This upload was started by an outdated page. Reload the application and try again.",
       "noFiles": "The upload contains no files.",
       "invalidPath": "The upload contains an invalid file or folder path.",
-      "invalidModifiedTime": "The upload contains an invalid modification time."
+      "invalidModifiedTime": "The upload contains an invalid modification time.",
+      "sessionGone": "The server no longer has this upload, because it was cancelled or stayed inactive too long. Start it again.",
+      "invalidChunk": "The upload sent data that does not belong to any of its files.",
+      "incomplete": "The upload was finished before all of its files arrived."
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",

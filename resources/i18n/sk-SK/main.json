@@ -641,6 +641,25 @@
           "profile": "Profil cloudu (hlavná ponuka)"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "Najväčšia požiadavka nahrávania (MiB)",
+        "description": "Nahrávanie z webového rozhrania sa odosiela v požiadavkách, ktoré túto veľkosť neprekročia. Nastavte ju na limit požiadavky reverzného proxy pred serverom (nginx povoľuje 1 MiB, ak sa nezvýši client_max_body_size). Ak proxy požiadavku odmietne, automaticky sa skúsia menšie požiadavky. Vyššia hodnota môže zrýchliť nahrávanie jedného veľkého súboru cez rýchle pripojenie s vysokou latenciou."
+      },
+      "parallel_uploads": {
+        "label": "Súbory nahrávané naraz",
+        "description": "Koľko súborov odosiela webové rozhranie na server súčasne. Pri pomalom pripojení je vhodnejšie menej."
+      },
+      "transfer_template": {
+        "label": "Šablóna prenosu",
+        "description": "Kopírovanie, presúvanie a nahrávanie v Prehliadači súborov používa možnosti kopírovania alebo presunu, filtrov a backendu z tejto šablóny. Šablóny sa vytvárajú v časti Spravovať šablóny. Odstránená šablóna sa preskočí.",
+        "none": "Bez šablóny"
+      },
+      "ask_transfer_template": {
+        "label": "Pýtať sa na šablónu pri každom prenose",
+        "description": "Pred nahrávaním alebo pred kopírovaním či presunom na iné vzdialené úložisko sa opýtať, ktorú šablónu použiť. Najprv je vybraná šablóna prenosu uvedená vyššie."
+      }
     }
   },
   "banners": {
@@ -1903,7 +1922,8 @@
         "movedFiles": "Presunuté súbory",
         "copiedFiles": "Skopírované súbory",
         "syncedFiles": "Synchronizované súbory",
-        "processedFiles": "Spracované súbory"
+        "processedFiles": "Spracované súbory",
+        "template": "Šablóna"
       },
       "running": "Beží",
       "filesCount": {
@@ -2384,6 +2404,7 @@
       "tabs": {
         "general": "Všeobecné",
         "core": "Jadro",
+        "file_browser": "Prehliadač súborov",
         "developer": "Vývojár",
         "vault": "Trezor"
       },
@@ -3669,6 +3690,32 @@
       "cancelLoading": "Zrušiť načítavanie",
       "star": "Pridať medzi obľúbené",
       "unstar": "Odstrániť z obľúbených"
+    },
+    "transferTemplate": {
+      "title": "Možnosti prenosu",
+      "summary": {
+        "upload": {
+          "one": "{{count}} položka sa nahrá do {{destination}}.",
+          "few": "{{count}} položky sa nahrajú do {{destination}}.",
+          "other": "{{count}} položiek sa nahrá do {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} položka sa skopíruje do {{destination}}.",
+          "few": "{{count}} položky sa skopírujú do {{destination}}.",
+          "other": "{{count}} položiek sa skopíruje do {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} položka sa presunie do {{destination}}.",
+          "few": "{{count}} položky sa presunú do {{destination}}.",
+          "other": "{{count}} položiek sa presunie do {{destination}}."
+        }
+      },
+      "noOptions": "Táto šablóna nemá žiadne možnosti, ktoré platia pre tento prenos.",
+      "noTemplateChosen": "Bez šablóny prenos používa len možnosti nastavené v časti Prepínače rclone.",
+      "whatTemplatesDo": "Šablóna uchováva možnosti rclone, napríklad kontrolu kontrolných súčtov alebo opakované pokusy, aby ich prenos mohol použiť bez toho, aby sa zmenili pre všetky ostatné prenosy.",
+      "useAsDefault": "Používať túto šablónu predvolene",
+      "dontAskAgain": "Už sa nepýtať (Predvoľby › Prehliadač súborov)",
+      "start": "Spustiť"
     }
   },
   "home": {
@@ -3972,7 +4019,10 @@
       "legacyBatch": "Toto nahrávanie spustila zastaraná stránka. Znova načítajte aplikáciu a skúste to znova.",
       "noFiles": "Nahrávanie neobsahuje žiadne súbory.",
       "invalidPath": "Nahrávanie obsahuje neplatnú cestu k súboru alebo priečinku.",
-      "invalidModifiedTime": "Nahrávanie obsahuje neplatný čas úpravy."
+      "invalidModifiedTime": "Nahrávanie obsahuje neplatný čas úpravy.",
+      "sessionGone": "Server už toto nahrávanie nemá, pretože bolo zrušené alebo príliš dlho nečinné. Spustite ho znova.",
+      "invalidChunk": "Nahrávanie odoslalo údaje, ktoré nepatria k žiadnemu z jeho súborov.",
+      "incomplete": "Nahrávanie bolo ukončené skôr, ako prišli všetky jeho súbory."
     },
     "rclone": {
       "downloadCancelled": "Sťahovanie zrušil používateľ",

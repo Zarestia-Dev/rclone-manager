@@ -80,7 +80,7 @@ interface JobViewModel {
 })
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly remoteOps = inject(RemoteFileOperationsService);
+  protected readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly translate = inject(TranslateService);
   private readonly backendTranslation = inject(BackendTranslationService);
 

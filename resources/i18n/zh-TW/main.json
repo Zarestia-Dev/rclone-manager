@@ -639,6 +639,25 @@
           "profile": "雲端設定檔（主選單）"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "上傳請求的最大大小 (MiB)",
+        "description": "從網頁介面上傳時，每個請求都不會超過此大小。如果伺服器前面有反向代理，請將其設為該代理的請求大小上限（除非調高 client_max_body_size，nginx 只允許 1 MiB）。代理拒絕某個請求時，會自動改用較小的請求重試。較大的值可以加快在高速但延遲較高的連線上上傳單一大型檔案。"
+      },
+      "parallel_uploads": {
+        "label": "同時上傳的檔案數",
+        "description": "網頁介面同時傳送到伺服器的檔案數量。網路較慢時，數量少一些較合適。"
+      },
+      "transfer_template": {
+        "label": "傳輸模板",
+        "description": "檔案瀏覽器中的複製、移動和上傳會使用此模板中的複製或移動、過濾器和後端選項。模板在「管理模板」中建立。已刪除的模板會被略過。",
+        "none": "不使用模板"
+      },
+      "ask_transfer_template": {
+        "label": "每次傳輸時詢問模板",
+        "description": "在上傳，或複製、移動到另一個遠端之前，詢問要使用哪個模板。預設選取上方的傳輸模板。"
+      }
     }
   },
   "banners": {
@@ -1877,7 +1896,8 @@
         "movedFiles": "已移動檔案",
         "copiedFiles": "已複製檔案",
         "syncedFiles": "已同步檔案",
-        "processedFiles": "已處理檔案"
+        "processedFiles": "已處理檔案",
+        "template": "模板"
       },
       "running": "執行中",
       "filesCount": {
@@ -2352,6 +2372,7 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
+        "file_browser": "檔案瀏覽器",
         "developer": "開發者",
         "vault": "保存庫"
       },
@@ -3573,6 +3594,26 @@
       "cancelLoading": "取消載入",
       "star": "加入星號",
       "unstar": "移除星號"
+    },
+    "transferTemplate": {
+      "title": "傳輸選項",
+      "summary": {
+        "upload": {
+          "other": "將上傳 {{count}} 項到 {{destination}}。"
+        },
+        "copy": {
+          "other": "將複製 {{count}} 項到 {{destination}}。"
+        },
+        "move": {
+          "other": "將移動 {{count}} 項到 {{destination}}。"
+        }
+      },
+      "noOptions": "此模板中沒有適用於本次傳輸的選項。",
+      "noTemplateChosen": "不使用模板時，傳輸只會使用在「Rclone 旗標」中設定的選項。",
+      "whatTemplatesDo": "模板可以儲存 rclone 選項，例如總和檢查碼檢查或重試次數，讓某次傳輸使用這些選項，而不改變其他傳輸的設定。",
+      "useAsDefault": "預設使用此模板",
+      "dontAskAgain": "不再詢問（偏好設定 › 檔案瀏覽器）",
+      "start": "開始"
     }
   },
   "home": {
@@ -3870,7 +3911,10 @@
       "legacyBatch": "此上傳由過期的頁面發起。請重新載入應用程式後再試一次。",
       "noFiles": "上傳中沒有檔案。",
       "invalidPath": "上傳包含無效的檔案或資料夾路徑。",
-      "invalidModifiedTime": "上傳包含無效的修改時間。"
+      "invalidModifiedTime": "上傳包含無效的修改時間。",
+      "sessionGone": "伺服器上已沒有此上傳，因為它已被取消或閒置過久。請重新開始上傳。",
+      "invalidChunk": "上傳傳送了不屬於其任何檔案的資料。",
+      "incomplete": "上傳在所有檔案到達之前就已結束。"
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",

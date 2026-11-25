@@ -8,6 +8,7 @@ import {
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
 import { Subject, Observable, from, of, switchMap, take } from 'rxjs';
+import type { TransferTemplateModalData } from '../../shared/modals/transfer-template-modal/transfer-template-modal.component';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -320,6 +321,10 @@ export class ModalService extends TauriBaseService {
     'apply-template': () =>
       import('../../shared/remote-config/apply-template-modal/apply-template-modal.component').then(
         m => m.ApplyTemplateModalComponent
+      ),
+    'transfer-template': () =>
+      import('../../shared/modals/transfer-template-modal/transfer-template-modal.component').then(
+        m => m.TransferTemplateModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -875,6 +880,16 @@ export class ModalService extends TauriBaseService {
         currentValues: options.currentValues,
         applicableCategories: options.applicableCategories,
       },
+    });
+  }
+
+  /** Asks which template a file browser transfer runs with; closes with its id, '' for none. */
+  openTransferTemplate(data: TransferTemplateModalData): DialogRefLike<string> {
+    return this.openModal('transfer-template', {
+      minWidth: '362px',
+      disableClose: true,
+      panelClass: 'mobile-sheet-dialog',
+      data,
     });
   }
 

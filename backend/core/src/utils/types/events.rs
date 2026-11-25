@@ -157,6 +157,13 @@ pub const ALERT_FIRED: &str = "alert_fired";
 
 pub const APP_EVENT: &str = "app_event";
 
+/// Emitted once when shutdown begins, with a null payload, so the interface can show its
+/// closing screen. In `PUBLIC_EVENTS`: it carries no vault data, and a locked interface
+/// would otherwise close without a word.
+/// - Emitted by: `services::lifecycle::shutdown`
+/// - Handled by: `GlobalLoadingService`
+pub const APP_SHUTTING_DOWN: &str = "app_shutting_down";
+
 /// `status` values of updater [`APP_EVENT`]s, consumed by `EventListenersService`.
 /// `UPDATE_FOUND`/`RCLONE_UPDATE_FOUND` carry an `UpdateInfo` (services/updates,
 /// rclone/binaries/updater); `DOWNLOAD_PROGRESS` a `DownloadStatus` (updates/install).
@@ -206,6 +213,7 @@ pub const PUBLIC_EVENTS: &[&str] = &[
     VAULT_STATE_CHANGED,
     SYSTEM_THEME_CHANGED,
     WINDOW_BUTTON_LAYOUT_CHANGED,
+    APP_SHUTTING_DOWN,
 ];
 
 /// List of all events that should be forwarded to SSE clients in headless mode
@@ -233,6 +241,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     WORKFLOW_NODE_STATE_CHANGED,
     WORKFLOW_EXECUTION_STATE_CHANGED,
     APP_EVENT,
+    APP_SHUTTING_DOWN,
     BROWSE,
     UPDATER_STATE_CHANGED,
     ALERT_FIRED,

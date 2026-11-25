@@ -639,6 +639,25 @@
           "profile": "云盘配置文件（主菜单）"
         }
       }
+    },
+    "file_browser": {
+      "upload_request_mib": {
+        "label": "上传请求的最大大小 (MiB)",
+        "description": "从网页界面上传时，每个请求都不会超过此大小。如果服务器前面有反向代理，请将其设为该代理的请求大小上限（除非调大 client_max_body_size，nginx 只允许 1 MiB）。代理拒绝某个请求时，会自动改用更小的请求重试。较大的值可以加快在高速但延迟较高的连接上上传单个大文件。"
+      },
+      "parallel_uploads": {
+        "label": "同时上传的文件数",
+        "description": "网页界面同时向服务器发送的文件数量。网络较慢时，数量少一些更合适。"
+      },
+      "transfer_template": {
+        "label": "传输模板",
+        "description": "文件浏览器中的复制、移动和上传会使用此模板中的复制或移动、过滤器和后端选项。模板在“管理模板”中创建。已删除的模板会被跳过。",
+        "none": "不使用模板"
+      },
+      "ask_transfer_template": {
+        "label": "每次传输时询问模板",
+        "description": "在上传，或复制、移动到另一个远程存储之前，询问要使用哪个模板。默认选中上方的传输模板。"
+      }
     }
   },
   "banners": {
@@ -1877,7 +1896,8 @@
         "movedFiles": "已移动文件",
         "copiedFiles": "已复制文件",
         "syncedFiles": "已同步文件",
-        "processedFiles": "已处理文件"
+        "processedFiles": "已处理文件",
+        "template": "模板"
       },
       "running": "运行中",
       "filesCount": {
@@ -2311,6 +2331,7 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
+        "file_browser": "文件浏览器",
         "developer": "开发者",
         "vault": "保管库"
       },
@@ -3532,6 +3553,26 @@
       "cancelLoading": "取消加载",
       "star": "添加星标",
       "unstar": "移除星标"
+    },
+    "transferTemplate": {
+      "title": "传输选项",
+      "summary": {
+        "upload": {
+          "other": "将上传 {{count}} 项到 {{destination}}。"
+        },
+        "copy": {
+          "other": "将复制 {{count}} 项到 {{destination}}。"
+        },
+        "move": {
+          "other": "将移动 {{count}} 项到 {{destination}}。"
+        }
+      },
+      "noOptions": "此模板中没有适用于本次传输的选项。",
+      "noTemplateChosen": "不使用模板时，传输只使用在“Rclone 标志”中设置的选项。",
+      "whatTemplatesDo": "模板可以保存 rclone 选项，例如校验和检查或重试次数，让某次传输使用这些选项，而不改变其他传输的设置。",
+      "useAsDefault": "默认使用此模板",
+      "dontAskAgain": "不再询问（偏好设置 › 文件浏览器）",
+      "start": "开始"
     }
   },
   "home": {
@@ -3829,7 +3870,10 @@
       "legacyBatch": "此上传由过期的页面发起。请重新加载应用程序后重试。",
       "noFiles": "上传中没有文件。",
       "invalidPath": "上传包含无效的文件或文件夹路径。",
-      "invalidModifiedTime": "上传包含无效的修改时间。"
+      "invalidModifiedTime": "上传包含无效的修改时间。",
+      "sessionGone": "服务器上已没有此上传，因为它已被取消或闲置时间过长。请重新开始上传。",
+      "invalidChunk": "上传发送了不属于其任何文件的数据。",
+      "incomplete": "上传在所有文件到达之前就已结束。"
     },
     "rclone": {
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",

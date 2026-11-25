@@ -8,6 +8,8 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
@@ -33,6 +35,8 @@ export class NautilusFileOperationsService {
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly fileSystem = inject(FileSystemService);
+  private readonly backendTranslation = inject(BackendTranslationService);
+  private readonly appSettings = inject(AppSettingsService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
@@ -200,6 +204,11 @@ export class NautilusFileOperationsService {
       name: item.entry.Name,
       isDir: !!item.entry.IsDir,
     }));
+    // Within one remote rclone copies and moves on the server, where the options do not apply.
+    const template = transferItems.some(item => item.remote !== normalizedDst)
+      ? await this.pickTransferTemplate(mode, items.length, normalizedDst + dstPath)
+      : undefined;
+    if (template === null) return;
 
     this.notifications.showInfo(
       this.translate.instant(
@@ -216,7 +225,10 @@ export class NautilusFileOperationsService {
         normalizedDst,
         dstPath,
         mode,
-        'filemanager'
+        'filemanager',
+        undefined,
+        undefined,
+        template
       );
 
       const succeededItems: UndoEntry['items'] = items.map(item => ({
@@ -505,7 +517,7 @@ export class NautilusFileOperationsService {
 
   async uploadExternalFolder(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
-      const folderPath = await this.fileSystem.selectFolder();
+      const folderPath = await this.fileSystem.selectFolderForUpload();
       if (folderPath) {
         return this.uploadLocalPaths(remote, currentPath, [folderPath]);
       }
@@ -541,26 +553,40 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!files.length && !emptyDirectories.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
-
-    const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
-      normalized,
-      currentPath,
-      files,
-      'filemanager',
-      emptyDirectories
+    const template = await this.pickTransferTemplate(
+      'upload',
+      files.length || emptyDirectories.length,
+      normalized + currentPath
     );
-    if (failedPaths.length > 0) {
-      const message = this.translate.instant('nautilus.notifications.uploadFailed', {
-        count: failedPaths.length,
-      });
-      if (successCount > 0) this.notifications.showWarning(message);
-      else this.notifications.showError(message);
-    } else if (successCount > 0) {
+    if (template === null) return false;
+
+    let outcome;
+    try {
+      outcome = await this.remoteOps.uploadWebFilesBatch(
+        normalized,
+        currentPath,
+        files,
+        'filemanager',
+        emptyDirectories,
+        template
+      );
+    } catch (error) {
+      console.error('Browser upload failed', error);
+      this.notifications.showError(
+        this.backendTranslation.translateBackendMessage(error) ||
+          this.translate.instant('nautilus.notifications.uploadFailed', {
+            count: files.length || emptyDirectories.length,
+          })
+      );
+      return false;
+    }
+    // A transfer still running is followed in the operations panel, like any other job.
+    if (outcome === 'finished' && files.length > 0) {
       this.notifications.showSuccess(
-        this.translate.instant('nautilus.notifications.uploadSuccess', { count: successCount })
+        this.translate.instant('nautilus.notifications.uploadSuccess', { count: files.length })
       );
     }
-    return successCount > 0 || (emptyDirectories.length > 0 && failedPaths.length === 0);
+    return outcome !== 'cancelled';
   }
 
   async openNewFolderDialog(
@@ -725,6 +751,29 @@ export class NautilusFileOperationsService {
     this.clipboardMode.set(mode);
   }
 
+  /**
+   * The template a transfer runs with, when the preferences ask for it on each transfer: the
+   * chosen id ('' for none), or null when the user cancels. Otherwise undefined, which leaves the
+   * file browser's default template to the backend, where Send To gets it too.
+   */
+  private async pickTransferTemplate(
+    operation: 'upload' | 'copy' | 'move',
+    count: number,
+    destination: string
+  ): Promise<string | null | undefined> {
+    if (!(await this.appSettings.getSettingValue<boolean>('file_browser.ask_transfer_template'))) {
+      return undefined;
+    }
+    const selected =
+      (await this.appSettings.getSettingValue<string>('file_browser.transfer_template')) ?? '';
+    const choice = await firstValueFrom(
+      this.modalService
+        .openTransferTemplate({ selected, operation, count, destination })
+        .afterClosed()
+    );
+    return choice ?? null;
+  }
+
   async uploadLocalPaths(
     remote: ExplorerRoot,
     currentPath: string,
@@ -732,12 +781,20 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!paths.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
+    const template = await this.pickTransferTemplate(
+      'upload',
+      paths.length,
+      normalized + currentPath
+    );
+    if (template === null) return false;
     try {
       const batchId = await this.remoteOps.uploadLocalDropPaths(
         normalized,
         currentPath,
         paths,
-        'filemanager'
+        'filemanager',
+        undefined,
+        template
       );
       return !!batchId;
     } catch (err) {

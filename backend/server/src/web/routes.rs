@@ -4,7 +4,7 @@ use axum::{
     extract::DefaultBodyLimit,
     http::{HeaderValue, Method},
     middleware::from_fn_with_state,
-    routing::{get, post},
+    routing::{delete, get, post, put},
 };
 use log::info;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -15,9 +15,28 @@ use super::state::WebServerState;
 
 pub fn build_api_router(state: WebServerState) -> Router {
     let files = Router::new()
+        .route("/upload", post(handlers::legacy_upload_handler))
         .route(
-            "/upload",
-            post(handlers::stream_upload_handler).layer(DefaultBodyLimit::disable()),
+            "/upload/sessions",
+            post(handlers::create_upload_session)
+                .layer(DefaultBodyLimit::max(handlers::MAX_LIST_BYTES)),
+        )
+        .route(
+            "/upload/sessions/{id}",
+            delete(handlers::cancel_upload_session),
+        )
+        .route(
+            "/upload/sessions/{id}/files",
+            post(handlers::add_upload_entries)
+                .layer(DefaultBodyLimit::max(handlers::MAX_LIST_BYTES)),
+        )
+        .route(
+            "/upload/sessions/{id}/finish",
+            post(handlers::finish_upload_session),
+        )
+        .route(
+            "/upload/sessions/{id}/files/{index}",
+            put(handlers::upload_chunk),
         )
         .route("/stream", get(handlers::stream_file_handler))
         .route("/stream/remote", get(handlers::stream_remote_file_handler))

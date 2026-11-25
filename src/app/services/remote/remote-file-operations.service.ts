@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { generatePrefixedId } from 'src/app/shared/utils';
 import {
@@ -14,6 +14,7 @@ import {
   ConfigValue,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { AppSettingsService } from '../settings/app-settings.service';
 
 /**
  * Options for a listing or stat that only needs names and kinds. rclone then skips the modification
@@ -26,30 +27,91 @@ export interface PendingWebUpload {
   remote: string;
   path: string;
   origin?: Origin;
+  /** Bytes the server has received so far, out of `total`. */
+  sent: number;
+  total: number;
 }
+
+/**
+ * How a browser upload ended: its transfer `finished`, is still `running` as a job, or the user
+ * `cancelled` it while its files were being sent.
+ */
+export type WebUploadOutcome = 'finished' | 'running' | 'cancelled';
+
+const MIB = 1024 * 1024;
+/** The defaults of the `file_browser` upload settings, used until they load. */
+const DEFAULT_REQUEST_MIB = 8;
+/** The server reads a part of the file list whole and takes no larger one (`MAX_LIST_BYTES`). */
+const MAX_LIST_BYTES = 8 * MIB;
+const DEFAULT_PARALLEL_UPLOADS = 3;
+/** Upload requests are halved while a proxy refuses them as too large, down to this size. */
+const MIN_REQUEST_BYTES = 256 * 1024;
+/** A request lost to the network is sent again this many times, waiting longer each time. */
+const REQUEST_RETRIES = 5;
+/** Answers that mean the server or a proxy in front of it may take the request a moment later. */
+const RETRY_STATUSES = new Set([0, 408, 429, 502, 503, 504]);
+
+interface UploadResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/** A failed upload request, with the error text the server sent (a backend translation key). */
+class UploadRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+class UploadCancelled extends Error {}
 
 @Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
+  private readonly appSettings = inject(AppSettingsService);
   private readonly _pendingWebUploads = signal<PendingWebUpload[]>([]);
   readonly pendingWebUploads = this._pendingWebUploads.asReadonly();
+  private readonly cancelledUploads = new Set<string>();
 
-  private async sendWebUpload(
-    body: FormData,
-    upload: PendingWebUpload
-  ): Promise<{ success: boolean; data: string; error?: string }> {
-    this._pendingWebUploads.update(uploads => [...uploads, upload]);
-    try {
-      return await firstValueFrom(
-        this.http.post<{ success: boolean; data: string; error?: string }>(
-          `${this.apiClient.getApiBase()}/upload`,
-          body,
-          { withCredentials: true }
-        )
-      );
-    } finally {
-      this._pendingWebUploads.update(uploads => uploads.filter(item => item !== upload));
+  constructor() {
+    super();
+    // Leaving the page drops the files it has not sent yet.
+    if (!this.isTauri) {
+      window.addEventListener('beforeunload', event => {
+        if (this._pendingWebUploads().length) event.preventDefault();
+      });
     }
+  }
+
+  /** Stops sending a browser upload; the files the server staged for it are removed. */
+  cancelWebUpload(group: string): void {
+    if (this._pendingWebUploads().some(upload => upload.group === group)) {
+      this.cancelledUploads.add(group);
+    }
+  }
+
+  private async uploadRequest<T>(method: string, url: string, body?: unknown): Promise<T> {
+    let response: UploadResponse<T>;
+    try {
+      response = await firstValueFrom(
+        this.http.request<UploadResponse<T>>(method, `${this.apiClient.getApiBase()}/${url}`, {
+          body,
+          withCredentials: true,
+        })
+      );
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        const reply = error.error as UploadResponse<T> | null;
+        throw new UploadRequestError(reply?.error ?? error.message, error.status);
+      }
+      throw error;
+    }
+    if (!response.success) throw new UploadRequestError(response.error ?? '', 200);
+    return response.data as T;
   }
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
@@ -156,7 +218,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     mode: 'copy' | 'move',
     source?: Origin,
     group?: string,
-    parentJobId?: number
+    parentJobId?: number,
+    template?: string
   ): Promise<string> {
     return this.invokeCommand<string>('transfer', {
       items,
@@ -166,6 +229,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       origin: source,
       group,
       parentJobId,
+      template,
     });
   }
 
@@ -283,7 +347,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     localPaths: string[],
     source?: Origin,
-    group?: string
+    group?: string,
+    template?: string
   ): Promise<string> {
     return this.invokeCommand<string>('upload_local_drop_paths', {
       remote,
@@ -291,6 +356,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       localPaths,
       origin: source,
       group,
+      template,
     });
   }
 
@@ -308,49 +374,210 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
+  /**
+   * Sends files from the browser to the server, then transfers them to `remote`. Every request
+   * (a part of the file list or a chunk of a file) stays within the size the preferences allow, a
+   * request lost to the network is sent again, and a proxy that refuses large requests gets smaller
+   * ones. Rejects with the server's error (a backend translation key) when the upload fails.
+   */
   async uploadWebFilesBatch(
     remote: string,
     path: string,
     files: { file: File; relativePath: string }[],
     source?: Origin,
-    emptyDirectories?: string[]
-  ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const uniqueDirs = emptyDirectories?.length ? [...new Set(emptyDirectories)] : [];
-    if (!files.length && !uniqueDirs.length) {
-      return { successCount: 0, failedPaths: [] };
-    }
-
-    const body = new FormData();
-    body.append('remote', remote);
-    body.append('path', path);
-    if (source) body.append('origin', JSON.stringify(source));
-    const group = generatePrefixedId('upload');
-    body.append('group', group);
-
-    for (const dir of uniqueDirs) {
-      body.append('emptyDirs', dir);
-    }
-
-    for (const { file, relativePath } of files) {
-      body.append('mtime', file.lastModified.toString());
-      body.append('file', file, relativePath || file.name);
-    }
-
+    emptyDirectories: string[] = [],
+    template?: string
+  ): Promise<WebUploadOutcome> {
+    const upload: PendingWebUpload = {
+      group: generatePrefixedId('upload'),
+      remote,
+      path,
+      origin: source,
+      sent: 0,
+      total: files.reduce((sum, { file }) => sum + file.size, 0),
+    };
+    this._pendingWebUploads.update(uploads => [...uploads, upload]);
+    const [requestMib, parallel] = await Promise.all([
+      this.appSettings.getSettingValue<number>('file_browser.upload_request_mib'),
+      this.appSettings.getSettingValue<number>('file_browser.parallel_uploads'),
+    ]);
+    const limits = {
+      requestBytes: (requestMib ?? DEFAULT_REQUEST_MIB) * MIB,
+      parallel: Math.max(parallel ?? DEFAULT_PARALLEL_UPLOADS, 1),
+    };
+    const session: { id?: string } = {};
     try {
-      const response = await this.sendWebUpload(body, { group, remote, path, origin: source });
-      if (!response.success) {
-        return {
-          successCount: 0,
-          failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
-        };
+      await this.openSession(
+        session,
+        upload,
+        files,
+        [...new Set(emptyDirectories)],
+        limits,
+        template
+      );
+      const id = session.id as string;
+      await this.sendFiles(id, upload.group, files, limits);
+      this.throwIfCancelled(upload.group);
+      const finished = await this.uploadRequest<boolean>('POST', `upload/sessions/${id}/finish`);
+      return finished ? 'finished' : 'running';
+    } catch (error) {
+      // A finished session is already gone; removing it again changes nothing.
+      if (session.id) {
+        void this.uploadRequest('DELETE', `upload/sessions/${session.id}`).catch(() => undefined);
       }
-      return { successCount: files.length, failedPaths: [] };
-    } catch {
-      return {
-        successCount: 0,
-        failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
-      };
+      if (error instanceof UploadCancelled) return 'cancelled';
+      throw error;
+    } finally {
+      this.cancelledUploads.delete(upload.group);
+      this._pendingWebUploads.update(uploads =>
+        uploads.filter(item => item.group !== upload.group)
+      );
     }
+  }
+
+  /**
+   * Lists the upload's files and folders: the first part opens the session (its id is set on
+   * `session`), the others add to it. Each part is as long as fits in one request.
+   */
+  private async openSession(
+    session: { id?: string },
+    upload: PendingWebUpload,
+    files: { file: File; relativePath: string }[],
+    emptyDirs: string[],
+    limits: { requestBytes: number },
+    template: string | undefined
+  ): Promise<void> {
+    const entries = [
+      ...files.map(({ file, relativePath }) => ({
+        kind: 'files' as const,
+        value: { path: relativePath || file.name, size: file.size, mtime: file.lastModified },
+      })),
+      ...emptyDirs.map(dir => ({ kind: 'emptyDirs' as const, value: dir })),
+    ];
+    const header = {
+      remote: upload.remote,
+      path: upload.path,
+      origin: upload.origin,
+      group: upload.group,
+      template,
+    };
+    const encoder = new TextEncoder();
+    const headerBytes = encoder.encode(JSON.stringify(header)).length;
+    let budget = Math.min(limits.requestBytes, MAX_LIST_BYTES);
+    let listed = 0;
+    let listedFiles = 0;
+    do {
+      this.throwIfCancelled(upload.group);
+      const part: { files: object[]; emptyDirs: string[] } = { files: [], emptyDirs: [] };
+      await this.sendWithRetries(
+        () => {
+          // Built at each attempt, so a part refused as too large is sent again smaller.
+          part.files = [];
+          part.emptyDirs = [];
+          let bytes = headerBytes + 32;
+          for (const entry of entries.slice(listed)) {
+            const size = encoder.encode(JSON.stringify(entry.value)).length + 1;
+            if (part.files.length + part.emptyDirs.length > 0 && bytes + size > budget) break;
+            bytes += size;
+            if (entry.kind === 'files') part.files.push(entry.value);
+            else part.emptyDirs.push(entry.value);
+          }
+          return session.id
+            ? this.uploadRequest(
+                'POST',
+                `upload/sessions/${session.id}/files?start=${listedFiles}`,
+                part
+              )
+            : this.uploadRequest<string>('POST', 'upload/sessions', { ...header, ...part }).then(
+                id => {
+                  session.id = id;
+                }
+              );
+        },
+        () => {
+          if (budget <= MIN_REQUEST_BYTES) return false;
+          budget = Math.max(MIN_REQUEST_BYTES, budget / 2);
+          return true;
+        }
+      );
+      listed += part.files.length + part.emptyDirs.length;
+      listedFiles += part.files.length;
+    } while (listed < entries.length);
+  }
+
+  private async sendFiles(
+    session: string,
+    group: string,
+    files: { file: File; relativePath: string }[],
+    limits: { requestBytes: number; parallel: number }
+  ): Promise<void> {
+    const sent = files.map(() => 0);
+    let chunkSize = limits.requestBytes;
+    let next = 0;
+    let failed = false;
+    const shrink = (): boolean => {
+      if (chunkSize <= MIN_REQUEST_BYTES) return false;
+      chunkSize = Math.max(MIN_REQUEST_BYTES, chunkSize / 2);
+      return true;
+    };
+
+    const sendFile = async (index: number): Promise<void> => {
+      const { file } = files[index];
+      let offset = 0;
+      while (offset < file.size) {
+        if (failed) return;
+        this.throwIfCancelled(group);
+        // The server answers how much of the file it has, also when this chunk was a repeat.
+        offset = await this.sendWithRetries(
+          () =>
+            this.uploadRequest<number>(
+              'PUT',
+              `upload/sessions/${session}/files/${index}?offset=${offset}`,
+              file.slice(offset, offset + chunkSize)
+            ),
+          shrink
+        );
+        sent[index] = offset;
+        const total = sent.reduce((sum, bytes) => sum + bytes, 0);
+        this._pendingWebUploads.update(uploads =>
+          uploads.map(upload => (upload.group === group ? { ...upload, sent: total } : upload))
+        );
+      }
+    };
+
+    const worker = async (): Promise<void> => {
+      while (!failed && next < files.length) {
+        try {
+          await sendFile(next++);
+        } catch (error) {
+          failed = true;
+          throw error;
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limits.parallel, files.length) }, worker));
+  }
+
+  /**
+   * Sends a request again while the network or a proxy loses it, waiting longer each time. After a
+   * 413, `shrink` makes the next attempt smaller and returns false when it cannot.
+   */
+  private async sendWithRetries<T>(send: () => Promise<T>, shrink: () => boolean): Promise<T> {
+    let failures = 0;
+    for (;;) {
+      try {
+        return await send();
+      } catch (error) {
+        const status = error instanceof UploadRequestError ? error.status : -1;
+        if (status === 413 && shrink()) continue;
+        if (!RETRY_STATUSES.has(status) || ++failures > REQUEST_RETRIES) throw error;
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * 2 ** failures, 30_000)));
+      }
+    }
+  }
+
+  private throwIfCancelled(group: string): void {
+    if (this.cancelledUploads.has(group)) throw new UploadCancelled();
   }
 
   async archiveCreate(
