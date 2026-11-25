@@ -17,6 +17,8 @@ export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
 export const SYSTEM_THEME_CHANGED = 'system_theme_changed' as const;
 /** Linux desktop only: GTK's title bar button layout changed. Payload: the layout or null. */
 export const WINDOW_BUTTON_LAYOUT_CHANGED = 'window_button_layout_changed' as const;
+/** Linux desktop only: the desktop's accent colour changed. Payload: `#rrggbb` or null. */
+export const SYSTEM_ACCENT_COLOR_CHANGED = 'system_accent_color_changed' as const;
 export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
 export const JOB_STATS_UPDATED = 'job_stats_updated' as const;
 export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;

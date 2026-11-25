@@ -484,6 +484,10 @@
         "label": "Diálogos Destacados",
         "description": "Abrir janelas de diálogo (modais) em janelas nativas do sistema operacional separadas."
       },
+      "system_accent_color": {
+        "label": "Cor de destaque do sistema",
+        "description": "Usa a cor de destaque das configurações do sistema para as cores do aplicativo em vez do verde e do azul padrão. No Linux, requer GNOME 47 ou posterior, ou KDE Plasma 6."
+      },
       "prevent_sleep": {
         "label": "Evitar suspensão do sistema",
         "description": "Evita a suspensão automática do sistema enquanto houver transferências, montagens ou servidores ativos."

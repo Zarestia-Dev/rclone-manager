@@ -487,8 +487,8 @@ pub(crate) mod tests {
         use crate::{
             services::bridge::EventBridge,
             utils::types::events::{
-                JOB_CACHE_CHANGED, PUBLIC_EVENTS, SYSTEM_THEME_CHANGED, VAULT_STATE_CHANGED,
-                WINDOW_BUTTON_LAYOUT_CHANGED,
+                JOB_CACHE_CHANGED, PUBLIC_EVENTS, SYSTEM_ACCENT_COLOR_CHANGED,
+                SYSTEM_THEME_CHANGED, VAULT_STATE_CHANGED, WINDOW_BUTTON_LAYOUT_CHANGED,
             },
         };
         let directory = tempfile::tempdir().unwrap();
@@ -500,7 +500,12 @@ pub(crate) mod tests {
         bridge.emit(JOB_CACHE_CHANGED, serde_json::json!({"remote": "private"}));
         bridge.emit(SYSTEM_THEME_CHANGED, true);
         bridge.emit(WINDOW_BUTTON_LAYOUT_CHANGED, "close:");
-        for expected in [SYSTEM_THEME_CHANGED, WINDOW_BUTTON_LAYOUT_CHANGED] {
+        bridge.emit(SYSTEM_ACCENT_COLOR_CHANGED, "#3584e4");
+        for expected in [
+            SYSTEM_THEME_CHANGED,
+            WINDOW_BUTTON_LAYOUT_CHANGED,
+            SYSTEM_ACCENT_COLOR_CHANGED,
+        ] {
             let delivered = frontend.recv().await.unwrap();
             assert_eq!(delivered.event.event, expected);
             assert!(can_deliver_event(

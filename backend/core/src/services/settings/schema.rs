@@ -102,6 +102,16 @@ pub struct GeneralSettings {
     pub standalone_dialogs: bool,
 
     #[setting(
+        label = "settings.general.system_accent_color.label",
+        description = "settings.general.system_accent_color.description"
+    )]
+    #[cfg(all(
+        feature = "desktop",
+        any(target_os = "linux", windows, target_os = "macos")
+    ))]
+    pub system_accent_color: bool,
+
+    #[setting(
         label = "settings.general.prevent_sleep.label",
         description = "settings.general.prevent_sleep.description"
     )]
@@ -163,6 +173,11 @@ impl Default for GeneralSettings {
             start_on_startup: false,
             #[cfg(all(desktop, any(feature = "desktop", feature = "mobile")))]
             standalone_dialogs: false,
+            #[cfg(all(
+                feature = "desktop",
+                any(target_os = "linux", windows, target_os = "macos")
+            ))]
+            system_accent_color: true,
             #[cfg(all(
                 feature = "desktop",
                 not(any(target_os = "android", target_os = "ios"))
@@ -750,6 +765,14 @@ mod feature_tests {
                 any(feature = "autostart", feature = "flatpak"),
                 not(any(target_os = "android", target_os = "ios"))
             ))
+        );
+        assert_eq!(
+            settings.get("system_accent_color"),
+            cfg!(all(
+                feature = "desktop",
+                any(target_os = "linux", windows, target_os = "macos")
+            ))
+            .then_some(&serde_json::Value::Bool(true))
         );
     }
 }

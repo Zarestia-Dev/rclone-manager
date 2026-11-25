@@ -54,6 +54,14 @@ notify-rust = { version = "4", optional = true }
 jni = "0.22"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Registry", "Win32_System_Threading"] }
+# Reads the system accent colour (see native/accent.rs).
+windows = { version = "0.62", features = ["Foundation", "UI", "UI_ViewManagement"], optional = true }
+[target.'cfg(target_os = "macos")'.dependencies]
+# Reads the system accent colour (see native/accent.rs).
+block2 = { version = "0.6", optional = true }
+objc2 = { version = "0.6", optional = true }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSColor", "NSColorSpace"], optional = true }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSNotification", "NSString", "NSObject", "NSOperation"], optional = true }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-single-instance = { version = "2", optional = true }
@@ -72,6 +80,11 @@ desktop = [
     "tauri/devtools",
     "updater",
     "dep:zbus",
+    "dep:windows",
+    "dep:block2",
+    "dep:objc2",
+    "dep:objc2-app-kit",
+    "dep:objc2-foundation",
 ]
 mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile", "rclone-manager-core/updater"]
 

@@ -4763,6 +4763,7 @@ name = "rclone-manager"
 version = "0.3.7-beta.4"
 dependencies = [
  "async-trait",
+ "block2",
  "clap",
  "futures",
  "gtk",
@@ -4771,6 +4772,9 @@ dependencies = [
  "log",
  "mime_guess",
  "notify-rust",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "rclone-manager-core",
  "rcman",
  "serde",
@@ -4792,6 +4796,7 @@ dependencies = [
  "tokio",
  "url",
  "urlencoding",
+ "windows",
  "windows-sys 0.61.2",
  "zbus 6.1.0",
 ]

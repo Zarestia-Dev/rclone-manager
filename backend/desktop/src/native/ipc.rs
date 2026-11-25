@@ -43,7 +43,11 @@ impl NativeLifecycleCommand {
 
 /// Native commands a locked interface may call. They read or set how the window looks, which
 /// the lock screen needs, and touch no vault data.
-const LOCKED_NATIVE_COMMANDS: &[&str] = &["set_theme", "get_window_button_layout"];
+const LOCKED_NATIVE_COMMANDS: &[&str] = &[
+    "set_theme",
+    "get_window_button_layout",
+    "get_system_accent_color",
+];
 
 pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
     let command = invoke.message.command().to_owned();
@@ -106,6 +110,8 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         crate::desktop::window::new_window,
         #[cfg(desktop)]
         crate::native::window::get_window_button_layout,
+        #[cfg(desktop)]
+        crate::native::window::get_system_accent_color,
     ];
     handler(invoke)
 }

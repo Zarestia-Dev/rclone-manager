@@ -484,6 +484,10 @@
         "label": "Detached Dialogs",
         "description": "Open dialog boxes (modals) in separate native OS windows."
       },
+      "system_accent_color": {
+        "label": "System Accent Color",
+        "description": "Use the accent color from your system settings for the app's colors instead of the default green and blue. On Linux it needs GNOME 47 or later, or KDE Plasma 6."
+      },
       "prevent_sleep": {
         "label": "Prevent System Sleep",
         "description": "Prevent automatic system sleep while active transfers, mounts, or servers are running."

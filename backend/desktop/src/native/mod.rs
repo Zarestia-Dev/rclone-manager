@@ -5,6 +5,11 @@ mod runtime;
 pub(crate) mod setup;
 pub use runtime::run;
 
+#[cfg(all(
+    feature = "desktop",
+    any(target_os = "linux", windows, target_os = "macos")
+))]
+mod accent;
 mod ipc;
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 mod portal;

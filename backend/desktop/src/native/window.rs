@@ -155,6 +155,25 @@ fn portal_string(value: &zbus::Variant) -> Option<String> {
     }
 }
 
+/// The system accent colour as `#rrggbb` (Linux, Windows and macOS), or `None` when the
+/// system has none. The first call also starts following changes, which arrive as
+/// `SYSTEM_ACCENT_COLOR_CHANGED`.
+#[tauri::command]
+pub async fn get_system_accent_color() -> Option<String> {
+    #[cfg(all(
+        feature = "desktop",
+        any(target_os = "linux", windows, target_os = "macos")
+    ))]
+    {
+        super::accent::accent_color().await
+    }
+    #[cfg(not(all(
+        feature = "desktop",
+        any(target_os = "linux", windows, target_os = "macos")
+    )))]
+    None
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(all(feature = "desktop", target_os = "linux"))]

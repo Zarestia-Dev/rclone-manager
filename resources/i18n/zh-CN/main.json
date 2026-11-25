@@ -481,6 +481,10 @@
         "label": "独立窗口对话框",
         "description": "在独立的系统原生窗口中打开对话框（模态框）。"
       },
+      "system_accent_color": {
+        "label": "系统强调色",
+        "description": "使用系统设置中的强调色作为应用的颜色，而不是默认的绿色和蓝色。在 Linux 上需要 GNOME 47 或更高版本，或 KDE Plasma 6。"
+      },
       "prevent_sleep": {
         "label": "防止系统休眠",
         "description": "在活动传输、挂载或服务运行时阻止系统自动休眠。"
