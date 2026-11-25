@@ -26,6 +26,21 @@ describe('RemoteFileOperationsService uploads', () => {
   const getSettingValue = vi.fn(async (key: string) => settings[key]);
   const next = (url: string): Promise<TestRequest> =>
     vi.waitFor(() => http.expectOne(request => request.url === url));
+  const stored = (): Record<
+    string,
+    { session: string; owner: string; seen: number; listed: boolean }
+  > => JSON.parse(localStorage.getItem('rcman.nautilus.web_uploads') ?? '{}');
+  const store = (uploads: Record<string, object>): void =>
+    localStorage.setItem('rcman.nautilus.web_uploads', JSON.stringify(uploads));
+  /** A new page of this browser, which finds what the earlier one stored. */
+  const reload = (): RemoteFileOperationsService =>
+    TestBed.runInInjectionContext(() => new RemoteFileOperationsService());
+  const loseConnection = async (url: string): Promise<void> => {
+    for (let attempt = 0; attempt <= 5; attempt++) {
+      (await next(url)).error(new ProgressEvent('error'));
+      await vi.advanceTimersByTimeAsync(30_000);
+    }
+  };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -48,6 +63,7 @@ describe('RemoteFileOperationsService uploads', () => {
 
   afterEach(() => {
     http.verify();
+    localStorage.clear();
     for (const key of Object.keys(settings)) delete settings[key];
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -75,11 +91,21 @@ describe('RemoteFileOperationsService uploads', () => {
       emptyDirs: ['empty-dir'],
     });
     expect(service.pendingWebUploads()).toEqual([
-      { group, remote: 'drive:', path: 'destination', origin: 'filemanager', sent: 0, total: 11 },
+      {
+        group,
+        remote: 'drive:',
+        path: 'destination',
+        origin: 'filemanager',
+        sent: 0,
+        total: 11,
+        files: 2,
+      },
     ]);
     open.flush(ok('s1'));
 
     const first = await next('/api/upload/sessions/s1/files/0?offset=0');
+    // Kept for a reloaded page from the moment the session exists.
+    expect(stored()[group]).toMatchObject({ session: 's1', remote: 'drive:', listed: true });
     const second = await next('/api/upload/sessions/s1/files/1?offset=0');
     expect(first.request.method).toBe('PUT');
     expect(await (first.request.body as Blob).text()).toBe('first');
@@ -92,10 +118,11 @@ describe('RemoteFileOperationsService uploads', () => {
     finish.flush(ok(true));
     expect(await result).toBe('finished');
     expect(service.pendingWebUploads()).toEqual([]);
+    expect(stored()).toEqual({});
   });
 
   it('lists a long upload in parts that each fit in one request', async () => {
-    settings['file_browser.upload_request_mib'] = 0.25;
+    settings['nautilus.upload_request_mib'] = 0.25;
     const many = Array.from({ length: 4000 }, (_, index) => ({
       file: new File([], `${index}.txt`),
       relativePath: `${'deep/'.repeat(12)}${index}.txt`,
@@ -125,7 +152,7 @@ describe('RemoteFileOperationsService uploads', () => {
   });
 
   it('sends chunks larger than a list part when the preferences allow them', async () => {
-    settings['file_browser.upload_request_mib'] = 16;
+    settings['nautilus.upload_request_mib'] = 16;
     const big = new File([new Uint8Array(10 * 1024 * 1024)], 'big.bin');
     const result = service.uploadWebFilesBatch('drive:', '', [{ file: big, relativePath: '' }]);
     (await next('/api/upload/sessions')).flush(ok('s1'));
@@ -137,7 +164,7 @@ describe('RemoteFileOperationsService uploads', () => {
   });
 
   it('sends as many files at once as the preferences allow', async () => {
-    settings['file_browser.parallel_uploads'] = 1;
+    settings['nautilus.parallel_uploads'] = 1;
     const result = service.uploadWebFilesBatch('drive:', '', files);
     (await next('/api/upload/sessions')).flush(ok('s1'));
     const first = await next('/api/upload/sessions/s1/files/0?offset=0');
@@ -215,6 +242,141 @@ describe('RemoteFileOperationsService uploads', () => {
     expect(await result).toBe('cancelled');
     (await next('/api/upload/sessions/s1')).flush(ok(null));
     expect(service.pendingWebUploads()).toEqual([]);
+  });
+
+  it('pauses an upload whose connection stays lost and continues it from the server position', async () => {
+    vi.useFakeTimers();
+    const result = service.uploadWebFilesBatch('drive:', 'dest', [files[0]], 'filemanager');
+    (await next('/api/upload/sessions')).flush(ok('s1'));
+    await loseConnection('/api/upload/sessions/s1/files/0?offset=0');
+    expect(await result).toBe('paused');
+    // The session stays on the server, and the page still holds the file.
+    http.expectNone('/api/upload/sessions/s1');
+    const [upload] = service.pendingWebUploads();
+    expect(upload.paused).toEqual({ missing: 0 });
+
+    const resumed = service.resumeWebUpload(upload.group);
+    (await next('/api/upload/sessions/s1/files/0?offset=0')).flush(ok(5));
+    (await next('/api/upload/sessions/s1/finish')).flush(ok(true));
+    expect(await resumed).toBe('finished');
+    expect(service.pendingWebUploads()).toEqual([]);
+    expect(stored()).toEqual({});
+  });
+
+  it('discards a paused upload when it is cancelled', async () => {
+    vi.useFakeTimers();
+    const result = service.uploadWebFilesBatch('drive:', '', [files[0]]);
+    (await next('/api/upload/sessions')).flush(ok('s1'));
+    await loseConnection('/api/upload/sessions/s1/files/0?offset=0');
+    expect(await result).toBe('paused');
+    service.cancelWebUpload(service.pendingWebUploads()[0].group);
+    const cancel = await next('/api/upload/sessions/s1');
+    expect(cancel.request.method).toBe('DELETE');
+    cancel.flush(ok(null));
+    expect(service.pendingWebUploads()).toEqual([]);
+    expect(stored()).toEqual({});
+  });
+
+  it('shows an upload an earlier page left as paused and continues it with the files selected again', async () => {
+    store({
+      'upload-1': {
+        session: 's1',
+        remote: 'drive:',
+        path: 'dest',
+        origin: 'filemanager',
+        listed: true,
+        owner: 'tab-gone',
+        seen: 0,
+      },
+    });
+    const page = reload();
+    (await next('/api/upload/sessions/s1')).flush(
+      ok([
+        { path: 'folder/one.txt', size: 5, mtime: 0, received: 2 },
+        { path: 'folder/two.txt', size: 3, mtime: 7, received: 0 },
+        { path: 'done.txt', size: 4, mtime: null, received: 4 },
+      ])
+    );
+    await vi.waitFor(() => expect(page.pendingWebUploads()).toHaveLength(1));
+    expect(page.pendingWebUploads()[0]).toEqual({
+      group: 'upload-1',
+      remote: 'drive:',
+      path: 'dest',
+      origin: 'filemanager',
+      sent: 6,
+      total: 12,
+      files: 3,
+      paused: { missing: 2 },
+    });
+    expect(stored()['upload-1'].owner).toMatch(/^tab-/);
+
+    // Found by path, size and modification time; another file of the same name is not it.
+    const one = new File(['first'], 'one.txt', { lastModified: 0 });
+    const otherTwo = new File(['abc'], 'two.txt', { lastModified: 8 });
+    expect(
+      page.attachWebUploadFiles('upload-1', [
+        { file: one, relativePath: 'folder/one.txt' },
+        { file: otherTwo, relativePath: 'folder/two.txt' },
+      ])
+    ).toBe(1);
+    expect(page.pendingWebUploads()[0].paused).toEqual({ missing: 1 });
+
+    let resumed = page.resumeWebUpload('upload-1');
+    const chunk = await next('/api/upload/sessions/s1/files/0?offset=2');
+    expect(await (chunk.request.body as Blob).text()).toBe('rst');
+    chunk.flush(ok(5));
+    expect(await resumed).toBe('paused');
+    expect(page.pendingWebUploads()[0]).toMatchObject({ sent: 9, paused: { missing: 1 } });
+
+    const two = new File(['abc'], 'two.txt', { lastModified: 7 });
+    expect(
+      page.attachWebUploadFiles('upload-1', [{ file: two, relativePath: 'folder/two.txt' }])
+    ).toBe(1);
+    resumed = page.resumeWebUpload('upload-1');
+    (await next('/api/upload/sessions/s1/files/1?offset=0')).flush(ok(3));
+    (await next('/api/upload/sessions/s1/finish')).flush(ok(false));
+    expect(await resumed).toBe('running');
+    expect(page.pendingWebUploads()).toEqual([]);
+    expect(stored()).toEqual({});
+  });
+
+  it('leaves uploads another open tab shows and drops those that cannot be continued', async () => {
+    const recent = {
+      remote: 'drive:',
+      path: '',
+      listed: true,
+      owner: 'tab-other',
+      seen: Date.now(),
+    };
+    store({
+      shown: { ...recent, session: 's-shown' },
+      unlisted: { ...recent, session: 's-unlisted', listed: false, seen: 0 },
+      gone: { ...recent, session: 's-gone', owner: 'tab-crashed', seen: Date.now() - 60_000 },
+    });
+    const page = reload();
+    const discard = await next('/api/upload/sessions/s-unlisted');
+    expect(discard.request.method).toBe('DELETE');
+    discard.flush(ok(null));
+    (await next('/api/upload/sessions/s-gone')).flush(
+      { success: false, error: 'backendErrors.upload.sessionGone' },
+      { status: 404, statusText: 'Not Found' }
+    );
+    await vi.waitFor(() => expect(Object.keys(stored())).toEqual(['shown']));
+    expect(stored()['shown'].owner).toBe('tab-other');
+    expect(page.pendingWebUploads()).toEqual([]);
+  });
+
+  it('frees the uploads of a page that goes for the next page', async () => {
+    const result = service.uploadWebFilesBatch('drive:', '', [files[0]]);
+    (await next('/api/upload/sessions')).flush(ok('s1'));
+    const chunk = await next('/api/upload/sessions/s1/files/0?offset=0');
+    const [group] = Object.keys(stored());
+    expect(stored()[group].owner).toMatch(/^tab-/);
+    window.dispatchEvent(new Event('pagehide'));
+    expect(stored()[group].seen).toBe(0);
+    chunk.flush(ok(5));
+    (await next('/api/upload/sessions/s1/finish')).flush(ok(true));
+    expect(await result).toBe('finished');
   });
 
   it('tracks uploads started together separately', async () => {

@@ -622,13 +622,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Položky s hviezdičkou",
-        "description": "Zoznam súborov a priečinkov označených hviezdičkou v prehliadači súborov."
+      "layout": {
+        "label": "Rozloženie",
+        "description": "Ako Prehliadač súborov zobrazuje súbory: ako ikony v mriežke alebo ako riadky v zozname. Mení ho aj tlačidlo rozloženia v Prehliadači súborov.",
+        "options": {
+          "grid": "Mriežka",
+          "list": "Zoznam"
+        }
       },
-      "bookmarks": {
-        "label": "Záložky",
-        "description": "Zoznam umiestnení v záložkách pre rýchly prístup."
+      "sort": {
+        "label": "Zoradiť",
+        "description": "Poradie súborov v Prehliadači súborov. Mení ho aj Zoradiť v Možnostiach zobrazenia."
+      },
+      "show_hidden": {
+        "label": "Zobraziť skryté súbory",
+        "description": "Zobrazí súbory a priečinky, ktorých názov sa začína bodkou."
+      },
+      "upload_request_mib": {
+        "label": "Najväčšia požiadavka nahrávania (MiB)",
+        "description": "Nahrávanie z webového rozhrania sa odosiela v požiadavkách, ktoré túto veľkosť neprekročia. Nastavte ju na limit požiadavky reverzného proxy pred serverom (nginx povoľuje 1 MiB, ak sa nezvýši client_max_body_size). Ak proxy požiadavku odmietne, automaticky sa skúsia menšie požiadavky. Vyššia hodnota môže zrýchliť nahrávanie jedného veľkého súboru cez rýchle pripojenie s vysokou latenciou."
+      },
+      "parallel_uploads": {
+        "label": "Súbory nahrávané naraz",
+        "description": "Koľko súborov odosiela webové rozhranie na server súčasne. Pri pomalom pripojení je vhodnejšie menej."
+      },
+      "ask_transfer_options": {
+        "label": "Pýtať sa na možnosti pri každom prenose",
+        "description": "Pred nahrávaním alebo pred kopírovaním či presunom do iného vzdialeného úložiska zobrazí možnosti prenosu. Predvolené možnosti sú už vyplnené a dá sa importovať šablóna."
       }
     },
     "wizard": {
@@ -644,25 +664,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Profil cloudu (hlavná ponuka)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "Najväčšia požiadavka nahrávania (MiB)",
-        "description": "Nahrávanie z webového rozhrania sa odosiela v požiadavkách, ktoré túto veľkosť neprekročia. Nastavte ju na limit požiadavky reverzného proxy pred serverom (nginx povoľuje 1 MiB, ak sa nezvýši client_max_body_size). Ak proxy požiadavku odmietne, automaticky sa skúsia menšie požiadavky. Vyššia hodnota môže zrýchliť nahrávanie jedného veľkého súboru cez rýchle pripojenie s vysokou latenciou."
-      },
-      "parallel_uploads": {
-        "label": "Súbory nahrávané naraz",
-        "description": "Koľko súborov odosiela webové rozhranie na server súčasne. Pri pomalom pripojení je vhodnejšie menej."
-      },
-      "transfer_template": {
-        "label": "Šablóna prenosu",
-        "description": "Kopírovanie, presúvanie a nahrávanie v Prehliadači súborov používa možnosti kopírovania alebo presunu, filtrov a backendu z tejto šablóny. Šablóny sa vytvárajú v časti Spravovať šablóny. Odstránená šablóna sa preskočí.",
-        "none": "Bez šablóny"
-      },
-      "ask_transfer_template": {
-        "label": "Pýtať sa na šablónu pri každom prenose",
-        "description": "Pred nahrávaním alebo pred kopírovaním či presunom na iné vzdialené úložisko sa opýtať, ktorú šablónu použiť. Najprv je vybraná šablóna prenosu uvedená vyššie."
       }
     }
   },
@@ -1911,6 +1912,15 @@
       "cancelled": "Zrušené",
       "cancelJob": "Zrušiť",
       "removeJob": "Odstrániť",
+      "resumeUpload": "Pokračovať v nahrávaní",
+      "resumeWithFiles": "Ak chcete pokračovať, vyberte tie isté súbory",
+      "resumeWithFolder": "Ak chcete pokračovať, vyberte ten istý priečinok",
+      "uploadPausedConnection": "Pozastavené: spojenie so serverom sa prerušilo",
+      "uploadPausedReselect": {
+        "one": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbor",
+        "few": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbory",
+        "other": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súborov"
+      },
       "progress": "Priebeh",
       "files": "Súbory",
       "speed": "Rýchlosť",
@@ -1927,7 +1937,7 @@
         "copiedFiles": "Skopírované súbory",
         "syncedFiles": "Synchronizované súbory",
         "processedFiles": "Spracované súbory",
-        "template": "Šablóna"
+        "options": "Možnosti"
       },
       "running": "Beží",
       "filesCount": {
@@ -2380,6 +2390,7 @@
     },
     "preferences": {
       "title": "Predvoľby",
+      "fileBrowserTitle": "Predvoľby Prehliadača súborov",
       "searchResults": "Výsledky vyhľadávania",
       "searchPlaceholder": "Hľadať v nastaveniach...",
       "resetAll": "Obnoviť všetky nastavenia",
@@ -2408,7 +2419,7 @@
       "tabs": {
         "general": "Všeobecné",
         "core": "Jadro",
-        "file_browser": "Prehliadač súborov",
+        "nautilus": "Prehliadač súborov",
         "developer": "Vývojár",
         "vault": "Trezor"
       },
@@ -3650,6 +3661,23 @@
         "few": "Nepodarilo sa nahrať {{count}} súbory.",
         "other": "Nepodarilo sa nahrať {{count}} súborov."
       },
+      "uploadInterrupted": "Spojenie so serverom sa prerušilo. V nahrávaní pokračujte v časti Operácie.",
+      "uploadFilesNotInUpload": "Žiadny z vybraných súborov nepatrí medzi tie, ktoré toto nahrávanie ešte potrebuje.",
+      "uploadFilesStillMissing": {
+        "one": "Tomuto nahrávaniu ešte chýba {{count}} súbor. Vyberte ho v časti Operácie a nahrávanie sa dokončí.",
+        "few": "Tomuto nahrávaniu ešte chýbajú {{count}} súbory. Vyberte ich v časti Operácie a nahrávanie sa dokončí.",
+        "other": "Tomuto nahrávaniu ešte chýba {{count}} súborov. Vyberte ich v časti Operácie a nahrávanie sa dokončí."
+      },
+      "copyingPickedFiles": {
+        "one": "Pripravuje sa {{count}} vybraná položka na nahrávanie…",
+        "few": "Pripravujú sa {{count}} vybrané položky na nahrávanie…",
+        "other": "Pripravuje sa {{count}} vybraných položiek na nahrávanie…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "{{count}} vybranú položku sa nepodarilo prečítať a nenahrá sa.",
+        "few": "{{count}} vybrané položky sa nepodarilo prečítať a nenahrajú sa.",
+        "other": "{{count}} vybraných položiek sa nepodarilo prečítať a nenahrajú sa."
+      },
       "trashEmptied": "Čistenie bolo dokončené",
       "rmdirsStarted": "Odstraňujú sa prázdne priečinky v „{{name}}“...",
       "deleteStarted": {
@@ -3695,8 +3723,9 @@
       "star": "Pridať medzi obľúbené",
       "unstar": "Odstrániť z obľúbených"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Možnosti prenosu",
+      "defaultTitle": "Predvolené možnosti prenosu",
       "summary": {
         "upload": {
           "one": "{{count}} položka sa nahrá do {{destination}}.",
@@ -3714,11 +3743,16 @@
           "other": "{{count}} položiek sa presunie do {{destination}}."
         }
       },
-      "noOptions": "Táto šablóna nemá žiadne možnosti, ktoré platia pre tento prenos.",
-      "noTemplateChosen": "Bez šablóny prenos používa len možnosti nastavené v časti Prepínače rclone.",
-      "whatTemplatesDo": "Šablóna uchováva možnosti rclone, napríklad kontrolu kontrolných súčtov alebo opakované pokusy, aby ich prenos mohol použiť bez toho, aby sa zmenili pre všetky ostatné prenosy.",
-      "useAsDefault": "Používať túto šablónu predvolene",
-      "dontAskAgain": "Už sa nepýtať (Predvoľby › Prehliadač súborov)",
+      "engine": {
+        "local": "Beží na {{name}}, rclone, ktorý spúšťa táto aplikácia.",
+        "remote": "Beží na {{name}}, rclone na inom počítači. Nižšie sú možnosti, ktoré ten rclone ponúka."
+      },
+      "defaultIntro": "Kopírovanie, presúvanie a nahrávanie v Prehliadači súborov sa začína s týmito možnosťami.",
+      "remoteNote": "Tieto možnosti platia pre {{name}} iba počas tohto prenosu. Jeho uložené nastavenia sa nezmenia.",
+      "streamNote": "Súbory sa po jednom posielajú do rclone na inom počítači, ktorý pre ne nepoužíva možnosti kopírovania, Filter ani Backend. Platia iba vlastné možnosti cieľa.",
+      "nothingToSet": "Pre toto nahrávanie nie sú žiadne možnosti na nastavenie.",
+      "useAsDefault": "Používať tieto možnosti predvolene",
+      "dontAskAgain": "Už sa nepýtať (Predvoľby Prehliadača súborov)",
       "start": "Spustiť"
     }
   },

@@ -190,9 +190,9 @@ pub struct JobInfo {
     pub dry_run: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_job_id: Option<u64>,
-    /// The name of the user template whose options the job runs with.
+    /// The names of the options a file browser transfer runs with.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub template: Option<String>,
+    pub transfer_options: Option<String>,
     /// The file reports rclone returned for a sync, copy or move, exactly as it returned them.
     /// They can be large, so they never travel with the job; `get_job_report` fetches them.
     #[serde(skip)]
@@ -242,7 +242,7 @@ impl JobInfo {
             backend_name: crate::rclone::backend::types::default_backend_name(),
             dry_run: false,
             parent_job_id: None,
-            template: None,
+            transfer_options: None,
             report: None,
             report_counts: None,
         }

@@ -124,7 +124,7 @@ impl JobCache {
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
-            template: metadata.template,
+            transfer_options: metadata.transfer_options,
 
             report: None,
             report_counts: None,

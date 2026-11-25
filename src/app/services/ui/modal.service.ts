@@ -8,7 +8,10 @@ import {
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
 import { Subject, Observable, from, of, switchMap, take } from 'rxjs';
-import type { TransferTemplateModalData } from '../../shared/modals/transfer-template-modal/transfer-template-modal.component';
+import type {
+  TransferOptionValues,
+  TransferOptionsModalData,
+} from '../../shared/modals/transfer-options-modal/transfer-options-modal.component';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -322,9 +325,9 @@ export class ModalService extends TauriBaseService {
       import('../../shared/remote-config/apply-template-modal/apply-template-modal.component').then(
         m => m.ApplyTemplateModalComponent
       ),
-    'transfer-template': () =>
-      import('../../shared/modals/transfer-template-modal/transfer-template-modal.component').then(
-        m => m.TransferTemplateModalComponent
+    'transfer-options': () =>
+      import('../../shared/modals/transfer-options-modal/transfer-options-modal.component').then(
+        m => m.TransferOptionsModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -707,15 +710,17 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openPreferences<TResult = unknown>(): DialogRefLike<TResult> {
+  /** The app's preferences, or with `nautilus` the file browser's on their own. */
+  openPreferences<TResult = unknown>(category?: 'nautilus'): DialogRefLike<TResult> {
+    const title = category ? 'modals.preferences.fileBrowserTitle' : 'modals.preferences.title';
     return this.openModal(
       'preferences',
-      { ...STANDARD_MODAL_SIZE, disableClose: true },
       {
-        title: this.translate.instant('modals.preferences.title'),
-        width: 680,
-        height: 600,
-      }
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        data: category ? { category, title } : undefined,
+      },
+      { title: this.translate.instant(title), width: 680, height: 600, suffix: category }
     );
   }
 
@@ -883,12 +888,14 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  /** Asks which template a file browser transfer runs with; closes with its id, '' for none. */
-  openTransferTemplate(data: TransferTemplateModalData): DialogRefLike<string> {
-    return this.openModal('transfer-template', {
-      minWidth: '362px',
+  /**
+   * The options of a file browser transfer, or with `mode: 'default'` the options every one
+   * starts from. Closes with the options, or with nothing when cancelled.
+   */
+  openTransferOptions(data: TransferOptionsModalData): DialogRefLike<TransferOptionValues> {
+    return this.openModal('transfer-options', {
+      ...CONFIG_MODAL_SIZE,
       disableClose: true,
-      panelClass: 'mobile-sheet-dialog',
       data,
     });
   }

@@ -619,13 +619,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Elementos destacados",
-        "description": "Lista de archivos y carpetas destacados en el explorador de archivos."
+      "layout": {
+        "label": "Diseño",
+        "description": "Cómo muestra los archivos el Explorador de archivos: como iconos en una cuadrícula o como filas en una lista. El botón de diseño del Explorador de archivos también lo cambia.",
+        "options": {
+          "grid": "Cuadrícula",
+          "list": "Lista"
+        }
       },
-      "bookmarks": {
-        "label": "Marcadores",
-        "description": "Lista de ubicaciones marcadas para un acceso rápido."
+      "sort": {
+        "label": "Ordenar",
+        "description": "El orden de los archivos en el Explorador de archivos. Ordenar, en Opciones de vista, también lo cambia."
+      },
+      "show_hidden": {
+        "label": "Mostrar archivos ocultos",
+        "description": "Muestra los archivos y carpetas cuyo nombre empieza por un punto."
+      },
+      "upload_request_mib": {
+        "label": "Tamaño máximo de solicitud de subida (MiB)",
+        "description": "Las subidas desde la interfaz web se envían en solicitudes que no superan este tamaño. Ajústalo al límite de solicitud del proxy inverso que haya delante del servidor (nginx admite 1 MiB salvo que se aumente client_max_body_size). Si un proxy rechaza una solicitud, se prueban solicitudes más pequeñas automáticamente. Un valor mayor puede acelerar la subida de un solo archivo grande por una conexión rápida con mucha latencia."
+      },
+      "parallel_uploads": {
+        "label": "Archivos subidos a la vez",
+        "description": "Cuántos archivos envía la interfaz web al servidor al mismo tiempo. Con una conexión lenta conviene usar menos."
+      },
+      "ask_transfer_options": {
+        "label": "Preguntar por las opciones en cada transferencia",
+        "description": "Antes de una subida, o de una copia o un traslado a otro remoto, muestra las opciones de transferencia. Las opciones predeterminadas vienen rellenadas y se puede importar una plantilla."
       }
     },
     "remoteSaved": "Remoto guardado correctamente",
@@ -643,25 +663,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Perfil de la nube (menú principal)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "Tamaño máximo de solicitud de subida (MiB)",
-        "description": "Las subidas desde la interfaz web se envían en solicitudes que no superan este tamaño. Ajústalo al límite de solicitud del proxy inverso que haya delante del servidor (nginx admite 1 MiB salvo que se aumente client_max_body_size). Si un proxy rechaza una solicitud, se prueban solicitudes más pequeñas automáticamente. Un valor mayor puede acelerar la subida de un solo archivo grande por una conexión rápida con mucha latencia."
-      },
-      "parallel_uploads": {
-        "label": "Archivos subidos a la vez",
-        "description": "Cuántos archivos envía la interfaz web al servidor al mismo tiempo. Con una conexión lenta conviene usar menos."
-      },
-      "transfer_template": {
-        "label": "Plantilla de transferencia",
-        "description": "Las copias, los movimientos y las subidas del Explorador de archivos usan las opciones de copia o movimiento, filtros y backend de esta plantilla. Las plantillas se crean en Administrar plantillas. Si la plantilla se ha eliminado, se omite.",
-        "none": "Sin plantilla"
-      },
-      "ask_transfer_template": {
-        "label": "Preguntar la plantilla en cada transferencia",
-        "description": "Antes de una subida, o de copiar o mover a otro remoto, pregunta qué plantilla usar. Primero aparece seleccionada la plantilla de transferencia de arriba."
       }
     }
   },
@@ -1898,6 +1899,14 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Eliminar",
+      "resumeUpload": "Continuar la subida",
+      "resumeWithFiles": "Selecciona los mismos archivos para continuar",
+      "resumeWithFolder": "Selecciona la misma carpeta para continuar",
+      "uploadPausedConnection": "En pausa: se perdió la conexión con el servidor",
+      "uploadPausedReselect": {
+        "one": "En pausa: vuelve a seleccionar {{count}} archivo para continuar",
+        "other": "En pausa: vuelve a seleccionar {{count}} archivos para continuar"
+      },
       "progress": "Progreso",
       "files": "Archivos",
       "speed": "Velocidad",
@@ -1914,7 +1923,7 @@
         "copiedFiles": "Archivos copiados",
         "syncedFiles": "Archivos sincronizados",
         "processedFiles": "Archivos procesados",
-        "template": "Plantilla"
+        "options": "Opciones"
       },
       "running": "En ejecución",
       "filesCount": {
@@ -2323,6 +2332,7 @@
     },
     "preferences": {
       "title": "Preferencias",
+      "fileBrowserTitle": "Preferencias del Explorador de archivos",
       "searchResults": "Resultados de búsqueda",
       "searchPlaceholder": "Buscar en la configuración...",
       "resetAll": "Restablecer toda la configuración",
@@ -2351,7 +2361,7 @@
       "tabs": {
         "general": "General",
         "core": "Núcleo",
-        "file_browser": "Explorador de archivos",
+        "nautilus": "Explorador de archivos",
         "developer": "Desarrollador",
         "vault": "Bóveda"
       },
@@ -3565,6 +3575,20 @@
         "one": "Error al cargar {{count}} archivo.",
         "other": "Error al cargar {{count}} archivos."
       },
+      "uploadInterrupted": "Se perdió la conexión con el servidor. Continúa la subida en Operaciones.",
+      "uploadFilesNotInUpload": "Ninguno de los archivos seleccionados es de los que esta subida aún necesita.",
+      "uploadFilesStillMissing": {
+        "one": "Todavía falta {{count}} archivo de esta subida. Selecciónalo en Operaciones para terminar la subida.",
+        "other": "Todavía faltan {{count}} archivos de esta subida. Selecciónalos en Operaciones para terminar la subida."
+      },
+      "copyingPickedFiles": {
+        "one": "Preparando {{count}} elemento seleccionado para la subida…",
+        "other": "Preparando {{count}} elementos seleccionados para la subida…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "No se pudo leer {{count}} elemento seleccionado; no se subirá.",
+        "other": "No se pudieron leer {{count}} elementos seleccionados; no se subirán."
+      },
       "trashEmptied": "Papelera vaciada",
       "rmdirsStarted": "Eliminando carpetas vacías en \"{{name}}\"...",
       "deleteStarted": {
@@ -3606,8 +3630,9 @@
       "star": "Añadir a destacados",
       "unstar": "Eliminar de destacados"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Opciones de transferencia",
+      "defaultTitle": "Opciones de transferencia predeterminadas",
       "summary": {
         "upload": {
           "one": "Se subirá {{count}} elemento a {{destination}}.",
@@ -3622,11 +3647,16 @@
           "other": "Se moverán {{count}} elementos a {{destination}}."
         }
       },
-      "noOptions": "Esta plantilla no tiene opciones que se apliquen a esta transferencia.",
-      "noTemplateChosen": "Sin plantilla, la transferencia solo usa las opciones definidas en Banderas de Rclone.",
-      "whatTemplatesDo": "Una plantilla guarda opciones de rclone, como la comprobación de sumas o los reintentos, para que una transferencia las use sin cambiarlas en las demás.",
-      "useAsDefault": "Usar esta plantilla de forma predeterminada",
-      "dontAskAgain": "No volver a preguntar (Preferencias › Explorador de archivos)",
+      "engine": {
+        "local": "Se ejecuta en {{name}}, el rclone que ejecuta esta aplicación.",
+        "remote": "Se ejecuta en {{name}}, un rclone en otro equipo. Las opciones de abajo son las que ofrece ese rclone."
+      },
+      "defaultIntro": "Las copias, los traslados y las subidas del Explorador de archivos empiezan con estas opciones.",
+      "remoteNote": "Estas opciones se aplican a {{name}} solo durante esta transferencia. Su configuración guardada no cambia.",
+      "streamNote": "Los archivos se envían uno a uno al rclone del otro equipo, que no usa con ellos opciones de copia, de Filtro ni de Backend. Solo se aplican las opciones propias del destino.",
+      "nothingToSet": "Esta subida no tiene opciones que ajustar.",
+      "useAsDefault": "Usar estas opciones de forma predeterminada",
+      "dontAskAgain": "No volver a preguntar (Preferencias del Explorador de archivos)",
       "start": "Iniciar"
     }
   },

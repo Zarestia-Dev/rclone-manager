@@ -96,6 +96,7 @@ export class NautilusSidebarComponent {
   readonly starredSelected = output<void>();
   readonly toggleSearch = output<void>();
   readonly requestShortcuts = output<void>();
+  readonly requestPreferences = output<void>();
   readonly sidenavAction = output<'close' | 'toggle'>();
 
   readonly requestAbout = output<ExplorerRoot>();

@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { generatePrefixedId } from 'src/app/shared/utils';
@@ -15,6 +15,8 @@ import {
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { LocalStorageService } from '../ui/state/local-storage.service';
+import type { TransferOptionValues } from 'src/app/shared/modals/transfer-options-modal/transfer-options-modal.component';
 
 /**
  * Options for a listing or stat that only needs names and kinds. rclone then skips the modification
@@ -30,16 +32,57 @@ export interface PendingWebUpload {
   /** Bytes the server has received so far, out of `total`. */
   sent: number;
   total: number;
+  files: number;
+  /**
+   * Set while the upload waits for the user: the connection was lost, or the page was reloaded.
+   * `missing` counts the unfinished files the page no longer holds, which the user selects again.
+   */
+  paused?: { missing: number };
 }
 
 /**
- * How a browser upload ended: its transfer `finished`, is still `running` as a job, or the user
- * `cancelled` it while its files were being sent.
+ * How a browser upload ended: its transfer `finished`, is still `running` as a job, the user
+ * `cancelled` it while its files were being sent, or it is `paused` until the user continues it.
  */
-export type WebUploadOutcome = 'finished' | 'running' | 'cancelled';
+export type WebUploadOutcome = 'finished' | 'running' | 'cancelled' | 'paused';
+
+/** A file of an upload session, with what the server has of it. */
+interface SessionFile {
+  path: string;
+  size: number;
+  mtime: number | null;
+  received: number;
+  /** The file to send the rest from, while the page holds it. */
+  file?: File;
+}
+
+interface UploadSession {
+  id: string;
+  files: SessionFile[];
+}
+
+/**
+ * An upload this browser started, kept so a reloaded page can continue it. `owner` is the tab
+ * that shows it and `seen` when that tab last said it is open (0 once it has gone).
+ */
+interface StoredUpload {
+  session: string;
+  remote: string;
+  path: string;
+  origin?: Origin;
+  /** False until the whole file list reached the server; such a session cannot be continued. */
+  listed: boolean;
+  owner: string;
+  seen: number;
+}
+
+const STORED_UPLOADS = 'nautilus.web_uploads';
+/** How often a tab says that it still shows its uploads, and when it is taken to be gone. */
+const OWNER_HEARTBEAT_MS = 10_000;
+const OWNER_GONE_MS = 30_000;
 
 const MIB = 1024 * 1024;
-/** The defaults of the `file_browser` upload settings, used until they load. */
+/** The defaults of the `nautilus` upload settings, used until they load. */
 const DEFAULT_REQUEST_MIB = 8;
 /** The server reads a part of the file list whole and takes no larger one (`MAX_LIST_BYTES`). */
 const MAX_LIST_BYTES = 8 * MIB;
@@ -73,25 +116,79 @@ class UploadCancelled extends Error {}
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
   private readonly appSettings = inject(AppSettingsService);
+  private readonly storage = inject(LocalStorageService);
   private readonly _pendingWebUploads = signal<PendingWebUpload[]>([]);
   readonly pendingWebUploads = this._pendingWebUploads.asReadonly();
   private readonly cancelledUploads = new Set<string>();
+  private readonly uploadSessions = new Map<string, UploadSession>();
+  private readonly tabId = generatePrefixedId('tab');
 
   constructor() {
     super();
-    // Leaving the page drops the files it has not sent yet.
     if (!this.isTauri) {
+      // Leaving the page stops the files it is sending; a reloaded page can continue them.
       window.addEventListener('beforeunload', event => {
-        if (this._pendingWebUploads().length) event.preventDefault();
+        if (this._pendingWebUploads().some(upload => !upload.paused)) event.preventDefault();
       });
+      window.addEventListener('pagehide', () => this.markOwnUploads(0));
+      const heartbeat = setInterval(() => this.markOwnUploads(Date.now()), OWNER_HEARTBEAT_MS);
+      inject(DestroyRef).onDestroy(() => clearInterval(heartbeat));
+      void this.restoreUploads();
     }
   }
 
-  /** Stops sending a browser upload; the files the server staged for it are removed. */
+  /**
+   * Stops a browser upload and removes the files the server staged for it: one being sent stops
+   * at its next request, a paused one at once.
+   */
   cancelWebUpload(group: string): void {
-    if (this._pendingWebUploads().some(upload => upload.group === group)) {
+    const upload = this._pendingWebUploads().find(item => item.group === group);
+    if (!upload) return;
+    if (!upload.paused) {
       this.cancelledUploads.add(group);
+      return;
     }
+    const session = this.uploadSessions.get(group);
+    if (session) this.discardSession(session.id);
+    this.endUpload(group);
+  }
+
+  /**
+   * Gives a paused upload the files the user selected again, found by path, size and
+   * modification time. Returns how many of its unfinished files were found.
+   */
+  attachWebUploadFiles(group: string, picked: { file: File; relativePath: string }[]): number {
+    const session = this.uploadSessions.get(group);
+    if (!session) return 0;
+    const byPath = new Map(picked.map(({ file, relativePath }) => [relativePath, file]));
+    let found = 0;
+    for (const entry of session.files) {
+      if (entry.file || entry.received >= entry.size) continue;
+      const file = byPath.get(entry.path);
+      if (
+        file?.size === entry.size &&
+        (entry.mtime === null || entry.mtime === file.lastModified)
+      ) {
+        entry.file = file;
+        found++;
+      }
+    }
+    if (found) this.setPaused(group, session);
+    return found;
+  }
+
+  /**
+   * Sends the rest of a paused upload's files that the page holds, then finishes it. It pauses
+   * again when files the page does not hold are still missing.
+   */
+  async resumeWebUpload(group: string): Promise<WebUploadOutcome> {
+    const session = this.uploadSessions.get(group);
+    if (!session || !this._pendingWebUploads().some(item => item.group === group && item.paused)) {
+      return 'cancelled';
+    }
+    this.updatePending(group, { paused: undefined });
+    this.storeUpload(group, {});
+    return this.sendAndFinish(group, session, await this.uploadLimits());
   }
 
   private async uploadRequest<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -219,7 +316,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string,
     parentJobId?: number,
-    template?: string
+    options?: TransferOptionValues
   ): Promise<string> {
     return this.invokeCommand<string>('transfer', {
       items,
@@ -229,7 +326,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       origin: source,
       group,
       parentJobId,
-      template,
+      options,
     });
   }
 
@@ -348,7 +445,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     localPaths: string[],
     source?: Origin,
     group?: string,
-    template?: string
+    options?: TransferOptionValues
   ): Promise<string> {
     return this.invokeCommand<string>('upload_local_drop_paths', {
       remote,
@@ -356,7 +453,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       localPaths,
       origin: source,
       group,
-      template,
+      options,
     });
   }
 
@@ -386,7 +483,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     files: { file: File; relativePath: string }[],
     source?: Origin,
     emptyDirectories: string[] = [],
-    template?: string
+    options?: TransferOptionValues
   ): Promise<WebUploadOutcome> {
     const upload: PendingWebUpload = {
       group: generatePrefixedId('upload'),
@@ -395,62 +492,191 @@ export class RemoteFileOperationsService extends TauriBaseService {
       origin: source,
       sent: 0,
       total: files.reduce((sum, { file }) => sum + file.size, 0),
+      files: files.length,
     };
     this._pendingWebUploads.update(uploads => [...uploads, upload]);
+    const limits = await this.uploadLimits();
+    const session: UploadSession = {
+      id: '',
+      files: files.map(({ file, relativePath }) => ({
+        path: relativePath || file.name,
+        size: file.size,
+        mtime: file.lastModified,
+        received: 0,
+        file,
+      })),
+    };
+    try {
+      await this.openSession(session, upload, [...new Set(emptyDirectories)], limits, options);
+    } catch (error) {
+      if (session.id) this.discardSession(session.id);
+      this.endUpload(upload.group);
+      if (error instanceof UploadCancelled) return 'cancelled';
+      throw error;
+    }
+    this.storeUpload(upload.group, { listed: true });
+    this.uploadSessions.set(upload.group, session);
+    return this.sendAndFinish(upload.group, session, limits);
+  }
+
+  private async uploadLimits(): Promise<{ requestBytes: number; parallel: number }> {
     const [requestMib, parallel] = await Promise.all([
-      this.appSettings.getSettingValue<number>('file_browser.upload_request_mib'),
-      this.appSettings.getSettingValue<number>('file_browser.parallel_uploads'),
+      this.appSettings.getSettingValue<number>('nautilus.upload_request_mib'),
+      this.appSettings.getSettingValue<number>('nautilus.parallel_uploads'),
     ]);
-    const limits = {
+    return {
       requestBytes: (requestMib ?? DEFAULT_REQUEST_MIB) * MIB,
       parallel: Math.max(parallel ?? DEFAULT_PARALLEL_UPLOADS, 1),
     };
-    const session: { id?: string } = {};
+  }
+
+  /**
+   * Sends what the server lacks of the files the page holds, then starts the transfer. A
+   * connection lost for longer than the retries wait pauses the upload instead of ending it.
+   */
+  private async sendAndFinish(
+    group: string,
+    session: UploadSession,
+    limits: { requestBytes: number; parallel: number }
+  ): Promise<WebUploadOutcome> {
     try {
-      await this.openSession(
-        session,
-        upload,
-        files,
-        [...new Set(emptyDirectories)],
-        limits,
-        template
+      await this.sendFiles(group, session, limits);
+      this.throwIfCancelled(group);
+      if (session.files.some(file => file.received < file.size)) {
+        this.setPaused(group, session);
+        return 'paused';
+      }
+      const finished = await this.uploadRequest<boolean>(
+        'POST',
+        `upload/sessions/${session.id}/finish`
       );
-      const id = session.id as string;
-      await this.sendFiles(id, upload.group, files, limits);
-      this.throwIfCancelled(upload.group);
-      const finished = await this.uploadRequest<boolean>('POST', `upload/sessions/${id}/finish`);
+      this.endUpload(group);
       return finished ? 'finished' : 'running';
     } catch (error) {
-      // A finished session is already gone; removing it again changes nothing.
-      if (session.id) {
-        void this.uploadRequest('DELETE', `upload/sessions/${session.id}`).catch(() => undefined);
+      if (error instanceof UploadRequestError && RETRY_STATUSES.has(error.status)) {
+        this.cancelledUploads.delete(group);
+        this.setPaused(group, session);
+        return 'paused';
       }
+      // A finished session is already gone; removing it again changes nothing.
+      this.discardSession(session.id);
+      this.endUpload(group);
       if (error instanceof UploadCancelled) return 'cancelled';
       throw error;
-    } finally {
-      this.cancelledUploads.delete(upload.group);
-      this._pendingWebUploads.update(uploads =>
-        uploads.filter(item => item.group !== upload.group)
-      );
+    }
+  }
+
+  private setPaused(group: string, session: UploadSession): void {
+    const missing = session.files.filter(file => file.received < file.size && !file.file).length;
+    this.updatePending(group, { paused: { missing } });
+  }
+
+  private updatePending(group: string, change: Partial<PendingWebUpload>): void {
+    this._pendingWebUploads.update(uploads =>
+      uploads.map(upload => (upload.group === group ? { ...upload, ...change } : upload))
+    );
+  }
+
+  private discardSession(id: string): void {
+    void this.uploadRequest('DELETE', `upload/sessions/${id}`).catch(() => undefined);
+  }
+
+  private endUpload(group: string): void {
+    this.cancelledUploads.delete(group);
+    this.uploadSessions.delete(group);
+    this.storeUpload(group, null);
+    this._pendingWebUploads.update(uploads => uploads.filter(item => item.group !== group));
+  }
+
+  private storedUploads(): Record<string, StoredUpload> {
+    return this.storage.get<Record<string, StoredUpload>>(STORED_UPLOADS, {});
+  }
+
+  /** Adds to the upload's stored record as this tab's, or removes it with `null`. */
+  private storeUpload(group: string, change: Partial<StoredUpload> | null): void {
+    const uploads = this.storedUploads();
+    if (change) {
+      uploads[group] = { ...uploads[group], owner: this.tabId, seen: Date.now(), ...change };
+    } else if (group in uploads) {
+      delete uploads[group];
+    } else {
+      return;
+    }
+    this.storage.set(STORED_UPLOADS, uploads);
+  }
+
+  /**
+   * Says when this tab last showed its uploads: now while it is open, 0 when the page goes, which
+   * frees them for the next page to continue.
+   */
+  private markOwnUploads(seen: number): void {
+    const uploads = this.storedUploads();
+    const own = Object.values(uploads).filter(upload => upload.owner === this.tabId);
+    if (!own.length) return;
+    for (const upload of own) upload.seen = seen;
+    this.storage.set(STORED_UPLOADS, uploads);
+  }
+
+  /**
+   * Shows the uploads an earlier page of this browser left unfinished as paused, with what the
+   * server has of each file. Uploads another open tab shows stay there; a session whose file list
+   * never reached the server whole, or that the server no longer has, is dropped.
+   */
+  private async restoreUploads(): Promise<void> {
+    for (const [group, stored] of Object.entries(this.storedUploads())) {
+      if (Date.now() - stored.seen < OWNER_GONE_MS) continue;
+      if (!stored.listed) {
+        this.discardSession(stored.session);
+        this.storeUpload(group, null);
+        continue;
+      }
+      this.storeUpload(group, {});
+      let files: SessionFile[];
+      try {
+        files = await this.uploadRequest('GET', `upload/sessions/${stored.session}`);
+      } catch (error) {
+        if (error instanceof UploadRequestError && error.status === 404) {
+          this.storeUpload(group, null);
+        } else {
+          // Tried again by the next page.
+          this.storeUpload(group, { seen: 0 });
+        }
+        continue;
+      }
+      const session: UploadSession = { id: stored.session, files };
+      this.uploadSessions.set(group, session);
+      this._pendingWebUploads.update(uploads => [
+        ...uploads,
+        {
+          group,
+          remote: stored.remote,
+          path: stored.path,
+          origin: stored.origin,
+          sent: session.files.reduce((sum, file) => sum + file.received, 0),
+          total: session.files.reduce((sum, file) => sum + file.size, 0),
+          files: session.files.length,
+        },
+      ]);
+      this.setPaused(group, session);
     }
   }
 
   /**
-   * Lists the upload's files and folders: the first part opens the session (its id is set on
-   * `session`), the others add to it. Each part is as long as fits in one request.
+   * Lists the session's files and the upload's empty folders: the first part opens the session
+   * (its id is set on `session`), the others add to it. Each part is as long as fits in one
+   * request.
    */
   private async openSession(
-    session: { id?: string },
+    session: UploadSession,
     upload: PendingWebUpload,
-    files: { file: File; relativePath: string }[],
     emptyDirs: string[],
     limits: { requestBytes: number },
-    template: string | undefined
+    options: TransferOptionValues | undefined
   ): Promise<void> {
     const entries = [
-      ...files.map(({ file, relativePath }) => ({
+      ...session.files.map(({ path, size, mtime }) => ({
         kind: 'files' as const,
-        value: { path: relativePath || file.name, size: file.size, mtime: file.lastModified },
+        value: { path, size, mtime },
       })),
       ...emptyDirs.map(dir => ({ kind: 'emptyDirs' as const, value: dir })),
     ];
@@ -459,7 +685,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       path: upload.path,
       origin: upload.origin,
       group: upload.group,
-      template,
+      options,
     };
     const encoder = new TextEncoder();
     const headerBytes = encoder.encode(JSON.stringify(header)).length;
@@ -491,6 +717,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
             : this.uploadRequest<string>('POST', 'upload/sessions', { ...header, ...part }).then(
                 id => {
                   session.id = id;
+                  this.storeUpload(upload.group, {
+                    session: id,
+                    remote: upload.remote,
+                    path: upload.path,
+                    origin: upload.origin,
+                    listed: false,
+                  });
                 }
               );
         },
@@ -505,15 +738,17 @@ export class RemoteFileOperationsService extends TauriBaseService {
     } while (listed < entries.length);
   }
 
+  /** Sends the rest of every file the page holds, as many at once as the settings allow. */
   private async sendFiles(
-    session: string,
     group: string,
-    files: { file: File; relativePath: string }[],
+    session: UploadSession,
     limits: { requestBytes: number; parallel: number }
   ): Promise<void> {
-    const sent = files.map(() => 0);
+    const queue = session.files.flatMap((entry, index) =>
+      entry.file && entry.received < entry.size ? [{ entry, index }] : []
+    );
+    let sent = session.files.reduce((sum, entry) => sum + entry.received, 0);
     let chunkSize = limits.requestBytes;
-    let next = 0;
     let failed = false;
     const shrink = (): boolean => {
       if (chunkSize <= MIN_REQUEST_BYTES) return false;
@@ -521,41 +756,39 @@ export class RemoteFileOperationsService extends TauriBaseService {
       return true;
     };
 
-    const sendFile = async (index: number): Promise<void> => {
-      const { file } = files[index];
-      let offset = 0;
-      while (offset < file.size) {
+    const sendFile = async ({ entry, index }: (typeof queue)[number]): Promise<void> => {
+      const file = entry.file as File;
+      while (entry.received < entry.size) {
         if (failed) return;
         this.throwIfCancelled(group);
+        const offset = entry.received;
         // The server answers how much of the file it has, also when this chunk was a repeat.
-        offset = await this.sendWithRetries(
+        entry.received = await this.sendWithRetries(
           () =>
             this.uploadRequest<number>(
               'PUT',
-              `upload/sessions/${session}/files/${index}?offset=${offset}`,
+              `upload/sessions/${session.id}/files/${index}?offset=${offset}`,
               file.slice(offset, offset + chunkSize)
             ),
           shrink
         );
-        sent[index] = offset;
-        const total = sent.reduce((sum, bytes) => sum + bytes, 0);
-        this._pendingWebUploads.update(uploads =>
-          uploads.map(upload => (upload.group === group ? { ...upload, sent: total } : upload))
-        );
+        sent += entry.received - offset;
+        this.updatePending(group, { sent });
       }
     };
 
+    let next = 0;
     const worker = async (): Promise<void> => {
-      while (!failed && next < files.length) {
+      while (!failed && next < queue.length) {
         try {
-          await sendFile(next++);
+          await sendFile(queue[next++]);
         } catch (error) {
           failed = true;
           throw error;
         }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(limits.parallel, files.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(limits.parallel, queue.length) }, worker));
   }
 
   /**

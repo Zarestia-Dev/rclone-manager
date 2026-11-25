@@ -8,12 +8,15 @@ import android.os.Build
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -50,6 +53,9 @@ class MainActivity : TauriActivity() {
     // keep-alive may have replaced with a newer activity since.
     private val pendingSharedPaths = mutableListOf<String>()
     private var pendingRoute: String? = null
+    /** Set while the system picker of an upload is open, so a second request waits for it. */
+    @Volatile
+    private var uploadPickOpen = false
     private val shareExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
       Thread(runnable, "ShareIntentHandler").apply { isDaemon = true }
     }
@@ -65,6 +71,17 @@ class MainActivity : TauriActivity() {
 
   // Reference to the WebView so we can evaluateJavascript from non-UI callbacks
   private var appWebView: WebView? = null
+
+  // The system pickers of an upload. With an engine on another computer, the app's file browser
+  // lists that computer's disk, so the files of this device are chosen here instead.
+  private val pickUploadFilesLauncher =
+    registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+      copyUploadPick(uris.size) { uris.mapNotNull { resolveContentUri(it) } }
+    }
+  private val pickUploadFolderLauncher =
+    registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+      copyUploadPick(if (tree == null) 0 else 1) { tree?.let { copyDocumentTree(it) }.orEmpty() }
+    }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -193,8 +210,7 @@ class MainActivity : TauriActivity() {
 
   private fun notifyNavigateRoute(route: String) {
     val escaped = route.replace("\\", "\\\\").replace("\"", "\\\"")
-    val js = "window.dispatchEvent(new CustomEvent('android-navigate-route',{detail:{route:\"$escaped\"}}))"
-    appWebView?.post { appWebView?.evaluateJavascript(js, null) }
+    dispatchPageEvent("android-navigate-route", "{route:\"$escaped\"}")
   }
 
   private fun handleOpenSystemFilesIntent(intent: Intent?) {
@@ -292,7 +308,7 @@ class MainActivity : TauriActivity() {
   private fun saveSharedText(text: String, subject: String?): String? {
     return try {
       val name = sharedTextFileName(subject)
-      val target = getUniqueDestinationFile(File(cacheDir, "shared_files").also { it.mkdirs() }, name)
+      val target = getUniqueDestinationFile(sharedFilesDir(), name)
       target.writeText(text)
       target.absolutePath
     } catch (e: Exception) {
@@ -302,18 +318,19 @@ class MainActivity : TauriActivity() {
   }
 
   /**
-   * Copies a content:// URI into the app-private cache and returns the absolute path.
+   * Copies a content:// URI into the app-private cache and returns the absolute path. The copy
+   * keeps the modification time the provider reports, which an upload carries to the remote.
    */
   private fun resolveContentUri(uri: Uri): String? {
     var destFile: File? = null
     return try {
       contentResolver.openInputStream(uri)?.use { input ->
-        val rawName = getFileNameFromUri(uri) ?: "shared_file"
-        val cleanName = File(rawName).name.ifBlank { "shared_file" }
-        val destDir = File(cacheDir, "shared_files").also { it.mkdirs() }
-        val target = getUniqueDestinationFile(destDir, cleanName)
+        val (rawName, modified) = queryDocumentInfo(uri)
+        val cleanName = File(rawName ?: "shared_file").name.ifBlank { "shared_file" }
+        val target = getUniqueDestinationFile(sharedFilesDir(), cleanName)
         destFile = target
         FileOutputStream(target).use { output -> input.copyTo(output) }
+        modified?.let { target.setLastModified(it) }
         target.absolutePath
       }
     } catch (e: Exception) {
@@ -333,24 +350,128 @@ class MainActivity : TauriActivity() {
     return File(destDir, "${name}_${System.nanoTime()}$ext")
   }
 
-  private fun getFileNameFromUri(uri: Uri): String? {
+  /** The name and modification time (milliseconds) a provider reports for a URI, when it does. */
+  private fun queryDocumentInfo(uri: Uri): Pair<String?, Long?> {
     var name: String? = null
+    var modified: Long? = null
     if (uri.scheme == "content") {
       contentResolver.query(uri, null, null, null, null)?.use { cursor ->
         if (cursor.moveToFirst()) {
-          val col = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-          if (col >= 0) name = cursor.getString(col)
+          val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (nameColumn >= 0) name = cursor.getString(nameColumn)
+          // Documents report milliseconds; media shared from a gallery reports seconds.
+          val documentColumn = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+          val mediaColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+          modified = when {
+            documentColumn >= 0 && !cursor.isNull(documentColumn) -> cursor.getLong(documentColumn)
+            mediaColumn >= 0 && !cursor.isNull(mediaColumn) -> cursor.getLong(mediaColumn) * 1000
+            else -> null
+          }?.takeIf { it > 0 }
         }
       }
     }
-    return name ?: uri.lastPathSegment?.substringAfterLast('/')
+    return (name ?: uri.lastPathSegment?.substringAfterLast('/')) to modified
+  }
+
+  /**
+   * Copies the `picked` items the user chose for an upload into the share cache on the share
+   * thread. The page hears first that copying started, then which copies exist and how many of
+   * the picked items failed. Nothing picked (the picker was closed) ends at once.
+   */
+  private fun copyUploadPick(picked: Int, copy: () -> List<String>) {
+    uploadPickOpen = false
+    if (picked == 0) {
+      notifyUploadPick("{stage:\"done\",paths:[],failed:0}")
+      return
+    }
+    notifyUploadPick("{stage:\"copying\",count:$picked}")
+    shareExecutor.execute {
+      val paths = try {
+        copy()
+      } catch (e: Exception) {
+        Logger.error("Copying picked upload files failed: ${e.message}")
+        emptyList()
+      }
+      notifyUploadPick("{stage:\"done\",paths:${JSONArray(paths)},failed:${picked - paths.size}}")
+    }
+  }
+
+  /**
+   * Copies a picked folder with its subfolders, empty ones included, into the share cache.
+   * Nothing of it remains when any of its files cannot be copied.
+   */
+  private fun copyDocumentTree(tree: Uri): List<String> {
+    val rootId = DocumentsContract.getTreeDocumentId(tree)
+    val rootName = safeDocumentName(queryDocumentInfo(DocumentsContract.buildDocumentUriUsingTree(tree, rootId)).first)
+      ?: safeDocumentName(rootId.substringAfterLast(':').substringAfterLast('/'))
+      ?: "folder"
+    val target = getUniqueDestinationFile(sharedFilesDir(), rootName)
+    return try {
+      copyDocumentChildren(tree, rootId, target)
+      listOf(target.absolutePath)
+    } catch (e: Exception) {
+      Logger.error("copyDocumentTree failed: ${e.message}")
+      target.deleteRecursively()
+      emptyList()
+    }
+  }
+
+  private fun copyDocumentChildren(tree: Uri, parentId: String, target: File) {
+    if (!target.mkdirs() && !target.isDirectory) throw java.io.IOException("Cannot create ${target.name}")
+    val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId)
+    val columns = arrayOf(
+      DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+      DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+      DocumentsContract.Document.COLUMN_MIME_TYPE,
+      DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+    )
+    data class Child(val id: String, val name: String, val isDir: Boolean, val modified: Long?)
+    val entries = mutableListOf<Child>()
+    contentResolver.query(children, columns, null, null, null)?.use { cursor ->
+      while (cursor.moveToNext()) {
+        val id = cursor.getString(0) ?: continue
+        val name = safeDocumentName(cursor.getString(1)) ?: continue
+        val isDir = cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR
+        val modified = if (cursor.isNull(3)) null else cursor.getLong(3).takeIf { it > 0 }
+        entries.add(Child(id, name, isDir, modified))
+      }
+    } ?: throw java.io.IOException("Cannot list ${target.name}")
+    for (entry in entries) {
+      val child = File(target, entry.name)
+      if (entry.isDir) {
+        copyDocumentChildren(tree, entry.id, child)
+      } else {
+        val uri = DocumentsContract.buildDocumentUriUsingTree(tree, entry.id)
+        val input = contentResolver.openInputStream(uri)
+          ?: throw java.io.IOException("Cannot open ${entry.name}")
+        input.use { source -> FileOutputStream(child).use { output -> source.copyTo(output) } }
+        // The upload carries the file's own modification time, not the copy's.
+        entry.modified?.let { child.setLastModified(it) }
+      }
+    }
+  }
+
+  /** A provider's display name as one file name, or null for none that can be one. */
+  private fun safeDocumentName(name: String?): String? =
+    name?.let { File(it).name }?.takeIf { it.isNotBlank() && it != "." && it != ".." }
+
+  private fun notifyUploadPick(detail: String) {
+    dispatchPageEvent("android-upload-picked", detail)
   }
 
   /** Dispatches `android-share-files` CustomEvent to Angular with a list of local paths. */
   private fun notifyShareFiles(paths: List<String>) {
-    val js = "window.dispatchEvent(new CustomEvent('android-share-files',{detail:{paths:${JSONArray(paths)}}}))"
+    dispatchPageEvent("android-share-files", "{paths:${JSONArray(paths)}}")
+  }
+
+  /** Dispatches the CustomEvent `name` to the page; `detail` is a JavaScript expression. */
+  private fun dispatchPageEvent(name: String, detail: String) {
+    val js = "window.dispatchEvent(new CustomEvent('$name',{detail:$detail}))"
     appWebView?.post { appWebView?.evaluateJavascript(js, null) }
   }
+
+  /** The cache folder shared and picked files are copied into, created when missing. */
+  private fun sharedFilesDir(): File = File(cacheDir, "shared_files").also { it.mkdirs() }
 
   // ---------------------------------------------------------------------------
   // JS Bridge — called from Angular as window.__rclone__.<method>()
@@ -383,7 +504,31 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  /** Removes only the cached files acknowledged or cancelled by Angular. */
+  /**
+   * Opens the system picker for files (or one folder) of this device to upload, whichever engine
+   * runs: it needs no storage permission and reaches every document provider. The page hears
+   * `android-upload-picked` events: `copying` once the user chose, then `done` with the paths of
+   * the copies, which it removes with [clearSharedFiles]. Returns false while a picker is open.
+   */
+  @JavascriptInterface
+  fun pickUploadFiles(folder: Boolean): Boolean {
+    val activity = current?.get() ?: this
+    if (uploadPickOpen) return false
+    uploadPickOpen = true
+    activity.runOnUiThread {
+      try {
+        if (folder) activity.pickUploadFolderLauncher.launch(null)
+        else activity.pickUploadFilesLauncher.launch(arrayOf("*/*"))
+      } catch (e: Exception) {
+        Logger.error("Cannot open the upload picker: ${e.message}")
+        uploadPickOpen = false
+        activity.notifyUploadPick("{stage:\"done\",paths:[],failed:0}")
+      }
+    }
+    return true
+  }
+
+  /** Removes only the cached files and folders acknowledged or cancelled by Angular. */
   @JavascriptInterface
   fun clearSharedFiles(pathsJson: String) {
     val paths = try {
@@ -398,7 +543,7 @@ class MainActivity : TauriActivity() {
         val root = File(cacheDir, "shared_files").canonicalFile
         for (path in paths) {
           val file = File(path).canonicalFile
-          if (file.parentFile == root) file.delete()
+          if (file.parentFile == root) file.deleteRecursively()
         }
         synchronized(pendingSharedPaths) {
           pendingSharedPaths.removeAll(paths.toSet())

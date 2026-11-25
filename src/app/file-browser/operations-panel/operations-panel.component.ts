@@ -8,7 +8,12 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import {
+  PendingWebUpload,
+  RemoteFileOperationsService,
+} from 'src/app/services/remote/remote-file-operations.service';
+import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
+import { NautilusTabService } from 'src/app/services/ui/nautilus-tab.service';
 
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
@@ -81,6 +86,10 @@ interface JobViewModel {
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
   protected readonly remoteOps = inject(RemoteFileOperationsService);
+  private readonly fileOps = inject(NautilusFileOperationsService);
+  private readonly tabSvc = inject(NautilusTabService);
+  /** The paused upload the file picker that is open selects files for. */
+  private resuming: PendingWebUpload | null = null;
   private readonly translate = inject(TranslateService);
   private readonly backendTranslation = inject(BackendTranslationService);
 
@@ -99,6 +108,33 @@ export class OperationsPanelComponent {
       .pendingWebUploads()
       .filter(upload => upload.origin === 'filemanager' && !jobGroups.has(upload.group));
   });
+  /** Continues a paused upload, with the files selected again when the page no longer has them. */
+  protected async resumeUpload(
+    upload: PendingWebUpload,
+    picked?: { file: File; relativePath: string }[]
+  ): Promise<void> {
+    if (await this.fileOps.resumeWebUpload(upload.group, picked)) {
+      this.tabSvc.refreshPath(upload.remote, upload.path);
+    }
+  }
+
+  protected pickResumeFiles(upload: PendingWebUpload, input: HTMLInputElement): void {
+    this.resuming = upload;
+    input.click();
+  }
+
+  protected async onResumeFiles(input: HTMLInputElement): Promise<void> {
+    const upload = this.resuming;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    this.resuming = null;
+    if (!upload || !files.length) return;
+    await this.resumeUpload(
+      upload,
+      files.map(file => ({ file, relativePath: file.webkitRelativePath || file.name }))
+    );
+  }
+
   activeJobs = computed(() => this.jobs().filter(j => j.status === JOB_STATUS.Running));
   readonly activeCount = computed(() => this.activeJobs().length + this.preparingUploads().length);
   hasJobs = computed(() => this.jobs().length > 0 || this.preparingUploads().length > 0);

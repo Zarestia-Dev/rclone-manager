@@ -21,11 +21,15 @@ describe('Nautilus shared upload operations', () => {
   const makeDirectory = vi.fn();
   const uploadWebFilesBatch = vi.fn();
   const uploadLocalDropPaths = vi.fn();
+  const pendingWebUploads = vi.fn(() => [] as object[]);
+  const attachWebUploadFiles = vi.fn();
+  const resumeWebUpload = vi.fn();
+  const releaseUploadPaths = vi.fn();
   const translateBackendMessage = vi.fn((error: Error) => `translated:${error.message}`);
   const transferItems = vi.fn();
   const settings: Record<string, unknown> = {};
   const getSettingValue = vi.fn(async (key: string) => settings[key]);
-  const openTransferTemplate = vi.fn();
+  const openTransferOptions = vi.fn();
   const notifications = {
     showError: vi.fn(),
     showWarning: vi.fn(),
@@ -46,7 +50,15 @@ describe('Nautilus shared upload operations', () => {
         NautilusFileOperationsService,
         {
           provide: RemoteFileOperationsService,
-          useValue: { makeDirectory, uploadWebFilesBatch, uploadLocalDropPaths, transferItems },
+          useValue: {
+            makeDirectory,
+            uploadWebFilesBatch,
+            uploadLocalDropPaths,
+            transferItems,
+            pendingWebUploads,
+            attachWebUploadFiles,
+            resumeWebUpload,
+          },
         },
         {
           provide: PathService,
@@ -61,9 +73,10 @@ describe('Nautilus shared upload operations', () => {
           useValue: {
             selectFilesForUpload: vi.fn().mockResolvedValue(['/tmp/file']),
             selectFolderForUpload: vi.fn().mockResolvedValue('/tmp/folder'),
+            releaseUploadPaths,
           },
         },
-        { provide: ModalService, useValue: { openTransferTemplate } },
+        { provide: ModalService, useValue: { openTransferOptions } },
         { provide: AppSettingsService, useValue: { getSettingValue } },
         { provide: BackendTranslationService, useValue: { translateBackendMessage } },
         { provide: NotificationService, useValue: notifications },
@@ -87,7 +100,13 @@ describe('Nautilus shared upload operations', () => {
 
   it('routes clipboard and native pickers through the same local upload', async () => {
     const upload = vi.spyOn(service, 'uploadLocalPaths').mockResolvedValue(true);
-    await service.pasteSystemClipboard(remote, 'target', '/tmp/file');
+    const app = window as Window & { __TAURI_INTERNALS__?: unknown };
+    app.__TAURI_INTERNALS__ = {};
+    try {
+      await service.pasteSystemClipboard(remote, 'target', '/tmp/file');
+    } finally {
+      delete app.__TAURI_INTERNALS__;
+    }
     await service.uploadExternalFiles(remote, 'target');
     await service.uploadExternalFolder(remote, 'target');
     expect(upload.mock.calls).toEqual([
@@ -95,6 +114,27 @@ describe('Nautilus shared upload operations', () => {
       [remote, 'target', ['/tmp/file']],
       [remote, 'target', ['/tmp/folder']],
     ]);
+    // Picked copies are removed once their upload ended.
+    expect(releaseUploadPaths.mock.calls).toEqual([[['/tmp/file']], [['/tmp/folder']]]);
+    expect(notifications.showError).not.toHaveBeenCalled();
+  });
+
+  it("does not upload clipboard paths in a browser, where they name the browser's files", async () => {
+    const upload = vi.spyOn(service, 'uploadLocalPaths').mockResolvedValue(true);
+    const readText = vi.fn().mockResolvedValue('/home/user/file.txt');
+    vi.stubGlobal('navigator', { clipboard: { readText } });
+    try {
+      expect(await service.pasteSystemClipboard(remote, 'target', '/home/user/file.txt')).toBe(
+        false
+      );
+      expect(await service.checkSystemClipboard()).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(upload).not.toHaveBeenCalled();
+    // Reading the clipboard would ask the browser for a permission that serves nothing.
+    expect(readText).not.toHaveBeenCalled();
+    expect(service.systemClipboardHasPaths()).toBe(false);
   });
 
   it('passes explicit empty directories and files together into one upload', async () => {
@@ -139,9 +179,44 @@ describe('Nautilus shared upload operations', () => {
     ]);
   });
 
-  it('leaves the default template to the backend unless the preferences ask each time', async () => {
+  it('says where to continue an upload that lost its connection', async () => {
+    uploadWebFilesBatch.mockResolvedValueOnce('paused');
+    expect(await service.uploadWebEntries(remote, 'target', entries)).toBe(false);
+    expect(notifications.showWarning).toHaveBeenCalledExactlyOnceWith(
+      'nautilus.notifications.uploadInterrupted'
+    );
+    expect(notifications.showSuccess).not.toHaveBeenCalled();
+  });
+
+  it('continues a paused upload with the files selected again and reports what is missing', async () => {
+    const paused = { group: 'upload-1', files: 3, paused: { missing: 2 } };
+    pendingWebUploads.mockReturnValue([paused]);
+    attachWebUploadFiles.mockReturnValueOnce(0);
+    expect(await service.resumeWebUpload('upload-1', entries)).toBe(false);
+    expect(notifications.showError).toHaveBeenCalledExactlyOnceWith(
+      'nautilus.notifications.uploadFilesNotInUpload'
+    );
+    expect(resumeWebUpload).not.toHaveBeenCalled();
+
+    attachWebUploadFiles.mockReturnValueOnce(1);
+    resumeWebUpload.mockResolvedValueOnce('paused');
+    pendingWebUploads.mockReturnValue([{ ...paused, paused: { missing: 1 } }]);
+    expect(await service.resumeWebUpload('upload-1', entries)).toBe(false);
+    expect(attachWebUploadFiles).toHaveBeenLastCalledWith('upload-1', entries);
+    expect(notifications.showWarning).toHaveBeenCalledExactlyOnceWith(
+      'nautilus.notifications.uploadFilesStillMissing'
+    );
+
+    resumeWebUpload.mockResolvedValueOnce('finished');
+    expect(await service.resumeWebUpload('upload-1')).toBe(true);
+    expect(notifications.showSuccess).toHaveBeenCalledExactlyOnceWith(
+      'nautilus.notifications.uploadSuccess'
+    );
+  });
+
+  it('leaves the default options to the backend unless the preferences ask each time', async () => {
     await service.uploadLocalPaths(remote, 'target', ['/tmp/file']);
-    expect(openTransferTemplate).not.toHaveBeenCalled();
+    expect(openTransferOptions).not.toHaveBeenCalled();
     expect(uploadLocalDropPaths).toHaveBeenCalledWith(
       'drive:',
       'target',
@@ -152,16 +227,20 @@ describe('Nautilus shared upload operations', () => {
     );
   });
 
-  it('asks for the template, passes the choice on, and starts nothing when cancelled', async () => {
-    settings['file_browser.ask_transfer_template'] = true;
-    settings['file_browser.transfer_template'] = 'usr-tpl-default';
-    openTransferTemplate.mockReturnValueOnce({ afterClosed: () => of('usr-tpl-1') });
+  it('asks for the options, passes them on, and starts nothing when cancelled', async () => {
+    const defaults = { copy: { check_first: true } };
+    const chosen = { copy: { checksum: true }, remotes: { drive: { chunk_size: '64M' } } };
+    settings['nautilus.ask_transfer_options'] = true;
+    settings['nautilus.transfer_options'] = defaults;
+    openTransferOptions.mockReturnValueOnce({ afterClosed: () => of(chosen) });
     expect(await service.uploadWebEntries(remote, 'target', entries)).toBe(true);
-    expect(openTransferTemplate).toHaveBeenCalledExactlyOnceWith({
-      selected: 'usr-tpl-default',
+    expect(openTransferOptions).toHaveBeenCalledExactlyOnceWith({
+      mode: 'transfer',
       operation: 'upload',
       count: 1,
       destination: 'drive:target',
+      remotes: ['drive'],
+      values: defaults,
     });
     expect(uploadWebFilesBatch).toHaveBeenCalledWith(
       'drive:',
@@ -169,17 +248,17 @@ describe('Nautilus shared upload operations', () => {
       entries,
       'filemanager',
       [],
-      'usr-tpl-1'
+      chosen
     );
 
-    openTransferTemplate.mockReturnValueOnce({ afterClosed: () => of(undefined) });
+    openTransferOptions.mockReturnValueOnce({ afterClosed: () => of(undefined) });
     expect(await service.uploadLocalPaths(remote, 'target', ['/tmp/file'])).toBe(false);
     expect(uploadLocalDropPaths).not.toHaveBeenCalled();
   });
 
-  it('asks only for copies and moves that leave their remote', async () => {
-    settings['file_browser.ask_transfer_template'] = true;
-    openTransferTemplate.mockReturnValue({ afterClosed: () => of('') });
+  it('asks only for copies and moves that leave their remote, naming every remote they touch', async () => {
+    settings['nautilus.ask_transfer_options'] = true;
+    openTransferOptions.mockReturnValue({ afterClosed: () => of({}) });
     const item = (remoteName: string): FileBrowserItem =>
       ({
         entry: { Path: 'a.txt', Name: 'a.txt', IsDir: false },
@@ -187,14 +266,20 @@ describe('Nautilus shared upload operations', () => {
       }) as unknown as FileBrowserItem;
 
     await service.performFileOperations([item('drive')], remote, 'other', 'move');
-    expect(openTransferTemplate).not.toHaveBeenCalled();
+    expect(openTransferOptions).not.toHaveBeenCalled();
     expect(transferItems.mock.calls[0][7]).toBeUndefined();
 
-    await service.performFileOperations([item('nas')], remote, '', 'copy');
-    expect(openTransferTemplate).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ operation: 'copy', count: 1, destination: 'drive:' })
+    await service.performFileOperations([item('nas'), item('nas'), item('')], remote, '', 'copy');
+    expect(openTransferOptions).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        operation: 'copy',
+        count: 3,
+        destination: 'drive:',
+        remotes: ['drive', 'nas'],
+        values: {},
+      })
     );
-    expect(transferItems.mock.calls[1][7]).toBe('');
+    expect(transferItems.mock.calls[1][7]).toEqual({});
   });
 
   it('reports local upload errors once and skips empty inputs', async () => {

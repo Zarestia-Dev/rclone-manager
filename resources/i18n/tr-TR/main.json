@@ -619,13 +619,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Yıldızlı Öğeler",
-        "description": "Dosya tarayıcısındaki yıldızlı dosya ve klasörlerin listesi."
+      "layout": {
+        "label": "Düzen",
+        "description": "Dosya Gezgini'nin dosyaları nasıl gösterdiği: ızgarada simgeler ya da listede satırlar olarak. Dosya Gezgini'ndeki düzen düğmesi de bunu değiştirir.",
+        "options": {
+          "grid": "Izgara",
+          "list": "Liste"
+        }
       },
-      "bookmarks": {
-        "label": "Yer İmleri",
-        "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
+      "sort": {
+        "label": "Sırala",
+        "description": "Dosya Gezgini'nde dosyaların sırası. Görünüm Seçenekleri'ndeki Sırala bölümü de bunu değiştirir."
+      },
+      "show_hidden": {
+        "label": "Gizli Dosyaları Göster",
+        "description": "Adı nokta ile başlayan dosya ve klasörleri gösterir."
+      },
+      "upload_request_mib": {
+        "label": "En Büyük Yükleme İsteği (MiB)",
+        "description": "Web arayüzünden yapılan yüklemeler bu boyutu aşmayan isteklerle gönderilir. Sunucunun önünde bir ters vekil sunucu (reverse proxy) varsa onun istek sınırına ayarlayın (nginx, client_max_body_size artırılmadıkça 1 MiB'a izin verir). Vekil sunucu bir isteği reddederse daha küçük istekler kendiliğinden denenir. Daha büyük bir değer, hızlı ama gecikmesi yüksek bir bağlantıda tek bir büyük dosyanın yüklenmesini hızlandırabilir."
+      },
+      "parallel_uploads": {
+        "label": "Aynı Anda Yüklenen Dosya",
+        "description": "Web arayüzünün sunucuya aynı anda kaç dosya gönderdiği. Yavaş bir bağlantıda daha az dosya daha uygundur."
+      },
+      "ask_transfer_options": {
+        "label": "Her Aktarımda Seçenekleri Sor",
+        "description": "Bir yüklemeden ya da başka bir uzak bağlantıya kopyalama veya taşımadan önce aktarım seçeneklerini gösterir. Varsayılan aktarım seçenekleri doldurulmuş gelir; bir şablon da içe aktarılabilir."
       }
     },
     "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
@@ -643,25 +663,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Bulut profili (ana menü)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "En Büyük Yükleme İsteği (MiB)",
-        "description": "Web arayüzünden yapılan yüklemeler bu boyutu aşmayan isteklerle gönderilir. Sunucunun önünde bir ters vekil sunucu (reverse proxy) varsa onun istek sınırına ayarlayın (nginx, client_max_body_size artırılmadıkça 1 MiB'a izin verir). Vekil sunucu bir isteği reddederse daha küçük istekler kendiliğinden denenir. Daha büyük bir değer, hızlı ama gecikmesi yüksek bir bağlantıda tek bir büyük dosyanın yüklenmesini hızlandırabilir."
-      },
-      "parallel_uploads": {
-        "label": "Aynı Anda Yüklenen Dosya",
-        "description": "Web arayüzünün sunucuya aynı anda kaç dosya gönderdiği. Yavaş bir bağlantıda daha az dosya daha uygundur."
-      },
-      "transfer_template": {
-        "label": "Aktarım Şablonu",
-        "description": "Dosya Gezgini'ndeki kopyalama, taşıma ve yüklemeler bu şablonun kopyalama ya da taşıma, filtre ve arka uç seçenekleriyle çalışır. Şablonlar Şablonları Yönet bölümünde oluşturulur. Silinmiş bir şablon atlanır.",
-        "none": "Şablon yok"
-      },
-      "ask_transfer_template": {
-        "label": "Her Aktarımda Şablonu Sor",
-        "description": "Bir yüklemeden ya da başka bir uzak bağlantıya kopyalama veya taşımadan önce hangi şablonun kullanılacağını sor. Başta yukarıdaki aktarım şablonu seçili gelir."
       }
     }
   },
@@ -1898,6 +1899,14 @@
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
       "removeJob": "Kaldır",
+      "resumeUpload": "Yüklemeye devam et",
+      "resumeWithFiles": "Devam etmek için aynı dosyaları seçin",
+      "resumeWithFolder": "Devam etmek için aynı klasörü seçin",
+      "uploadPausedConnection": "Duraklatıldı: sunucuyla bağlantı kesildi",
+      "uploadPausedReselect": {
+        "one": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin",
+        "other": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin"
+      },
       "progress": "İlerleme",
       "files": "Dosyalar",
       "speed": "Hız",
@@ -1914,7 +1923,7 @@
         "copiedFiles": "Kopyalanan dosyalar",
         "syncedFiles": "Senkronize edilen dosyalar",
         "processedFiles": "İşlenen dosyalar",
-        "template": "Şablon"
+        "options": "Seçenekler"
       },
       "running": "Çalışıyor",
       "filesCount": {
@@ -2364,6 +2373,7 @@
     },
     "preferences": {
       "title": "Tercihler",
+      "fileBrowserTitle": "Dosya Gezgini Tercihleri",
       "searchResults": "Arama Sonuçları",
       "searchPlaceholder": "Ayarları ara...",
       "resetAll": "Tüm Ayarları Sıfırla",
@@ -2392,7 +2402,7 @@
       "tabs": {
         "general": "Genel",
         "core": "Çekirdek",
-        "file_browser": "Dosya Gezgini",
+        "nautilus": "Dosya Gezgini",
         "developer": "Geliştirici",
         "vault": "Kasa"
       },
@@ -3606,6 +3616,20 @@
         "one": "{{count}} dosya yüklenemedi.",
         "other": "{{count}} dosya yüklenemedi."
       },
+      "uploadInterrupted": "Sunucuyla bağlantı kesildi. Yüklemeye İşlemler bölümünden devam edin.",
+      "uploadFilesNotInUpload": "Seçilen dosyaların hiçbiri bu yüklemenin hâlâ beklediği dosyalardan değil.",
+      "uploadFilesStillMissing": {
+        "one": "Bu yüklemenin {{count}} dosyası hâlâ eksik. Yüklemeyi bitirmek için bu dosyayı İşlemler bölümünden seçin.",
+        "other": "Bu yüklemenin {{count}} dosyası hâlâ eksik. Yüklemeyi bitirmek için bu dosyaları İşlemler bölümünden seçin."
+      },
+      "copyingPickedFiles": {
+        "one": "Seçilen {{count}} öğe yükleme için hazırlanıyor…",
+        "other": "Seçilen {{count}} öğe yükleme için hazırlanıyor…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "Seçilen {{count}} öğe okunamadı ve yüklenmeyecek.",
+        "other": "Seçilen {{count}} öğe okunamadı ve yüklenmeyecek."
+      },
       "trashEmptied": "Temizlik işlemi başlatıldı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": {
@@ -3647,8 +3671,9 @@
       "star": "Yıldızlılara ekle",
       "unstar": "Yıldızlılardan kaldır"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Aktarım Seçenekleri",
+      "defaultTitle": "Varsayılan Aktarım Seçenekleri",
       "summary": {
         "upload": {
           "one": "{{count}} öge {{destination}} konumuna yüklenecek.",
@@ -3663,11 +3688,16 @@
           "other": "{{count}} öge {{destination}} konumuna taşınacak."
         }
       },
-      "noOptions": "Bu şablonda bu aktarıma uygulanan bir seçenek yok.",
-      "noTemplateChosen": "Şablon olmadan aktarım yalnızca Rclone Bayrakları'nda ayarlanan seçenekleri kullanır.",
-      "whatTemplatesDo": "Şablon, sağlama toplamı denetimi ya da yeniden deneme gibi rclone seçeneklerini saklar. Böylece bir aktarım bu seçenekleri diğer aktarımları değiştirmeden kullanabilir.",
-      "useAsDefault": "Bu şablonu varsayılan olarak kullan",
-      "dontAskAgain": "Bir daha sorma (Tercihler › Dosya Gezgini)",
+      "engine": {
+        "local": "{{name}} üzerinde çalışır; bu uygulamanın çalıştırdığı rclone.",
+        "remote": "{{name}} üzerinde çalışır; başka bir bilgisayardaki rclone. Aşağıdaki seçenekler o rclone'un sunduklarıdır."
+      },
+      "defaultIntro": "Dosya Gezgini'ndeki kopyalama, taşıma ve yüklemeler bu seçeneklerle başlar.",
+      "remoteNote": "Bu seçenekler {{name}} için yalnızca bu aktarım boyunca geçerlidir. Kayıtlı ayarları değişmez.",
+      "streamNote": "Dosyalar diğer bilgisayardaki rclone'a tek tek gönderilir; o rclone bu dosyalar için kopyalama, Filtre ve Arka Uç seçeneklerini kullanmaz. Yalnızca hedefin kendi seçenekleri uygulanır.",
+      "nothingToSet": "Bu yükleme için ayarlanacak bir seçenek yok.",
+      "useAsDefault": "Bu seçenekleri varsayılan olarak kullan",
+      "dontAskAgain": "Bir daha sorma (Dosya Gezgini Tercihleri)",
       "start": "Başlat"
     }
   },

@@ -185,6 +185,8 @@ export interface RcloneFlagMetadata {
   required?: boolean;
   engine_restart?: boolean;
   placeholder?: string;
+  /** Kept with the settings but not shown in the preferences window. */
+  hidden?: boolean;
 }
 
 export interface SettingMetadata<T = ConfigValue> {

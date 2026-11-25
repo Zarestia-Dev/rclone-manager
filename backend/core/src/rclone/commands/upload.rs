@@ -18,17 +18,14 @@ use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::TransportKind;
 use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::commands::filesystem::{
-    FsItem, TransferMode, submit_transfer_job, transfer_inputs,
+    FsItem, TransferMode, TransferOptions, submit_transfer_job, transfer_inputs, transfer_options,
 };
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions};
-use crate::rclone::commands::sync::lookup_dry_run;
 use crate::rclone::endpoints::operations;
-use crate::services::settings::operations::templates::transfer_options;
 use crate::utils::app::notification::notify;
 use crate::utils::json_helpers::build_full_path;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
-use crate::utils::types::remotes::OperationType;
 use crate::utils::types::state::RcloneState;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -40,9 +37,9 @@ pub struct UploadBatchParams {
     pub local_paths: Vec<String>,
     pub origin: Option<Origin>,
     pub group: Option<String>,
-    /// The user template to transfer with: `None` for the file browser's default,
-    /// empty for none.
-    pub template: Option<String>,
+    /// The options to transfer with, as the transfer dialog sets them; `None` for the
+    /// file browser's default.
+    pub options: Option<serde_json::Value>,
 }
 
 // Upload jobs are local synthetic jobs, separate from rclone's job IDs.
@@ -382,7 +379,7 @@ pub async fn execute_upload_batch(
         local_paths,
         origin,
         group,
-        template,
+        options,
     } = params;
     if local_paths.is_empty() {
         return Err(crate::localized_error!("backendErrors.upload.noFiles"));
@@ -418,7 +415,7 @@ pub async fn execute_upload_batch(
     )
     .with_origin(origin)
     .with_group(group);
-    let options = transfer_options(&app, template, TransferMode::Copy).await;
+    let options = transfer_options(&app, options, TransferMode::Copy);
 
     // An engine on this machine reads the files itself, as one rclone job like any
     // copy. Only an engine elsewhere cannot see them and needs their bytes sent.
@@ -436,16 +433,23 @@ pub async fn execute_upload_batch(
         )
         .await;
     }
-    // rclone reads the options of an upload from its query, as flat names or as
-    // `_config` and `_filter` in JSON.
-    let option_query = upload_query(&options.options);
-    metadata = metadata
-        .with_dry_run(lookup_dry_run(
-            &serde_json::Value::Object(options.options),
-            None,
-            OperationType::Copy,
-        ))
-        .with_template(options.template);
+    // Each file goes to `operations/uploadfile`, which writes it as it streams (`Rcat`):
+    // copy options and filters are never read there and backend options hardly at all,
+    // so none are sent and the job does not list them. The destination's own options
+    // apply, as part of its name.
+    let options = TransferOptions {
+        remotes: options.remotes,
+        ..TransferOptions::default()
+    };
+    let fs = options
+        .apply_remotes(serde_json::Map::from_iter([(
+            "fs".to_string(),
+            json!(remote),
+        )]))?
+        .remove("fs")
+        .and_then(|fs| fs.as_str().map(str::to_owned))
+        .unwrap_or_else(|| remote.clone());
+    metadata = metadata.with_transfer_options(options.summary());
 
     let client = app.state::<RcloneState>().client.clone();
     let job_cache = backend_manager.job_cache_for(&backend.name);
@@ -453,7 +457,7 @@ pub async fn execute_upload_batch(
     let discovery = discover_upload_entries(local_paths, path).await?;
 
     for remote_dir in &discovery.empty_dir_remotes {
-        let payload = json!({ "fs": &remote, "remote": remote_dir });
+        let payload = json!({ "fs": &fs, "remote": remote_dir });
         transport
             .rpc(operations::MKDIR, Some(&payload))
             .await
@@ -515,11 +519,11 @@ pub async fn execute_upload_batch(
             let backend = backend.clone();
             let client = client.clone();
             let remote = remote.clone();
+            let fs = fs.clone();
             let progress = progress.clone();
             let job_cache = job_cache.clone();
             let group_name = group_name.clone();
             let cancellation = cancellation.clone();
-            let option_query = option_query.clone();
 
             async move {
                 if cancellation.is_cancelled() {
@@ -608,8 +612,7 @@ pub async fn execute_upload_batch(
                     .inject_auth(
                         client
                             .post(backend.url_for(operations::UPLOADFILE))
-                            .query(&[("fs", &remote), ("remote", &remote_dir)])
-                            .query(&option_query),
+                            .query(&[("fs", &fs), ("remote", &remote_dir)]),
                     )
                     .multipart(reqwest::multipart::Form::new().part("file", part))
                     .send();
@@ -711,7 +714,7 @@ pub async fn upload_local_drop_paths(
     local_paths: Vec<String>,
     origin: Option<Origin>,
     group: Option<String>,
-    template: Option<String>,
+    options: Option<serde_json::Value>,
 ) -> Result<String, String> {
     execute_upload_batch(
         app,
@@ -722,24 +725,10 @@ pub async fn upload_local_drop_paths(
             local_paths,
             origin,
             group,
-            template,
+            options,
         },
     )
     .await
-}
-
-/// Options as query parameters: a text as it is, anything else as JSON.
-fn upload_query(options: &serde_json::Map<String, serde_json::Value>) -> Vec<(String, String)> {
-    options
-        .iter()
-        .map(|(key, value)| {
-            let value = match value {
-                serde_json::Value::String(text) => text.clone(),
-                other => other.to_string(),
-            };
-            (key.clone(), value)
-        })
-        .collect()
 }
 
 pub async fn upload_file(
@@ -899,28 +888,6 @@ mod tests {
         assert_eq!(inputs[1]["srcFs"], folder_raw.as_str());
         assert_eq!(inputs[1]["dstFs"], "drive:target/özel klasör");
         assert_eq!(inputs[2]["dstRemote"], "target/report..txt");
-    }
-
-    #[test]
-    fn upload_options_travel_in_the_query_as_rclone_reads_them() {
-        let options = serde_json::json!({
-            "checksum": true,
-            "low_level_retries": 20,
-            "max_transfer": "1G",
-            "_config": {"LowLevelRetries": 20},
-        });
-        let mut query = upload_query(options.as_object().unwrap());
-        query.sort();
-        assert_eq!(
-            query,
-            [
-                ("_config", r#"{"LowLevelRetries":20}"#),
-                ("checksum", "true"),
-                ("low_level_retries", "20"),
-                ("max_transfer", "1G"),
-            ]
-            .map(|(key, value)| (key.to_string(), value.to_string()))
-        );
     }
 
     #[tokio::test]

@@ -618,13 +618,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "收藏项目",
-        "description": "文件浏览器中收藏的文件和文件夹列表"
+      "layout": {
+        "label": "布局",
+        "description": "文件浏览器显示文件的方式：网格中的图标或列表中的行。文件浏览器中的布局按钮也可以更改。",
+        "options": {
+          "grid": "网格",
+          "list": "列表"
+        }
       },
-      "bookmarks": {
-        "label": "书签",
-        "description": "快速访问的书签路径列表"
+      "sort": {
+        "label": "排序",
+        "description": "文件浏览器中文件的顺序。“视图选项”中的“排序”也可以更改。"
+      },
+      "show_hidden": {
+        "label": "显示隐藏文件",
+        "description": "显示名称以点开头的文件和文件夹。"
+      },
+      "upload_request_mib": {
+        "label": "上传请求的最大大小 (MiB)",
+        "description": "从网页界面上传时，每个请求都不会超过此大小。如果服务器前面有反向代理，请将其设为该代理的请求大小上限（除非调大 client_max_body_size，nginx 只允许 1 MiB）。代理拒绝某个请求时，会自动改用更小的请求重试。较大的值可以加快在高速但延迟较高的连接上上传单个大文件。"
+      },
+      "parallel_uploads": {
+        "label": "同时上传的文件数",
+        "description": "网页界面同时向服务器发送的文件数量。网络较慢时，数量少一些更合适。"
+      },
+      "ask_transfer_options": {
+        "label": "每次传输时询问选项",
+        "description": "在上传，或复制、移动到其他远程存储之前，显示传输选项。默认传输选项已预先填好，也可以导入模板。"
       }
     },
     "remoteSaved": "远程存储已成功保存",
@@ -642,25 +662,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "云盘配置文件（主菜单）"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "上传请求的最大大小 (MiB)",
-        "description": "从网页界面上传时，每个请求都不会超过此大小。如果服务器前面有反向代理，请将其设为该代理的请求大小上限（除非调大 client_max_body_size，nginx 只允许 1 MiB）。代理拒绝某个请求时，会自动改用更小的请求重试。较大的值可以加快在高速但延迟较高的连接上上传单个大文件。"
-      },
-      "parallel_uploads": {
-        "label": "同时上传的文件数",
-        "description": "网页界面同时向服务器发送的文件数量。网络较慢时，数量少一些更合适。"
-      },
-      "transfer_template": {
-        "label": "传输模板",
-        "description": "文件浏览器中的复制、移动和上传会使用此模板中的复制或移动、过滤器和后端选项。模板在“管理模板”中创建。已删除的模板会被跳过。",
-        "none": "不使用模板"
-      },
-      "ask_transfer_template": {
-        "label": "每次传输时询问模板",
-        "description": "在上传，或复制、移动到另一个远程存储之前，询问要使用哪个模板。默认选中上方的传输模板。"
       }
     }
   },
@@ -1885,6 +1886,13 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "resumeUpload": "继续上传",
+      "resumeWithFiles": "选择相同的文件以继续",
+      "resumeWithFolder": "选择相同的文件夹以继续",
+      "uploadPausedConnection": "已暂停：与服务器的连接已断开",
+      "uploadPausedReselect": {
+        "other": "已暂停：请重新选择 {{count}} 个文件以继续"
+      },
       "progress": "进度",
       "files": "文件",
       "speed": "速度",
@@ -1901,7 +1909,7 @@
         "copiedFiles": "已复制文件",
         "syncedFiles": "已同步文件",
         "processedFiles": "已处理文件",
-        "template": "模板"
+        "options": "选项"
       },
       "running": "运行中",
       "filesCount": {
@@ -2307,6 +2315,7 @@
     },
     "preferences": {
       "title": "偏好设置",
+      "fileBrowserTitle": "文件浏览器偏好设置",
       "searchResults": "搜索结果",
       "searchPlaceholder": "搜索设置...",
       "resetAll": "重置所有设置",
@@ -2335,7 +2344,7 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
-        "file_browser": "文件浏览器",
+        "nautilus": "文件浏览器",
         "developer": "开发者",
         "vault": "保管库"
       },
@@ -3521,6 +3530,17 @@
       "uploadFailed": {
         "other": "上传 {{count}} 个文件失败。"
       },
+      "uploadInterrupted": "与服务器的连接已断开。请在“操作”中继续上传。",
+      "uploadFilesNotInUpload": "所选文件中没有此上传仍需要的文件。",
+      "uploadFilesStillMissing": {
+        "other": "此上传仍缺少 {{count}} 个文件。请在“操作”中选择这些文件以完成上传。"
+      },
+      "copyingPickedFiles": {
+        "other": "正在为上传准备 {{count}} 个所选项目…"
+      },
+      "pickedFilesNotCopied": {
+        "other": "无法读取 {{count}} 个所选项目，这些项目不会被上传。"
+      },
       "trashEmptied": "清理操作完成",
       "rmdirsStarted": "正在删除 \"{{name}}\" 中的空文件夹...",
       "deleteStarted": {
@@ -3558,8 +3578,9 @@
       "star": "添加星标",
       "unstar": "移除星标"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "传输选项",
+      "defaultTitle": "默认传输选项",
       "summary": {
         "upload": {
           "other": "将上传 {{count}} 项到 {{destination}}。"
@@ -3571,11 +3592,16 @@
           "other": "将移动 {{count}} 项到 {{destination}}。"
         }
       },
-      "noOptions": "此模板中没有适用于本次传输的选项。",
-      "noTemplateChosen": "不使用模板时，传输只使用在“Rclone 标志”中设置的选项。",
-      "whatTemplatesDo": "模板可以保存 rclone 选项，例如校验和检查或重试次数，让某次传输使用这些选项，而不改变其他传输的设置。",
-      "useAsDefault": "默认使用此模板",
-      "dontAskAgain": "不再询问（偏好设置 › 文件浏览器）",
+      "engine": {
+        "local": "在 {{name}} 上运行，即此应用运行的 rclone。",
+        "remote": "在 {{name}} 上运行，即另一台计算机上的 rclone。下方的选项就是该 rclone 提供的选项。"
+      },
+      "defaultIntro": "文件浏览器中的复制、移动和上传都以这些选项开始。",
+      "remoteNote": "这些选项仅在本次传输期间应用于 {{name}}，其已保存的设置不会改变。",
+      "streamNote": "文件会逐个发送到另一台计算机上的 rclone，该 rclone 不会对这些文件使用复制、过滤器或后端选项。只有目标自身的选项生效。",
+      "nothingToSet": "此上传没有可设置的选项。",
+      "useAsDefault": "默认使用这些选项",
+      "dontAskAgain": "不再询问（文件浏览器偏好设置）",
       "start": "开始"
     }
   },

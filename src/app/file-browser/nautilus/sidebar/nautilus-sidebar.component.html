@@ -185,6 +185,9 @@
     <button class="menu-item" cdkMenuItem (click)="onConfigureSidebar()">
       <span class="item-label">{{ 'nautilus.sidebar.configureTitle' | translate }}</span>
     </button>
+    <button class="menu-item" cdkMenuItem (click)="requestPreferences.emit()">
+      <span class="item-label">{{ 'modals.preferences.fileBrowserTitle' | translate }}</span>
+    </button>
     <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestShortcuts.emit()">
       <span class="item-label">{{ 'shortcuts.title' | translate }}</span>

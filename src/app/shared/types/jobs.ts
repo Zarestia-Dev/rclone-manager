@@ -180,8 +180,8 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
-  /** The name of the user template whose options the job runs with. */
-  template?: string;
+  /** The names of the options a file browser transfer runs with. */
+  transfer_options?: string;
   /** Files listed per report of a finished sync, copy or move; the lists come from `getJobReport`. */
   report_counts?: JobReportCounts;
 }

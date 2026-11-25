@@ -9,6 +9,8 @@ import {
   RemoteFileOperationsService,
 } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
+import { NautilusTabService } from 'src/app/services/ui/nautilus-tab.service';
 import { JobInfo, GlobalStats } from '@app/types';
 
 describe('OperationsPanelComponent', () => {
@@ -17,6 +19,8 @@ describe('OperationsPanelComponent', () => {
   let mockJobsSignal: ReturnType<typeof signal<JobInfo[]>>;
   let pendingUploads: ReturnType<typeof signal<PendingWebUpload[]>>;
   const cancelWebUpload = vi.fn();
+  const resumeWebUpload = vi.fn();
+  const refreshPath = vi.fn();
   let jobManagementMock: {
     nautilusJobs: ReturnType<typeof signal<JobInfo[]>>;
     refreshJobs: ReturnType<typeof vi.fn>;
@@ -85,6 +89,8 @@ describe('OperationsPanelComponent', () => {
   };
 
   beforeEach(() => {
+    resumeWebUpload.mockReset();
+    refreshPath.mockReset();
     mockJobsSignal = signal<JobInfo[]>([sampleRunningJob, sampleCompletedJob]);
     pendingUploads = signal<PendingWebUpload[]>([]);
     cancelWebUpload.mockClear();
@@ -108,6 +114,8 @@ describe('OperationsPanelComponent', () => {
           useValue: { pendingWebUploads: pendingUploads, cancelWebUpload },
         },
         { provide: PathService, useValue: pathServiceMock },
+        { provide: NautilusFileOperationsService, useValue: { resumeWebUpload } },
+        { provide: NautilusTabService, useValue: { refreshPath } },
       ],
     });
 
@@ -121,6 +129,11 @@ describe('OperationsPanelComponent', () => {
           failed: 'Failed',
           cancelled: 'Cancelled',
           filesCount: '{{count}} files',
+          resumeUpload: 'Continue upload',
+          resumeWithFiles: 'Select the same files',
+          resumeWithFolder: 'Select the same folder',
+          uploadPausedConnection: 'Paused: connection lost',
+          uploadPausedReselect: 'Paused: select {{count}} files again',
           types: {
             copy: 'Copy',
             delete: 'Delete',
@@ -189,6 +202,7 @@ describe('OperationsPanelComponent', () => {
         origin: 'filemanager',
         sent: 0,
         total: 0,
+        files: 0,
       },
     ]);
     fixture.detectChanges();
@@ -213,11 +227,86 @@ describe('OperationsPanelComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
   });
 
+  it('continues a paused upload whose files the page holds and refreshes its folder', async () => {
+    resumeWebUpload.mockResolvedValue(true);
+    const upload: PendingWebUpload = {
+      group: 'upload-1',
+      remote: 'drive:',
+      path: 'dest',
+      origin: 'filemanager',
+      sent: 40,
+      total: 100,
+      files: 2,
+      paused: { missing: 0 },
+    };
+    pendingUploads.set([upload]);
+    fixture.detectChanges();
+    const status = fixture.nativeElement.querySelector('[role="status"]') as HTMLElement;
+    expect(status.getAttribute('aria-busy')).toBe('false');
+    expect(status.textContent).toContain('Paused: connection lost');
+    expect(status.querySelector('mat-progress-bar')?.getAttribute('mode')).toBe('determinate');
+    const resume = status.querySelector<HTMLButtonElement>('[title="Continue upload"]');
+    resume?.click();
+    await vi.waitFor(() => expect(refreshPath).toHaveBeenCalledWith('drive:', 'dest'));
+    expect(resumeWebUpload).toHaveBeenCalledExactlyOnceWith('upload-1', undefined);
+  });
+
+  it('asks a reloaded page for the files of a paused upload again', async () => {
+    resumeWebUpload.mockResolvedValue(false);
+    pendingUploads.set([
+      {
+        group: 'upload-1',
+        remote: 'drive:',
+        path: 'dest',
+        origin: 'filemanager',
+        sent: 40,
+        total: 100,
+        files: 3,
+        paused: { missing: 3 },
+      },
+    ]);
+    fixture.detectChanges();
+    const status = fixture.nativeElement.querySelector('[role="status"]') as HTMLElement;
+    expect(status.textContent).toContain('Paused: select 3 files again');
+    expect(status.querySelector('[title="Continue upload"]')).toBeNull();
+
+    const input = fixture.nativeElement.querySelector('input[webkitdirectory]') as HTMLInputElement;
+    const click = vi.spyOn(input, 'click').mockImplementation(() => undefined);
+    status.querySelector<HTMLButtonElement>('[title="Select the same folder"]')?.click();
+    expect(click).toHaveBeenCalledOnce();
+    const file = new File(['x'], 'a.txt');
+    Object.defineProperty(file, 'webkitRelativePath', { value: 'folder/a.txt' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await vi.waitFor(() =>
+      expect(resumeWebUpload).toHaveBeenCalledExactlyOnceWith('upload-1', [
+        { file, relativePath: 'folder/a.txt' },
+      ])
+    );
+    expect(refreshPath).not.toHaveBeenCalled();
+  });
+
   it('replaces preparation with its backend job while keeping concurrent uploads visible', () => {
     pendingUploads.set([
-      { group: 'upload-1', remote: 'drive:', path: '', origin: 'filemanager', sent: 0, total: 0 },
-      { group: 'upload-2', remote: 'drive:', path: '', origin: 'filemanager', sent: 0, total: 0 },
-      { group: 'other-origin', remote: 'drive:', path: '', sent: 0, total: 0 },
+      {
+        group: 'upload-1',
+        remote: 'drive:',
+        path: '',
+        origin: 'filemanager',
+        sent: 0,
+        total: 0,
+        files: 0,
+      },
+      {
+        group: 'upload-2',
+        remote: 'drive:',
+        path: '',
+        origin: 'filemanager',
+        sent: 0,
+        total: 0,
+        files: 0,
+      },
+      { group: 'other-origin', remote: 'drive:', path: '', sent: 0, total: 0, files: 0 },
     ]);
     mockJobsSignal.set([{ ...sampleRunningJob, job_type: 'upload', group: 'upload-1' }]);
     fixture.detectChanges();
@@ -230,7 +319,15 @@ describe('OperationsPanelComponent', () => {
 
   it('does not show preparation again if the backend job completes before the response', () => {
     pendingUploads.set([
-      { group: 'upload-1', remote: 'drive:', path: '', origin: 'filemanager', sent: 0, total: 0 },
+      {
+        group: 'upload-1',
+        remote: 'drive:',
+        path: '',
+        origin: 'filemanager',
+        sent: 0,
+        total: 0,
+        files: 0,
+      },
     ]);
     mockJobsSignal.set([{ ...sampleCompletedJob, job_type: 'upload', group: 'upload-1' }]);
     expect(component.preparingUploads()).toEqual([]);

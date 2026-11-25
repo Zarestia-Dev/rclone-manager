@@ -1,0 +1,62 @@
+@use "../../../styles/mixins" as *;
+
+main {
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.editor-sidenav-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: var(--window-bg-color);
+}
+
+.modal-sidebar {
+  @include wizard-modal-sidebar;
+  @include wizard-step-indicator;
+}
+
+.modal-content {
+  container-type: inline-size;
+  min-width: 0;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--window-bg-color);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-elevated);
+
+  p {
+    margin: 0;
+  }
+
+  .engine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+footer .choices {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: auto;
+}

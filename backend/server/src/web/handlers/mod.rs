@@ -17,5 +17,5 @@ pub(super) use system::sse_handler;
 pub(super) use upload::{
     MAX_LIST_BYTES, UploadSessions, add_upload_entries, cancel_upload_session,
     clear_stale_upload_staging, create_upload_session, finish_upload_session,
-    legacy_upload_handler, upload_chunk,
+    legacy_upload_handler, upload_chunk, upload_session_status,
 };

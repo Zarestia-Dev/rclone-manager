@@ -620,13 +620,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "收藏專案",
-        "description": "檔案瀏覽器中收藏的檔案和資料夾列表"
+      "layout": {
+        "label": "佈局",
+        "description": "檔案瀏覽器顯示檔案的方式：格狀的圖示或清單中的列。檔案瀏覽器中的佈局按鈕也可以變更。",
+        "options": {
+          "grid": "格狀",
+          "list": "清單"
+        }
       },
-      "bookmarks": {
-        "label": "書籤",
-        "description": "快速訪問的書籤路徑列表"
+      "sort": {
+        "label": "排序",
+        "description": "檔案瀏覽器中檔案的順序。「檢視選項」中的「排序」也可以變更。"
+      },
+      "show_hidden": {
+        "label": "顯示隱藏檔案",
+        "description": "顯示名稱以點開頭的檔案和資料夾。"
+      },
+      "upload_request_mib": {
+        "label": "上傳請求的最大大小 (MiB)",
+        "description": "從網頁介面上傳時，每個請求都不會超過此大小。如果伺服器前面有反向代理，請將其設為該代理的請求大小上限（除非調高 client_max_body_size，nginx 只允許 1 MiB）。代理拒絕某個請求時，會自動改用較小的請求重試。較大的值可以加快在高速但延遲較高的連線上上傳單一大型檔案。"
+      },
+      "parallel_uploads": {
+        "label": "同時上傳的檔案數",
+        "description": "網頁介面同時傳送到伺服器的檔案數量。網路較慢時，數量少一些較合適。"
+      },
+      "ask_transfer_options": {
+        "label": "每次傳輸時詢問選項",
+        "description": "在上傳，或複製、移動到其他遠端之前，顯示傳輸選項。預設傳輸選項已預先填好，也可以匯入範本。"
       }
     },
     "wizard": {
@@ -642,25 +662,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "雲端設定檔（主選單）"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "上傳請求的最大大小 (MiB)",
-        "description": "從網頁介面上傳時，每個請求都不會超過此大小。如果伺服器前面有反向代理，請將其設為該代理的請求大小上限（除非調高 client_max_body_size，nginx 只允許 1 MiB）。代理拒絕某個請求時，會自動改用較小的請求重試。較大的值可以加快在高速但延遲較高的連線上上傳單一大型檔案。"
-      },
-      "parallel_uploads": {
-        "label": "同時上傳的檔案數",
-        "description": "網頁介面同時傳送到伺服器的檔案數量。網路較慢時，數量少一些較合適。"
-      },
-      "transfer_template": {
-        "label": "傳輸模板",
-        "description": "檔案瀏覽器中的複製、移動和上傳會使用此模板中的複製或移動、過濾器和後端選項。模板在「管理模板」中建立。已刪除的模板會被略過。",
-        "none": "不使用模板"
-      },
-      "ask_transfer_template": {
-        "label": "每次傳輸時詢問模板",
-        "description": "在上傳，或複製、移動到另一個遠端之前，詢問要使用哪個模板。預設選取上方的傳輸模板。"
       }
     }
   },
@@ -1885,6 +1886,13 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "resumeUpload": "繼續上傳",
+      "resumeWithFiles": "選擇相同的檔案以繼續",
+      "resumeWithFolder": "選擇相同的資料夾以繼續",
+      "uploadPausedConnection": "已暫停：與伺服器的連線已中斷",
+      "uploadPausedReselect": {
+        "other": "已暫停：請重新選擇 {{count}} 個檔案以繼續"
+      },
       "progress": "進度",
       "files": "檔案",
       "speed": "速度",
@@ -1901,7 +1909,7 @@
         "copiedFiles": "已複製檔案",
         "syncedFiles": "已同步檔案",
         "processedFiles": "已處理檔案",
-        "template": "模板"
+        "options": "選項"
       },
       "running": "執行中",
       "filesCount": {
@@ -2348,6 +2356,7 @@
     },
     "preferences": {
       "title": "偏好設定",
+      "fileBrowserTitle": "檔案瀏覽器偏好設定",
       "searchResults": "搜尋結果",
       "searchPlaceholder": "搜尋設定...",
       "resetAll": "重設所有設定",
@@ -2376,7 +2385,7 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
-        "file_browser": "檔案瀏覽器",
+        "nautilus": "檔案瀏覽器",
         "developer": "開發者",
         "vault": "保存庫"
       },
@@ -3562,6 +3571,17 @@
       "uploadFailed": {
         "other": "上傳 {{count}} 個檔案失敗。"
       },
+      "uploadInterrupted": "與伺服器的連線已中斷。請在「操作」中繼續上傳。",
+      "uploadFilesNotInUpload": "所選檔案中沒有此上傳仍需要的檔案。",
+      "uploadFilesStillMissing": {
+        "other": "此上傳仍缺少 {{count}} 個檔案。請在「操作」中選擇這些檔案以完成上傳。"
+      },
+      "copyingPickedFiles": {
+        "other": "正在為上傳準備 {{count}} 個所選項目…"
+      },
+      "pickedFilesNotCopied": {
+        "other": "無法讀取 {{count}} 個所選項目，這些項目不會被上傳。"
+      },
       "trashEmptied": "清理操作完成",
       "rmdirsStarted": "正在刪除 \"{{name}}\" 中的空資料夾...",
       "deleteStarted": {
@@ -3599,8 +3619,9 @@
       "star": "加入星號",
       "unstar": "移除星號"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "傳輸選項",
+      "defaultTitle": "預設傳輸選項",
       "summary": {
         "upload": {
           "other": "將上傳 {{count}} 項到 {{destination}}。"
@@ -3612,11 +3633,16 @@
           "other": "將移動 {{count}} 項到 {{destination}}。"
         }
       },
-      "noOptions": "此模板中沒有適用於本次傳輸的選項。",
-      "noTemplateChosen": "不使用模板時，傳輸只會使用在「Rclone 旗標」中設定的選項。",
-      "whatTemplatesDo": "模板可以儲存 rclone 選項，例如總和檢查碼檢查或重試次數，讓某次傳輸使用這些選項，而不改變其他傳輸的設定。",
-      "useAsDefault": "預設使用此模板",
-      "dontAskAgain": "不再詢問（偏好設定 › 檔案瀏覽器）",
+      "engine": {
+        "local": "在 {{name}} 上執行，即此應用程式執行的 rclone。",
+        "remote": "在 {{name}} 上執行，即另一台電腦上的 rclone。下方的選項就是該 rclone 提供的選項。"
+      },
+      "defaultIntro": "檔案瀏覽器中的複製、移動和上傳都以這些選項開始。",
+      "remoteNote": "這些選項僅在本次傳輸期間套用於 {{name}}，其已儲存的設定不會改變。",
+      "streamNote": "檔案會逐一傳送到另一台電腦上的 rclone，該 rclone 不會對這些檔案使用複製、篩選器或後端選項。只有目標本身的選項會生效。",
+      "nothingToSet": "此上傳沒有可設定的選項。",
+      "useAsDefault": "預設使用這些選項",
+      "dontAskAgain": "不再詢問（檔案瀏覽器偏好設定）",
       "start": "開始"
     }
   },

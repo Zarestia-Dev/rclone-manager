@@ -1,0 +1,195 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="isSidebarOpen.set(!isSidebarOpen())"
+    [attr.title]="'sidebar.toggleSidebar' | translate"
+    [attr.aria-label]="'sidebar.toggleSidebar' | translate"
+  >
+    <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
+  </button>
+  <p>
+    {{
+      (isDefault ? 'nautilus.transferOptions.defaultTitle' : 'nautilus.transferOptions.title')
+        | translate
+    }}
+  </p>
+  <button
+    matIconButton
+    type="button"
+    (click)="cancel()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main class="dull">
+  <mat-sidenav-container class="editor-sidenav-container">
+    <mat-sidenav
+      [opened]="isSidebarOpen()"
+      (openedChange)="isSidebarOpen.set($event)"
+      [mode]="sidebarMode()"
+      class="modal-sidebar"
+    >
+      <div class="step-indicator-container hide-scrollbar">
+        <mat-nav-list class="step-indicator">
+          @for (step of steps(); track step.key) {
+            <button
+              mat-list-item
+              [activated]="active().key === step.key"
+              (click)="selectStep(step.key)"
+              [attr.title]="step.label | translate"
+            >
+              <mat-icon matListItemIcon [svgIcon]="step.icon"></mat-icon>
+              <span matListItemTitle>{{ step.label | translate }}</span>
+            </button>
+          }
+        </mat-nav-list>
+      </div>
+
+      <div class="sidebar-footer">
+        <mat-nav-list class="step-indicator">
+          <button
+            mat-list-item
+            [activated]="searchVisible()"
+            (click)="toggleSearch()"
+            [attr.title]="'shared.search.toggle' | translate"
+          >
+            <mat-icon matListItemIcon svgIcon="search"></mat-icon>
+            <span matListItemTitle>{{ 'shared.search.toggle' | translate }}</span>
+          </button>
+
+          @if (flagSteps.length) {
+            <app-preset-template-bar
+              [applicableCategories]="flagSteps"
+              [currentValues]="currentValues"
+              (applyTemplate)="onApplyTemplate($event)"
+            />
+          }
+        </mat-nav-list>
+      </div>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="modal-content">
+      <app-search-container
+        [visible]="searchVisible()"
+        (searchToggle)="toggleSearch()"
+        [searchText]="searchQuery()"
+        (searchTextChange)="searchQuery.set($event)"
+        [placeholder]="'shared.search.placeholder'"
+        [ariaLabel]="'shared.search.ariaLabel'"
+      ></app-search-container>
+
+      <section class="intro">
+        @if (isDefault) {
+          <p>{{ 'nautilus.transferOptions.defaultIntro' | translate }}</p>
+        } @else {
+          <p>
+            {{
+              'nautilus.transferOptions.summary.' + data.operation
+                | translate: { count: data.count, destination: data.destination }
+            }}
+          </p>
+          <p class="engine">
+            <mat-icon svgIcon="rclone"></mat-icon>
+            {{
+              (engine().local
+                ? 'nautilus.transferOptions.engine.local'
+                : 'nautilus.transferOptions.engine.remote'
+              ) | translate: { name: engine().name }
+            }}
+          </p>
+        }
+      </section>
+
+      @if (loadFailed()) {
+        <app-alert-banner
+          severity="error"
+          [title]="'modals.remoteConfig.errors.loadFailed' | translate"
+        />
+        <button matButton type="button" (click)="retry()">
+          {{ 'common.retry' | translate }}
+        </button>
+      }
+
+      <section class="step-content" [attr.aria-busy]="isLoading()">
+        @if (streamsFiles) {
+          <app-alert-banner
+            severity="info"
+            [title]="'nautilus.transferOptions.streamNote' | translate"
+          ></app-alert-banner>
+        }
+        @let step = active();
+        @if (!step) {
+          <div class="empty-state">
+            <span>{{ 'nautilus.transferOptions.nothingToSet' | translate }}</span>
+          </div>
+        } @else if (step.flag; as flag) {
+          @if (flagFields()[flag]?.length) {
+            <app-flag-config-step
+              [form]="form"
+              [flagType]="flag"
+              [dynamicFlagFields]="flagFields()[flag] ?? []"
+              [searchQuery]="searchQuery()"
+              [isLoading]="isLoading()"
+            />
+          } @else if (isLoading()) {
+            <app-config-form-skeleton />
+          }
+        } @else if (step.remote; as remote) {
+          <app-alert-banner
+            severity="info"
+            [title]="'nautilus.transferOptions.remoteNote' | translate: { name: remote }"
+          ></app-alert-banner>
+          @if (remoteSteps().get(remote); as remoteStep) {
+            <app-remote-config-step
+              [form]="remoteStep.form"
+              [remoteFields]="remoteStep.fields"
+              [searchQuery]="searchQuery()"
+              [visibility]="{
+                type: false,
+                name: false,
+                advanced: false,
+                interactive: false,
+                commands: false,
+              }"
+              [showAdvancedOptions]="true"
+            />
+          } @else {
+            <app-config-form-skeleton />
+          }
+        }
+      </section>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</main>
+
+<footer>
+  @if (!isDefault) {
+    <div class="choices">
+      @if (flagSteps.length) {
+        <mat-checkbox [checked]="useAsDefault()" (change)="useAsDefault.set($event.checked)">
+          {{ 'nautilus.transferOptions.useAsDefault' | translate }}
+        </mat-checkbox>
+      }
+      <mat-checkbox [checked]="dontAskAgain()" (change)="dontAskAgain.set($event.checked)">
+        {{ 'nautilus.transferOptions.dontAskAgain' | translate }}
+      </mat-checkbox>
+    </div>
+  }
+  <button matButton type="button" (click)="cancel()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    matButton="filled"
+    data-tone="primary"
+    type="button"
+    cdkFocusInitial
+    [disabled]="isLoading() || loadFailed()"
+    (click)="confirm()"
+  >
+    {{ (isDefault ? 'common.save' : 'nautilus.transferOptions.start') | translate }}
+  </button>
+</footer>

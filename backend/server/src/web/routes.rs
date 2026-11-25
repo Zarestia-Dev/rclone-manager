@@ -4,7 +4,7 @@ use axum::{
     extract::DefaultBodyLimit,
     http::{HeaderValue, Method},
     middleware::from_fn_with_state,
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
 };
 use log::info;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -23,7 +23,7 @@ pub fn build_api_router(state: WebServerState) -> Router {
         )
         .route(
             "/upload/sessions/{id}",
-            delete(handlers::cancel_upload_session),
+            get(handlers::upload_session_status).delete(handlers::cancel_upload_session),
         )
         .route(
             "/upload/sessions/{id}/files",

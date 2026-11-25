@@ -619,13 +619,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Favoris",
-        "description": "Liste des fichiers et dossiers favoris dans le navigateur de fichiers."
+      "layout": {
+        "label": "Disposition",
+        "description": "La façon dont l'Explorateur de fichiers affiche les fichiers : en icônes dans une grille ou en lignes dans une liste. Le bouton de disposition de l'Explorateur de fichiers la modifie aussi.",
+        "options": {
+          "grid": "Grille",
+          "list": "Liste"
+        }
       },
-      "bookmarks": {
-        "label": "Signets",
-        "description": "Liste des signets pour un accès rapide."
+      "sort": {
+        "label": "Trier",
+        "description": "L'ordre des fichiers dans l'Explorateur de fichiers. Trier, dans Options d'affichage, le modifie aussi."
+      },
+      "show_hidden": {
+        "label": "Afficher les fichiers cachés",
+        "description": "Affiche les fichiers et dossiers dont le nom commence par un point."
+      },
+      "upload_request_mib": {
+        "label": "Taille maximale d'une requête de téléversement (Mio)",
+        "description": "Les téléversements depuis l'interface web sont envoyés en requêtes qui ne dépassent pas cette taille. Réglez-la sur la limite de requête du proxy inverse placé devant le serveur (nginx accepte 1 Mio tant que client_max_body_size n'est pas augmenté). Si un proxy refuse une requête, des requêtes plus petites sont essayées automatiquement. Une valeur plus élevée peut accélérer le téléversement d'un seul gros fichier sur une connexion rapide à forte latence."
+      },
+      "parallel_uploads": {
+        "label": "Fichiers téléversés simultanément",
+        "description": "Nombre de fichiers que l'interface web envoie au serveur en même temps. Une connexion lente s'accommode mieux d'un nombre réduit."
+      },
+      "ask_transfer_options": {
+        "label": "Demander les options à chaque transfert",
+        "description": "Avant un téléversement, ou une copie ou un déplacement vers un autre dépôt distant, affiche les options de transfert. Les options par défaut sont déjà remplies et un modèle peut être importé."
       }
     },
     "remoteSaved": "Remote enregistré avec succès",
@@ -643,25 +663,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Profil du cloud (menu principal)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "Taille maximale d'une requête de téléversement (Mio)",
-        "description": "Les téléversements depuis l'interface web sont envoyés en requêtes qui ne dépassent pas cette taille. Réglez-la sur la limite de requête du proxy inverse placé devant le serveur (nginx accepte 1 Mio tant que client_max_body_size n'est pas augmenté). Si un proxy refuse une requête, des requêtes plus petites sont essayées automatiquement. Une valeur plus élevée peut accélérer le téléversement d'un seul gros fichier sur une connexion rapide à forte latence."
-      },
-      "parallel_uploads": {
-        "label": "Fichiers téléversés simultanément",
-        "description": "Nombre de fichiers que l'interface web envoie au serveur en même temps. Une connexion lente s'accommode mieux d'un nombre réduit."
-      },
-      "transfer_template": {
-        "label": "Modèle de transfert",
-        "description": "Les copies, déplacements et téléversements de l'Explorateur de fichiers utilisent les options de copie ou de déplacement, de filtre et de backend de ce modèle. Les modèles se créent dans Gérer les modèles. Un modèle supprimé est ignoré.",
-        "none": "Aucun modèle"
-      },
-      "ask_transfer_template": {
-        "label": "Demander le modèle à chaque transfert",
-        "description": "Avant un téléversement, ou une copie ou un déplacement vers un autre dépôt distant, demander quel modèle utiliser. Le modèle de transfert ci-dessus est sélectionné d'abord."
       }
     }
   },
@@ -1898,6 +1899,14 @@
       "cancelled": "Annulé",
       "cancelJob": "Annuler",
       "removeJob": "Supprimer",
+      "resumeUpload": "Reprendre le téléversement",
+      "resumeWithFiles": "Sélectionnez les mêmes fichiers pour reprendre",
+      "resumeWithFolder": "Sélectionnez le même dossier pour reprendre",
+      "uploadPausedConnection": "En pause : la connexion au serveur a été perdue",
+      "uploadPausedReselect": {
+        "one": "En pause : sélectionnez de nouveau {{count}} fichier pour reprendre",
+        "other": "En pause : sélectionnez de nouveau {{count}} fichiers pour reprendre"
+      },
       "progress": "Progression",
       "files": "Fichiers",
       "speed": "Vitesse",
@@ -1914,7 +1923,7 @@
         "copiedFiles": "Fichiers copiés",
         "syncedFiles": "Fichiers synchronisés",
         "processedFiles": "Fichiers traités",
-        "template": "Modèle"
+        "options": "Options"
       },
       "running": "En cours",
       "filesCount": {
@@ -2323,6 +2332,7 @@
     },
     "preferences": {
       "title": "Préférences",
+      "fileBrowserTitle": "Préférences de l'Explorateur de fichiers",
       "searchResults": "Résultats de la recherche",
       "searchPlaceholder": "Paramètres de recherche...",
       "resetAll": "Réinitialiser tous les paramètres",
@@ -2351,7 +2361,7 @@
       "tabs": {
         "general": "Général",
         "core": "Moteur",
-        "file_browser": "Explorateur de fichiers",
+        "nautilus": "Explorateur de fichiers",
         "developer": "Développeur",
         "vault": "Coffre-fort"
       },
@@ -3565,6 +3575,20 @@
         "one": "Échec du téléversement de {{count}} fichier.",
         "other": "Échec du téléversement de {{count}} fichiers."
       },
+      "uploadInterrupted": "La connexion au serveur a été perdue. Reprenez le téléversement dans Opérations.",
+      "uploadFilesNotInUpload": "Aucun des fichiers sélectionnés ne fait partie de ceux qu'attend encore ce téléversement.",
+      "uploadFilesStillMissing": {
+        "one": "Il manque encore {{count}} fichier à ce téléversement. Sélectionnez-le dans Opérations pour terminer le téléversement.",
+        "other": "Il manque encore {{count}} fichiers à ce téléversement. Sélectionnez-les dans Opérations pour terminer le téléversement."
+      },
+      "copyingPickedFiles": {
+        "one": "Préparation de {{count}} élément sélectionné pour le téléversement…",
+        "other": "Préparation de {{count}} éléments sélectionnés pour le téléversement…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "{{count}} élément sélectionné n'a pas pu être lu et ne sera pas téléversé.",
+        "other": "{{count}} éléments sélectionnés n'ont pas pu être lus et ne seront pas téléversés."
+      },
       "trashEmptied": "Opération de nettoyage terminée",
       "rmdirsStarted": "Suppression des dossiers vides dans \"{{name}}\"...",
       "deleteStarted": {
@@ -3606,8 +3630,9 @@
       "star": "Ajouter aux favoris",
       "unstar": "Retirer des favoris"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Options de transfert",
+      "defaultTitle": "Options de transfert par défaut",
       "summary": {
         "upload": {
           "one": "{{count}} élément sera téléversé vers {{destination}}.",
@@ -3622,11 +3647,16 @@
           "other": "{{count}} éléments seront déplacés vers {{destination}}."
         }
       },
-      "noOptions": "Ce modèle n'a aucune option qui s'applique à ce transfert.",
-      "noTemplateChosen": "Sans modèle, le transfert n'utilise que les options définies dans Options Rclone.",
-      "whatTemplatesDo": "Un modèle conserve des options rclone, comme la vérification des sommes de contrôle ou les nouvelles tentatives, pour qu'un transfert les utilise sans les changer pour tous les autres.",
-      "useAsDefault": "Utiliser ce modèle par défaut",
-      "dontAskAgain": "Ne plus demander (Préférences › Explorateur de fichiers)",
+      "engine": {
+        "local": "S'exécute sur {{name}}, le rclone que cette application exécute.",
+        "remote": "S'exécute sur {{name}}, un rclone sur un autre ordinateur. Les options ci-dessous sont celles que propose ce rclone."
+      },
+      "defaultIntro": "Les copies, déplacements et téléversements de l'Explorateur de fichiers commencent avec ces options.",
+      "remoteNote": "Ces options s'appliquent à {{name}} uniquement pendant ce transfert. Ses paramètres enregistrés ne changent pas.",
+      "streamNote": "Les fichiers sont envoyés un par un au rclone de l'autre ordinateur, qui n'utilise pour eux aucune option de copie, de Filtre ou de Backend. Seules les options propres à la destination s'appliquent.",
+      "nothingToSet": "Ce téléversement n'a aucune option à régler.",
+      "useAsDefault": "Utiliser ces options par défaut",
+      "dontAskAgain": "Ne plus demander (Préférences de l'Explorateur de fichiers)",
       "start": "Démarrer"
     }
   },

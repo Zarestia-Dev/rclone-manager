@@ -621,13 +621,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Itens Destacados",
-        "description": "Lista de arquivos e pastas destacados no navegador de arquivos."
+      "layout": {
+        "label": "Layout",
+        "description": "Como o Gerenciador de Arquivos mostra os arquivos: como ícones em uma grade ou como linhas em uma lista. O botão de layout do Gerenciador de Arquivos também o altera.",
+        "options": {
+          "grid": "Grade",
+          "list": "Lista"
+        }
       },
-      "bookmarks": {
-        "label": "Marcadores de página",
-        "description": "Lista de localizações marcadas para acesso rápido."
+      "sort": {
+        "label": "Ordenar",
+        "description": "A ordem dos arquivos no Gerenciador de Arquivos. Ordenar, em Opções de visualização, também a altera."
+      },
+      "show_hidden": {
+        "label": "Mostrar Arquivos Ocultos",
+        "description": "Mostra arquivos e pastas cujo nome começa com um ponto."
+      },
+      "upload_request_mib": {
+        "label": "Tamanho máximo da requisição de envio (MiB)",
+        "description": "Os envios feitos pela interface web são mandados em requisições que não passam deste tamanho. Ajuste-o ao limite de requisição do proxy reverso que fica na frente do servidor (o nginx aceita 1 MiB, a menos que client_max_body_size seja aumentado). Se um proxy recusar uma requisição, requisições menores são tentadas automaticamente. Um valor maior pode acelerar o envio de um único arquivo grande por uma conexão rápida com alta latência."
+      },
+      "parallel_uploads": {
+        "label": "Arquivos enviados ao mesmo tempo",
+        "description": "Quantos arquivos a interface web manda ao servidor ao mesmo tempo. Em uma conexão lenta, menos arquivos funcionam melhor."
+      },
+      "ask_transfer_options": {
+        "label": "Perguntar pelas opções em cada transferência",
+        "description": "Antes de um envio, ou de uma cópia ou movimentação para outro remoto, mostra as opções de transferência. As opções padrão já vêm preenchidas e um modelo pode ser importado."
       }
     },
     "wizard": {
@@ -643,25 +663,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Perfil da nuvem (menu principal)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "Tamanho máximo da requisição de envio (MiB)",
-        "description": "Os envios feitos pela interface web são mandados em requisições que não passam deste tamanho. Ajuste-o ao limite de requisição do proxy reverso que fica na frente do servidor (o nginx aceita 1 MiB, a menos que client_max_body_size seja aumentado). Se um proxy recusar uma requisição, requisições menores são tentadas automaticamente. Um valor maior pode acelerar o envio de um único arquivo grande por uma conexão rápida com alta latência."
-      },
-      "parallel_uploads": {
-        "label": "Arquivos enviados ao mesmo tempo",
-        "description": "Quantos arquivos a interface web manda ao servidor ao mesmo tempo. Em uma conexão lenta, menos arquivos funcionam melhor."
-      },
-      "transfer_template": {
-        "label": "Modelo de transferência",
-        "description": "As cópias, movimentações e envios do Gerenciador de Arquivos usam as opções de cópia ou movimentação, filtros e backend deste modelo. Os modelos são criados em Gerenciar Modelos. Um modelo excluído é ignorado.",
-        "none": "Nenhum modelo"
-      },
-      "ask_transfer_template": {
-        "label": "Perguntar o modelo a cada transferência",
-        "description": "Antes de um envio, ou de uma cópia ou movimentação para outro remoto, perguntar qual modelo usar. O modelo de transferência acima vem selecionado primeiro."
       }
     }
   },
@@ -1898,6 +1899,14 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Remover",
+      "resumeUpload": "Continuar o envio",
+      "resumeWithFiles": "Selecione os mesmos arquivos para continuar",
+      "resumeWithFolder": "Selecione a mesma pasta para continuar",
+      "uploadPausedConnection": "Pausado: a conexão com o servidor foi perdida",
+      "uploadPausedReselect": {
+        "one": "Pausado: selecione {{count}} arquivo novamente para continuar",
+        "other": "Pausado: selecione {{count}} arquivos novamente para continuar"
+      },
       "progress": "Progresso",
       "files": "Arquivos",
       "speed": "Velocidade",
@@ -1914,7 +1923,7 @@
         "copiedFiles": "Arquivos copiados",
         "syncedFiles": "Arquivos sincronizados",
         "processedFiles": "Arquivos processados",
-        "template": "Modelo"
+        "options": "Opções"
       },
       "running": "Em execução",
       "filesCount": {
@@ -2323,6 +2332,7 @@
     },
     "preferences": {
       "title": "Preferências",
+      "fileBrowserTitle": "Preferências do Gerenciador de Arquivos",
       "searchResults": "Resultados da Busca",
       "searchPlaceholder": "Configurações de busca...",
       "resetAll": "Redefinir Todas as Configurações",
@@ -2351,7 +2361,7 @@
       "tabs": {
         "general": "Geral",
         "core": "Núcleo",
-        "file_browser": "Gerenciador de Arquivos",
+        "nautilus": "Gerenciador de Arquivos",
         "developer": "Desenvolvedor",
         "vault": "Cofre"
       },
@@ -3565,6 +3575,20 @@
         "one": "Falha de upload de {{count}} arquivo.",
         "other": "Falha de upload de {{count}} arquivos."
       },
+      "uploadInterrupted": "A conexão com o servidor foi perdida. Continue o envio em Operações.",
+      "uploadFilesNotInUpload": "Nenhum dos arquivos selecionados está entre os que este envio ainda precisa.",
+      "uploadFilesStillMissing": {
+        "one": "Ainda falta {{count}} arquivo deste envio. Selecione-o em Operações para concluir o envio.",
+        "other": "Ainda faltam {{count}} arquivos deste envio. Selecione-os em Operações para concluir o envio."
+      },
+      "copyingPickedFiles": {
+        "one": "Preparando {{count}} item selecionado para o envio…",
+        "other": "Preparando {{count}} itens selecionados para o envio…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "Não foi possível ler {{count}} item selecionado; ele não será enviado.",
+        "other": "Não foi possível ler {{count}} itens selecionados; eles não serão enviados."
+      },
       "trashEmptied": "Operação de limpeza concluída",
       "rmdirsStarted": "Removendo diretórios vazios em \"{{name}}\"...",
       "deleteStarted": {
@@ -3606,8 +3630,9 @@
       "star": "Adicionar aos favoritos",
       "unstar": "Remover dos favoritos"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Opções de transferência",
+      "defaultTitle": "Opções de transferência padrão",
       "summary": {
         "upload": {
           "one": "{{count}} item será enviado para {{destination}}.",
@@ -3622,11 +3647,16 @@
           "other": "{{count}} itens serão movidos para {{destination}}."
         }
       },
-      "noOptions": "Este modelo não tem opções que se apliquem a esta transferência.",
-      "noTemplateChosen": "Sem modelo, a transferência usa apenas as opções definidas em Flags do Rclone.",
-      "whatTemplatesDo": "Um modelo guarda opções do rclone, como a verificação de checksums ou as novas tentativas, para que uma transferência as use sem mudá-las para todas as outras.",
-      "useAsDefault": "Usar este modelo por padrão",
-      "dontAskAgain": "Não perguntar de novo (Preferências › Gerenciador de Arquivos)",
+      "engine": {
+        "local": "É executado em {{name}}, o rclone que este aplicativo executa.",
+        "remote": "É executado em {{name}}, um rclone em outro computador. As opções abaixo são as que esse rclone oferece."
+      },
+      "defaultIntro": "Cópias, movimentações e envios no Gerenciador de Arquivos começam com estas opções.",
+      "remoteNote": "Estas opções se aplicam a {{name}} somente durante esta transferência. As configurações salvas dele não mudam.",
+      "streamNote": "Os arquivos vão um a um para o rclone do outro computador, que não usa com eles opções de cópia, de Filtro nem de Backend. Só as opções do próprio destino se aplicam.",
+      "nothingToSet": "Este envio não tem opções para definir.",
+      "useAsDefault": "Usar estas opções por padrão",
+      "dontAskAgain": "Não perguntar novamente (Preferências do Gerenciador de Arquivos)",
       "start": "Iniciar"
     }
   },

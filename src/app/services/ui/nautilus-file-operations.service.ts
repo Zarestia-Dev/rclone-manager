@@ -6,12 +6,16 @@ import { firstValueFrom } from 'rxjs';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import {
+  RemoteFileOperationsService,
+  WebUploadOutcome,
+} from 'src/app/services/remote/remote-file-operations.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import type { TransferOptionValues } from 'src/app/shared/modals/transfer-options-modal/transfer-options-modal.component';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -109,12 +113,17 @@ export class NautilusFileOperationsService {
     return false;
   }
 
+  /**
+   * Uploads the local paths the system clipboard holds. Only the app does this: in a browser, the
+   * paths name files on the browser's computer, which the server would look for on its own disk.
+   * Files copied there reach the page as clipboard files, which the paste handler uploads.
+   */
   async pasteSystemClipboard(
     dstRemote: ExplorerRoot | null,
     dstPath: string,
     preparsedText?: string
   ): Promise<boolean> {
-    if (!dstRemote) return false;
+    if (!dstRemote || isHeadlessMode()) return false;
     const text = preparsedText ?? (await this._readSystemClipboardText());
     const paths = this.parseClipboardPaths(text);
     if (paths.length > 0) {
@@ -124,6 +133,7 @@ export class NautilusFileOperationsService {
   }
 
   async checkSystemClipboard(): Promise<boolean> {
+    if (isHeadlessMode()) return false;
     const text = await this._readSystemClipboardText();
     const hasPaths = this.parseClipboardPaths(text).length > 0;
     this.systemClipboardHasPaths.set(hasPaths);
@@ -134,12 +144,6 @@ export class NautilusFileOperationsService {
 
   private async _readSystemClipboardText(): Promise<string> {
     try {
-      if (isHeadlessMode()) {
-        if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
-          return await navigator.clipboard.readText();
-        }
-        return '';
-      }
       if (!this._clipboardReader) {
         const mod = await import('@tauri-apps/plugin-clipboard-manager');
         this._clipboardReader = mod.readText;
@@ -205,10 +209,13 @@ export class NautilusFileOperationsService {
       isDir: !!item.entry.IsDir,
     }));
     // Within one remote rclone copies and moves on the server, where the options do not apply.
-    const template = transferItems.some(item => item.remote !== normalizedDst)
-      ? await this.pickTransferTemplate(mode, items.length, normalizedDst + dstPath)
+    const options = transferItems.some(item => item.remote !== normalizedDst)
+      ? await this.pickTransferOptions(mode, items.length, normalizedDst + dstPath, [
+          normalizedDst,
+          ...transferItems.map(item => item.remote),
+        ])
       : undefined;
-    if (template === null) return;
+    if (options === null) return;
 
     this.notifications.showInfo(
       this.translate.instant(
@@ -228,7 +235,7 @@ export class NautilusFileOperationsService {
         'filemanager',
         undefined,
         undefined,
-        template
+        options
       );
 
       const succeededItems: UndoEntry['items'] = items.map(item => ({
@@ -504,10 +511,12 @@ export class NautilusFileOperationsService {
   async uploadExternalFiles(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
       const paths = await this.fileSystem.selectFilesForUpload();
-      if (paths.length > 0) {
-        return this.uploadLocalPaths(remote, currentPath, paths);
+      if (!paths.length) return false;
+      try {
+        return await this.uploadLocalPaths(remote, currentPath, paths);
+      } finally {
+        this.fileSystem.releaseUploadPaths(paths);
       }
-      return false;
     } catch (err) {
       console.error('Failed to select files', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
@@ -518,10 +527,12 @@ export class NautilusFileOperationsService {
   async uploadExternalFolder(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
       const folderPath = await this.fileSystem.selectFolderForUpload();
-      if (folderPath) {
-        return this.uploadLocalPaths(remote, currentPath, [folderPath]);
+      if (!folderPath) return false;
+      try {
+        return await this.uploadLocalPaths(remote, currentPath, [folderPath]);
+      } finally {
+        this.fileSystem.releaseUploadPaths([folderPath]);
       }
-      return false;
     } catch (err) {
       console.error('Failed to select folder', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
@@ -553,40 +564,86 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!files.length && !emptyDirectories.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
-    const template = await this.pickTransferTemplate(
+    const options = await this.pickTransferOptions(
       'upload',
       files.length || emptyDirectories.length,
-      normalized + currentPath
+      normalized + currentPath,
+      [normalized]
     );
-    if (template === null) return false;
+    if (options === null) return false;
 
-    let outcome;
-    try {
-      outcome = await this.remoteOps.uploadWebFilesBatch(
-        normalized,
-        currentPath,
-        files,
-        'filemanager',
-        emptyDirectories,
-        template
+    return this.reportWebUpload(
+      () =>
+        this.remoteOps.uploadWebFilesBatch(
+          normalized,
+          currentPath,
+          files,
+          'filemanager',
+          emptyDirectories,
+          options
+        ),
+      { files: files.length, items: files.length || emptyDirectories.length }
+    );
+  }
+
+  /**
+   * Continues a paused browser upload: with `picked`, the files the user selected again, which
+   * must include at least one of those it still needs.
+   */
+  async resumeWebUpload(
+    group: string,
+    picked?: { file: File; relativePath: string }[]
+  ): Promise<boolean> {
+    const upload = this.remoteOps.pendingWebUploads().find(item => item.group === group);
+    if (!upload) return false;
+    if (picked && this.remoteOps.attachWebUploadFiles(group, picked) === 0) {
+      this.notifications.showError(
+        this.translate.instant('nautilus.notifications.uploadFilesNotInUpload')
       );
+      return false;
+    }
+    return this.reportWebUpload(
+      () => this.remoteOps.resumeWebUpload(group),
+      { files: upload.files, items: upload.files },
+      group
+    );
+  }
+
+  /** Reports how a browser upload of `count.files` files (`count.items` with folders) ended. */
+  private async reportWebUpload(
+    upload: () => Promise<WebUploadOutcome>,
+    count: { files: number; items: number },
+    group?: string
+  ): Promise<boolean> {
+    let outcome: WebUploadOutcome;
+    try {
+      outcome = await upload();
     } catch (error) {
       console.error('Browser upload failed', error);
       this.notifications.showError(
         this.backendTranslation.translateBackendMessage(error) ||
-          this.translate.instant('nautilus.notifications.uploadFailed', {
-            count: files.length || emptyDirectories.length,
-          })
+          this.translate.instant('nautilus.notifications.uploadFailed', { count: count.items })
       );
       return false;
     }
-    // A transfer still running is followed in the operations panel, like any other job.
-    if (outcome === 'finished' && files.length > 0) {
-      this.notifications.showSuccess(
-        this.translate.instant('nautilus.notifications.uploadSuccess', { count: files.length })
+    if (outcome === 'paused') {
+      const missing =
+        this.remoteOps.pendingWebUploads().find(item => item.group === group)?.paused?.missing ?? 0;
+      this.notifications.showWarning(
+        missing
+          ? this.translate.instant('nautilus.notifications.uploadFilesStillMissing', {
+              count: missing,
+            })
+          : this.translate.instant('nautilus.notifications.uploadInterrupted')
       );
     }
-    return outcome !== 'cancelled';
+    // A transfer still running is followed in the operations panel, like any other job.
+    if (outcome === 'finished' && count.files > 0) {
+      this.notifications.showSuccess(
+        this.translate.instant('nautilus.notifications.uploadSuccess', { count: count.files })
+      );
+    }
+    return outcome === 'finished' || outcome === 'running';
   }
 
   async openNewFolderDialog(
@@ -752,23 +809,33 @@ export class NautilusFileOperationsService {
   }
 
   /**
-   * The template a transfer runs with, when the preferences ask for it on each transfer: the
-   * chosen id ('' for none), or null when the user cancels. Otherwise undefined, which leaves the
-   * file browser's default template to the backend, where Send To gets it too.
+   * The options a transfer runs with, when the preferences ask for them on each transfer: those
+   * set in the dialog, or null when the user cancels. Otherwise undefined, which leaves the file
+   * browser's default to the backend, where Send To gets it too. `remotes` are the remotes the
+   * transfer touches, each of which can get options of its own.
    */
-  private async pickTransferTemplate(
+  private async pickTransferOptions(
     operation: 'upload' | 'copy' | 'move',
     count: number,
-    destination: string
-  ): Promise<string | null | undefined> {
-    if (!(await this.appSettings.getSettingValue<boolean>('file_browser.ask_transfer_template'))) {
+    destination: string,
+    remotes: string[]
+  ): Promise<TransferOptionValues | null | undefined> {
+    if (!(await this.appSettings.getSettingValue<boolean>('nautilus.ask_transfer_options'))) {
       return undefined;
     }
-    const selected =
-      (await this.appSettings.getSettingValue<string>('file_browser.transfer_template')) ?? '';
+    const values =
+      (await this.appSettings.getSettingValue<TransferOptionValues>('nautilus.transfer_options')) ??
+      {};
     const choice = await firstValueFrom(
       this.modalService
-        .openTransferTemplate({ selected, operation, count, destination })
+        .openTransferOptions({
+          mode: 'transfer',
+          operation,
+          count,
+          destination,
+          remotes: [...new Set(remotes.map(remote => remote.replace(/:+$/, '')).filter(Boolean))],
+          values,
+        })
         .afterClosed()
     );
     return choice ?? null;
@@ -781,12 +848,13 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!paths.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
-    const template = await this.pickTransferTemplate(
+    const options = await this.pickTransferOptions(
       'upload',
       paths.length,
-      normalized + currentPath
+      normalized + currentPath,
+      [normalized]
     );
-    if (template === null) return false;
+    if (options === null) return false;
     try {
       const batchId = await this.remoteOps.uploadLocalDropPaths(
         normalized,
@@ -794,7 +862,7 @@ export class NautilusFileOperationsService {
         paths,
         'filemanager',
         undefined,
-        template
+        options
       );
       return !!batchId;
     } catch (err) {

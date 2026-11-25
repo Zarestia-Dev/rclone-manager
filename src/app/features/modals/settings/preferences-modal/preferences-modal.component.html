@@ -12,8 +12,8 @@
     <mat-icon svgIcon="search"></mat-icon>
   </button>
 
-  @if (bottomTabs()) {
-    <p>{{ 'modals.preferences.title' | translate }}</p>
+  @if (bottomTabs() || tabs.length === 1) {
+    <p>{{ title | translate }}</p>
   } @else if (!hasSearchResults()) {
     <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
       @for (tab of tabs; track tab.key; let i = $index) {
@@ -108,6 +108,14 @@
             ></ng-container>
           </div>
         }
+        @if (activeCategory === 'nautilus') {
+          <div class="actions">
+            <button matButton="elevated" (click)="openDefaultTransferOptions()">
+              <mat-icon svgIcon="gear"></mat-icon>
+              {{ 'nautilus.transferOptions.defaultTitle' | translate }}
+            </button>
+          </div>
+        }
         @if (isGeneralTab()) {
           <div class="actions">
             <button
@@ -187,7 +195,7 @@
   </main>
 }
 
-@if (bottomTabs() && !hasSearchResults()) {
+@if (bottomTabs() && tabs.length > 1 && !hasSearchResults()) {
   <div
     class="tabs bottom-tabs"
     role="tablist"

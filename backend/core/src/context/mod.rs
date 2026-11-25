@@ -9,7 +9,9 @@ pub use state::{AppHandle, State};
 pub struct ProductInfo {
     pub display_name: &'static str,
     pub mode: &'static str,
-    pub release_prefix: &'static str,
+    /// Tag prefixes of the product's releases, the current one first. The update check
+    /// accepts them all, the release notes of this build try them in order.
+    pub release_prefixes: &'static [&'static str],
     pub integration_key: &'static str,
     pub flatpak_id: &'static str,
 }

@@ -136,6 +136,11 @@ export class NautilusActionsService {
     this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
   }
 
+  /** The file browser's preferences, which the app's preferences do not hold. */
+  openPreferencesModal(): void {
+    this.modalService.openPreferences('nautilus');
+  }
+
   openAboutModal(remote: ExplorerRoot): void {
     this.modalService.openRemoteAbout(remote);
   }

@@ -24,7 +24,7 @@ use axum::{
 };
 use futures::{Stream, StreamExt};
 use rclone_manager_core::{context::AppHandle, localized_error};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 use crate::rclone::commands::upload::{UploadBatchParams, execute_upload_batch};
@@ -72,9 +72,9 @@ pub struct NewUpload {
     path: String,
     origin: Option<Origin>,
     group: Option<String>,
-    /// The user template to transfer with: absent for the file browser's default,
-    /// empty for none.
-    template: Option<String>,
+    /// The options to transfer with, as the transfer dialog sets them: absent for the
+    /// file browser's default.
+    options: Option<serde_json::Value>,
     #[serde(flatten)]
     entries: UploadEntries,
 }
@@ -102,6 +102,10 @@ pub struct NewUploadFile {
 
 struct StagedFile {
     path: PathBuf,
+    /// The page's path and modification time, by which a reloaded page finds the
+    /// file again when the user selects it once more.
+    relative: String,
+    mtime: Option<i64>,
     size: u64,
     modified: Option<SystemTime>,
     received: AtomicU64,
@@ -377,6 +381,37 @@ pub async fn upload_chunk(
     Ok(Json(ApiResponse::success(received)))
 }
 
+/// A file of a session and how much of it has arrived.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadFileStatus {
+    path: String,
+    size: u64,
+    mtime: Option<i64>,
+    received: u64,
+}
+
+/// The session's files in the page's order, so a page reloaded during an upload
+/// sends each one on from where it stopped.
+pub async fn upload_session_status(
+    State(state): State<WebServerState>,
+    UrlPath(id): UrlPath<String>,
+) -> Result<Json<ApiResponse<Vec<UploadFileStatus>>>, AppError> {
+    let session = state.uploads.get(&id).ok_or_else(session_gone)?;
+    session.touch();
+    let files = session
+        .files()
+        .iter()
+        .map(|file| UploadFileStatus {
+            path: file.relative.clone(),
+            size: file.size,
+            mtime: file.mtime,
+            received: file.received.load(Ordering::Acquire),
+        })
+        .collect();
+    Ok(Json(ApiResponse::success(files)))
+}
+
 /// Starts the transfer of a session whose files have all arrived. The answer is
 /// `true` when the transfer finished within [`FINISH_WAIT`], `false` while it goes on.
 pub async fn finish_upload_session(
@@ -488,7 +523,7 @@ async fn stage_session(
             local_paths: Vec::new(),
             origin: request.origin,
             group: request.group,
-            template: request.template,
+            options: request.options,
         },
         last_used: Mutex::new(Instant::now()),
     })
@@ -518,7 +553,8 @@ async fn stage_entries(
     }
     let mut files = Vec::with_capacity(request.files.len());
     for file in &request.files {
-        let path = staging.join(validate_relative_path(&file.path)?);
+        let relative = validate_relative_path(&file.path)?;
+        let path = staging.join(&relative);
         let modified = file.mtime.map(modified_time).transpose()?;
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent)
@@ -537,6 +573,8 @@ async fn stage_entries(
         }
         files.push(StagedFile {
             path,
+            relative,
+            mtime: file.mtime,
             size: file.size,
             modified,
             received: AtomicU64::new(0),
@@ -657,7 +695,7 @@ mod tests {
             path: "destination".into(),
             origin: None,
             group: Some("upload-group".into()),
-            template: None,
+            options: None,
             entries: entries(files, empty_dirs),
         }
     }
@@ -1042,6 +1080,18 @@ mod tests {
             (StatusCode::OK, true),
             "{body}"
         );
+        // A reloaded page reads what arrived of each file, in the page's order.
+        let (status, body) = call("GET", format!("/upload/sessions/{id}"), Body::empty()).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&body).unwrap()["data"],
+            serde_json::json!([
+                {"path": "a.txt", "size": 3, "mtime": 0, "received": 3},
+                {"path": "b.txt", "size": 1, "mtime": null, "received": 0},
+                {"path": "c.txt", "size": 1, "mtime": null, "received": 0},
+            ])
+        );
+
         // Larger than any list may be, and still only refused for not fitting its file.
         let (status, body) = call(
             "PUT",
@@ -1070,6 +1120,9 @@ mod tests {
             Body::from("x"),
         )
         .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(body.contains("backendErrors.upload.sessionGone"), "{body}");
+        let (status, body) = call("GET", format!("/upload/sessions/{id}"), Body::empty()).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert!(body.contains("backendErrors.upload.sessionGone"), "{body}");
 

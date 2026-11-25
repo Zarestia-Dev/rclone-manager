@@ -170,9 +170,14 @@ jobs:
           node scripts/create-update-manifest.cjs pacman linux "$UPDATE_ARCH" "$VERSION" "$pacman" updater-assets
           # RClone Manager Headless 0.3.6 cannot install its DEB or RPM itself and
           # announces only a release holding these files under its own name. The same
-          # packages, outside the catalog; remove after the 0.3.7 releases.
-          cp "$deb" "updater-assets/RClone.Manager.Headless_${VERSION}_$PACKAGE_ARCH.deb"
-          cp "$rpm" "updater-assets/RClone.Manager.Headless-$VERSION-1.$UPDATE_ARCH.rpm"
+          # packages, outside the catalog. Only the 0.3.7 releases carry them; remove
+          # this step with the rest of the Headless scaffolding (backend/TODO.md).
+          case "$VERSION" in
+            0.3.7*)
+              cp "$deb" "updater-assets/RClone.Manager.Headless_${VERSION}_$PACKAGE_ARCH.deb"
+              cp "$rpm" "updater-assets/RClone.Manager.Headless-$VERSION-1.$UPDATE_ARCH.rpm"
+              ;;
+          esac
 
       - name: Build and sign Windows setup and MSI
         if: matrix.os == 'windows'

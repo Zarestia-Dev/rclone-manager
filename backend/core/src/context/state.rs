@@ -149,12 +149,12 @@ mod tests {
             host.clone(),
             super::super::ProductInfo {
                 display_name: "Test product",
-                release_prefix: "test-v",
+                release_prefixes: &["test-v"],
                 ..Default::default()
             },
         );
         assert_eq!(app.clone().product().display_name, "Test product");
-        assert_eq!(app.clone().product().release_prefix, "test-v");
+        assert_eq!(app.clone().product().release_prefixes, ["test-v"]);
         app.clone().exit(7);
         app.exit(0);
         assert_eq!(app.wait_for_exit().await, 7);

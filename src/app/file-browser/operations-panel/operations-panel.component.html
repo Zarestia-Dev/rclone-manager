@@ -18,7 +18,12 @@
 
       <div class="panel-content">
         @for (upload of preparingUploads(); track upload.group) {
-          <div class="card-row-item" role="status" aria-live="polite" aria-busy="true">
+          <div
+            class="card-row-item"
+            role="status"
+            aria-live="polite"
+            [attr.aria-busy]="!upload.paused"
+          >
             <div class="card-header">
               <div class="card-info-left">
                 <mat-icon class="card-primary-icon" svgIcon="file-arrow-up"></mat-icon>
@@ -26,6 +31,38 @@
                   'fileBrowser.operations.types.upload' | translate
                 }}</span>
               </div>
+              @if (upload.paused; as paused) {
+                @if (paused.missing === 0) {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="resumeUpload(upload)"
+                    [attr.title]="'fileBrowser.operations.resumeUpload' | translate"
+                    [attr.aria-label]="'fileBrowser.operations.resumeUpload' | translate"
+                  >
+                    <mat-icon svgIcon="rotate-right"></mat-icon>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="pickResumeFiles(upload, filesInput)"
+                    [attr.title]="'fileBrowser.operations.resumeWithFiles' | translate"
+                    [attr.aria-label]="'fileBrowser.operations.resumeWithFiles' | translate"
+                  >
+                    <mat-icon svgIcon="file-arrow-up"></mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="pickResumeFiles(upload, folderInput)"
+                    [attr.title]="'fileBrowser.operations.resumeWithFolder' | translate"
+                    [attr.aria-label]="'fileBrowser.operations.resumeWithFolder' | translate"
+                  >
+                    <mat-icon svgIcon="folder-open"></mat-icon>
+                  </button>
+                }
+              }
               <button
                 type="button"
                 class="action-button"
@@ -39,13 +76,22 @@
             <span class="truncate" [title]="upload.remote + upload.path">{{
               upload.remote + upload.path
             }}</span>
-            @if (upload.sent > 0) {
-              <span class="percentage-text"
-                >{{ upload.sent | formatFileSize }} / {{ upload.total | formatFileSize }}</span
-              >
+            @if (upload.paused || upload.sent > 0) {
+              @if (upload.paused; as paused) {
+                <span class="percentage-text preparing">{{
+                  paused.missing === 0
+                    ? ('fileBrowser.operations.uploadPausedConnection' | translate)
+                    : ('fileBrowser.operations.uploadPausedReselect'
+                      | translate: { count: paused.missing })
+                }}</span>
+              } @else {
+                <span class="percentage-text"
+                  >{{ upload.sent | formatFileSize }} / {{ upload.total | formatFileSize }}</span
+                >
+              }
               <mat-progress-bar
                 mode="determinate"
-                [value]="(upload.sent / upload.total) * 100"
+                [value]="upload.total ? (upload.sent / upload.total) * 100 : 0"
               ></mat-progress-bar>
             } @else {
               <span class="percentage-text preparing">{{
@@ -243,12 +289,12 @@
         </div>
       }
 
-      @if (vm.job.template) {
+      @if (vm.job.transfer_options) {
         <div class="detail-item">
           <span class="detail-label">{{
-            'fileBrowser.operations.details.template' | translate
+            'fileBrowser.operations.details.options' | translate
           }}</span>
-          <span class="value">{{ vm.job.template }}</span>
+          <span class="value">{{ vm.job.transfer_options }}</span>
         </div>
       }
 
@@ -285,3 +331,20 @@
     </div>
   }
 </ng-template>
+
+<!-- The same files or folder, selected again to continue an upload a reloaded page left paused -->
+<input
+  #filesInput
+  type="file"
+  multiple
+  style="display: none"
+  (change)="onResumeFiles(filesInput)"
+/>
+<input
+  #folderInput
+  type="file"
+  webkitdirectory
+  directory
+  style="display: none"
+  (change)="onResumeFiles(folderInput)"
+/>

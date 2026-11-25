@@ -63,9 +63,10 @@ pub struct JobMetadata {
     pub parent_job_id: Option<u64>,
     #[serde(default)]
     pub execute_id: Option<String>,
-    /// The name of the user template whose options the job runs with.
+    /// The names of the options a file browser transfer runs with, set in its dialog or
+    /// as the file browser's default.
     #[serde(default)]
-    pub template: Option<String>,
+    pub transfer_options: Option<String>,
 }
 
 impl JobMetadata {
@@ -88,7 +89,7 @@ impl JobMetadata {
             dry_run: false,
             parent_job_id: None,
             execute_id: None,
-            template: None,
+            transfer_options: None,
         }
     }
 
@@ -129,8 +130,8 @@ impl JobMetadata {
     }
 
     #[must_use]
-    pub fn with_template(mut self, template: Option<String>) -> Self {
-        self.template = template;
+    pub fn with_transfer_options(mut self, transfer_options: Option<String>) -> Self {
+        self.transfer_options = transfer_options;
         self
     }
 

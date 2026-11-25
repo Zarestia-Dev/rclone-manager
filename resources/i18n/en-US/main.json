@@ -621,13 +621,33 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Starred Items",
-        "description": "List of starred files and folders in the file browser."
+      "layout": {
+        "label": "Layout",
+        "description": "How the File Browser shows files: as icons in a grid or as rows in a list. The layout button in the File Browser changes it too.",
+        "options": {
+          "grid": "Grid",
+          "list": "List"
+        }
       },
-      "bookmarks": {
-        "label": "Bookmarks",
-        "description": "List of bookmarked locations for quick access."
+      "sort": {
+        "label": "Sort",
+        "description": "The order of files in the File Browser. Sort in View Options changes it too."
+      },
+      "show_hidden": {
+        "label": "Show Hidden Files",
+        "description": "Show files and folders whose names start with a dot."
+      },
+      "upload_request_mib": {
+        "label": "Largest Upload Request (MiB)",
+        "description": "Uploads from the web interface are sent in requests no larger than this. Set it to the request limit of a reverse proxy in front of the server (nginx allows 1 MiB unless client_max_body_size is raised). When a proxy refuses a request, smaller ones are tried on their own. A larger value can speed up a single large file over a fast connection with high latency."
+      },
+      "parallel_uploads": {
+        "label": "Files Uploaded at Once",
+        "description": "How many files the web interface sends to the server at the same time. Fewer suit a slow connection."
+      },
+      "ask_transfer_options": {
+        "label": "Ask for the Options on Each Transfer",
+        "description": "Before an upload, or a copy or move to another remote, show the transfer options. The default transfer options are filled in, and a template can be imported."
       }
     },
     "wizard": {
@@ -643,25 +663,6 @@
           "quick_run": "Quick Run (Flow)",
           "profile": "Cloud profile (main menu)"
         }
-      }
-    },
-    "file_browser": {
-      "upload_request_mib": {
-        "label": "Largest Upload Request (MiB)",
-        "description": "Uploads from the web interface are sent in requests no larger than this. Set it to the request limit of a reverse proxy in front of the server (nginx allows 1 MiB unless client_max_body_size is raised). When a proxy refuses a request, smaller ones are tried on their own. A larger value can speed up a single large file over a fast connection with high latency."
-      },
-      "parallel_uploads": {
-        "label": "Files Uploaded at Once",
-        "description": "How many files the web interface sends to the server at the same time. Fewer suit a slow connection."
-      },
-      "transfer_template": {
-        "label": "Transfer Template",
-        "description": "Copies, moves and uploads in the File Browser run with the copy or move, filter and backend options of this template. Templates are created in Manage Templates. A template that has been deleted is skipped.",
-        "none": "No template"
-      },
-      "ask_transfer_template": {
-        "label": "Ask for the Template on Each Transfer",
-        "description": "Before an upload, or a copy or move to another remote, ask which template to use. The transfer template above is selected first."
       }
     }
   },
@@ -1898,6 +1899,14 @@
       "cancelled": "Cancelled",
       "cancelJob": "Cancel",
       "removeJob": "Remove",
+      "resumeUpload": "Continue upload",
+      "resumeWithFiles": "Select the same files to continue",
+      "resumeWithFolder": "Select the same folder to continue",
+      "uploadPausedConnection": "Paused: the connection to the server was lost",
+      "uploadPausedReselect": {
+        "one": "Paused: select {{count}} file again to continue",
+        "other": "Paused: select {{count}} files again to continue"
+      },
       "progress": "Progress",
       "files": "Files",
       "speed": "Speed",
@@ -1914,7 +1923,7 @@
         "copiedFiles": "Copied files",
         "syncedFiles": "Synced files",
         "processedFiles": "Processed files",
-        "template": "Template"
+        "options": "Options"
       },
       "running": "Running",
       "filesCount": {
@@ -2364,6 +2373,7 @@
     },
     "preferences": {
       "title": "Preferences",
+      "fileBrowserTitle": "File Browser Preferences",
       "searchResults": "Search Results",
       "searchPlaceholder": "Search settings...",
       "resetAll": "Reset All Settings",
@@ -2392,7 +2402,7 @@
       "tabs": {
         "general": "General",
         "core": "Core",
-        "file_browser": "File Browser",
+        "nautilus": "File Browser",
         "developer": "Developer",
         "vault": "Vault"
       },
@@ -3606,6 +3616,20 @@
         "one": "Failed to upload {{count}} file.",
         "other": "Failed to upload {{count}} files."
       },
+      "uploadInterrupted": "The connection to the server was lost. Continue the upload in Operations.",
+      "uploadFilesNotInUpload": "None of the selected files is one that this upload still needs.",
+      "uploadFilesStillMissing": {
+        "one": "{{count}} file of this upload is still missing. Select it in Operations to finish the upload.",
+        "other": "{{count}} files of this upload are still missing. Select them in Operations to finish the upload."
+      },
+      "copyingPickedFiles": {
+        "one": "Preparing {{count}} selected item for upload…",
+        "other": "Preparing {{count}} selected items for upload…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "{{count}} selected item could not be read and will not be uploaded.",
+        "other": "{{count}} selected items could not be read and will not be uploaded."
+      },
       "trashEmptied": "Cleanup operation completed",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": {
@@ -3647,8 +3671,9 @@
       "star": "Add to starred",
       "unstar": "Remove from starred"
     },
-    "transferTemplate": {
+    "transferOptions": {
       "title": "Transfer Options",
+      "defaultTitle": "Default Transfer Options",
       "summary": {
         "upload": {
           "one": "{{count}} item will be uploaded to {{destination}}.",
@@ -3663,11 +3688,16 @@
           "other": "{{count}} items will be moved to {{destination}}."
         }
       },
-      "noOptions": "This template has no options that apply to this transfer.",
-      "noTemplateChosen": "Without a template the transfer uses only the options set in RClone Flags.",
-      "whatTemplatesDo": "A template keeps rclone options, such as checksum checks or retries, so a transfer can use them without changing them for every other transfer.",
-      "useAsDefault": "Use this template by default",
-      "dontAskAgain": "Don't ask again (Preferences › File Browser)",
+      "engine": {
+        "local": "Runs on {{name}}, the rclone this app runs.",
+        "remote": "Runs on {{name}}, an rclone on another computer. The options below are the ones that rclone offers."
+      },
+      "defaultIntro": "Copies, moves and uploads in the File Browser start with these options.",
+      "remoteNote": "These options apply to {{name}} only during this transfer. Its saved settings do not change.",
+      "streamNote": "The files go one by one to the rclone on the other computer, which uses no copy, Filter or Backend options for them. Only the destination's own options apply.",
+      "nothingToSet": "This upload has no options to set.",
+      "useAsDefault": "Use these options by default",
+      "dontAskAgain": "Don't ask again (File Browser Preferences)",
       "start": "Start"
     }
   },
