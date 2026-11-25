@@ -23,7 +23,7 @@ describe('OverviewHeaderComponent', () => {
     translate.setTranslation('en', {
       overviews: { headers: { general: 'RClone Manager', mount: 'Mount Overview' } },
       shared: {
-        overviewHeader: { backendSwitchAria: 'Current mode: {{title}} - Click to switch backend' },
+        overviewHeader: { manageBackends: 'Manage Backends' },
       },
     });
     translate.use('en');
@@ -33,18 +33,18 @@ describe('OverviewHeaderComponent', () => {
     return fixture.nativeElement as HTMLElement;
   };
 
-  it('names the backend switch with the translated title, not its key', () => {
-    const button = render('mount').querySelector('.header-btn');
-    expect(button?.getAttribute('aria-label')).toBe(
-      'Current mode: Mount Overview - Click to switch backend'
-    );
+  it('names the backend switch with its visible title and backend, not a key', () => {
+    const button = render('mount').querySelector('.header-btn') as HTMLElement;
+    // No aria-label: the name is the visible text, so speech input can say what it sees.
+    expect(button.hasAttribute('aria-label')).toBe(false);
+    expect(button.querySelector('.header-title')?.textContent?.trim()).toBe('Mount Overview');
+    expect(button.querySelector('.backend-label')?.textContent?.trim()).toBe('Local');
+    expect(button.getAttribute('title')).toBe('Manage Backends');
   });
 
-  it('shows the same translated title it announces', () => {
+  it('does not repeat the title through the logo', () => {
     const header = render('general');
     expect(header.querySelector('.header-title')?.textContent?.trim()).toBe('RClone Manager');
-    expect(header.querySelector('.header-btn')?.getAttribute('aria-label')).toContain(
-      'Current mode: RClone Manager'
-    );
+    expect(header.querySelector('.app-logo')?.getAttribute('alt')).toBe('');
   });
 });

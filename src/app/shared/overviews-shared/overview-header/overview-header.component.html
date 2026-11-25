@@ -3,14 +3,11 @@
     class="header-btn"
     (click)="openBackendModal.emit()"
     [attr.title]="'shared.overviewHeader.manageBackends' | translate"
-    [attr.aria-label]="
-      'shared.overviewHeader.backendSwitchAria' | translate: { title: title() | translate }
-    "
   >
     <!-- Mode icon or app logo -->
     <div class="logo-wrap">
       @if (mode() === 'general') {
-        <img src="assets/rclone-manager-2.svg" alt="RClone Manager" class="app-logo" />
+        <img src="assets/rclone-manager-2.svg" alt="" class="app-logo" />
       } @else {
         <mat-icon [svgIcon]="iconName()" class="mode-logo" aria-hidden="true"></mat-icon>
       }

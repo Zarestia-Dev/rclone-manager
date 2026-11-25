@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 
 import { OnboardingComponent } from './onboarding.component';
+import { axeViolations } from 'src/testing/axe';
 import { InstallationService } from 'src/app/services/settings/installation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
@@ -316,6 +317,41 @@ describe('OnboardingComponent', () => {
   it('opens import settings backup flow', () => {
     component.importSettings();
     expect(backupRestoreUiServiceMock.launchRestoreFlow).toHaveBeenCalled();
+  });
+
+  describe('accessibility', () => {
+    const slides = (): HTMLElement[] => [...fixture.nativeElement.querySelectorAll('.slide-page')];
+
+    it('makes only the current step reachable', () => {
+      fixture.detectChanges();
+      expect(slides().map(slide => slide.inert)).toEqual(slides().map((_, i) => i !== 0));
+      component.nextCard();
+      fixture.detectChanges();
+      expect(slides().map(slide => slide.inert)).toEqual(slides().map((_, i) => i !== 1));
+    });
+
+    it('marks the current step dot instead of using a tab list', () => {
+      fixture.detectChanges();
+      const dots: HTMLElement[] = [...fixture.nativeElement.querySelectorAll('.indicator-btn')];
+      expect(fixture.nativeElement.querySelector('[role="tablist"]')).toBeNull();
+      expect(dots.map(dot => dot.getAttribute('aria-current'))).toEqual(
+        dots.map((_, i) => (i === 0 ? 'step' : null))
+      );
+    });
+
+    it('is a main landmark whose current step title is the page heading', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('main.onboarding-container')).not.toBeNull();
+      const headings = slides()
+        .filter(slide => !slide.inert)
+        .flatMap(slide => [...slide.querySelectorAll('h1')]);
+      expect(headings.length).toBe(1);
+    });
+
+    it('has no axe violations', async () => {
+      fixture.detectChanges();
+      expect(await axeViolations(fixture.nativeElement)).toEqual([]);
+    });
   });
 
   describe('on Android', () => {

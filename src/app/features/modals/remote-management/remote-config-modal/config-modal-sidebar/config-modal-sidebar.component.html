@@ -18,7 +18,7 @@
             [disabled]="stepDisabled"
             (click)="stepSelected.emit(stepNum)"
             [class.completed]="isCompleted"
-            [attr.aria-selected]="isCurrent"
+            [attr.aria-current]="isCurrent ? 'step' : null"
             [attr.title]="config.label | translate"
           >
             <mat-icon
@@ -99,7 +99,7 @@
               [activated]="isActive"
               [disabled]="state.isActiveStepInvalid() || state.isStepNavigationLocked()"
               (click)="profileSelected.emit({ type: targetType, name: profile.name })"
-              [attr.aria-selected]="isActive"
+              [attr.aria-current]="isActive ? 'true' : null"
               [attr.title]="profile.name"
             >
               <mat-icon
