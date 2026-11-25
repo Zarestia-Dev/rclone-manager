@@ -15,6 +15,40 @@ import {
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
+/** How each alert severity looks: `color` for fills and accent bars, `text` for text and icons. */
+export const SEVERITY_STYLES: Readonly<Record<AlertSeverity, SeverityStyle>> = {
+  critical: {
+    color: 'var(--warn-color)',
+    text: 'var(--warn-color-text)',
+    bg: 'rgba(var(--warn-color-rgb), 0.1)',
+    border: 'rgba(var(--warn-color-rgb), 0.3)',
+  },
+  high: {
+    color: 'var(--orange)',
+    text: 'var(--orange-text)',
+    bg: 'rgba(var(--orange-rgb), 0.1)',
+    border: 'rgba(var(--orange-rgb), 0.3)',
+  },
+  average: {
+    color: 'var(--accent-color)',
+    text: 'var(--accent-color-text)',
+    bg: 'rgba(var(--accent-color-rgb), 0.1)',
+    border: 'rgba(var(--accent-color-rgb), 0.3)',
+  },
+  warning: {
+    color: 'var(--yellow)',
+    text: 'var(--yellow-text)',
+    bg: 'rgba(var(--yellow-rgb), 0.1)',
+    border: 'rgba(var(--yellow-rgb), 0.3)',
+  },
+  info: {
+    color: 'var(--primary-color)',
+    text: 'var(--primary-color-text)',
+    bg: 'rgba(var(--primary-color-rgb), 0.1)',
+    border: 'rgba(var(--primary-color-rgb), 0.3)',
+  },
+};
+
 @Injectable({ providedIn: 'root' })
 export class AlertService extends TauriBaseService {
   private readonly destroyRef = inject(DestroyRef);
@@ -73,34 +107,7 @@ export class AlertService extends TauriBaseService {
 
   readonly actionsMap = computed(() => new Map(this._actions().map(a => [a.id, a])));
 
-  // Shared Severity Styles
-  readonly severityStyles: Record<AlertSeverity, SeverityStyle> = {
-    critical: {
-      color: 'var(--warn-color)',
-      bg: 'rgba(var(--warn-color-rgb), 0.1)',
-      border: 'rgba(var(--warn-color-rgb), 0.3)',
-    },
-    high: {
-      color: 'var(--orange)',
-      bg: 'rgba(var(--orange-rgb), 0.1)',
-      border: 'rgba(var(--orange-rgb), 0.3)',
-    },
-    average: {
-      color: 'var(--accent-color)',
-      bg: 'rgba(var(--accent-color-rgb), 0.1)',
-      border: 'rgba(var(--accent-color-rgb), 0.3)',
-    },
-    warning: {
-      color: 'var(--yellow)',
-      bg: 'rgba(var(--yellow-rgb), 0.1)',
-      border: 'rgba(var(--yellow-rgb), 0.3)',
-    },
-    info: {
-      color: 'var(--primary-color)',
-      bg: 'rgba(var(--primary-color-rgb), 0.1)',
-      border: 'rgba(var(--primary-color-rgb), 0.3)',
-    },
-  };
+  readonly severityStyles = SEVERITY_STYLES;
 
   // ────────────────────────────────────────────────────────────────────────
 

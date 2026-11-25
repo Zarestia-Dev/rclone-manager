@@ -30,7 +30,7 @@
 
       .key-separator,
       .combo-separator {
-        color: var(--accent-color);
+        color: var(--accent-color-text);
         font-weight: 600;
       }
 
@@ -83,13 +83,13 @@
         &[data-key*="Cmd"],
         &[data-key*="Shift"] {
           background: rgba(var(--primary-color-rgb), 0.1);
-          color: var(--primary-color);
+          color: var(--primary-color-text);
         }
 
         // Function keys
         &[data-key^="F"] {
           background: rgba(var(--accent-color-rgb), 0.1);
-          color: var(--accent-color);
+          color: var(--accent-color-text);
         }
 
         // Action keys
@@ -100,7 +100,7 @@
         &[data-key="Delete"],
         &[data-key="Backspace"] {
           background: rgba(var(--accent-color-rgb), 0.08);
-          color: var(--accent-color);
+          color: var(--accent-color-text);
         }
       }
     }

@@ -80,7 +80,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
               <td mat-cell *matCellDef="let rule">
                 <span
                   class="severity-badge"
-                  [style.color]="alerts.getSeverityStyle(rule.severity_min).color"
+                  [style.color]="alerts.getSeverityStyle(rule.severity_min).text"
                   [style.background]="alerts.getSeverityStyle(rule.severity_min).bg"
                 >
                   {{ 'alerts.severityLevels.' + rule.severity_min | translate }}
