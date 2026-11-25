@@ -651,6 +651,10 @@
     "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
     "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}",
     "wizard": {
+      "show_mascot": {
+        "label": "Maskotu göster",
+        "description": "Ana pencerenin köşesinde küçük maskot Tia'yı gösterir. Varsayılan olarak kapalıdır."
+      },
       "after_remote": {
         "label": "Bulut eklendikten sonra kurulum sihirbazını göster",
         "description": "Yeni bir bulut eklemeyi bitirince “Ne yapmak istiyorsun?” sihirbazını açar."

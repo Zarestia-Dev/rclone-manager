@@ -650,6 +650,10 @@
     "remoteSaved": "远程存储已成功保存",
     "remoteSaveFailed": "保存远程存储失败：{{error}}",
     "wizard": {
+      "show_mascot": {
+        "label": "显示吉祥物",
+        "description": "在主窗口角落显示小吉祥物 Tia。默认关闭。"
+      },
       "after_remote": {
         "label": "添加云盘后显示设置向导",
         "description": "添加完新云盘后，打开“你想做什么？”向导。"

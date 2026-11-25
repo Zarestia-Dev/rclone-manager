@@ -652,6 +652,10 @@
       }
     },
     "wizard": {
+      "show_mascot": {
+        "label": "Zobraziť maskota",
+        "description": "Zobrazuje Tiu, malého maskota, v rohu hlavného okna. Predvolene vypnuté."
+      },
       "after_remote": {
         "label": "Zobraziť sprievodcu nastavením po pridaní cloudu",
         "description": "Otvorí sprievodcu „Čo chcete urobiť?“, keď dokončíte pridávanie nového cloudu."

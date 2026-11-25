@@ -651,6 +651,10 @@
     "remoteSaved": "Remoto guardado correctamente",
     "remoteSaveFailed": "Error al guardar el remoto: {{error}}",
     "wizard": {
+      "show_mascot": {
+        "label": "Mostrar la mascota",
+        "description": "Muestra a Tia, la pequeña mascota, en la esquina de la ventana principal. Desactivada de forma predeterminada."
+      },
       "after_remote": {
         "label": "Mostrar el asistente de configuración al añadir una nube",
         "description": "Abre el asistente «¿Qué quieres hacer?» cuando terminas de añadir una nube nueva."

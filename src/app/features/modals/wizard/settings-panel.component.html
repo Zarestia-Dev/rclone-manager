@@ -20,6 +20,16 @@
   </div>
 
   <div class="detail-card">
+    <mat-slide-toggle
+      data-tone="accent"
+      [checked]="state.showMascot()"
+      (change)="state.setShowMascot($event.checked)"
+    >
+      {{ 'settings.wizard.show_mascot.label' | translate }}
+    </mat-slide-toggle>
+  </div>
+
+  <div class="detail-card">
     <span class="section-label">
       {{ 'modals.wizard.settings.destinationTitle' | translate }}
     </span>

@@ -87,6 +87,8 @@ export interface WizardSettings {
   readonly setting: WizardDestinationSetting;
   /** Where that puts what the wizard sets up. */
   readonly destination: WizardDestination;
+  /** Shows the mascot in the main window. */
+  readonly showMascot: boolean;
 }
 
 /** What tells one setup from another when asking how it is doing. */
@@ -355,16 +357,18 @@ export class WizardService extends TauriBaseService {
 
   /** The wizard's own settings, and where they say it keeps what it sets up. */
   async settings(): Promise<WizardSettings> {
-    const [afterRemote, destination, defaultView] = await Promise.all([
+    const [afterRemote, destination, defaultView, showMascot] = await Promise.all([
       this.appSettings.getSettingValue<boolean>('wizard.after_remote'),
       this.appSettings.getSettingValue<string>('wizard.destination'),
       this.appSettings.getSettingValue<string>('general.default_view'),
-    ]).catch(() => [undefined, undefined, undefined]);
+      this.appSettings.getSettingValue<boolean>('wizard.show_mascot'),
+    ]).catch(() => [undefined, undefined, undefined, undefined]);
     const setting = destination === 'quick_run' || destination === 'profile' ? destination : 'auto';
     return {
       afterRemote: afterRemote !== false,
       setting,
       destination: resolveDestination(setting, defaultView),
+      showMascot: showMascot === true,
     };
   }
 
@@ -382,6 +386,10 @@ export class WizardService extends TauriBaseService {
 
   saveDestination(setting: WizardDestinationSetting): Promise<void> {
     return this.appSettings.saveSetting('wizard', 'destination', setting);
+  }
+
+  saveShowMascot(value: boolean): Promise<void> {
+    return this.appSettings.saveSetting('wizard', 'show_mascot', value);
   }
 
   /**

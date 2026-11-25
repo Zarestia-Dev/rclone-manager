@@ -675,6 +675,7 @@ describe('WizardService', () => {
         afterRemote: true,
         setting: 'auto',
         destination: 'quick_run',
+        showMascot: false,
       });
       answer({ 'wizard.destination': 'auto', 'general.default_view': 'main_menu' });
       expect((await service.settings()).destination).toBe('profile');
@@ -690,7 +691,15 @@ describe('WizardService', () => {
         afterRemote: false,
         setting: 'quick_run',
         destination: 'quick_run',
+        showMascot: false,
       });
+    });
+
+    it('shows the mascot only when the setting is on', async () => {
+      answer({ 'wizard.show_mascot': true });
+      expect((await service.settings()).showMascot).toBe(true);
+      answer({ 'wizard.show_mascot': 'yes' });
+      expect((await service.settings()).showMascot).toBe(false);
     });
 
     it('falls back to the defaults when the settings cannot be read', async () => {
@@ -699,6 +708,7 @@ describe('WizardService', () => {
         afterRemote: true,
         setting: 'auto',
         destination: 'profile',
+        showMascot: false,
       });
     });
 
@@ -707,6 +717,8 @@ describe('WizardService', () => {
       await service.saveDestination('profile');
       expect(saveSetting).toHaveBeenCalledWith('wizard', 'after_remote', false);
       expect(saveSetting).toHaveBeenCalledWith('wizard', 'destination', 'profile');
+      await service.saveShowMascot(true);
+      expect(saveSetting).toHaveBeenCalledWith('wizard', 'show_mascot', true);
 
       getSettingValue.mockResolvedValue('nautilus');
       expect(await service.resolveDestination('auto')).toBe('quick_run');

@@ -8,47 +8,56 @@
 
 <div class="arrow" [attr.data-dir]="direction()" aria-hidden="true">
   <span class="label"><ng-content /></span>
-  <!-- A 300×72 box: the line runs from tile to tile, the head is where the files arrive, and the
-       dots move the way the files go. -->
+  <!-- A 300×72 box: the line is joined to both tiles by a port, the head is where the files
+       arrive, and the dots move the way the files go. -->
   <svg viewBox="0 0 300 72">
     @switch (direction()) {
       @case ('right') {
-        <path class="track" d="M8 36 H292" />
-        <path class="head" d="M284 30 L292 36 L284 42" />
+        <path class="track" d="M0 36 H300" />
+        <path class="head" d="M280 31 L286 36 L280 41" />
         <circle class="packet right" cx="10" cy="36" r="3.5" />
         <circle class="packet right late" cx="10" cy="36" r="3.5" />
       }
       @case ('left') {
-        <path class="track" d="M8 36 H292" />
-        <path class="head" d="M16 30 L8 36 L16 42" />
+        <path class="track" d="M0 36 H300" />
+        <path class="head" d="M20 31 L14 36 L20 41" />
         <circle class="packet left" cx="290" cy="36" r="3.5" />
         <circle class="packet left late" cx="290" cy="36" r="3.5" />
       }
       @case ('both') {
-        <path class="track" d="M8 29 H292" />
-        <path class="head" d="M284 23 L292 29 L284 35" />
-        <path class="track" d="M8 43 H292" />
-        <path class="head" d="M16 37 L8 43 L16 49" />
+        <path class="track" d="M0 29 H300" />
+        <path class="head" d="M280 24 L286 29 L280 34" />
+        <path class="track" d="M0 43 H300" />
+        <path class="head" d="M20 38 L14 43 L20 48" />
         <circle class="packet right" cx="10" cy="29" r="3.5" />
         <circle class="packet left" cx="290" cy="43" r="3.5" />
       }
       @case ('link') {
         <!-- One dot goes out and comes back: a file is asked for and arrives only when it is used. -->
-        <path class="track" d="M8 36 H292" />
-        <path class="head" d="M16 30 L8 36 L16 42" />
-        <path class="head" d="M284 30 L292 36 L284 42" />
-        <circle class="packet there-and-back" cx="16" cy="36" r="3.5" />
+        <path class="track" d="M0 36 H300" />
+        <path class="head" d="M20 31 L14 36 L20 41" />
+        <path class="head" d="M280 31 L286 36 L280 41" />
+        <circle class="packet there-and-back" cx="30" cy="36" r="3.5" />
       }
       @case ('broadcast') {
         <!-- This machine in the middle serves the files; devices come to it, so the line has no head. -->
-        <path class="track" d="M8 36 H292" />
+        <path class="track" d="M0 36 H300" />
         <circle class="ring" cx="150" cy="36" r="30" />
         <circle class="ring late" cx="150" cy="36" r="30" />
         <circle class="hub" cx="150" cy="36" r="5" />
       }
       @default {
-        <path class="track pulse" d="M8 36 H292" />
+        <path class="track pulse" d="M0 36 H300" />
       }
+    }
+    @if (direction() === 'both') {
+      <circle class="port" cx="0" cy="29" r="4.5" />
+      <circle class="port" cx="0" cy="43" r="4.5" />
+      <circle class="port" cx="300" cy="29" r="4.5" />
+      <circle class="port" cx="300" cy="43" r="4.5" />
+    } @else {
+      <circle class="port" cx="0" cy="36" r="4.5" />
+      <circle class="port" cx="300" cy="36" r="4.5" />
     }
   </svg>
 </div>

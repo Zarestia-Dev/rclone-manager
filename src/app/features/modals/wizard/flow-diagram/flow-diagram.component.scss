@@ -56,7 +56,7 @@
   }
 }
 
-// The line runs from tile to tile; the label sits above it.
+// The line is joined to both tiles, as wires are on the workflow canvas; the label sits above it.
 .arrow {
   position: relative;
   height: var(--tile);
@@ -87,7 +87,13 @@ svg {
   }
 
   .track {
-    stroke: rgba(var(--tone-rgb), 0.35);
+    stroke: rgba(var(--tone-rgb), 0.4);
+  }
+
+  .port {
+    fill: var(--card-bg-color);
+    stroke: rgba(var(--tone-rgb), 0.6);
+    stroke-width: 2;
   }
 
   .head {
@@ -198,7 +204,7 @@ svg {
 
   50%,
   62% {
-    transform: translateX(268px);
+    transform: translateX(240px);
   }
 
   100% {

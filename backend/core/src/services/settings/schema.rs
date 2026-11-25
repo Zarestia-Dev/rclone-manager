@@ -372,6 +372,12 @@ pub struct WizardSettings {
         )
     )]
     pub destination: String,
+
+    #[setting(
+        label = "settings.wizard.show_mascot.label",
+        description = "settings.wizard.show_mascot.description"
+    )]
+    pub show_mascot: bool,
 }
 
 impl Default for WizardSettings {
@@ -379,6 +385,7 @@ impl Default for WizardSettings {
         Self {
             after_remote: true,
             destination: "auto".to_string(),
+            show_mascot: false,
         }
     }
 }
@@ -734,6 +741,7 @@ mod feature_tests {
             .unwrap();
         assert!(manager.get::<bool>("wizard.after_remote").unwrap());
         assert_eq!(manager.get::<String>("wizard.destination").unwrap(), "auto");
+        assert!(!manager.get::<bool>("wizard.show_mascot").unwrap());
     }
 
     #[test]

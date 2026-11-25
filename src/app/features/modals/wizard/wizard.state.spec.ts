@@ -46,6 +46,7 @@ describe('WizardState', () => {
     resolveDestination: vi.fn(),
     saveAfterRemote: vi.fn(),
     saveDestination: vi.fn(),
+    saveShowMascot: vi.fn(),
     portFree: vi.fn(),
     nextFreePort: vi.fn(),
     preview: vi.fn(),
@@ -174,6 +175,7 @@ describe('WizardState', () => {
     });
     wizard.saveAfterRemote.mockResolvedValue(undefined);
     wizard.saveDestination.mockResolvedValue(undefined);
+    wizard.saveShowMascot.mockResolvedValue(undefined);
     wizard.network.mockResolvedValue({ hostName: 'my-pc', addresses: ['192.168.1.20'] });
     wizard.portFree.mockResolvedValue(true);
     wizard.nextFreePort.mockResolvedValue(8081);
@@ -1092,6 +1094,14 @@ describe('WizardState', () => {
       component.setAfterRemote(false);
       expect(component.afterRemote()).toBe(false);
       expect(wizard.saveAfterRemote).toHaveBeenCalledWith(false);
+    });
+
+    it('saves whether the mascot is shown, off by default', async () => {
+      const component = await create();
+      expect(component.showMascot()).toBe(false);
+      component.setShowMascot(true);
+      expect(component.showMascot()).toBe(true);
+      expect(wizard.saveShowMascot).toHaveBeenCalledWith(true);
     });
 
     it('saves the destination and uses it for what the wizard sets up from now on', async () => {

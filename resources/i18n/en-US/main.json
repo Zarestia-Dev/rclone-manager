@@ -651,6 +651,10 @@
       }
     },
     "wizard": {
+      "show_mascot": {
+        "label": "Show the mascot",
+        "description": "Shows Tia, the little mascot, in the corner of the main window. Off by default."
+      },
       "after_remote": {
         "label": "Show the setup wizard after adding a cloud",
         "description": "Opens the “What do you want to do?” wizard when you finish adding a new cloud."

@@ -650,6 +650,10 @@
       }
     },
     "wizard": {
+      "show_mascot": {
+        "label": "顯示吉祥物",
+        "description": "在主視窗角落顯示小吉祥物 Tia。預設為關閉。"
+      },
       "after_remote": {
         "label": "新增雲端後顯示設定精靈",
         "description": "新增完新的雲端後，開啟「你想做什麼？」精靈。"

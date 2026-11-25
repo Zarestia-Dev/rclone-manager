@@ -167,8 +167,10 @@
         }
       }
     </div>
-    @defer (on idle) {
-      <app-mascot />
+    @if (showMascot()) {
+      @defer (on idle) {
+        <app-mascot />
+      }
     }
   </mat-sidenav-content>
 </mat-sidenav-container>

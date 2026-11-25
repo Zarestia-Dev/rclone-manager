@@ -651,6 +651,10 @@
     "remoteSaved": "Remote enregistré avec succès",
     "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}",
     "wizard": {
+      "show_mascot": {
+        "label": "Afficher la mascotte",
+        "description": "Affiche Tia, la petite mascotte, dans le coin de la fenêtre principale. Désactivée par défaut."
+      },
       "after_remote": {
         "label": "Afficher l'assistant de configuration après l'ajout d'un cloud",
         "description": "Ouvre l'assistant « Que voulez-vous faire ? » une fois le nouveau cloud ajouté."

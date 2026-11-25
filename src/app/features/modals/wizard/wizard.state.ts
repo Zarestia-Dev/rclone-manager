@@ -255,6 +255,7 @@ export class WizardState {
   readonly settingsOpen = signal(false);
   readonly afterRemote = signal(true);
   readonly destinationSetting = signal<WizardDestinationSetting>('auto');
+  readonly showMascot = signal(false);
 
   // ── When ─────────────────────────────────────────────────────────────────
   readonly scheduleStartup = signal(false);
@@ -638,6 +639,7 @@ export class WizardState {
       this.afterRemote.set(settings.afterRemote);
       this.destinationSetting.set(settings.setting);
       this.destination.set(settings.destination);
+      this.showMascot.set(settings.showMascot);
     });
   }
 
@@ -751,6 +753,11 @@ export class WizardState {
   setAfterRemote(value: boolean): void {
     this.afterRemote.set(value);
     void this.service.saveAfterRemote(value).catch(error => this.notifications.showError(error));
+  }
+
+  setShowMascot(value: boolean): void {
+    this.showMascot.set(value);
+    void this.service.saveShowMascot(value).catch(error => this.notifications.showError(error));
   }
 
   /** Remembers the choice, and uses it for what the wizard sets up from now on. */

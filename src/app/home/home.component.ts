@@ -41,6 +41,7 @@ import { AppOverviewComponent } from '../features/components/dashboard/app-overv
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
@@ -80,9 +81,13 @@ export class HomeComponent {
   private readonly backendService = inject(BackendService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly appSettings = inject(AppSettingsService);
 
   readonly activeBackend = this.backendService.activeBackend;
   readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
+  readonly showMascot = computed(
+    () => this.appSettings.options()?.['wizard.show_mascot']?.value === true
+  );
   readonly currentTab = this.uiStateService.currentTab;
   readonly remotes = this.remoteFacadeService.orderedRemotes;
   readonly jobs = this.remoteFacadeService.jobs;

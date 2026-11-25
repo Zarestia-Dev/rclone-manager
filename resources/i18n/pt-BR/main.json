@@ -651,6 +651,10 @@
       }
     },
     "wizard": {
+      "show_mascot": {
+        "label": "Mostrar a mascote",
+        "description": "Mostra a Tia, a pequena mascote, no canto da janela principal. Desativada por padrão."
+      },
       "after_remote": {
         "label": "Mostrar o assistente de configuração após adicionar uma nuvem",
         "description": "Abre o assistente “O que você quer fazer?” quando você termina de adicionar uma nuvem nova."
