@@ -497,7 +497,7 @@
       },
       "system_accent_color": {
         "label": "Color de acento del sistema",
-        "description": "Usa el color de acento de la configuración del sistema como color principal de la aplicación en lugar del verde predeterminado. En Linux requiere GNOME 47 o posterior, o KDE Plasma 6."
+        "description": "Usa el color de acento de la configuración del sistema para los colores de la aplicación en lugar del verde y el azul predeterminados. En Linux requiere GNOME 47 o posterior, o KDE Plasma 6."
       },
       "prevent_sleep": {
         "label": "Evitar suspensión del sistema",

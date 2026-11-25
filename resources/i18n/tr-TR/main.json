@@ -497,7 +497,7 @@
       },
       "system_accent_color": {
         "label": "Sistem vurgu rengi",
-        "description": "Varsayılan yeşil yerine sistem ayarlarındaki vurgu rengini uygulamanın ana rengi olarak kullan. Linux'ta GNOME 47 ve sonrası veya KDE Plasma 6 gerekir."
+        "description": "Varsayılan yeşil ve mavi yerine sistem ayarlarındaki vurgu rengini uygulamanın renkleri olarak kullan. Linux'ta GNOME 47 ve sonrası veya KDE Plasma 6 gerekir."
       },
       "prevent_sleep": {
         "label": "Sistem Uykusunu Engelle",

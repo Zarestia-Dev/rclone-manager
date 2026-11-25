@@ -497,7 +497,7 @@
       },
       "system_accent_color": {
         "label": "Couleur d'accentuation du système",
-        "description": "Utilise la couleur d'accentuation des paramètres du système comme couleur principale de l'application au lieu du vert par défaut. Sous Linux, nécessite GNOME 47 ou ultérieur, ou KDE Plasma 6."
+        "description": "Utilise la couleur d'accentuation des paramètres du système pour les couleurs de l'application au lieu du vert et du bleu par défaut. Sous Linux, nécessite GNOME 47 ou ultérieur, ou KDE Plasma 6."
       },
       "prevent_sleep": {
         "label": "Empêcher la mise en veille du système",

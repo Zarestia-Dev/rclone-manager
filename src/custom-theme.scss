@@ -684,18 +684,26 @@ $dark-theme: (
   }
 }
 
-// The system accent colour as the primary colour (Linux, Windows and macOS; Preferences > General >
-// System Accent Color). WindowService sets the attribute and the --system-accent-* values: the
-// fill, its text colour, and text colours derived from it as libadwaita does.
+// The system accent colour in place of both the green primary and the blue accent (Linux, Windows
+// and macOS; Preferences > General > System Accent Color). WindowService sets the attribute and the
+// --system-accent-* values: the fill, its text colour, and text colours derived from it as
+// libadwaita does. Without the attribute, primary stays green and accent stays blue.
 html[data-system-accent] {
   --primary-color: var(--system-accent-bg);
   --primary-color-rgb: var(--system-accent-bg-rgb);
   --primary-fg-color: var(--system-accent-fg);
   --mat-sys-primary: var(--system-accent-bg);
   --mat-sys-on-primary: var(--system-accent-fg);
+  --accent-bg-color: var(--system-accent-bg);
+  --accent-fg-color: var(--system-accent-fg);
+  --accent-color: var(--system-accent-bg);
+  --accent-color-rgb: var(--system-accent-bg-rgb);
+  --mat-sys-tertiary: var(--system-accent-bg);
+  --mat-sys-on-tertiary: var(--system-accent-fg);
 
   &.light {
     --primary-color-text: var(--system-accent-light);
+    --accent-color-text: var(--system-accent-light);
     --mat-sys-primary-container: color-mix(
       in srgb,
       var(--system-accent-bg) 15%,
@@ -703,10 +711,13 @@ html[data-system-accent] {
     );
     --mat-sys-on-primary-container: var(--system-accent-light);
     --mat-sys-inverse-primary: var(--system-accent-dark);
+    --mat-sys-tertiary-container: var(--mat-sys-primary-container);
+    --mat-sys-on-tertiary-container: var(--system-accent-light);
   }
 
   &.dark {
     --primary-color-text: var(--system-accent-dark);
+    --accent-color-text: var(--system-accent-dark);
     --mat-sys-primary-container: color-mix(
       in srgb,
       var(--system-accent-bg) 20%,
@@ -714,6 +725,8 @@ html[data-system-accent] {
     );
     --mat-sys-on-primary-container: var(--system-accent-dark);
     --mat-sys-inverse-primary: var(--system-accent-light);
+    --mat-sys-tertiary-container: var(--mat-sys-primary-container);
+    --mat-sys-on-tertiary-container: var(--system-accent-dark);
   }
 }
 

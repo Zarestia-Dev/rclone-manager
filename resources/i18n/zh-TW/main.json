@@ -498,7 +498,7 @@
       },
       "system_accent_color": {
         "label": "系統強調色",
-        "description": "使用系統設定中的強調色作為應用程式的主色，而非預設的綠色。在 Linux 上需要 GNOME 47 或更新版本，或 KDE Plasma 6。"
+        "description": "使用系統設定中的強調色作為應用程式的顏色，而非預設的綠色和藍色。在 Linux 上需要 GNOME 47 或更新版本，或 KDE Plasma 6。"
       },
       "prevent_sleep": {
         "label": "防止系統休眠",

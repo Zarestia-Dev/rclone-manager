@@ -498,7 +498,7 @@
       },
       "system_accent_color": {
         "label": "システムのアクセントカラー",
-        "description": "既定の緑の代わりに、システム設定のアクセントカラーをアプリのメインカラーとして使用します。Linux では GNOME 47 以降または KDE Plasma 6 が必要です。"
+        "description": "既定の緑と青の代わりに、システム設定のアクセントカラーをアプリの色として使用します。Linux では GNOME 47 以降または KDE Plasma 6 が必要です。"
       },
       "prevent_sleep": {
         "label": "システムのスリープを防止",

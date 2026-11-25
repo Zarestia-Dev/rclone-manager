@@ -500,7 +500,7 @@
       },
       "system_accent_color": {
         "label": "Systémová farba zvýraznenia",
-        "description": "Použiť farbu zvýraznenia z nastavení systému ako hlavnú farbu aplikácie namiesto predvolenej zelenej. V Linuxe vyžaduje GNOME 47 alebo novší, alebo KDE Plasma 6."
+        "description": "Použiť farbu zvýraznenia z nastavení systému pre farby aplikácie namiesto predvolenej zelenej a modrej. V Linuxe vyžaduje GNOME 47 alebo novší, alebo KDE Plasma 6."
       },
       "prevent_sleep": {
         "label": "Zabrániť uspaniu systému",
