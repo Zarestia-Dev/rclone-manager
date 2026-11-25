@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@angular/core';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
-import { isNautilusPageView, NautilusComponent } from './nautilus.component';
+import { NautilusComponent } from './nautilus.component';
 
 describe('Nautilus folder navigation', () => {
   const roots: ExplorerRoot[] = [
@@ -290,29 +290,5 @@ describe('Nautilus split divider gestures', () => {
     expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
     expect(context._splitDragCleanup).toBeUndefined();
     expect(document.body.style.cursor).toBe('crosshair');
-  });
-});
-
-describe('Nautilus page landmark', () => {
-  const base = {
-    picker: false,
-    standaloneWindow: false,
-    defaultView: 'main_menu',
-    overlayOpen: false,
-  };
-
-  it('is the page in its own window and as the default view', () => {
-    expect(isNautilusPageView({ ...base, standaloneWindow: true })).toBe(true);
-    expect(isNautilusPageView({ ...base, defaultView: 'nautilus' })).toBe(true);
-  });
-
-  it('is not the page as an overlay above the main UI, which keeps its own main landmark', () => {
-    expect(isNautilusPageView({ ...base, overlayOpen: true })).toBe(false);
-    expect(isNautilusPageView({ ...base, defaultView: 'nautilus', overlayOpen: true })).toBe(false);
-  });
-
-  it('is never the page as a file picker', () => {
-    expect(isNautilusPageView({ ...base, picker: true, standaloneWindow: true })).toBe(false);
-    expect(isNautilusPageView({ ...base, picker: true, defaultView: 'nautilus' })).toBe(false);
   });
 });

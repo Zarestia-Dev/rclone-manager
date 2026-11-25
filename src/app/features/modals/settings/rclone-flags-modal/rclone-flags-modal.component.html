@@ -156,7 +156,7 @@
         data-tone="warn"
         (click)="resetAllOptions()"
         [disabled]="isResetting()"
-        [attr.aria-label]="'modals.rcloneFlags.reset.aria' | translate"
+        [attr.title]="'modals.rcloneFlags.reset.aria' | translate"
       >
         @if (isResetting()) {
           <mat-icon svgIcon="spinner"></mat-icon>

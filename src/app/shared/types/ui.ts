@@ -342,7 +342,6 @@ export interface ActionViewModel {
   position: number;
   canInteract: boolean;
   tooltip: string;
-  ariaLabel: string;
   isLoading?: boolean;
 }
 
