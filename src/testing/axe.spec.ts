@@ -25,7 +25,6 @@ function useEnglish(): void {
     shared: {
       overviewHeader: {
         manageBackends: 'Manage Backends',
-        backendSwitchAria: 'Current mode: {{title}} - Click to switch backend',
       },
     },
     generalOverview: { layout: { edit: 'Edit Layout' } },

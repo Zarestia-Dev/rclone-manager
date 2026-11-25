@@ -1128,8 +1128,7 @@
       "cancel": "Zrušiť"
     },
     "overviewHeader": {
-      "manageBackends": "Spravovať backendy",
-      "backendSwitchAria": "Aktuálny režim: {{title}} – kliknutím prepnete backend"
+      "manageBackends": "Spravovať backendy"
     },
     "settingControl": {
       "default": "Predvolené: {{value}}",

@@ -78,6 +78,8 @@ describe('GeneralDetailComponent controls', () => {
     const start = vi.spyOn(fixture.componentInstance.startJob, 'emit');
     expect(button.textContent?.trim()).toBe('Mount');
     expect(button.title).toBe('Mount');
+    // Named by its visible text, so speech input can say what it shows; the tooltip describes it.
+    expect(button.hasAttribute('aria-label')).toBe(false);
     expect(button.tagName).toBe('BUTTON');
     expect(button.getAttribute('aria-pressed')).toBe('false');
     button.click();

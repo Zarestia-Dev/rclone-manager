@@ -88,6 +88,11 @@ describe('RemoteCardComponent', () => {
 
   const host = (): HTMLElement => fixture.nativeElement;
 
+  it('titles the remote one level below the overview heading', () => {
+    // The overview header is an h2, so the card names are h3s.
+    expect(host().querySelector('h3.card-name')?.textContent?.trim()).toBe(createMockRemote().name);
+  });
+
   it('is idle, primary-toned and not marked active when nothing is running', () => {
     expect(component.isActive()).toBe(false);
     expect(component.cardTone()).toBe('primary');

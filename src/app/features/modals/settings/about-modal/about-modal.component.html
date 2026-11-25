@@ -28,13 +28,11 @@
     }
   </div>
 
-  <div class="about-list" role="tablist">
+  <div class="about-list">
     @for (item of navItems; track item.viewId) {
       <button
         matButton
         class="about-item"
-        role="tab"
-        [attr.aria-selected]="currentView().id === item.viewId"
         (click)="navigateTo(item.viewId)"
         [matBadge]="item.badge?.() ? '!' : null"
       >
@@ -43,15 +41,9 @@
       </button>
     }
 
-    <div class="stacked-buttons" role="tablist">
+    <div class="stacked-buttons">
       @for (item of bottomNavItems; track item.viewId; let last = $last) {
-        <button
-          matButton
-          class="about-item"
-          role="tab"
-          [attr.aria-selected]="currentView().id === item.viewId"
-          (click)="navigateTo(item.viewId)"
-        >
+        <button matButton class="about-item" (click)="navigateTo(item.viewId)">
           <span>{{ item.label | translate }}</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { axeViolations } from 'src/testing/axe';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -296,6 +297,12 @@ describe('AboutModalComponent', () => {
     buildType.set(null);
     fixture.detectChanges();
     expect(pills().length).toBe(1);
+  });
+
+  it('lists its pages as plain buttons, not as tabs', async () => {
+    const list = (fixture.nativeElement as HTMLElement).querySelector('.about-list') as HTMLElement;
+    expect(list.querySelector('[role="tablist"], [role="tab"], [aria-selected]')).toBeNull();
+    expect(await axeViolations(list)).toEqual([]);
   });
 
   it('should initialize successfully', () => {

@@ -1120,8 +1120,7 @@
       "cancel": "Cancelar"
     },
     "overviewHeader": {
-      "manageBackends": "Gestionar backends",
-      "backendSwitchAria": "Modo actual: {{title}} - Haga clic para cambiar el backend"
+      "manageBackends": "Gestionar backends"
     },
     "settingControl": {
       "default": "Predeterminado: {{value}}",

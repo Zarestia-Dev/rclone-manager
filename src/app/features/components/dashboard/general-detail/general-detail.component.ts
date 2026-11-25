@@ -45,7 +45,7 @@ import { AutomationService } from 'src/app/services/operations/automation.servic
 import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import {
   ItemOrderVisibilityModalComponent,
@@ -83,7 +83,6 @@ export class GeneralDetailComponent {
   protected readonly statusIndicatorMeta = STATUS_INDICATOR_META;
   protected readonly iconService = inject(IconService);
   private readonly automationService = inject(AutomationService);
-  private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly workflowStorage = inject(WorkflowStorageService);
@@ -208,7 +207,6 @@ export class GeneralDetailComponent {
       const isActive = config.getActiveState(remote);
       const tooltip = isActive ? meta.stopTooltip : meta.startTooltip;
       const icon = isActive ? meta.stopIcon : meta.startIcon;
-      const ariaLabel = this.translate.instant(tooltip);
 
       const isLoading = isOperationActionInProgress(actions, key);
 
@@ -222,7 +220,6 @@ export class GeneralDetailComponent {
         canInteract: !isLoading,
         isLoading,
         tooltip,
-        ariaLabel,
       });
     });
     return models;

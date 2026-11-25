@@ -88,12 +88,7 @@
 <ng-template #addRemoteMenu>
   <div cdkMenu class="material-context-menu">
     @for (item of addRemoteMenuItems; track item.label) {
-      <button
-        cdkMenuItem
-        class="menu-item"
-        (click)="item.action()"
-        [attr.aria-label]="item.label | translate"
-      >
+      <button cdkMenuItem class="menu-item" (click)="item.action()">
         <span>{{ item.label | translate }}</span>
         @if (item.shortcut) {
           <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>

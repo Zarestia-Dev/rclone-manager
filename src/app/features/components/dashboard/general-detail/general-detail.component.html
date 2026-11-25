@@ -26,7 +26,6 @@
           [tone]="vc.isActive ? statusIndicatorMeta[vc.key].tone : null"
           [selected]="vc.isActive"
           [disabled]="vc.isLoading || !vc.canInteract"
-          [attr.aria-label]="vc.ariaLabel"
           [attr.title]="vc.tooltip | translate"
           (click)="onChipClick(vc)"
         >

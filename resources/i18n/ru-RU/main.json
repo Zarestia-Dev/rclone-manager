@@ -1136,8 +1136,7 @@
       "cancel": "Отмена"
     },
     "overviewHeader": {
-      "manageBackends": "Управление бэкендами",
-      "backendSwitchAria": "Текущий режим: {{title}} - нажмите, чтобы сменить бэкенд"
+      "manageBackends": "Управление бэкендами"
     },
     "settingControl": {
       "default": "По умолчанию: {{value}}",
