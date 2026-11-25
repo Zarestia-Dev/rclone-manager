@@ -1097,8 +1097,7 @@
       "cancel": "取消"
     },
     "overviewHeader": {
-      "manageBackends": "管理後端",
-      "backendSwitchAria": "當前模式：{{title}} - 點選切換後端"
+      "manageBackends": "管理後端"
     },
     "settingControl": {
       "default": "預設值：{{value}}",
