@@ -1,9 +1,11 @@
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, ReplaySubject } from 'rxjs';
 import { platform } from '@tauri-apps/plugin-os';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { Theme } from '@app/types';
 import {
+  accentPalette,
   DEFAULT_WINDOW_BUTTON_LAYOUT,
   parseWindowButtonLayout,
   WindowButtonLayout,
@@ -15,6 +17,9 @@ import { EventListenersService } from '../infrastructure/system/event-listeners.
 
 export type ResizeDirection =
   'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
+
+/** Desktops whose accent colour the backend can read. */
+const ACCENT_COLOR_PLATFORMS = new Set<string>(['linux', 'windows', 'macos']);
 
 @Injectable({
   providedIn: 'root',
@@ -84,6 +89,7 @@ export class WindowService extends TauriBaseService {
         this.initLinuxResizeHandles();
         this.loadButtonLayout();
         this.followInterfaceScale();
+        this.followSystemAccentColor();
       }
     }
   }
@@ -142,6 +148,50 @@ export class WindowService extends TauriBaseService {
     } catch (error) {
       console.error('Failed to read the window button layout:', error);
     }
+  }
+
+  /**
+   * On Linux, Windows and macOS, use the system accent colour as the primary colour while
+   * `general.system_accent_color` is on, including later changes.
+   */
+  private async followSystemAccentColor(): Promise<void> {
+    try {
+      if (!ACCENT_COLOR_PLATFORMS.has(platform())) return;
+      const accent = new ReplaySubject<string | null>(1);
+      // As with the button layout, a change that arrives before the first read wins.
+      let changed = false;
+      this.eventListeners
+        .listenToSystemAccentColorChanged()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(color => {
+          changed = true;
+          accent.next(color);
+        });
+      combineLatest([accent, this.appSettingsService.selectSetting('general.system_accent_color')])
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(([color, setting]) =>
+          this.applyAccentColor(setting?.value === true ? color : null)
+        );
+      const color = await this.invokeCommand<string | null>('get_system_accent_color');
+      if (!changed) accent.next(color);
+    } catch (error) {
+      console.error('Failed to read the system accent color:', error);
+    }
+  }
+
+  private applyAccentColor(color: string | null): void {
+    const root = document.documentElement;
+    const palette = accentPalette(color);
+    if (!palette) {
+      root.removeAttribute('data-system-accent');
+      return;
+    }
+    root.style.setProperty('--system-accent-bg', palette.background);
+    root.style.setProperty('--system-accent-bg-rgb', palette.backgroundRgb);
+    root.style.setProperty('--system-accent-fg', palette.foreground);
+    root.style.setProperty('--system-accent-light', palette.light);
+    root.style.setProperty('--system-accent-dark', palette.dark);
+    root.setAttribute('data-system-accent', '');
   }
 
   private initLinuxResizeHandles(): void {
