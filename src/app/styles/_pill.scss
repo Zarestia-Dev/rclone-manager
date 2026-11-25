@@ -81,6 +81,8 @@
       --pill-fill-active: 76%;
       --pill-fill-selected: 100%;
       --pill-fg: var(--pill-on);
+      // The keyboard focus ring (custom-theme.scss) in the text colour, readable on the fill.
+      --focus-ring-color: currentColor;
     }
 
     &[data-variant="outline"] {
@@ -104,10 +106,6 @@
       border: none;
       outline: none;
       text-decoration: none;
-
-      &:focus-visible {
-        box-shadow: var(--focus-ring-accent);
-      }
 
       // Neutral: no tone, no variant.
       &:not([data-tone], [data-variant]) {
@@ -149,10 +147,6 @@
             transparent
           );
           box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
-        }
-
-        &:focus-visible {
-          box-shadow: var(--focus-ring-accent);
         }
       }
     }
