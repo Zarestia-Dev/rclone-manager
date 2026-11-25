@@ -96,7 +96,7 @@
     border-radius: var(--radius-md);
     font-weight: 600;
     background: rgba(var(--accent-color-rgb), 0.15);
-    color: var(--accent-color);
+    color: var(--accent-color-text);
 
     &:hover {
       background: rgba(var(--accent-color-rgb), 0.25);
@@ -116,7 +116,7 @@
 
     &.deb {
       background: rgba(var(--warn-color-rgb), 0.15);
-      color: var(--warn-color);
+      color: var(--warn-color-text);
       &:hover {
         background: rgba(var(--warn-color-rgb), 0.25);
       }
@@ -124,7 +124,7 @@
 
     &.rpm {
       background: rgba(var(--orange-rgb), 0.15);
-      color: var(--orange);
+      color: var(--orange-text);
       &:hover {
         background: rgba(var(--orange-rgb), 0.25);
       }

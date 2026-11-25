@@ -180,7 +180,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
               <td mat-cell *matCellDef="let alert">
                 <span
                   class="severity-badge"
-                  [style.color]="alerts.getSeverityStyle(alert.severity).color"
+                  [style.color]="alerts.getSeverityStyle(alert.severity).text"
                   [style.background]="alerts.getSeverityStyle(alert.severity).bg"
                 >
                   {{ 'alerts.severityLevels.' + alert.severity | translate }}
@@ -315,7 +315,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
 
     .search-open {
       background: rgba(var(--accent-color-rgb), 0.1);
-      color: var(--accent-color);
+      color: var(--accent-color-text);
     }
 
     .quick-filters {
@@ -552,7 +552,7 @@ export class AlertHistoryComponent {
   // "All" pill active style (uses primary / green)
   private readonly allActiveStyle: Record<string, string> = {
     background: 'rgba(var(--primary-color-rgb), 0.12)',
-    color: 'var(--primary-color)',
+    color: 'var(--primary-color-text)',
     'border-color': 'rgba(var(--primary-color-rgb), 0.3)',
   };
 
@@ -565,7 +565,7 @@ export class AlertHistoryComponent {
     if (this.alerts.filter().severity !== severity) return {};
     if (!severity) return this.allActiveStyle;
     const s = this.alerts.getSeverityStyle(severity);
-    return { background: s.bg, color: s.color, 'border-color': s.border };
+    return { background: s.bg, color: s.text, 'border-color': s.border };
   }
 
   setSeverityFilter(severity: AlertSeverity | undefined): void {

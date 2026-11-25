@@ -3,7 +3,10 @@ import type { Origin } from './origin';
 export type AlertSeverity = 'critical' | 'high' | 'average' | 'warning' | 'info';
 
 export interface SeverityStyle {
+  /** The severity's colour, for fills and accent bars. */
   color: string;
+  /** Text and icons in that colour, readable on a plain or tinted background. */
+  text: string;
   bg: string;
   border: string;
 }
