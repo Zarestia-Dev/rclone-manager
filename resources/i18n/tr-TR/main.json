@@ -1105,8 +1105,7 @@
       "cancel": "İptal"
     },
     "overviewHeader": {
-      "manageBackends": "Arka Uçları Yönet",
-      "backendSwitchAria": "Mevcut mod: {{title}} - Arka uç değiştirmek için tıklayın"
+      "manageBackends": "Arka Uçları Yönet"
     },
     "settingControl": {
       "default": "Varsayılan: {{value}}",
