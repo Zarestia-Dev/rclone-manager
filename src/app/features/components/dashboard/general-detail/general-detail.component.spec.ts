@@ -138,17 +138,17 @@ describe('GeneralDetailComponent controls', () => {
     expect(start).not.toHaveBeenCalled();
   });
 
-  it('renders carousel selectors as buttons with an accurate current state', () => {
-    const buttons: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll(
-      '.carousel-indicators button'
+  it('lists the automations as one accordion with the first one open', () => {
+    // The cards are not rendered here: their inputs land on the elements as properties.
+    type Card = HTMLElement & { expanded: boolean; automation: { id: string } };
+    const cards = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<Card>(
+        'mat-accordion app-automation-card'
+      )
     );
-    expect(buttons.length).toBe(2);
-    expect(buttons[0].getAttribute('aria-current')).toBe('true');
-    buttons[1].click();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.currentAutomationCardIndex()).toBe(1);
-    expect(buttons[0].hasAttribute('aria-current')).toBe(false);
-    expect(buttons[1].getAttribute('aria-current')).toBe('true');
+    expect(cards.length).toBe(2);
+    expect(cards.every(card => card.getAttribute('variant') === 'detailed')).toBe(true);
+    expect(cards.map(card => card.expanded)).toEqual([true, false]);
   });
 
   it('lists every job that reads or writes this remote, however the job names it', () => {
@@ -251,11 +251,9 @@ describe('GeneralDetailComponent controls', () => {
       const component = fixture.componentInstance;
       const ids = (): string[] => component.remoteAutomations().map(a => a.id);
 
-      component.currentAutomationCardIndex.set(2);
       component.automationOriginFilter.set('workflow');
       fixture.detectChanges();
       expect(ids()).toEqual(['wf-drive']);
-      expect(component.currentAutomationCardIndex()).toBe(0);
 
       component.automationOriginFilter.set('dashboard');
       expect(ids()).toEqual(['first', 'second']);

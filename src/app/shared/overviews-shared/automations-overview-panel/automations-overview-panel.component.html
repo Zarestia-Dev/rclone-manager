@@ -30,13 +30,24 @@
   </mat-expansion-panel-header>
 
   @if (showFilterChips()) {
-    <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
+    <app-origin-filter-bar
+      [selected]="selectedOriginFilter()"
+      (selectedChange)="originFilters.set('automations', $event)"
+      [hiddenCount]="hiddenCount()"
+    ></app-origin-filter-bar>
   }
 
-  @if (total === 0) {
+  @if (automationsList.length === 0) {
     <div class="empty-state" role="status">
       <mat-icon svgIcon="clock" aria-hidden="true"></mat-icon>
-      <p>{{ 'generalOverview.automations.noConfigured' | translate }}</p>
+      <p>
+        {{
+          (hiddenCount() > 0
+            ? 'generalOverview.originFilter.empty'
+            : 'generalOverview.automations.noConfigured'
+          ) | translate
+        }}
+      </p>
     </div>
   } @else {
     <div class="grid">

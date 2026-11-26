@@ -12,11 +12,13 @@ use crate::{
             cache::{self, AlertHistoryCache},
             dispatch::{self, DispatchContext},
             template::TemplateContext,
-            types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
+            types::{
+                ActionResult, AlertAction, AlertDetails, AlertEventKind, AlertRecord, AlertRule,
+            },
         },
         settings::AppSettingsManager,
     },
-    utils::app::notification::NotificationEvent,
+    utils::{app::notification::NotificationEvent, types::origin::Origin},
 };
 
 struct AlertRequest {
@@ -24,6 +26,8 @@ struct AlertRequest {
     event: NotificationEvent,
     title: String,
     body: String,
+    /// The event is a job an automation runs, which the automation announces as well.
+    automation_job: bool,
 }
 
 static ALERT_CHANNEL: OnceLock<mpsc::Sender<AlertRequest>> = OnceLock::new();
@@ -45,14 +49,22 @@ pub fn init(app: AppHandle) {
     });
 }
 
-/// Process a `NotificationEvent` through the alert engine.
-pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: String) {
+/// Process a `NotificationEvent` through the alert engine. `automation_job` marks the event
+/// of a job an automation runs, which the automation announces as well.
+pub fn process(
+    app: &AppHandle,
+    event: &NotificationEvent,
+    title: String,
+    body: String,
+    automation_job: bool,
+) {
     if let Some(tx) = ALERT_CHANNEL.get() {
         let req = AlertRequest {
             app: app.clone(),
             event: event.clone(),
             title: title.clone(),
             body,
+            automation_job,
         };
 
         if let Err(e) = tx.try_send(req) {
@@ -63,12 +75,22 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
     }
 }
 
+/// Whether the rule also takes the announcement an automation makes of its own run: then the
+/// job's own notification would only repeat it. A rule that filters on the job's own kind,
+/// origin or text keeps it.
+fn takes_automation_announcement(rule: &AlertRule) -> bool {
+    (rule.event_filter.is_empty() || rule.event_filter.contains(&AlertEventKind::Automation))
+        && (rule.origin_filter.is_empty() || rule.origin_filter.contains(&Origin::Automation))
+        && rule.body_filter.is_none()
+}
+
 async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
     let AlertRequest {
         app,
         event,
         title,
         body,
+        automation_job,
     } = req;
 
     let severity = event.alert_severity();
@@ -102,6 +124,10 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         }
 
         if !rule.event_filter.is_empty() && !rule.event_filter.contains(&kind) {
+            continue;
+        }
+
+        if automation_job && takes_automation_announcement(&rule) {
             continue;
         }
 
@@ -298,5 +324,43 @@ pub async fn execute_action(
         AlertAction::Whatsapp(a) => dispatch::whatsapp::dispatch(a, ctx, client).await,
         AlertAction::Mqtt(a) => dispatch::mqtt::dispatch(a, ctx, dispatch_ctx).await,
         AlertAction::Email(a) => dispatch::email::dispatch(a, ctx).await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_rule_that_takes_every_event_gets_the_automation_announcement_alone() {
+        assert!(takes_automation_announcement(&AlertRule::default()));
+        let both = AlertRule {
+            event_filter: vec![AlertEventKind::Job, AlertEventKind::Automation],
+            origin_filter: vec![Origin::Automation, Origin::QuickRun],
+            ..AlertRule::default()
+        };
+        assert!(takes_automation_announcement(&both));
+    }
+
+    #[test]
+    fn a_rule_that_asks_for_the_job_itself_keeps_it() {
+        for rule in [
+            AlertRule {
+                event_filter: vec![AlertEventKind::Job],
+                ..AlertRule::default()
+            },
+            // A Quick Run's job has the Quick Run as its origin; the announcement has none.
+            AlertRule {
+                origin_filter: vec![Origin::QuickRun],
+                ..AlertRule::default()
+            },
+            // The two texts differ, so a text filter may match only the job's.
+            AlertRule {
+                body_filter: Some("Documents".into()),
+                ..AlertRule::default()
+            },
+        ] {
+            assert!(!takes_automation_announcement(&rule));
+        }
     }
 }

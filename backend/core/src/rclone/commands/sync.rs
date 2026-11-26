@@ -12,7 +12,10 @@ use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::starter::Starter;
 
-use super::common::{ResolvedProfile, backend_os, is_directory, parse_fs, split_file_path};
+use super::common::{
+    ResolvedProfile, backend_os, connect_path, is_directory, parse_fs, remote_connections,
+    split_file_path,
+};
 use super::index::{move_index_options, narrow_to_changes};
 use super::job::{JobMetadata, SubmitJobOptions};
 use super::job_chain::{ChainJob, ChainMode, run_chain};
@@ -421,6 +424,61 @@ pub(crate) async fn build_special_transfer_payload(
     ))
 }
 
+/// One read-only `union` remote over several sync sources (`:union,upstreams='…':`), so the sync
+/// sees them as one tree and deletes in the destination only what none of them holds. A path that
+/// is in more than one source is taken from the first listed one (search policy `ff`).
+fn union_of(
+    sources: &[String],
+    runtime_remote_options: Option<&HashMap<String, Value>>,
+) -> Result<String, String> {
+    let connections = remote_connections(runtime_remote_options)?;
+    let upstreams = sources
+        .iter()
+        .map(|source| {
+            let source = connect_path(source, &connections);
+            // A space separated CSV list (rclone's SpaceSepList); a quoted field doubles `"`.
+            format!("\"{}:ro\"", source.replace('"', "\"\""))
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    Ok(format!(
+        ":union,upstreams='{}':",
+        upstreams.replace('\'', "''")
+    ))
+}
+
+/// Whether one path is inside the other on the same remote. rclone refuses such a sync itself
+/// (`OverlappingFilterCheck`), but not when the source is a union, which is a remote of its own.
+fn overlaps(a: &str, b: &str, windows: bool) -> bool {
+    let split = |path: &str| {
+        let (fs, root) = parse_fs(path, windows)?;
+        // A local path comes back whole as the filesystem; it is compared as a path, without
+        // case on Windows. A remote's name and paths keep their case: the remote decides.
+        let (fs, root, fold) = if fs.ends_with(':') {
+            (fs, root, false)
+        } else {
+            (String::new(), fs, windows)
+        };
+        let segments: Vec<String> = root
+            .split('/')
+            .filter(|segment| !segment.is_empty())
+            .map(|segment| {
+                if fold {
+                    segment.to_lowercase()
+                } else {
+                    segment.to_string()
+                }
+            })
+            .collect();
+        Some((fs, segments))
+    };
+    let (Some((a_fs, a)), Some((b_fs, b))) = (split(a), split(b)) else {
+        return false;
+    };
+    let shorter = a.len().min(b.len());
+    a_fs == b_fs && a[..shorter] == b[..shorter]
+}
+
 /// Core runner to execute batch transfers with directory checking, dry-run resolution,
 /// payload generation, and batch job submission across Remote Profiles, Quick Runs, and Workflows.
 pub async fn submit_transfer_batch(
@@ -490,13 +548,62 @@ pub async fn submit_transfer_batch(
         }
     }
 
+    // Sources synced into the same destination run as one union source: separate syncs would
+    // each delete there what the others copied. The probes above still stop a missing source,
+    // which a union would otherwise skip and so delete its files from the destination.
+    let (target_pairs, dir_results) = if transfer_type == OperationType::Sync {
+        let mut groups: Vec<(Vec<String>, String)> = Vec::new();
+        for (source, dest) in target_pairs {
+            match groups
+                .iter_mut()
+                .find(|(_, group_dest)| *group_dest == dest)
+            {
+                Some((sources, _)) => sources.push(source),
+                None => groups.push((vec![source], dest)),
+            }
+        }
+        let pairs = groups
+            .into_iter()
+            .map(|(mut sources, dest)| {
+                let source = if sources.len() == 1 {
+                    sources.remove(0)
+                } else {
+                    if let Some(source) = sources.iter().find(|s| overlaps(s, &dest, windows)) {
+                        return Err(crate::localized_error!(
+                            "backendErrors.operations.sourceOverlapsDestination",
+                            "source" => source,
+                            "destination" => &dest
+                        ));
+                    }
+                    union_of(&sources, common.runtime_remote_options.as_ref())?
+                };
+                Ok((source, dest))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let dirs = vec![true; pairs.len()];
+        (pairs, dirs)
+    } else {
+        (target_pairs, dir_results)
+    };
+
     let filenames = common
         .rclone_config
         .get("filenames")
         .and_then(Value::as_array);
 
+    // Copies or moves of several sources into one destination run one after another: at the
+    // same time they race for a path that is in more than one source, and which file ends up
+    // there is chance. They run last source first, so the first listed one ends up there, as in
+    // a sync of several sources. A move still deletes every source's file; only `--backup-dir`
+    // keeps the versions it replaced.
+    let one_by_one = matches!(transfer_type, OperationType::Copy | OperationType::Move)
+        && target_pairs
+            .iter()
+            .enumerate()
+            .any(|(i, (_, dest))| target_pairs[..i].iter().any(|(_, other)| other == dest));
+
     let mut inputs = Vec::new();
-    let mut special_jobs = Vec::new();
+    let mut chain_jobs = Vec::new();
 
     for (i, ((source, mut dest), is_dir)) in target_pairs.into_iter().zip(dir_results).enumerate() {
         let mut config = common.rclone_config.clone();
@@ -534,28 +641,41 @@ pub async fn submit_transfer_batch(
             is_dir,
             dry_run: Some(dry_run),
         };
-        if matches!(
+        let (endpoint, payload) = if matches!(
             transfer_type,
             OperationType::Archivecreate | OperationType::Cryptcheck
         ) {
             let (endpoint, payload) =
                 build_special_transfer_payload(&app, &backend, &params).await?;
-            let mut job_metadata = metadata.clone();
-            job_metadata.source = vec![source];
-            job_metadata.destination = dest;
-            special_jobs.push(ChainJob {
-                endpoint,
-                payload,
-                metadata: job_metadata,
-            });
+            (endpoint.to_string(), payload)
+        } else if one_by_one {
+            let mut payload = params.to_rclone_body(windows)?;
+            let endpoint = payload
+                .as_object_mut()
+                .and_then(|body| body.remove("_path"))
+                .and_then(|path| path.as_str().map(str::to_string))
+                .ok_or_else(|| invalid_option("_path"))?;
+            (endpoint, payload)
         } else {
             inputs.push(params.to_rclone_body(windows)?);
-        }
+            continue;
+        };
+        let mut job_metadata = metadata.clone();
+        job_metadata.source = vec![source];
+        job_metadata.destination = dest;
+        chain_jobs.push(ChainJob {
+            endpoint,
+            payload,
+            metadata: job_metadata,
+        });
+    }
+    if one_by_one {
+        chain_jobs.reverse();
     }
 
     // Every input is validated and encoded above, before the first mutating request is sent.
-    if !special_jobs.is_empty() {
-        return run_chain(app, backend, special_jobs, chain).await;
+    if !chain_jobs.is_empty() {
+        return run_chain(app, backend, chain_jobs, chain).await;
     }
     crate::rclone::commands::job::submit_batch_job_with_options(
         app,
@@ -595,7 +715,12 @@ pub(crate) async fn start_resolved_profile_batch(
     let backend = resolved.backend;
     let mut common = resolved.params;
 
-    let mut scoped = params.scoped_targets.filter(|t| !t.is_empty());
+    // A changed folder of one source has to be synced with the same folder of every other
+    // source, so a sync of several sources runs whole, as one union.
+    let several_sync_sources = transfer_type == OperationType::Sync && common.source.len() > 1;
+    let mut scoped = params
+        .scoped_targets
+        .filter(|t| !t.is_empty() && !several_sync_sources);
     // An index run keeps the whole folder as its source and tells rclone what changed in it.
     if transfer_type == OperationType::Index
         && let Some(targets) = scoped.take()
@@ -730,7 +855,7 @@ mod batch_tests {
     impl BatchBackend {
         async fn new(
             stats: Vec<(&'static str, Result<bool, &'static str>)>,
-            expect_batch: bool,
+            expect_job: bool,
         ) -> Self {
             let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let backend = Backend::new_remote(
@@ -781,11 +906,10 @@ mod batch_tests {
                     requests.push((path, body));
                     tokio::task::yield_now().await;
                 }
-                if expect_batch {
+                if expect_job {
                     let (stream, path, body) = read_rpc(&listener).await;
-                    assert_eq!(path, "/job/batch");
                     requests.push((path, body));
-                    // Capture encoded inputs without starting job monitoring or mutating files.
+                    // Capture the first job without starting job monitoring or mutating files.
                     respond(
                         stream,
                         "500 Internal Server Error",
@@ -812,6 +936,15 @@ mod batch_tests {
                 .iter()
                 .map(|source| (source.clone(), common.dest.clone()))
                 .collect();
+            self.submit_pairs(operation, common, pairs).await
+        }
+
+        async fn submit_pairs(
+            &self,
+            operation: OperationType,
+            common: &CommonConfigParams,
+            pairs: Vec<(String, String)>,
+        ) -> Result<u64, String> {
             let metadata = JobMetadata::new(
                 "drive",
                 operation.as_job_type().unwrap(),
@@ -863,9 +996,20 @@ mod batch_tests {
         )
         .await;
         let common = common_config();
+        // Each source into a destination of its own, as a changed-only run sends them.
+        let pairs = vec![
+            (
+                "drive:first/旅行.txt".to_string(),
+                "target:backup".to_string(),
+            ),
+            (
+                "drive:second/Arşiv".to_string(),
+                "target:backup/Arşiv".to_string(),
+            ),
+        ];
         assert!(
             backend
-                .submit(OperationType::Copy, &common)
+                .submit_pairs(OperationType::Copy, &common, pairs)
                 .await
                 .unwrap_err()
                 .contains("batch captured")
@@ -876,6 +1020,7 @@ mod batch_tests {
         for (_, stat) in &requests[..2] {
             assert_eq!(stat["fs"], "drive,region='a''b,c':");
         }
+        assert_eq!(requests[2].0, "/job/batch");
         let inputs = requests[2].1["inputs"].as_array().unwrap();
         assert_eq!(inputs.len(), 2);
         assert_eq!(inputs[0]["_path"], operations::COPYFILE);
@@ -885,7 +1030,34 @@ mod batch_tests {
         assert_eq!(inputs[0]["dstRemote"], "旅行.txt");
         assert_eq!(inputs[1]["_path"], crate::rclone::endpoints::sync::COPY);
         assert_eq!(inputs[1]["srcFs"], "drive,region='a''b,c':second/Arşiv");
-        assert_eq!(inputs[1]["dstFs"], "target:backup");
+        assert_eq!(inputs[1]["dstFs"], "target:backup/Arşiv");
+    }
+
+    #[tokio::test]
+    async fn moves_of_several_sources_into_one_destination_run_last_source_first() {
+        let mut backend = BatchBackend::new(
+            vec![("first/旅行.txt", Ok(false)), ("second/Arşiv", Ok(true))],
+            true,
+        )
+        .await;
+        assert!(
+            backend
+                .submit(OperationType::Move, &common_config())
+                .await
+                .unwrap_err()
+                .contains("batch captured")
+        );
+        let requests = backend.requests().await;
+        // The first job goes alone; the chain stops there because the test backend fails it.
+        assert_eq!(requests.len(), 3);
+        assert_eq!(
+            requests[2].0,
+            format!("/{}", crate::rclone::endpoints::sync::MOVE)
+        );
+        let job = &requests[2].1;
+        assert!(job.get("_path").is_none());
+        assert_eq!(job["srcFs"], "drive,region='a''b,c':second/Arşiv");
+        assert_eq!(job["dstFs"], "target:backup");
     }
 
     #[tokio::test]
@@ -902,6 +1074,103 @@ mod batch_tests {
         assert!(error.contains("backendErrors.operations.directoriesOnly"));
         assert!(error.contains("drive:first/旅行.txt"));
         assert_eq!(backend.requests().await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn sync_sources_into_one_destination_run_as_one_union() {
+        let mut backend = BatchBackend::new(
+            vec![("first", Ok(true)), ("second/My \"Docs\"", Ok(true))],
+            true,
+        )
+        .await;
+        let common = parse_common_config(
+            &json!({
+                "srcFs": ["drive:first", "drive:second/My \"Docs\""],
+                "dstFs": "target:backup",
+                "remotes": {"drive": {"region": "a'b,c"}, "target": {"chunk_size": 8}}
+            }),
+            &json!({}),
+        )
+        .unwrap();
+        assert!(
+            backend
+                .submit(OperationType::Sync, &common)
+                .await
+                .unwrap_err()
+                .contains("batch captured")
+        );
+        let requests = backend.requests().await;
+        assert_eq!(requests[2].0, "/job/batch");
+        let inputs = requests[2].1["inputs"].as_array().unwrap();
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(inputs[0]["_path"], crate::rclone::endpoints::sync::SYNC);
+        assert_eq!(
+            inputs[0]["srcFs"],
+            r#":union,upstreams='"drive,region=''a''''b,c'':first:ro" "drive,region=''a''''b,c'':second/My ""Docs"":ro"':"#
+        );
+        assert_eq!(inputs[0]["dstFs"], "target,chunk_size='8':backup");
+    }
+
+    #[tokio::test]
+    async fn a_destination_inside_one_of_several_sync_sources_is_refused() {
+        let mut backend =
+            BatchBackend::new(vec![("first", Ok(true)), ("second", Ok(true))], false).await;
+        let common = parse_common_config(
+            &json!({"srcFs": ["drive:first", "drive:second"], "dstFs": "drive:first/backup"}),
+            &json!({}),
+        )
+        .unwrap();
+        let error = backend
+            .submit(OperationType::Sync, &common)
+            .await
+            .unwrap_err();
+        assert!(error.contains("backendErrors.operations.sourceOverlapsDestination"));
+        assert!(error.contains("drive:first/backup"));
+        assert_eq!(backend.requests().await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn a_changed_folder_of_several_sync_sources_syncs_them_whole() {
+        let mut backend =
+            BatchBackend::new(vec![("first", Ok(true)), ("second", Ok(true))], true).await;
+        let common = parse_common_config(
+            &json!({"srcFs": ["drive:first", "drive:second"], "dstFs": "target:backup"}),
+            &json!({}),
+        )
+        .unwrap();
+        let resolved = ResolvedProfile {
+            backend: backend.backend.clone(),
+            params: common,
+        };
+        let params = ProfileParams {
+            remote_name: "drive".into(),
+            profile_name: "default".into(),
+            backend_name: None,
+            source: None,
+            no_cache: Some(true),
+            scoped_targets: Some(vec![("drive:first/sub".into(), "target:backup/sub".into())]),
+            execute_id: None,
+        };
+        let result = tokio::time::timeout(
+            Duration::from_secs(5),
+            start_resolved_profile_batch(
+                backend.app.clone(),
+                resolved,
+                OperationType::Sync,
+                params,
+            ),
+        )
+        .await
+        .expect("batch preparation must finish");
+        assert!(result.unwrap_err().contains("batch captured"));
+        let requests = backend.requests().await;
+        let inputs = requests[2].1["inputs"].as_array().unwrap();
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(
+            inputs[0]["srcFs"],
+            r#":union,upstreams='"drive:first:ro" "drive:second:ro"':"#
+        );
+        assert_eq!(inputs[0]["dstFs"], "target:backup");
     }
 
     #[tokio::test]
@@ -943,6 +1212,7 @@ mod batch_tests {
         );
         let requests = backend.requests().await;
         assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].0, "/job/batch");
         let inputs = requests[0].1["inputs"].as_array().unwrap();
         assert_eq!(inputs[0]["url"], "https://example.com/a");
         assert_eq!(inputs[0]["remote"], "incoming/旅行.txt");
@@ -1153,6 +1423,32 @@ mod tests {
             build_archive_final_dest("/home/user/data", "gdrive:", "zip"),
             "gdrive:data.zip"
         );
+    }
+
+    #[test]
+    fn overlapping_paths_are_one_inside_the_other_on_the_same_remote() {
+        for (a, b) in [
+            ("/data/a", "/data/a/backup"),
+            ("/data/a/", "/data/a"),
+            ("drive:", "drive:photos"),
+            ("drive:photos/2024", "drive:/photos"),
+        ] {
+            assert!(overlaps(a, b, false), "{a} {b}");
+            assert!(overlaps(b, a, false), "{b} {a}");
+        }
+        for (a, b) in [
+            ("/data/a", "/data/ab"),
+            ("drive:photos", "other:photos"),
+            ("drive:photos", "/photos"),
+            ("/Data/a", "/data/a/backup"),
+        ] {
+            assert!(!overlaps(a, b, false), "{a} {b}");
+        }
+        assert!(overlaps(r"C:\Data\A", r"c:\data\a\Backup", true));
+        assert!(!overlaps(r"C:\Data\A", r"D:\Data\A", true));
+        // On Windows too, a remote's name and paths keep their case.
+        assert!(!overlaps("Drive:photos", "drive:photos/backup", true));
+        assert!(!overlaps("drive:Photos", "drive:photos/backup", true));
     }
 
     #[test]

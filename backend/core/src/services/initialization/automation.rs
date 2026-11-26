@@ -14,7 +14,14 @@ use crate::{
             engine::AutomationScheduler,
             runtime::{RuntimeTasks, WorkflowSnapshot},
         },
-        flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
+        flow::{
+            quick_run::{commands::start_quick_run_snapshot, types::QuickRun},
+            workflow::{
+                engine::{RunTrigger, execute_workflow_snapshot},
+                types::WorkflowDefinition,
+            },
+        },
+        lifecycle::startup::{run_recorded, spawn_auto_start},
         settings::AppSettingsManager,
     },
     utils::types::remotes::RemoteSettings,
@@ -72,37 +79,57 @@ impl AutostartTasks {
                 AutostartTask::Workflow(_) => 0,
             };
             let task_app = app.clone();
-            crate::services::lifecycle::startup::spawn_auto_start(app, delay, async move {
+            let id = match &task {
+                AutostartTask::QuickRun(quick_run) => quick_run.id.clone(),
+                AutostartTask::Workflow(workflow) => workflow.definition.id.clone(),
+            };
+            spawn_auto_start(app, delay, id.clone(), async move {
                 let app = task_app;
-                match task {
+                let launch_app = app.clone();
+                let launch_backend = backend.clone();
+                let (kind, result) = match task {
                     AutostartTask::QuickRun(quick_run) => {
-                        let id = quick_run.id.clone();
                         info!("Auto-starting Quick Run: {id}");
-                        if let Err(error) =
-                            crate::services::flow::quick_run::commands::start_quick_run_snapshot(
-                                app, backend, quick_run, None, None,
+                        let result = run_recorded(&app, &backend.name, &id, |execution| async {
+                            let started = start_quick_run_snapshot(
+                                launch_app,
+                                launch_backend,
+                                quick_run,
+                                None,
+                                execution,
                             )
-                            .await
-                        {
-                            log::error!("Failed to auto-start Quick Run {id}: {error}");
-                        }
+                            .await?;
+                            // A serve is no job, so it is done once it runs.
+                            Ok(started.serve_id.is_none())
+                        })
+                        .await;
+                        ("Quick Run", result)
                     }
                     AutostartTask::Workflow(workflow) => {
-                        let id = workflow.definition.id.clone();
                         info!("Auto-starting Workflow: {id}");
-                        if let Err(error) =
-                            crate::services::flow::workflow::engine::execute_workflow_snapshot(
-                                app,
-                                backend,
+                        let result = run_recorded(&app, &backend.name, &id, |_| async {
+                            let result = execute_workflow_snapshot(
+                                launch_app,
+                                launch_backend,
                                 workflow,
                                 false,
-                                crate::services::flow::workflow::engine::RunTrigger::AppStart,
+                                RunTrigger::AppStart,
                             )
-                            .await
-                        {
-                            log::error!("Failed to auto-start Workflow {id}: {error}");
-                        }
+                            .await?;
+                            if result.success {
+                                Ok(false)
+                            } else {
+                                Err(result.error.unwrap_or_else(|| {
+                                    crate::localized_error!("backendErrors.workflow.unknownError")
+                                }))
+                            }
+                        })
+                        .await;
+                        ("Workflow", result)
                     }
+                };
+                if let Err(error) = result {
+                    log::error!("Failed to auto-start {kind} {id}: {error}");
                 }
             });
         }

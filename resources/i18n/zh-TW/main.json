@@ -151,24 +151,54 @@
       "stop": "停止目前執行"
     },
     "nextRun": {
-      "disabled": "自動化已禁用",
       "stopping": "當前執行結束後禁用",
       "notScheduled": "未計劃"
     },
-    "lastRun": {
-      "never": "從未執行"
-    },
     "monitoring": {
-      "realtime": "實時監控",
-      "debounce": "防抖延遲",
       "watcherActive": "監控器處於活動狀態",
       "watchedFolder": "監看資料夾",
-      "seconds": "秒",
-      "realtimeSchedule": "實時檔案監控",
-      "changedOnlyShort": "僅子目錄",
-      "changedOnlyActive": "僅子目錄",
-      "syncScope": "同步範圍",
-      "realtimeChangedOnly": "實時監控（僅子目錄）"
+      "changedOnlyShort": "僅子目錄"
+    },
+    "startup": {
+      "badge": "啟動時",
+      "startsIn": {
+        "other": "{{count}} 秒後啟動"
+      },
+      "delay": {
+        "other": "{{count}} 秒後"
+      },
+      "immediately": "應用程式啟動後立即"
+    },
+    "card": {
+      "waiting": "等待中",
+      "started": "{{time}}啟動",
+      "lastTry": "上次嘗試：{{time}}",
+      "nextRun": "下次執行：{{time}}",
+      "lastRun": "上次執行：{{time}}",
+      "neverRun": "從未執行",
+      "notStarted": "尚未啟動",
+      "watching": {
+        "other": "監控中 · {{count}} 秒"
+      },
+      "startupAfter": {
+        "other": "啟動時 · {{count}} 秒後"
+      },
+      "lastFailed": "上次執行失敗",
+      "whenItRuns": "執行時機",
+      "onChange": "檔案變更時",
+      "waitsAfterChange": {
+        "other": "最後一次變更後等待 {{count}} 秒"
+      },
+      "folders": {
+        "other": "{{count}} 個資料夾"
+      },
+      "onAppStart": "應用程式啟動時",
+      "lastStart": "上次啟動",
+      "servingAt": "正在 {{address}} 提供服務",
+      "notServing": "未執行",
+      "source": "源路徑",
+      "sources": "源路徑",
+      "destination": "目標路徑"
     }
   },
   "actions": {
@@ -1555,6 +1585,10 @@
       "mountFolderLocalDrive": "請選擇本機磁碟機上的資料夾。",
       "mountFolderAlreadyExists": "掛載資料夾已存在，請使用新名稱。",
       "multiSourceOneWayInfo": "檢測到多個源路徑。已自動啟用單向檢查，以確保 rclone 對比每個源與目標。",
+      "multiSourceSyncInfo": "這些源會作為一個資料夾同步：目標中會保留至少存在於其中一個源中的所有檔案。如果同一路徑存在於多個源中，將使用清單中靠前的源的檔案；開啟「快速列表」時無法保證這一點。即使源和目標位於同一遠端連線，也不會使用服務端複製。",
+      "multiSourceCopyInfo": "這些源會從清單中的最後一個開始依次複製。如果同一路徑存在於多個源中，目標中保留的是清單中靠前的源的檔案。如果某個源失敗，尚未輪到的源將不會被複製。",
+      "multiSourceMoveInfo": "這些源會從清單中的最後一個開始依次移動。如果同一路徑存在於多個源中，目標中保留的是清單中靠前的源的檔案，其他版本會被刪除；如需保留，請設定「備份目錄」。如果某個源失敗，尚未輪到的源將不會被移動。",
+      "multiSourceSyncChangedOnlyNote": "有多個源時，每次更改都會完整同步所有源：「僅同步已更改的子目錄」不適用。",
       "enableAutoStart": "開機自動{{type}}",
       "autoStartDelay": "啟動延遲",
       "autoStartDelayHint": "應用程式啟動後等待多久再開始執行。當網路、VPN 或其他掛載尚未就緒時很有用。",
@@ -2068,24 +2102,14 @@
     },
     "generalDetail": {
       "automations": "自動化",
-      "goToAutomation": "前往自動化 {{index}}",
-      "schedule": "計劃",
-      "cronExpression": "Cron 運算式：",
       "nextRunLabel": "下次執行：",
-      "lastRunLabel": "上次執行：",
       "statistics": "統計",
       "successful": "成功",
       "failedCount": "失敗",
       "stoppedCount": "已停止",
       "totalRuns": "總執行次數",
       "paths": "路徑",
-      "sourceLabel": "源路徑：",
-      "destinationLabel": "目標路徑：",
-      "lastError": "上次錯誤",
-      "currentlyRunning": "正在執行",
       "jobIdLabel": "任務 ID：",
-      "previousAutomationTooltip": "上一個自動化",
-      "nextAutomationTooltip": "下一個自動化",
       "remoteConfiguration": "遠端連線設定",
       "editConfiguration": "編輯設定",
       "remoteActionQuickSelection": "遠端操作快捷選擇"
@@ -3845,6 +3869,13 @@
       },
       "noActive": "暫無運作中的掛載",
       "noMounted": "沒有已掛載的遠端。掛載遠端後，即可把它的檔案當作電腦上的資料夾使用。"
+    },
+    "originFilter": {
+      "hidden": {
+        "other": "另有 {{count}} 項已隱藏"
+      },
+      "empty": "沒有符合此過濾條件的項目，其餘項目已隱藏。",
+      "showAll": "顯示全部"
     }
   },
   "appOverview": {
@@ -3967,7 +3998,10 @@
       "destinationPathInvalid": "無法解析目的路徑：{{path}}",
       "filePathsInvalid": "無法將來源 '{{source}}' 或目的地 '{{destination}}' 解析為檔案路徑。請使用 'remote:path/to/file' 格式或本機路徑。",
       "unsupportedOperation": "操作 {{operation}} 無法作為傳輸執行",
-      "destinationMissing": "未指定目的地"
+      "destinationMissing": "未指定目的地",
+      "sourceOverlapsDestination": "來源 {{source}} 與目的地 {{destination}} 重疊：其中一個位於另一個之內。請選擇不與任何來源重疊的目的地。",
+      "overlappingRemotes": "來源與目的地重疊：其中一個位於另一個之內。請選擇來源之外的目的地，或使用過濾規則將其排除。",
+      "backupDirOverlaps": "「備份目錄」不能位於來源或目的地之內，也不能包含它們。"
     },
     "serve": {
       "remoteEmpty": "遠端連線名稱不能為空",
@@ -4117,7 +4151,8 @@
       "authExpired": "遠端驗證已過期或無效。請在設定中重新授權。",
       "quotaExceeded": "遠端連線 API 速率限制或配額已超限。請稍後重試。",
       "networkError": "無法連線到遠端伺服器。請檢查網路連線及遠端地址。",
-      "notFound": "在遠端上未找到目標目錄或檔案。"
+      "notFound": "在遠端上未找到目標目錄或檔案。",
+      "notInConfig": "遠端「{{remote}}」不在 Rclone 設定中。它已在應用程式之外被刪除或重新命名，或正在使用另一個設定檔。"
     },
     "updater": {
       "noPending": "暫無待處理更新",

@@ -20,4 +20,16 @@
       <span>{{ chip.labelKey | translate }}</span>
     </button>
   }
+  @if (hiddenCount() > 0) {
+    <button
+      type="button"
+      appPill
+      tone="orange"
+      class="ml-auto"
+      (click)="selected.set('all')"
+      [attr.title]="'generalOverview.originFilter.showAll' | translate"
+    >
+      <span>{{ 'generalOverview.originFilter.hidden' | translate: { count: hiddenCount() } }}</span>
+    </button>
+  }
 </div>

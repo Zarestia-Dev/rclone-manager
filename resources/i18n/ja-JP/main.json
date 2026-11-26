@@ -151,24 +151,54 @@
       "stop": "実行中の処理を停止"
     },
     "nextRun": {
-      "disabled": "自動化は無効です",
       "stopping": "現在の実行完了後に無効化します",
       "notScheduled": "スケジュールされていません"
     },
-    "lastRun": {
-      "never": "実行履歴なし"
-    },
     "monitoring": {
-      "realtime": "リアルタイム監視",
-      "debounce": "デバウンス遅延",
       "watcherActive": "監視中",
       "watchedFolder": "監視フォルダー",
-      "seconds": "秒",
-      "realtimeSchedule": "リアルタイムファイル監視",
-      "changedOnlyShort": "サブディレクトリのみ",
-      "changedOnlyActive": "サブディレクトリのみ",
-      "syncScope": "同期スコープ",
-      "realtimeChangedOnly": "リアルタイム監視（サブディレクトリのみ）"
+      "changedOnlyShort": "サブディレクトリのみ"
+    },
+    "startup": {
+      "badge": "起動時",
+      "startsIn": {
+        "other": "{{count}} 秒後に開始"
+      },
+      "delay": {
+        "other": "{{count}} 秒後"
+      },
+      "immediately": "アプリの起動と同時"
+    },
+    "card": {
+      "waiting": "待機中",
+      "started": "{{time}}に開始",
+      "lastTry": "最終試行: {{time}}",
+      "nextRun": "次回実行: {{time}}",
+      "lastRun": "前回実行: {{time}}",
+      "neverRun": "未実行",
+      "notStarted": "まだ開始していません",
+      "watching": {
+        "other": "監視中 · {{count}} 秒"
+      },
+      "startupAfter": {
+        "other": "起動時 · {{count}} 秒後"
+      },
+      "lastFailed": "前回の実行は失敗しました",
+      "whenItRuns": "実行タイミング",
+      "onChange": "ファイルの変更時",
+      "waitsAfterChange": {
+        "other": "最後の変更から {{count}} 秒待機"
+      },
+      "folders": {
+        "other": "{{count}} フォルダー"
+      },
+      "onAppStart": "アプリの起動時",
+      "lastStart": "前回の起動",
+      "servingAt": "{{address}} で提供中",
+      "notServing": "停止中",
+      "source": "転送元",
+      "sources": "転送元",
+      "destination": "転送先"
     }
   },
   "actions": {
@@ -1552,6 +1582,10 @@
       "mountFolderLocalDrive": "ローカルドライブ上のフォルダーを選択してください。",
       "mountFolderAlreadyExists": "マウント先のフォルダーは既に存在します。新しい名前を使用してください。",
       "multiSourceOneWayInfo": "複数の転送元パスが検出されました。rcloneが各転送元を転送先に対して確実に検証できるように、片方向の検証（ワンウェイチェック）が自動的に有効になりました。",
+      "multiSourceSyncInfo": "転送元はひとつのフォルダーとして同期されます。転送先には、いずれかの転送元にあるファイルがすべて残ります。同じパスが複数の転送元にある場合は、リストで先にある転送元のファイルが使われます。ただし「高速リスト取得 (Fast List)」が有効な場合、これは保証されません。転送元と転送先が同じリモートにあっても、サーバーサイドコピーは使われません。",
+      "multiSourceCopyInfo": "転送元はリストの最後のものから順に、ひとつずつコピーされます。同じパスが複数の転送元にある場合、転送先にはリストで先にある転送元のファイルが残ります。いずれかの転送元が失敗すると、まだ順番が来ていない転送元はコピーされません。",
+      "multiSourceMoveInfo": "転送元はリストの最後のものから順に、ひとつずつ移動されます。同じパスが複数の転送元にある場合、転送先にはリストで先にある転送元のファイルが残り、ほかのバージョンは削除されます。残しておくには「バックアップ用ディレクトリ」を設定してください。いずれかの転送元が失敗すると、まだ順番が来ていない転送元は移動されません。",
+      "multiSourceSyncChangedOnlyNote": "転送元が複数ある場合、変更があるたびにすべての転送元が全体同期されます。「変更されたサブディレクトリのみ同期」は適用されません。",
       "enableAutoStart": "起動時に自動{{type}}を有効化",
       "autoStartDelay": "起動遅延",
       "autoStartDelayHint": "アプリの起動後、実行を開始するまでの待機時間。ネットワークやVPN、他のマウントが未準備の場合に便利です。",
@@ -2068,24 +2102,14 @@
     },
     "generalDetail": {
       "automations": "自動化",
-      "goToAutomation": "自動化 {{index}} に移動",
-      "schedule": "スケジュール",
-      "cronExpression": "Cron式:",
       "nextRunLabel": "次回実行:",
-      "lastRunLabel": "前回実行:",
       "statistics": "統計情報",
       "successful": "成功",
       "failedCount": "失敗",
       "stoppedCount": "停止",
       "totalRuns": "総実行回数",
       "paths": "パス",
-      "sourceLabel": "転送元:",
-      "destinationLabel": "転送先:",
-      "lastError": "最後のエラー",
-      "currentlyRunning": "現在実行中",
       "jobIdLabel": "ジョブID:",
-      "previousAutomationTooltip": "前の自動化",
-      "nextAutomationTooltip": "次の自動化",
       "remoteConfiguration": "リモート設定",
       "editConfiguration": "設定を編集",
       "remoteActionQuickSelection": "リモートアクションクイック選択"
@@ -3804,6 +3828,13 @@
       },
       "noActive": "アクティブなマウントはありません",
       "noMounted": "マウントされているリモートはありません。リモートをマウントすると、そのファイルをコンピューター上のフォルダーとして使えます。"
+    },
+    "originFilter": {
+      "hidden": {
+        "other": "他 {{count}} 件が非表示"
+      },
+      "empty": "このフィルタに一致する項目はありません。残りは非表示です。",
+      "showAll": "すべて表示"
     }
   },
   "appOverview": {
@@ -3926,7 +3957,10 @@
       "destinationPathInvalid": "宛先パスを解析できませんでした: {{path}}",
       "filePathsInvalid": "ソース '{{source}}' または宛先 '{{destination}}' をファイルパスとして解析できませんでした。'remote:path/to/file' 形式かローカルパスを使用してください。",
       "unsupportedOperation": "操作 {{operation}} は転送として実行できません",
-      "destinationMissing": "宛先が指定されていません"
+      "destinationMissing": "宛先が指定されていません",
+      "sourceOverlapsDestination": "ソース {{source}} と宛先 {{destination}} が重なっています。一方がもう一方の中にあります。どのソースとも重ならない宛先を選択してください。",
+      "overlappingRemotes": "ソースと宛先が重なっています。一方がもう一方の中にあります。ソースの外にある宛先を選択するか、フィルタ規則で宛先を除外してください。",
+      "backupDirOverlaps": "「バックアップ用ディレクトリ」は、ソースや宛先の中に置くことも、それらを含むこともできません。"
     },
     "serve": {
       "remoteEmpty": "リモート名を空欄にすることはできません",
@@ -4076,7 +4110,8 @@
       "authExpired": "リモート認証の有効期限が切れたか無効です。設定で再認証してください。",
       "quotaExceeded": "リモートストレージの API レート制限またはストレージ容量上限を超過しました。しばらく待ってから再試行してください。",
       "networkError": "リモートサーバーに接続できません。ネットワーク接続とリモートアドレスを確認してください。",
-      "notFound": "ターゲットディレクトリまたはファイルがリモートで見つかりませんでした。"
+      "notFound": "ターゲットディレクトリまたはファイルがリモートで見つかりませんでした。",
+      "notInConfig": "リモート「{{remote}}」が rclone 設定にありません。アプリの外で削除または名前変更されたか、別の設定ファイルが使われています。"
     },
     "updater": {
       "noPending": "保留中のアップデートはありません",

@@ -11,10 +11,17 @@ import {
 import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { OriginFilterService } from 'src/app/services/ui/state/origin-filter.service';
 
 describe('ServesOverviewPanelComponent', () => {
   let component: ServesOverviewPanelComponent;
   let fixture: ComponentFixture<ServesOverviewPanelComponent>;
+
+  // The chips choose the filter, and only while they are shown.
+  const chooseFilter = (filter: string): void => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    TestBed.inject(OriginFilterService).set('serves', filter);
+  };
   const runningServes = signal<ServeListItem[]>([]);
 
   const mockServes: ServeListItem[] = [
@@ -47,6 +54,7 @@ describe('ServesOverviewPanelComponent', () => {
   ];
 
   beforeEach(async () => {
+    localStorage.removeItem('rcman.overview.originFilters');
     runningServes.set(mockServes);
     const mockQuickRunService = {
       quickRuns: signal([]),
@@ -72,24 +80,36 @@ describe('ServesOverviewPanelComponent', () => {
     fixture.detectChanges();
   });
 
+  it('counts everything in the header when a chip hides all of it, and says so', () => {
+    chooseFilter('update');
+    fixture.detectChanges();
+    expect(component.totalCount()).toBeGreaterThan(0);
+    expect(component.hiddenCount()).toBe(component.totalCount());
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('mat-panel-description')?.textContent).not.toContain('noActive');
+    expect(el.querySelector('.empty-state')?.textContent).toContain(
+      'generalOverview.originFilter.empty'
+    );
+  });
+
   it('filters serves by flow origin correctly', () => {
     expect(component.allServes().length).toBe(3);
 
-    component.selectedOriginFilter.set('workflow');
+    chooseFilter('workflow');
     fixture.detectChanges();
     expect(component.allServes().length).toBe(1);
     expect(component.allServes()[0].id).toBe('serve-1');
   });
 
   it('filters serves by quickrun origin correctly', () => {
-    component.selectedOriginFilter.set('quickrun');
+    chooseFilter('quickrun');
     fixture.detectChanges();
     expect(component.allServes().length).toBe(1);
     expect(component.allServes()[0].id).toBe('serve-2');
   });
 
   it('filters serves by dashboard origin correctly', () => {
-    component.selectedOriginFilter.set('dashboard');
+    chooseFilter('dashboard');
     fixture.detectChanges();
     expect(component.allServes().length).toBe(1);
     expect(component.allServes()[0].id).toBe('serve-3');
@@ -142,7 +162,7 @@ describe('ServesOverviewPanelComponent', () => {
     const serve: ServeListItem = { ...mockServes[2], ...scope };
     runningServes.set([serve]);
     for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
-      component.selectedOriginFilter.set(filter);
+      chooseFilter(filter);
       expect(component.allServes()).toEqual(shownUnder.includes(filter) ? [serve] : []);
     }
   });

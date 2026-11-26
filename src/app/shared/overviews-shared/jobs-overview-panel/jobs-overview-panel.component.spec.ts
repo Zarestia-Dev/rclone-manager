@@ -7,10 +7,17 @@ import { DEFAULT_JOB_STATS, ExecutionScope, JobInfo, JobStatus } from '@app/type
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { OriginFilterService } from 'src/app/services/ui/state/origin-filter.service';
 
 describe('JobsOverviewPanelComponent', () => {
   let component: JobsOverviewPanelComponent;
   let fixture: ComponentFixture<JobsOverviewPanelComponent>;
+
+  // The chips choose the filter, and only while they are shown.
+  const chooseFilter = (filter: string): void => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    TestBed.inject(OriginFilterService).set('jobs', filter);
+  };
   let mockModalService: { openJobDetail: ReturnType<typeof vi.fn> };
   const stopJob = vi.fn<JobManagementService['stopJob']>();
   const deleteJob = vi.fn<JobManagementService['deleteJob']>();
@@ -123,21 +130,38 @@ describe('JobsOverviewPanelComponent', () => {
   it('filters running jobs correctly by flow origin', () => {
     expect(component.runningJobs().length).toBe(3);
 
-    component.selectedOriginFilter.set('workflow');
+    chooseFilter('workflow');
     fixture.detectChanges();
     expect(component.runningJobs().length).toBe(1);
     expect(component.runningJobs()[0].origin).toBe('workflow');
   });
 
+  it('counts every running job in the header when a chip hides all of them', () => {
+    chooseFilter('update');
+    fixture.detectChanges();
+    expect(component.runningJobs()).toEqual([]);
+    expect(component.activeJobsCount()).toBe(3);
+    expect(component.hiddenCount()).toBe(3);
+    expect(fixture.nativeElement.querySelector('mat-panel-description')?.textContent).not.toContain(
+      'noActive'
+    );
+  });
+
+  it('counts the running jobs a chip leaves out', () => {
+    expect(component.hiddenCount()).toBe(0);
+    chooseFilter('workflow');
+    expect(component.hiddenCount()).toBe(2);
+  });
+
   it('filters running jobs correctly by quickrun origin', () => {
-    component.selectedOriginFilter.set('quickrun');
+    chooseFilter('quickrun');
     fixture.detectChanges();
     expect(component.runningJobs().length).toBe(1);
     expect(component.runningJobs()[0].origin).toBe('quickrun');
   });
 
   it('filters running jobs correctly by dashboard origin', () => {
-    component.selectedOriginFilter.set('dashboard');
+    chooseFilter('dashboard');
     fixture.detectChanges();
     expect(component.runningJobs().length).toBe(1);
     expect(component.runningJobs()[0].origin).toBe('dashboard');
@@ -179,7 +203,7 @@ describe('JobsOverviewPanelComponent', () => {
     const job: JobInfo = { ...mockJobs[0], ...scope };
     jobs.set([job]);
     for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
-      component.selectedOriginFilter.set(filter);
+      chooseFilter(filter);
       expect(component.runningJobs()).toEqual(shownUnder.includes(filter) ? [job] : []);
     }
   });
@@ -232,9 +256,9 @@ describe('JobsOverviewPanelComponent', () => {
         finished(10, 'Completed', { origin: 'filemanager' }),
         finished(11, 'Completed', { starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }),
       ]);
-      component.selectedOriginFilter.set('quickrun');
+      chooseFilter('quickrun');
       expect(component.recentJobs().map(job => job.jobid)).toEqual([11]);
-      component.selectedOriginFilter.set('dashboard');
+      chooseFilter('dashboard');
       expect(component.recentJobs().map(job => job.jobid)).toEqual([10]);
     });
 

@@ -136,6 +136,7 @@ form,
 .empty-state-pills {
   display: flex;
   flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);

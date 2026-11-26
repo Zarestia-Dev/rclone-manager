@@ -685,6 +685,34 @@ describe('OperationConfigComponent', () => {
       expect(form.get('watchEnabled')?.enabled).toBe(true);
     });
 
+    it('explains how several sources are copied or synced, and that changed-only watching syncs them whole', () => {
+      const addLocalSource = (form: FormGroup): void => {
+        (form.get('source') as FormArray).push(
+          new FormGroup({ type: new FormControl('local'), path: new FormControl('/data/b') })
+        );
+        fixture.detectChanges();
+      };
+      const { form: copyForm } = setupComponent('copy', 'drive', false);
+      expect(component.infoBanners()).not.toContain('wizards.appOperation.multiSourceCopyInfo');
+      addLocalSource(copyForm);
+      expect(component.infoBanners()).not.toContain('wizards.appOperation.multiSourceSyncInfo');
+      expect(component.infoBanners()).toContain('wizards.appOperation.multiSourceCopyInfo');
+
+      const { form } = setupComponent('sync', 'drive', false);
+      expect(component.infoBanners()).not.toContain('wizards.appOperation.multiSourceSyncInfo');
+      addLocalSource(form);
+      expect(component.infoBanners()).toContain('wizards.appOperation.multiSourceSyncInfo');
+      expect(component.infoBanners()).not.toContain(
+        'wizards.appOperation.multiSourceSyncChangedOnlyNote'
+      );
+
+      form.patchValue({ watchEnabled: true, watchChangedOnly: true });
+      fixture.detectChanges();
+      expect(component.infoBanners()).toContain(
+        'wizards.appOperation.multiSourceSyncChangedOnlyNote'
+      );
+    });
+
     it('should hide file watching when using a remote backend during initial setup', () => {
       backendServiceMock.isLocalBackend.mockReturnValue(false);
       setupComponent('sync', 'new-remote');

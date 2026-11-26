@@ -15,7 +15,7 @@ use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::job_report::job_report;
 use crate::utils::app::notification::JobStage;
 use crate::utils::app::notification::NotificationEvent;
-use crate::utils::app::notification::notify;
+use crate::utils::app::notification::notify_job;
 use crate::utils::logging::log::log_operation;
 use crate::utils::types::jobs::JobCache;
 use crate::utils::types::jobs::JobInfo;
@@ -423,14 +423,21 @@ pub async fn submit_job_with_options(
             )
             .await;
         context.cache.prune_finished(Some(&app)).await;
-        if metadata.job_type != JobType::Mount {
-            notify(&app, metadata.started_event(context.backend_name.clone()));
-        }
     }
-    if let Some(execution) = metadata.execute_id.as_deref() {
-        app.state::<AutomationsCache>()
-            .bind_job_execution(&context.backend_name, execution, jobid)
-            .await;
+    let announced = match metadata.execute_id.as_deref() {
+        Some(execution) => {
+            app.state::<AutomationsCache>()
+                .bind_job_execution(&context.backend_name, execution, jobid)
+                .await
+        }
+        None => false,
+    };
+    if !metadata.no_cache && metadata.job_type != JobType::Mount {
+        notify_job(
+            &app,
+            metadata.started_event(context.backend_name.clone()),
+            announced,
+        );
     }
     let output = if options.wait_for_completion {
         Some(
@@ -859,7 +866,7 @@ async fn handle_job_completion(
         );
     }
 
-    crate::services::automation::engine::finish_job_execution(
+    let announced = crate::services::automation::engine::finish_job_execution(
         app,
         &context.backend_name,
         metadata.execute_id.as_deref(),
@@ -874,6 +881,7 @@ async fn handle_job_completion(
         metadata,
         &outcome,
         &job_status,
+        announced,
     );
 
     match failure_message(&outcome) {
@@ -955,11 +963,13 @@ fn dispatch_job_completion_effects(
     metadata: &JobMetadata,
     outcome: &JobOutcome,
     job_status: &Value,
+    announced_by_automation: bool,
 ) {
+    let send = |event| notify_job(app, event, announced_by_automation);
     if outcome.stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
         if !metadata.no_cache {
-            notify(app, metadata.stopped_event(backend_name.to_string()));
+            send(metadata.stopped_event(backend_name.to_string()));
         }
         return;
     }
@@ -978,10 +988,7 @@ fn dispatch_job_completion_effects(
                     app,
                 )),
             );
-            notify(
-                app,
-                metadata.failed_event(backend_name.to_string(), &error_for_notify),
-            );
+            send(metadata.failed_event(backend_name.to_string(), &error_for_notify));
         }
         return;
     }
@@ -998,7 +1005,7 @@ fn dispatch_job_completion_effects(
             )),
         );
         if metadata.job_type != JobType::Mount {
-            notify(app, metadata.completed_event(backend_name.to_string()));
+            send(metadata.completed_event(backend_name.to_string()));
         }
     }
 }
@@ -1457,7 +1464,7 @@ mod tests {
             .remove(0)
             .id;
         let execution = automations
-            .try_start_automation(&automation_id, "A", None)
+            .try_start_automation(&automation_id, "A", None, true)
             .await
             .unwrap()
             .unwrap()

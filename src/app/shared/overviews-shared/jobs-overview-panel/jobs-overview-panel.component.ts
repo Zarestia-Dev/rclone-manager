@@ -4,7 +4,6 @@ import {
   computed,
   inject,
   input,
-  linkedSignal,
   model,
   signal,
 } from '@angular/core';
@@ -13,7 +12,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-import { JobStatItem, Origin, JOB_STATUS, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import { JobStatItem, JOB_STATUS, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import {
   FormatEtaPipe,
   FormatFileSizePipe,
@@ -25,6 +24,7 @@ import { RcloneStatusService } from '../../../services/infrastructure/maintenanc
 import { LocalStorageService } from '../../../services/ui/state/local-storage.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
+import { OriginFilterService } from '../../../services/ui/state/origin-filter.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 import { JobsPanelComponent } from '../../detail-shared/jobs-panel/jobs-panel.component';
 
@@ -61,26 +61,36 @@ export class JobsOverviewPanelComponent {
   protected readonly tone = PANEL_TONE.jobs;
   readonly expanded = model<boolean>(false);
 
-  readonly defaultOriginFilter = input<Origin | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
 
   private readonly jobService = inject(JobManagementService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly localStorage = inject(LocalStorageService);
 
-  readonly selectedOriginFilter = linkedSignal<string>(() => this.defaultOriginFilter());
+  protected readonly originFilters = inject(OriginFilterService);
+
+  /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
+  readonly selectedOriginFilter = computed(() =>
+    this.showFilterChips() ? this.originFilters.get('jobs') : 'all'
+  );
 
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
+  private readonly allRunningJobs = computed(() =>
+    this.jobService.jobs().filter(j => j.status === JOB_STATUS.Running && !j.parent_job_id)
+  );
+
   readonly runningJobs = computed(() => {
     const filter = this.selectedOriginFilter();
-    return this.jobService
-      .jobs()
-      .filter(j => j.status === 'Running' && !j.parent_job_id && matchesOriginFilter(j, filter));
+    return this.allRunningJobs().filter(j => matchesOriginFilter(j, filter));
   });
 
-  readonly activeJobsCount = computed(() => this.runningJobs().length);
+  /** Every running job, whatever the chip: the header counts what runs, not what the chip shows. */
+  readonly activeJobsCount = computed(() => this.allRunningJobs().length);
+
+  /** Running jobs the origin chip hides. */
+  readonly hiddenCount = computed(() => this.activeJobsCount() - this.runningJobs().length);
 
   /** The latest finished jobs of every remote and local disk, newest first like the job list. */
   readonly recentJobs = computed(() => {

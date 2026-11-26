@@ -360,8 +360,11 @@ pub(crate) async fn refresh_with_definitions(
         .map(|preset| (preset.id.clone(), preset))
         .collect();
     let mut tasks = TaskSnapshots::default();
+    // Only what a schedule or a watcher runs later needs its inputs kept; one that starts with the
+    // app is launched from a snapshot taken for that start.
     for automation in automations.into_iter().filter(|a| {
         a.belongs_to_backend(&backend.name)
+            && (a.cron_expression.is_some() || a.watch_enabled)
             && !matches!(
                 a.status,
                 AutomationStatus::Disabled | AutomationStatus::Stopping

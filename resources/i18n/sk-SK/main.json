@@ -151,24 +151,66 @@
       "stop": "Zastaviť aktuálny beh"
     },
     "nextRun": {
-      "disabled": "Automatizácia je vypnutá",
       "stopping": "Vypne sa po aktuálnom behu",
       "notScheduled": "Nenaplánované"
     },
-    "lastRun": {
-      "never": "Nikdy"
-    },
     "monitoring": {
-      "realtime": "Sledovanie v reálnom čase",
-      "debounce": "Oneskorenie reakcie (debounce)",
       "watcherActive": "Sledovanie je aktívne",
       "watchedFolder": "Sledovaný priečinok",
-      "seconds": "sekúnd",
-      "realtimeSchedule": "Sledovanie súborov v reálnom čase",
-      "changedOnlyShort": "Iba podpriečinky",
-      "changedOnlyActive": "Iba podpriečinky",
-      "syncScope": "Rozsah synchronizácie",
-      "realtimeChangedOnly": "Sledovanie v reálnom čase (iba podpriečinky)"
+      "changedOnlyShort": "Iba podpriečinky"
+    },
+    "startup": {
+      "badge": "Pri spustení",
+      "startsIn": {
+        "one": "Spustí sa o {{count}} sekundu",
+        "few": "Spustí sa o {{count}} sekundy",
+        "other": "Spustí sa o {{count}} sekúnd"
+      },
+      "delay": {
+        "one": "Po {{count}} sekunde",
+        "few": "Po {{count}} sekundách",
+        "other": "Po {{count}} sekundách"
+      },
+      "immediately": "Hneď po spustení aplikácie"
+    },
+    "card": {
+      "waiting": "Čaká",
+      "started": "Spustené {{time}}",
+      "lastTry": "Posledný pokus {{time}}",
+      "nextRun": "Ďalšie spustenie {{time}}",
+      "lastRun": "Posledné spustenie {{time}}",
+      "neverRun": "Ešte nebolo spustené",
+      "notStarted": "Ešte nespustené",
+      "watching": {
+        "one": "Sledovanie · {{count}} s",
+        "few": "Sledovanie · {{count}} s",
+        "other": "Sledovanie · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Pri spustení · po {{count}} s",
+        "few": "Pri spustení · po {{count}} s",
+        "other": "Pri spustení · po {{count}} s"
+      },
+      "lastFailed": "Posledné spustenie zlyhalo",
+      "whenItRuns": "Kedy sa spúšťa",
+      "onChange": "Pri zmene súborov",
+      "waitsAfterChange": {
+        "one": "Čaká {{count}} sekundu po poslednej zmene",
+        "few": "Čaká {{count}} sekundy po poslednej zmene",
+        "other": "Čaká {{count}} sekúnd po poslednej zmene"
+      },
+      "folders": {
+        "one": "{{count}} priečinok",
+        "few": "{{count}} priečinky",
+        "other": "{{count}} priečinkov"
+      },
+      "onAppStart": "Pri spustení aplikácie",
+      "lastStart": "Naposledy spustené",
+      "servingAt": "Dostupné na adrese {{address}}",
+      "notServing": "Nebeží",
+      "source": "Zdroj",
+      "sources": "Zdroje",
+      "destination": "Cieľ"
     }
   },
   "actions": {
@@ -1577,6 +1619,10 @@
       "mountFolderLocalDrive": "Vyber priečinok na lokálnom disku.",
       "mountFolderAlreadyExists": "Priečinok pripojenia už existuje. Použi nový názov.",
       "multiSourceOneWayInfo": "Zistilo sa viacero zdrojových ciest. Automaticky sa zapla jednosmerná kontrola, aby rclone overil každý zdroj voči cieľu.",
+      "multiSourceSyncInfo": "Zdroje sa synchronizujú ako jeden priečinok: v cieli zostane každý súbor, ktorý je aspoň v jednom z nich. Ak je rovnaká cesta vo viacerých zdrojoch, použije sa súbor zo zdroja, ktorý je v zozname prvý; ak je zapnutý „Rýchly výpis“, nie je to zaručené. Kopírovanie na strane servera sa nepoužije, ani keď sú zdroj a cieľ na tom istom vzdialenom úložisku.",
+      "multiSourceCopyInfo": "Zdroje sa kopírujú jeden po druhom, počnúc posledným v zozname. Ak je rovnaká cesta vo viacerých zdrojoch, v cieli zostane súbor zo zdroja, ktorý je v zozname prvý. Ak niektorý zdroj zlyhá, zdroje, ktoré ešte čakajú, sa neskopírujú.",
+      "multiSourceMoveInfo": "Zdroje sa presúvajú jeden po druhom, počnúc posledným v zozname. Ak je rovnaká cesta vo viacerých zdrojoch, v cieli zostane súbor zo zdroja, ktorý je v zozname prvý, a ostatné verzie sa odstránia; ak ich chcete zachovať, nastavte „Priečinok záloh“. Ak niektorý zdroj zlyhá, zdroje, ktoré ešte čakajú, sa nepresunú.",
+      "multiSourceSyncChangedOnlyNote": "Pri viacerých zdrojoch každá zmena synchronizuje všetky zdroje celé: „Synchronizovať iba zmenené podpriečinky“ sa neuplatní.",
       "enableAutoStart": "Zapnúť automatické spustenie ({{type}}) pri štarte",
       "autoStartDelay": "Oneskorenie pri štarte",
       "autoStartDelayHint": "Po spustení aplikácie počkať takto dlho pred spustením. Užitočné, keď sieť, VPN alebo iné pripojenia ešte nie sú pripravené.",
@@ -2106,24 +2152,14 @@
     },
     "generalDetail": {
       "automations": "Automatizácie",
-      "goToAutomation": "Prejsť na automatizáciu {{index}}",
-      "schedule": "Plán",
-      "cronExpression": "Výraz cron:",
       "nextRunLabel": "Ďalšie spustenie:",
-      "lastRunLabel": "Posledné spustenie:",
       "statistics": "Štatistiky",
       "successful": "Úspešné",
       "failedCount": "Zlyhané",
       "stoppedCount": "Zastavené",
       "totalRuns": "Spustenia celkom",
       "paths": "Cesty",
-      "sourceLabel": "Zdroj:",
-      "destinationLabel": "Cieľ:",
-      "lastError": "Posledná chyba",
-      "currentlyRunning": "Práve beží",
       "jobIdLabel": "ID úlohy:",
-      "previousAutomationTooltip": "Predchádzajúca automatizácia",
-      "nextAutomationTooltip": "Nasledujúca automatizácia",
       "remoteConfiguration": "Konfigurácia vzdialeného úložiska",
       "editConfiguration": "Upraviť konfiguráciu",
       "remoteActionQuickSelection": "Rýchly výber akcie vzdialeného úložiska"
@@ -3977,6 +4013,15 @@
       },
       "noActive": "Žiadne aktívne pripojenia",
       "noMounted": "Nie je pripojené žiadne úložisko. Pripojte úložisko a používajte jeho súbory ako priečinok v počítači."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "skrytých ďalších: {{count}}",
+        "few": "skrytých ďalších: {{count}}",
+        "other": "skrytých ďalších: {{count}}"
+      },
+      "empty": "Tomuto filtru nič nezodpovedá. Ostatné je skryté.",
+      "showAll": "Zobraziť všetko"
     }
   },
   "appOverview": {
@@ -4099,7 +4144,10 @@
       "destinationPathInvalid": "Cieľovú cestu sa nepodarilo prečítať: {{path}}",
       "filePathsInvalid": "Zdroj '{{source}}' ani cieľ '{{destination}}' sa nepodarilo prečítať ako cestu k súboru. Použite formát 'remote:path/to/file' alebo lokálnu cestu.",
       "unsupportedOperation": "Operáciu {{operation}} nie je možné spustiť ako prenos",
-      "destinationMissing": "Nebol zadaný žiadny cieľ"
+      "destinationMissing": "Nebol zadaný žiadny cieľ",
+      "sourceOverlapsDestination": "Zdroj {{source}} a cieľ {{destination}} sa prekrývajú: jeden je vnútri druhého. Vyberte cieľ, ktorý sa neprekrýva so žiadnym zdrojom.",
+      "overlappingRemotes": "Zdroj a cieľ sa prekrývajú: jeden je vnútri druhého. Vyberte cieľ mimo zdroja alebo ho vylúčte pravidlom filtra.",
+      "backupDirOverlaps": "„Priečinok záloh“ nesmie byť vnútri zdroja ani cieľa a nesmie ich ani obsahovať."
     },
     "serve": {
       "remoteEmpty": "Názov vzdialeného úložiska nemôže byť prázdny",
@@ -4249,7 +4297,8 @@
       "authExpired": "Overenie vzdialeného úložiska vypršalo alebo je neplatné. Overte vzdialené úložisko znova.",
       "quotaExceeded": "Prekročený limit požiadaviek API alebo kvóta úložiska vzdialeného úložiska. Skúste to neskôr.",
       "networkError": "Vzdialený server je nedostupný. Skontrolujte sieťové pripojenie a adresu vzdialeného úložiska.",
-      "notFound": "Cieľový priečinok alebo súbor sa vo vzdialenom úložisku nenašiel."
+      "notFound": "Cieľový priečinok alebo súbor sa vo vzdialenom úložisku nenašiel.",
+      "notInConfig": "Vzdialené úložisko „{{remote}}“ nie je v konfigurácii rclone. Bolo odstránené alebo premenované mimo aplikácie, alebo sa používa iný konfiguračný súbor."
     },
     "updater": {
       "noPending": "Nie je k dispozícii žiadna čakajúca aktualizácia",

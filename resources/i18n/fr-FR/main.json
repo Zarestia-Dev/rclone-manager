@@ -151,24 +151,60 @@
       "stop": "Arrêter l'exécution en cours"
     },
     "nextRun": {
-      "disabled": "L'automatisation est désactivée",
       "stopping": "Désactiver après l'exécution en cours",
       "notScheduled": "Non planifié"
     },
-    "lastRun": {
-      "never": "Jamais"
-    },
     "monitoring": {
-      "realtime": "Surveillance en temps réel",
-      "debounce": "Délai de débordement",
       "watcherActive": "Surveillance active",
       "watchedFolder": "Dossier surveillé",
-      "seconds": "secondes",
-      "realtimeSchedule": "Surveillance de fichiers en temps réel",
-      "changedOnlyShort": "Sous-dossiers uniquement",
-      "changedOnlyActive": "Sous-dossiers uniquement",
-      "syncScope": "Périmètre de synchronisation",
-      "realtimeChangedOnly": "Surveillance en temps réel (Sous-dossiers uniquement)"
+      "changedOnlyShort": "Sous-dossiers uniquement"
+    },
+    "startup": {
+      "badge": "Au démarrage",
+      "startsIn": {
+        "one": "Démarre dans {{count}} seconde",
+        "other": "Démarre dans {{count}} secondes"
+      },
+      "delay": {
+        "one": "Après {{count}} seconde",
+        "other": "Après {{count}} secondes"
+      },
+      "immediately": "Dès le démarrage de l'application"
+    },
+    "card": {
+      "waiting": "En attente",
+      "started": "Démarré {{time}}",
+      "lastTry": "Dernière tentative {{time}}",
+      "nextRun": "Prochaine exécution {{time}}",
+      "lastRun": "Dernière exécution {{time}}",
+      "neverRun": "Jamais exécuté",
+      "notStarted": "Pas encore démarré",
+      "watching": {
+        "one": "Surveillance · {{count}} s",
+        "other": "Surveillance · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Au démarrage · après {{count}} s",
+        "other": "Au démarrage · après {{count}} s"
+      },
+      "lastFailed": "La dernière exécution a échoué",
+      "whenItRuns": "Déclenchement",
+      "onChange": "Quand des fichiers changent",
+      "waitsAfterChange": {
+        "one": "Attend {{count}} seconde après la dernière modification",
+        "other": "Attend {{count}} secondes après la dernière modification"
+      },
+      "folders": {
+        "one": "{{count}} dossier",
+        "other": "{{count}} dossiers"
+      },
+      "onAppStart": "Au démarrage de l'application",
+      "lastStart": "Dernier démarrage",
+      "servingAt": "Servi à l'adresse {{address}}",
+      "notServing": "Non démarré",
+      "source": "Source",
+      "sources": "Sources",
+      "destination": "Destination"
     }
   },
   "actions": {
@@ -1563,6 +1599,10 @@
       "mountFolderLocalDrive": "Choisissez un dossier sur un lecteur local.",
       "mountFolderAlreadyExists": "Le dossier de montage existe déjà. Utilisez un nouveau nom.",
       "multiSourceOneWayInfo": "Plusieurs chemins source détectés. La vérification unidirectionnelle a été automatiquement activée pour s'assurer que rclone vérifie chaque source par rapport à la destination.",
+      "multiSourceSyncInfo": "Les sources sont synchronisées comme un seul dossier : la destination conserve chaque fichier présent dans au moins l'une d'elles. Si le même chemin existe dans plusieurs sources, le fichier de la première source de la liste est utilisé ; avec « Listage rapide » activé, ce n'est pas garanti. La copie côté serveur n'est pas utilisée, même si une source et la destination se trouvent sur le même dépôt distant.",
+      "multiSourceCopyInfo": "Les sources sont copiées l'une après l'autre, en commençant par la dernière de la liste. Si le même chemin existe dans plusieurs sources, c'est le fichier de la première source de la liste qui reste dans la destination. Si une source échoue, celles qui attendent encore ne sont pas copiées.",
+      "multiSourceMoveInfo": "Les sources sont déplacées l'une après l'autre, en commençant par la dernière de la liste. Si le même chemin existe dans plusieurs sources, c'est le fichier de la première source de la liste qui reste dans la destination, et les autres versions sont supprimées ; définissez « Répertoire de sauvegarde » pour les conserver. Si une source échoue, celles qui attendent encore ne sont pas déplacées.",
+      "multiSourceSyncChangedOnlyNote": "Avec plusieurs sources, chaque modification synchronise toutes les sources en entier : « Synchroniser uniquement les sous-dossiers modifiés » ne s'applique pas.",
       "enableAutoStart": "Activer Auto-{{type}} au démarrage",
       "autoStartDelay": "Délai de démarrage",
       "autoStartDelayHint": "Temps d'attente après l'ouverture de l'application avant le lancement. Utile si le réseau, le VPN ou d'autres montages ne sont pas encore prêts.",
@@ -2087,24 +2127,14 @@
     },
     "generalDetail": {
       "automations": "Automatisations",
-      "goToAutomation": "Accéder à l'automatisation {{index}}",
-      "schedule": "Planification",
-      "cronExpression": "Expression cron :",
       "nextRunLabel": "Prochaine exécution :",
-      "lastRunLabel": "Dernière exécution :",
       "statistics": "Statistiques",
       "successful": "Succès",
       "failedCount": "Échec",
       "stoppedCount": "Stoppé",
       "totalRuns": "Total des exécutions",
       "paths": "Chemins",
-      "sourceLabel": "Source :",
-      "destinationLabel": "Destination :",
-      "lastError": "Dernière erreur",
-      "currentlyRunning": "En cours d'exécution",
       "jobIdLabel": "ID du job :",
-      "previousAutomationTooltip": "Automatisation précédente",
-      "nextAutomationTooltip": "Prochaine automatisation",
       "remoteConfiguration": "Configurations du dépôt distant",
       "editConfiguration": "Modifier la configuration",
       "remoteActionQuickSelection": "Sélection rapide des actions du dépôt distant"
@@ -3870,6 +3900,14 @@
       },
       "noActive": "Aucun montage actif",
       "noMounted": "Aucun remote n'est monté. Montez un remote pour utiliser ses fichiers comme un dossier sur votre ordinateur."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} autre masqué",
+        "other": "{{count}} autres masqués"
+      },
+      "empty": "Rien ne correspond à ce filtre. Le reste est masqué.",
+      "showAll": "Tout afficher"
     }
   },
   "appOverview": {
@@ -3992,7 +4030,10 @@
       "destinationPathInvalid": "Impossible de lire le chemin de destination : {{path}}",
       "filePathsInvalid": "Impossible de lire la source '{{source}}' ou la destination '{{destination}}' comme chemin de fichier. Utilisez le format 'remote:chemin/vers/fichier' ou un chemin local.",
       "unsupportedOperation": "L'opération {{operation}} ne peut pas s'exécuter comme un transfert",
-      "destinationMissing": "Aucune destination spécifiée"
+      "destinationMissing": "Aucune destination spécifiée",
+      "sourceOverlapsDestination": "La source {{source}} et la destination {{destination}} se chevauchent : l'une se trouve dans l'autre. Choisissez une destination qui ne chevauche aucune source.",
+      "overlappingRemotes": "La source et la destination se chevauchent : l'une se trouve dans l'autre. Choisissez une destination en dehors de la source, ou excluez-la avec une règle de filtre.",
+      "backupDirOverlaps": "« Répertoire de sauvegarde » ne doit ni se trouver dans la source ou la destination, ni les contenir."
     },
     "serve": {
       "remoteEmpty": "Nom du dépôt distant ne peut pas être vide",
@@ -4142,7 +4183,8 @@
       "authExpired": "L'authentification du distant a expiré ou est invalide. Veuillez ré-authentifier le distant.",
       "quotaExceeded": "Limite de débit d'API ou quota de stockage distant dépassé. Veuillez réessayer ultérieurement.",
       "networkError": "Impossible de joindre le serveur distant. Veuillez vérifier votre connexion et l'adresse distante.",
-      "notFound": "Le répertoire ou fichier cible est introuvable sur le distant."
+      "notFound": "Le répertoire ou fichier cible est introuvable sur le distant.",
+      "notInConfig": "Le distant « {{remote}} » ne figure pas dans la configuration rclone. Il a été supprimé ou renommé en dehors de l’application, ou un autre fichier de configuration est utilisé."
     },
     "updater": {
       "noPending": "Aucune mise à jour en attente",

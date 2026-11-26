@@ -55,6 +55,9 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   successCount: 0,
   failureCount: 0,
   stoppedCount: 0,
+  autoStart: false,
+  autoStartDelay: 0,
+  autoStartAt: null,
   ...overrides,
 });
 
@@ -731,6 +734,17 @@ describe('AppDetailComponent', () => {
       expect(component.isAutoStartEnabled()).toBe(true);
       expect(component.selectedCronSchedule()).toBeNull();
       expect(component.selectedWatcher()).toBeNull();
+    });
+
+    it('tells why the last run of the automation failed, and nothing while it did not', () => {
+      automationServiceMock.automations.set([
+        automation({ status: 'failed', lastError: 'mount point is busy' }),
+      ]);
+      expect(component.automationError()).toBe('mount point is busy');
+      automationServiceMock.automations.set([
+        automation({ status: 'enabled', lastError: 'mount point is busy' }),
+      ]);
+      expect(component.automationError()).toBeNull();
     });
   });
 });

@@ -197,12 +197,14 @@ impl AutomationsCache {
     }
 
     /// Acquire execution permission and capture the current configuration under
-    /// one write lock. A busy automation grants no second execution.
+    /// one write lock. A busy automation grants no second execution. `announce` says whether
+    /// the automation announces the run; a start with the app leaves that to the work it starts.
     pub async fn try_start_automation(
         &self,
         automation_id: &str,
         backend_name: &str,
         expected_args: Option<&AutomationArgs>,
+        announce: bool,
     ) -> Result<Option<Automation>, String> {
         let mut automations = self.automations.write().await;
         let automation = automations.get_mut(automation_id).ok_or_else(|| {
@@ -219,6 +221,7 @@ impl AutomationsCache {
             return Ok(None);
         }
         automation.mark_starting()?;
+        automation.announced = announce;
         automation.backend_name = backend_name.to_string();
         let started = automation.clone();
         drop(automations);
@@ -243,18 +246,23 @@ impl AutomationsCache {
         Some(updated)
     }
 
-    pub async fn bind_job_execution(&self, backend: &str, execution: &str, job_id: u64) {
-        let bound = {
+    /// Records the job an execution started; returns whether the automation that owns the
+    /// execution announced it, so that the job's own notifications only repeat it.
+    pub async fn bind_job_execution(&self, backend: &str, execution: &str, job_id: u64) -> bool {
+        let announced = {
             let mut automations = self.automations.write().await;
             automations
                 .values_mut()
                 .find(|a| a.backend_name == backend && a.execution_id.as_deref() == Some(execution))
-                .map(|automation| automation.current_job_id = Some(job_id.to_string()))
-                .is_some()
+                .map(|automation| {
+                    automation.current_job_id = Some(job_id.to_string());
+                    automation.announced
+                })
         };
-        if bound {
+        if announced.is_some() {
             bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         }
+        announced.unwrap_or(false)
     }
 
     pub async fn update_automation(
@@ -386,11 +394,7 @@ fn collect_automations_from_remote(
     remote_settings: &RemoteSettings,
 ) -> Vec<Automation> {
     let mut automations = Vec::new();
-    for op_type in OperationType::ALL
-        .iter()
-        .copied()
-        .filter(|op| op.is_transfer())
-    {
+    for &op_type in OperationType::ALL {
         let Some(profiles) = remote_settings.get_configs(op_type) else {
             continue;
         };
@@ -414,6 +418,8 @@ fn automation_config_changed(existing: &Automation, new: &Automation) -> bool {
         || existing.watch_enabled != new.watch_enabled
         || existing.watch_delay != new.watch_delay
         || existing.watch_changed_only != new.watch_changed_only
+        || existing.auto_start != new.auto_start
+        || existing.auto_start_delay != new.auto_start_delay
 }
 
 /// Takes the configuration of `new`. The status stays: the user's enabled/disabled choice
@@ -426,13 +432,17 @@ fn apply_config(existing: &mut Automation, new: &Automation) {
     existing.watch_enabled = new.watch_enabled;
     existing.watch_delay = new.watch_delay;
     existing.watch_changed_only = new.watch_changed_only;
+    existing.auto_start = new.auto_start;
+    existing.auto_start_delay = new.auto_start_delay;
 }
 
-/// A new, enabled automation with its schedule and watch settings.
+/// A new, enabled automation with its schedule, watch and start-up settings. `auto_start` holds
+/// the seconds to wait after the app has started, or none when it does not start with the app.
 fn scheduled(
     mut automation: Automation,
     cron_expression: Option<String>,
     watch: (bool, u64, bool),
+    auto_start: Option<u64>,
 ) -> Automation {
     automation.next_run = cron_expression
         .as_deref()
@@ -443,7 +453,25 @@ fn scheduled(
         automation.watch_delay,
         automation.watch_changed_only,
     ) = watch;
+    (automation.auto_start, automation.auto_start_delay) =
+        (auto_start.is_some(), auto_start.unwrap_or(0));
     automation
+}
+
+/// Whether a schedule or a folder watcher has what it needs to run the operation.
+fn has_valid_paths(operation: OperationType, src_paths: &[String], dst_paths: &[String]) -> bool {
+    match operation {
+        _ if !operation.takes_destination() => !src_paths.is_empty(),
+        OperationType::Bisync => src_paths.len() == 1 && dst_paths.len() == 1,
+        OperationType::Sync
+        | OperationType::Copy
+        | OperationType::Move
+        | OperationType::Check
+        | OperationType::Copyurl
+        | OperationType::Archivecreate
+        | OperationType::Cryptcheck => !src_paths.is_empty() && dst_paths.len() == 1,
+        _ => false,
+    }
 }
 
 fn create_automation_struct(
@@ -453,44 +481,27 @@ fn create_automation_struct(
     automation_type: &OperationType,
     profile: &ProfileConfig,
 ) -> Option<Automation> {
-    let watch_enabled = profile.app.watch_enabled.unwrap_or(false);
-    let cron = profile
-        .app
-        .cron_enabled
-        .unwrap_or(false)
+    // A mount or a serve is no job, so only the start of the app can run it.
+    let schedulable = automation_type.is_transfer();
+    let mut watch_enabled = schedulable && profile.app.watch_enabled.unwrap_or(false);
+    let mut cron = (schedulable && profile.app.cron_enabled.unwrap_or(false))
         .then(|| profile.app.cron_expression.clone())
         .flatten()
         .filter(|expression| !expression.is_empty());
-
-    if cron.is_none() && !watch_enabled {
-        return None;
-    }
+    let auto_start = profile
+        .app
+        .auto_start
+        .then(|| profile.app.auto_start_delay.unwrap_or(0));
 
     let src_paths = normalize_paths(profile.source_value());
     let dst_paths = normalize_paths(profile.dest_value());
 
-    // Validate path counts based on automation type
-    match automation_type {
-        _ if !automation_type.takes_destination() => {}
-        OperationType::Bisync => {
-            if src_paths.len() != 1 || dst_paths.len() != 1 {
-                return None;
-            }
-        }
-        OperationType::Sync
-        | OperationType::Copy
-        | OperationType::Move
-        | OperationType::Check
-        | OperationType::Copyurl
-        | OperationType::Archivecreate
-        | OperationType::Cryptcheck => {
-            if src_paths.is_empty() || dst_paths.len() != 1 {
-                return None;
-            }
-        }
-        _ => return None,
+    // A schedule or a watcher without usable paths cannot run; the start of the app still can.
+    if schedulable && !has_valid_paths(*automation_type, &src_paths, &dst_paths) {
+        cron = None;
+        watch_enabled = false;
     }
-    if src_paths.is_empty() {
+    if cron.is_none() && !watch_enabled && auto_start.is_none() {
         return None;
     }
 
@@ -522,13 +533,15 @@ fn create_automation_struct(
             profile.app.watch_delay.unwrap_or(DEFAULT_WATCH_DELAY),
             changed_only,
         ),
+        auto_start,
     ))
 }
 
 fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option<Automation> {
     let cron_enabled = qr.is_cron_enabled();
     let watch_enabled = qr.is_watch_enabled();
-    if !cron_enabled && !watch_enabled {
+    let auto_start = qr.is_autostart().then(|| qr.autostart_delay_secs());
+    if !cron_enabled && !watch_enabled && auto_start.is_none() {
         return None;
     }
 
@@ -562,6 +575,7 @@ fn create_automation_from_quick_run(backend_name: &str, qr: &QuickRun) -> Option
         ),
         cron,
         (watch_enabled, watch_delay, watch_changed_only),
+        auto_start,
     ))
 }
 
@@ -571,7 +585,8 @@ fn create_automation_from_workflow(
 ) -> Option<Automation> {
     let cron_enabled = wf.is_cron_enabled();
     let watch_enabled = wf.is_watch_enabled();
-    if !cron_enabled && !watch_enabled {
+    let auto_start = wf.is_autostart().then_some(0);
+    if !cron_enabled && !watch_enabled && auto_start.is_none() {
         return None;
     }
 
@@ -599,6 +614,7 @@ fn create_automation_from_workflow(
         ),
         cron,
         (watch_enabled, wf.watcher_debounce_seconds(), false),
+        auto_start,
     ))
 }
 
@@ -629,7 +645,7 @@ mod tests {
         let id = automation.id.clone();
         cache.add_automation(automation).await.unwrap();
         let started = cache
-            .try_start_automation(&id, "b", None)
+            .try_start_automation(&id, "b", None, true)
             .await
             .unwrap()
             .unwrap();
@@ -644,7 +660,7 @@ mod tests {
         assert_eq!(completed.status, AutomationStatus::Enabled);
         assert!(completed.current_job_id.is_none());
         let next = cache
-            .try_start_automation(&id, "b", None)
+            .try_start_automation(&id, "b", None, true)
             .await
             .unwrap()
             .unwrap();
@@ -667,7 +683,7 @@ mod tests {
             .await;
         assert!(
             cache
-                .try_start_automation(&id, "b", Some(&stale))
+                .try_start_automation(&id, "b", Some(&stale), true)
                 .await
                 .unwrap()
                 .is_none()
@@ -1186,6 +1202,7 @@ mod tests {
             last_error: None,
             current_job_id: None,
             execution_id: None,
+            announced: false,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -1193,6 +1210,9 @@ mod tests {
             watch_enabled: false,
             watch_delay: 5,
             watch_changed_only: false,
+            auto_start: false,
+            auto_start_delay: 0,
+            auto_start_at: None,
         }
     }
 
@@ -1240,8 +1260,8 @@ mod tests {
         let id = automation.id.clone();
         cache.add_automation(automation).await.unwrap();
         let (a, b) = tokio::join!(
-            cache.try_start_automation(&id, "A", None),
-            cache.try_start_automation(&id, "B", None),
+            cache.try_start_automation(&id, "A", None, true),
+            cache.try_start_automation(&id, "B", None, true),
         );
         let granted: Vec<_> = [a.unwrap(), b.unwrap()].into_iter().flatten().collect();
         assert_eq!(granted.len(), 1);
@@ -1259,7 +1279,7 @@ mod tests {
         cache.add_automation(automation).await.unwrap();
         assert!(
             cache
-                .try_start_automation(&id, "other", None)
+                .try_start_automation(&id, "other", None, true)
                 .await
                 .unwrap()
                 .is_none()
@@ -1269,7 +1289,12 @@ mod tests {
             .update_automation(&id, |a| a.status = AutomationStatus::Disabled)
             .await
             .unwrap();
-        assert!(cache.try_start_automation(&id, "b", None).await.is_err());
+        assert!(
+            cache
+                .try_start_automation(&id, "b", None, true)
+                .await
+                .is_err()
+        );
         cache
             .update_automation(&id, |a| {
                 a.status = AutomationStatus::Stopping;
@@ -1279,7 +1304,7 @@ mod tests {
             .unwrap();
         assert!(
             cache
-                .try_start_automation(&id, "b", None)
+                .try_start_automation(&id, "b", None, true)
                 .await
                 .unwrap()
                 .is_none()
@@ -1295,7 +1320,7 @@ mod tests {
         );
         assert!(
             cache
-                .try_start_automation("missing", "b", None)
+                .try_start_automation("missing", "b", None, true)
                 .await
                 .is_err()
         );
@@ -1308,7 +1333,7 @@ mod tests {
         let id = automation.id.clone();
         cache.add_automation(automation).await.unwrap();
         let started = cache
-            .try_start_automation(&id, "b", None)
+            .try_start_automation(&id, "b", None, true)
             .await
             .unwrap()
             .unwrap();
@@ -1864,5 +1889,84 @@ mod tests {
         assert_eq!(created.status, AutomationStatus::Enabled);
         assert!(created.cron_expression.is_none() && !created.watch_enabled);
         assert_eq!(created.watch_delay, DEFAULT_WATCH_DELAY);
+    }
+    // Start with the app
+
+    fn profile_json(app: Value, rclone: Value) -> ProfileConfig {
+        parse_profile_config(&json!({"app": app, "rclone": rclone}))
+    }
+
+    #[test]
+    fn a_profile_that_starts_with_the_app_is_an_automation_of_any_operation() {
+        let app = json!({"autoStart": true, "autoStartDelay": 12});
+        for operation in [
+            OperationType::Mount,
+            OperationType::Serve,
+            OperationType::Sync,
+        ] {
+            let profile = profile_json(app.clone(), json!({}));
+            let automation = create_automation_struct("b", "r", "p", &operation, &profile)
+                .unwrap_or_else(|| panic!("{operation} should be an automation"));
+            assert!(automation.auto_start);
+            assert_eq!(automation.auto_start_delay, 12);
+            assert_eq!(automation.automation_type, Some(operation));
+            assert!(automation.cron_expression.is_none() && !automation.watch_enabled);
+        }
+    }
+
+    #[test]
+    fn without_a_delay_the_automation_starts_at_once() {
+        let profile = profile_json(json!({"autoStart": true}), json!({}));
+        let automation =
+            create_automation_struct("b", "r", "p", &OperationType::Mount, &profile).unwrap();
+        assert_eq!(automation.auto_start_delay, 0);
+    }
+
+    #[test]
+    fn a_mount_or_a_serve_is_never_scheduled_or_watched() {
+        let profile = profile_json(
+            json!({"cronEnabled": true, "cronExpression": "* * * * *", "watchEnabled": true}),
+            json!({"source": "/src", "dest": "/dst"}),
+        );
+        for operation in [OperationType::Mount, OperationType::Serve] {
+            assert!(create_automation_struct("b", "r", "p", &operation, &profile).is_none());
+        }
+        let started = profile_json(
+            json!({"autoStart": true, "cronEnabled": true, "cronExpression": "* * * * *"}),
+            json!({}),
+        );
+        let automation =
+            create_automation_struct("b", "r", "p", &OperationType::Mount, &started).unwrap();
+        assert!(automation.cron_expression.is_none() && !automation.watch_enabled);
+    }
+
+    #[test]
+    fn a_schedule_without_usable_paths_keeps_only_the_start_with_the_app() {
+        let profile = profile_json(
+            json!({"autoStart": true, "cronEnabled": true, "cronExpression": "* * * * *"}),
+            json!({"source": "/src"}),
+        );
+        let automation =
+            create_automation_struct("b", "r", "p", &OperationType::Sync, &profile).unwrap();
+        assert!(automation.auto_start);
+        assert!(automation.cron_expression.is_none() && !automation.watch_enabled);
+    }
+
+    #[test]
+    fn a_profile_that_does_not_start_with_the_app_is_no_automation_without_a_schedule() {
+        let profile = profile_json(json!({"autoStart": false}), json!({}));
+        assert!(create_automation_struct("b", "r", "p", &OperationType::Mount, &profile).is_none());
+    }
+
+    #[test]
+    fn a_changed_start_with_the_app_updates_the_automation() {
+        let mut existing = base_automation();
+        let mut changed = base_automation();
+        changed.auto_start = true;
+        changed.auto_start_delay = 5;
+        assert!(automation_config_changed(&existing, &changed));
+        apply_config(&mut existing, &changed);
+        assert!(existing.auto_start);
+        assert_eq!(existing.auto_start_delay, 5);
     }
 }

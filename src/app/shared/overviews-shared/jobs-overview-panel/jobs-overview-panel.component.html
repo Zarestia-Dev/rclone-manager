@@ -31,10 +31,13 @@
     </div>
   } @else {
     @let stats = jobStats();
-    @let activeJobs = activeJobsCount();
     <div class="job-grid">
       @if (showFilterChips()) {
-        <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
+        <app-origin-filter-bar
+          [selected]="selectedOriginFilter()"
+          (selectedChange)="originFilters.set('jobs', $event)"
+          [hiddenCount]="hiddenCount()"
+        ></app-origin-filter-bar>
       }
 
       @if (stats.totalBytes > 0) {
@@ -126,10 +129,17 @@
             </div>
           }
         </details>
-      } @else if (activeJobs === 0) {
+      } @else if (runningJobs().length === 0) {
         <div class="empty-state" role="status">
           <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-          <p>{{ 'generalOverview.jobs.noRunning' | translate }}</p>
+          <p>
+            {{
+              (hiddenCount() > 0
+                ? 'generalOverview.originFilter.empty'
+                : 'generalOverview.jobs.noRunning'
+              ) | translate
+            }}
+          </p>
         </div>
       }
     </div>

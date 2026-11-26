@@ -4,7 +4,6 @@ import {
   computed,
   inject,
   input,
-  linkedSignal,
   model,
   output,
 } from '@angular/core';
@@ -12,9 +11,10 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { Origin, ServeListItem, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import { ServeListItem, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
 import { ServeManagementService } from '../../../services/operations/serve-management.service';
+import { OriginFilterService } from '../../../services/ui/state/origin-filter.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 import { PillDirective } from '../../directives/pill.directive';
@@ -38,7 +38,6 @@ export class ServesOverviewPanelComponent {
   protected readonly tone = PANEL_TONE.serves;
   readonly expanded = model<boolean>(false);
 
-  readonly defaultOriginFilter = input<Origin | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
 
   readonly serveClick = output<ServeListItem>();
@@ -46,12 +45,23 @@ export class ServesOverviewPanelComponent {
 
   private readonly serveService = inject(ServeManagementService);
 
-  readonly selectedOriginFilter = linkedSignal<string>(() => this.defaultOriginFilter());
+  protected readonly originFilters = inject(OriginFilterService);
+
+  /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
+  readonly selectedOriginFilter = computed(() =>
+    this.showFilterChips() ? this.originFilters.get('serves') : 'all'
+  );
 
   readonly allServes = computed(() => {
     const filter = this.selectedOriginFilter();
     return this.serveService.runningServes().filter(s => matchesOriginFilter(s, filter));
   });
+
+  /** Every serve, whatever the chip: the header counts what runs, not what the chip shows. */
+  readonly totalCount = computed(() => this.serveService.runningServes().length);
+
+  /** Items the origin chip hides. */
+  readonly hiddenCount = computed(() => this.totalCount() - this.allServes().length);
 
   onServeClick(serve: ServeListItem): void {
     this.serveClick.emit(serve);

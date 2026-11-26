@@ -151,24 +151,60 @@
       "stop": "Parar a execução atual"
     },
     "nextRun": {
-      "disabled": "A automação foi desabilitada",
       "stopping": "Desabilitar após execução atual",
       "notScheduled": "Não agendado"
     },
-    "lastRun": {
-      "never": "Nunca"
-    },
     "monitoring": {
-      "realtime": "Monitoramento em Tempo Real",
-      "debounce": "Atraso de estabilização",
       "watcherActive": "Monitoramento Ativo",
       "watchedFolder": "Pasta monitorada",
-      "seconds": "segundos",
-      "realtimeSchedule": "Monitor de Arquivos em Tempo Real",
-      "changedOnlyShort": "Apenas subdiretórios",
-      "changedOnlyActive": "Apenas subdiretórios",
-      "syncScope": "Escopo de sincronização",
-      "realtimeChangedOnly": "Monitoramento em Tempo Real (Apenas subdiretórios)"
+      "changedOnlyShort": "Apenas subdiretórios"
+    },
+    "startup": {
+      "badge": "Na inicialização",
+      "startsIn": {
+        "one": "Inicia em {{count}} segundo",
+        "other": "Inicia em {{count}} segundos"
+      },
+      "delay": {
+        "one": "Após {{count}} segundo",
+        "other": "Após {{count}} segundos"
+      },
+      "immediately": "Assim que o aplicativo inicia"
+    },
+    "card": {
+      "waiting": "Aguardando",
+      "started": "Iniciado {{time}}",
+      "lastTry": "Última tentativa {{time}}",
+      "nextRun": "Próxima execução {{time}}",
+      "lastRun": "Última execução {{time}}",
+      "neverRun": "Nunca executado",
+      "notStarted": "Ainda não iniciado",
+      "watching": {
+        "one": "Monitorando · {{count}} s",
+        "other": "Monitorando · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Na inicialização · após {{count}} s",
+        "other": "Na inicialização · após {{count}} s"
+      },
+      "lastFailed": "A última execução falhou",
+      "whenItRuns": "Quando é executado",
+      "onChange": "Quando os arquivos mudam",
+      "waitsAfterChange": {
+        "one": "Aguarda {{count}} segundo após a última alteração",
+        "other": "Aguarda {{count}} segundos após a última alteração"
+      },
+      "folders": {
+        "one": "{{count}} pasta",
+        "other": "{{count}} pastas"
+      },
+      "onAppStart": "Quando o aplicativo inicia",
+      "lastStart": "Última inicialização",
+      "servingAt": "Servindo em {{address}}",
+      "notServing": "Não está em execução",
+      "source": "Origem",
+      "sources": "Origens",
+      "destination": "Destino"
     }
   },
   "actions": {
@@ -1563,6 +1599,10 @@
       "mountFolderLocalDrive": "Escolha uma pasta em uma unidade local.",
       "mountFolderAlreadyExists": "A pasta de montagem já existe. Use um novo nome.",
       "multiSourceOneWayInfo": "Múltiplos caminhos de origem detectados. O verificação uma-por-uma foi ativada automaticamente para garantir que o RClone verifique cada fonte contra a destino.",
+      "multiSourceSyncInfo": "As origens são sincronizadas como uma única pasta: o destino mantém todos os arquivos que estão em pelo menos uma delas. Se o mesmo caminho estiver em mais de uma origem, é usado o arquivo da primeira origem da lista; com “Lista Rápida” ativada, isso não é garantido. A cópia do lado do servidor não é usada, mesmo quando uma origem e o destino estão no mesmo remoto.",
+      "multiSourceCopyInfo": "As origens são copiadas uma após a outra, começando pela última da lista. Se o mesmo caminho estiver em mais de uma origem, fica no destino o arquivo da primeira origem da lista. Se uma origem falhar, as que ainda aguardam não são copiadas.",
+      "multiSourceMoveInfo": "As origens são movidas uma após a outra, começando pela última da lista. Se o mesmo caminho estiver em mais de uma origem, fica no destino o arquivo da primeira origem da lista e as outras versões são excluídas; defina “Diretório de Cópias de Segurança” para mantê-las. Se uma origem falhar, as que ainda aguardam não são movidas.",
+      "multiSourceSyncChangedOnlyNote": "Com mais de uma origem, cada alteração sincroniza todas as origens por completo: “Sincronizar apenas subdiretórios modificados” não se aplica.",
       "enableAutoStart": "Ativar o Auto-{{type}} na Inicialização",
       "autoStartDelay": "Atraso na inicialização",
       "autoStartDelayHint": "Tempo de espera após abrir o aplicativo antes de iniciar. Útil quando a rede, a VPN ou outras montagens ainda não estão prontas.",
@@ -2087,24 +2127,14 @@
     },
     "generalDetail": {
       "automations": "Automações",
-      "goToAutomation": "Vá para automação {{index}}",
-      "schedule": "Agenda",
-      "cronExpression": "Expressão Cron:",
       "nextRunLabel": "Próxima Execução:",
-      "lastRunLabel": "Última Execução:",
       "statistics": "Estatísticas",
       "successful": "Bem-sucedido",
       "failedCount": "Falhou",
       "stoppedCount": "Parou",
       "totalRuns": "Total de Execuções",
       "paths": "Caminhos",
-      "sourceLabel": "Origem:",
-      "destinationLabel": "Destino:",
-      "lastError": "Último Erro",
-      "currentlyRunning": "Em Execução",
       "jobIdLabel": "Número da tarefa:",
-      "previousAutomationTooltip": "Automação anterior",
-      "nextAutomationTooltip": "Próxima automação",
       "remoteConfiguration": "Configuração do Remoto",
       "editConfiguration": "Editar Configuração",
       "remoteActionQuickSelection": "Seleção de ação remota rápida"
@@ -3870,6 +3900,14 @@
       },
       "noActive": "Nenhuma montagem ativa",
       "noMounted": "Nenhum remoto está montado. Monte um remoto para usar os arquivos dele como uma pasta no seu computador."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} outro escondido",
+        "other": "{{count}} outros escondidos"
+      },
+      "empty": "Nada corresponde a este filtro. O restante está escondido.",
+      "showAll": "Mostrar tudo"
     }
   },
   "appOverview": {
@@ -3992,7 +4030,10 @@
       "destinationPathInvalid": "Não foi possível ler o caminho de destino: {{path}}",
       "filePathsInvalid": "Não foi possível ler a origem '{{source}}' ou o destino '{{destination}}' como caminho de arquivo. Use o formato 'remote:caminho/do/arquivo' ou um caminho local.",
       "unsupportedOperation": "A operação {{operation}} não pode ser executada como transferência",
-      "destinationMissing": "Nenhum destino especificado"
+      "destinationMissing": "Nenhum destino especificado",
+      "sourceOverlapsDestination": "A origem {{source}} e o destino {{destination}} se sobrepõem: um está dentro do outro. Escolha um destino que não se sobreponha a nenhuma origem.",
+      "overlappingRemotes": "A origem e o destino se sobrepõem: um está dentro do outro. Escolha um destino fora da origem ou exclua-o com uma regra de filtro.",
+      "backupDirOverlaps": "“Diretório de Cópias de Segurança” não pode ficar dentro da origem nem do destino, nem contê-los."
     },
     "serve": {
       "remoteEmpty": "O nome remoto não pode estar vazio",
@@ -4142,7 +4183,8 @@
       "authExpired": "A autenticação do remoto expirou ou é inválida. Reautentique o remoto nas configurações.",
       "quotaExceeded": "Limite de requisições de API ou cota de armazenamento remoto excedida. Tente novamente mais tarde.",
       "networkError": "Não foi possível conectar ao servidor remoto. Verifique sua conexão e o endereço remoto.",
-      "notFound": "Diretório ou arquivo de destino não encontrado no remoto."
+      "notFound": "Diretório ou arquivo de destino não encontrado no remoto.",
+      "notInConfig": "O remoto “{{remote}}” não está na configuração do Rclone. Ele foi excluído ou renomeado fora do aplicativo, ou outro arquivo de configuração está em uso."
     },
     "updater": {
       "noPending": "Não há atualizações pendentes",

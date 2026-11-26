@@ -67,7 +67,7 @@
         @if (remoteTypes().length > 0) {
           <div class="empty-state-pills">
             @for (remote of suggestedRemotes(); track remote.value) {
-              <button appPill (click)="onTypeSelected(remote.value)">
+              <button appPill [attr.title]="remote.label" (click)="onTypeSelected(remote.value)">
                 <mat-icon [svgIcon]="remote.icon"></mat-icon>
                 <span>{{ remote.label }}</span>
               </button>

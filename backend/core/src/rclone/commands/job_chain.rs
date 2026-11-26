@@ -1,4 +1,5 @@
-//! Jobs of one request that must run one after another (archive, cryptcheck).
+//! Jobs of one request that must run one after another (archive, cryptcheck, and copies or
+//! moves of several sources into one destination).
 //!
 //! rclone runs each of them as its own job, so a request with several sources is a chain:
 //! the next job starts when the previous one has finished.
@@ -12,7 +13,7 @@ use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::utils::types::jobs::JobStatus;
 
 pub(crate) struct ChainJob {
-    pub endpoint: &'static str,
+    pub endpoint: String,
     pub payload: Value,
     pub metadata: JobMetadata,
 }
@@ -58,7 +59,7 @@ async fn submit(
 ) -> Result<u64, String> {
     submit_job_with_options(
         app.clone(),
-        job.endpoint,
+        &job.endpoint,
         job.payload,
         job.metadata,
         SubmitJobOptions {
@@ -353,7 +354,7 @@ mod tests {
     fn archive_jobs(count: usize, execute_id: &str) -> Vec<ChainJob> {
         (0..count)
             .map(|n| ChainJob {
-                endpoint: "operations/archive",
+                endpoint: "operations/archive".into(),
                 payload: json!({"src": format!("drive:{n}"), "dst": "/out"}),
                 metadata: JobMetadata::new(
                     "drive:",
@@ -384,7 +385,7 @@ mod tests {
         );
         cache.add_automation(automation).await.unwrap();
         cache
-            .try_start_automation("chain", &daemon.backend.name, None)
+            .try_start_automation("chain", &daemon.backend.name, None, true)
             .await
             .unwrap()
             .unwrap()

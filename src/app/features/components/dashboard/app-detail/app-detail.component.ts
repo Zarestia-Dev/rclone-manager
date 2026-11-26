@@ -73,6 +73,7 @@ import {
   operationHas,
 } from '@app/types';
 import { findProfileKey } from 'src/app/services/remote/utils/remote-config.utils';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { MatDialog } from '@angular/material/dialog';
 import {
   FILE_REPORT_OPERATIONS,
@@ -178,6 +179,7 @@ export class AppDetailComponent {
   private readonly quickRunService = inject(QuickRunService);
   protected readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly formatTime = inject(FormatTimePipe);
   private readonly localStorage = inject(LocalStorageService);
   private readonly dialog = inject(MatDialog);
@@ -536,6 +538,14 @@ export class AppDetailComponent {
       watchDelay: automation.watchDelay,
       watchChangedOnly: automation.watchChangedOnly,
     };
+  });
+
+  /** Why the last run of the profile's automation failed, translated; null unless it failed. */
+  readonly automationError = computed(() => {
+    const automation = this.matchingAutomation();
+    return automation?.status === 'failed'
+      ? this.backendTranslation.translateBackendMessage(automation.lastError) || null
+      : null;
   });
 
   readonly isAutoStartEnabled = computed(() => {

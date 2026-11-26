@@ -151,24 +151,60 @@
       "stop": "Detener la ejecución actual"
     },
     "nextRun": {
-      "disabled": "La automatización está deshabilitada",
       "stopping": "Deshabilitando después de la ejecución actual",
       "notScheduled": "No programado"
     },
-    "lastRun": {
-      "never": "Nunca"
-    },
     "monitoring": {
-      "realtime": "Monitoreo en tiempo real",
-      "debounce": "Retardo de rebote",
       "watcherActive": "Observador activo",
       "watchedFolder": "Carpeta vigilada",
-      "seconds": "segundos",
-      "realtimeSchedule": "Observador de archivos en tiempo real",
-      "changedOnlyShort": "Solo subdirectorios",
-      "changedOnlyActive": "Solo subdirectorios",
-      "syncScope": "Ámbito de sincronización",
-      "realtimeChangedOnly": "Monitoreo en tiempo real (Solo subdirectorios)"
+      "changedOnlyShort": "Solo subdirectorios"
+    },
+    "startup": {
+      "badge": "Al iniciar",
+      "startsIn": {
+        "one": "Se inicia en {{count}} segundo",
+        "other": "Se inicia en {{count}} segundos"
+      },
+      "delay": {
+        "one": "Tras {{count}} segundo",
+        "other": "Tras {{count}} segundos"
+      },
+      "immediately": "En cuanto se inicia la aplicación"
+    },
+    "card": {
+      "waiting": "En espera",
+      "started": "Iniciado {{time}}",
+      "lastTry": "Último intento {{time}}",
+      "nextRun": "Próxima ejecución {{time}}",
+      "lastRun": "Última ejecución {{time}}",
+      "neverRun": "Nunca se ha ejecutado",
+      "notStarted": "Aún no se ha iniciado",
+      "watching": {
+        "one": "Vigilando · {{count}} s",
+        "other": "Vigilando · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Al iniciar · tras {{count}} s",
+        "other": "Al iniciar · tras {{count}} s"
+      },
+      "lastFailed": "La última ejecución falló",
+      "whenItRuns": "Cuándo se ejecuta",
+      "onChange": "Cuando cambian los archivos",
+      "waitsAfterChange": {
+        "one": "Espera {{count}} segundo tras el último cambio",
+        "other": "Espera {{count}} segundos tras el último cambio"
+      },
+      "folders": {
+        "one": "{{count}} carpeta",
+        "other": "{{count}} carpetas"
+      },
+      "onAppStart": "Cuando se inicia la aplicación",
+      "lastStart": "Último inicio",
+      "servingAt": "Sirviendo en {{address}}",
+      "notServing": "No está en ejecución",
+      "source": "Fuente",
+      "sources": "Fuentes",
+      "destination": "Destino"
     }
   },
   "actions": {
@@ -1563,6 +1599,10 @@
       "mountFolderLocalDrive": "Elige una carpeta en una unidad local.",
       "mountFolderAlreadyExists": "La carpeta de montaje ya existe. Usa un nombre nuevo.",
       "multiSourceOneWayInfo": "Se detectaron múltiples rutas de origen. La verificación unidireccional se ha habilitado automáticamente para garantizar que rclone verifique cada origen contra el destino.",
+      "multiSourceSyncInfo": "Los orígenes se sincronizan como una sola carpeta: el destino conserva todos los archivos que están en al menos uno de ellos. Si la misma ruta está en más de un origen, se usa el archivo del primer origen de la lista; con «Listado rápido» activado, esto no está garantizado. No se usa la copia del lado del servidor, aunque un origen y el destino estén en el mismo remoto.",
+      "multiSourceCopyInfo": "Los orígenes se copian uno tras otro, empezando por el último de la lista. Si la misma ruta está en más de un origen, en el destino queda el archivo del primer origen de la lista. Si un origen falla, los que aún esperan no se copian.",
+      "multiSourceMoveInfo": "Los orígenes se mueven uno tras otro, empezando por el último de la lista. Si la misma ruta está en más de un origen, en el destino queda el archivo del primer origen de la lista y las demás versiones se eliminan; configura «Directorio de respaldo» para conservarlas. Si un origen falla, los que aún esperan no se mueven.",
+      "multiSourceSyncChangedOnlyNote": "Con más de un origen, cada cambio sincroniza todos los orígenes por completo: «Sincronizar solo subdirectorios modificados» no se aplica.",
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
       "autoStartDelay": "Retraso de inicio",
       "autoStartDelayHint": "Tiempo de espera tras abrir la aplicación antes de iniciar. Útil si la red, la VPN u otros montajes aún no están listos.",
@@ -2087,24 +2127,14 @@
     },
     "generalDetail": {
       "automations": "Automatizaciones",
-      "goToAutomation": "Ir a la automatización {{index}}",
-      "schedule": "Programar",
-      "cronExpression": "Expresión Cron:",
       "nextRunLabel": "Próxima ejecución:",
-      "lastRunLabel": "Última ejecución:",
       "statistics": "Estadísticas",
       "successful": "Exitoso",
       "failedCount": "Fallido",
       "stoppedCount": "Detenido",
       "totalRuns": "Ejecuciones totales",
       "paths": "Rutas",
-      "sourceLabel": "Fuente:",
-      "destinationLabel": "Destino:",
-      "lastError": "Último error",
-      "currentlyRunning": "Actualmente en ejecución",
       "jobIdLabel": "ID de trabajo:",
-      "previousAutomationTooltip": "Automatización anterior",
-      "nextAutomationTooltip": "Siguiente automatización",
       "remoteConfiguration": "Configuración remota",
       "editConfiguration": "Editar configuración",
       "remoteActionQuickSelection": "Selección rápida de acción remota"
@@ -3870,6 +3900,14 @@
       },
       "noActive": "No hay montajes activos",
       "noMounted": "No hay ningún remoto montado. Monta un remoto para usar sus archivos como una carpeta en tu equipo."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} más oculto",
+        "other": "{{count}} más ocultos"
+      },
+      "empty": "Nada coincide con este filtro. El resto está oculto.",
+      "showAll": "Mostrar todo"
     }
   },
   "appOverview": {
@@ -3992,7 +4030,10 @@
       "destinationPathInvalid": "No se pudo leer la ruta de destino: {{path}}",
       "filePathsInvalid": "No se pudo leer el origen '{{source}}' o el destino '{{destination}}' como ruta de archivo. Usa el formato 'remote:ruta/al/archivo' o una ruta local.",
       "unsupportedOperation": "La operación {{operation}} no se puede ejecutar como transferencia",
-      "destinationMissing": "No se especificó ningún destino"
+      "destinationMissing": "No se especificó ningún destino",
+      "sourceOverlapsDestination": "El origen {{source}} y el destino {{destination}} se solapan: uno está dentro del otro. Elige un destino que no se solape con ningún origen.",
+      "overlappingRemotes": "El origen y el destino se solapan: uno está dentro del otro. Elige un destino fuera del origen o exclúyelo con una regla de filtro.",
+      "backupDirOverlaps": "«Directorio de respaldo» no puede estar dentro del origen ni del destino, ni contener ninguno de ellos."
     },
     "serve": {
       "remoteEmpty": "El nombre del remoto no puede estar vacío",
@@ -4142,7 +4183,8 @@
       "authExpired": "La autenticación remota ha expirado o no es válida. Vuelva a autenticar el almacenamiento remoto.",
       "quotaExceeded": "Límite de tasa de API o cuota de almacenamiento excedida. Inténtelo más tarde.",
       "networkError": "No se puede conectar con el servidor remoto. Verifique su red y dirección remota.",
-      "notFound": "El directorio o archivo de destino no se encontró en el servidor remoto."
+      "notFound": "El directorio o archivo de destino no se encontró en el servidor remoto.",
+      "notInConfig": "El remoto «{{remote}}» no está en la configuración de Rclone. Se eliminó o se renombró fuera de la aplicación, o se está usando otro archivo de configuración."
     },
     "updater": {
       "noPending": "No hay actualizaciones pendientes",

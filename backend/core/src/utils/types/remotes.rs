@@ -138,7 +138,8 @@ pub struct OperationExecutionResult {
 
 #[derive(Debug)]
 pub struct RemoteCache {
-    pub remotes: RwLock<Vec<String>>,
+    /// The backend's remote names; none until they were read once.
+    pub remotes: RwLock<Option<Vec<String>>>,
     pub configs: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
     pub serves: RwLock<Vec<ServeInstance>>,

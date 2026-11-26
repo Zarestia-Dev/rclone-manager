@@ -151,24 +151,60 @@
       "stop": "Çalışan görevi durdur"
     },
     "nextRun": {
-      "disabled": "Otomasyon devre dışı",
       "stopping": "Mevcut çalışmadan sonra devre dışı",
       "notScheduled": "Zamanlanmadı"
     },
-    "lastRun": {
-      "never": "Hiçbir zaman"
-    },
     "monitoring": {
-      "realtime": "Gerçek Zamanlı İzleme",
-      "debounce": "Geciktirme Süresi",
       "watcherActive": "İzleyici Etkin",
       "watchedFolder": "İzlenen klasör",
-      "seconds": "saniye",
-      "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici",
-      "changedOnlyShort": "Yalnızca Alt Dizinler",
-      "changedOnlyActive": "Yalnızca Alt Dizinler",
-      "syncScope": "Senkronizasyon Kapsamı",
-      "realtimeChangedOnly": "Gerçek Zamanlı İzleme (Yalnızca alt dizinler)"
+      "changedOnlyShort": "Yalnızca Alt Dizinler"
+    },
+    "startup": {
+      "badge": "Başlangıçta",
+      "startsIn": {
+        "one": "{{count}} saniye sonra başlar",
+        "other": "{{count}} saniye sonra başlar"
+      },
+      "delay": {
+        "one": "{{count}} saniye gecikmeyle",
+        "other": "{{count}} saniye gecikmeyle"
+      },
+      "immediately": "Uygulama başlar başlamaz"
+    },
+    "card": {
+      "waiting": "Bekliyor",
+      "started": "{{time}} başlatıldı",
+      "lastTry": "Son deneme {{time}}",
+      "nextRun": "Sonraki çalışma {{time}}",
+      "lastRun": "Son çalışma {{time}}",
+      "neverRun": "Hiç çalışmadı",
+      "notStarted": "Henüz başlamadı",
+      "watching": {
+        "one": "İzleniyor · {{count}} sn",
+        "other": "İzleniyor · {{count}} sn"
+      },
+      "startupAfter": {
+        "one": "Başlangıçta · {{count}} sn sonra",
+        "other": "Başlangıçta · {{count}} sn sonra"
+      },
+      "lastFailed": "Son çalışma başarısız oldu",
+      "whenItRuns": "Ne zaman çalışır",
+      "onChange": "Dosyalar değiştiğinde",
+      "waitsAfterChange": {
+        "one": "Son değişiklikten sonra {{count}} saniye bekler",
+        "other": "Son değişiklikten sonra {{count}} saniye bekler"
+      },
+      "folders": {
+        "one": "{{count}} klasör",
+        "other": "{{count}} klasör"
+      },
+      "onAppStart": "Uygulama başladığında",
+      "lastStart": "Son başlatma",
+      "servingAt": "{{address}} adresinde sunuluyor",
+      "notServing": "Çalışmıyor",
+      "source": "Kaynak",
+      "sources": "Kaynaklar",
+      "destination": "Hedef"
     }
   },
   "actions": {
@@ -1563,6 +1599,10 @@
       "mountFolderLocalDrive": "Yerel bir sürücüdeki klasörü seçin.",
       "mountFolderAlreadyExists": "Bağlama klasörü zaten var. Yeni bir ad kullanın.",
       "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
+      "multiSourceSyncInfo": "Kaynaklar tek bir klasör gibi senkronize edilir: hedefte, kaynaklardan en az birinde bulunan her dosya kalır. Aynı yol birden fazla kaynakta varsa listede önce gelen kaynağın dosyası kullanılır; “Hızlı Liste” açıkken bu garanti edilmez. Bir kaynak ile hedef aynı uzak bağlantıda olsa bile sunucu tarafı kopyalama kullanılmaz.",
+      "multiSourceCopyInfo": "Kaynaklar listedeki sonuncudan başlayarak sırayla kopyalanır. Aynı yol birden fazla kaynakta varsa hedefte listede önce gelen kaynağın dosyası kalır. Bir kaynak başarısız olursa sırası gelmemiş kaynaklar kopyalanmaz.",
+      "multiSourceMoveInfo": "Kaynaklar listedeki sonuncudan başlayarak sırayla taşınır. Aynı yol birden fazla kaynakta varsa hedefte listede önce gelen kaynağın dosyası kalır, diğer sürümler silinir; bunları saklamak için “Yedek Dizini” ayarlayın. Bir kaynak başarısız olursa sırası gelmemiş kaynaklar taşınmaz.",
+      "multiSourceSyncChangedOnlyNote": "Birden fazla kaynak olduğunda her değişiklik tüm kaynakları baştan sona senkronize eder: “Yalnızca değişen alt dizinleri senkronize et” uygulanmaz.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
       "autoStartDelay": "Başlangıç Gecikmesi",
       "autoStartDelayHint": "Uygulama açıldıktan sonra başlatmadan önce beklenecek süre. Ağ, VPN veya diğer bağlantılar henüz hazır değilse işe yarar.",
@@ -2087,24 +2127,14 @@
     },
     "generalDetail": {
       "automations": "Otomasyonlar",
-      "goToAutomation": "Otomasyon {{index}}'e git",
-      "schedule": "Zamanlama",
-      "cronExpression": "Cron İfadesi:",
       "nextRunLabel": "Sonraki Çalışma:",
-      "lastRunLabel": "Son Çalışma:",
       "statistics": "İstatistikler",
       "successful": "Başarılı",
       "failedCount": "Başarısız",
       "stoppedCount": "Durduruldu",
       "totalRuns": "Toplam Çalışma",
       "paths": "Yollar",
-      "sourceLabel": "Kaynak:",
-      "destinationLabel": "Hedef:",
-      "lastError": "Son Hata",
-      "currentlyRunning": "Şu Anda Çalışıyor",
       "jobIdLabel": "İş Kimliği:",
-      "previousAutomationTooltip": "Önceki otomasyon",
-      "nextAutomationTooltip": "Sonraki otomasyon",
       "remoteConfiguration": "Uzak Bağlantı Yapılandırması",
       "editConfiguration": "Yapılandırmayı Düzenle",
       "remoteActionQuickSelection": "Uzak bağlantı hızlı eylem seçimi"
@@ -3911,6 +3941,14 @@
       },
       "noActive": "Aktif bağlama yok",
       "noMounted": "Bağlanmış uzak bağlantı yok. Dosyalarını bilgisayarında bir klasör gibi kullanmak için bir uzak bağlantıyı bağla."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} tane daha gizli",
+        "other": "{{count}} tane daha gizli"
+      },
+      "empty": "Bu filtreye uyan öğe yok. Diğerleri gizli.",
+      "showAll": "Tümünü göster"
     }
   },
   "appOverview": {
@@ -4033,7 +4071,10 @@
       "destinationPathInvalid": "Hedef yolu okunamadı: {{path}}",
       "filePathsInvalid": "'{{source}}' kaynağı veya '{{destination}}' hedefi dosya yolu olarak okunamadı. 'remote:yol/dosya' biçimini veya yerel bir yol kullanın.",
       "unsupportedOperation": "{{operation}} işlemi aktarım olarak çalıştırılamaz",
-      "destinationMissing": "Hedef belirtilmedi"
+      "destinationMissing": "Hedef belirtilmedi",
+      "sourceOverlapsDestination": "{{source}} kaynağı ile {{destination}} hedefi çakışıyor: biri diğerinin içinde. Hiçbir kaynakla çakışmayan bir hedef seçin.",
+      "overlappingRemotes": "Kaynak ile hedef çakışıyor: biri diğerinin içinde. Kaynağın dışında bir hedef seçin ya da hedefi bir filtre kuralıyla hariç tutun.",
+      "backupDirOverlaps": "“Yedek Dizini” kaynağın veya hedefin içinde olamaz, onları da içeremez."
     },
     "serve": {
       "remoteEmpty": "Uzak bağlantı adı boş olamaz",
@@ -4183,7 +4224,8 @@
       "authExpired": "Uzak bağlantı kimlik doğrulaması geçersiz veya süresi dolmuş. Lütfen bağlantıyı yeniden yetkilendirin.",
       "quotaExceeded": "Uzak depolama API hız sınırı veya depolama kotası aşıldı. Lütfen daha sonra tekrar deneyin.",
       "networkError": "Uzak sunucuya ulaşılamadı. Lütfen ağ bağlantınızı ve uzak bağlantı adresini kontrol edin.",
-      "notFound": "Hedef dizin veya dosya uzak sunucuda bulunamadı."
+      "notFound": "Hedef dizin veya dosya uzak sunucuda bulunamadı.",
+      "notInConfig": "“{{remote}}” uzak bağlantısı Rclone yapılandırmasında yok. Uygulamanın dışında silinmiş ya da yeniden adlandırılmış veya başka bir yapılandırma dosyası kullanılıyor."
     },
     "updater": {
       "noPending": "Bekleyen güncelleme yok",

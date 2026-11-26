@@ -749,13 +749,19 @@ impl NotificationEvent {
 // Public API
 
 pub fn notify(app: &crate::context::AppHandle, event: NotificationEvent) {
+    notify_job(app, event, false);
+}
+
+/// `automation_job` marks the event of a job an automation runs. The automation announces the
+/// run as well, so a rule that takes both announcements shows only the automation's.
+pub fn notify_job(app: &crate::context::AppHandle, event: NotificationEvent, automation_job: bool) {
     let RenderedContent { title, body, level } = event.render();
 
     emit_log(level, &title, &body);
 
     let app_handle = app.clone();
     crate::utils::spawn(async move {
-        crate::services::alerts::engine::process(&app_handle, &event, title, body);
+        crate::services::alerts::engine::process(&app_handle, &event, title, body, automation_job);
     });
 }
 

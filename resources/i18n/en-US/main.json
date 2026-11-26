@@ -151,24 +151,60 @@
       "stop": "Stop current run"
     },
     "nextRun": {
-      "disabled": "Automation is disabled",
       "stopping": "Disabling after current run",
       "notScheduled": "Not scheduled"
     },
-    "lastRun": {
-      "never": "Never"
-    },
     "monitoring": {
-      "realtime": "Real-time Monitoring",
-      "debounce": "Debounce Delay",
       "watcherActive": "Watcher Active",
       "watchedFolder": "Watched folder",
-      "seconds": "seconds",
-      "realtimeSchedule": "Real-time File Watcher",
-      "changedOnlyShort": "Subdirectories Only",
-      "changedOnlyActive": "Subdirectories Only",
-      "syncScope": "Sync Scope",
-      "realtimeChangedOnly": "Real-time Monitoring (Subdirectories only)"
+      "changedOnlyShort": "Subdirectories Only"
+    },
+    "startup": {
+      "badge": "At startup",
+      "startsIn": {
+        "one": "Starts in {{count}} second",
+        "other": "Starts in {{count}} seconds"
+      },
+      "delay": {
+        "one": "After {{count}} second",
+        "other": "After {{count}} seconds"
+      },
+      "immediately": "As soon as the app starts"
+    },
+    "card": {
+      "waiting": "Waiting",
+      "started": "Started {{time}}",
+      "lastTry": "Last try {{time}}",
+      "nextRun": "Next run {{time}}",
+      "lastRun": "Last run {{time}}",
+      "neverRun": "Never run",
+      "notStarted": "Not started yet",
+      "watching": {
+        "one": "Watching · {{count}} s",
+        "other": "Watching · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "At startup · after {{count}} s",
+        "other": "At startup · after {{count}} s"
+      },
+      "lastFailed": "The last run failed",
+      "whenItRuns": "When it runs",
+      "onChange": "When files change",
+      "waitsAfterChange": {
+        "one": "Waits {{count}} second after the last change",
+        "other": "Waits {{count}} seconds after the last change"
+      },
+      "folders": {
+        "one": "{{count}} folder",
+        "other": "{{count}} folders"
+      },
+      "onAppStart": "When the app starts",
+      "lastStart": "Last start",
+      "servingAt": "Serving at {{address}}",
+      "notServing": "Not running",
+      "source": "Source",
+      "sources": "Sources",
+      "destination": "Destination"
     }
   },
   "actions": {
@@ -1566,6 +1602,10 @@
       "mountFolderLocalDrive": "Choose a folder on a local drive.",
       "mountFolderAlreadyExists": "The mount folder already exists. Use a new folder name.",
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
+      "multiSourceSyncInfo": "The sources are synced as one folder: the destination keeps every file that is in at least one of them. If the same path is in more than one source, the file from the first source in the list is used; with “Fast List” turned on, this is not guaranteed. Server-side copy is not used, even when a source and the destination are on the same remote.",
+      "multiSourceCopyInfo": "The sources are copied one after another, starting with the last one in the list. If the same path is in more than one source, the file from the first source in the list ends up in the destination. If a source fails, the sources still waiting are not copied.",
+      "multiSourceMoveInfo": "The sources are moved one after another, starting with the last one in the list. If the same path is in more than one source, the file from the first source in the list ends up in the destination and the other versions are deleted; set “Backup Dir” to keep them. If a source fails, the sources still waiting are not moved.",
+      "multiSourceSyncChangedOnlyNote": "With more than one source, every change syncs all sources in full: “Sync only changed subdirectories” does not apply.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
       "autoStartDelay": "Startup Delay",
       "autoStartDelayHint": "Wait this long after the app starts before launching. Useful when the network, VPN or other mounts are not ready yet.",
@@ -2087,24 +2127,14 @@
     },
     "generalDetail": {
       "automations": "Automations",
-      "goToAutomation": "Go to automation {{index}}",
-      "schedule": "Schedule",
-      "cronExpression": "Cron Expression:",
       "nextRunLabel": "Next Run:",
-      "lastRunLabel": "Last Run:",
       "statistics": "Statistics",
       "successful": "Successful",
       "failedCount": "Failed",
       "stoppedCount": "Stopped",
       "totalRuns": "Total Runs",
       "paths": "Paths",
-      "sourceLabel": "Source:",
-      "destinationLabel": "Destination:",
-      "lastError": "Last Error",
-      "currentlyRunning": "Currently Running",
       "jobIdLabel": "Job ID:",
-      "previousAutomationTooltip": "Previous automation",
-      "nextAutomationTooltip": "Next automation",
       "remoteConfiguration": "Remote Configuration",
       "editConfiguration": "Edit Configuration",
       "remoteActionQuickSelection": "Remote action quick selection"
@@ -3911,6 +3941,14 @@
       },
       "noActive": "No active mounts",
       "noMounted": "No remotes are mounted. Mount a remote to use its files as a folder on your computer."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} more hidden",
+        "other": "{{count}} more hidden"
+      },
+      "empty": "Nothing matches this filter. The rest is hidden.",
+      "showAll": "Show all"
     }
   },
   "appOverview": {
@@ -4033,7 +4071,10 @@
       "destinationPathInvalid": "Could not read the destination path: {{path}}",
       "filePathsInvalid": "Could not read source '{{source}}' or destination '{{destination}}' as a file path. Use the format 'remote:path/to/file' or a local path.",
       "unsupportedOperation": "The operation {{operation}} cannot run as a transfer",
-      "destinationMissing": "No destination specified"
+      "destinationMissing": "No destination specified",
+      "sourceOverlapsDestination": "The source {{source}} and the destination {{destination}} overlap: one is inside the other. Choose a destination that does not overlap any source.",
+      "overlappingRemotes": "The source and the destination overlap: one is inside the other. Choose a destination outside the source, or exclude it with a filter rule.",
+      "backupDirOverlaps": "“Backup Dir” must not be inside the source or the destination, and must not contain either of them."
     },
     "serve": {
       "remoteEmpty": "Remote name cannot be empty",
@@ -4183,7 +4224,8 @@
       "authExpired": "Remote authentication expired or invalid. Please re-authenticate the remote.",
       "quotaExceeded": "Remote storage API rate limit or storage quota exceeded. Please try again later.",
       "networkError": "Unable to reach the remote server. Please check your network connection and remote address.",
-      "notFound": "Target directory or file was not found on the remote."
+      "notFound": "Target directory or file was not found on the remote.",
+      "notInConfig": "The remote “{{remote}}” is not in the rclone config. It was deleted or renamed outside the app, or a different config file is in use."
     },
     "updater": {
       "noPending": "There is no pending update",

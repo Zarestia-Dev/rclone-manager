@@ -35,6 +35,9 @@ describe('AutomationService cache', () => {
     successCount: 0,
     failureCount: 0,
     stoppedCount: 0,
+    autoStart: false,
+    autoStartDelay: 0,
+    autoStartAt: null,
   };
 
   beforeEach(async () => {
@@ -87,6 +90,26 @@ describe('AutomationService cache', () => {
 
     expect(invoke).toHaveBeenCalledTimes(3);
     expect(service.automations()).toEqual([newest]);
+  });
+
+  it('keeps one order whatever order the backend answers in', async () => {
+    const named = (id: string, remoteName: string, profileName: string): Automation => ({
+      ...automation,
+      id,
+      remoteName,
+      profileName,
+    });
+    const answer = [
+      named('c', 'drive', 'nightly'),
+      named('a', 'box', 'weekly'),
+      named('wf', '', 'Workflow'),
+      named('b', 'drive', 'mount'),
+    ];
+    for (const order of [answer, [...answer].reverse()]) {
+      invoke.mockResolvedValueOnce([...order]);
+      await service.refreshAutomations();
+      expect(service.automations().map(a => a.id)).toEqual(['wf', 'a', 'b', 'c']);
+    }
   });
 
   it('keeps the previous cache when a refresh fails', async () => {

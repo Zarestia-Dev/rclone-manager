@@ -151,24 +151,54 @@
       "stop": "停止当前运行"
     },
     "nextRun": {
-      "disabled": "自动化已禁用",
       "stopping": "当前运行结束后禁用",
       "notScheduled": "未计划"
     },
-    "lastRun": {
-      "never": "从未运行"
-    },
     "monitoring": {
-      "realtime": "实时监控",
-      "debounce": "防抖延迟",
       "watcherActive": "监控器处于活动状态",
       "watchedFolder": "监视文件夹",
-      "seconds": "秒",
-      "realtimeSchedule": "实时文件监控",
-      "changedOnlyShort": "仅子目录",
-      "changedOnlyActive": "仅子目录",
-      "syncScope": "同步范围",
-      "realtimeChangedOnly": "实时监控（仅子目录）"
+      "changedOnlyShort": "仅子目录"
+    },
+    "startup": {
+      "badge": "启动时",
+      "startsIn": {
+        "other": "{{count}} 秒后启动"
+      },
+      "delay": {
+        "other": "{{count}} 秒后"
+      },
+      "immediately": "应用启动后立即"
+    },
+    "card": {
+      "waiting": "等待中",
+      "started": "{{time}}启动",
+      "lastTry": "上次尝试：{{time}}",
+      "nextRun": "下次运行：{{time}}",
+      "lastRun": "上次运行：{{time}}",
+      "neverRun": "从未运行",
+      "notStarted": "尚未启动",
+      "watching": {
+        "other": "监控中 · {{count}} 秒"
+      },
+      "startupAfter": {
+        "other": "启动时 · {{count}} 秒后"
+      },
+      "lastFailed": "上次运行失败",
+      "whenItRuns": "运行时机",
+      "onChange": "文件发生变化时",
+      "waitsAfterChange": {
+        "other": "最后一次变化后等待 {{count}} 秒"
+      },
+      "folders": {
+        "other": "{{count}} 个文件夹"
+      },
+      "onAppStart": "应用启动时",
+      "lastStart": "上次启动",
+      "servingAt": "正在 {{address}} 提供服务",
+      "notServing": "未运行",
+      "source": "源路径",
+      "sources": "源路径",
+      "destination": "目标路径"
     }
   },
   "actions": {
@@ -1552,6 +1582,10 @@
       "mountFolderLocalDrive": "请选择本地驱动器上的文件夹。",
       "mountFolderAlreadyExists": "挂载文件夹已存在，请使用新名称。",
       "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
+      "multiSourceSyncInfo": "这些源会作为一个文件夹同步：目标中会保留至少存在于其中一个源中的所有文件。如果同一路径存在于多个源中，将使用列表中靠前的源的文件；开启“快速列表”时无法保证这一点。即使源和目标位于同一远程存储，也不会使用服务端复制。",
+      "multiSourceCopyInfo": "这些源会从列表中的最后一个开始依次复制。如果同一路径存在于多个源中，目标中保留的是列表中靠前的源的文件。如果某个源失败，尚未轮到的源将不会被复制。",
+      "multiSourceMoveInfo": "这些源会从列表中的最后一个开始依次移动。如果同一路径存在于多个源中，目标中保留的是列表中靠前的源的文件，其他版本会被删除；如需保留，请设置“备份目录”。如果某个源失败，尚未轮到的源将不会被移动。",
+      "multiSourceSyncChangedOnlyNote": "有多个源时，每次更改都会完整同步所有源：“仅同步已更改的子目录”不适用。",
       "enableAutoStart": "开机自动{{type}}",
       "autoStartDelay": "启动延迟",
       "autoStartDelayHint": "应用启动后等待多久再开始运行。当网络、VPN 或其他挂载尚未就绪时很有用。",
@@ -2068,24 +2102,14 @@
     },
     "generalDetail": {
       "automations": "自动化",
-      "goToAutomation": "前往自动化 {{index}}",
-      "schedule": "计划",
-      "cronExpression": "Cron 表达式：",
       "nextRunLabel": "下次运行：",
-      "lastRunLabel": "上次运行：",
       "statistics": "统计",
       "successful": "成功",
       "failedCount": "失败",
       "stoppedCount": "已停止",
       "totalRuns": "总运行次数",
       "paths": "路径",
-      "sourceLabel": "源路径：",
-      "destinationLabel": "目标路径：",
-      "lastError": "上次错误",
-      "currentlyRunning": "正在运行",
       "jobIdLabel": "任务 ID：",
-      "previousAutomationTooltip": "上一个自动化",
-      "nextAutomationTooltip": "下一个自动化",
       "remoteConfiguration": "远程存储配置",
       "editConfiguration": "编辑配置",
       "remoteActionQuickSelection": "远程操作快捷选择"
@@ -3804,6 +3828,13 @@
       },
       "noActive": "暂无活动挂载",
       "noMounted": "没有已挂载的远程。挂载远程后，即可把它的文件当作电脑上的文件夹使用。"
+    },
+    "originFilter": {
+      "hidden": {
+        "other": "另有 {{count}} 项已隐藏"
+      },
+      "empty": "没有符合此过滤条件的项目，其余项目已隐藏。",
+      "showAll": "显示全部"
     }
   },
   "appOverview": {
@@ -3926,7 +3957,10 @@
       "destinationPathInvalid": "无法解析目标路径：{{path}}",
       "filePathsInvalid": "无法将源 '{{source}}' 或目标 '{{destination}}' 解析为文件路径。请使用 'remote:path/to/file' 格式或本地路径。",
       "unsupportedOperation": "操作 {{operation}} 无法作为传输运行",
-      "destinationMissing": "未指定目标"
+      "destinationMissing": "未指定目标",
+      "sourceOverlapsDestination": "源 {{source}} 与目标 {{destination}} 重叠：其中一个位于另一个之内。请选择不与任何源重叠的目标。",
+      "overlappingRemotes": "源与目标重叠：其中一个位于另一个之内。请选择源之外的目标，或使用过滤规则将其排除。",
+      "backupDirOverlaps": "“备份目录”不能位于源或目标之内，也不能包含它们。"
     },
     "serve": {
       "remoteEmpty": "远程存储名称不能为空",
@@ -4076,7 +4110,8 @@
       "authExpired": "远程认证已过期或无效。请在设置中重新授权。",
       "quotaExceeded": "远程存储 API 速率限制或配额已超限。请稍后重试。",
       "networkError": "无法连接到远程服务器。请检查网络连接及远程地址。",
-      "notFound": "在远程上未找到目标目录或文件。"
+      "notFound": "在远程上未找到目标目录或文件。",
+      "notInConfig": "远程“{{remote}}”不在 Rclone 配置中。它已在应用之外被删除或重命名，或者正在使用另一个配置文件。"
     },
     "updater": {
       "noPending": "暂无待处理更新",

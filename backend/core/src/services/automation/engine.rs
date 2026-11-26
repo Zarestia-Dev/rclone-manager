@@ -3,6 +3,8 @@
 use crate::context::{AppHandle, State};
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::commands::job_parser::JobOutcome;
+use crate::rclone::commands::mount::mount_remote_profile;
+use crate::rclone::commands::serve::start_serve_profile;
 use crate::rclone::commands::sync::start_resolved_profile_batch;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::services::settings::AppSettingsManager;
@@ -389,6 +391,7 @@ pub async fn execute_automation(
             automation_id,
             &backend.name,
             watch.as_ref().map(|trigger| &trigger.args),
+            true,
         )
         .await?
     else {
@@ -530,6 +533,25 @@ async fn run_profile(
     let transfer_type = automation
         .automation_type
         .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
+    // A mount or a serve starts with the app and runs on when started again by hand.
+    if !transfer_type.is_transfer() {
+        drop(selection.take());
+        let params = ProfileParams {
+            remote_name: automation.remote_name.clone(),
+            profile_name: automation.profile_name.clone(),
+            backend_name: Some(automation.backend_name.clone()),
+            source: Some(Origin::Automation),
+            no_cache: None,
+            scoped_targets: None,
+            execute_id: None,
+        };
+        if transfer_type == OperationType::Mount {
+            mount_remote_profile(app.clone(), params).await?;
+        } else {
+            start_serve_profile(app.clone(), params).await?;
+        }
+        return Ok(AutomationExecutionOutcome::Success);
+    }
     let scoped_targets = match watch {
         Some(trigger)
             if automation.watch_changed_only && transfer_type != OperationType::Bisync =>
@@ -603,7 +625,7 @@ async fn finish_execution(
                     automation.current_job_id.get_or_insert_with(|| job.clone());
                 }
                 Ok(AutomationExecutionOutcome::Success) => automation.mark_success(),
-                Err(error) => automation.mark_failure(error.clone()),
+                Err(error) => automation.mark_ended_with(error.clone()),
             }
             automation.next_run = next_run;
         })
@@ -612,15 +634,15 @@ async fn finish_execution(
 }
 
 /// A job an automation started has ended: records the outcome, sets the next cron run and
-/// announces the result.
+/// announces the result when it announced the start. Returns whether it announced it.
 pub(crate) async fn finish_job_execution(
     app: &AppHandle,
     backend_name: &str,
     execute_id: Option<&str>,
     outcome: &JobOutcome,
-) {
+) -> bool {
     let Some(execute_id) = execute_id else {
-        return;
+        return false;
     };
     let Some(automation) = app
         .state::<AutomationsCache>()
@@ -636,11 +658,11 @@ pub(crate) async fn finish_job_execution(
         })
         .await
     else {
-        return;
+        return false;
     };
-    // A workflow reports its own result.
-    let Some(automation_type) = automation.automation_type else {
-        return;
+    // A workflow reports its own result; the work a start with the app ran reports its own.
+    let Some(automation_type) = automation.automation_type.filter(|_| automation.announced) else {
+        return false;
     };
     let event = if outcome.success {
         AutomationStage::Completed {
@@ -669,6 +691,7 @@ pub(crate) async fn finish_job_execution(
         }
     };
     notify(app, NotificationEvent::Automation(event));
+    true
 }
 
 /// Moves the shown next run past a cron tick that started nothing.

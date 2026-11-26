@@ -377,6 +377,19 @@ export class OperationConfigComponent {
     if ((type === 'check' || type === 'cryptcheck') && this.sourceItems().length > 1) {
       banners.push('wizards.appOperation.multiSourceOneWayInfo');
     }
+    if (type === 'sync' && this.sourceItems().length > 1) {
+      banners.push('wizards.appOperation.multiSourceSyncInfo');
+      if (this.isWatchEnabled() && this.isWatchPossible() && this.isWatchChangedOnly()) {
+        banners.push('wizards.appOperation.multiSourceSyncChangedOnlyNote');
+      }
+    }
+    if ((type === 'copy' || type === 'move') && this.sourceItems().length > 1) {
+      banners.push(
+        type === 'copy'
+          ? 'wizards.appOperation.multiSourceCopyInfo'
+          : 'wizards.appOperation.multiSourceMoveInfo'
+      );
+    }
     return banners;
   });
 

@@ -71,7 +71,6 @@
         <app-automations-overview-panel
           [expanded]="open"
           (expandedChange)="setOpen($event)"
-          [defaultOriginFilter]="'dashboard'"
           [showFilterChips]="true"
           (automationClick)="onAutomationClick($event)"
         ></app-automations-overview-panel>
@@ -80,7 +79,6 @@
         <app-mounts-overview-panel
           [expanded]="open"
           (expandedChange)="setOpen($event)"
-          [defaultOriginFilter]="'dashboard'"
           [showFilterChips]="true"
         ></app-mounts-overview-panel>
       </ng-template>
@@ -88,7 +86,6 @@
         <app-serves-overview-panel
           [expanded]="open"
           (expandedChange)="setOpen($event)"
-          [defaultOriginFilter]="'dashboard'"
           [showFilterChips]="true"
           (serveClick)="handleServeCardClick($event)"
           (stopServe)="stopServe($event)"
