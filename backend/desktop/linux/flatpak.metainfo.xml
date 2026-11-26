@@ -104,6 +104,35 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.7" date="2026-11-26">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>"What do you want to do?" Wizard: A step-by-step guide sets up a mount, a backup, a two-way copy, a download, a copy or move between clouds, a share, or a check.</li>
+          <li>Mounted Remotes Panel: Open, copy the path of, or unmount a mounted remote from the dashboard and Quick Run overviews.</li>
+          <li>Name Conflicts in the File Browser: Copy, move, paste, drag, and upload ask whether to replace, skip, or keep both when a name already exists.</li>
+          <li>Interface Scale: Set the size of the interface from 50 to 200 % in Preferences › General.</li>
+          <li>Windows Mount Targets: Pick a drive letter, take a free letter automatically, or mount into a folder.</li>
+          <li>Slovak translation.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>RClone Manager Headless is now RClone Manager Server. Your settings and remotes stay where they are.</li>
+          <li>The server listens only on this computer by default.</li>
+          <li>Job lists are smaller, and the web UI starts faster.</li>
+          <li>Dates and numbers follow the interface language everywhere.</li>
+          <li>Icon buttons have names, and colours meet contrast requirements in both themes.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Syncing several sources into one folder no longer deletes each other's files.</li>
+          <li>Undo after a merge no longer deletes the folder's old files, and a folder pasted into itself is refused.</li>
+          <li>Drives are unmounted before the engine stops when quitting on Windows.</li>
+          <li>The title bar shows the window buttons your Linux desktop asks for.</li>
+          <li>RC credentials are no longer visible on the command line.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.6" date="2026-11-13">
       <description>
         <p>Added</p>
