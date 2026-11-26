@@ -48,16 +48,14 @@
     "unknown": "Bilinmiyor",
     "notAvailable": "Yok",
     "unlimited": "Sınırsız",
-    "limitedTo": "{{rate}} ile sınırlı",
-    "none": "Yok",
-    "add": "Ekle",
-    "select": "Seç"
+    "limitedTo": "{{rate}} ile sınırlı"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "Temiz ve Boş",
       "nonEmpty": "Klasörde dosyalar var",
-      "colliding": "{{details}} tarafından kullanılıyor",
+      "collidingProfile": "“{{remote}}” bulutunun “{{name}}” profili tarafından kullanılıyor",
+      "collidingQuickRun": "Hızlı Çalıştırma “{{name}}” tarafından kullanılıyor",
       "willCreate": "Klasör, uzak bağlantı oluşturulduktan sonra oluşturulacaktır.",
       "checking": "Yol kontrol ediliyor...",
       "notDirectory": "Bu yol bir dosyaya işaret ediyor. Bir klasör seçin.",
@@ -72,10 +70,8 @@
     "sizeSuffix": "Geçersiz boyut formatı. Kullanım: 100Ki, 16Mi, 1Gi veya \"off\"",
     "tristate": "Değer true, false veya boş olmalıdır",
     "time": "Geçersiz tarih/saat formatı. ISO 8601 kullanın: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Liste sadece boşluk içeremez",
     "bwTimetable": "Geçersiz bant genişliği formatı",
     "fileMode": "Sekizli formatta olmalıdır (3-4 rakam, her biri 0-7). Örnek: 755",
-    "enum": "Şunlardan biri olmalıdır: {{values}}",
     "urlArray": "Tüm URL'ler geçerli olmalı ve http:// veya https:// ile başlamalıdır",
     "bandwidth": "Geçersiz bant genişliği formatı. Kullanım: 10M, 1G, 100K veya kombinasyonlar",
     "passwordMismatch": "Şifreler eşleşmiyor",
@@ -84,10 +80,6 @@
       "invalidStart": "Uzak sunucu adı tire veya boşlukla başlayamaz",
       "invalidEnd": "Uzak sunucu adı boşlukla bitemez",
       "nameTaken": "Bu uzak sunucu adı zaten kullanılıyor"
-    },
-    "password": {
-      "minLength": "Şifre en az 3 karakter olmalıdır",
-      "invalidChars": "Şifre tırnak işareti içeremez"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "URL Kopyalama Etkin",
     "archivecreateActive": "Arşiv Eylemi Etkin",
     "archivecreating": "Arşivleniyor",
-    "syncSummary": "Senkronize Ediliyor ({{count}})",
     "toggleSync": "Senkronizasyonu Hızlı İşlem Olarak Değiştir",
     "toggleCopy": "Kopyalamayı Hızlı İşlem Olarak Değiştir",
     "toggleMove": "Taşımayı Hızlı İşlem Olarak Değiştir",
@@ -134,7 +125,6 @@
     "serving": "Sunuluyor",
     "servingWithProfile": "Sunuluyor ({{profile}}): {{addr}} üzerinde {{type}}",
     "servingMultiple": "Sunumlar ({{count}}): {{profiles}}",
-    "serveSummary": "Sunuluyor ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Sunumu Hızlı İşlem Olarak Değiştir",
     "successStart": "{{remote}} ({{profile}}) için sunum {{addr}} üzerinde başarıyla başlatıldı",
@@ -161,24 +151,60 @@
       "stop": "Çalışan görevi durdur"
     },
     "nextRun": {
-      "disabled": "Otomasyon devre dışı",
       "stopping": "Mevcut çalışmadan sonra devre dışı",
       "notScheduled": "Zamanlanmadı"
     },
-    "lastRun": {
-      "never": "Hiçbir zaman"
-    },
     "monitoring": {
-      "realtime": "Gerçek Zamanlı İzleme",
-      "debounce": "Geciktirme Süresi",
       "watcherActive": "İzleyici Etkin",
       "watchedFolder": "İzlenen klasör",
-      "seconds": "saniye",
-      "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici",
-      "changedOnlyShort": "Yalnızca Alt Dizinler",
-      "changedOnlyActive": "Yalnızca Alt Dizinler",
-      "syncScope": "Senkronizasyon Kapsamı",
-      "realtimeChangedOnly": "Gerçek Zamanlı İzleme (Yalnızca alt dizinler)"
+      "changedOnlyShort": "Yalnızca Alt Dizinler"
+    },
+    "startup": {
+      "badge": "Başlangıçta",
+      "startsIn": {
+        "one": "{{count}} saniye sonra başlar",
+        "other": "{{count}} saniye sonra başlar"
+      },
+      "delay": {
+        "one": "{{count}} saniye gecikmeyle",
+        "other": "{{count}} saniye gecikmeyle"
+      },
+      "immediately": "Uygulama başlar başlamaz"
+    },
+    "card": {
+      "waiting": "Bekliyor",
+      "started": "{{time}} başlatıldı",
+      "lastTry": "Son deneme {{time}}",
+      "nextRun": "Sonraki çalışma {{time}}",
+      "lastRun": "Son çalışma {{time}}",
+      "neverRun": "Hiç çalışmadı",
+      "notStarted": "Henüz başlamadı",
+      "watching": {
+        "one": "İzleniyor · {{count}} sn",
+        "other": "İzleniyor · {{count}} sn"
+      },
+      "startupAfter": {
+        "one": "Başlangıçta · {{count}} sn sonra",
+        "other": "Başlangıçta · {{count}} sn sonra"
+      },
+      "lastFailed": "Son çalışma başarısız oldu",
+      "whenItRuns": "Ne zaman çalışır",
+      "onChange": "Dosyalar değiştiğinde",
+      "waitsAfterChange": {
+        "one": "Son değişiklikten sonra {{count}} saniye bekler",
+        "other": "Son değişiklikten sonra {{count}} saniye bekler"
+      },
+      "folders": {
+        "one": "{{count}} klasör",
+        "other": "{{count}} klasör"
+      },
+      "onAppStart": "Uygulama başladığında",
+      "lastStart": "Son başlatma",
+      "servingAt": "{{address}} adresinde sunuluyor",
+      "notServing": "Çalışmıyor",
+      "source": "Kaynak",
+      "sources": "Kaynaklar",
+      "destination": "Hedef"
     }
   },
   "actions": {
@@ -253,7 +279,8 @@
       },
       "actions": {
         "stop": "Görevi Durdur",
-        "delete": "Görevi Sil"
+        "delete": "Görevi Sil",
+        "retry": "Görevi Yeniden Dene"
       },
       "empty": "Görev bulunamadı"
     },
@@ -277,11 +304,8 @@
     "cancelled": "Rclone güncelleme indirmesi iptal edildi.",
     "cancelFailed": "Rclone güncelleme indirmesi iptal edilemedi.",
     "failed": "Güncelleme başarısız: {{error}}",
-    "channelChanged": "Rclone güncelleme kanalı {{channel}} olarak değiştirildi",
     "skipped": "Rclone sürümü {{version}} atlandı",
-    "restored": "Rclone sürümü {{version}} geri yüklendi",
-    "autoCheckEnabled": "Rclone otomatik güncelleme kontrolü etkinleştirildi",
-    "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı"
+    "restored": "Rclone sürümü {{version}} geri yüklendi"
   },
   "alerts": {
     "title": "Uyarılar ve Bildirimler",
@@ -634,13 +658,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Yıldızlı Öğeler",
-        "description": "Dosya tarayıcısındaki yıldızlı dosya ve klasörlerin listesi."
+      "layout": {
+        "label": "Düzen",
+        "description": "Dosya Gezgini'nin dosyaları nasıl gösterdiği: ızgarada simgeler ya da listede satırlar olarak. Dosya Gezgini'ndeki düzen düğmesi de bunu değiştirir.",
+        "options": {
+          "grid": "Izgara",
+          "list": "Liste"
+        }
       },
-      "bookmarks": {
-        "label": "Yer İmleri",
-        "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
+      "sort": {
+        "label": "Sırala",
+        "description": "Dosya Gezgini'nde dosyaların sırası. Görünüm Seçenekleri'ndeki Sırala bölümü de bunu değiştirir."
+      },
+      "show_hidden": {
+        "label": "Gizli Dosyaları Göster",
+        "description": "Adı nokta ile başlayan dosya ve klasörleri gösterir."
+      },
+      "upload_request_mib": {
+        "label": "En Büyük Yükleme İsteği (MiB)",
+        "description": "Web arayüzünden yapılan yüklemeler bu boyutu aşmayan isteklerle gönderilir. Sunucunun önünde bir ters vekil sunucu (reverse proxy) varsa onun istek sınırına ayarlayın (nginx, client_max_body_size artırılmadıkça 1 MiB'a izin verir). Vekil sunucu bir isteği reddederse daha küçük istekler kendiliğinden denenir. Daha büyük bir değer, hızlı ama gecikmesi yüksek bir bağlantıda tek bir büyük dosyanın yüklenmesini hızlandırabilir."
+      },
+      "parallel_uploads": {
+        "label": "Aynı Anda Yüklenen Dosya",
+        "description": "Web arayüzünün sunucuya aynı anda kaç dosya gönderdiği. Yavaş bir bağlantıda daha az dosya daha uygundur."
+      },
+      "ask_transfer_options": {
+        "label": "Her Aktarımda Seçenekleri Sor",
+        "description": "Bir yüklemeden ya da başka bir uzak bağlantıya kopyalama veya taşımadan önce aktarım seçeneklerini gösterir. Varsayılan aktarım seçenekleri doldurulmuş gelir; bir şablon da içe aktarılabilir."
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "Maskotu göster",
+        "description": "Ana pencerenin köşesinde küçük maskot Tia'yı gösterir. Varsayılan olarak kapalıdır."
+      },
+      "after_remote": {
+        "label": "Bulut eklendikten sonra kurulum sihirbazını göster",
+        "description": "Yeni bir bulut eklemeyi bitirince “Ne yapmak istiyorsun?” sihirbazını açar."
+      },
+      "destination": {
+        "label": "Kurulum sihirbazı yaptıklarını nerede saklasın",
+        "description": "Otomatik, varsayılan başlangıç görünümünü izler: ana menü bulutun sayfasında bir profil, diğer görünümler bir Quick Run saklar.",
+        "options": {
+          "auto": "Otomatik",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Bulut profili (ana menü)"
+        }
       }
     }
   },
@@ -745,7 +808,8 @@
       "shortcuts": "Klavye Kısayolları",
       "about": "RClone Yöneticisi Hakkında",
       "quickRemote": "Hızlı Uzak Bağlantı",
-      "detailedRemote": "Detaylı Uzak Bağlantı"
+      "detailedRemote": "Detaylı Uzak Bağlantı",
+      "wizard": "Sihirbaz"
     }
   },
   "onboarding": {
@@ -852,8 +916,7 @@
       "destination": "Hedef",
       "openViewer": "Görüntüleyicide Aç",
       "openViewerTooltip": "Tam medya önizlemesini aç",
-      "inferredFromUrl": "URL'den çıkarıldı",
-      "imageAlt": "Önizleme"
+      "inferredFromUrl": "URL'den çıkarıldı"
     },
     "installationOptions": {
       "tabs": {
@@ -919,14 +982,7 @@
       },
       "table": {
         "size": "Boyut",
-        "transferred": "aktarıldı",
-        "file": "Dosya",
-        "direction": "Yön",
-        "took": "Süre",
-        "when": "Zaman",
-        "progress": "İlerleme",
-        "speed": "Hız",
-        "eta": "Kalan süre"
+        "transferred": "aktarıldı"
       },
       "status": {
         "failed": "Başarısız",
@@ -1293,8 +1349,7 @@
         "one": "{{count}} bilinmeyen seçenek: {{keys}}. Bu, rclone tarafından yoksayılabilir.",
         "other": "{{count}} bilinmeyen seçenek: {{keys}}. Bunlar rclone tarafından yoksayılabilir."
       },
-      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin.",
-      "fieldsOverview": "Yapılandırma alanlarına genel bakış"
+      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin."
     },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -1378,8 +1433,7 @@
       "appliedToast": {
         "one": "{{count}} ayar başarıyla içe aktarıldı",
         "other": "{{count}} ayar başarıyla içe aktarıldı"
-      },
-      "profileNamePlaceholder": "ör. daily-backup"
+      }
     },
     "obscure": {
       "title": "Şifreyi Gizle (Obscure)",
@@ -1524,8 +1578,8 @@
       "mountDiskName": "Disk adı (isteğe bağlı)",
       "mountNetworkName": "Ağ adı (isteğe bağlı)",
       "mountAutomaticName": "Otomatik ad",
-      "mountLocalDriveHint": "Yerel disk olağan seçimdir. Bir program sorun yaşarsa ağ sürücüsünü deneyin.",
-      "mountNetworkDriveHint": "Windows diski ağ sürücüsü olarak gösterir. Depolama alanı aynı kalır.",
+      "mountLocalDriveHint": "Windows bunu sabit disk olarak ele alır ve dosyalarınızın önizlemelerini oluşturabilir. Bir program ağ sürücüsüyle çalışmıyorsa bunu seçin.",
+      "mountNetworkDriveHint": "Windows bunu ağ sürücüsü olarak ele alır. Dosya Gezgini önizleme yerine simge gösterir; bu da bulut depolama için uygundur.",
       "mountDriveTarget": "Sürücü",
       "mountFolderPathRequired": "Yeni bir alt klasörün tam yolunu girin.",
       "mountFolderQuotesRemoved": "Yolu çevreleyen tırnak işaretleri kaldırıldı.",
@@ -1533,19 +1587,25 @@
       "mountLocalDrive": "Yerel disk",
       "mountNetworkDrive": "Ağ sürücüsü",
       "mountDriveOccupied": "Kullanımda",
+      "mountDriveOccupiedHint": "{{letter}} şu anda kullanımda. Bağlama yalnızca o sırada boşalmışsa çalışır.",
+      "mountNoFreeLetter": "Şu anda boş sürücü harfi yok. Harf kullanmadan bağlamak için “Klasör”ü seçin.",
       "mountDriveCurrent": "Geçerli",
       "mountDriveChecking": "Sürücü harfleri denetleniyor…",
       "mountUseParent": "Üst klasör olarak kullan",
-      "mountDriveSuggestion": "Önerilen sürücü: {{letter}} · Her zaman aynı harfi kullanmak için listeden seçin.",
       "mountAutomaticDriveHint": "Bağlama sırasında boş bir sürücü harfi seçilir.",
       "mountDriveReserved": "Başka bir profil için ayrılmış",
       "mountDriveLetter": "Sürücü harfi",
+      "mountExplorerPreview": "Dosya Gezgini'nde şöyle görünür",
       "mountParentFolder": "Üst klasörü seç",
       "mountFolderHint": "Bir klasöre bağlama yerel disk kullanır. Üst klasörü seçin ve henüz var olmayan bir klasör adı girin.",
       "mountDriveLettersUnavailable": "Sürücü harfleri doğrulanamadı. Tekrar deneyin.",
       "mountFolderLocalDrive": "Yerel bir sürücüdeki klasörü seçin.",
       "mountFolderAlreadyExists": "Bağlama klasörü zaten var. Yeni bir ad kullanın.",
       "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
+      "multiSourceSyncInfo": "Kaynaklar tek bir klasör gibi senkronize edilir: hedefte, kaynaklardan en az birinde bulunan her dosya kalır. Aynı yol birden fazla kaynakta varsa listede önce gelen kaynağın dosyası kullanılır; “Hızlı Liste” açıkken bu garanti edilmez. Bir kaynak ile hedef aynı uzak bağlantıda olsa bile sunucu tarafı kopyalama kullanılmaz.",
+      "multiSourceCopyInfo": "Kaynaklar listedeki sonuncudan başlayarak sırayla kopyalanır. Aynı yol birden fazla kaynakta varsa hedefte listede önce gelen kaynağın dosyası kalır. Bir kaynak başarısız olursa sırası gelmemiş kaynaklar kopyalanmaz.",
+      "multiSourceMoveInfo": "Kaynaklar listedeki sonuncudan başlayarak sırayla taşınır. Aynı yol birden fazla kaynakta varsa hedefte listede önce gelen kaynağın dosyası kalır, diğer sürümler silinir; bunları saklamak için “Yedek Dizini” ayarlayın. Bir kaynak başarısız olursa sırası gelmemiş kaynaklar taşınmaz.",
+      "multiSourceSyncChangedOnlyNote": "Birden fazla kaynak olduğunda her değişiklik tüm kaynakları baştan sona senkronize eder: “Yalnızca değişen alt dizinleri senkronize et” uygulanmaz.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
       "autoStartDelay": "Başlangıç Gecikmesi",
       "autoStartDelayHint": "Uygulama açıldıktan sonra başlatmadan önce beklenecek süre. Ağ, VPN veya diğer bağlantılar henüz hazır değilse işe yarar.",
@@ -1775,9 +1835,7 @@
       "confirm": "Uygula",
       "cancel": "İptal"
     },
-    "restored": "Güncelleme {{version}} geri yüklendi",
-    "restoreFailed": "Güncelleme geri yüklenemedi",
-    "channelChanged": "Güncelleme kanalı {{channel}} olarak değiştirildi."
+    "restored": "Güncelleme {{version}} geri yüklendi"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Bu öğe için uzak bağlantı çözümlenemedi",
@@ -1885,22 +1943,25 @@
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
       "removeJob": "Kaldır",
-      "progress": "İlerleme",
-      "files": "Dosyalar",
-      "speed": "Hız",
-      "eta": "Kalan Süre",
-      "currentFile": "Mevcut Dosya",
-      "currentFiles": "Mevcut Dosyalar",
-      "details": {
-        "source": "Kaynak",
-        "destination": "Hedef",
-        "startTime": "Başlangıç Zamanı",
-        "uploadedFiles": "Yüklenen dosyalar",
-        "deletedFiles": "Silinen dosyalar",
-        "movedFiles": "Taşınan dosyalar",
-        "copiedFiles": "Kopyalanan dosyalar",
-        "syncedFiles": "Senkronize edilen dosyalar",
-        "processedFiles": "İşlenen dosyalar"
+      "clearFinished": "Bitenleri temizle",
+      "openDestination": "Hedefi aç",
+      "undo": "Geri Al",
+      "timeLeft": "{{time}} kaldı",
+      "failedOf": {
+        "one": "{{count}}/{{total}} başarısız",
+        "other": "{{count}}/{{total}} başarısız"
+      },
+      "itemsCount": {
+        "one": "{{count}} öğe",
+        "other": "{{count}} öğe"
+      },
+      "resumeUpload": "Yüklemeye devam et",
+      "resumeWithFiles": "Devam etmek için aynı dosyaları seçin",
+      "resumeWithFolder": "Devam etmek için aynı klasörü seçin",
+      "uploadPausedConnection": "Duraklatıldı: sunucuyla bağlantı kesildi",
+      "uploadPausedReselect": {
+        "one": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin",
+        "other": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin"
       },
       "running": "Çalışıyor",
       "filesCount": {
@@ -1921,7 +1982,8 @@
         "upload": "Yükle",
         "archivecreate": "Arşivle",
         "archiveextract": "Arşivi Çıkart",
-        "index": "Dizin Listeleri"
+        "index": "Dizin Listeleri",
+        "download": "İndir"
       }
     },
     "fileViewer": {
@@ -1965,8 +2027,7 @@
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
       "resetZoom": "Yakınlaştırmayı Sıfırla",
-      "hexPreview": "Hex Önizleme",
-      "playVideo": "Videoyu Oynat"
+      "hexPreview": "Hex Önizleme"
     }
   },
   "dashboard": {
@@ -2022,6 +2083,11 @@
       "delete": "Sil",
       "deleteDesc": "Filtrelerle eşleşen dosyaları kalıcı olarak sil",
       "copyurl": "URL Kopyala",
+      "upload": "Yükleme",
+      "rename": "Yeniden Adlandırma",
+      "cleanup": "Temizleme",
+      "rmdirs": "Boş Dizinleri Kaldırma",
+      "archiveextract": "Arşivi Çıkartma",
       "copyUrlDesc": "Dosyalar için genel indirme bağlantıları (URL) oluşturun",
       "archivecreate": "Arşivle",
       "archivecreateDesc": "Klasörleri/dosyaları bir arşive (Zip, Tar vb.) sıkıştırın",
@@ -2056,28 +2122,19 @@
       "remoteSettings": "Uzak Bağlantı Ayarları",
       "indexSettings": "Dizin Listeleri Ayarları",
       "index": "Dizin Listeleri",
-      "indexDesc": "Statik web siteleri için klasörlere göz atılabilir listeler yazar"
+      "indexDesc": "Statik web siteleri için klasörlere göz atılabilir listeler yazar",
+      "download": "İndirme"
     },
     "generalDetail": {
       "automations": "Otomasyonlar",
-      "goToAutomation": "Otomasyon {{index}}'e git",
-      "schedule": "Zamanlama",
-      "cronExpression": "Cron İfadesi:",
       "nextRunLabel": "Sonraki Çalışma:",
-      "lastRunLabel": "Son Çalışma:",
       "statistics": "İstatistikler",
       "successful": "Başarılı",
       "failedCount": "Başarısız",
       "stoppedCount": "Durduruldu",
       "totalRuns": "Toplam Çalışma",
       "paths": "Yollar",
-      "sourceLabel": "Kaynak:",
-      "destinationLabel": "Hedef:",
-      "lastError": "Son Hata",
-      "currentlyRunning": "Şu Anda Çalışıyor",
       "jobIdLabel": "İş Kimliği:",
-      "previousAutomationTooltip": "Önceki otomasyon",
-      "nextAutomationTooltip": "Sonraki otomasyon",
       "remoteConfiguration": "Uzak Bağlantı Yapılandırması",
       "editConfiguration": "Yapılandırmayı Düzenle",
       "remoteActionQuickSelection": "Uzak bağlantı hızlı eylem seçimi"
@@ -2249,6 +2306,7 @@
       "skipVersion": "Sürümü Atla",
       "upToDate": "Güncel",
       "latestVersionMsg": "En son sürümü çalıştırıyorsunuz",
+      "statusUnknown": "Güncelleme Durumu Bilinmiyor",
       "checkUpdates": "Güncellemeleri Kontrol Et",
       "checking": "Kontrol ediliyor...",
       "updateSettings": "Güncelleme Ayarları",
@@ -2265,11 +2323,9 @@
       "whatsNewRclone": "Rclone'daki Yenilikler",
       "updateRclone": "Rclone Güncellemesini İndir",
       "rcloneUpToDate": "Rclone Güncel",
-      "checkRcloneUpdates": "Rclone Güncellemelerini Kontrol Et",
       "rcloneUpdateSettings": "Rclone Güncelleme Ayarları",
       "skippedRcloneUpdates": "Atlanan Rclone Güncellemeleri",
       "devTeam": "Geliştirme Ekibi",
-      "leadDeveloper": "Baş Geliştirici",
       "contributors": "Katkıda Bulunanlar",
       "acknowledgments": "Teşekkürler",
       "ackText": "Bu uygulama modern web teknolojileri ile geliştirilmiştir ve bulut depolama yönetimi için mükemmel Rclone projesini temel alır.",
@@ -2280,6 +2336,7 @@
       "updateSettingFailed": "Ayar güncellenemedi",
       "channelStable": "Kararlı",
       "channelBeta": "Beta",
+      "channelDev": "Geliştirme",
       "channelStableDesc": "Çoğu kullanıcı için önerilir",
       "channelBetaDesc": "En yeni özellikler",
       "downloadPage": "İndirme Sayfası",
@@ -2351,6 +2408,7 @@
     },
     "preferences": {
       "title": "Tercihler",
+      "fileBrowserTitle": "Dosya Gezgini Tercihleri",
       "searchResults": "Arama Sonuçları",
       "searchPlaceholder": "Ayarları ara...",
       "resetAll": "Tüm Ayarları Sıfırla",
@@ -2379,6 +2437,7 @@
       "tabs": {
         "general": "Genel",
         "core": "Çekirdek",
+        "nautilus": "Dosya Gezgini",
         "developer": "Geliştirici",
         "vault": "Kasa"
       },
@@ -2888,6 +2947,429 @@
         "newLine": "yeni satır",
         "clear": "temizle"
       }
+    },
+    "wizard": {
+      "title": "Ne yapmak istiyorsun?",
+      "stepOf": "Adım {{current}} / {{total}}",
+      "loadFailed": "Bulut depolamaların yüklenemedi.",
+      "noRemotes": "Önce bir bulut depolama ekle, sonra buraya dön.",
+      "remoteLabel": "Hangi bulut?",
+      "recommended": "Önerilen",
+      "applyFailed": "Kurulamadı. Klasörleri kontrol edip tekrar dene.",
+      "hello": {
+        "created": "{{remote}} hazır! Onunla ne yapmak istersin?",
+        "default": "Bulutunla ne yapmak istersin?",
+        "subtitle": "Ne istediğini kendi kelimelerinle seç. Gerisini biz ayarlarız ve sen onaylamadan hiçbir şey başlamaz.",
+        "dontShow": "Bulut eklediğimde bunu açma",
+        "dontShowHint": "Tamam. Üstteki ⚙ düğmesinden yeniden açabilirsin."
+      },
+      "places": {
+        "thisDevice": "Bu cihaz",
+        "server": "Sunucu",
+        "filesApp": "Dosyalar uygulaması",
+        "tv": "TV veya oynatıcı",
+        "device": "Telefon veya bilgisayar",
+        "browser": "Web tarayıcı",
+        "homeNetwork": "Ev ağın",
+        "automaticDrive": "Boş bir sürücü harfi"
+      },
+      "goals": {
+        "access": {
+          "title": "Bulutumu bu cihazda bir klasör gibi kullanayım",
+          "description": "Ağ sürücüsü gibi: dosyaların bir klasörde görünür, açınca iner.",
+          "descriptionApp": "Windows'taki {{app}} uygulaması gibi: dosyaların bir klasörde görünür, açınca iner.",
+          "titlePhone": "Bulutumu telefonun Dosyalar uygulamasında göreyim",
+          "descriptionPhone": "Bulutun diğer depolama alanlarının yanında görünür, dosyalar açınca iner."
+        },
+        "backup": {
+          "title": "Dosyalarımı buluta yedekleyeyim",
+          "description": "Bu cihaza bir şey olursa diye bir klasörün kopyası bulutta dursun."
+        },
+        "devices": {
+          "title": "Bulutun bir kopyası bu cihazda da dursun",
+          "description": "İnternetsiz de çalışır, birkaç cihazda aynı kalır: değişiklikler iki yöne gider. Obsidian veya Logseq notları için ideal."
+        },
+        "download": {
+          "title": "Bulut dosyalarımı bu cihaza indireyim",
+          "description": "Bir klasörü ya da her şeyi indir; bir kere ya da hep güncel."
+        },
+        "migrate": {
+          "title": "Başka bir buluta geçeyim",
+          "description": "Bu buluttaki her şeyi başka birine kopyala; örneğin Google Drive'dan OneDrive'a."
+        },
+        "share": {
+          "title": "Dosyalarımı TV'de veya telefonda açayım",
+          "description": "Bulutunu ev ağındaki bir TV, telefon veya bilgisayara aç."
+        },
+        "explore": {
+          "title": "Sadece göz atayım ya da bir şeyi kontrol edeyim",
+          "description": "Dosyalarına göz at ya da bir klasörün bulutla aynı olup olmadığına bak."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "Burada bir dosyayı silersen yedeği ne olsun?"
+        },
+        "keepOld": {
+          "title": "Dosyalar eski bulutta kalsın mı?"
+        },
+        "device": {
+          "title": "Dosyaları ne ile açacaksın?"
+        },
+        "explore": {
+          "title": "Ne yapmak istersin?"
+        }
+      },
+      "about": {
+        "title": "Aradaki fark ne?",
+        "deleted": {
+          "same": "İkisinde de yeni ve değişen dosyalar buluta kopyalanır, klasörüne asla dokunulmaz.",
+          "differ": "“Bulutta kalsın”: burada bir dosyayı silsen de bulutta durur. “Orada da silinsin”: bulut hep klasörünle aynı olur, yani burada sildiğin dosya buluttan da kaybolur."
+        },
+        "keepOld": {
+          "same": "İkisinde de her şey yeni buluta kopyalanır.",
+          "differ": "“Evet, orada kalsın”: eski bulut olduğu gibi kalır. “Hayır, taşınsın”: her dosya yeni buluta sağ salim ulaşınca eski buluttan silinir."
+        },
+        "device": {
+          "same": "Her seçenekte bulutun, ev ağındaki diğer cihazlara açılır. Yalnızca bu uygulama açıkken çalışır.",
+          "differ": "Ağ klasörü, Finder'da, Dosya Gezgini'nde veya bir dosya uygulamasında her klasör gibi açılır ve istersen değişikliğe izin verir. Web tarayıcı yalnızca dosyalara göz atıp indirebilir. TV veya oynatıcı kendiliğinden bulur ve yalnızca oynatabilir."
+        },
+        "explore": {
+          "same": "İkisinde de hiçbir şey değişmez.",
+          "differ": "“Dosyalarıma göz atayım”: bulutun bu uygulamada açılır, dosyalarını gezersin. “Bir klasörü bulutla karşılaştırayım”: buradaki bir klasörle bulut arasında hangi dosyaların farklı olduğunu gösterir. “Bir bulutu başka bir bulutla karşılaştırayım”: iki bulut arasında hangi dosyaların farklı olduğunu gösterir."
+        },
+        "where": {
+          "stream": "Bu klasör bir kapı gibi: dosyaların bulutta kalır, burada görünür ve sen açınca iner. Boş bir klasör seç. Buraya koyduğun her şey buluta da kaydedilir.",
+          "twoWay": "Zaten kullandığın bir klasörü seçebilirsin. İlk çalışmada bulutla karşılaştırılıp birleştirilir, hiçbir şey silinmez. Sonrasında bir tarafta yaptığın değişiklik, bir dosyayı silmek de dahil, diğer tarafa da geçer.",
+          "mirror": "Bulut klasörü senin klasörünün birebir kopyası olacak. İçinde senin klasöründe olmayan dosyalar varsa silinir. En güvenlisi yeni veya boş bir bulut klasörü seçmek.",
+          "streamWindows": "Bulut, Dosya Gezgini'nde bir USB bellek gibi bir sürücü olarak görünür. Dosyaların bulutta kalır ve açtığında indirilir. İstersen bunun yerine bir klasör de seçebilirsin. İçine koyduğun her şey buluta da kaydedilir."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Bulutta kalsın",
+            "description": "Yedek kopya gibi: burada bir dosyayı silsen bile bulutta durmaya devam eder."
+          },
+          "mirror": {
+            "title": "Orada da silinsin",
+            "description": "Ayna gibi: bulut her zaman klasörünle birebir aynı görünür, sildiğin dosyalar dahil."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Evet, orada kalsın",
+            "description": "Kopya çıkarmak gibi: eski bulut olduğu gibi kalır, istediğin zaman geri dönebilirsin."
+          },
+          "move": {
+            "title": "Hayır, taşınsın",
+            "description": "Taşınmak gibi: her dosya yeni buluta sağ salim ulaşınca eski buluttan çıkar."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "Ağ klasörü",
+            "description": "Paylaşımlı klasör gibi: Finder'da, Dosya Gezgini'nde ya da bir dosya uygulamasında açılır, seçtiğin kullanıcı adı ve şifreyle bağlanırsın. Cihazların dosyaları değiştirmesine izin verip vermeyeceğine sen karar verirsin."
+          },
+          "browser": {
+            "title": "Web tarayıcı",
+            "description": "Bir web sayfası gibi: adresi ve şifresi olan telefon veya bilgisayar dosyalara göz atıp indirebilir. Hiçbir şey değiştirilemez."
+          },
+          "tv": {
+            "title": "TV veya medya oynatıcı",
+            "description": "Medya sunucusu gibi: akıllı TV'ler, konsollar ve oynatıcılar onu kendiliğinden bulur. İzleyip dinleyebilirler ama hiçbir şeyi değiştiremezler."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Dosyalarıma göz atayım",
+            "description": "Klasör açmak gibi: bulutuna uygulamanın içinden göz at. Hiçbir şey indirilmez ya da değişmez."
+          },
+          "compare": {
+            "title": "Bir klasörü bulutla karşılaştırayım",
+            "description": "İki klasörü karşılaştırmak gibi: buradaki bir klasörle bulut arasında hangi dosyaların farklı olduğunu gör. Hiçbir şey değişmez."
+          },
+          "compareClouds": {
+            "title": "Bir bulutu başka bir bulutla karşılaştırayım",
+            "description": "İki klasörü karşılaştırmak gibi: iki bulutun arasında hangi dosyaların farklı olduğunu gör. Hiçbir şey değişmez."
+          }
+        }
+      },
+      "where": {
+        "heading": "Nerede?",
+        "target": "Dosyalar nereye gitsin?",
+        "targetCompare": "Hangi bulutla karşılaştırılsın?",
+        "noOtherRemote": "Önce yeni bulutunu ekle, sonra buraya dön.",
+        "shareLogin": "Diğer cihaz için giriş bilgisi",
+        "shareHint": "Telefon veya bilgisayar bağlanırken bunları soracak.",
+        "shareUser": "Kullanıcı adı",
+        "sharePassword": "Şifre",
+        "local": {
+          "stream": "bulut bu klasörde görünecek",
+          "twoWay": "dosyaların bu klasörde duracak",
+          "download": "dosyalar buraya inecek",
+          "upload": "hangi klasör yedeklensin?",
+          "compare": "hangi klasör kontrol edilsin?",
+          "devices": "hangi klasör aynı kalsın?",
+          "streamWindows": "bulut sürücü ya da klasör olarak görünecek"
+        },
+        "cloud": {
+          "stream": "bulutun hangi kısmı?",
+          "twoWay": "bu klasörle eşit tutulacak",
+          "download": "hangi klasör indirilsin?",
+          "upload": "yedek buraya gidecek",
+          "cloudToCloud": "ne kopyalansın?",
+          "share": "ne paylaşılsın?",
+          "compare": "bu klasörle karşılaştırılacak",
+          "cloudCompare": "hangi klasör kontrol edilsin?"
+        },
+        "localPlaceholder": "Bir klasör seç ya da yaz",
+        "cloudPlaceholder": "Boş bırakırsan bulutun tamamı",
+        "shareConnection": "Cihazlar nasıl bağlanır",
+        "sharePort": "Port",
+        "sharePortHint": "Adresteki iki noktadan sonraki sayı. Başka bir şey kullanmıyorsa 8080 olarak bırak.",
+        "portInvalid": "1024 ile 65535 arasında bir port seç.",
+        "shareReadOnly": "Cihazlar sadece bakabilir, dosyaları değiştiremez",
+        "shareReadOnlyHint": "Telefon ya da bilgisayarlar dosya yükleyip yeniden adlandırabilsin ve silebilsin istiyorsan bunu kapat.",
+        "shareName": "TV'deki ad",
+        "shareNameHint": "TV ya da oynatıcının medya sunucusu listesinde göreceğin ad budur.",
+        "shareNameLabel": "Ad",
+        "portBusy": "{{port}} portunu başka bir program zaten kullanıyor. Başka bir tane seç.",
+        "portUseFree": "{{port}} portunu kullan"
+      },
+      "review": {
+        "heading": "Şöyle olacak",
+        "advanced": "Tam düzenleyicide aç",
+        "start": "Kur ve başlat",
+        "firstRun": "İlk çalıştırma iki tarafı karşılaştırıp birleştirir. Biraz sürebilir ve hiçbir şey silinmez.",
+        "startOnLogin": "Bilgisayar açılınca bu uygulamayı da başlat",
+        "mountPlugin": {
+          "title": "Bir şey daha gerekiyor",
+          "description": "Bulutu klasör olarak göstermek için henüz kurulu olmayan küçük bir sistem bileşeni (FUSE veya WinFsp) gerekiyor.",
+          "install": "Kur"
+        },
+        "summary": {
+          "stream": "{{cloud}}, {{local}} klasöründe görünecek.",
+          "streamSaf": "{{cloud}}, Dosyalar uygulamasında görünecek.",
+          "twoWay": "{{local}} ile {{cloud}} aynı tutulacak.",
+          "upload_copy": "{{local}}, {{cloud}} konumuna yedeklenecek.",
+          "upload_sync": "{{cloud}}, {{local}} klasörünün birebir kopyası olacak.",
+          "download": "{{cloud}}, {{local}} klasörüne indirilecek.",
+          "cloudToCloud_copy": "{{cloud}}, {{target}} konumuna kopyalanacak.",
+          "cloudToCloud_move": "{{cloud}}, {{target}} konumuna taşınacak.",
+          "share_dlna": "{{cloud}}, ağındaki TV ve oynatıcılarla paylaşılacak.",
+          "share_webdav": "{{cloud}}, ağında şifreyle paylaşılacak.",
+          "share_http": "{{cloud}}, ağında şifreyle bir web sayfası olarak paylaşılacak.",
+          "compare": "{{local}}, {{cloud}} ile karşılaştırılacak.",
+          "cloudCompare": "{{cloud}}, {{target}} ile karşılaştırılacak.",
+          "streamDrive": "{{cloud}}, {{local}} sürücüsü olarak görünecek.",
+          "streamAutoDrive": "{{cloud}} yeni bir sürücü olarak görünecek. Harfi bağlanırken Windows seçer."
+        },
+        "flow": {
+          "stream": "Kullandıkça açılır",
+          "upload": "Buluta gider",
+          "download": "Buluttan gelir",
+          "twoWay": "İki tarafta aynı kalır",
+          "cloudToCloud": "Diğer buluta gider",
+          "share": "Ağında paylaşılır",
+          "compare": "Yalnızca karşılaştırılır, hiçbir şey değişmez"
+        },
+        "schedule": {
+          "watch": "Bir dosya değiştiğinde kendiliğinden çalışır.",
+          "startup": "Uygulama her açıldığında kendiliğinden çalışır.",
+          "startupMount": "Uygulama her açıldığında kendiliğinden bağlanır.",
+          "cron": "Zamanlama: {{when}}",
+          "manual": "Sadece sen başlatınca çalışır."
+        },
+        "detailsTitle": "Bilmekte fayda var",
+        "destination": {
+          "quickRun": "Hızlı Çalıştırma",
+          "profile": "Ana menüde profil",
+          "hintQuickRun": "Flow › Hızlı Çalıştırmalar altında listelenir.",
+          "hintProfile": "Ana menüde “{{remote}}” sayfasında listelenir; oradan başlatıp durdurabilirsin."
+        },
+        "wholeCloud": "Bulutun tamamı",
+        "duplicate": "Bunu yapan bir kurulumun zaten var: “{{name}}”.",
+        "duplicateShow": "Aç"
+      },
+      "effects": {
+        "streamOpen": "Bir dosyayı açınca buluttan iner.",
+        "streamSave": "Bir dosyayı kaydedince buluta yüklenir.",
+        "streamDelete": "Bu klasörde sildiğin dosya buluttan da silinir.",
+        "uploadNew": "Yeni ve değişen dosyalar yüklenir.",
+        "keepDelete": "Burada sildiğin dosyalar bulutta kalır.",
+        "uploadCloudChange": "Yedekleme klasöründeki hiçbir şeyi değiştirmez.",
+        "mirrorDelete": "Burada sildiğin dosyalar buluttan da silinir.",
+        "mirrorExtra": "Sadece bulut klasöründe olan dosyalar silinir.",
+        "downloadNew": "Buluttaki yeni ve değişen dosyalar indirilir.",
+        "downloadKeep": "Bulutta silinen dosyalar bu cihazda kalır.",
+        "downloadLocalChange": "Buluttaki hiçbir şey değiştirilmez.",
+        "twoWayChange": "Bir taraftaki değişiklik diğerine kopyalanır.",
+        "twoWayDelete": "Bir tarafta silinen dosya diğerinde de silinir.",
+        "twoWayConflict": "Bir dosya iki tarafta da değişirse iki sürüm de saklanır.",
+        "migrateCopy": "Her dosya yeni buluta kopyalanır.",
+        "migrateKeep": "Eski bulut olduğu gibi kalır.",
+        "migrateMove": "Dosyalar kopyalanınca eski buluttan silinir.",
+        "shareTv": "Ağındaki TV ve oynatıcılar onu kendiliğinden bulur.",
+        "shareReadOnly": "İzleyip dinleyebilirler ama hiçbir şeyi değiştiremezler.",
+        "shareBrowse": "Cihazlar dosyalara göz atıp indirebilir ama hiçbir şeyi değiştiremez.",
+        "shareStops": "Uygulama kapanınca paylaşım durur.",
+        "sharePassword": "Sadece şifreni bilen cihazlar bağlanabilir.",
+        "shareWrite": "Bağlanan cihazlar dosyaları değiştirip silebilir.",
+        "compareNothing": "Hiçbir dosya değişmez.",
+        "compareList": "Farklı olan dosyaların listesini alırsın.",
+        "browseNothing": "Hiçbir şey değişmez."
+      },
+      "advice": {
+        "tooBigForDisk": "Bu {{size}}, ama bu cihazda sadece {{free}} boş yer var. Sığmaz.",
+        "tightOnDisk": "Bu {{size}}, bu cihazda {{free}} boş yer var. Sığar ama disk neredeyse dolar.",
+        "fitsOnDisk": "Bu {{size}}, bu cihazda {{free}} boş yer var. Rahatça sığar.",
+        "cloudTooFull": "Klasör {{size}}, ama bulutta sadece {{free}} boş yer var. Sığmaz.",
+        "streamSavesSpace": "Bulutunda {{cloud}} var, bu cihazda {{free}} boş yer var; bu yüzden doğru seçim bu: sadece açtığın dosyalar yer kaplar."
+      },
+      "preview": {
+        "title": "Önce ne olacağını gör",
+        "description": "Deneme çalıştırması iki tarafı karşılaştırır ve kopyalayacağı, değiştireceği ya da sileceği her dosyayı listeler. Hiçbir dosya değişmez.",
+        "run": "Neyin değişeceğini göster",
+        "running": "Dosyalar karşılaştırılıyor…",
+        "checked": {
+          "one": "Şimdiye kadar {{count}} dosya kontrol edildi",
+          "other": "Şimdiye kadar {{count}} dosya kontrol edildi"
+        },
+        "transfers": {
+          "one": "{{count}} dosya kopyalanacak",
+          "other": "{{count}} dosya kopyalanacak"
+        },
+        "deletes": {
+          "one": "{{count}} dosya silinecek",
+          "other": "{{count}} dosya silinecek"
+        },
+        "errors": {
+          "one": "{{count}} dosya okunamadı",
+          "other": "{{count}} dosya okunamadı"
+        },
+        "noDeletes": "Hiçbir dosya silinmeyecek",
+        "nothing": "Her şey zaten güncel; hiçbir şey değişmeyecek.",
+        "failed": "Deneme tamamlanamadı. Yine de kurabilir ya da klasörleri değiştirebilirsin.",
+        "runName": "{{name}} (deneme)",
+        "groups": {
+          "delete": "Silinecek",
+          "add": "Yeni dosyalar",
+          "replace": "Değiştirilecek",
+          "copy": "Kopyalanacak",
+          "error": "Sorunlular",
+          "untouched": "Dokunulmayacak"
+        },
+        "groupCount": "{{label}}: {{count}}",
+        "unchanged": {
+          "one": "{{count}} dosya iki tarafta da zaten aynı",
+          "other": "{{count}} dosya iki tarafta da zaten aynı"
+        },
+        "deleteWarning": "Başlamadan önce bu listeye bak: bu dosyalar hedeften silinecek.",
+        "again": "Testi tekrar çalıştır",
+        "slowNote": "Dosya sayısına göre bu biraz sürebilir. Takılmadı, lütfen bekle.",
+        "elapsed": "{{time}} süredir çalışıyor",
+        "andMore": {
+          "one": "…ve {{count}} dosya daha",
+          "other": "…ve {{count}} dosya daha"
+        }
+      },
+      "working": {
+        "saving": "Kuruluyor…",
+        "firstRun": "İlk eşitleme yapılıyor…",
+        "canClose": "Bu pencereyi kapatabilirsin; arka planda çalışmaya devam eder.",
+        "slowNote": "İlk eşitleme, dosya sayısına göre uzun sürebilir. Takılmadı."
+      },
+      "done": {
+        "title": "Hazır!",
+        "stream": "Bulutun artık {{path}} klasöründe.",
+        "streamSaf": "Bulutun artık Dosyalar uygulamasında.",
+        "twoWayReady": "İlk eşitleme bitti. Artık iki taraf hep aynı kalacak.",
+        "twoWayFailed": "Kurulum tamam, ancak ilk eşitleme bitmedi.",
+        "started": "Başladı. İlerlemesini uygulamada takip edebilirsin.",
+        "checkStarted": "Kontrol başladı. Bittiğinde hangi dosyaların farklı olduğunu görebilirsin.",
+        "findIt": "Sonra Flow › Hızlı Çalıştırmalar altında “{{name}}” adıyla bulabilirsin.",
+        "openFolder": "Klasörü aç",
+        "openCloud": "Dosya tarayıcısında göster",
+        "openRun": "İlerlemeyi ve sonucu göster",
+        "openRunHint": "Nasıl gittiğini ve hangi dosyaların işlendiğini gör.",
+        "another": "Başka bir şey kur",
+        "shareWebdav": "Paylaşım açık. Telefondan ya da bilgisayardan şu adreslerden birine bağlan:",
+        "shareHttp": "Paylaşım açık. Telefondan ya da bilgisayardan bir tarayıcıda şu adreslerden birini aç:",
+        "shareAddress": "Adres",
+        "shareOtherAddresses": "Şunlar da çalışır",
+        "shareUser": "Kullanıcı adı",
+        "sharePassword": "Parola",
+        "sharePasswordHint": "Seçtiğin parola",
+        "shareDlna": "Paylaşım açık. TV'nin ya da oynatıcının medya listesinde “{{name}}” adını ara.",
+        "noAddress": "Paylaşım açık. Bu cihazın ağ adresine {{port}} portundan bağlan.",
+        "findItProfile": "Sonra ana menüde “{{remote}}” sayfasında “{{name}}” profili olarak bulabilirsin.",
+        "whereQuickRun": "Hızlı Çalıştırmalar'da göster",
+        "whereProfile": "Ana menüde göster",
+        "failureReason": "Ne ters gitti: {{reason}}",
+        "streamDrive": "Bulutun artık {{path}} sürücüsü.",
+        "streamAutoDrive": "Bulutun artık Dosya Gezgini'nde yeni bir sürücü.",
+        "openFilesApp": "Dosyalar uygulamasını aç"
+      },
+      "runNames": {
+        "access": "{{remote}} klasörü",
+        "backup": "{{remote}} yedeği",
+        "devices": "{{remote}} eşitleme",
+        "download": "{{remote}} indirme",
+        "migrate": "{{remote}} taşıma",
+        "share": "{{remote}} paylaşımı",
+        "explore": "{{remote}} kontrolü"
+      },
+      "when": {
+        "heading": "Ne zaman çalışsın?",
+        "subtitle": "İstediklerini seç, hepsini birleştirebilirsin. Hiçbirini seçmezsen sadece sen başlatınca çalışır.",
+        "watch": {
+          "title": "Bir dosya değiştiğinde",
+          "description": "Klasör izlenir, değişiklikler saniyeler içinde yüklenir; telefondaki otomatik fotoğraf yüklemesi gibi."
+        },
+        "cron": {
+          "title": "Zamanlanmış",
+          "description": "Her gün, her saat, hafta içi ya da seçtiğin herhangi bir zamanda."
+        },
+        "startup": {
+          "title": "Uygulama açıldığında",
+          "description": "Uygulama her açıldığında kendiliğinden çalışır.",
+          "descriptionMount": "Uygulama her açıldığında bulutun kendiliğinden bağlanır."
+        },
+        "cloudHint": "İzleme sadece bu cihazdaki değişiklikleri görür. Buluttaki değişiklikler de gelsin diye bir zamanlama da ekle.",
+        "invalidCron": "Bu zamanlama henüz tamamlanmadı. Yukarıdaki seçeneklerden birini seç."
+      },
+      "details": {
+        "cache": "Açtığın dosyalar bu cihazda en fazla {{age}} kalır ve diskte en çok {{size}} yer kaplar.",
+        "writeBack": "Yaptığın değişiklikler {{time}} sonra buluta gönderilir.",
+        "minFree": "Diskte {{size}} altında boş yer kalınca önbellek büyümeyi bırakır.",
+        "address": "Adres:",
+        "addressUnknown": "Bu cihazın adresini port ile kullan:",
+        "addressViaBackend": "Bu, uygulamanın o bilgisayara bağlandığı adrestir. Başka bir ağdaki telefon bu adrese ulaşamayabilir.",
+        "port": "Port:",
+        "user": "Kullanıcı adı:",
+        "tvName": "TV'de şöyle görünür:"
+      },
+      "settings": {
+        "title": "Sihirbaz ayarları",
+        "subtitle": "Bu seçimler bir sonraki sefer için hatırlanır.",
+        "afterRemote": "Bir bulut ekledikten sonra bu sihirbazı göster",
+        "destinationTitle": "Sihirbazın kurduklarını şu olarak sakla",
+        "auto": "Otomatik",
+        "hintAuto": "Başlangıç görünümünü izler: uygulama ana menüyle açılıyorsa profil, aksi halde Hızlı Çalıştırma.",
+        "done": "Bitti"
+      },
+      "undo": {
+        "action": "Bu kurulumu kaldır",
+        "hint": "Çalışmayı bırakır ve uygulamadan kaybolur. Dosyalarına dokunulmaz.",
+        "confirm": "“{{name}}” çalışmayı bırakır ve uygulamadan kaybolur. Dosyalarına dokunulmaz.",
+        "working": "Kaldırılıyor…",
+        "failed": "Kaldırılamadı. Listelendiği yerden yine kaldırabilirsin.",
+        "removedTitle": "Kaldırıldı",
+        "removed": "Dosyaların değişmedi.",
+        "title": "Bu kurulum kaldırılsın mı?",
+        "remove": "Kaldır"
+      }
     }
   },
   "nautilus": {
@@ -3039,9 +3521,7 @@
         "statsConflicts": {
           "one": "{{count}} çakışma",
           "other": "{{count}} çakışma"
-        },
-        "findPlaceholder": "aranacak metin",
-        "replacePlaceholder": "yerine konacak metin"
+        }
       },
       "index": {
         "title": "Dizin Listeleri Oluştur",
@@ -3160,7 +3640,12 @@
       "viewOptions": "Görünüm Seçenekleri",
       "showingItems": "{{total}} ögeden {{count}} tanesi gösteriliyor",
       "decreaseIconSize": "Simge boyutunu küçült",
-      "increaseIconSize": "Simge boyutunu büyüt"
+      "increaseIconSize": "Simge boyutunu büyüt",
+      "tabCount": {
+        "one": "{{count}} Sekme",
+        "other": "{{count}} Sekme"
+      },
+      "showTabs": "Açık Sekmeleri Göster"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3170,6 +3655,20 @@
       "uploadFailed": {
         "one": "{{count}} dosya yüklenemedi.",
         "other": "{{count}} dosya yüklenemedi."
+      },
+      "uploadInterrupted": "Sunucuyla bağlantı kesildi. Yüklemeye İşlemler bölümünden devam edin.",
+      "uploadFilesNotInUpload": "Seçilen dosyaların hiçbiri bu yüklemenin hâlâ beklediği dosyalardan değil.",
+      "uploadFilesStillMissing": {
+        "one": "Bu yüklemenin {{count}} dosyası hâlâ eksik. Yüklemeyi bitirmek için bu dosyayı İşlemler bölümünden seçin.",
+        "other": "Bu yüklemenin {{count}} dosyası hâlâ eksik. Yüklemeyi bitirmek için bu dosyaları İşlemler bölümünden seçin."
+      },
+      "copyingPickedFiles": {
+        "one": "Seçilen {{count}} öğe yükleme için hazırlanıyor…",
+        "other": "Seçilen {{count}} öğe yükleme için hazırlanıyor…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "Seçilen {{count}} öğe okunamadı ve yüklenmeyecek.",
+        "other": "Seçilen {{count}} öğe okunamadı ve yüklenmeyecek."
       },
       "trashEmptied": "Temizlik işlemi başlatıldı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
@@ -3211,6 +3710,89 @@
       "cancelLoading": "Yüklemeyi iptal et",
       "star": "Yıldızlılara ekle",
       "unstar": "Yıldızlılardan kaldır"
+    },
+    "transferOptions": {
+      "title": "Aktarım Seçenekleri",
+      "defaultTitle": "Varsayılan Aktarım Seçenekleri",
+      "summary": {
+        "upload": {
+          "one": "{{count}} öge {{destination}} konumuna yüklenecek.",
+          "other": "{{count}} öge {{destination}} konumuna yüklenecek."
+        },
+        "copy": {
+          "one": "{{count}} öge {{destination}} konumuna kopyalanacak.",
+          "other": "{{count}} öge {{destination}} konumuna kopyalanacak."
+        },
+        "move": {
+          "one": "{{count}} öge {{destination}} konumuna taşınacak.",
+          "other": "{{count}} öge {{destination}} konumuna taşınacak."
+        }
+      },
+      "engine": {
+        "local": "{{name}} üzerinde çalışır; bu uygulamanın çalıştırdığı rclone.",
+        "remote": "{{name}} üzerinde çalışır; başka bir bilgisayardaki rclone. Aşağıdaki seçenekler o rclone'un sunduklarıdır."
+      },
+      "defaultIntro": "Dosya Gezgini'ndeki kopyalama, taşıma ve yüklemeler bu seçeneklerle başlar.",
+      "remoteNote": "Bu seçenekler {{name}} için yalnızca bu aktarım boyunca geçerlidir. Kayıtlı ayarları değişmez.",
+      "streamNote": "Dosyalar diğer bilgisayardaki rclone'a tek tek gönderilir; o rclone bu dosyalar için kopyalama, Filtre ve Arka Uç seçeneklerini kullanmaz. Yalnızca hedefin kendi seçenekleri uygulanır.",
+      "nothingToSet": "Bu yükleme için ayarlanacak bir seçenek yok.",
+      "useAsDefault": "Bu seçenekleri varsayılan olarak kullan",
+      "dontAskAgain": "Bir daha sorma (Dosya Gezgini Tercihleri)",
+      "start": "Başlat"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” zaten var",
+      "fileExists": "{{destination}} içinde bu adda bir dosya zaten var.",
+      "folderExists": "{{destination}} içinde bu adda bir klasör zaten var.",
+      "mergeExplain": "Birleştirme, gelen dosyaları bu klasöre ekler.",
+      "thereNow": "Şu an orada",
+      "incoming": "Gelen",
+      "replace": "Değiştir",
+      "merge": "Birleştir",
+      "skip": "Atla",
+      "keepBoth": "İkisini de tut",
+      "replaceOrMerge": "Değiştir veya birleştir",
+      "forAll": "Tümü için:",
+      "keptAs": "“{{name}}” adıyla eklenir",
+      "skipped": "Atlanır",
+      "replaces": "Oradaki dosyanın yerini alır",
+      "merges": {
+        "newer": "Birleştirilir, her dosyanın yeni olanı tutulur",
+        "keep": "Birleştirilir, yalnızca eksik dosyalar eklenir",
+        "replace": "Birleştirilir, aynı adlı dosyalar değiştirilir"
+      },
+      "title": {
+        "one": "{{total}} ögeden {{count}} tanesi {{destination}} içinde zaten var",
+        "other": "{{total}} ögeden {{count}} tanesi {{destination}} içinde zaten var"
+      },
+      "others": {
+        "one": "Diğer {{count}} öge çakışmıyor.",
+        "other": "Diğer {{count}} öge çakışmıyor."
+      },
+      "start": {
+        "copy": {
+          "one": "{{count}} ögeyi kopyala",
+          "other": "{{count}} ögeyi kopyala"
+        },
+        "move": {
+          "one": "{{count}} ögeyi taşı",
+          "other": "{{count}} ögeyi taşı"
+        },
+        "upload": {
+          "one": "{{count}} ögeyi yükle",
+          "other": "{{count}} ögeyi yükle"
+        }
+      },
+      "skipAll": "Tümünü atla",
+      "replaceWarning": "Değiştirilen dosyalar geri getirilemez ve bu işlem geri alınamaz.",
+      "mergeWarning": "Klasör birleştirme geri alınamaz.",
+      "sameNames": "Aynı adlı dosyalar:",
+      "sameNamesAll": "Birleştirilen klasörlerdeki aynı adlı dosyalar:",
+      "existingFiles": {
+        "newer": "Yeni olanı tut",
+        "keep": "Oradakini tut",
+        "replace": "Gelenle değiştir"
+      }
     }
   },
   "home": {
@@ -3257,9 +3839,6 @@
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
       "openFailed": "{{name}} açılamadı"
     }
-  },
-  "transfer": {
-    "error": "Transfer hatası"
   },
   "generalOverview": {
     "panels": {
@@ -3326,7 +3905,6 @@
       "progress": "İlerleme:",
       "of": "/",
       "eta": "Tahmini Süre:",
-      "elapsed": "Geçen süre:",
       "speed": "Transfer Hızı:",
       "transfers": "Transferler:",
       "checks": "Kontroller:",
@@ -3338,6 +3916,7 @@
       "serverMoves": "Sunucu Tarafı Taşımalar:",
       "lastError": "Son Hata:",
       "runningJobs": "Çalışan İşler",
+      "recentJobs": "Son İşler",
       "starting": "Başlatılıyor...",
       "noRunning": "Şu anda çalışan aktif iş yok."
     },
@@ -3362,6 +3941,14 @@
       },
       "noActive": "Aktif bağlama yok",
       "noMounted": "Bağlanmış uzak bağlantı yok. Dosyalarını bilgisayarında bir klasör gibi kullanmak için bir uzak bağlantıyı bağla."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} tane daha gizli",
+        "other": "{{count}} tane daha gizli"
+      },
+      "empty": "Bu filtreye uyan öğe yok. Diğerleri gizli.",
+      "showAll": "Tümünü göster"
     }
   },
   "appOverview": {
@@ -3416,7 +4003,6 @@
       "missingMountPoint": "unmount düğüm yapılandırmasında 'mountPoint' eksik ve hedef düğüm bir bağlama noktası üretmedi",
       "missingStopServeTarget": "stop_serve düğüm yapılandırmasında hem 'targetNodeId'/'serverId' hem de 'remoteName' eksik",
       "rcCommandFailed": "RC komutu '{{command}}' başarısız oldu: {{error}}",
-      "invalidJobId": "Toplu gönderimden geçersiz iş kimliği döndü: {{error}}",
       "unsupportedNodeType": "'{{type}}' iş akışı düğüm türü bu platformda veya sürümde desteklenmiyor",
       "nodeCrashed": "'{{node}}' düğümü çöktü: {{reason}}",
       "notificationFailed": "Bildirim hatası ({{kind}}): {{error}}",
@@ -3479,17 +4065,18 @@
       "profileNotMounted": "'{{profile}}' profili {{remote}} üzerinde bağlı değil"
     },
     "operations": {
-      "configIncomplete": "'{{profile}}' profili için yapılandırma eksik",
       "singleSourceOnly": "{{operation}} yalnızca tek bir kaynak yolunu destekler",
       "directoriesOnly": "{{operation}} yalnızca dizinleri destekler, dosyaları değil: {{source}}",
       "sourcePathInvalid": "Kaynak yolu okunamadı: {{path}}",
       "destinationPathInvalid": "Hedef yolu okunamadı: {{path}}",
       "filePathsInvalid": "'{{source}}' kaynağı veya '{{destination}}' hedefi dosya yolu olarak okunamadı. 'remote:yol/dosya' biçimini veya yerel bir yol kullanın.",
       "unsupportedOperation": "{{operation}} işlemi aktarım olarak çalıştırılamaz",
-      "destinationMissing": "Hedef belirtilmedi"
+      "destinationMissing": "Hedef belirtilmedi",
+      "sourceOverlapsDestination": "{{source}} kaynağı ile {{destination}} hedefi çakışıyor: biri diğerinin içinde. Hiçbir kaynakla çakışmayan bir hedef seçin.",
+      "overlappingRemotes": "Kaynak ile hedef çakışıyor: biri diğerinin içinde. Kaynağın dışında bir hedef seçin ya da hedefi bir filtre kuralıyla hariç tutun.",
+      "backupDirOverlaps": "“Yedek Dizini” kaynağın veya hedefin içinde olamaz, onları da içeremez."
     },
     "serve": {
-      "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
       "remoteEmpty": "Uzak bağlantı adı boş olamaz",
       "addressAlreadyInUse": "Seçilen port veya adres başka bir uygulama tarafından kullanılıyor. Lütfen farklı bir port seçin.",
       "privilegedPort": "1024'ten küçük portlar yönetici ayrıcalığı gerektirir. Lütfen 1024 veya üzeri bir port seçin.",
@@ -3510,13 +4097,19 @@
       "diskFull": "Hedef disk veya sürücü dolu. Yeterli boş disk alanı yok.",
       "fileLocked": "Dosya kilitli veya başka bir işlem tarafından kullanılıyor.",
       "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı.",
-      "ioError": "Giriş/Çıkış hatası: {{error}}"
+      "ioError": "Giriş/Çıkış hatası: {{error}}",
+      "intoItself": "“{{name}}” klasörü kendi içine kopyalanamaz veya taşınamaz.",
+      "noItems": "Hiçbir öğe seçilmedi."
     },
     "upload": {
       "legacyBatch": "Bu yükleme eski bir sayfa tarafından başlatıldı. Uygulamayı yeniden yükleyip tekrar deneyin.",
       "noFiles": "Yüklemede dosya yok.",
       "invalidPath": "Yükleme geçersiz bir dosya veya klasör yolu içeriyor.",
-      "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor."
+      "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor.",
+      "sessionGone": "Bu yükleme iptal edildiği veya çok uzun süre hareketsiz kaldığı için artık sunucuda yok. Yeniden başlatın.",
+      "invalidChunk": "Yükleme, dosyalarının hiçbirine ait olmayan veri gönderdi.",
+      "incomplete": "Yükleme, tüm dosyaları ulaşmadan bitirildi.",
+      "filesFailed": "Yüklenemeyen dosyalar: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",
@@ -3535,11 +4128,7 @@
       "notFound": "Rclone ikili dosyası {{path}} konumunda bulunamadı",
       "spawnFailed": "Rclone işlemi başlatılamadı: {{error}}",
       "invalidPath": "Geçersiz rclone yolu belirtildi",
-      "killFailed": "Rclone işlemi sonlandırılamadı: {{error}}",
-      "portCleanupFailed": "Rclone bağlantı noktaları temizlenemedi: {{error}}",
       "configValidationFailed": "Rclone yapılandırma doğrulaması başarısız oldu: {{error}}",
-      "lockFailed": "Rclone yapılandırma kilidi alınamadı: {{error}}",
-      "cacheRefreshFailed": "Rclone önbelleği yenilenemedi: {{error}}",
       "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
       "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor",
       "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}",
@@ -3596,7 +4185,8 @@
       "profileNotRunning": "{{remote}} üzerinde '{{profile}}' profili için etkin bir {{jobType}} işi bulunamadı",
       "stopped": "İş durduruldu",
       "failed": "İş başarısız oldu",
-      "lost": "Rclone bu işi artık tanımıyor. İş bittikten sonra süresi doldu veya motor yeniden başlatıldı; bu yüzden sonucu alınamıyor."
+      "lost": "Rclone bu işi artık tanımıyor. İş bittikten sonra süresi doldu veya motor yeniden başlatıldı; bu yüzden sonucu alınamıyor.",
+      "notRetryable": "Bu iş yeniden çalıştırılamaz: yalnızca uygulama açıldıktan sonra başlatılmış, başarısız olan ya da durdurulan bir iş yeniden çalıştırılabilir."
     },
     "cache": {
       "fetchConfigFailed": "Uzak bağlantı yapılandırması alınamadı",
@@ -3634,7 +4224,8 @@
       "authExpired": "Uzak bağlantı kimlik doğrulaması geçersiz veya süresi dolmuş. Lütfen bağlantıyı yeniden yetkilendirin.",
       "quotaExceeded": "Uzak depolama API hız sınırı veya depolama kotası aşıldı. Lütfen daha sonra tekrar deneyin.",
       "networkError": "Uzak sunucuya ulaşılamadı. Lütfen ağ bağlantınızı ve uzak bağlantı adresini kontrol edin.",
-      "notFound": "Hedef dizin veya dosya uzak sunucuda bulunamadı."
+      "notFound": "Hedef dizin veya dosya uzak sunucuda bulunamadı.",
+      "notInConfig": "“{{remote}}” uzak bağlantısı Rclone yapılandırmasında yok. Uygulamanın dışında silinmiş ya da yeniden adlandırılmış veya başka bir yapılandırma dosyası kullanılıyor."
     },
     "updater": {
       "noPending": "Bekleyen güncelleme yok",
@@ -3644,34 +4235,21 @@
       "updateUnavailable": "Güncelleme dosyası artık mevcut değil: {{error}}",
       "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",
       "notWritable": "Güncelleme yolu yazılabilir değil",
-      "rollback": {
-        "exited": "Güncellenen uygulama, başlatmayı doğrulamadan kapandı (kod {{code}}).",
-        "couldNotStart": "Güncellenen uygulama başlatılamadı: {{error}}",
-        "interrupted": "Güncellenen uygulamanın başlatılması bir kapatma nedeniyle kesildi.",
-        "notConfirmed": "Güncellenen uygulama başlatmayı zamanında doğrulamadı.",
-        "installFailed": "Güncelleme yüklenemedi: {{error}}"
-      },
-      "rolledBack": "{{version}} güncellemesi geri alındı: {{reason}}",
       "ioError": "Giriş/Çıkış hatası: {{error}}",
       "externallyManaged": "Bu kurulum paket yöneticisi veya dağıtım sistemi üzerinden güncellenir.",
       "disabledByAdministrator": "Uygulama güncellemeleri yönetici tarafından devre dışı bırakıldı.",
       "unsupportedInstallation": "Bu kurulum otomatik güncelleme yüklemeyi desteklemiyor.",
+      "notBuilt": "Bu sürümde bu kurulum için otomatik güncelleme yok. Lütfen manuel olarak yükleyin.",
       "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
       "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır.",
-      "noPrivilegePrompt": "Bu paketin kurulması için bir yönetici parolası istemi (pkexec, zenity veya kdialog) gerekiyor, ancak hiçbiri bulunamadı.",
+      "noPrivilegePrompt": "Burada yönetici parolasını soracak bir araç yok (polkit ajanıyla pkexec ya da zenity veya kdialog ile sudo). Paketi “GitHub'da Göster” ile indirip terminalde kurun: {{command}}",
       "verificationFailed": "Güncelleme doğrulanamadı: imzası, sağlama toplamı veya meta verileri eşleşmiyor.",
       "insecureDownload": "Güncelleme indirmesi HTTPS üzerinden sunulmadı.",
       "downloadTooLarge": "Güncelleme indirmesi beklenenden büyük.",
       "missingAsset": "Sürümde {{name}} adlı bir güncelleme dosyası yok.",
-      "unexpectedAsset": "Sürümde beklenmeyen veya yinelenen bir güncelleme dosyası var.",
       "argumentsTooLong": "Başlatma argümanları, güncelleme boyunca korunamayacak kadar uzun.",
-      "startupPending": "Önceki güncelleme hâlâ başlatıldığını doğruluyor. Birkaç saniye sonra tekrar deneyin.",
-      "versionMustIncrease": "Ardından gelen bir güncellemenin daha yeni bir sürümü olmalıdır.",
       "invalidBundle": "Taşınabilir uygulama eksiksiz bir macOS uygulama paketi değil.",
-      "missingBackup": "Geçerli sürümün yedeği bulunamadı.",
       "invalidStagingDirectory": "Güncelleme hazırlık klasörü geçersiz.",
-      "helperFailed": "Güncelleme yardımcısı başlatılamadı ({{error}}) ve uygulama yeniden başlatılamadı: {{restart}}",
-      "processUnavailable": "Güncellenen uygulamanın işlemi izlenemedi.",
       "ownedByAnotherUser": "Uygulama dosyası başka bir kullanıcıya ait."
     },
     "settings": {
@@ -3731,7 +4309,8 @@
     },
     "job": {
       "stopped": "İş başarıyla durduruldu",
-      "deleted": "İş başarıyla silindi"
+      "deleted": "İş başarıyla silindi",
+      "retried": "İş {{id}} yeniden çalışıyor"
     },
     "security": {
       "passwordRemoved": "Parola başarıyla kaldırıldı",
@@ -3835,11 +4414,8 @@
     "quickRunsCount": "Hızlı Çalıştırmalar [{{active}}/{{total}}]",
     "workflowsCount": "İş Akışları [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Yöneticisi",
-    "tooltipTask": "1 İş",
     "tooltipTasks": "{{count}} İş",
-    "tooltipMount": "1 Bağlama",
     "tooltipMounts": "{{count}} Bağlama",
-    "tooltipServe": "1 Sunucu",
     "tooltipServes": "{{count}} Sunucu",
     "indexCount": "Dizin Listeleri [{{active}}/{{total}}]"
   },
@@ -3847,7 +4423,11 @@
     "reason": "Aktif işlemler devam ediyor: {{details}}",
     "mounts": "{{count}} bağlantı",
     "jobs": "{{count}} iş",
-    "serves": "{{count}} sunucu"
+    "serves": "{{count}} sunucu",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/sn",
+    "timeLeft": "{{time}} kaldı",
+    "checked": "{{count}} dosya kontrol edildi"
   },
   "notification": {
     "title": {
@@ -3938,6 +4518,26 @@
       "powerInhibited": "Aktif işlemler sistemin uyku moduna geçmesini engelliyor.",
       "unmountFailed": "{{backend}} sistemindeki {{remote}} bağlantısı kesilemedi: {{error}}",
       "serveStopFailed": "{{backend}} üzerindeki {{remote}} için {{protocol}} sunucusu durdurulamadı: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Senkronizasyon",
+      "copy": "Kopyalama",
+      "move": "Taşıma",
+      "bisync": "Çift Yönlü Senkronizasyon",
+      "check": "Denetim",
+      "mount": "Bağlama",
+      "copyurl": "URL Kopyalama",
+      "mkdir": "Klasör Oluşturma",
+      "cleanup": "Temizleme",
+      "delete": "Silme",
+      "rename": "Yeniden Adlandırma",
+      "rmdirs": "Boş Dizinleri Kaldırma",
+      "index": "Dizin Listeleri",
+      "upload": "Yükleme",
+      "download": "İndirme",
+      "archivecreate": "Arşivleme",
+      "archiveextract": "Arşivi Çıkartma",
+      "cryptcheck": "Şifreli Denetim"
     }
   },
   "repairSheet": {
@@ -4160,6 +4760,11 @@
     "tabs": {
       "quickRun": "Hızlı Çalıştırma",
       "workflow": "İş Akışı"
+    },
+    "addMenu": {
+      "remote": "Uzak Bağlantı Oluştur",
+      "quickRun": "Hızlı Çalıştırma Oluştur",
+      "workflow": "İş Akışı Oluştur"
     },
     "workflow": {
       "untitled": "İsimsiz İş Akışı",
@@ -4465,8 +5070,6 @@
         "appStartDesc": "RClone Manager başladığında otomatik tetiklenir",
         "cleanup": "Çöp Kutusunu Temizle",
         "cleanupDesc": "Uzak depolamadaki çöp kutusunu boşalt",
-        "cryptcheck": "Şifreli Bütünlük Kontrolü",
-        "cryptcheckDesc": "Şifrelenmiş remote bütünlüğünü doğrula",
         "execScript": "Betik / Komut Çalıştır",
         "execScriptDesc": "Yerel kabuk komutu veya betik çalıştır",
         "quickRun": "Hızlı İşlem",
