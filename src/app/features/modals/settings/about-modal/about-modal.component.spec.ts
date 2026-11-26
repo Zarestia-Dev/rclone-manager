@@ -311,6 +311,12 @@ describe('AboutModalComponent', () => {
     expect(await axeViolations(list)).toEqual([]);
   });
 
+  it('lists its pages as plain buttons, not as tabs', async () => {
+    const list = (fixture.nativeElement as HTMLElement).querySelector('.about-list') as HTMLElement;
+    expect(list.querySelector('[role="tablist"], [role="tab"], [aria-selected]')).toBeNull();
+    expect(await axeViolations(list)).toEqual([]);
+  });
+
   it('should initialize successfully', () => {
     expect(component).toBeTruthy();
     expect(component.rCloneManagerVersion).toBeDefined();
