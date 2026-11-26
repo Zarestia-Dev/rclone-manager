@@ -201,17 +201,10 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
         );
         for job_id in active_jobs {
             info!("Stopping active Rclone job {job_id} associated with workflow '{workflow_id}'");
-            let remote = backend_manager
-                .job_cache_for(&backend.name)
-                .get_job(job_id)
-                .await
-                .map(|j| j.remote_name)
-                .unwrap_or_default();
             let _ = crate::rclone::commands::job::stop_job_on_backend(
                 app.clone(),
                 backend.clone(),
                 job_id,
-                remote,
             )
             .await;
         }

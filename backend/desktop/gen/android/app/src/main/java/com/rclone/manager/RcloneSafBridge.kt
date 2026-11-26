@@ -165,8 +165,7 @@ object RcloneSafBridge {
   @JvmStatic
   @androidx.annotation.Keep
   fun setVaultLocked(locked: Boolean) {
-    val ctx = appContext ?: return
-    RcloneKeepAliveService.setVaultLocked(ctx, locked)
+    RcloneKeepAliveService.setVaultLocked(locked)
   }
 
   /** Called by the backend while a folder watcher has changes waiting for their run. */
@@ -178,18 +177,28 @@ object RcloneSafBridge {
 
   @JvmStatic
   @androidx.annotation.Keep
+  fun setStartOnBoot(startOnBoot: Boolean) {
+    val ctx = appContext ?: return
+    // Called every few seconds while jobs run, so the choice is written only when it changes.
+    val prefs = ctx.getSharedPreferences(BOOT_PREFS_NAME, Context.MODE_PRIVATE)
+    if (!prefs.contains(KEY_START_ON_BOOT) || prefs.getBoolean(KEY_START_ON_BOOT, false) != startOnBoot) {
+      prefs.edit().putBoolean(KEY_START_ON_BOOT, startOnBoot).apply()
+    }
+  }
+
+  @JvmStatic
+  @androidx.annotation.Keep
   fun syncKeepAlive(
     keepAlive: Boolean,
-    startOnBoot: Boolean,
     jobs: Int,
     mounts: Int,
     serves: Int,
-    text: String
+    text: String,
+    progress: String,
+    percent: Int
   ) {
     val ctx = appContext ?: return
-    ctx.getSharedPreferences(BOOT_PREFS_NAME, Context.MODE_PRIVATE)
-      .edit().putBoolean(KEY_START_ON_BOOT, startOnBoot).apply()
-    RcloneKeepAliveService.sync(ctx, keepAlive, jobs, mounts, serves, text)
+    RcloneKeepAliveService.sync(ctx, keepAlive, jobs, mounts, serves, text, progress, percent)
   }
 
   @JvmStatic

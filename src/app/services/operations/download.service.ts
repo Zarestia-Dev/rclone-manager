@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { FileViewerService } from '../ui/file-viewer.service';
-import { createMinimalEntry } from '@app/types';
+import { createMinimalEntry, Origin } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class DownloadService extends TauriBaseService {
@@ -14,20 +14,20 @@ export class DownloadService extends TauriBaseService {
    * @param path The path to the file on the remote
    * @param fileName The name of the file
    * @param isLocal Whether the file is local
-   * @param size Optional file size in bytes
+   * @param origin Where the download was started; the app lists it as a job of that origin
    */
   async download(
     remote: string,
     path: string,
     fileName: string,
     isLocal: boolean,
-    size?: number
+    origin: Origin = 'filemanager'
   ): Promise<void> {
     if (!this.isTauri) {
       // Headless / Web mode download: trigger direct browser download
       try {
         const rawUrl = await this.fileViewerService.generateUrl(
-          createMinimalEntry(path, fileName, size ?? 0),
+          createMinimalEntry(path, fileName),
           remote,
           isLocal
         );
@@ -67,12 +67,13 @@ export class DownloadService extends TauriBaseService {
           this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
         );
 
+        // A job of the app: its progress shows with the other jobs, where it can be stopped.
         await this.invokeCommand('download_file', {
           remote,
           path,
           destination,
-          totalSize: size || null,
           isLocal,
+          origin,
         });
 
         this.notificationService.showSuccess(
@@ -132,11 +133,13 @@ export class DownloadService extends TauriBaseService {
       );
 
       // Rust resolves the local path (or streams remote file to app cache) and returns the absolute path.
+      // A remote file is copied as a job, listed only while it runs or when it fails.
       const localPath = await this.invokeCommand<string>('open_file_natively', {
         remote,
         path,
         fileName,
         isLocal,
+        origin: 'filemanager',
       });
 
       // On Android, trigger the Kotlin bridge (FileProvider ACTION_VIEW or ACTION_SEND).

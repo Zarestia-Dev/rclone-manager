@@ -9,7 +9,6 @@ import {
 /** Reject delayed telemetry from another execution or an older snapshot. */
 export function isNewerJobStats(job: JobInfo, event: JobStatsUpdatedEvent): boolean {
   if (event.executeId && event.executeId !== job.execute_id) return false;
-  if (event.statsRevision === undefined) return job.stats_revision === undefined;
   return event.statsRevision > (job.stats_revision ?? -1);
 }
 

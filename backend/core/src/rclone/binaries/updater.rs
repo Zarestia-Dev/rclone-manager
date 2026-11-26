@@ -749,8 +749,7 @@ async fn check_rclone_selfupdate(
     let transport = app_handle.state::<RcloneState>().transport.clone();
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
-    let payload =
-        backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
+    let payload = backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], os);
 
     let response = transport
         .rpc(core::COMMAND, Some(&payload))
@@ -918,7 +917,7 @@ async fn perform_rclone_selfupdate(
     info!("Executing rclone selfupdate via RC ({channel} channel)");
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
-    let payload = backend.build_core_command_payload("selfupdate", args, false, os);
+    let payload = backend.build_core_command_payload("selfupdate", args, os);
 
     let response = tokio::select! {
         () = cancel_token.cancelled() => {

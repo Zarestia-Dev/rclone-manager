@@ -8,6 +8,7 @@ use crate::rclone::{
     backend::BackendManager,
     commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
 };
+use crate::utils::json_helpers::extract_remote_name_from_fs;
 use crate::utils::logging::log::log_operation;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::logs::LogLevel;
@@ -26,8 +27,6 @@ pub async fn archive_create(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-
-    let group_id = format!("archive_create_{}", uuid::Uuid::new_v4().simple());
 
     let mut config = json!({});
     for (key, value) in [
@@ -51,20 +50,16 @@ pub async fn archive_create(
         is_dir: true,
         dry_run: None,
     };
-    let (endpoint, mut payload) =
+    let (endpoint, payload) =
         super::sync::build_special_transfer_payload(&app, &backend, &params).await?;
 
-    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
-
     let metadata = JobMetadata::new(
-        destination.clone(),
+        extract_remote_name_from_fs(&source),
         JobType::ArchiveCreate,
         vec![source.clone()],
         destination.clone(),
     )
-    .with_origin(Some(Origin::FileManager))
-    .with_group(Some(group_id))
-    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+    .with_origin(Some(Origin::FileManager));
 
     let submission = submit_job_with_options(
         app.clone(),
@@ -91,16 +86,13 @@ pub async fn archive_extract(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    let group_id = format!("archive_extract_{}", uuid::Uuid::new_v4().simple());
-
-    let (endpoint, mut payload) = if backend.is_librclone_local() {
+    let (endpoint, payload) = if backend.is_librclone_local() {
         (
             operations::ARCHIVE,
             json!({
                 "action": "extract",
                 "src": source,
                 "dst": destination,
-                "_async": true,
             }),
         )
     } else {
@@ -108,21 +100,17 @@ pub async fn archive_extract(
         let os = backend_manager.get_runtime_os(&backend.name).await;
         (
             core::COMMAND,
-            backend.build_core_command_payload("archive", args, true, os),
+            backend.build_core_command_payload("archive", args, os),
         )
     };
 
-    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
-
     let metadata = JobMetadata::new(
-        source.clone(),
+        extract_remote_name_from_fs(&source),
         JobType::ArchiveExtract,
         vec![source.clone()],
         destination.clone(),
     )
-    .with_origin(Some(Origin::FileManager))
-    .with_group(Some(group_id))
-    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+    .with_origin(Some(Origin::FileManager));
 
     let submission = submit_job_with_options(
         app.clone(),
@@ -192,14 +180,11 @@ pub async fn archive_list(
         let os = backend_manager.get_runtime_os(&backend.name).await;
         (
             core::COMMAND,
-            backend.build_core_command_payload("archive", args, true, os),
+            backend.build_core_command_payload("archive", args, os),
         )
     };
-    let mut payload = payload;
-    payload["_async"] = json!(true);
 
-    let remote_name =
-        Some(crate::utils::json_helpers::extract_remote_name_from_fs(&source).into_owned());
+    let remote_name = Some(extract_remote_name_from_fs(&source).into_owned());
 
     log_operation(
         LogLevel::Info,

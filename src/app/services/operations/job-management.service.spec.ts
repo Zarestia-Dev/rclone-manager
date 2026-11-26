@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
 import { JobManagementService, areJobGroupsEqual } from './job-management.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { DEFAULT_JOB_STATS, JobInfo, JobChangeEvent, JobStatsUpdatedEvent } from '@app/types';
+import {
+  CompletedTransfer,
+  DEFAULT_JOB_STATS,
+  JobInfo,
+  JobChangeEvent,
+  JobStatsUpdatedEvent,
+} from '@app/types';
 
 import { provideTranslateService } from '@ngx-translate/core';
 
@@ -251,6 +258,8 @@ describe('JobManagementService', () => {
       const jobs = service.jobs();
 
       jobStatsUpdated$.next({
+        executeId: 'exec-1',
+        statsRevision: 1,
         backendName: 'Other',
         jobId: 42,
         stats: { ...DEFAULT_JOB_STATS, bytes: 900 },
@@ -269,11 +278,83 @@ describe('JobManagementService', () => {
       mockApiClient.invoke.mockClear();
 
       const newStats = { ...DEFAULT_JOB_STATS, bytes: 500, speed: 50 };
-      jobStatsUpdated$.next({ backendName: 'Local', jobId: 42, stats: newStats });
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 42,
+        executeId: 'exec-1',
+        statsRevision: 1,
+        stats: newStats,
+      });
 
       expect(service.jobs()[0].stats.bytes).toBe(500);
       expect(service.jobs()[0].stats.speed).toBe(50);
       expect(mockApiClient.invoke).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Job Changes', () => {
+    const change = (job: JobInfo | null, jobId = job?.jobid ?? 1, backendName = 'Local'): void =>
+      jobCacheChanged$.next({ jobId, backendName, job });
+
+    beforeEach(async () => {
+      mockApiClient.invoke.mockResolvedValue([
+        createMockJob({ jobid: 1, start_time: '2026-09-10T09:00:00Z' }),
+      ]);
+      await service.refreshJobs();
+      mockApiClient.invoke.mockClear();
+    });
+
+    it('adds, updates and removes the job an event carries without loading the list', () => {
+      const started = createMockJob({ jobid: 2, status: 'Running', execute_id: 'exec-2' });
+      change(started);
+      expect(service.jobs().map(job => job.jobid)).toEqual([2, 1]);
+
+      change({ ...started, status: 'Completed', stats_revision: 4 });
+      expect(service.jobs()[0].status).toBe('Completed');
+      expect(service.jobs()[0].stats.transferring).toEqual([]);
+
+      change(null, 2);
+      expect(service.jobs().map(job => job.jobid)).toEqual([1]);
+      expect(mockApiClient.invoke).not.toHaveBeenCalled();
+    });
+
+    it('ignores a late change of the same run and changes of another backend', () => {
+      const job = createMockJob({ jobid: 1, start_time: '2026-09-10T09:00:00Z' });
+      change({ ...job, status: 'Failed', stats_revision: 5 });
+      change({ ...job, status: 'Running', stats_revision: 3 });
+      expect(service.jobs()[0].status).toBe('Failed');
+
+      change({ ...job, jobid: 7 }, 7, 'Other');
+      change(null, 1, 'Other');
+      expect(service.jobs().map(j => j.jobid)).toEqual([1]);
+    });
+
+    it('takes a new run under a reused id in its place by start time', () => {
+      change(createMockJob({ jobid: 3, start_time: '2026-09-10T08:00:00Z' }));
+      change(
+        createMockJob({ jobid: 3, execute_id: 'exec-new', start_time: '2026-09-10T10:00:00Z' })
+      );
+      expect(service.jobs().map(job => `${job.jobid}/${job.execute_id}`)).toEqual([
+        '3/exec-new',
+        '1/exec-1',
+      ]);
+    });
+
+    it('loads the list again for a change that arrives while it loads', async () => {
+      let finish!: (jobs: JobInfo[]) => void;
+      mockApiClient.invoke
+        .mockReturnValueOnce(
+          new Promise<JobInfo[]>(resolve => {
+            finish = resolve;
+          })
+        )
+        .mockResolvedValueOnce([createMockJob({ jobid: 1 }), createMockJob({ jobid: 2 })]);
+      const refresh = service.refreshJobs();
+      change(createMockJob({ jobid: 2 }));
+      finish([createMockJob({ jobid: 1 })]);
+      await refresh;
+      expect(mockApiClient.invoke).toHaveBeenCalledTimes(2);
+      expect(service.jobs()).toHaveLength(2);
     });
   });
 
@@ -416,6 +497,8 @@ describe('JobManagementService', () => {
 
       // Emit high-frequency transfer telemetry
       jobStatsUpdated$.next({
+        executeId: 'exec-1',
+        statsRevision: 2,
         jobId: 77,
         backendName: 'Local',
         stats: { ...DEFAULT_JOB_STATS, bytes: 200, speed: 50 },
@@ -498,11 +581,15 @@ describe('JobManagementService', () => {
       );
       const refresh = service.refreshJobs();
       jobStatsUpdated$.next({
+        executeId: 'exec-1',
+        statsRevision: 3,
         backendName: 'Local',
         jobId: 42,
         stats: { ...DEFAULT_JOB_STATS, bytes: 900 },
       });
       jobStatsUpdated$.next({
+        executeId: 'exec-1',
+        statsRevision: 4,
         backendName: 'Local',
         jobId: 42,
         stats: { ...DEFAULT_JOB_STATS, bytes: 950 },
@@ -535,6 +622,8 @@ describe('JobManagementService', () => {
       await refresh;
       expect(service.jobs()[0].backend_name).toBe('Other');
       jobStatsUpdated$.next({
+        executeId: 'exec-1',
+        statsRevision: 5,
         backendName: 'Local',
         jobId: 1,
         stats: { ...DEFAULT_JOB_STATS, bytes: 999 },
@@ -620,6 +709,80 @@ describe('JobManagementService', () => {
       await service.refreshJobs();
       expect(service.getLatestJobForWorkflowNode('selected', 'node', 'qr')?.jobid).toBe(1);
       expect(service.getLatestJobForWorkflowNode('missing', 'node', 'qr')).toBeNull();
+    });
+  });
+  describe('file rows of a finished job', () => {
+    const row = (name: string): CompletedTransfer => ({
+      name,
+      size: 1,
+      bytes: 1,
+      checked: false,
+      error: '',
+      jobid: 1,
+      status: 'completed',
+    });
+
+    it('keeps a finished job in the list without its rows, as the backend sends it', async () => {
+      mockApiClient.invoke.mockResolvedValue([createMockJob({ jobid: 7, status: 'Failed' })]);
+      await service.refreshJobs();
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 7,
+        executeId: 'exec-1',
+        statsRevision: 3,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 5, completed: [row('a')] },
+      });
+      const listed = service.jobs()[0];
+      expect(listed.stats.bytes).toBe(5);
+      expect(listed.stats.completed).toEqual([]);
+    });
+
+    it('fetches the rows of the run it shows, again when it changes, and keeps them meanwhile', async () => {
+      const job = signal<JobInfo | null>(
+        createMockJob({ jobid: 7, stats_revision: 1, stats: { ...DEFAULT_JOB_STATS, bytes: 9 } })
+      );
+      let answer: (stats: unknown) => void = () => undefined;
+      mockApiClient.invoke.mockImplementation(
+        (command: string) =>
+          new Promise(resolve => (command === 'get_job_stats' ? (answer = resolve) : resolve([])))
+      );
+      const stats = TestBed.runInInjectionContext(() => service.detailedStats(job));
+      TestBed.tick();
+      // Until the answer comes, the figures the list has.
+      expect(stats()?.bytes).toBe(9);
+      expect(stats()?.completed).toEqual([]);
+      answer({ bytes: 1, completed: [row('a')] });
+      await vi.waitFor(() => expect(stats()?.completed).toEqual([row('a')]));
+      expect(mockApiClient.invoke).toHaveBeenCalledWith('get_job_stats', {
+        jobid: 7,
+        executeId: 'exec-1',
+      });
+      // The list's figures are newer than the fetched ones.
+      expect(stats()?.bytes).toBe(9);
+
+      job.update(current => current && { ...current, stats_revision: 2 });
+      TestBed.tick();
+      expect(stats()?.completed).toEqual([row('a')]);
+      answer({ completed: [row('a'), row('b')] });
+      await vi.waitFor(() => expect(stats()?.completed).toHaveLength(2));
+
+      // Another run under the same id shows none of them.
+      job.set(createMockJob({ jobid: 7, execute_id: 'exec-2', stats_revision: 1 }));
+      TestBed.tick();
+      expect(stats()?.completed).toEqual([]);
+    });
+
+    it("uses a running job's own rows without fetching", () => {
+      const job = signal<JobInfo | null>(
+        createMockJob({
+          status: 'Running',
+          stats: { ...DEFAULT_JOB_STATS, completed: [row('live')] },
+        })
+      );
+      const stats = TestBed.runInInjectionContext(() => service.detailedStats(job));
+      TestBed.tick();
+      expect(stats()?.completed).toEqual([row('live')]);
+      expect(mockApiClient.invoke).not.toHaveBeenCalledWith('get_job_stats', expect.anything());
     });
   });
 });

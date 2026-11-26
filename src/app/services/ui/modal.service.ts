@@ -12,6 +12,10 @@ import type {
   TransferOptionValues,
   TransferOptionsModalData,
 } from '../../shared/modals/transfer-options-modal/transfer-options-modal.component';
+import type {
+  ConflictChoices,
+  TransferConflictModalData,
+} from '../../shared/modals/transfer-conflict-modal/transfer-conflict-modal.component';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -328,6 +332,10 @@ export class ModalService extends TauriBaseService {
     'transfer-options': () =>
       import('../../shared/modals/transfer-options-modal/transfer-options-modal.component').then(
         m => m.TransferOptionsModalComponent
+      ),
+    'transfer-conflicts': () =>
+      import('../../shared/modals/transfer-conflict-modal/transfer-conflict-modal.component').then(
+        m => m.TransferConflictModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -895,6 +903,19 @@ export class ModalService extends TauriBaseService {
   openTransferOptions(data: TransferOptionsModalData): DialogRefLike<TransferOptionValues> {
     return this.openModal('transfer-options', {
       ...CONFIG_MODAL_SIZE,
+      disableClose: true,
+      data,
+    });
+  }
+
+  /**
+   * Asks how the items of a file browser transfer that share a name with one at the destination
+   * land there. Closes with the choices, or with nothing when cancelled.
+   */
+  openTransferConflicts(data: TransferConflictModalData): DialogRefLike<ConflictChoices> {
+    return this.openModal('transfer-conflicts', {
+      width: '90vw',
+      maxWidth: data.conflicts.length === 1 ? '480px' : '600px',
       disableClose: true,
       data,
     });

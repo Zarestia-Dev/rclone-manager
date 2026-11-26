@@ -144,11 +144,13 @@
             </span>
           }
         </div>
+      </div>
+      <div class="automation-controls">
         <span appPill size="xs" [tone]="statusPill()">
           {{ 'automation.status.' + auto.status | translate }}
         </span>
+        <ng-container *ngTemplateOutlet="actions" />
       </div>
-      <ng-container *ngTemplateOutlet="actions" />
     </mat-card-header>
 
     <div class="automation-body">

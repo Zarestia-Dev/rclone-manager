@@ -185,4 +185,8 @@ jobs:
             echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=x86_64-linux-android26-clang"
           } >> "$GITHUB_ENV"
       - name: Android mobile code
-        run: cargo clippy --locked -p rclone-manager-core --target x86_64-linux-android --features mobile -- -D warnings
+        run: |
+          cargo clippy --locked -p rclone-manager-core --target x86_64-linux-android --features mobile -- -D warnings
+          # The app crate too: code behind cfg(target_os = "android") or excluded from it only
+          # compiles for this target.
+          cargo clippy --locked -p rclone-manager --target x86_64-linux-android --no-default-features --features mobile -- -D warnings

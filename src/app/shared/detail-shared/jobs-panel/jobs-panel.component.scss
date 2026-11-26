@@ -4,28 +4,56 @@
   overflow: hidden;
 }
 
-.job-type-icon {
-  &.job-icon-sync {
-    color: var(--primary-color);
-  }
-  &.job-icon-copy {
-    color: var(--yellow);
-  }
-  &.job-icon-move {
-    color: var(--orange);
-  }
-  &.job-icon-bisync {
-    color: var(--purple);
-  }
-  &.job-icon-mount,
-  &.job-icon-serve {
-    color: var(--accent-color);
-  }
-}
-
 .job-id-label {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--dim-color);
   cursor: help;
+}
+
+.card-list-container {
+  container-type: inline-size;
+}
+
+// The job's name stays whole; its tags follow it and wrap among themselves.
+.card-row-item .card-info-left {
+  flex: 0 1 auto;
+
+  .card-title-text {
+    flex-shrink: 0;
+  }
+}
+
+.job-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+// A running job's figures wrap among themselves, against the end of the row.
+.card-row-item .card-footer-right {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+// A narrow list keeps the job, its status and its button on one line and the tags beneath them.
+@container (max-width: 30rem) {
+  .card-row-item .card-header {
+    flex-wrap: wrap;
+    row-gap: var(--space-xs);
+  }
+
+  .job-tags {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  // The size goes above the figures of a running job.
+  .card-row-item .card-footer {
+    flex-wrap: wrap;
+    row-gap: var(--space-xs);
+  }
 }

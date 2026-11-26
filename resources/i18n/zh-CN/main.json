@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "停止任务",
-        "delete": "删除任务"
+        "delete": "删除任务",
+        "retry": "重试任务"
       },
       "empty": "未找到任务"
     },
@@ -1889,30 +1890,22 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "clearFinished": "清除已完成",
+      "openDestination": "打开目标位置",
+      "undo": "撤销",
+      "timeLeft": "剩余 {{time}}",
+      "failedOf": {
+        "other": "{{total}} 个中 {{count}} 个失败"
+      },
+      "itemsCount": {
+        "other": "{{count}} 个项目"
+      },
       "resumeUpload": "继续上传",
       "resumeWithFiles": "选择相同的文件以继续",
       "resumeWithFolder": "选择相同的文件夹以继续",
       "uploadPausedConnection": "已暂停：与服务器的连接已断开",
       "uploadPausedReselect": {
         "other": "已暂停：请重新选择 {{count}} 个文件以继续"
-      },
-      "progress": "进度",
-      "files": "文件",
-      "speed": "速度",
-      "eta": "剩余时间",
-      "currentFile": "当前文件",
-      "currentFiles": "当前文件",
-      "details": {
-        "source": "源路径",
-        "destination": "目标路径",
-        "startTime": "开始时间",
-        "uploadedFiles": "已上传文件",
-        "deletedFiles": "已删除文件",
-        "movedFiles": "已移动文件",
-        "copiedFiles": "已复制文件",
-        "syncedFiles": "已同步文件",
-        "processedFiles": "已处理文件",
-        "options": "选项"
       },
       "running": "运行中",
       "filesCount": {
@@ -1932,7 +1925,8 @@
         "upload": "上传",
         "archivecreate": "归档",
         "archiveextract": "解压归档",
-        "index": "目录列表"
+        "index": "目录列表",
+        "download": "下载"
       }
     },
     "fileViewer": {
@@ -2030,6 +2024,11 @@
       "delete": "删除",
       "deleteDesc": "永久删除符合过滤条件的文件",
       "copyurl": "复制 URL",
+      "upload": "上传",
+      "rename": "重命名",
+      "cleanup": "清理",
+      "rmdirs": "删除空目录",
+      "archiveextract": "解压归档",
       "copyUrlDesc": "为文件生成公开下载 URL",
       "archivecreate": "归档",
       "archivecreateDesc": "将文件夹/文件压缩到归档文件（Zip、Tar 等）中",
@@ -2064,7 +2063,8 @@
       "remoteSettings": "远程设置",
       "indexSettings": "目录列表设置",
       "index": "目录列表",
-      "indexDesc": "在文件夹中写入可浏览的列表，用于静态网站"
+      "indexDesc": "在文件夹中写入可浏览的列表，用于静态网站",
+      "download": "下载"
     },
     "generalDetail": {
       "automations": "自动化",
@@ -3524,7 +3524,11 @@
       "viewOptions": "视图选项",
       "showingItems": "显示第 {{count}} 个，共 {{total}} 个",
       "decreaseIconSize": "缩小图标大小",
-      "increaseIconSize": "放大图标大小"
+      "increaseIconSize": "放大图标大小",
+      "tabCount": {
+        "other": "{{count}} 个标签页"
+      },
+      "showTabs": "显示已打开的标签页"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3606,6 +3610,55 @@
       "useAsDefault": "默认使用这些选项",
       "dontAskAgain": "不再询问（文件浏览器偏好设置）",
       "start": "开始"
+    },
+    "conflicts": {
+      "exists": "“{{name}}”已存在",
+      "fileExists": "{{destination}} 中已有同名文件。",
+      "folderExists": "{{destination}} 中已有同名文件夹。",
+      "mergeExplain": "合并会把传入的文件添加到该文件夹。",
+      "thereNow": "现有",
+      "incoming": "传入",
+      "replace": "替换",
+      "merge": "合并",
+      "skip": "跳过",
+      "keepBoth": "保留两者",
+      "replaceOrMerge": "替换或合并",
+      "forAll": "全部：",
+      "keptAs": "另存为“{{name}}”",
+      "skipped": "已跳过",
+      "replaces": "替换那里的文件",
+      "merges": {
+        "newer": "合并，每个文件保留较新的",
+        "keep": "合并，只添加缺少的文件",
+        "replace": "合并，同名文件会被替换"
+      },
+      "title": {
+        "other": "{{total}} 项中有 {{count}} 项已存在于 {{destination}}"
+      },
+      "others": {
+        "other": "其余 {{count}} 项没有冲突。"
+      },
+      "start": {
+        "copy": {
+          "other": "复制 {{count}} 项"
+        },
+        "move": {
+          "other": "移动 {{count}} 项"
+        },
+        "upload": {
+          "other": "上传 {{count}} 项"
+        }
+      },
+      "skipAll": "全部跳过",
+      "replaceWarning": "被替换的文件无法恢复，且此操作无法撤销。",
+      "mergeWarning": "合并文件夹无法撤销。",
+      "sameNames": "同名文件：",
+      "sameNamesAll": "合并的文件夹中的同名文件：",
+      "existingFiles": {
+        "newer": "保留较新的",
+        "keep": "保留已有的",
+        "replace": "用传入的替换"
+      }
     }
   },
   "home": {
@@ -3717,7 +3770,6 @@
       "progress": "进度：",
       "of": "/",
       "eta": "预计剩余时间：",
-      "elapsed": "已用时间:",
       "speed": "传输速度：",
       "transfers": "传输：",
       "checks": "校验：",
@@ -3729,6 +3781,7 @@
       "serverMoves": "服务端移动：",
       "lastError": "最后错误：",
       "runningJobs": "运行中的作业",
+      "recentJobs": "最近的作业",
       "starting": "正在启动...",
       "noRunning": "当前没有正在运行的活动任务。"
     },
@@ -3805,7 +3858,6 @@
       "missingMountPoint": "unmount 节点配置中缺少“mountPoint”，且目标节点未提供挂载点",
       "missingStopServeTarget": "stop_serve 节点配置中同时缺少“targetNodeId”/“serverId”和“remoteName”",
       "rcCommandFailed": "RC 命令“{{command}}”失败：{{error}}",
-      "invalidJobId": "批量提交返回了无效的作业 ID：{{error}}",
       "unsupportedNodeType": "此平台或版本不支持工作流节点类型“{{type}}”",
       "nodeCrashed": "节点“{{node}}”已崩溃：{{reason}}",
       "notificationFailed": "通知错误（{{kind}}）：{{error}}",
@@ -3897,7 +3949,9 @@
       "diskFull": "目标磁盘空间不足。",
       "fileLocked": "文件当前已被锁定或被其他进程占用。",
       "readOnly": "目标文件系统为只读或受写保护。",
-      "ioError": "IO 错误：{{error}}"
+      "ioError": "IO 错误：{{error}}",
+      "intoItself": "无法将文件夹“{{name}}”复制或移动到其自身之中。",
+      "noItems": "未选择任何项目。"
     },
     "upload": {
       "legacyBatch": "此上传由过期的页面发起。请重新加载应用程序后重试。",
@@ -3906,7 +3960,8 @@
       "invalidModifiedTime": "上传包含无效的修改时间。",
       "sessionGone": "服务器上已没有此上传，因为它已被取消或闲置时间过长。请重新开始上传。",
       "invalidChunk": "上传发送了不属于其任何文件的数据。",
-      "incomplete": "上传在所有文件到达之前就已结束。"
+      "incomplete": "上传在所有文件到达之前就已结束。",
+      "filesFailed": "无法上传的文件：{{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
@@ -3982,7 +4037,8 @@
       "profileNotRunning": "在 {{remote}} 上未找到配置文件 '{{profile}}' 正在运行的 {{jobType}} 任务",
       "stopped": "任务已停止",
       "failed": "任务失败",
-      "lost": "Rclone 已不再识别此任务。任务在完成后已过期，或引擎已重启，因此无法获取其结果。"
+      "lost": "Rclone 已不再识别此任务。任务在完成后已过期，或引擎已重启，因此无法获取其结果。",
+      "notRetryable": "无法重试此任务：只有在应用打开后启动、且失败或已停止的任务才能重试。"
     },
     "cache": {
       "fetchConfigFailed": "获取远程存储配置失败",
@@ -4103,7 +4159,8 @@
     },
     "job": {
       "stopped": "任务已停止",
-      "deleted": "任务已删除"
+      "deleted": "任务已删除",
+      "retried": "任务 {{id}} 已重新运行"
     },
     "security": {
       "passwordRemoved": "密码已移除",
@@ -4216,7 +4273,11 @@
     "reason": "正在运行活动操作：{{details}}",
     "mounts": "{{count}} 个挂载",
     "jobs": "{{count}} 个任务",
-    "serves": "{{count}} 个服务"
+    "serves": "{{count}} 个服务",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/秒",
+    "timeLeft": "剩余 {{time}}",
+    "checked": "已检查 {{count}} 个"
   },
   "notification": {
     "title": {
@@ -4307,6 +4368,26 @@
       "workflowStopped": "工作流 '{{name}}' 已被停止。",
       "unmountFailed": "从 {{backend}} 卸载 {{remote}} 失败：{{error}}",
       "serveStopFailed": "停止 {{backend}} 上 {{remote}} 的 {{protocol}} 服务失败：{{error}}"
+    },
+    "jobTypes": {
+      "sync": "同步",
+      "copy": "复制",
+      "move": "移动",
+      "bisync": "双向同步",
+      "check": "检查",
+      "mount": "挂载",
+      "copyurl": "复制 URL",
+      "mkdir": "创建文件夹",
+      "cleanup": "清理",
+      "delete": "删除",
+      "rename": "重命名",
+      "rmdirs": "删除空目录",
+      "index": "目录列表",
+      "upload": "上传",
+      "download": "下载",
+      "archivecreate": "归档",
+      "archiveextract": "解压归档",
+      "cryptcheck": "加密检查"
     }
   },
   "repairSheet": {

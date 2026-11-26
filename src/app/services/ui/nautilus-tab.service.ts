@@ -12,7 +12,13 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
-import { ExplorerRoot, FileBrowserItem, FilePickerConfig, NautilusTabItem } from '@app/types';
+import {
+  CHECK_OPERATIONS,
+  ExplorerRoot,
+  FileBrowserItem,
+  FilePickerConfig,
+  NautilusTabItem,
+} from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
 import { generatePrefixedId } from 'src/app/shared/utils';
 
@@ -827,9 +833,13 @@ export class NautilusTabService {
     this.eventListenersService
       .listenToJobCacheChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        const { status, remote, source, sources, destination } = event;
-        if (status !== 'Completed' && status !== 'Failed' && status !== 'Stopped') return;
+      .subscribe(({ job, ended }) => {
+        // Only the end of a job changes files; a removal or its later updates change none.
+        // A check changes nothing, and a download only the folder it saved the file in.
+        if (!ended || !job || CHECK_OPERATIONS.has(job.job_type)) return;
+        const download = job.job_type === 'download';
+        const { remote_name: remote, destination } = job;
+        const sources = download ? [] : [job.source].flat();
 
         const affected: { remote: string; path: string; descendants?: boolean }[] = [];
         const addAffected = (value: string): void => {
@@ -846,9 +856,9 @@ export class NautilusTabService {
           affected.push({ remote: name, path, descendants: true });
           affected.push({ remote: name, path: this.pathService.getParentPath(path) });
         };
-        for (const path of sources ?? (source ? [source] : [])) addAffected(path);
+        for (const path of sources) addAffected(path);
         if (destination) addAffected(destination);
-        else if (destination === '' && affected.length === 0 && remote) {
+        else if (!download && affected.length === 0 && remote) {
           affected.push({ remote, path: '', descendants: true });
         }
         this.refreshAffectedPaths(affected);

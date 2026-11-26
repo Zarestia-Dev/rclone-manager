@@ -23,9 +23,28 @@ pub fn format_file_size(bytes: u64) -> String {
     }
 }
 
+/// A duration as a clock, `8:05` or `1:02:05`, which reads the same in every language.
+#[must_use]
+pub fn format_clock(seconds: u64) -> String {
+    let (hours, minutes, seconds) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
+    if hours > 0 {
+        format!("{hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes}:{seconds:02}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clocks_show_hours_only_when_there_are_some() {
+        assert_eq!(format_clock(0), "0:00");
+        assert_eq!(format_clock(485), "8:05");
+        assert_eq!(format_clock(3725), "1:02:05");
+        assert_eq!(format_clock(90_000), "25:00:00");
+    }
 
     #[test]
     fn test_format_file_size() {

@@ -33,16 +33,30 @@ const JOB_POLL_INTERVAL_MS: u64 = 500;
 /// at once) is done within a few hundred milliseconds, so it should not wait a whole interval to be
 /// noticed; a long one settles at `JOB_POLL_INTERVAL_MS`.
 const JOB_FIRST_POLLS_MS: [u64; 4] = [50, 100, 200, 350];
+/// The regular pace while no window shows the app (Android in the background, a window closed to
+/// the tray): nothing on screen follows the progress, and the Android notification updates no
+/// faster than this either. Each poll also fetches the transfer history, so this spares the CPU.
+const JOB_HIDDEN_POLL_INTERVAL_MS: u64 = 2000;
 const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 
 /// The wait after the `poll`th successful poll of a job (counting from 0).
-fn poll_delay(poll: usize) -> Duration {
-    Duration::from_millis(
-        JOB_FIRST_POLLS_MS
-            .get(poll)
-            .copied()
-            .unwrap_or(JOB_POLL_INTERVAL_MS),
-    )
+fn poll_delay(poll: usize, visible: bool) -> Duration {
+    let regular = if visible {
+        JOB_POLL_INTERVAL_MS
+    } else {
+        JOB_HIDDEN_POLL_INTERVAL_MS
+    };
+    Duration::from_millis(JOB_FIRST_POLLS_MS.get(poll).copied().unwrap_or(regular))
+}
+
+/// Whether a window shows the app, as the frontend last said; visible when nothing said.
+fn ui_visible(app: &AppHandle) -> bool {
+    app.try_state::<crate::utils::types::state::RcloneState>()
+        .is_none_or(|state| {
+            state
+                .poller_visible
+                .load(std::sync::atomic::Ordering::Relaxed)
+        })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -266,6 +280,84 @@ pub struct SubmitJobOptions {
     pub backend: Option<Backend>,
 }
 
+/// What was sent to rclone to start a job. It stays in memory and is never written to disk (its
+/// options can carry credentials), so a job of this session that failed or was stopped can run
+/// again with [`retry_job`].
+#[derive(Debug, Clone)]
+pub struct JobRequest {
+    endpoint: String,
+    payload: Value,
+    metadata: JobMetadata,
+}
+
+impl JobRequest {
+    /// The request of a job that can run again as it was sent. A mount starts from its profile,
+    /// and a Quick Run or a workflow node from its own view.
+    fn for_retry(endpoint: &str, payload: &Value, metadata: &JobMetadata) -> Option<Self> {
+        let retryable = !metadata.no_cache
+            && metadata.job_type != JobType::Mount
+            && matches!(metadata.starter, None | Some(Starter::Profile { .. }));
+        retryable.then(|| {
+            // A retry runs in a stats group of its own; the first run's group stays behind.
+            let mut payload = payload.clone();
+            if let Some(request) = payload.as_object_mut() {
+                request.remove("_group");
+            }
+            if let Some(inputs) = payload.get_mut("inputs").and_then(Value::as_array_mut) {
+                for input in inputs.iter_mut().filter_map(Value::as_object_mut) {
+                    input.remove("_group");
+                }
+            }
+            Self {
+                endpoint: endpoint.to_owned(),
+                payload,
+                metadata: metadata.clone(),
+            }
+        })
+    }
+
+    /// What a retry sends after the job failed with `output`: of a batch, only the inputs rclone
+    /// reported failed, with the batch's options; anything else whole.
+    #[must_use]
+    pub(crate) fn after_failure(&self, output: &Value) -> Self {
+        let failed: Vec<Value> = match output.get("results") {
+            Some(Value::Array(results)) if self.endpoint == job::BATCH => {
+                results.iter().filter_map(failed_batch_input).collect()
+            }
+            _ => Vec::new(),
+        };
+        let mut retry = self.clone();
+        if !failed.is_empty() {
+            retry.payload["inputs"] = Value::Array(failed);
+        }
+        retry
+    }
+}
+
+#[cfg(test)]
+impl JobRequest {
+    /// The request of an empty copy batch, for tests of the job cache.
+    pub(crate) fn for_test(metadata: &JobMetadata) -> Arc<Self> {
+        Arc::new(
+            Self::for_retry(job::BATCH, &json!({ "inputs": [] }), metadata)
+                .expect("a copy can be retried"),
+        )
+    }
+}
+
+/// A `job/batch` result of an input that failed, turned back into that input: rclone answers it
+/// with the call's `path`, the `input` it ran with and the `error` as text (a successful sync's
+/// output also has an `error` key, a list of files). The group is dropped, as in
+/// [`JobRequest::for_retry`].
+fn failed_batch_input(result: &Value) -> Option<Value> {
+    result.get("error")?.as_str()?;
+    let path = result.get("path")?.as_str()?;
+    let mut input = result.get("input")?.as_object()?.clone();
+    input.remove("_group");
+    input.insert("_path".to_owned(), json!(path));
+    Some(Value::Object(input))
+}
+
 /// Result of submitting a job. Output is available only when completion was awaited.
 #[derive(Debug)]
 pub struct JobSubmission {
@@ -310,6 +402,7 @@ pub async fn submit_job_with_options(
         None => JobContext::active(&app).await,
     };
     metadata.prepare_execution();
+    let request = JobRequest::for_retry(endpoint, &payload, &metadata).map(Arc::new);
     let jobid = send_job_request(
         &app,
         context.transport.as_ref(),
@@ -322,7 +415,12 @@ pub async fn submit_job_with_options(
     if !metadata.no_cache {
         context
             .cache
-            .create_job(jobid, metadata.clone(), context.backend_name.clone())
+            .create_job(
+                jobid,
+                metadata.clone(),
+                context.backend_name.clone(),
+                request,
+            )
             .await;
         context.cache.prune_finished(Some(&app)).await;
         if metadata.job_type != JobType::Mount {
@@ -362,6 +460,10 @@ async fn send_job_request(
     metadata: &JobMetadata,
 ) -> Result<u64, String> {
     let mut payload = payload;
+    // A job is started in the background; rclone answers at once with its id.
+    if let Some(request) = payload.as_object_mut() {
+        request.insert("_async".to_owned(), json!(true));
+    }
     let group = metadata.group_name();
     super::common::ensure_group(&mut payload, &group);
     if endpoint == job::BATCH
@@ -399,12 +501,49 @@ async fn send_job_request(
     Ok(jobid)
 }
 
+/// Runs a job and waits for it to end: the output rclone returned, or why the job failed.
+pub async fn run_job(
+    app: AppHandle,
+    endpoint: &str,
+    payload: Value,
+    metadata: JobMetadata,
+    backend: Option<Backend>,
+) -> Result<Value, String> {
+    let submission = submit_job_with_options(
+        app,
+        endpoint,
+        payload,
+        metadata,
+        SubmitJobOptions {
+            wait_for_completion: true,
+            backend,
+        },
+    )
+    .await?;
+    Ok(submission.output.unwrap_or_else(|| json!({})))
+}
+
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app
         .state::<BackendManager>()
         .job_cache()
         .await
         .get_jobs()
+        .await)
+}
+
+/// A job's stats with the file rows the job lists leave out of a finished job, or `None` when
+/// the job (that run of it, when `execute_id` is given) is gone.
+pub async fn get_job_stats(
+    app: AppHandle,
+    jobid: u64,
+    execute_id: Option<String>,
+) -> Result<Option<Value>, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .job_cache()
+        .await
+        .job_stats(jobid, execute_id.as_deref())
         .await)
 }
 
@@ -426,6 +565,40 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
         .await
         .delete_job(jobid, Some(&app))
         .await
+}
+
+/// Runs a failed or stopped job of this session again, as a new job; returns its ID. A batch
+/// that partly failed sends only its failed inputs again.
+pub async fn retry_job(app: AppHandle, jobid: u64) -> Result<u64, String> {
+    let job = app
+        .state::<BackendManager>()
+        .job_cache()
+        .await
+        .get_job(jobid)
+        .await
+        .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
+    let request = job
+        .request
+        .filter(|_| matches!(job.status, JobStatus::Failed | JobStatus::Stopped))
+        .ok_or_else(|| crate::localized_error!("backendErrors.job.notRetryable"))?;
+    let JobRequest {
+        endpoint,
+        payload,
+        mut metadata,
+    } = (*request).clone();
+    // A new execution with its own stats group, so its numbers do not mix with the first run.
+    metadata.execute_id = None;
+    metadata.group = None;
+    info!("Retrying job {jobid} ({})", metadata.job_type);
+    submit_job_with_options(
+        app,
+        &endpoint,
+        payload,
+        metadata,
+        SubmitJobOptions::default(),
+    )
+    .await
+    .map(|submission| submission.job_id)
 }
 
 /// A successful batch HTTP response may still contain an RC error for job/status.
@@ -564,7 +737,7 @@ async fn monitor_job(
             .map_err(|error| error.to_string())
             .and_then(split_poll);
 
-        let mut wait = poll_delay(polls);
+        let mut wait = poll_delay(polls, ui_visible(&app));
         match poll_result {
             Ok(PolledJob { status, stats }) => {
                 consecutive_errors = 0;
@@ -765,6 +938,13 @@ async fn persist_final_job_state(
             job_report(&metadata.job_type, raw_output, had_errors),
         )
         .await?;
+    if !outcome.success
+        && let Some(output) = raw_output
+    {
+        job_cache
+            .narrow_retry_request(jobid, metadata.execute_id.as_deref(), output)
+            .await?;
+    }
     Ok(())
 }
 
@@ -855,9 +1035,9 @@ async fn collect_final_stats(
     stats
 }
 
-pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
+pub async fn stop_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     let backend = app.state::<BackendManager>().get_active().await;
-    stop_job_on_backend(app, backend, jobid, remote_name).await
+    stop_job_on_backend(app, backend, jobid).await
 }
 
 /// Stop the running `job_type` job that `profile_name` started on `remote_name`.
@@ -887,22 +1067,24 @@ pub async fn stop_job_profile(
                 "jobType" => job_type
             )
         })?;
-    stop_job_on_backend(app, backend, running.jobid, remote_name).await
+    stop_job_on_backend(app, backend, running.jobid).await
 }
 
 pub(crate) async fn stop_job_on_backend(
     app: AppHandle,
     backend: Backend,
     jobid: u64,
-    remote_name: String,
 ) -> Result<(), String> {
     let context = JobContext::for_backend(&app, backend);
     let transport = &context.transport;
     let job_cache = &context.cache;
 
-    if job_cache.cancel_upload(jobid).await? {
-        return job_cache.stop_job(jobid).await;
+    // A job of this process ends itself, as stopped or as it had already ended.
+    if job_cache.cancel_own_job(jobid).await? {
+        return Ok(());
     }
+    // The remote the operation log files the stop under.
+    let remote_name = job_cache.get_job(jobid).await.map(|job| job.remote_name);
 
     let stop_result = transport
         .rpc_with_timeout(
@@ -921,7 +1103,7 @@ pub(crate) async fn stop_job_on_backend(
         }) if message.contains("job not found") => {
             log_operation(
                 LogLevel::Warn,
-                Some(remote_name.clone()),
+                remote_name.clone(),
                 Some("Stop job".to_string()),
                 format!("Job {jobid} not found in rclone, marking as stopped"),
                 None,
@@ -939,7 +1121,7 @@ pub(crate) async fn stop_job_on_backend(
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        remote_name.clone(),
         Some("Stop job".to_string()),
         format!("Job {jobid} stopped successfully"),
         None,
@@ -956,21 +1138,23 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
 
     info!("Stopping all jobs in group: {group}");
 
-    let mut cancelled_upload = false;
-    let mut has_native_jobs = false;
-    for job in job_cache.get_active_jobs().await {
-        if job.group == group {
-            if job_cache.cancel_upload(job.jobid).await? {
-                cancelled_upload = true;
-                job_cache.stop_job(job.jobid).await?;
-            } else {
-                has_native_jobs = true;
-            }
+    let running: Vec<u64> = job_cache
+        .get_active_jobs()
+        .await
+        .into_iter()
+        .filter(|job| job.group == group)
+        .map(|job| job.jobid)
+        .collect();
+    // A group the cache knows no job of can still hold rclone's (a file browser's list reads).
+    let mut rclone_jobs = running.is_empty();
+    for &jobid in &running {
+        // A job of this process stops its own requests and ends itself.
+        if !job_cache.cancel_own_job(jobid).await? {
+            rclone_jobs = true;
         }
     }
 
-    // Synthetic uploads cancel their own requests and underlying copy jobs.
-    if !cancelled_upload || has_native_jobs {
+    if rclone_jobs {
         let stop_result = transport
             .rpc_with_timeout(
                 job::STOPGROUP,
@@ -990,9 +1174,9 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
         }
     }
 
-    let jobs = job_cache.get_jobs().await;
-    for job in jobs {
-        if job.group == group && job.status == JobStatus::Running {
+    // Also the jobs that joined the group meanwhile: rclone stopped them too.
+    for job in job_cache.get_active_jobs().await {
+        if job.group == group {
             let _ = job_cache.stop_job(job.jobid).await;
         }
     }
@@ -1013,28 +1197,119 @@ pub async fn submit_batch_job_with_options(
     inputs: Vec<Value>,
     metadata: JobMetadata,
     options: SubmitJobOptions,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     submit_job_with_options(
         app,
         job::BATCH,
-        json!({ "_async": true, "inputs": inputs }),
+        json!({ "inputs": inputs }),
         metadata,
         options,
     )
     .await
-    .map(|submission| submission.job_id.to_string())
+    .map(|submission| submission.job_id)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn copy_batch() -> Value {
+        json!({
+            "_async": true,
+            "_group": "copy/drive_first",
+            "_config": {"Transfers": 2},
+            "inputs": [
+                {"_path": "operations/copyfile", "srcFs": "/home", "srcRemote": "a", "_group": "copy/drive_first"},
+                {"_path": "operations/copyfile", "srcFs": "/home", "srcRemote": "b"},
+                {"_path": "sync/copy", "srcFs": "/home/c", "dstFs": "drive:c"},
+            ]
+        })
+    }
+
+    #[test]
+    fn a_request_is_kept_for_a_retry_without_the_first_runs_stats_group() {
+        let metadata = JobMetadata::new("drive", JobType::Copy, vec![], "drive:");
+        let request = JobRequest::for_retry(job::BATCH, &copy_batch(), &metadata).unwrap();
+        assert!(request.payload.get("_group").is_none());
+        assert!(request.payload["inputs"][0].get("_group").is_none());
+        assert_eq!(request.payload["_config"], json!({"Transfers": 2}));
+        assert_eq!(request.payload["inputs"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn mounts_quick_runs_workflow_nodes_and_uncached_calls_keep_no_request() {
+        let payload = json!({});
+        let base = JobMetadata::new("drive", JobType::Sync, vec![], "/home");
+        let profile = base.clone().with_starter(Some(Starter::Profile {
+            name: "daily".into(),
+        }));
+        assert!(JobRequest::for_retry(job::BATCH, &payload, &base).is_some());
+        assert!(JobRequest::for_retry(job::BATCH, &payload, &profile).is_some());
+
+        let mount = JobMetadata::new("drive", JobType::Mount, vec![], "/mnt");
+        let quick_run = base.clone().with_starter(Some(Starter::QuickRun {
+            id: "qr".into(),
+            name: "Nightly".into(),
+            workflow: None,
+        }));
+        let uncached = base.clone().with_no_cache(true);
+        for metadata in [mount, quick_run, uncached] {
+            assert!(JobRequest::for_retry(job::BATCH, &payload, &metadata).is_none());
+        }
+    }
+
+    #[test]
+    fn a_retry_of_a_batch_sends_only_the_inputs_rclone_reported_failed() {
+        let metadata = JobMetadata::new("drive", JobType::Copy, vec![], "drive:");
+        let request = JobRequest::for_retry(job::BATCH, &copy_batch(), &metadata).unwrap();
+        let output = json!({"results": [
+            {},
+            {
+                "error": "connection reset",
+                "status": 500,
+                "path": "operations/copyfile",
+                "input": {"srcFs": "/home", "srcRemote": "b", "_group": "copy/drive_first"}
+            },
+            // A sync that ran lists the files it could not copy under `error`; it did not fail.
+            {"error": [], "missingOnSrc": []},
+        ]});
+        let retry = request.after_failure(&output);
+        assert_eq!(
+            retry.payload["inputs"],
+            json!([{"_path": "operations/copyfile", "srcFs": "/home", "srcRemote": "b"}])
+        );
+        assert_eq!(retry.payload["_config"], json!({"Transfers": 2}));
+    }
+
+    #[test]
+    fn a_retry_sends_everything_again_when_rclone_named_no_failed_part() {
+        let metadata = JobMetadata::new("drive", JobType::Copy, vec![], "drive:");
+        let batch = JobRequest::for_retry(job::BATCH, &copy_batch(), &metadata).unwrap();
+        for output in [json!({}), json!({"results": [{}, {}, {}]})] {
+            let retry = batch.after_failure(&output);
+            assert_eq!(retry.payload, batch.payload);
+        }
+
+        let sync = JobRequest::for_retry(
+            crate::rclone::endpoints::sync::SYNC,
+            &json!({"srcFs": "/a", "dstFs": "drive:a"}),
+            &metadata,
+        )
+        .unwrap();
+        let output = json!({"results": [{"error": "x", "path": "p", "input": {}}]});
+        assert_eq!(sync.after_failure(&output).payload, sync.payload);
+    }
+
     #[test]
     fn a_job_is_polled_quickly_at_first_and_then_at_the_regular_pace() {
-        let waits: Vec<u64> = (0..7)
-            .map(|poll| poll_delay(poll).as_millis() as u64)
-            .collect();
-        assert_eq!(waits, [50, 100, 200, 350, 500, 500, 500]);
+        let waits = |visible| {
+            (0..7)
+                .map(|poll| poll_delay(poll, visible).as_millis() as u64)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(waits(true), [50, 100, 200, 350, 500, 500, 500]);
+        // A short job is noticed as fast with no window open; a long one is followed slower.
+        assert_eq!(waits(false), [50, 100, 200, 350, 2000, 2000, 2000]);
         assert!(
             JOB_FIRST_POLLS_MS
                 .iter()
@@ -1189,7 +1464,9 @@ mod tests {
             .execution_id;
         let metadata = make_meta(None, Some("daily")).with_execute_id(execution.clone());
         let b_cache = manager.job_cache_for("B");
-        b_cache.create_job(7, metadata.clone(), "B".into()).await;
+        b_cache
+            .create_job(7, metadata.clone(), "B".into(), None)
+            .await;
         b_cache
             .update_job_stats(7, json!({"bytes": 999}))
             .await
@@ -1308,7 +1585,7 @@ mod tests {
                     )
                     .await
                     .unwrap(),
-                    "7"
+                    7
                 );
             } else {
                 let result = submit_job_with_options(

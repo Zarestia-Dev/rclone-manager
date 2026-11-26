@@ -262,6 +262,17 @@ done
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
 ```
 
+Code behind `cfg(target_os = "android")` (or left out of it) compiles only for an Android target, which the commands above do not build. CI's **Android target** job checks it with the NDK; after touching such code, run the same with a local NDK (`rustup target add x86_64-linux-android`), and skip it when no NDK is installed:
+
+```bash
+NDK_BIN="$ANDROID_HOME/ndk/<version>/toolchains/llvm/prebuilt/linux-x86_64/bin"
+export LIBRCLONE_SKIP_LINK_CHECK=1 PATH="$NDK_BIN:$PATH" \
+  CC_x86_64_linux_android=x86_64-linux-android26-clang AR_x86_64_linux_android=llvm-ar \
+  CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=x86_64-linux-android26-clang
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-core --target x86_64-linux-android --features mobile -- -D warnings
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --target x86_64-linux-android --no-default-features --features mobile -- -D warnings
+```
+
 ### 3. Packaging & Linux Metadata Validation
 
 Validate Flatpak AppStream metadata **only if `backend/desktop/linux/flatpak.metainfo.xml` was edited and running on Linux** with `appstreamcli` available; otherwise skip.

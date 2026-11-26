@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "停止任務",
-        "delete": "刪除任務"
+        "delete": "刪除任務",
+        "retry": "重試任務"
       },
       "empty": "未找到任務"
     },
@@ -1889,30 +1890,22 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "clearFinished": "清除已完成",
+      "openDestination": "開啟目標位置",
+      "undo": "復原",
+      "timeLeft": "剩餘 {{time}}",
+      "failedOf": {
+        "other": "{{total}} 個中 {{count}} 個失敗"
+      },
+      "itemsCount": {
+        "other": "{{count}} 個項目"
+      },
       "resumeUpload": "繼續上傳",
       "resumeWithFiles": "選擇相同的檔案以繼續",
       "resumeWithFolder": "選擇相同的資料夾以繼續",
       "uploadPausedConnection": "已暫停：與伺服器的連線已中斷",
       "uploadPausedReselect": {
         "other": "已暫停：請重新選擇 {{count}} 個檔案以繼續"
-      },
-      "progress": "進度",
-      "files": "檔案",
-      "speed": "速度",
-      "eta": "剩餘時間",
-      "currentFile": "當前檔案",
-      "currentFiles": "當前檔案",
-      "details": {
-        "source": "源路徑",
-        "destination": "目標路徑",
-        "startTime": "開始時間",
-        "uploadedFiles": "已上傳檔案",
-        "deletedFiles": "已刪除檔案",
-        "movedFiles": "已移動檔案",
-        "copiedFiles": "已複製檔案",
-        "syncedFiles": "已同步檔案",
-        "processedFiles": "已處理檔案",
-        "options": "選項"
       },
       "running": "執行中",
       "filesCount": {
@@ -1932,7 +1925,8 @@
         "upload": "上傳",
         "archivecreate": "封存",
         "archiveextract": "解壓縮封存",
-        "index": "目錄清單"
+        "index": "目錄清單",
+        "download": "下載"
       }
     },
     "fileViewer": {
@@ -2030,6 +2024,11 @@
       "delete": "刪除",
       "deleteDesc": "永久刪除符合過濾條件的檔案",
       "copyurl": "複製 URL",
+      "upload": "上傳",
+      "rename": "重新命名",
+      "cleanup": "清理",
+      "rmdirs": "刪除空目錄",
+      "archiveextract": "解壓縮封存",
       "copyUrlDesc": "為檔案生成公開下載 URL",
       "archivecreate": "封存",
       "archivecreateDesc": "將資料夾/檔案壓縮到封存檔案（Zip、Tar 等）中",
@@ -2064,7 +2063,8 @@
       "remoteSettings": "遠端設定",
       "indexSettings": "目錄清單設定",
       "index": "目錄清單",
-      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站"
+      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站",
+      "download": "下載"
     },
     "generalDetail": {
       "automations": "自動化",
@@ -3565,7 +3565,11 @@
       "viewOptions": "檢視選項",
       "showingItems": "顯示第 {{count}} 個，共 {{total}} 個",
       "decreaseIconSize": "縮小圖示大小",
-      "increaseIconSize": "放大圖示大小"
+      "increaseIconSize": "放大圖示大小",
+      "tabCount": {
+        "other": "{{count}} 個分頁"
+      },
+      "showTabs": "顯示已開啟的分頁"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3647,6 +3651,55 @@
       "useAsDefault": "預設使用這些選項",
       "dontAskAgain": "不再詢問（檔案瀏覽器偏好設定）",
       "start": "開始"
+    },
+    "conflicts": {
+      "exists": "「{{name}}」已存在",
+      "fileExists": "{{destination}} 中已有同名檔案。",
+      "folderExists": "{{destination}} 中已有同名資料夾。",
+      "mergeExplain": "合併會把傳入的檔案加入該資料夾。",
+      "thereNow": "現有",
+      "incoming": "傳入",
+      "replace": "取代",
+      "merge": "合併",
+      "skip": "略過",
+      "keepBoth": "保留兩者",
+      "replaceOrMerge": "取代或合併",
+      "forAll": "全部：",
+      "keptAs": "另存為「{{name}}」",
+      "skipped": "已略過",
+      "replaces": "取代那裡的檔案",
+      "merges": {
+        "newer": "合併，每個檔案保留較新的",
+        "keep": "合併，只加入缺少的檔案",
+        "replace": "合併，同名檔案會被取代"
+      },
+      "title": {
+        "other": "{{total}} 項中有 {{count}} 項已存在於 {{destination}}"
+      },
+      "others": {
+        "other": "其餘 {{count}} 項沒有衝突。"
+      },
+      "start": {
+        "copy": {
+          "other": "複製 {{count}} 項"
+        },
+        "move": {
+          "other": "移動 {{count}} 項"
+        },
+        "upload": {
+          "other": "上傳 {{count}} 項"
+        }
+      },
+      "skipAll": "全部略過",
+      "replaceWarning": "被取代的檔案無法找回，且此操作無法復原。",
+      "mergeWarning": "合併資料夾無法復原。",
+      "sameNames": "同名檔案：",
+      "sameNamesAll": "合併的資料夾中的同名檔案：",
+      "existingFiles": {
+        "newer": "保留較新的",
+        "keep": "保留已有的",
+        "replace": "以傳入的取代"
+      }
     }
   },
   "home": {
@@ -3758,7 +3811,6 @@
       "progress": "進度：",
       "of": "/",
       "eta": "預計剩餘時間：",
-      "elapsed": "已用時間:",
       "speed": "傳輸速度：",
       "transfers": "傳輸：",
       "checks": "校驗：",
@@ -3770,6 +3822,7 @@
       "serverMoves": "服務端移動：",
       "lastError": "最後錯誤：",
       "runningJobs": "執行中的任務",
+      "recentJobs": "最近的任務",
       "starting": "正在啟動...",
       "noRunning": "當前沒有正在執行的活動任務。"
     },
@@ -3846,7 +3899,6 @@
       "missingMountPoint": "unmount 節點設定中缺少「mountPoint」，且目標節點未提供掛載點",
       "missingStopServeTarget": "stop_serve 節點設定中同時缺少「targetNodeId」/「serverId」和「remoteName」",
       "rcCommandFailed": "RC 命令「{{command}}」失敗：{{error}}",
-      "invalidJobId": "批次提交傳回了無效的工作 ID：{{error}}",
       "unsupportedNodeType": "此平台或版本不支援工作流程節點類型「{{type}}」",
       "nodeCrashed": "節點「{{node}}」已當機：{{reason}}",
       "notificationFailed": "通知錯誤（{{kind}}）：{{error}}",
@@ -3938,7 +3990,9 @@
       "diskFull": "目標磁碟空間不足。",
       "fileLocked": "檔案當前已被鎖定或被其他處理程式佔用。",
       "readOnly": "目標檔案系統為只讀或受防寫。",
-      "ioError": "IO 錯誤：{{error}}"
+      "ioError": "IO 錯誤：{{error}}",
+      "intoItself": "無法將資料夾「{{name}}」複製或移動到其自身之中。",
+      "noItems": "未選擇任何項目。"
     },
     "upload": {
       "legacyBatch": "此上傳由過期的頁面發起。請重新載入應用程式後再試一次。",
@@ -3947,7 +4001,8 @@
       "invalidModifiedTime": "上傳包含無效的修改時間。",
       "sessionGone": "伺服器上已沒有此上傳，因為它已被取消或閒置過久。請重新開始上傳。",
       "invalidChunk": "上傳傳送了不屬於其任何檔案的資料。",
-      "incomplete": "上傳在所有檔案到達之前就已結束。"
+      "incomplete": "上傳在所有檔案到達之前就已結束。",
+      "filesFailed": "無法上傳的檔案：{{count}}"
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",
@@ -4023,7 +4078,8 @@
       "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務",
       "stopped": "工作已停止",
       "failed": "工作失敗",
-      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。"
+      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。",
+      "notRetryable": "無法重試此任務：只有在應用程式開啟後啟動、且失敗或已停止的任務才能重試。"
     },
     "cache": {
       "fetchConfigFailed": "取得遠端連線設定失敗",
@@ -4144,7 +4200,8 @@
     },
     "job": {
       "stopped": "任務已停止",
-      "deleted": "任務已刪除"
+      "deleted": "任務已刪除",
+      "retried": "任務 {{id}} 已重新執行"
     },
     "security": {
       "passwordRemoved": "密碼已移除",
@@ -4257,7 +4314,11 @@
     "reason": "正在執行活動操作：{{details}}",
     "mounts": "{{count}} 個掛載",
     "jobs": "{{count}} 個任務",
-    "serves": "{{count}} 個服務"
+    "serves": "{{count}} 個服務",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/秒",
+    "timeLeft": "剩餘 {{time}}",
+    "checked": "已檢查 {{count}} 個"
   },
   "notification": {
     "title": {
@@ -4348,6 +4409,26 @@
       "powerInhibited": "正在執行的操作正在阻止系統休眠。",
       "unmountFailed": "從 {{backend}} 卸除 {{remote}} 失敗：{{error}}",
       "serveStopFailed": "停止 {{backend}} 上 {{remote}} 的 {{protocol}} 服務失敗：{{error}}"
+    },
+    "jobTypes": {
+      "sync": "同步",
+      "copy": "複製",
+      "move": "移動",
+      "bisync": "雙向同步",
+      "check": "檢查",
+      "mount": "掛載",
+      "copyurl": "複製 URL",
+      "mkdir": "建立資料夾",
+      "cleanup": "清理",
+      "delete": "刪除",
+      "rename": "重新命名",
+      "rmdirs": "刪除空目錄",
+      "index": "目錄清單",
+      "upload": "上傳",
+      "download": "下載",
+      "archivecreate": "封存",
+      "archiveextract": "解壓縮封存",
+      "cryptcheck": "加密檢查"
     }
   },
   "repairSheet": {

@@ -84,8 +84,11 @@ export class DeleteRemoteModalComponent {
       .filter(s => this.pathService.getRemoteNameFromFs(s.params?.fs) === this.remoteName)
   );
 
+  /** The file browser names the remote as rclone writes it (`drive:`), a profile without the colon. */
   readonly activeJobs = computed(() =>
-    this.jobService.jobs().filter(j => j.remote_name === this.remoteName && j.status === 'Running')
+    this.jobService
+      .jobs()
+      .filter(j => j.status === 'Running' && j.remote_name.replace(/:$/, '') === this.remoteName)
   );
 
   readonly hasActiveOperations = computed(

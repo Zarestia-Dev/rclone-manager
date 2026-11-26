@@ -6,6 +6,7 @@ use serde_json::{Map, Value, json};
 
 use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::operations;
+use crate::utils::json_helpers::build_full_path;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
@@ -16,37 +17,44 @@ use super::index::{move_index_options, narrow_to_changes};
 use super::job::{JobMetadata, SubmitJobOptions};
 use super::job_chain::{ChainJob, ChainMode, run_chain};
 
-/// Helper to extract dry_run boolean from configs across case variants (dryRun, dry_run, DryRun).
-/// Respects Bisync specialization (where dry_run is configured on rclone_config rather than backend_options).
+/// The names a dry run was saved under before `dry_run`, rclone's own name for it.
+const LEGACY_DRY_RUN: [&str; 2] = ["dryRun", "DryRun"];
+
+/// Renames a dry run saved under an older name in `options` to `dry_run`; a `dry_run` already
+/// there wins.
+pub(crate) fn normalize_dry_run(options: &mut Map<String, Value>) {
+    for legacy in LEGACY_DRY_RUN {
+        if let Some(value) = options.remove(legacy) {
+            options.entry("dry_run").or_insert(value);
+        }
+    }
+}
+
+/// The dry run a set of options (read with `get`) asks for, under any name it was saved under.
+fn dry_run_in<'a>(get: impl Fn(&str) -> Option<&'a Value>) -> Option<bool> {
+    ["dry_run", "dryRun", "DryRun"]
+        .into_iter()
+        .find_map(&get)
+        .or_else(|| get("_config").and_then(|config| config.get("DryRun")))
+        .and_then(Value::as_bool)
+}
+
+/// Whether a profile runs as a dry run. Bisync keeps it with its own options; the others with
+/// the backend options (rclone's global flags), then their own.
 #[must_use]
 pub fn lookup_dry_run(
     rclone_config: &Value,
     backend_options: Option<&HashMap<String, Value>>,
     transfer_type: OperationType,
 ) -> bool {
-    let lookup_val = |val: &Value| -> Option<bool> {
-        val.get("dryRun")
-            .or_else(|| val.get("dry_run"))
-            .or_else(|| val.get("DryRun"))
-            .or_else(|| val.get("_config").and_then(|config| config.get("DryRun")))
-            .and_then(Value::as_bool)
-    };
-
-    let lookup_map = |map: &HashMap<String, Value>| -> Option<bool> {
-        map.get("DryRun")
-            .or_else(|| map.get("dry_run"))
-            .or_else(|| map.get("dryRun"))
-            .and_then(Value::as_bool)
-    };
-
+    let own = dry_run_in(|key| rclone_config.get(key));
     if transfer_type == OperationType::Bisync {
-        lookup_val(rclone_config).unwrap_or(false)
-    } else {
-        backend_options
-            .and_then(lookup_map)
-            .or_else(|| lookup_val(rclone_config))
-            .unwrap_or(false)
+        return own.unwrap_or(false);
     }
+    backend_options
+        .and_then(|options| dry_run_in(|key| options.get(key)))
+        .or(own)
+        .unwrap_or(false)
 }
 
 /// The path inside a remote. A named remote has no leading slash; a local path keeps its own.
@@ -92,24 +100,22 @@ impl GenericTransferParams {
             &self.rclone_config,
         );
 
+        // A dry run reaches rclone under one name, the flat `dry_run` every call reads; the
+        // names it was saved under go.
         let is_dry_run = self.resolve_dry_run();
         let mut backend_opts = self.backend_options.clone();
-
+        let body = builder.as_map_mut();
+        for key in ["dry_run", "dryRun", "DryRun"] {
+            body.remove(key);
+            if let Some(config) = body.get_mut("_config").and_then(Value::as_object_mut) {
+                config.remove(key);
+            }
+            if let Some(options) = backend_opts.as_mut() {
+                options.remove(key);
+            }
+        }
         if is_dry_run || self.dry_run.is_some() {
             builder.insert("dry_run", json!(is_dry_run));
-            builder.insert("dryRun", json!(is_dry_run));
-            if let Some(config) = builder
-                .as_map_mut()
-                .get_mut("_config")
-                .and_then(Value::as_object_mut)
-            {
-                config.remove("dry_run");
-                config.remove("dryRun");
-            }
-            let map = backend_opts.get_or_insert_with(HashMap::new);
-            map.remove("dry_run");
-            map.remove("dryRun");
-            map.insert("DryRun".to_string(), json!(is_dry_run));
         }
 
         match self.transfer_type {
@@ -220,17 +226,20 @@ impl GenericTransferParams {
             if dst_fs.ends_with(':') {
                 dst_root = dst_root.trim_start_matches('/').to_string();
             }
-            let filename = src_remote.split('/').next_back().unwrap_or(&src_remote);
-            let dst_remote = if dst_root.is_empty() {
-                filename.to_string()
-            } else {
-                format!("{}/{}", dst_root.trim_end_matches('/'), filename)
-            };
+            // Both sides are named from the file's folder, so the transfer rclone lists points
+            // at the file on each side (it takes the source's name and the destination's root).
+            let (src_dir, filename) = src_remote.rsplit_once('/').unwrap_or(("", &src_remote));
 
-            body.insert("srcFs".to_string(), Value::String(src_fs));
-            body.insert("srcRemote".to_string(), Value::String(src_remote));
-            body.insert("dstFs".to_string(), Value::String(dst_fs));
-            body.insert("dstRemote".to_string(), Value::String(dst_remote));
+            body.insert(
+                "srcFs".to_string(),
+                Value::String(build_full_path(&src_fs, src_dir)),
+            );
+            body.insert("srcRemote".to_string(), Value::String(filename.to_string()));
+            body.insert(
+                "dstFs".to_string(),
+                Value::String(build_full_path(&dst_fs, dst_root.trim_end_matches('/'))),
+            );
+            body.insert("dstRemote".to_string(), Value::String(filename.to_string()));
             body.insert("_path".to_string(), Value::String(endpoint.to_string()));
             Ok(())
         } else {
@@ -350,7 +359,7 @@ fn command_flags(body: &Value, schema: &Value) -> Result<Vec<String>, String> {
     for (key, value) in body {
         if matches!(
             key.as_str(),
-            "src" | "dst" | "action" | "_path" | "dryRun" | "_config" | "_filter"
+            "src" | "dst" | "action" | "_path" | "_config" | "_filter"
         ) {
             continue;
         }
@@ -389,7 +398,6 @@ pub(crate) async fn build_special_transfer_payload(
     if backend.is_librclone_local() {
         let object = body.as_object_mut().ok_or_else(|| invalid_option("body"))?;
         object.remove("_path");
-        object.remove("dryRun");
         return Ok((endpoint, body));
     }
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
@@ -409,7 +417,7 @@ pub(crate) async fn build_special_transfer_payload(
     args.extend(command_flags(&body, &schema)?);
     Ok((
         crate::rclone::endpoints::core::COMMAND,
-        backend.build_core_command_payload(command, args, true, Some(os)),
+        backend.build_core_command_payload(command, args, Some(os)),
     ))
 }
 
@@ -423,7 +431,7 @@ pub async fn submit_transfer_batch(
     common: &crate::rclone::commands::common::CommonConfigParams,
     chain: ChainMode,
     metadata: JobMetadata,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let dry_run = metadata.dry_run;
     if target_pairs.is_empty()
         || target_pairs
@@ -547,9 +555,7 @@ pub async fn submit_transfer_batch(
 
     // Every input is validated and encoded above, before the first mutating request is sent.
     if !special_jobs.is_empty() {
-        return run_chain(app, backend, special_jobs, chain)
-            .await
-            .map(|job_id| job_id.to_string());
+        return run_chain(app, backend, special_jobs, chain).await;
     }
     crate::rclone::commands::job::submit_batch_job_with_options(
         app,
@@ -567,7 +573,7 @@ pub async fn start_profile_batch(
     app: AppHandle,
     transfer_type: OperationType,
     params: ProfileParams,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let resolved = crate::rclone::commands::common::resolve_profile_settings(
         &app,
         &params.remote_name,
@@ -585,7 +591,7 @@ pub(crate) async fn start_resolved_profile_batch(
     resolved: ResolvedProfile,
     transfer_type: OperationType,
     params: ProfileParams,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let backend = resolved.backend;
     let mut common = resolved.params;
 
@@ -800,7 +806,7 @@ mod batch_tests {
             &self,
             operation: OperationType,
             common: &CommonConfigParams,
-        ) -> Result<String, String> {
+        ) -> Result<u64, String> {
             let pairs = common
                 .source
                 .iter()
@@ -873,9 +879,10 @@ mod batch_tests {
         let inputs = requests[2].1["inputs"].as_array().unwrap();
         assert_eq!(inputs.len(), 2);
         assert_eq!(inputs[0]["_path"], operations::COPYFILE);
-        assert_eq!(inputs[0]["srcFs"], "drive,region='a''b,c':");
-        assert_eq!(inputs[0]["srcRemote"], "first/旅行.txt");
-        assert_eq!(inputs[0]["dstRemote"], "backup/旅行.txt");
+        assert_eq!(inputs[0]["srcFs"], "drive,region='a''b,c':first");
+        assert_eq!(inputs[0]["srcRemote"], "旅行.txt");
+        assert_eq!(inputs[0]["dstFs"], "target:backup");
+        assert_eq!(inputs[0]["dstRemote"], "旅行.txt");
         assert_eq!(inputs[1]["_path"], crate::rclone::endpoints::sync::COPY);
         assert_eq!(inputs[1]["srcFs"], "drive,region='a''b,c':second/Arşiv");
         assert_eq!(inputs[1]["dstFs"], "target:backup");
@@ -999,7 +1006,8 @@ mod tests {
                     params.rclone_config = json!({"one_way": true});
                 }
                 let body = params.to_rclone_body(false).unwrap();
-                assert_eq!(body["_config"]["DryRun"], dry_run);
+                assert_eq!(body["dry_run"], dry_run);
+                assert!(body["_config"].get("DryRun").is_none());
                 assert_eq!(body["_config"]["Transfers"], 2);
                 assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg", "a,b.png"]));
                 assert_eq!(
@@ -1102,7 +1110,8 @@ mod tests {
             params.rclone_config =
                 json!({"_config": {"dry_run": !dry_run, "dryRun": !dry_run, "DryRun": !dry_run}});
             let body = params.to_rclone_body(false).unwrap();
-            assert_eq!(body["_config"]["DryRun"], dry_run);
+            assert_eq!(body["dry_run"], dry_run);
+            assert!(body["_config"].get("DryRun").is_none());
             assert!(body["_config"].get("dry_run").is_none());
             assert!(body["_config"].get("dryRun").is_none());
         }
@@ -1170,12 +1179,13 @@ mod tests {
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
         assert_eq!(obj.get("dstFs").unwrap(), "dst:");
-        assert_eq!(obj.get("dryRun").unwrap(), true);
+        // One name reaches rclone: the flat `dry_run`.
+        assert!(obj.get("dryRun").is_none());
         assert_eq!(obj.get("dry_run").unwrap(), true);
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
         assert_eq!(config.get("transfers").unwrap(), 4);
-        assert_eq!(config.get("DryRun").unwrap(), true);
+        assert!(config.get("DryRun").is_none());
     }
 
     #[test]
@@ -1291,8 +1301,8 @@ mod tests {
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
         assert_eq!(obj.get("srcRemote").unwrap(), "file.txt");
-        assert_eq!(obj.get("dstFs").unwrap(), "dst:");
-        assert_eq!(obj.get("dstRemote").unwrap(), "backup/file.txt");
+        assert_eq!(obj.get("dstFs").unwrap(), "dst:backup");
+        assert_eq!(obj.get("dstRemote").unwrap(), "file.txt");
         assert_eq!(obj.get("_path").unwrap(), operations::COPYFILE);
     }
 
@@ -1364,8 +1374,8 @@ mod tests {
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
         assert_eq!(obj.get("srcRemote").unwrap(), "file.txt");
-        assert_eq!(obj.get("dstFs").unwrap(), "dst:");
-        assert_eq!(obj.get("dstRemote").unwrap(), "backup/file.txt");
+        assert_eq!(obj.get("dstFs").unwrap(), "dst:backup");
+        assert_eq!(obj.get("dstRemote").unwrap(), "file.txt");
         assert_eq!(obj.get("_path").unwrap(), operations::MOVEFILE);
     }
 
@@ -1446,7 +1456,7 @@ mod tests {
                 params.rclone_config = json!({});
                 params.runtime_remote_options = None;
                 let body = params.to_rclone_body(false).unwrap();
-                assert_eq!(body["_config"]["DryRun"], true);
+                assert_eq!(body["dry_run"], true);
                 assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg", "a,b.png"]));
                 if is_dir {
                     assert_eq!(body["_path"], operations::DELETE);
@@ -1644,7 +1654,7 @@ mod tests {
             let mut args = vec![params.source.clone(), params.dest.clone()];
             args.extend(command_flags(&body, &schema).unwrap());
             assert!(args.contains(&"--retries=1".into()));
-            let payload = backend.build_core_command_payload("cryptcheck", args, false, None);
+            let payload = backend.build_core_command_payload("cryptcheck", args, None);
             let result = rpc(crate::rclone::endpoints::core::COMMAND, &payload);
             assert_eq!(result["error"], !filtered, "{result}");
         }
@@ -1754,14 +1764,34 @@ mod tests {
 
         assert_eq!(obj.get("path1").unwrap(), "remote:p1");
         assert_eq!(obj.get("path2").unwrap(), "local:/p2");
-        assert_eq!(obj.get("dryRun").unwrap(), true);
+        // One name reaches rclone: the flat `dry_run`.
+        assert!(obj.get("dryRun").is_none());
         assert_eq!(obj.get("dry_run").unwrap(), true);
         assert_eq!(obj.get("resync").unwrap(), true);
-        assert_eq!(
-            obj.get("_config")
-                .and_then(|c| c.get("DryRun"))
-                .and_then(Value::as_bool),
-            Some(true)
-        );
+        assert!(obj.get("_config").and_then(|c| c.get("DryRun")).is_none());
+    }
+
+    #[test]
+    fn a_dry_run_saved_under_an_older_name_is_renamed_and_still_read() {
+        let mut saved = json!({ "dryRun": true, "DryRun": false, "transfers": 4 });
+        assert!(lookup_dry_run(&saved, None, OperationType::Bisync));
+        normalize_dry_run(saved.as_object_mut().unwrap());
+        assert_eq!(saved, json!({ "dry_run": true, "transfers": 4 }));
+        // A `dry_run` already there wins over an older name.
+        let mut both = json!({ "dry_run": false, "dryRun": true });
+        normalize_dry_run(both.as_object_mut().unwrap());
+        assert_eq!(both, json!({ "dry_run": false }));
+        // The backend options decide for the operations other than bisync.
+        let backend = HashMap::from([("DryRun".to_string(), json!(true))]);
+        assert!(lookup_dry_run(
+            &json!({}),
+            Some(&backend),
+            OperationType::Sync
+        ));
+        assert!(!lookup_dry_run(
+            &json!({}),
+            Some(&backend),
+            OperationType::Bisync
+        ));
     }
 }

@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "Görevi Durdur",
-        "delete": "Görevi Sil"
+        "delete": "Görevi Sil",
+        "retry": "Görevi Yeniden Dene"
       },
       "empty": "Görev bulunamadı"
     },
@@ -1902,6 +1903,18 @@
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
       "removeJob": "Kaldır",
+      "clearFinished": "Bitenleri temizle",
+      "openDestination": "Hedefi aç",
+      "undo": "Geri Al",
+      "timeLeft": "{{time}} kaldı",
+      "failedOf": {
+        "one": "{{count}}/{{total}} başarısız",
+        "other": "{{count}}/{{total}} başarısız"
+      },
+      "itemsCount": {
+        "one": "{{count}} öğe",
+        "other": "{{count}} öğe"
+      },
       "resumeUpload": "Yüklemeye devam et",
       "resumeWithFiles": "Devam etmek için aynı dosyaları seçin",
       "resumeWithFolder": "Devam etmek için aynı klasörü seçin",
@@ -1909,24 +1922,6 @@
       "uploadPausedReselect": {
         "one": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin",
         "other": "Duraklatıldı: devam etmek için {{count}} dosyayı yeniden seçin"
-      },
-      "progress": "İlerleme",
-      "files": "Dosyalar",
-      "speed": "Hız",
-      "eta": "Kalan Süre",
-      "currentFile": "Mevcut Dosya",
-      "currentFiles": "Mevcut Dosyalar",
-      "details": {
-        "source": "Kaynak",
-        "destination": "Hedef",
-        "startTime": "Başlangıç Zamanı",
-        "uploadedFiles": "Yüklenen dosyalar",
-        "deletedFiles": "Silinen dosyalar",
-        "movedFiles": "Taşınan dosyalar",
-        "copiedFiles": "Kopyalanan dosyalar",
-        "syncedFiles": "Senkronize edilen dosyalar",
-        "processedFiles": "İşlenen dosyalar",
-        "options": "Seçenekler"
       },
       "running": "Çalışıyor",
       "filesCount": {
@@ -1947,7 +1942,8 @@
         "upload": "Yükle",
         "archivecreate": "Arşivle",
         "archiveextract": "Arşivi Çıkart",
-        "index": "Dizin Listeleri"
+        "index": "Dizin Listeleri",
+        "download": "İndir"
       }
     },
     "fileViewer": {
@@ -2047,6 +2043,11 @@
       "delete": "Sil",
       "deleteDesc": "Filtrelerle eşleşen dosyaları kalıcı olarak sil",
       "copyurl": "URL Kopyala",
+      "upload": "Yükleme",
+      "rename": "Yeniden Adlandırma",
+      "cleanup": "Temizleme",
+      "rmdirs": "Boş Dizinleri Kaldırma",
+      "archiveextract": "Arşivi Çıkartma",
       "copyUrlDesc": "Dosyalar için genel indirme bağlantıları (URL) oluşturun",
       "archivecreate": "Arşivle",
       "archivecreateDesc": "Klasörleri/dosyaları bir arşive (Zip, Tar vb.) sıkıştırın",
@@ -2081,7 +2082,8 @@
       "remoteSettings": "Uzak Bağlantı Ayarları",
       "indexSettings": "Dizin Listeleri Ayarları",
       "index": "Dizin Listeleri",
-      "indexDesc": "Statik web siteleri için klasörlere göz atılabilir listeler yazar"
+      "indexDesc": "Statik web siteleri için klasörlere göz atılabilir listeler yazar",
+      "download": "İndirme"
     },
     "generalDetail": {
       "automations": "Otomasyonlar",
@@ -3608,7 +3610,12 @@
       "viewOptions": "Görünüm Seçenekleri",
       "showingItems": "{{total}} ögeden {{count}} tanesi gösteriliyor",
       "decreaseIconSize": "Simge boyutunu küçült",
-      "increaseIconSize": "Simge boyutunu büyüt"
+      "increaseIconSize": "Simge boyutunu büyüt",
+      "tabCount": {
+        "one": "{{count}} Sekme",
+        "other": "{{count}} Sekme"
+      },
+      "showTabs": "Açık Sekmeleri Göster"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3702,6 +3709,60 @@
       "useAsDefault": "Bu seçenekleri varsayılan olarak kullan",
       "dontAskAgain": "Bir daha sorma (Dosya Gezgini Tercihleri)",
       "start": "Başlat"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” zaten var",
+      "fileExists": "{{destination}} içinde bu adda bir dosya zaten var.",
+      "folderExists": "{{destination}} içinde bu adda bir klasör zaten var.",
+      "mergeExplain": "Birleştirme, gelen dosyaları bu klasöre ekler.",
+      "thereNow": "Şu an orada",
+      "incoming": "Gelen",
+      "replace": "Değiştir",
+      "merge": "Birleştir",
+      "skip": "Atla",
+      "keepBoth": "İkisini de tut",
+      "replaceOrMerge": "Değiştir veya birleştir",
+      "forAll": "Tümü için:",
+      "keptAs": "“{{name}}” adıyla eklenir",
+      "skipped": "Atlanır",
+      "replaces": "Oradaki dosyanın yerini alır",
+      "merges": {
+        "newer": "Birleştirilir, her dosyanın yeni olanı tutulur",
+        "keep": "Birleştirilir, yalnızca eksik dosyalar eklenir",
+        "replace": "Birleştirilir, aynı adlı dosyalar değiştirilir"
+      },
+      "title": {
+        "one": "{{total}} ögeden {{count}} tanesi {{destination}} içinde zaten var",
+        "other": "{{total}} ögeden {{count}} tanesi {{destination}} içinde zaten var"
+      },
+      "others": {
+        "one": "Diğer {{count}} öge çakışmıyor.",
+        "other": "Diğer {{count}} öge çakışmıyor."
+      },
+      "start": {
+        "copy": {
+          "one": "{{count}} ögeyi kopyala",
+          "other": "{{count}} ögeyi kopyala"
+        },
+        "move": {
+          "one": "{{count}} ögeyi taşı",
+          "other": "{{count}} ögeyi taşı"
+        },
+        "upload": {
+          "one": "{{count}} ögeyi yükle",
+          "other": "{{count}} ögeyi yükle"
+        }
+      },
+      "skipAll": "Tümünü atla",
+      "replaceWarning": "Değiştirilen dosyalar geri getirilemez ve bu işlem geri alınamaz.",
+      "mergeWarning": "Klasör birleştirme geri alınamaz.",
+      "sameNames": "Aynı adlı dosyalar:",
+      "sameNamesAll": "Birleştirilen klasörlerdeki aynı adlı dosyalar:",
+      "existingFiles": {
+        "newer": "Yeni olanı tut",
+        "keep": "Oradakini tut",
+        "replace": "Gelenle değiştir"
+      }
     }
   },
   "home": {
@@ -3814,7 +3875,6 @@
       "progress": "İlerleme:",
       "of": "/",
       "eta": "Tahmini Süre:",
-      "elapsed": "Geçen süre:",
       "speed": "Transfer Hızı:",
       "transfers": "Transferler:",
       "checks": "Kontroller:",
@@ -3826,6 +3886,7 @@
       "serverMoves": "Sunucu Tarafı Taşımalar:",
       "lastError": "Son Hata:",
       "runningJobs": "Çalışan İşler",
+      "recentJobs": "Son İşler",
       "starting": "Başlatılıyor...",
       "noRunning": "Şu anda çalışan aktif iş yok."
     },
@@ -3904,7 +3965,6 @@
       "missingMountPoint": "unmount düğüm yapılandırmasında 'mountPoint' eksik ve hedef düğüm bir bağlama noktası üretmedi",
       "missingStopServeTarget": "stop_serve düğüm yapılandırmasında hem 'targetNodeId'/'serverId' hem de 'remoteName' eksik",
       "rcCommandFailed": "RC komutu '{{command}}' başarısız oldu: {{error}}",
-      "invalidJobId": "Toplu gönderimden geçersiz iş kimliği döndü: {{error}}",
       "unsupportedNodeType": "'{{type}}' iş akışı düğüm türü bu platformda veya sürümde desteklenmiyor",
       "nodeCrashed": "'{{node}}' düğümü çöktü: {{reason}}",
       "notificationFailed": "Bildirim hatası ({{kind}}): {{error}}",
@@ -3996,7 +4056,9 @@
       "diskFull": "Hedef disk veya sürücü dolu. Yeterli boş disk alanı yok.",
       "fileLocked": "Dosya kilitli veya başka bir işlem tarafından kullanılıyor.",
       "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı.",
-      "ioError": "Giriş/Çıkış hatası: {{error}}"
+      "ioError": "Giriş/Çıkış hatası: {{error}}",
+      "intoItself": "“{{name}}” klasörü kendi içine kopyalanamaz veya taşınamaz.",
+      "noItems": "Hiçbir öğe seçilmedi."
     },
     "upload": {
       "legacyBatch": "Bu yükleme eski bir sayfa tarafından başlatıldı. Uygulamayı yeniden yükleyip tekrar deneyin.",
@@ -4005,7 +4067,8 @@
       "invalidModifiedTime": "Yükleme geçersiz bir değiştirilme zamanı içeriyor.",
       "sessionGone": "Bu yükleme iptal edildiği veya çok uzun süre hareketsiz kaldığı için artık sunucuda yok. Yeniden başlatın.",
       "invalidChunk": "Yükleme, dosyalarının hiçbirine ait olmayan veri gönderdi.",
-      "incomplete": "Yükleme, tüm dosyaları ulaşmadan bitirildi."
+      "incomplete": "Yükleme, tüm dosyaları ulaşmadan bitirildi.",
+      "filesFailed": "Yüklenemeyen dosyalar: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",
@@ -4081,7 +4144,8 @@
       "profileNotRunning": "{{remote}} üzerinde '{{profile}}' profili için etkin bir {{jobType}} işi bulunamadı",
       "stopped": "İş durduruldu",
       "failed": "İş başarısız oldu",
-      "lost": "Rclone bu işi artık tanımıyor. İş bittikten sonra süresi doldu veya motor yeniden başlatıldı; bu yüzden sonucu alınamıyor."
+      "lost": "Rclone bu işi artık tanımıyor. İş bittikten sonra süresi doldu veya motor yeniden başlatıldı; bu yüzden sonucu alınamıyor.",
+      "notRetryable": "Bu iş yeniden çalıştırılamaz: yalnızca uygulama açıldıktan sonra başlatılmış, başarısız olan ya da durdurulan bir iş yeniden çalıştırılabilir."
     },
     "cache": {
       "fetchConfigFailed": "Uzak bağlantı yapılandırması alınamadı",
@@ -4203,7 +4267,8 @@
     },
     "job": {
       "stopped": "İş başarıyla durduruldu",
-      "deleted": "İş başarıyla silindi"
+      "deleted": "İş başarıyla silindi",
+      "retried": "İş {{id}} yeniden çalışıyor"
     },
     "security": {
       "passwordRemoved": "Parola başarıyla kaldırıldı",
@@ -4316,7 +4381,11 @@
     "reason": "Aktif işlemler devam ediyor: {{details}}",
     "mounts": "{{count}} bağlantı",
     "jobs": "{{count}} iş",
-    "serves": "{{count}} sunucu"
+    "serves": "{{count}} sunucu",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/sn",
+    "timeLeft": "{{time}} kaldı",
+    "checked": "{{count}} dosya kontrol edildi"
   },
   "notification": {
     "title": {
@@ -4407,6 +4476,26 @@
       "powerInhibited": "Aktif işlemler sistemin uyku moduna geçmesini engelliyor.",
       "unmountFailed": "{{backend}} sistemindeki {{remote}} bağlantısı kesilemedi: {{error}}",
       "serveStopFailed": "{{backend}} üzerindeki {{remote}} için {{protocol}} sunucusu durdurulamadı: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Senkronizasyon",
+      "copy": "Kopyalama",
+      "move": "Taşıma",
+      "bisync": "Çift Yönlü Senkronizasyon",
+      "check": "Denetim",
+      "mount": "Bağlama",
+      "copyurl": "URL Kopyalama",
+      "mkdir": "Klasör Oluşturma",
+      "cleanup": "Temizleme",
+      "delete": "Silme",
+      "rename": "Yeniden Adlandırma",
+      "rmdirs": "Boş Dizinleri Kaldırma",
+      "index": "Dizin Listeleri",
+      "upload": "Yükleme",
+      "download": "İndirme",
+      "archivecreate": "Arşivleme",
+      "archiveextract": "Arşivi Çıkartma",
+      "cryptcheck": "Şifreli Denetim"
     }
   },
   "repairSheet": {

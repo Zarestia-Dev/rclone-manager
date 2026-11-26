@@ -23,6 +23,7 @@ pub fn build_send_to_params(
         origin: Some(crate::utils::types::origin::Origin::FileManager),
         group: Some("send_to".to_string()),
         options: None,
+        targets: Default::default(),
     }
 }
 /// Runs a "Send to" transfer: builds the upload from the command line and starts it.
@@ -35,7 +36,7 @@ pub async fn execute(
     path: Option<String>,
     sources: Vec<std::path::PathBuf>,
     cwd: Option<&std::path::Path>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     if crate::services::settings::access::is_locked(app) {
         return Err(crate::services::settings::access::locked_error());
     }
@@ -56,7 +57,7 @@ pub async fn execute_when_ready(
     path: Option<String>,
     sources: Vec<std::path::PathBuf>,
     cwd: Option<&std::path::Path>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     // A locked vault never starts the engine; `execute` refuses at once.
     if !crate::services::settings::access::is_locked(app) && !wait_for_engine(app).await {
         return Err("the engine did not start in time".into());

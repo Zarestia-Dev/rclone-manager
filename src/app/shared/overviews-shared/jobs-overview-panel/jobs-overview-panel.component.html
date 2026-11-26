@@ -100,182 +100,33 @@
             <span appPill size="xs" tone="dim">{{ runningJobs().length }}</span>
           </div>
 
-          <div class="running-jobs-list">
-            @for (vm of runningJobViewModels(); track vm.job.execute_id || vm.job.jobid) {
-              <div
-                class="running-job-card"
-                (click)="onJobRowClick(vm.job)"
-                (keydown.enter)="$event.target === $event.currentTarget && onJobRowClick(vm.job)"
-                tabindex="0"
-                role="button"
-                [attr.title]="'common.viewDetails' | translate"
-              >
-                <!-- Card Header: Identity + Stop Action -->
-                <div class="card-header">
-                  <div class="card-identity">
-                    <div class="job-icon-wrap" [attr.data-tone]="vm.typeTone">
-                      <mat-icon [svgIcon]="vm.typeIcon" [class]="vm.animationClass"></mat-icon>
-                    </div>
-
-                    <div class="job-details">
-                      <div class="job-title-row">
-                        <span class="job-title truncate">{{ vm.label }}</span>
-                        <span appPill tone="dim" size="xs" class="truncate"
-                          >#{{ vm.job.jobid }}</span
-                        >
-                        @if (vm.job.remote_name) {
-                          <span appPill tone="dim" size="xs" [attr.title]="vm.job.remote_name">
-                            <mat-icon svgIcon="cloud"></mat-icon>
-                            <span class="truncate">{{ vm.job.remote_name }}</span>
-                          </span>
-                        }
-                        <app-starter-pill [starter]="vm.job.starter" />
-                        @if (vm.origin; as origin) {
-                          <span appPill size="xs" [tone]="origin.tone">
-                            {{ origin.labelKey | translate }}
-                          </span>
-                        }
-                        @if (vm.job.dry_run) {
-                          <span appPill tone="accent" size="xs">
-                            {{ 'detailShared.jobs.dryRun' | translate }}
-                          </span>
-                        }
-                      </div>
-
-                      <div class="job-path-row" [attr.title]="vm.job.destination || vm.job.source">
-                        <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
-                        <span class="path-text truncate">{{
-                          vm.job.destination || vm.job.source
-                        }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    class="action-button"
-                    (click)="onStopJobClick(vm.job, $event)"
-                    [attr.title]="'detailShared.jobs.actions.stop' | translate"
-                  >
-                    <mat-icon svgIcon="stop" data-tone="warn"></mat-icon>
-                  </button>
-                </div>
-
-                <!-- Progress Section -->
-                @let jStats = vm.job.stats;
-                @let hasTotal = jStats && jStats.totalBytes > 0;
-
-                <div class="card-progress-section">
-                  <div class="progress-info-row">
-                    <span class="bytes-info">
-                      @if (jStats) {
-                        {{ jStats.bytes | formatFileSize }}
-                        @if (hasTotal) {
-                          <span class="dim-slash">/</span> {{ jStats.totalBytes | formatFileSize }}
-                        }
-                      } @else {
-                        {{ 0 | formatFileSize }}
-                      }
-                    </span>
-
-                    @if (hasTotal) {
-                      <span class="percentage-badge"
-                        >{{ vm.progressPercentage | formatNumber: 1 }}%</span
-                      >
-                    }
-                  </div>
-
-                  <mat-progress-bar
-                    [mode]="
-                      hasTotal
-                        ? 'determinate'
-                        : jStats && jStats.bytes > 0
-                          ? 'indeterminate'
-                          : 'determinate'
-                    "
-                    [value]="vm.progressPercentage"
-                    class="job-progress-bar"
-                  ></mat-progress-bar>
-                </div>
-
-                <!-- Footer Metrics: Speed, ETA, Transfers -->
-                <div class="card-metrics-row">
-                  @if (jStats) {
-                    <div
-                      appPill
-                      tone="primary"
-                      size="xs"
-                      [attr.title]="'generalOverview.jobs.speed' | translate"
-                    >
-                      <mat-icon svgIcon="bolt"></mat-icon>
-                      <span>{{
-                        jStats.speed > 0
-                          ? (jStats.speed | formatRateValue)
-                          : ('generalOverview.jobs.starting' | translate)
-                      }}</span>
-                    </div>
-
-                    @if (jStats.eta && jStats.eta > 0) {
-                      <div
-                        appPill
-                        tone="accent"
-                        size="xs"
-                        [attr.title]="'generalOverview.jobs.eta' | translate"
-                      >
-                        <mat-icon svgIcon="clock"></mat-icon>
-                        <span>{{ jStats.eta | formatEta }}</span>
-                      </div>
-                    }
-
-                    @if (jStats.elapsedTime > 0) {
-                      <div
-                        appPill
-                        tone="dim"
-                        size="xs"
-                        [attr.title]="'generalOverview.jobs.elapsed' | translate"
-                      >
-                        <mat-icon svgIcon="clock-rotate-left"></mat-icon>
-                        <span>{{ jStats.elapsedTime | formatTime }}</span>
-                      </div>
-                    }
-
-                    @if (jStats.totalTransfers > 0) {
-                      <div
-                        appPill
-                        tone="dim"
-                        size="xs"
-                        [attr.title]="'generalOverview.jobs.transfers' | translate"
-                      >
-                        <mat-icon svgIcon="file"></mat-icon>
-                        <span>{{ jStats.transfers }} / {{ jStats.totalTransfers }}</span>
-                      </div>
-                    }
-
-                    @if (jStats.errors > 0) {
-                      <div
-                        appPill
-                        tone="warn"
-                        size="xs"
-                        [attr.title]="'generalOverview.jobs.errors' | translate"
-                      >
-                        <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                        <span>{{ jStats.errors }}</span>
-                      </div>
-                    }
-                  } @else {
-                    <div appPill tone="primary" size="xs">
-                      <mat-icon svgIcon="bolt"></mat-icon>
-                      <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
+          <app-jobs-panel [config]="{ jobs: runningJobs(), hideTitle: true }"></app-jobs-panel>
         </div>
       }
 
-      @if (activeJobs === 0) {
+      @if (recentJobs().length > 0) {
+        <details
+          #recent
+          class="recent-jobs"
+          [open]="recentOpen()"
+          (toggle)="setRecentOpen(recent.open)"
+        >
+          <summary class="section-heading">
+            <mat-icon svgIcon="chevron-right" class="disclosure-icon" aria-hidden="true"></mat-icon>
+            <mat-icon svgIcon="clock-rotate-left" aria-hidden="true"></mat-icon>
+            <span>{{ 'generalOverview.jobs.recentJobs' | translate }}</span>
+            <span appPill size="xs" tone="dim">{{ recentJobs().length }}</span>
+          </summary>
+          @if (recentOpen()) {
+            <div class="recent-jobs-body">
+              <app-jobs-panel
+                [config]="{ jobs: recentJobs(), hideTitle: true }"
+                (deleteJob)="onDeleteJob($event)"
+              ></app-jobs-panel>
+            </div>
+          }
+        </details>
+      } @else if (activeJobs === 0) {
         <div class="empty-state" role="status">
           <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
           <p>{{ 'generalOverview.jobs.noRunning' | translate }}</p>

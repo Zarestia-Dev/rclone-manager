@@ -290,7 +290,7 @@ async fn stop_active_jobs(app: AppHandle, backends: Vec<Backend>) -> Result<(), 
             let app = app.clone();
             let backend = backend.clone();
             tasks.push(crate::utils::spawn(async move {
-                stop_job_on_backend(app, backend, job.jobid, job.remote_name).await
+                stop_job_on_backend(app, backend, job.jobid).await
             }));
         }
     }

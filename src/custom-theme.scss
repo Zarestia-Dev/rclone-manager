@@ -1153,6 +1153,12 @@ mat-accordion:not(.dull) {
   }
 }
 
+// The file browser's operations list fills its bottom sheet edge to edge. The sheet's panelClass
+// lands on the overlay pane around the container, not on the container itself.
+.operations-sheet .mat-bottom-sheet-container {
+  padding: 0;
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

@@ -3,9 +3,14 @@ use crate::context::BackendContext;
 use crate::services::paths::AppPaths;
 use crate::services::settings::access;
 use crate::utils::io::file_stream::open_asset;
-use crate::utils::io::staged_file::{CopyError, StagedFile, copy_in_chunks};
-use crate::utils::types::events::{FILE_DOWNLOAD_PROGRESS, FileDownloadProgressPayload};
+use crate::utils::io::staged_file::{CopyError, StagedFile};
+use crate::utils::json_helpers::build_full_path;
+use crate::utils::types::jobs::JobType;
+use crate::utils::types::origin::Origin;
 use log::debug;
+use rclone_manager_core::rclone::backend::BackendManager;
+use rclone_manager_core::rclone::commands::job::JobMetadata;
+use rclone_manager_core::rclone::commands::own_job::{FileCopy, OwnJob};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Window};
@@ -278,13 +283,14 @@ pub async fn open_file_natively(
     path: String,
     file_name: String,
     is_local: bool,
+    origin: Option<Origin>,
 ) -> Result<String, String> {
     let revision = access::revision(app.backend());
     with_file_access(&app, revision, async {
         if is_local {
             open_local_file(&app, &remote, &path)
         } else {
-            preview_remote_file(&app, revision, remote, path, &file_name).await
+            preview_remote_file(&app, revision, remote, path, &file_name, origin).await
         }
     })
     .await
@@ -324,6 +330,7 @@ async fn preview_remote_file(
     remote: String,
     path: String,
     file_name: &str,
+    origin: Option<Origin>,
 ) -> Result<String, String> {
     let cache_dir = temp_views_dir(app)?;
     tokio::fs::create_dir_all(&cache_dir)
@@ -348,13 +355,19 @@ async fn preview_remote_file(
     let mut file = tokio::fs::File::create(&destination)
         .await
         .map_err(io_error)?;
-    copy_in_chunks(&mut reader, &mut file, |_| {
+    // An opened file leaves no job behind unless it fails: it has nowhere to be found again.
+    let (job, copy) = download_job(app, &remote, &path, "", size, origin, true).await;
+    let result = async {
+        job.copy_file(copy, &mut reader, &mut file, || {
+            access::require_session(app.backend(), revision)
+        })
+        .await
+        .map_err(copy_error)?;
+        file.flush().await.map_err(io_error)?;
         access::require_session(app.backend(), revision)
-    })
-    .await
-    .map_err(copy_error)?;
-    file.flush().await.map_err(io_error)?;
-    access::require_session(app.backend(), revision)?;
+    }
+    .await;
+    job.finish(result.err()).await?;
 
     // The external application may still be reading it after this command returns.
     // Startup/shutdown cleanup owns successful preview directories.
@@ -402,17 +415,46 @@ pub fn remove_temp_views(cache_dir: &Path) {
 
 // Downloads
 
-/// An empty file is complete as soon as it exists.
-fn percentage(done: u64, total: u64) -> f64 {
-    if total == 0 {
-        100.0
-    } else {
-        done as f64 / total as f64 * 100.0
-    }
+/// Lists a download of `path` on `remote` into `destination` (empty for a file opened in another
+/// app) among the jobs of the active engine, and names the file it copies.
+async fn download_job(
+    app: &AppHandle,
+    remote: &str,
+    path: &str,
+    destination: &str,
+    size: u64,
+    origin: Option<Origin>,
+    transient: bool,
+) -> (OwnJob, FileCopy) {
+    let backend = app.backend().state::<BackendManager>().get_active().await;
+    let (folder, name) = path.rsplit_once('/').unwrap_or(("", path));
+    let metadata = JobMetadata::new(
+        remote,
+        JobType::Download,
+        vec![build_full_path(remote, path)],
+        destination,
+    )
+    .with_origin(origin);
+    let job = OwnJob::start(app.backend(), &backend.name, metadata, transient, size, 1).await;
+    let copy = FileCopy {
+        name: name.to_string(),
+        src_fs: build_full_path(remote, folder),
+        dst_fs: destination_folder(destination),
+        size,
+    };
+    (job, copy)
 }
 
-/// Minimum time between progress events.
-const PROGRESS_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
+/// The folder a download lands in; a content URI names no folder.
+fn destination_folder(destination: &str) -> String {
+    if destination.contains("://") {
+        return String::new();
+    }
+    Path::new(destination)
+        .parent()
+        .map(|parent| parent.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
 
 #[tauri::command]
 pub async fn download_file(
@@ -421,12 +463,13 @@ pub async fn download_file(
     path: String,
     destination: String,
     is_local: bool,
+    origin: Option<Origin>,
 ) -> Result<(), String> {
     let revision = access::revision(app.backend());
     with_file_access(
         &app,
         revision,
-        save_to_destination(&app, revision, remote, path, destination, is_local),
+        save_to_destination(&app, revision, remote, path, destination, is_local, origin),
     )
     .await
 }
@@ -438,6 +481,7 @@ async fn save_to_destination(
     path: String,
     destination: String,
     is_local: bool,
+    origin: Option<Origin>,
 ) -> Result<(), String> {
     // Local files are addressed through rclone as a bare path.
     let (remote, path) = if is_local {
@@ -457,40 +501,24 @@ async fn save_to_destination(
         .map_err(io_error)?;
     let size = source.total();
     let mut reader = source.into_reader(0, size).await.map_err(io_error)?;
-
     let mut target = open_destination(&destination).await?;
-    let progress = |downloaded: u64| {
-        crate::services::bridge::emit(
-            FILE_DOWNLOAD_PROGRESS,
-            FileDownloadProgressPayload {
-                destination: destination.clone(),
-                downloaded,
-                total: Some(size),
-                percentage: Some(percentage(downloaded, size)),
-            },
-        );
-    };
 
-    let mut last_progress = std::time::Instant::now();
-    let downloaded = copy_in_chunks(&mut reader, target.writer(), |downloaded| {
-        access::require_session(app.backend(), revision)?;
-        if downloaded < size && last_progress.elapsed() >= PROGRESS_INTERVAL {
-            progress(downloaded);
-            last_progress = std::time::Instant::now();
-        }
-        Ok(())
-    })
-    .await
-    .map_err(copy_error)?;
-
-    drop(reader);
-    access::require_session(app.backend(), revision)?;
-    target
-        .commit(Path::new(&destination))
+    let (job, copy) = download_job(app, &remote, &path, &destination, size, origin, false).await;
+    let result = async {
+        job.copy_file(copy, &mut reader, target.writer(), || {
+            access::require_session(app.backend(), revision)
+        })
         .await
-        .map_err(io_error)?;
-    progress(downloaded);
-    Ok(())
+        .map_err(copy_error)?;
+        drop(reader);
+        access::require_session(app.backend(), revision)?;
+        target
+            .commit(Path::new(&destination))
+            .await
+            .map_err(io_error)
+    }
+    .await;
+    job.finish(result.err()).await
 }
 
 /// Content URIs on Android are written in place: storage providers offer no portable
@@ -567,10 +595,16 @@ mod tests {
     }
 
     #[test]
-    fn progress_of_an_empty_file_is_complete() {
-        assert_eq!(percentage(0, 0), 100.0);
-        assert_eq!(percentage(50, 200), 25.0);
-        assert_eq!(percentage(200, 200), 100.0);
+    fn a_download_names_its_folder_but_a_content_uri_has_none() {
+        assert_eq!(
+            destination_folder("/home/me/Downloads/a.pdf"),
+            "/home/me/Downloads"
+        );
+        assert_eq!(
+            destination_folder("content://com.android.externalstorage/document/a.pdf"),
+            ""
+        );
+        assert_eq!(destination_folder(""), "");
     }
 
     #[test]

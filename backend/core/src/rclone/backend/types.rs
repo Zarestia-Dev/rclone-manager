@@ -416,7 +416,6 @@ impl Backend {
         &self,
         command: &str,
         mut args: Vec<String>,
-        async_job: bool,
         os: Option<String>,
     ) -> serde_json::Value {
         args.push("--ask-password=false".to_string());
@@ -449,16 +448,10 @@ impl Backend {
             }
         }
 
-        let mut payload = serde_json::json!({
+        serde_json::json!({
             "command": command,
             "arg": args,
-        });
-
-        if async_job {
-            payload["_async"] = serde_json::json!(true);
-        }
-
-        payload
+        })
     }
 }
 

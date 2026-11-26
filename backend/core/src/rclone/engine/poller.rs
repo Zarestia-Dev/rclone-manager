@@ -347,8 +347,9 @@ async fn perform_batch_poll(
         status: SystemStatus::Active,
         has_active_jobs: backend_manager
             .job_cache_for(&backend.name)
-            .has_running_jobs()
-            .await,
+            .active_job_count()
+            .await
+            > 0,
     })
 }
 

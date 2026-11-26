@@ -227,30 +227,34 @@ pub fn show_notification(title: &str, body: &str) -> bool {
 }
 
 /// Tells the foreground service what is running so it can start, stop and refresh its
-/// notification, and stores the start-on-boot choice for the boot receiver, which runs before
-/// any native code can read the settings. `text` is the already translated summary.
+/// notification. `text` is the already translated summary and `progress` the translated line
+/// under it while jobs run; `percent` is -1 while rclone does not know how much the jobs
+/// transfer.
 pub fn sync_keep_alive(
     keep_alive: bool,
-    start_on_boot: bool,
     jobs: usize,
     mounts: usize,
     serves: usize,
     text: &str,
+    progress: &str,
+    percent: i32,
 ) {
     with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str, objects::JValue};
         let text = env.new_string(text)?;
+        let progress = env.new_string(progress)?;
         env.call_static_method(
             cls,
             jni_str!("syncKeepAlive"),
-            jni_sig!("(ZZIIILjava/lang/String;)V"),
+            jni_sig!("(ZIIILjava/lang/String;Ljava/lang/String;I)V"),
             &[
                 JValue::Bool(keep_alive),
-                JValue::Bool(start_on_boot),
                 JValue::Int(jobs as i32),
                 JValue::Int(mounts as i32),
                 JValue::Int(serves as i32),
                 (&text).into(),
+                (&progress).into(),
+                JValue::Int(percent),
             ],
         )
         .map(|_| ())
@@ -282,6 +286,16 @@ pub fn set_vault_locked(locked: bool) {
         jni::jni_str!("setVaultLocked"),
         &jni::jni_sig!("(Z)V"),
         &[jni::objects::JValue::Bool(locked)],
+    );
+}
+
+/// Stores the start-on-boot choice for the boot receiver, which runs before any native code can
+/// read the settings.
+pub fn set_start_on_boot(start_on_boot: bool) {
+    call_void(
+        jni::jni_str!("setStartOnBoot"),
+        &jni::jni_sig!("(Z)V"),
+        &[jni::objects::JValue::Bool(start_on_boot)],
     );
 }
 

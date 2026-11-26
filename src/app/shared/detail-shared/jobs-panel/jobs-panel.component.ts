@@ -12,8 +12,10 @@ import {
   JOB_STATUS,
   JOB_STATUS_BADGE_MAP,
   JOB_ICON_MAP,
+  OPERATION_TONE,
+  shownOrigin,
 } from '@app/types';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
@@ -29,7 +31,9 @@ import { PillDirective } from '../../directives/pill.directive';
     MatIconModule,
     MatRipple,
     MatProgressBarModule,
+    FormatEtaPipe,
     FormatFileSizePipe,
+    FormatRateValuePipe,
     FormatTimePipe,
     TranslatePipe,
     StarterPillComponent,
@@ -67,6 +71,7 @@ export class JobsPanelComponent {
     };
     return this.config().jobs.map(job => {
       const statusLower = job.status.toLowerCase();
+      const running = job.status === JOB_STATUS.Running;
       const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
       const relative = relativeTimeLabel(job.start_time, now);
       const relativeTime = relative ? this.translate.instant(relative.key, relative.params) : '';
@@ -89,10 +94,12 @@ export class JobsPanelComponent {
           ? Math.max(0, Math.min(100, Math.round((job.stats.bytes / job.stats.totalBytes) * 100)))
           : 0,
         icon: JOB_ICON_MAP[job.job_type] || 'jobs',
-        iconClass: `job-icon-${job.job_type}`,
+        typeTone: OPERATION_TONE[job.job_type],
         hasProgress,
-        hasFooter: hasProgress || !!job.dry_run || !!relativeTime || durationSeconds > 0,
+        running,
+        hasFooter: running || hasProgress || !!job.dry_run || !!relativeTime || durationSeconds > 0,
         errorText,
+        originBadge: shownOrigin(job),
       };
     });
   });
@@ -110,7 +117,7 @@ export class JobsPanelComponent {
 
   async onStopJob(job: JobInfo): Promise<void> {
     try {
-      await this.jobService.stopJob(job.jobid, job.remote_name);
+      await this.jobService.stopJob(job.jobid);
     } catch (error) {
       console.error('Failed to stop job:', error);
     }

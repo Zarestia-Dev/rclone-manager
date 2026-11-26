@@ -1,6 +1,7 @@
 :host {
   display: block;
   width: 100%;
+  container-type: inline-size;
 }
 
 // ============================================================================
@@ -212,6 +213,13 @@
     }
   }
 
+  .automation-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+  }
+
   .automation-body {
     padding: 0 var(--space-md) var(--space-md);
     display: flex;
@@ -355,6 +363,31 @@
       font-size: var(--font-size-sm);
       font-weight: 500;
       color: var(--primary-color);
+    }
+  }
+}
+
+// A narrow card gives the title its own line; the status and the buttons share the next one.
+@container (max-width: 30rem) {
+  .automation-card.detailed {
+    .automation-header {
+      flex-wrap: wrap;
+    }
+
+    .automation-title-row {
+      flex-basis: 100%;
+
+      .title-text .title-heading-row {
+        flex-wrap: wrap;
+      }
+    }
+
+    .automation-controls {
+      flex-basis: 100%;
+
+      > .app-pill {
+        margin-inline-end: auto;
+      }
     }
   }
 }

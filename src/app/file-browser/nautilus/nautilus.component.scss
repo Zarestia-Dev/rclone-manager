@@ -160,20 +160,26 @@
    5. Selection Info Bar
    ========================================================================== */
 
+// One line on any width: a long name is shortened, what is selected and its size stay.
 .selection-info-container {
   position: absolute;
   bottom: var(--bottom-bar-offset);
   right: var(--space-xxs);
+  max-width: calc(100% - 2 * var(--space-xxs));
+  display: flex;
+  gap: 0.3em;
   font-weight: 500;
+  font-size: var(--font-size-md);
+  color: var(--window-fg-color);
   background: var(--sidebar-bg-color);
   padding: var(--space-xxs) var(--space-md);
   border-radius: var(--radius-sm);
   z-index: 5;
 }
 
-.selection-info {
-  font-size: var(--font-size-md);
-  color: var(--window-fg-color);
+.selection-detail {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ==========================================================================

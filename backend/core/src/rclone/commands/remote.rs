@@ -308,7 +308,7 @@ pub async fn delete_remote(
     let jobs = manager.job_cache_for(&backend.name);
     for job in jobs.get_active_jobs().await {
         if job.remote_name.trim_end_matches(':') == name {
-            stop_job_on_backend(app.clone(), backend.clone(), job.jobid, name.clone()).await?;
+            stop_job_on_backend(app.clone(), backend.clone(), job.jobid).await?;
         }
     }
     // Keep saved settings and presets intact if Rclone rejects the actual deletion.

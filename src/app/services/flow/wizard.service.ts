@@ -349,7 +349,9 @@ export class WizardService extends TauriBaseService {
       const report = FILE_REPORT_OPERATIONS.has(input.operationType)
         ? await this.jobs.getJobReport(job.jobid).catch(() => null)
         : null;
-      return buildPreview(input.operationType, job.stats, report);
+      // The job list carries a finished job without its file rows.
+      const stats = await this.jobs.getJobStats(job.jobid, job.execute_id).catch(() => null);
+      return buildPreview(input.operationType, { ...job.stats, ...stats }, report);
     } finally {
       await this.quickRuns.remove(saved.id);
     }
@@ -586,8 +588,7 @@ export class WizardService extends TauriBaseService {
   /** Stops the job of an execution, for a preview the user no longer wants to wait for. */
   async cancel(executeId: string): Promise<void> {
     const job = this.job(executeId);
-    if (job && job.status === JOB_STATUS.Running)
-      await this.jobs.stopJob(job.jobid, job.remote_name);
+    if (job && job.status === JOB_STATUS.Running) await this.jobs.stopJob(job.jobid);
   }
 
   /** The system folder picker, for the folder a Windows mount is made in. */

@@ -86,9 +86,15 @@
       (isSearchModeChange)="isSearchMode.set($event)"
       (isEditingPathChange)="isEditingPath.set($event)"
       (droppedOnSegment)="onDropToSegment($event.event, $event.segmentIndex)"
-    ></app-nautilus-toolbar>
+    >
+      <!-- A narrow screen keeps the operations in the bottom bar, where the toolbar has no room. -->
+      @if (!isMobile()) {
+        <app-operations-panel (openLocation)="navigateToPath($event)"></app-operations-panel>
+      }
+    </app-nautilus-toolbar>
 
-    @if (tabSvc.tabs().length > 1 && !isPickerMode()) {
+    <!-- A narrow screen lists the tabs in the overview the bottom bar opens. -->
+    @if (tabSvc.tabs().length > 1 && !isPickerMode() && !isMobile()) {
       <app-nautilus-tabs
         [tabs]="tabSvc.mappedTabs()"
         [activeTabIndex]="tabSvc.activeTabIndex()"
@@ -156,11 +162,34 @@
         [isPickerMode]="isPickerMode()"
         [isConfirmDisabled]="isConfirmDisabled()"
         [isSidebarOpen]="isSidenavOpen()"
+        [tabCount]="tabSvc.tabs().length"
         (setLayout)="settings.setLayout($event)"
+        (showTabs)="isTabOverviewOpen.set(true)"
         (confirmSelection)="confirmSelection()"
         (toggleSidebar)="sidenav.toggle()"
         (popOutToWindow)="onPopOutToWindow()"
-      ></app-nautilus-bottom-bar>
+      >
+        <app-operations-panel
+          [isMobile]="true"
+          (openLocation)="navigateToPath($event)"
+        ></app-operations-panel>
+      </app-nautilus-bottom-bar>
+    }
+
+    <!-- Outside the bottom bar's block, so its closing animation never holds the bar on screen. -->
+    @if (isMobile() && isTabOverviewOpen()) {
+      <app-nautilus-tab-overview
+        animate.enter="zoom-overlay-enter"
+        animate.leave="zoom-overlay-leave"
+        [tabs]="tabPreviews()"
+        [activeTabIndex]="tabSvc.activeTabIndex()"
+        (switchTab)="tabSvc.switchTab($event); isTabOverviewOpen.set(false)"
+        (closeTab)="tabSvc.closeTab($event)"
+        (newTab)="
+          tabSvc.createTab(tabSvc.activeRemote(), tabSvc.activePath()); isTabOverviewOpen.set(false)
+        "
+        (closeOverview)="isTabOverviewOpen.set(false)"
+      ></app-nautilus-tab-overview>
     }
 
     <app-nautilus-context-menu
@@ -190,9 +219,12 @@
       </div>
     }
 
-    @if (selectionSummary()) {
+    @if (selectionSummary(); as summary) {
       <div class="selection-info-container">
-        <span class="selection-info">{{ selectionSummary() }}</span>
+        @if (summary.name) {
+          <span class="truncate">{{ summary.name }}</span>
+        }
+        <span class="selection-detail">{{ summary.detail }}</span>
       </div>
     }
 

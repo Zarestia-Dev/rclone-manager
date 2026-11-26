@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -37,7 +39,6 @@ class RcloneKeepAliveService : Service() {
     const val ACTION_START = "com.rclone.manager.action.START_KEEPALIVE"
     // The start after a boot or an update, which also starts the backend: there is no activity.
     const val ACTION_BOOT = "com.rclone.manager.action.BOOT_KEEPALIVE"
-    const val ACTION_UPDATE_NOTIFICATION = "com.rclone.manager.action.UPDATE_NOTIFICATION"
     const val ACTION_STOP_JOBS = "com.rclone.manager.action.STOP_JOBS"
 
     // Keys of the system's Live Update (promoted ongoing notification) extras, which the
@@ -88,10 +89,10 @@ class RcloneKeepAliveService : Service() {
       mainHandler.post { instance?.updateLocks() }
     }
 
-    fun setVaultLocked(context: Context, locked: Boolean) {
+    fun setVaultLocked(locked: Boolean) {
       if (vaultLocked == locked) return
       vaultLocked = locked
-      if (isServiceRunning.get()) dispatchNotificationUpdate(context.applicationContext)
+      if (isServiceRunning.get()) dispatchNotificationUpdate()
     }
 
     fun setWatchPending(pending: Boolean) {
@@ -148,10 +149,21 @@ class RcloneKeepAliveService : Service() {
     }
 
     /**
-     * Called by the backend whenever jobs, mounts, serves or the keep-alive setting change:
-     * starts or stops the service and refreshes its notification.
+     * Called by the backend whenever jobs, mounts, serves or the keep-alive setting change, and
+     * every few seconds while jobs run: starts or stops the service and refreshes its
+     * notification. [progress] is the line under the counts while jobs run; [percent] is -1
+     * while rclone does not know how much they transfer.
      */
-    fun sync(context: Context, keepAlive: Boolean, jobs: Int, mounts: Int, serves: Int, text: String) {
+    fun sync(
+      context: Context,
+      keepAlive: Boolean,
+      jobs: Int,
+      mounts: Int,
+      serves: Int,
+      text: String,
+      progress: String,
+      percent: Int
+    ) {
       storeRunning(context, jobs, serves)
       runningJobs = jobs
       runningServes = serves
@@ -165,12 +177,13 @@ class RcloneKeepAliveService : Service() {
         startService(context, keepAlive)
       }
       updateNotification(
-        context,
         NotificationState(
           context.getString(R.string.keepalive_title),
           text.ifBlank { context.getString(R.string.keepalive_text) },
           jobs,
-          active
+          active,
+          progress,
+          percent
         )
       )
     }
@@ -220,7 +233,6 @@ class RcloneKeepAliveService : Service() {
         if (hasDocumentWork()) {
           Logger.info("RcloneKeepAliveService: Documents are open or uploading, keeping the service")
           updateNotification(
-            context,
             NotificationState(
               context.getString(R.string.keepalive_title),
               documentText(context),
@@ -243,11 +255,10 @@ class RcloneKeepAliveService : Service() {
       if (RcloneSafBridge.getActiveHandleCount() > 0) R.string.saf_keepalive_text else R.string.saf_upload_text
     )
 
-    private fun updateNotification(context: Context, state: NotificationState) {
+    private fun updateNotification(state: NotificationState) {
       if (state == lastState) return
       if (!isServiceRunning.get()) return
 
-      val appContext = context.applicationContext
       val now = SystemClock.elapsedRealtime()
       val elapsed = now - lastUpdateTime
 
@@ -256,29 +267,25 @@ class RcloneKeepAliveService : Service() {
       if (lastUpdateTime == 0L || elapsed >= MIN_NOTIFICATION_INTERVAL_MS) {
         lastUpdateTime = now
         lastState = state
-        dispatchNotificationUpdate(appContext)
+        dispatchNotificationUpdate()
       } else {
         val delay = MIN_NOTIFICATION_INTERVAL_MS - elapsed
         val runnable = Runnable {
           if (!isServiceRunning.get()) return@Runnable
           lastUpdateTime = SystemClock.elapsedRealtime()
           lastState = state
-          dispatchNotificationUpdate(appContext)
+          dispatchNotificationUpdate()
         }
         pendingUpdateRunnable = runnable
         mainHandler.postDelayed(runnable, delay)
       }
     }
 
-    private fun dispatchNotificationUpdate(context: Context) {
-      try {
-        val intent = Intent(context, RcloneKeepAliveService::class.java).apply {
-          action = ACTION_UPDATE_NOTIFICATION
-        }
-        context.startService(intent)
-      } catch (e: Throwable) {
-        Logger.error("Failed to send notification update to RcloneKeepAliveService: ${e.message}")
-      }
+    // Posts the notification again in place: restarting the service for every update would cost
+    // a service start and a foreground promotion each time. A service still starting builds it
+    // from [lastState] itself.
+    private fun dispatchNotificationUpdate() {
+      mainHandler.post { instance?.refreshNotification() }
     }
   }
 
@@ -307,7 +314,31 @@ class RcloneKeepAliveService : Service() {
     getSystemService(NotificationManager::class.java)?.cancel(LEGACY_RESTART_NOTIFICATION_ID)
     promoteToForeground()
     instance = this
+    registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
     updateLocks()
+  }
+
+  // Updates made while the screen is off would draw a notification nobody sees; the last one
+  // is posted when the screen comes on.
+  private var updateWaiting = false
+  private val screenOnReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      if (updateWaiting) refreshNotification()
+    }
+  }
+
+  private fun refreshNotification() {
+    if (!isForeground) return
+    if (getSystemService(PowerManager::class.java)?.isInteractive == false) {
+      updateWaiting = true
+      return
+    }
+    updateWaiting = false
+    try {
+      getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification())
+    } catch (e: Throwable) {
+      Logger.error("RcloneKeepAliveService: notification update failed: ${e.message}")
+    }
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -328,11 +359,6 @@ class RcloneKeepAliveService : Service() {
     val restartedBySystem = intent == null && consumeKilledKeepAlive()
     if (restartedBySystem) {
       isAppRequested.set(true)
-    }
-
-    if (action == ACTION_UPDATE_NOTIFICATION) {
-      promoteToForeground()
-      return START_STICKY
     }
 
     if (action == ACTION_STOP_JOBS) {
@@ -487,10 +513,13 @@ class RcloneKeepAliveService : Service() {
       else -> getString(R.string.keepalive_text)
     }
 
+    // While jobs run, the counts become the title and the progress the text under them.
+    val working = !vaultLocked && state != null && state.jobs > 0
     val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-      .setContentTitle(title)
-      .setContentText(text)
+      .setContentTitle(if (working) text else title)
+      .setContentText(if (working) state?.progress?.ifBlank { null } else text)
       .setSmallIcon(R.drawable.ic_notification)
+      .setOnlyAlertOnce(true)
       .setContentIntent(RcloneNotifications.launchIntent(this))
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .setOngoing(true)
@@ -498,11 +527,16 @@ class RcloneKeepAliveService : Service() {
     if (state != null && state.jobs > 0) {
       builder.addAction(0, getString(R.string.action_stop_jobs), stopJobsPendingIntent())
     }
-    // A Live Update, shown as a status bar chip with the number of running items. The system
-    // decides whether to promote it, and the user can turn that off for the app.
+    if (working && state != null) {
+      builder.setProgress(100, state.percent.coerceAtLeast(0), state.percent < 0)
+    }
+    // A Live Update, shown as a status bar chip with how far the jobs are, or else the number
+    // of running items. The system decides whether to promote it, and the user can turn that
+    // off for the app.
     builder.extras.putBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, true)
-    if (state != null && state.active > 0) {
-      builder.extras.putString(EXTRA_SHORT_CRITICAL_TEXT, state.active.toString())
+    val chip = state?.let { statusChipText(working, it.percent, it.active) }
+    if (chip != null) {
+      builder.extras.putString(EXTRA_SHORT_CRITICAL_TEXT, chip)
     }
     return builder.build()
   }
@@ -568,6 +602,11 @@ class RcloneKeepAliveService : Service() {
     // A clean stop: nothing is running, and a later restart must not report old work.
     storeRunning(this, 0, 0)
     instance = null
+    try {
+      unregisterReceiver(screenOnReceiver)
+    } catch (e: IllegalArgumentException) {
+      Logger.error("RcloneKeepAliveService: screen receiver was not registered: ${e.message}")
+    }
     stopForegroundSafely()
     releaseLocks()
     super.onDestroy()
@@ -613,4 +652,18 @@ internal fun interruptedWorkLines(
 }
 
 /** What the notification shows; [jobs] decides the stop action, [active] the status bar chip. */
-private data class NotificationState(val title: String, val text: String, val jobs: Int, val active: Int)
+private data class NotificationState(
+  val title: String,
+  val text: String,
+  val jobs: Int,
+  val active: Int,
+  val progress: String = "",
+  val percent: Int = -1
+)
+
+/** The status bar chip: how far running jobs are when that is known, else how many items run. */
+internal fun statusChipText(working: Boolean, percent: Int, active: Int): String? = when {
+  working && percent >= 0 -> "$percent%"
+  active > 0 -> active.toString()
+  else -> null
+}

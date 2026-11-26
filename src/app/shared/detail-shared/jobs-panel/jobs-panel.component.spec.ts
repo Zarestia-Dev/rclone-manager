@@ -84,7 +84,7 @@ describe('JobsPanelComponent job actions', () => {
       fixture.nativeElement.querySelectorAll('.action-button');
     buttons[1].click();
     await fixture.whenStable();
-    expect(stopJob).toHaveBeenCalledExactlyOnceWith(202, 'drive');
+    expect(stopJob).toHaveBeenCalledExactlyOnceWith(202);
     expect(openJobDetail).not.toHaveBeenCalled();
   });
 
@@ -94,7 +94,7 @@ describe('JobsPanelComponent job actions', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       await expect(fixture.componentInstance.onStopJob(first)).resolves.toBeUndefined();
-      expect(stopJob).toHaveBeenCalledExactlyOnceWith(101, 'drive');
+      expect(stopJob).toHaveBeenCalledExactlyOnceWith(101);
       expect(log).toHaveBeenCalledWith('Failed to stop job:', error);
     } finally {
       log.mockRestore();
@@ -123,5 +123,40 @@ describe('JobsPanelComponent job actions', () => {
     expect(deleted).toHaveBeenCalledExactlyOnceWith(101);
     expect(stopJob).not.toHaveBeenCalled();
     expect(openJobDetail).not.toHaveBeenCalled();
+  });
+
+  it('names where a job was started unless its Quick Run already says so', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      alerts: { origins: { filemanager: 'File Manager', dashboard: 'Dashboard' } },
+    });
+    translate.use('en');
+    fixture.componentRef.setInput('config', {
+      jobs: [
+        { ...first, jobid: 1, execute_id: 'fm', starter: undefined, origin: 'filemanager' },
+        { ...first, jobid: 2, execute_id: 'dash', origin: 'dashboard' },
+        {
+          ...first,
+          jobid: 3,
+          execute_id: 'qr',
+          origin: 'dashboard',
+          starter: { kind: 'quick_run', id: 'qr-1', name: 'Nightly' },
+        },
+      ],
+    });
+    fixture.detectChanges();
+    const origins = [...fixture.nativeElement.querySelectorAll('.card-row-item')].map(
+      (row: HTMLElement) => row.querySelector('.job-tags > [appPill]')?.textContent?.trim()
+    );
+    expect(origins).toEqual(['File Manager', 'Dashboard', undefined]);
+  });
+
+  it('shows its "Jobs" title unless the page names the list itself', () => {
+    const title = (): string | undefined =>
+      fixture.nativeElement.querySelector('mat-card-title span')?.textContent?.trim();
+    expect(title()).toBe('detailShared.jobs.title');
+    fixture.componentRef.setInput('config', { jobs: [], hideTitle: true });
+    fixture.detectChanges();
+    expect(title()).toBeUndefined();
   });
 });

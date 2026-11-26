@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "Zastaviť úlohu",
-        "delete": "Odstrániť úlohu"
+        "delete": "Odstrániť úlohu",
+        "retry": "Zopakovať úlohu"
       },
       "empty": "Nenašli sa žiadne úlohy"
     },
@@ -1915,6 +1916,20 @@
       "cancelled": "Zrušené",
       "cancelJob": "Zrušiť",
       "removeJob": "Odstrániť",
+      "clearFinished": "Vymazať dokončené",
+      "openDestination": "Otvoriť cieľ",
+      "undo": "Späť",
+      "timeLeft": "zostáva {{time}}",
+      "failedOf": {
+        "one": "zlyhalo: {{count}} z {{total}}",
+        "few": "zlyhalo: {{count}} z {{total}}",
+        "other": "zlyhalo: {{count}} z {{total}}"
+      },
+      "itemsCount": {
+        "one": "{{count}} položka",
+        "few": "{{count}} položky",
+        "other": "{{count}} položiek"
+      },
       "resumeUpload": "Pokračovať v nahrávaní",
       "resumeWithFiles": "Ak chcete pokračovať, vyberte tie isté súbory",
       "resumeWithFolder": "Ak chcete pokračovať, vyberte ten istý priečinok",
@@ -1923,24 +1938,6 @@
         "one": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbor",
         "few": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbory",
         "other": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súborov"
-      },
-      "progress": "Priebeh",
-      "files": "Súbory",
-      "speed": "Rýchlosť",
-      "eta": "Zostáva",
-      "currentFile": "Aktuálny súbor",
-      "currentFiles": "Aktuálne súbory",
-      "details": {
-        "source": "Zdroj",
-        "destination": "Cieľ",
-        "startTime": "Čas spustenia",
-        "uploadedFiles": "Nahraté súbory",
-        "deletedFiles": "Odstránené súbory",
-        "movedFiles": "Presunuté súbory",
-        "copiedFiles": "Skopírované súbory",
-        "syncedFiles": "Synchronizované súbory",
-        "processedFiles": "Spracované súbory",
-        "options": "Možnosti"
       },
       "running": "Beží",
       "filesCount": {
@@ -1962,7 +1959,8 @@
         "upload": "Nahrávanie",
         "archivecreate": "Archivácia",
         "archiveextract": "Rozbalenie archívu",
-        "index": "Výpisy priečinkov"
+        "index": "Výpisy priečinkov",
+        "download": "Sťahovanie"
       }
     },
     "fileViewer": {
@@ -2064,6 +2062,11 @@
       "delete": "Odstraňovanie",
       "deleteDesc": "Natrvalo odstrániť súbory zodpovedajúce filtrom",
       "copyurl": "Kopírovanie URL",
+      "upload": "Nahrávanie",
+      "rename": "Premenovanie",
+      "cleanup": "Vyčistenie",
+      "rmdirs": "Odstránenie prázdnych priečinkov",
+      "archiveextract": "Rozbalenie archívu",
       "copyUrlDesc": "Vygenerovať verejné URL na stiahnutie súborov",
       "archivecreate": "Archivácia",
       "archivecreateDesc": "Skomprimovať priečinky/súbory do archívu (Zip, Tar atď.)",
@@ -2098,7 +2101,8 @@
       "remoteSettings": "Nastavenia vzdialených úložísk",
       "indexSettings": "Nastavenia výpisov priečinkov",
       "index": "Výpisy priečinkov",
-      "indexDesc": "Zapisovať prehliadateľné výpisy do priečinkov pre statické webové stránky"
+      "indexDesc": "Zapisovať prehliadateľné výpisy do priečinkov pre statické webové stránky",
+      "download": "Sťahovanie"
     },
     "generalDetail": {
       "automations": "Automatizácie",
@@ -3651,7 +3655,13 @@
       "viewOptions": "Možnosti zobrazenia",
       "showingItems": "Zobrazuje sa {{count}} z {{total}}",
       "decreaseIconSize": "Zmenšiť ikony",
-      "increaseIconSize": "Zväčšiť ikony"
+      "increaseIconSize": "Zväčšiť ikony",
+      "tabCount": {
+        "one": "{{count}} karta",
+        "few": "{{count}} karty",
+        "other": "{{count}} kariet"
+      },
+      "showTabs": "Zobraziť otvorené karty"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3757,6 +3767,65 @@
       "useAsDefault": "Používať tieto možnosti predvolene",
       "dontAskAgain": "Už sa nepýtať (Predvoľby Prehliadača súborov)",
       "start": "Spustiť"
+    },
+    "conflicts": {
+      "exists": "„{{name}}“ už existuje",
+      "fileExists": "V {{destination}} už je súbor s týmto názvom.",
+      "folderExists": "V {{destination}} už je priečinok s týmto názvom.",
+      "mergeExplain": "Zlúčením sa do neho pridajú prichádzajúce súbory.",
+      "thereNow": "Teraz tam",
+      "incoming": "Prichádzajúci",
+      "replace": "Nahradiť",
+      "merge": "Zlúčiť",
+      "skip": "Preskočiť",
+      "keepBoth": "Ponechať oba",
+      "replaceOrMerge": "Nahradiť alebo zlúčiť",
+      "forAll": "Pre všetky:",
+      "keptAs": "Uloží sa ako „{{name}}“",
+      "skipped": "Preskočené",
+      "replaces": "Nahradí tamojší súbor",
+      "merges": {
+        "newer": "Zlúči sa, z každého súboru sa ponechá novší",
+        "keep": "Zlúči sa, pridajú sa iba chýbajúce súbory",
+        "replace": "Zlúči sa, súbory s rovnakým názvom sa nahradia"
+      },
+      "title": {
+        "one": "Už existuje v {{destination}}: {{count}} z {{total}}",
+        "few": "Už existuje v {{destination}}: {{count}} z {{total}}",
+        "other": "Už existuje v {{destination}}: {{count}} z {{total}}"
+      },
+      "others": {
+        "one": "Ďalšia {{count}} položka nemá konflikt.",
+        "few": "Ďalšie {{count}} položky nemajú konflikt.",
+        "other": "Ďalších {{count}} položiek nemá konflikt."
+      },
+      "start": {
+        "copy": {
+          "one": "Kopírovať {{count}} položku",
+          "few": "Kopírovať {{count}} položky",
+          "other": "Kopírovať {{count}} položiek"
+        },
+        "move": {
+          "one": "Presunúť {{count}} položku",
+          "few": "Presunúť {{count}} položky",
+          "other": "Presunúť {{count}} položiek"
+        },
+        "upload": {
+          "one": "Nahrať {{count}} položku",
+          "few": "Nahrať {{count}} položky",
+          "other": "Nahrať {{count}} položiek"
+        }
+      },
+      "skipAll": "Preskočiť všetky",
+      "replaceWarning": "Nahradené súbory sa nedajú obnoviť a túto akciu nemožno vrátiť späť.",
+      "mergeWarning": "Zlúčenie priečinkov nemožno vrátiť späť.",
+      "sameNames": "Súbory s rovnakým názvom:",
+      "sameNamesAll": "Súbory s rovnakým názvom v zlučovaných priečinkoch:",
+      "existingFiles": {
+        "newer": "Ponechať novší",
+        "keep": "Ponechať ten, ktorý tam je",
+        "replace": "Nahradiť prichádzajúcim"
+      }
     }
   },
   "home": {
@@ -3870,7 +3939,6 @@
       "progress": "Priebeh:",
       "of": "z",
       "eta": "Zostáva:",
-      "elapsed": "Uplynulo:",
       "speed": "Rýchlosť prenosu:",
       "transfers": "Prenosy:",
       "checks": "Kontroly:",
@@ -3882,6 +3950,7 @@
       "serverMoves": "Presuny na serveri:",
       "lastError": "Posledná chyba:",
       "runningJobs": "Bežiace úlohy",
+      "recentJobs": "Nedávne úlohy",
       "starting": "Spúšťa sa...",
       "noRunning": "Momentálne nebežia žiadne aktívne úlohy."
     },
@@ -3962,7 +4031,6 @@
       "missingMountPoint": "V konfigurácii uzla unmount chýba 'mountPoint' a cieľový uzol nevytvoril žiadny bod pripojenia",
       "missingStopServeTarget": "V konfigurácii uzla stop_serve chýba 'targetNodeId'/'serverId' aj 'remoteName'",
       "rcCommandFailed": "Príkaz RC '{{command}}' zlyhal: {{error}}",
-      "invalidJobId": "Hromadné odoslanie vrátilo neplatné ID úlohy: {{error}}",
       "unsupportedNodeType": "Typ uzla pracovného postupu '{{type}}' nie je na tejto platforme alebo vo verzii podporovaný",
       "nodeCrashed": "Uzol '{{node}}' zlyhal: {{reason}}",
       "notificationFailed": "Chyba upozornenia ({{kind}}): {{error}}",
@@ -4054,7 +4122,9 @@
       "diskFull": "Cieľový disk alebo jednotka je plná. Nie je k dispozícii dostatok voľného miesta.",
       "fileLocked": "Súbor je momentálne zamknutý alebo ho používa iný proces.",
       "readOnly": "Cieľový súborový systém je iba na čítanie alebo chránený proti zápisu.",
-      "ioError": "Chyba vstupu/výstupu: {{error}}"
+      "ioError": "Chyba vstupu/výstupu: {{error}}",
+      "intoItself": "Priečinok „{{name}}“ nemožno skopírovať ani presunúť do seba samého.",
+      "noItems": "Nebola vybraná žiadna položka."
     },
     "upload": {
       "legacyBatch": "Toto nahrávanie spustila zastaraná stránka. Znova načítajte aplikáciu a skúste to znova.",
@@ -4063,7 +4133,8 @@
       "invalidModifiedTime": "Nahrávanie obsahuje neplatný čas úpravy.",
       "sessionGone": "Server už toto nahrávanie nemá, pretože bolo zrušené alebo príliš dlho nečinné. Spustite ho znova.",
       "invalidChunk": "Nahrávanie odoslalo údaje, ktoré nepatria k žiadnemu z jeho súborov.",
-      "incomplete": "Nahrávanie bolo ukončené skôr, ako prišli všetky jeho súbory."
+      "incomplete": "Nahrávanie bolo ukončené skôr, ako prišli všetky jeho súbory.",
+      "filesFailed": "Súbory, ktoré sa nepodarilo nahrať: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "Sťahovanie zrušil používateľ",
@@ -4132,14 +4203,15 @@
       "tooSlowReverted": "Backend prijal spojenie, ale výpis jeho položiek bol príliš pomalý. Vrátené na lokálny backend."
     },
     "job": {
-      "notFound": "JobInfo sa nenašlo",
+      "notFound": "Úloha sa nenašla",
       "monitoringFailed": "Príliš veľa chýb pri sledovaní úlohy: {{error}}",
       "executionFailed": "Vykonanie úlohy zlyhalo: {{error}}",
       "corruptedTransfer": "Súbor sa počas prenosu poškodil alebo overenie kontrolného súčtu zlyhalo.",
       "profileNotRunning": "Pre profil '{{profile}}' na {{remote}} sa nenašla žiadna aktívna úloha typu {{jobType}}",
       "stopped": "Úloha bola zastavená",
       "failed": "Úloha zlyhala",
-      "lost": "Rclone už túto úlohu nepozná. Po dokončení jej platnosť vypršala alebo sa jadro reštartovalo, takže jej výsledok nie je k dispozícii."
+      "lost": "Rclone už túto úlohu nepozná. Po dokončení jej platnosť vypršala alebo sa jadro reštartovalo, takže jej výsledok nie je k dispozícii.",
+      "notRetryable": "Túto úlohu nemožno zopakovať: zopakovať sa dá len neúspešná alebo zastavená úloha spustená od otvorenia aplikácie."
     },
     "cache": {
       "fetchConfigFailed": "Načítanie konfigurácie vzdialených úložísk zlyhalo",
@@ -4262,7 +4334,8 @@
     },
     "job": {
       "stopped": "Úloha bola úspešne zastavená",
-      "deleted": "Úloha bola úspešne odstránená"
+      "deleted": "Úloha bola úspešne odstránená",
+      "retried": "Úloha {{id}} beží znova"
     },
     "security": {
       "passwordRemoved": "Heslo bolo úspešne odstránené",
@@ -4375,7 +4448,11 @@
     "reason": "Prebiehajú aktívne operácie: {{details}}",
     "mounts": "pripojenia: {{count}}",
     "jobs": "úlohy: {{count}}",
-    "serves": "servery: {{count}}"
+    "serves": "servery: {{count}}",
+    "progress": "{{done}} z {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "zostáva {{time}}",
+    "checked": "skontrolované: {{count}}"
   },
   "notification": {
     "title": {
@@ -4466,6 +4543,26 @@
       "powerInhibited": "Aktívne operácie bránia uspaniu systému.",
       "unmountFailed": "Odpojenie {{remote}} z {{backend}} zlyhalo: {{error}}",
       "serveStopFailed": "Zastavenie servera {{protocol}} pre {{remote}} na {{backend}} zlyhalo: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Synchronizácia",
+      "copy": "Kopírovanie",
+      "move": "Presun",
+      "bisync": "Bisync",
+      "check": "Kontrola",
+      "mount": "Pripojenie",
+      "copyurl": "Kopírovanie URL",
+      "mkdir": "Vytvorenie priečinka",
+      "cleanup": "Vyčistenie",
+      "delete": "Odstraňovanie",
+      "rename": "Premenovanie",
+      "rmdirs": "Odstránenie prázdnych priečinkov",
+      "index": "Výpisy priečinkov",
+      "upload": "Nahrávanie",
+      "download": "Sťahovanie",
+      "archivecreate": "Archivácia",
+      "archiveextract": "Rozbalenie archívu",
+      "cryptcheck": "Kontrola šifrovania"
     }
   },
   "repairSheet": {

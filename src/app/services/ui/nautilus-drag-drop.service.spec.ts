@@ -8,6 +8,7 @@ import {
   NautilusDragDropService,
 } from './nautilus-drag-drop.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { NotificationService } from './notification.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
@@ -76,7 +77,18 @@ describe('Nautilus external folder drops', () => {
     TestBed.configureTestingModule({
       providers: [
         NautilusDragDropService,
-        { provide: RemoteFileOperationsService, useValue: { makeDirectory, uploadWebFilesBatch } },
+        {
+          provide: RemoteFileOperationsService,
+          useValue: {
+            makeDirectory,
+            uploadWebFilesBatch,
+            getRemotePaths: vi.fn().mockResolvedValue({ list: [] }),
+          },
+        },
+        {
+          provide: RemoteManagementService,
+          useValue: { getFeatures: vi.fn().mockResolvedValue({}) },
+        },
         {
           provide: PathService,
           useValue: {
@@ -131,7 +143,8 @@ describe('Nautilus external folder drops', () => {
       expect.arrayContaining([expect.objectContaining({ relativePath: 'folder/a.txt' })]),
       'filemanager',
       ['folder/empty-parent/leaf'],
-      undefined
+      undefined,
+      {}
     );
   });
 
@@ -144,7 +157,8 @@ describe('Nautilus external folder drops', () => {
       [],
       'filemanager',
       ['empty'],
-      undefined
+      undefined,
+      {}
     );
     expect(refresh).toHaveBeenCalledWith('drive', '');
   });

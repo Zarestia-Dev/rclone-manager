@@ -780,8 +780,8 @@ mod tests {
         let a = manager.job_cache_for("A");
         let b = manager.job_cache_for("B");
         let metadata = JobMetadata::new("drive", JobType::Sync, vec!["src".into()], "dst");
-        a.create_job(7, metadata.clone(), "A".into()).await;
-        b.create_job(7, metadata, "B".into()).await;
+        a.create_job(7, metadata.clone(), "A".into(), None).await;
+        b.create_job(7, metadata, "B".into(), None).await;
 
         manager.save_options("A").await;
         manager.restore_options("B").await;
@@ -1249,6 +1249,7 @@ mod tests {
                     7,
                     JobMetadata::new("drive", JobType::Copy, vec!["src".into()], "dst"),
                     name.into(),
+                    None,
                 )
                 .await;
         }

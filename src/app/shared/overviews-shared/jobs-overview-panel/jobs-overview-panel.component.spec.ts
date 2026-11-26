@@ -3,14 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { JobsOverviewPanelComponent } from './jobs-overview-panel.component';
-import {
-  DEFAULT_JOB_STATS,
-  ExecutionScope,
-  JobInfo,
-  ORIGIN_META,
-  Origin,
-  getStarterOrigin,
-} from '@app/types';
+import { DEFAULT_JOB_STATS, ExecutionScope, JobInfo, JobStatus } from '@app/types';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
@@ -20,6 +13,7 @@ describe('JobsOverviewPanelComponent', () => {
   let fixture: ComponentFixture<JobsOverviewPanelComponent>;
   let mockModalService: { openJobDetail: ReturnType<typeof vi.fn> };
   const stopJob = vi.fn<JobManagementService['stopJob']>();
+  const deleteJob = vi.fn<JobManagementService['deleteJob']>();
   const jobs = signal<JobInfo[]>([]);
 
   const baseJob = {
@@ -59,11 +53,14 @@ describe('JobsOverviewPanelComponent', () => {
   ];
 
   beforeEach(async () => {
+    localStorage.clear();
     stopJob.mockReset().mockResolvedValue(undefined);
+    deleteJob.mockReset().mockResolvedValue(undefined);
     jobs.set(mockJobs);
     const mockJobService = {
       jobs,
       stopJob,
+      deleteJob,
     };
     const mockStatusService = {
       jobStats: signal({ bytes: 200, totalBytes: 400, speed: 23 }),
@@ -88,16 +85,39 @@ describe('JobsOverviewPanelComponent', () => {
     fixture.detectChanges();
   });
 
-  it('shows the elapsed time of a job once rclone reports one', () => {
+  it("shows a running job's speed, time left and files in its row", () => {
     const pills = (): string[] =>
       Array.from<HTMLElement>(
-        fixture.nativeElement.querySelectorAll('.card-metrics-row .app-pill')
-      ).map(pill => pill.textContent?.trim() ?? '');
-    expect(pills().some(text => text.includes('1h 1m 5s'))).toBe(false);
-
-    jobs.set(mockJobs.map(job => ({ ...job, stats: { ...job.stats, elapsedTime: 3665 } })));
+        fixture.nativeElement.querySelectorAll('.running-jobs-section .card-footer-right .app-pill')
+      ).map(pill => pill.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+    jobs.set([
+      {
+        ...mockJobs[0],
+        stats: { ...DEFAULT_JOB_STATS, speed: 0, eta: 0, transfers: 0, totalTransfers: 0 },
+      },
+    ]);
     fixture.detectChanges();
-    expect(pills().filter(text => text.includes('1h 1m 5s'))).toHaveLength(3);
+    // Nothing moves yet: the row says the job is starting, beside how long it has run.
+    expect(pills()[0]).toBe('generalOverview.jobs.starting');
+    expect(pills()).not.toContain('0 / 0');
+
+    jobs.set([
+      {
+        ...mockJobs[0],
+        stats: {
+          ...DEFAULT_JOB_STATS,
+          speed: 2048,
+          eta: 90,
+          transfers: 2,
+          totalTransfers: 5,
+          errors: 1,
+        },
+      },
+    ]);
+    fixture.detectChanges();
+    const shown = pills();
+    expect(shown[0]).not.toBe('generalOverview.jobs.starting');
+    expect(shown.slice(2, 4)).toEqual(['2 / 5', '1']);
   });
 
   it('filters running jobs correctly by flow origin', () => {
@@ -123,13 +143,9 @@ describe('JobsOverviewPanelComponent', () => {
     expect(component.runningJobs()[0].origin).toBe('dashboard');
   });
 
-  it.each<[ExecutionScope, string[], Origin]>([
-    [{ origin: undefined }, ['dashboard'], 'dashboard'],
-    [
-      { origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } },
-      ['quickrun'],
-      'quickrun',
-    ],
+  it.each<[ExecutionScope, string[]]>([
+    [{ origin: undefined }, ['dashboard']],
+    [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, ['quickrun']],
     [
       {
         origin: 'automation',
@@ -142,7 +158,6 @@ describe('JobsOverviewPanelComponent', () => {
         },
       },
       ['workflow'],
-      'workflow',
     ],
     [
       {
@@ -155,133 +170,136 @@ describe('JobsOverviewPanelComponent', () => {
         },
       },
       ['workflow'],
-      'workflow',
     ],
-    [{ origin: 'workflow' }, ['workflow'], 'workflow'],
+    [{ origin: 'workflow' }, ['workflow']],
     // Work of a remote's own profiles, however it was started, is dashboard work.
-    [{ origin: 'startup' }, ['dashboard', 'startup'], 'startup'],
-    [{ origin: 'filemanager' }, ['dashboard', 'filemanager'], 'filemanager'],
-  ])('uses execution ownership for filtering and badges: %j', (scope, shownUnder, origin) => {
+    [{ origin: 'startup' }, ['dashboard', 'startup']],
+    [{ origin: 'filemanager' }, ['dashboard', 'filemanager']],
+  ])('uses execution ownership for filtering: %j', (scope, shownUnder) => {
     const job: JobInfo = { ...mockJobs[0], ...scope };
     jobs.set([job]);
     for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
       component.selectedOriginFilter.set(filter);
       expect(component.runningJobs()).toEqual(shownUnder.includes(filter) ? [job] : []);
     }
-    component.selectedOriginFilter.set('all');
-    // A Quick Run or a workflow is named by the job's starter pill, so its origin is not repeated.
-    const named = getStarterOrigin(job) !== undefined;
-    expect(component.runningJobViewModels()[0].origin).toEqual(named ? null : ORIGIN_META[origin]);
   });
 
-  it('names the origin of a job that has no Quick Run or workflow starter', () => {
-    const [dashboardJob] = component
-      .runningJobViewModels()
-      .filter(vm => vm.job.origin === 'dashboard');
-    expect(dashboardJob.origin).toEqual({
-      labelKey: 'alerts.origins.dashboard',
-      icon: 'cloud',
-      tone: 'dim',
-    });
-  });
-
-  it('opens job detail on Enter pressed on the card, not on its stop button', () => {
-    fixture.detectChanges();
-    const card: HTMLElement = fixture.nativeElement.querySelector('.running-job-card');
-    const press = (target: HTMLElement): void => {
-      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    };
-
-    press(card.querySelector('.action-button') as HTMLElement);
+  it('lists the running jobs in the job rows, which stop the clicked one and open its detail', async () => {
+    const section: HTMLElement = fixture.nativeElement.querySelector('.running-jobs-section');
+    const rows = section.querySelectorAll('app-jobs-panel .card-row-item');
+    expect(rows.length).toBe(component.runningJobs().length);
+    (rows[0].querySelector('.action-button') as HTMLElement).click();
+    await fixture.whenStable();
+    expect(stopJob).toHaveBeenCalledExactlyOnceWith(component.runningJobs()[0].jobid);
     expect(mockModalService.openJobDetail).not.toHaveBeenCalled();
-
-    press(card);
-    expect(mockModalService.openJobDetail).toHaveBeenCalledTimes(1);
+    (rows[0] as HTMLElement).click();
+    expect(mockModalService.openJobDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ jobid: component.runningJobs()[0].jobid })
+    );
   });
 
-  it('opens job detail modal on job row click', () => {
-    const job = mockJobs[0];
-    component.onJobRowClick(job);
-    expect(mockModalService.openJobDetail).toHaveBeenCalledWith(job);
-  });
-
-  it('stops the selected execution when another job has the same remote, type and profile', async () => {
-    const first: JobInfo = {
+  describe('recent jobs', () => {
+    const finished = (jobid: number, status: JobStatus, extra: Partial<JobInfo> = {}): JobInfo => ({
       ...mockJobs[0],
-      starter: { kind: 'profile', name: 'daily' },
+      jobid,
+      execute_id: `exec-${jobid}`,
+      status,
       origin: 'dashboard',
-    };
-    const selected: JobInfo = {
-      ...first,
-      jobid: 202,
-      execute_id: 'selected-execution',
-      origin: 'quickrun',
-      starter: { kind: 'quick_run', id: 'qr-1', name: 'qr-1' },
-    };
-    jobs.set([first, selected]);
-    const event = new MouseEvent('click');
-    const propagation = vi.spyOn(event, 'stopPropagation');
+      ...extra,
+    });
+    const listed = (): number[] =>
+      [...fixture.nativeElement.querySelectorAll('.recent-jobs app-jobs-panel .card-row-item')].map(
+        (row: HTMLElement) =>
+          Number(row.querySelector('.job-id-label')?.textContent?.trim().slice(1))
+      );
 
-    await component.onStopJobClick(selected, event);
+    it('lists finished jobs of every remote and local disk, without their child jobs', () => {
+      jobs.set([
+        mockJobs[0],
+        finished(10, 'Completed', { remote_name: '/', source: '/home/me/a', destination: '/tmp' }),
+        finished(11, 'Failed', { remote_name: 'drive:', origin: 'filemanager' }),
+        finished(12, 'Stopped'),
+        finished(13, 'Completed', { parent_job_id: 12 }),
+      ]);
+      component.setRecentOpen(true);
+      fixture.detectChanges();
+      expect(component.recentJobs().map(job => job.jobid)).toEqual([10, 11, 12]);
+      expect(listed()).toEqual([10, 11, 12]);
+    });
 
-    expect(stopJob).toHaveBeenCalledExactlyOnceWith(202, 'drive');
-    expect(propagation).toHaveBeenCalledOnce();
-    expect(mockModalService.openJobDetail).not.toHaveBeenCalled();
-  });
+    it('follows the origin chips', () => {
+      jobs.set([
+        finished(10, 'Completed', { origin: 'filemanager' }),
+        finished(11, 'Completed', { starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }),
+      ]);
+      component.selectedOriginFilter.set('quickrun');
+      expect(component.recentJobs().map(job => job.jobid)).toEqual([11]);
+      component.selectedOriginFilter.set('dashboard');
+      expect(component.recentJobs().map(job => job.jobid)).toEqual([10]);
+    });
 
-  it('does not substitute another job if the selected execution is no longer listed', async () => {
-    const selected: JobInfo = { ...mockJobs[0], jobid: 404 };
-    jobs.set([mockJobs[0]]);
-    await component.onStopJobClick(selected, new MouseEvent('click'));
-    expect(stopJob).toHaveBeenCalledExactlyOnceWith(404, 'drive');
-  });
+    it('keeps the list to the latest fifty', () => {
+      jobs.set(Array.from({ length: 60 }, (_, i) => finished(i + 1, 'Completed')));
+      expect(component.recentJobs().map(job => job.jobid)).toEqual(
+        Array.from({ length: 50 }, (_, i) => i + 1)
+      );
+    });
 
-  it('handles a stop failure without trying another execution', async () => {
-    const error = new Error('job already finished');
-    stopJob.mockRejectedValueOnce(error);
-    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    try {
-      await expect(
-        component.onStopJobClick(mockJobs[0], new MouseEvent('click'))
-      ).resolves.toBeUndefined();
-      expect(stopJob).toHaveBeenCalledExactlyOnceWith(1, 'drive');
-      expect(log).toHaveBeenCalledWith('Failed to stop job:', error);
-    } finally {
-      log.mockRestore();
-    }
-  });
+    it('shows no section while no job has finished', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('details.recent-jobs')).toBeNull();
+    });
 
-  it('assigns the operation tone and the animation class of a job', () => {
-    const tone = (job_type: string): string =>
-      component.getJobTone({ job_type } as unknown as JobInfo);
-    expect(tone('sync')).toBe('primary');
-    expect(tone('bisync')).toBe('purple');
-    expect(tone('copy')).toBe('yellow');
-    expect(tone('move')).toBe('orange');
-    expect(tone('mount')).toBe('accent');
-    expect(tone('something-else')).toBe('accent');
+    it('stays folded until opened, shows the count meanwhile and remembers the choice', () => {
+      jobs.set([finished(10, 'Completed'), finished(11, 'Failed')]);
+      fixture.detectChanges();
+      const details = (): HTMLDetailsElement =>
+        fixture.nativeElement.querySelector('details.recent-jobs');
+      expect(details().open).toBe(false);
+      expect(details().querySelector('summary [appPill]')?.textContent?.trim()).toBe('2');
+      expect(listed()).toEqual([]);
 
-    expect(component.getJobAnimationClass({ job_type: 'sync' } as unknown as JobInfo)).toBe(
-      'animate-spin'
-    );
-    expect(component.getJobAnimationClass({ job_type: 'bisync' } as unknown as JobInfo)).toBe(
-      'animate-spin'
-    );
-    expect(component.getJobAnimationClass({ job_type: 'copy' } as unknown as JobInfo)).toBe('');
-  });
+      component.setRecentOpen(true);
+      fixture.detectChanges();
+      expect(details().open).toBe(true);
+      expect(listed()).toEqual([10, 11]);
 
-  it('computes runningJobViewModels with correct progress percentage', () => {
-    const vms = component.runningJobViewModels();
-    expect(vms.length).toBe(3);
-    expect(vms[0].progressPercentage).toBe(50); // 100 / 200 = 50%
-    expect(vms[1].progressPercentage).toBe(20); // 20 / 100 = 20%
-    expect(vms[2].progressPercentage).toBe(80); // 80 / 100 = 80%
-  });
+      const reopened = TestBed.createComponent(JobsOverviewPanelComponent);
+      expect(reopened.componentInstance.recentOpen()).toBe(true);
+    });
 
-  it('returns formatted job label using translation or fallback', () => {
-    expect(component.getJobLabel({ job_type: 'sync' } as unknown as JobInfo)).toBeDefined();
-    expect(component.getJobLabel({ job_type: 'custom_op' } as unknown as JobInfo)).toBe(
-      'custom op'
-    );
+    it('follows the user opening and closing the section', () => {
+      jobs.set([finished(10, 'Completed')]);
+      fixture.detectChanges();
+      const details: HTMLDetailsElement =
+        fixture.nativeElement.querySelector('details.recent-jobs');
+      details.open = true;
+      details.dispatchEvent(new Event('toggle'));
+      expect(component.recentOpen()).toBe(true);
+      details.open = false;
+      details.dispatchEvent(new Event('toggle'));
+      expect(component.recentOpen()).toBe(false);
+    });
+
+    it('deletes the job its row asks for', async () => {
+      jobs.set([finished(10, 'Completed')]);
+      component.setRecentOpen(true);
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('app-jobs-panel .action-button') as HTMLElement).click();
+      await fixture.whenStable();
+      expect(deleteJob).toHaveBeenCalledExactlyOnceWith(10);
+    });
+
+    it('handles a delete failure', async () => {
+      const error = new Error('gone');
+      deleteJob.mockRejectedValueOnce(error);
+      const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        await expect(component.onDeleteJob(10)).resolves.toBeUndefined();
+        expect(log).toHaveBeenCalledWith('Failed to delete job:', error);
+      } finally {
+        log.mockRestore();
+      }
+    });
   });
 });

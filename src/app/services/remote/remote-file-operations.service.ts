@@ -8,6 +8,8 @@ import {
   FsInfo,
   Origin,
   FsTransferItem,
+  LocalPathInfo,
+  UploadTargets,
   FsDeleteItem,
   ArchiveListResponse,
   RenameItem,
@@ -317,8 +319,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     group?: string,
     parentJobId?: number,
     options?: TransferOptionValues
-  ): Promise<string> {
-    return this.invokeCommand<string>('transfer', {
+  ): Promise<number> {
+    return this.invokeCommand<number>('transfer', {
       items,
       dstRemote,
       dstPath,
@@ -330,8 +332,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  async deleteItems(items: FsDeleteItem[], source?: Origin, group?: string): Promise<string> {
-    return this.invokeCommand<string>('delete', { items, origin: source, group });
+  async deleteItems(items: FsDeleteItem[], source?: Origin, group?: string): Promise<number> {
+    return this.invokeCommand<number>('delete', { items, origin: source, group });
   }
 
   async removeEmptyDirs(
@@ -339,8 +341,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     source?: Origin,
     group?: string
-  ): Promise<string> {
-    return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
+  ): Promise<void> {
+    return this.invokeCommand<void>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
   /** `options` are the index options by rclone's names, as a profile keeps them. */
@@ -367,12 +369,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     isDir: boolean,
     source?: Origin,
     group?: string
-  ): Promise<string> {
+  ): Promise<number> {
     return this.renameBatch([{ remote, srcPath, dstPath, isDir }], source, group);
   }
 
-  async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<string> {
-    return this.invokeCommand<string>('rename', {
+  async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<number> {
+    return this.invokeCommand<number>('rename', {
       items,
       origin: source,
       group,
@@ -445,16 +447,23 @@ export class RemoteFileOperationsService extends TauriBaseService {
     localPaths: string[],
     source?: Origin,
     group?: string,
-    options?: TransferOptionValues
-  ): Promise<string> {
-    return this.invokeCommand<string>('upload_local_drop_paths', {
+    options?: TransferOptionValues,
+    targets?: UploadTargets
+  ): Promise<number> {
+    return this.invokeCommand<number>('upload_local_drop_paths', {
       remote,
       path,
       localPaths,
       origin: source,
       group,
       options,
+      targets,
     });
+  }
+
+  /** The name, kind, size and modification time of each local path, in order. */
+  async localPathInfo(paths: string[]): Promise<LocalPathInfo[]> {
+    return this.invokeCommand<LocalPathInfo[]>('local_path_info', { paths });
   }
 
   async uploadFileSimple(
@@ -483,7 +492,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     files: { file: File; relativePath: string }[],
     source?: Origin,
     emptyDirectories: string[] = [],
-    options?: TransferOptionValues
+    options?: TransferOptionValues,
+    targets?: UploadTargets
   ): Promise<WebUploadOutcome> {
     const upload: PendingWebUpload = {
       group: generatePrefixedId('upload'),
@@ -507,7 +517,10 @@ export class RemoteFileOperationsService extends TauriBaseService {
       })),
     };
     try {
-      await this.openSession(session, upload, [...new Set(emptyDirectories)], limits, options);
+      await this.openSession(session, upload, [...new Set(emptyDirectories)], limits, {
+        options,
+        targets,
+      });
     } catch (error) {
       if (session.id) this.discardSession(session.id);
       this.endUpload(upload.group);
@@ -671,7 +684,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     upload: PendingWebUpload,
     emptyDirs: string[],
     limits: { requestBytes: number },
-    options: TransferOptionValues | undefined
+    transfer: { options?: TransferOptionValues; targets?: UploadTargets }
   ): Promise<void> {
     const entries = [
       ...session.files.map(({ path, size, mtime }) => ({
@@ -685,7 +698,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       path: upload.path,
       origin: upload.origin,
       group: upload.group,
-      options,
+      ...transfer,
     };
     const encoder = new TextEncoder();
     const headerBytes = encoder.encode(JSON.stringify(header)).length;

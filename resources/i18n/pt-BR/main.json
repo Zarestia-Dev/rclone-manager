@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "Parar a Tarefa",
-        "delete": "Excluir a Tarefa"
+        "delete": "Excluir a Tarefa",
+        "retry": "Repetir a Tarefa"
       },
       "empty": "Nenhum tarefa encontrado"
     },
@@ -1902,6 +1903,18 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Remover",
+      "clearFinished": "Limpar concluídas",
+      "openDestination": "Abrir destino",
+      "undo": "Desfazer",
+      "timeLeft": "faltam {{time}}",
+      "failedOf": {
+        "one": "{{count}} de {{total}} falhou",
+        "other": "{{count}} de {{total}} falharam"
+      },
+      "itemsCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} itens"
+      },
       "resumeUpload": "Continuar o envio",
       "resumeWithFiles": "Selecione os mesmos arquivos para continuar",
       "resumeWithFolder": "Selecione a mesma pasta para continuar",
@@ -1909,24 +1922,6 @@
       "uploadPausedReselect": {
         "one": "Pausado: selecione {{count}} arquivo novamente para continuar",
         "other": "Pausado: selecione {{count}} arquivos novamente para continuar"
-      },
-      "progress": "Progresso",
-      "files": "Arquivos",
-      "speed": "Velocidade",
-      "eta": "Tempo Restante",
-      "currentFile": "Arquivo Atual",
-      "currentFiles": "Arquivos Atuais",
-      "details": {
-        "source": "Origem",
-        "destination": "Destino",
-        "startTime": "Hora de Início",
-        "uploadedFiles": "Arquivos carregados",
-        "deletedFiles": "Arquivos excluídos",
-        "movedFiles": "Arquivos movidos",
-        "copiedFiles": "Arquivos copiados",
-        "syncedFiles": "Arquivos sincronizados",
-        "processedFiles": "Arquivos processados",
-        "options": "Opções"
       },
       "running": "Em execução",
       "filesCount": {
@@ -1947,7 +1942,8 @@
         "upload": "Enviar",
         "archivecreate": "Compactar",
         "archiveextract": "Extrair arquivo",
-        "index": "Listagens de diretório"
+        "index": "Listagens de diretório",
+        "download": "Baixar"
       }
     },
     "fileViewer": {
@@ -2047,6 +2043,11 @@
       "delete": "Excluir",
       "deleteDesc": "Excluir permanentemente arquivos que correspondem aos filtros",
       "copyurl": "Copiar URL",
+      "upload": "Enviar",
+      "rename": "Renomear",
+      "cleanup": "Limpar",
+      "rmdirs": "Remover diretórios vazios",
+      "archiveextract": "Extrair arquivo",
       "copyUrlDesc": "Gerar URLs de download públicas para arquivos",
       "archivecreate": "Arquivo",
       "archivecreateDesc": "Compactar pastas/arquivos em um arquivo de arquivamento (Zip, Tar, etc.)",
@@ -2081,7 +2082,8 @@
       "remoteSettings": "Configurações do remoto",
       "indexSettings": "Configurações de Listagens de Diretório",
       "index": "Listagens de diretório",
-      "indexDesc": "Grava listagens navegáveis nas pastas para sites estáticos"
+      "indexDesc": "Grava listagens navegáveis nas pastas para sites estáticos",
+      "download": "Baixar"
     },
     "generalDetail": {
       "automations": "Automações",
@@ -3567,7 +3569,12 @@
       "viewOptions": "Opções de visualização",
       "showingItems": "Mostrando {{count}} de {{total}}",
       "decreaseIconSize": "Diminuir tamanho do ícone",
-      "increaseIconSize": "Aumentar tamanho do ícone"
+      "increaseIconSize": "Aumentar tamanho do ícone",
+      "tabCount": {
+        "one": "{{count}} aba",
+        "other": "{{count}} abas"
+      },
+      "showTabs": "Mostrar Abas Abertas"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3661,6 +3668,60 @@
       "useAsDefault": "Usar estas opções por padrão",
       "dontAskAgain": "Não perguntar novamente (Preferências do Gerenciador de Arquivos)",
       "start": "Iniciar"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” já existe",
+      "fileExists": "Já existe um arquivo com este nome em {{destination}}.",
+      "folderExists": "Já existe uma pasta com este nome em {{destination}}.",
+      "mergeExplain": "Mesclar adiciona os arquivos recebidos a ela.",
+      "thereNow": "Lá agora",
+      "incoming": "Recebido",
+      "replace": "Substituir",
+      "merge": "Mesclar",
+      "skip": "Pular",
+      "keepBoth": "Manter ambos",
+      "replaceOrMerge": "Substituir ou mesclar",
+      "forAll": "Para todos:",
+      "keptAs": "Mantido como “{{name}}”",
+      "skipped": "Pulado",
+      "replaces": "Substitui o arquivo de lá",
+      "merges": {
+        "newer": "Mesclado, mantendo o mais recente de cada arquivo",
+        "keep": "Mesclado, adicionando só os que faltam",
+        "replace": "Mesclado, substituindo os arquivos com o mesmo nome"
+      },
+      "title": {
+        "one": "{{count}} de {{total}} itens já existe em {{destination}}",
+        "other": "{{count}} de {{total}} itens já existem em {{destination}}"
+      },
+      "others": {
+        "one": "Mais {{count}} item não tem conflito.",
+        "other": "Mais {{count}} itens não têm conflito."
+      },
+      "start": {
+        "copy": {
+          "one": "Copiar {{count}} item",
+          "other": "Copiar {{count}} itens"
+        },
+        "move": {
+          "one": "Mover {{count}} item",
+          "other": "Mover {{count}} itens"
+        },
+        "upload": {
+          "one": "Enviar {{count}} item",
+          "other": "Enviar {{count}} itens"
+        }
+      },
+      "skipAll": "Pular todos",
+      "replaceWarning": "Arquivos substituídos não podem ser recuperados, e isso não pode ser desfeito.",
+      "mergeWarning": "A mesclagem de pastas não pode ser desfeita.",
+      "sameNames": "Arquivos com o mesmo nome:",
+      "sameNamesAll": "Arquivos com o mesmo nome nas pastas mescladas:",
+      "existingFiles": {
+        "newer": "Manter o mais recente",
+        "keep": "Manter o que já está lá",
+        "replace": "Substituir pelo recebido"
+      }
     }
   },
   "home": {
@@ -3773,7 +3834,6 @@
       "progress": "Progresso:",
       "of": "de",
       "eta": "Tempo restante:",
-      "elapsed": "Decorrido:",
       "speed": "Velocidade de Transferência:",
       "transfers": "Transferências:",
       "checks": "Verificações:",
@@ -3785,6 +3845,7 @@
       "serverMoves": "Mover do Servidor:",
       "lastError": "Último Erro:",
       "runningJobs": "Tarefas em Execução",
+      "recentJobs": "Tarefas Recentes",
       "starting": "Começando...",
       "noRunning": "Nenhuma tarefa ativa está sendo executada atualmente."
     },
@@ -3863,7 +3924,6 @@
       "missingMountPoint": "Falta 'mountPoint' na configuração do nó unmount e o nó de destino não produziu um ponto de montagem",
       "missingStopServeTarget": "Faltam 'targetNodeId'/'serverId' e 'remoteName' na configuração do nó stop_serve",
       "rcCommandFailed": "O comando RC '{{command}}' falhou: {{error}}",
-      "invalidJobId": "ID de tarefa inválido retornado pelo envio em lote: {{error}}",
       "unsupportedNodeType": "Tipo de nó de fluxo de trabalho '{{type}}' não compatível com esta plataforma ou versão",
       "nodeCrashed": "O nó '{{node}}' falhou inesperadamente: {{reason}}",
       "notificationFailed": "Erro de notificação ({{kind}}): {{error}}",
@@ -3955,7 +4015,9 @@
       "diskFull": "O disco ou unidade de destino está cheio. Espaço em disco insuficiente.",
       "fileLocked": "O arquivo está bloqueado ou em uso por outro processo.",
       "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação.",
-      "ioError": "Erro de E/S: {{error}}"
+      "ioError": "Erro de E/S: {{error}}",
+      "intoItself": "A pasta “{{name}}” não pode ser copiada nem movida para dentro de si mesma.",
+      "noItems": "Nenhum item selecionado."
     },
     "upload": {
       "legacyBatch": "Este envio foi iniciado por uma página desatualizada. Recarregue o aplicativo e tente novamente.",
@@ -3964,7 +4026,8 @@
       "invalidModifiedTime": "O envio contém uma data de modificação inválida.",
       "sessionGone": "O servidor não tem mais este envio, porque ele foi cancelado ou ficou inativo por tempo demais. Inicie-o novamente.",
       "invalidChunk": "O envio mandou dados que não pertencem a nenhum de seus arquivos.",
-      "incomplete": "O envio foi concluído antes de todos os seus arquivos chegarem."
+      "incomplete": "O envio foi concluído antes de todos os seus arquivos chegarem.",
+      "filesFailed": "Arquivos que não puderam ser enviados: {{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
@@ -4040,7 +4103,8 @@
       "profileNotRunning": "Nenhuma tarefa {{jobType}} ativa encontrada para o perfil '{{profile}}' em {{remote}}",
       "stopped": "Tarefa interrompida",
       "failed": "A tarefa falhou",
-      "lost": "O Rclone não reconhece mais esta tarefa. Ela expirou após terminar ou o motor foi reiniciado, então o resultado não está disponível."
+      "lost": "O Rclone não reconhece mais esta tarefa. Ela expirou após terminar ou o motor foi reiniciado, então o resultado não está disponível.",
+      "notRetryable": "Esta tarefa não pode ser repetida: só é possível repetir uma tarefa que falhou ou foi parada e que foi iniciada depois que o app foi aberto."
     },
     "cache": {
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
@@ -4161,8 +4225,9 @@
       "remoteRestartRequired": "O Rclone foi atualizado no servidor remoto. Por favor, reinicie manualmente o serviço de Rclone remoto para aplicar a nova versão."
     },
     "job": {
-      "stopped": "O tarefa foi concluído com sucesso",
-      "deleted": "O tarefa foi excluído com sucesso"
+      "stopped": "A tarefa foi parada com sucesso",
+      "deleted": "A tarefa foi excluída com sucesso",
+      "retried": "A tarefa {{id}} está sendo executada novamente"
     },
     "security": {
       "passwordRemoved": "Senha removida com sucesso",
@@ -4275,17 +4340,21 @@
     "reason": "Operações ativas em andamento: {{details}}",
     "mounts": "Pontos de montagem: {{count}}",
     "jobs": "Tarefas: {{count}}",
-    "serves": "Servidores: {{count}}"
+    "serves": "Servidores: {{count}}",
+    "progress": "{{done}} de {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "{{time}} restantes",
+    "checked": "Verificados: {{count}}"
   },
   "notification": {
     "title": {
       "mountSucceeded": "Montado com Sucesso",
       "mountFailed": "Erro de Montagem",
       "unmountSucceeded": "Desconectado",
-      "jobStarted": "Processo de {{type}} Iniciado",
-      "jobCompleted": "{{type}} Concluído",
-      "jobFailed": "{{type}} Falhou",
-      "jobStopped": "{{type}} Parado",
+      "jobStarted": "Operação iniciada: {{type}}",
+      "jobCompleted": "Operação concluída: {{type}}",
+      "jobFailed": "Operação com falha: {{type}}",
+      "jobStopped": "Operação interrompida: {{type}}",
       "serveStarted": "Servidor Online",
       "serveFailed": "Erro do Servidor",
       "serveStopped": "Servidor Parou",
@@ -4326,10 +4395,10 @@
       "mountSucceeded": "Montado com sucesso {{remote}} de {{backend}} em {{mountPoint}}.",
       "mountFailed": "Falha ao montar {{remote}} em {{backend}}: {{error}}",
       "unmountSucceeded": "{{remote}} desconectado do {{backend}}.",
-      "jobStarted": "Iniciado {{type}} para {{remote}} em {{backend}}.",
-      "jobCompleted": "Concluído com sucesso {{type}} para {{remote}} em {{backend}}.",
-      "jobFailed": "Falha de {{type}} para {{remote}} em {{backend}}: {{error}}",
-      "jobStopped": "Parado {{type}} para {{remote}} em {{backend}}.",
+      "jobStarted": "A operação “{{type}}” para {{remote}} em {{backend}} foi iniciada.",
+      "jobCompleted": "A operação “{{type}}” para {{remote}} em {{backend}} foi concluída com sucesso.",
+      "jobFailed": "A operação “{{type}}” para {{remote}} em {{backend}} falhou: {{error}}",
+      "jobStopped": "A operação “{{type}}” para {{remote}} em {{backend}} foi interrompida.",
       "serveStarted": "Iniciou o servidor para {{remote}} em {{backend}}.",
       "serveFailed": "Falha ao iniciar o servidor para {{remote}} no {{backend}}: {{error}}",
       "serveStopped": "Serviço parado para {{remote}} no {{backend}}.",
@@ -4366,6 +4435,26 @@
       "workflowStopped": "O fluxo '{{name}}' foi interrompido.",
       "unmountFailed": "Falha ao desmontar {{remote}} no {{backend}}: {{error}}",
       "serveStopFailed": "Falha ao parar o servidor {{protocol}} para {{remote}} no {{backend}}: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Sincronização",
+      "copy": "Cópia",
+      "move": "Movimentação",
+      "bisync": "BiSync",
+      "check": "Verificação",
+      "mount": "Montagem",
+      "copyurl": "Cópia de URL",
+      "mkdir": "Criação de pasta",
+      "cleanup": "Limpeza",
+      "delete": "Exclusão",
+      "rename": "Renomeação",
+      "rmdirs": "Remoção de diretórios vazios",
+      "index": "Listagens de diretório",
+      "upload": "Envio",
+      "download": "Download",
+      "archivecreate": "Arquivamento",
+      "archiveextract": "Extração de arquivo",
+      "cryptcheck": "Verificação criptográfica"
     }
   },
   "repairSheet": {

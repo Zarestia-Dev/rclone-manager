@@ -191,7 +191,15 @@ describe('TransferOperationsService', () => {
     expect(service.pendingActions().size).toBe(0);
     download.mockRejectedValueOnce(new Error('offline'));
     await service.download(item, 'src', 'file-src');
-    expect(showError).toHaveBeenCalled();
+    // The download service says why it failed; saying it again here would show two errors.
+    expect(showError).not.toHaveBeenCalled();
+    expect(download).toHaveBeenLastCalledWith(
+      expect.any(String),
+      item.name,
+      expect.any(String),
+      false,
+      'dashboard'
+    );
     expect(service.pendingActions().size).toBe(0);
   });
 

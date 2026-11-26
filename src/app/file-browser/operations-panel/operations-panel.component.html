@@ -1,36 +1,92 @@
 @if (hasJobs()) {
-  <!-- Sidebar Accordion (Compact Mode) -->
-  <mat-accordion class="operations-accordion">
-    <mat-expansion-panel
-      [expanded]="isExpanded()"
-      (opened)="isExpanded.set(true)"
-      (closed)="isExpanded.set(false)"
-    >
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon svgIcon="download"></mat-icon>
-          <span>{{ 'fileBrowser.operations.title' | translate }}</span>
-          @if (activeCount() > 0) {
-            <span class="job-count">{{ activeCount() }}</span>
-          }
-        </mat-panel-title>
-      </mat-expansion-panel-header>
+  @let progress = overallProgress();
+  @let active = activeCount();
+  <button
+    type="button"
+    class="ops-indicator"
+    [class.busy]="progress !== null"
+    [cdkMenuTriggerFor]="isMobile() ? null : popover"
+    [cdkMenuPosition]="[
+      { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+    ]"
+    (click)="onIndicatorClick()"
+    [attr.title]="'fileBrowser.operations.title' | translate"
+    [attr.aria-label]="'fileBrowser.operations.title' | translate"
+  >
+    @if (progress !== null) {
+      <svg
+        class="ops-ring"
+        [class.indeterminate]="progress < 0"
+        viewBox="0 0 36 36"
+        aria-hidden="true"
+      >
+        <circle class="ops-ring-track" cx="18" cy="18" r="15" pathLength="100"></circle>
+        <circle
+          class="ops-ring-value"
+          cx="18"
+          cy="18"
+          r="15"
+          pathLength="100"
+          [attr.stroke-dasharray]="progress < 0 ? '25 75' : progress + ' 100'"
+        ></circle>
+      </svg>
+    }
+    <mat-icon svgIcon="jobs"></mat-icon>
+    @if (active > 0) {
+      <span class="ops-count" appPill="solid" tone="primary" size="xs">{{ active }}</span>
+    }
+  </button>
+}
 
-      <div class="panel-content">
-        @for (upload of preparingUploads(); track upload.group) {
-          <div
-            class="card-row-item"
-            role="status"
-            aria-live="polite"
-            [attr.aria-busy]="!upload.paused"
-          >
-            <div class="card-header">
-              <div class="card-info-left">
-                <mat-icon class="card-primary-icon" svgIcon="file-arrow-up"></mat-icon>
-                <span class="truncate">{{
-                  'fileBrowser.operations.types.upload' | translate
+<ng-template #popover>
+  <div class="ops-popover" cdkMenu>
+    <ng-container [ngTemplateOutlet]="list" />
+  </div>
+</ng-template>
+
+<ng-template #list>
+  <section class="ops-list" [attr.aria-label]="'fileBrowser.operations.title' | translate">
+    <header class="ops-list-header">
+      <span>{{ 'fileBrowser.operations.title' | translate }}</span>
+      @if (hasFinished()) {
+        <button type="button" class="ops-clear" (click)="clearFinished()">
+          {{ 'fileBrowser.operations.clearFinished' | translate }}
+        </button>
+      }
+    </header>
+
+    <div class="ops-rows">
+      @for (upload of preparingUploads(); track upload.group) {
+        <div class="ops-row" role="status" aria-live="polite" [attr.aria-busy]="!upload.paused">
+          <div class="ops-row-head">
+            <mat-icon svgIcon="file-arrow-up" data-tone="accent"></mat-icon>
+            <div class="ops-text">
+              <div class="ops-title">
+                <span class="ops-what truncate">{{
+                  'fileBrowser.operations.filesCount' | translate: { count: upload.files }
+                }}</span>
+                <span class="ops-arrow" aria-hidden="true">→</span>
+                <span class="ops-where truncate" [title]="upload.remote + upload.path">{{
+                  uploadWhere(upload)
                 }}</span>
               </div>
+              <div class="ops-status">
+                {{ 'fileBrowser.operations.types.upload' | translate }} ·
+                @if (upload.paused; as paused) {
+                  {{
+                    paused.missing === 0
+                      ? ('fileBrowser.operations.uploadPausedConnection' | translate)
+                      : ('fileBrowser.operations.uploadPausedReselect'
+                        | translate: { count: paused.missing })
+                  }}
+                } @else if (upload.sent > 0) {
+                  {{ upload.sent | formatFileSize }} / {{ upload.total | formatFileSize }}
+                } @else {
+                  {{ 'shared.transferActivity.status.preparing' | translate }}
+                }
+              </div>
+            </div>
+            <div class="ops-actions">
               @if (upload.paused; as paused) {
                 @if (paused.missing === 0) {
                   <button
@@ -70,266 +126,147 @@
                 [attr.title]="'fileBrowser.operations.cancelJob' | translate"
                 [attr.aria-label]="'fileBrowser.operations.cancelJob' | translate"
               >
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
+                <mat-icon svgIcon="stop" data-tone="warn"></mat-icon>
               </button>
             </div>
-            <span class="truncate" [title]="upload.remote + upload.path">{{
-              upload.remote + upload.path
-            }}</span>
-            @if (upload.paused || upload.sent > 0) {
-              @if (upload.paused; as paused) {
-                <span class="percentage-text preparing">{{
-                  paused.missing === 0
-                    ? ('fileBrowser.operations.uploadPausedConnection' | translate)
-                    : ('fileBrowser.operations.uploadPausedReselect'
-                      | translate: { count: paused.missing })
-                }}</span>
-              } @else {
-                <span class="percentage-text"
-                  >{{ upload.sent | formatFileSize }} / {{ upload.total | formatFileSize }}</span
-                >
-              }
-              <mat-progress-bar
-                mode="determinate"
-                [value]="upload.total ? (upload.sent / upload.total) * 100 : 0"
-              ></mat-progress-bar>
-            } @else {
-              <span class="percentage-text preparing">{{
-                'shared.transferActivity.status.preparing' | translate
-              }}</span>
-              <mat-progress-bar
-                mode="indeterminate"
-                [attr.aria-label]="'shared.transferActivity.status.preparing' | translate"
-              ></mat-progress-bar>
-            }
           </div>
-        }
-        @for (vm of jobViewModels(); track vm.job.execute_id || vm.job.jobid) {
-          <div
-            class="job-item"
-            [class.completed]="vm.job.status !== 'Running'"
-            role="button"
-            tabindex="0"
-            [attr.aria-label]="vm.typeLabel + ': ' + vm.actualFileName"
-            [cdkMenuTriggerFor]="detailsMenu"
-            (cdkMenuOpened)="contextMenuJobId.set(vm.job.jobid)"
-            [cdkMenuPosition]="[
-              {
-                originX: 'end',
-                originY: 'top',
-                overlayX: 'start',
-                overlayY: 'top',
-                offsetX: 8,
-                offsetY: -8,
-              },
-              { originX: 'start', originY: 'top', overlayX: 'end', overlayY: 'top', offsetX: -8 },
-            ]"
-          >
-            <div class="job-row">
-              <mat-icon class="job-type-icon" [svgIcon]="vm.typeIcon"></mat-icon>
-              <div class="job-content">
-                <span class="job-name">{{ vm.typeLabel }}</span>
-                <span class="job-subname" [attr.title]="vm.job.destination || vm.formattedSource">{{
-                  vm.actualFileName
-                }}</span>
+          <mat-progress-bar
+            data-tone="accent"
+            [mode]="upload.paused || upload.sent > 0 ? 'determinate' : 'indeterminate'"
+            [value]="upload.total ? (upload.sent / upload.total) * 100 : 0"
+            [attr.aria-label]="'shared.transferActivity.status.preparing' | translate"
+          ></mat-progress-bar>
+        </div>
+      }
+
+      @for (row of rows(); track row.job.execute_id || row.job.jobid) {
+        @let job = row.job;
+        <div
+          class="ops-row"
+          role="button"
+          tabindex="0"
+          [attr.title]="'common.viewDetails' | translate"
+          (click)="showDetails(job)"
+          (keydown.enter)="$event.target === $event.currentTarget && showDetails(job)"
+        >
+          <div class="ops-row-head">
+            <mat-icon [svgIcon]="row.icon" [attr.data-tone]="row.tone"></mat-icon>
+            <div class="ops-text">
+              <div class="ops-title">
+                <span class="ops-what truncate" [title]="row.sourceText">{{ row.what }}</span>
+                @if (row.where) {
+                  <span class="ops-arrow" aria-hidden="true">→</span>
+                  <span class="ops-where truncate" [title]="job.destination">{{ row.where }}</span>
+                }
               </div>
-              <button
-                type="button"
-                class="action-button"
-                (click)="
-                  vm.job.status === 'Running' ? stopJob(vm.job) : deleteJob(vm.job);
-                  $event.stopPropagation()
-                "
-                [attr.title]="
-                  (vm.job.status === 'Running'
-                    ? 'fileBrowser.operations.cancelJob'
-                    : 'fileBrowser.operations.removeJob'
-                  ) | translate
-                "
-                [attr.aria-label]="
-                  (vm.job.status === 'Running'
-                    ? 'fileBrowser.operations.cancelJob'
-                    : 'fileBrowser.operations.removeJob'
-                  ) | translate
-                "
+              <div
+                class="ops-status"
+                [class.ok]="job.status === 'Completed'"
+                [class.err]="job.status === 'Failed'"
               >
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
-              </button>
-            </div>
-
-            @if (vm.job.status === 'Running') {
-              @if (vm.isDelete) {
-                <mat-progress-bar mode="indeterminate" class="job-progress"></mat-progress-bar>
-              } @else {
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="vm.progress"
-                  class="job-progress"
-                ></mat-progress-bar>
-              }
-            }
-
-            <div class="job-stats">
-              @if (vm.job.status === 'Running' && vm.job.stats) {
-                <span class="stats-text"
-                  >{{ vm.job.stats.bytes | formatFileSize }} /
-                  {{ vm.job.stats.totalBytes | formatFileSize }}</span
-                >
-              } @else if (vm.job.status === 'Completed') {
-                <span class="stats-text success">{{
-                  'fileBrowser.operations.completed' | translate
-                }}</span>
-              } @else if (vm.job.status === 'Failed') {
-                <span class="stats-text error">{{
-                  'fileBrowser.operations.failed' | translate
-                }}</span>
-              } @else if (vm.job.status === 'Stopped') {
-                <span class="stats-text">{{ 'fileBrowser.operations.cancelled' | translate }}</span>
-              }
-            </div>
-          </div>
-        }
-      </div>
-    </mat-expansion-panel>
-  </mat-accordion>
-}
-
-<!-- Context Menu Template (Moved outside @for for performance) -->
-<ng-template #detailsMenu>
-  @if (contextMenuJobVM(); as vm) {
-    <div class="job-details-menu" cdkMenu>
-      <div class="detail-header">
-        <mat-icon [svgIcon]="vm.typeIcon"></mat-icon>
-        <span class="detail-title">{{ vm.statusLabel }} - {{ vm.typeLabel }}</span>
-      </div>
-      <mat-divider></mat-divider>
-
-      @if (vm.job.status === 'Running' && vm.job.stats) {
-        <div class="detail-grid upload-stats-grid">
-          <div class="detail-item">
-            <span class="detail-label">{{ 'fileBrowser.operations.progress' | translate }}</span>
-            <span class="value"
-              >{{ vm.job.stats.bytes | formatFileSize }} /
-              {{ vm.job.stats.totalBytes | formatFileSize }}</span
-            >
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">{{ 'fileBrowser.operations.files' | translate }}</span>
-            <span class="value"
-              >{{ vm.job.stats.transfers }} / {{ vm.job.stats.totalTransfers }}</span
-            >
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">{{ 'fileBrowser.operations.speed' | translate }}</span>
-            <span class="value">{{ vm.job.stats.speed | formatRateValue }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">{{ 'fileBrowser.operations.eta' | translate }}</span>
-            <span class="value">{{ vm.job.stats.eta | formatEta }}</span>
-          </div>
-
-          @if (vm.job.stats.transferring && vm.job.stats.transferring.length > 0) {
-            <div class="detail-item upload-current-file">
-              <span class="detail-label">{{
-                (vm.job.stats.transferring.length === 1
-                  ? 'fileBrowser.operations.currentFile'
-                  : 'fileBrowser.operations.currentFiles'
-                ) | translate
-              }}</span>
-              <div class="transferring-files-list">
-                @for (t of vm.job.stats.transferring; track t.name) {
-                  <span class="value transferring-file-entry">{{ t.name }}</span>
+                {{ row.typeLabel }}
+                @if (row.running) {
+                  @if (row.indeterminate) {
+                    · {{ row.statusLabel }}
+                  } @else {
+                    · {{ job.stats.bytes | formatFileSize }} /
+                    {{ job.stats.totalBytes | formatFileSize }}
+                    @if (job.stats.speed > 0) {
+                      · {{ job.stats.speed | formatRateValue }}
+                    }
+                    @if (job.stats.eta > 0) {
+                      ·
+                      {{
+                        'fileBrowser.operations.timeLeft'
+                          | translate: { time: (job.stats.eta | formatEta) }
+                      }}
+                    }
+                  }
+                } @else {
+                  · {{ row.statusLabel }}
+                  @if (row.failed; as failed) {
+                    ·
+                    {{
+                      'fileBrowser.operations.failedOf'
+                        | translate: { count: failed.count, total: failed.total }
+                    }}
+                  } @else if (job.status === 'Completed' && job.stats.bytes > 0) {
+                    · {{ job.stats.bytes | formatFileSize }}
+                  }
+                  @if (row.relativeTime) {
+                    · {{ row.relativeTime }}
+                  }
                 }
               </div>
             </div>
+            <div class="ops-actions">
+              @if (row.running) {
+                <button
+                  type="button"
+                  class="action-button"
+                  (click)="stopJob(job); $event.stopPropagation()"
+                  [attr.title]="'fileBrowser.operations.cancelJob' | translate"
+                  [attr.aria-label]="'fileBrowser.operations.cancelJob' | translate"
+                >
+                  <mat-icon svgIcon="stop" data-tone="warn"></mat-icon>
+                </button>
+              } @else {
+                @if (row.canRetry) {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="retryJob(job); $event.stopPropagation()"
+                    [attr.title]="'detailShared.jobs.actions.retry' | translate"
+                    [attr.aria-label]="'detailShared.jobs.actions.retry' | translate"
+                  >
+                    <mat-icon svgIcon="rotate-right"></mat-icon>
+                  </button>
+                }
+                @if (row.canUndo) {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="undo(); $event.stopPropagation()"
+                    [attr.title]="'fileBrowser.operations.undo' | translate"
+                    [attr.aria-label]="'fileBrowser.operations.undo' | translate"
+                  >
+                    <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+                  </button>
+                }
+                @if (row.openPath) {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="openDestination(row); $event.stopPropagation()"
+                    [attr.title]="'fileBrowser.operations.openDestination' | translate"
+                    [attr.aria-label]="'fileBrowser.operations.openDestination' | translate"
+                  >
+                    <mat-icon svgIcon="folder-open"></mat-icon>
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="action-button"
+                  (click)="removeJob(job); $event.stopPropagation()"
+                  [attr.title]="'fileBrowser.operations.removeJob' | translate"
+                  [attr.aria-label]="'fileBrowser.operations.removeJob' | translate"
+                >
+                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+              }
+            </div>
+          </div>
+          @if (row.running) {
+            <mat-progress-bar
+              [attr.data-tone]="row.tone"
+              [mode]="row.indeterminate ? 'indeterminate' : 'determinate'"
+              [value]="row.progress"
+            ></mat-progress-bar>
           }
         </div>
       }
-
-      @if (vm.transferredFiles.length > 0) {
-        <div class="detail-item uploaded-files-section">
-          <span class="detail-label">{{ vm.transferredLabel | translate }}</span>
-          <div class="uploaded-files-list">
-            @for (file of vm.transferredFiles; track file.name) {
-              <div
-                class="uploaded-file-entry"
-                [class.failed]="file.status === 'failed'"
-                [attr.title]="file.error || null"
-              >
-                <div class="file-info">
-                  <span class="file-name" [attr.title]="file.name">{{ file.name }}</span>
-                  @if (file.size > 0) {
-                    <span class="file-size">{{ file.size | formatFileSize }}</span>
-                  }
-                </div>
-                @if (file.status === 'failed') {
-                  <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      @if (vm.job.source) {
-        <div class="detail-item">
-          <span class="detail-label">{{
-            'fileBrowser.operations.details.source' | translate
-          }}</span>
-          <span class="value">{{ vm.formattedSource }}</span>
-        </div>
-      }
-
-      @if (vm.job.destination) {
-        <div class="detail-item">
-          <span class="detail-label">{{
-            'fileBrowser.operations.details.destination' | translate
-          }}</span>
-          <span class="value">{{ vm.job.destination }}</span>
-        </div>
-      }
-
-      @if (vm.job.transfer_options) {
-        <div class="detail-item">
-          <span class="detail-label">{{
-            'fileBrowser.operations.details.options' | translate
-          }}</span>
-          <span class="value">{{ vm.job.transfer_options }}</span>
-        </div>
-      }
-
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">{{
-            'fileBrowser.operations.details.startTime' | translate
-          }}</span>
-          <span class="value">{{ vm.job.start_time | formatDate: 'timeShort' }}</span>
-        </div>
-
-        @if ((vm.job.status === 'Failed' || vm.job.status === 'Running') && vm.job.error) {
-          <div class="detail-item error-item">
-            <div class="error-container">
-              <div class="error-text">
-                <span class="detail-label">{{ 'fileBrowser.operations.failed' | translate }}</span>
-                <div class="errors-list">
-                  <app-alert-banner severity="error" [description]="vm.formattedError ?? ''" />
-                </div>
-              </div>
-              <button
-                matIconButton
-                class="copy-error-btn"
-                [appCopyToClipboard]="vm.formattedError"
-                [attr.title]="'common.copy' | translate"
-                [attr.aria-label]="'common.copy' | translate"
-              >
-                <mat-icon svgIcon="copy"></mat-icon>
-              </button>
-            </div>
-          </div>
-        }
-      </div>
     </div>
-  }
+  </section>
 </ng-template>
 
 <!-- The same files or folder, selected again to continue an upload a reloaded page left paused -->

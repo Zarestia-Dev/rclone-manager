@@ -237,6 +237,18 @@ pub struct RenderedContent {
     pub level: LogLevel,
 }
 
+/// The name of a job type in the app's language; a type without one keeps rclone's name.
+fn job_type_name(job_type: &JobType) -> String {
+    let raw = job_type.to_string();
+    let name = t(&format!("notification.jobTypes.{raw}"));
+    // A type without a name gives its key back.
+    if name.starts_with("notification.jobTypes.") {
+        raw
+    } else {
+        name
+    }
+}
+
 #[inline]
 fn format_target(remote: &str, profile: Option<&str>) -> String {
     match profile.map(str::trim).filter(|p| !p.is_empty()) {
@@ -262,14 +274,14 @@ impl NotificationEvent {
                     RenderedContent {
                         title: t_with_params(
                             "notification.title.jobStarted",
-                            &[("type", &job_type.to_string())],
+                            &[("type", &job_type_name(job_type))],
                         ),
                         body: t_with_params(
                             "notification.body.jobStarted",
                             &[
                                 ("backend", backend),
                                 ("remote", &target),
-                                ("type", &job_type.to_string().to_lowercase()),
+                                ("type", &job_type_name(job_type)),
                             ],
                         ),
                         level: LogLevel::Info,
@@ -286,14 +298,14 @@ impl NotificationEvent {
                     RenderedContent {
                         title: t_with_params(
                             "notification.title.jobCompleted",
-                            &[("type", &job_type.to_string())],
+                            &[("type", &job_type_name(job_type))],
                         ),
                         body: t_with_params(
                             "notification.body.jobCompleted",
                             &[
                                 ("backend", backend),
                                 ("remote", &target),
-                                ("type", &job_type.to_string().to_lowercase()),
+                                ("type", &job_type_name(job_type)),
                             ],
                         ),
                         level: LogLevel::Info,
@@ -311,14 +323,14 @@ impl NotificationEvent {
                     RenderedContent {
                         title: t_with_params(
                             "notification.title.jobFailed",
-                            &[("type", &job_type.to_string())],
+                            &[("type", &job_type_name(job_type))],
                         ),
                         body: t_with_params(
                             "notification.body.jobFailed",
                             &[
                                 ("backend", backend),
                                 ("remote", &target),
-                                ("type", &job_type.to_string().to_lowercase()),
+                                ("type", &job_type_name(job_type)),
                                 ("error", error),
                             ],
                         ),
@@ -336,14 +348,14 @@ impl NotificationEvent {
                     RenderedContent {
                         title: t_with_params(
                             "notification.title.jobStopped",
-                            &[("type", &job_type.to_string())],
+                            &[("type", &job_type_name(job_type))],
                         ),
                         body: t_with_params(
                             "notification.body.jobStopped",
                             &[
                                 ("backend", backend),
                                 ("remote", &target),
-                                ("type", &job_type.to_string().to_lowercase()),
+                                ("type", &job_type_name(job_type)),
                             ],
                         ),
                         level: LogLevel::Warn,
@@ -836,11 +848,19 @@ mod tests {
         });
 
         let rendered = event.render();
-        assert_eq!(rendered.title, "mount Failed");
+        assert_eq!(rendered.title, "Mount Failed");
         assert_eq!(
             rendered.body,
-            "Failed mount for Google Drive (Default) on Local: Job execution failed: failed to mount FUSE fs: no such directory"
+            "Failed Mount for Google Drive (Default) on Local: Job execution failed: failed to mount FUSE fs: no such directory"
         );
+    }
+
+    #[test]
+    fn a_job_type_is_named_in_the_language_and_an_unknown_one_keeps_its_own_name() {
+        crate::utils::i18n::init();
+        assert_eq!(job_type_name(&JobType::ArchiveExtract), "Extract Archive");
+        assert_eq!(job_type_name(&JobType::Mkdir), "Folder Creation");
+        assert_eq!(job_type_name(&JobType::Unknown("future".into())), "future");
     }
 
     #[test]

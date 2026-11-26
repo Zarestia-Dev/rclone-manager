@@ -108,6 +108,24 @@ import { AppSettingsService } from 'src/app/services/settings/app-settings.servi
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 
 import { PillDirective } from '../../../../shared/directives/pill.directive';
+/** Names a dry run was saved under before `dry_run`, rclone's own name; the backend renames them. */
+const LEGACY_DRY_RUN = ['dryRun', 'DryRun'] as const;
+
+/** Whether options ask for a dry run, under any name it was saved under. */
+function dryRunOf(options: unknown): boolean {
+  const saved = (options ?? {}) as Record<string, unknown>;
+  return !!(saved['dry_run'] ?? saved['dryRun'] ?? saved['DryRun']);
+}
+
+/** `options` with the dry run as `dry_run` (left out when `value` is undefined), and no older name. */
+function withDryRun(options: unknown, value: boolean | undefined): Record<string, unknown> {
+  const next = { ...((options ?? {}) as Record<string, unknown>) };
+  for (const key of LEGACY_DRY_RUN) delete next[key];
+  delete next['dry_run'];
+  if (value !== undefined) next['dry_run'] = value;
+  return next;
+}
+
 @Component({
   selector: 'app-app-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -418,14 +436,6 @@ export class AppDetailComponent {
     () => (this.selectedRemote().status.serve?.serves ?? []) as ServeListItem[]
   );
 
-  readonly jobId = computed(() => {
-    if (!this.isOperationsType()) return undefined;
-    const state = this.getOpState(this.selectedSyncOperation()) as RemoteOperationState;
-    if (!state) return undefined;
-    const profile = this.selectedProfile();
-    return state.activeProfiles?.[profile] ?? state.lastRunProfiles?.[profile];
-  });
-
   readonly activeGroupJob = computed<JobInfo | null>(() => {
     if (this.mode() === 'quickRun') {
       const qr = this.quickRun();
@@ -465,9 +475,9 @@ export class AppDetailComponent {
   });
 
   // --- Derived: Live Data (from service) ---
-  readonly jobStats = computed<GlobalStats>(() => {
-    return (this.activeGroupJob()?.stats as GlobalStats | undefined) ?? DEFAULT_JOB_STATS;
-  });
+  /** The shown job's stats with its file rows, which the job list leaves out of a finished job. */
+  private readonly detailedStats = this.jobService.detailedStats(this.activeGroupJob);
+  readonly jobStats = computed<GlobalStats>(() => this.detailedStats() ?? DEFAULT_JOB_STATS);
 
   readonly activeTransfers = computed<TransferFile[]>(() => {
     return this.jobStats().transferring ?? [];
@@ -743,7 +753,7 @@ export class AppDetailComponent {
         ? this.translate.instant(metadata.typeLabel)
         : jobType.charAt(0).toUpperCase() + jobType.slice(1),
       icon: metadata?.icon ?? 'chart',
-      jobId: this.jobId() ? Number(this.jobId()) : undefined,
+      jobId: job?.jobid,
       status: job?.status,
       running: this.operationActiveState(),
       dryRun: job?.dry_run,
@@ -894,6 +904,11 @@ export class AppDetailComponent {
     }
   }
 
+  /**
+   * Turns the dry run of the shown profile or Quick Run on or off. Bisync keeps it with its own
+   * options, the other operations with the backend options (rclone's global flags), as the
+   * profile editor does.
+   */
   async toggleDryRun(): Promise<void> {
     const opType = this.currentOpType();
     const profile = this.selectedProfile();
@@ -901,15 +916,9 @@ export class AppDetailComponent {
 
     if (this.mode() === 'quickRun') {
       await this.updateQuickRunRclone(rclone => {
-        if (opType === 'bisync') {
-          rclone['dry_run'] = newValue;
-          rclone['dryRun'] = newValue;
-        } else {
-          rclone['dry_run'] = newValue;
-          if (rclone['backend'] && typeof rclone['backend'] === 'object') {
-            (rclone['backend'] as Record<string, unknown>)['dry_run'] = newValue;
-          }
-        }
+        for (const key of ['dry_run', ...LEGACY_DRY_RUN]) delete rclone[key];
+        if (opType === 'bisync') rclone['dry_run'] = newValue;
+        else rclone['backend'] = withDryRun(rclone['backend'], newValue);
       });
       return;
     }
@@ -922,10 +931,7 @@ export class AppDetailComponent {
       await this.remoteFacade.updateRemoteSettings(remoteName, {
         bisyncConfigs: {
           ...profiles,
-          [profile]: {
-            ...existing,
-            rclone: { ...existing?.rclone, dry_run: newValue, dryRun: newValue },
-          },
+          [profile]: { ...existing, rclone: withDryRun(existing?.rclone, newValue) },
         },
       });
       return;
@@ -938,13 +944,9 @@ export class AppDetailComponent {
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
       const key = findProfileKey(backendConfigs, backendProfileName) ?? backendProfileName;
-      const existingBackend = backendConfigs[key] ?? {};
 
       await this.remoteFacade.updateRemoteSettings(remoteName, {
-        backendConfigs: {
-          ...backendConfigs,
-          [key]: { ...existingBackend, dry_run: newValue },
-        },
+        backendConfigs: { ...backendConfigs, [key]: withDryRun(backendConfigs[key], newValue) },
       });
     }
   }
@@ -1058,32 +1060,18 @@ export class AppDetailComponent {
   private getDryRunState(opType: string, profile: string): boolean {
     if (this.mode() === 'quickRun') {
       const rclone = (this.quickRun()?.config?.rclone ?? {}) as Record<string, unknown>;
-      if (opType === 'bisync') return !!(rclone['dry_run'] ?? rclone['dryRun'] ?? rclone['DryRun']);
-      const backendSubConfig = (rclone['backend'] ?? {}) as Record<string, unknown>;
-      return !!(
-        rclone['dry_run'] ??
-        rclone['dryRun'] ??
-        rclone['DryRun'] ??
-        backendSubConfig['dry_run'] ??
-        backendSubConfig['dryRun'] ??
-        backendSubConfig['DryRun']
-      );
+      if (opType === 'bisync') return dryRunOf(rclone);
+      return dryRunOf(rclone['backend'] ?? rclone);
     }
     if (opType === 'bisync') {
-      const bCfg = this.getProfileConfigMap<BisyncConfig>('bisync')?.[profile]?.rclone;
-      return !!(
-        bCfg?.['dry_run'] ??
-        bCfg?.dryRun ??
-        (bCfg as Record<string, unknown> | undefined)?.['DryRun']
-      );
+      return dryRunOf(this.getProfileConfigMap<BisyncConfig>('bisync')?.[profile]?.rclone);
     }
     if (operationHas(opType, 'backendProfile')) {
       const backendProfileName = this.currentAppConfig()?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
       const key = findProfileKey(backendConfigs, backendProfileName);
-      const bOpts = key === undefined ? undefined : backendConfigs[key];
-      return !!(bOpts?.['dry_run'] ?? bOpts?.['dryRun'] ?? bOpts?.['DryRun']);
+      return dryRunOf(key === undefined ? undefined : backendConfigs[key]);
     }
     return false;
   }

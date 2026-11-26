@@ -91,7 +91,7 @@ export class TransferOperationsService {
     return remote ? this.remoteManagement.getFeaturesSignal(remote)() : undefined;
   }
 
-  copyFile(item: CompletedTransfer, reverse = false): Promise<string> {
+  copyFile(item: CompletedTransfer, reverse = false): Promise<number> {
     const source = (reverse ? item.dstFs : item.srcFs) || '';
     const destination = (reverse ? item.srcFs : item.dstFs) || '';
     return this.remoteOps.transferItems(
@@ -113,7 +113,7 @@ export class TransferOperationsService {
   }
 
   /** Copies the file the check found to the other side. */
-  resolveCheck(item: CompletedTransfer, direction: CheckDirection): Promise<string> {
+  resolveCheck(item: CompletedTransfer, direction: CheckDirection): Promise<number> {
     return this.copyFile(item, direction === 'toSource');
   }
 
@@ -205,13 +205,15 @@ export class TransferOperationsService {
     const fs = this.getFs(item, target);
     if (!fs || !this.beginAction(key, 'download')) return;
     try {
-      await this.downloadService.download(fs, item.name, pathUtils.extractName(item.name), false);
-    } catch (error) {
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload') +
-          ': ' +
-          String(error)
+      await this.downloadService.download(
+        fs,
+        item.name,
+        pathUtils.extractName(item.name),
+        false,
+        'dashboard'
       );
+    } catch {
+      // The download service has already said why.
     } finally {
       this.endAction(key);
     }

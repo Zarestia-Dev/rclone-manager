@@ -153,7 +153,13 @@ describe('WizardService', () => {
         },
         {
           provide: JobManagementService,
-          useValue: { jobs, stopJob, getJobReport, startProfileBatch },
+          useValue: {
+            jobs,
+            stopJob,
+            getJobReport,
+            startProfileBatch,
+            getJobStats: vi.fn().mockResolvedValue(null),
+          },
         },
         { provide: RemoteManagementService, useValue: { getAllRemoteConfigs, getLocalDrives } },
         { provide: RemoteDiskUsageService, useValue: { load: vi.fn() } },
@@ -349,7 +355,7 @@ describe('WizardService', () => {
           name: 'Drive backup (test)',
           config: {
             app: { showOnTray: false },
-            rclone: expect.objectContaining({ dryRun: true, combined: true }),
+            rclone: expect.objectContaining({ dry_run: true, combined: true }),
           },
         })
       );
@@ -914,7 +920,7 @@ describe('WizardService', () => {
       expect(mountsOf).toHaveBeenCalledWith('drive', 'Drive folder');
       expect(unmountRemote).toHaveBeenCalledWith('/x', 'drive');
       expect(stopServe).toHaveBeenCalledWith('serve-1', 'drive');
-      expect(stopJob).toHaveBeenCalledWith(7, 'drive');
+      expect(stopJob).toHaveBeenCalledWith(7);
       expect(saveRemoteSettings).toHaveBeenCalledWith('drive', {
         mountConfigs: { Default: { rclone: { mountPoint: '/m' } } },
       });
@@ -969,7 +975,7 @@ describe('WizardService', () => {
   it('stops only a running job', async () => {
     jobs.set([job(JOB_STATUS.Running)]);
     await service.cancel('exec-1');
-    expect(stopJob).toHaveBeenCalledWith(7, 'drive');
+    expect(stopJob).toHaveBeenCalledWith(7);
     stopJob.mockReset();
     jobs.set([job(JOB_STATUS.Completed)]);
     await service.cancel('exec-1');

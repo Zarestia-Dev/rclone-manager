@@ -218,7 +218,7 @@ pub(crate) async fn start_quick_run_snapshot(
     .with_dry_run(dry_run)
     .with_execute_id(Some(execute_id.clone()));
 
-    let job_id_str = submit_transfer_batch(
+    let job_id = submit_transfer_batch(
         app.clone(),
         backend,
         qr.operation_type,
@@ -228,10 +228,6 @@ pub(crate) async fn start_quick_run_snapshot(
         metadata,
     )
     .await?;
-
-    let job_id = job_id_str
-        .parse::<u64>()
-        .map_err(|e| format!("Invalid job ID returned by backend: {e}"))?;
 
     Ok(OperationExecutionResult {
         job_id: Some(job_id),
@@ -292,7 +288,6 @@ pub async fn stop_quick_run(
                     app.clone(),
                     backend.clone(),
                     job.jobid,
-                    job.remote_name,
                 )
                 .await?;
                 stopped_any = true;
@@ -314,6 +309,10 @@ pub fn get_all_quick_runs(manager: &AppSettingsManager) -> Result<Vec<QuickRun>,
 
     let values = sub.get_all_values().map_err(|error| error.to_string())?;
     let mut list: Vec<QuickRun> = crate::utils::json_helpers::decode_valid(values, "quick run");
+    list = list
+        .into_iter()
+        .map(QuickRun::with_current_dry_run)
+        .collect();
 
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
@@ -328,7 +327,7 @@ pub(crate) fn get_quick_run(
         .map_err(|e| e.to_string())?;
 
     match sub.get::<QuickRun>(id) {
-        Ok(qr) => Ok(Some(qr)),
+        Ok(qr) => Ok(Some(qr.with_current_dry_run())),
         Err(rcman::Error::SubSettingsEntryNotFound(_)) => Ok(None),
         Err(error) => Err(error.to_string()),
     }
@@ -405,7 +404,7 @@ mod tests {
         let jobs = manager.job_cache().await;
         let metadata = JobMetadata::new("drive", JobType::Copy, vec!["src".into()], "dst")
             .with_starter(Some(Starter::quick_run("another-preset", "Another", None)));
-        jobs.create_job(7, metadata, "Local".into()).await;
+        jobs.create_job(7, metadata, "Local".into(), None).await;
 
         // There is no settings manager: a deleted preset's definition must not
         // be needed to locate (or rule out) its existing runtime resources.

@@ -573,9 +573,7 @@ describe('RemoteFacadeService', () => {
     await service.loadRemotes();
     const status = service.getRemote('drive')?.status.sync;
     expect(status?.active).toBe(false);
-    expect(status?.jobId).toBe(9);
     expect(status?.configuredProfiles).toEqual(['photos']);
-    expect(status?.lastRunProfiles).toEqual({ photos: 9 });
   });
 
   it('rejects an old catalogue response after a backend switch', async () => {
@@ -836,19 +834,6 @@ describe('RemoteFacadeService', () => {
       expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledExactlyOnceWith(
         'nautilus.errors.indexFailed'
       );
-    });
-
-    it('lists a whole remote under its colon and a local folder as it is', async () => {
-      dialog(options);
-
-      await service.generateRemoteIndex({ name: 'drive' });
-      await service.generateRemoteIndex({ name: '/home/me/site', isLocal: true }, 'filemanager');
-
-      expect(writeIndex().mock.calls.map(call => call.slice(0, 2))).toEqual([
-        ['drive:', ''],
-        ['/home/me/site', ''],
-      ]);
-      expect(writeIndex().mock.calls.map(call => call[3])).toEqual(['dashboard', 'filemanager']);
     });
   });
 

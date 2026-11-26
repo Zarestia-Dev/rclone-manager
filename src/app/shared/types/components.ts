@@ -53,6 +53,8 @@ export interface PathDisplayConfig {
 // ── Jobs Panel ──────────────────────────────────────────────────────────────
 export interface JobsPanelConfig {
   jobs: JobInfo[];
+  /** Leaves out the panel's "Jobs" title, for a page that names the list itself. */
+  hideTitle?: boolean;
 }
 
 // ── Operation Control ───────────────────────────────────────────────────────

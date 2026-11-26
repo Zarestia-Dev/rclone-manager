@@ -20,33 +20,9 @@ use crate::utils::types::jobs::JobType;
 use crate::utils::types::rclone::DiskUsage;
 use crate::utils::types::remotes::ListOptions;
 use crate::{
-    rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    rclone::commands::job::{JobMetadata, run_job},
     utils::json_helpers::build_full_path,
 };
-
-async fn run_fs_command_as_job(
-    app: AppHandle,
-    endpoint: &str,
-    mut payload: serde_json::Value,
-    metadata: JobMetadata,
-    backend: Option<Backend>,
-) -> Result<serde_json::Value, String> {
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_async".to_string(), json!(true));
-    }
-    let submission = submit_job_with_options(
-        app,
-        endpoint,
-        payload,
-        metadata,
-        SubmitJobOptions {
-            wait_for_completion: true,
-            backend,
-        },
-    )
-    .await?;
-    Ok(submission.output.unwrap_or_else(|| json!({})))
-}
 
 /// Runs a metadata query as one direct rc call. These answer in a single round trip, so running
 /// them as async jobs only added the job bookkeeping and a poll interval of 500 ms. The group
@@ -520,7 +496,7 @@ pub async fn get_size(
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(fs_with_path));
 
-    run_fs_command_as_job(
+    run_job(
         app,
         operations::SIZE,
         json!(params),
@@ -563,7 +539,7 @@ pub async fn get_hashsum(
     params.insert("fs".to_string(), json!(fs_with_path));
     params.insert("hashType".to_string(), json!(hash_type));
 
-    run_fs_command_as_job(
+    run_job(
         app,
         operations::HASHSUM,
         json!(params),
@@ -587,7 +563,7 @@ pub async fn get_hashsum_file(
     params.insert("hashType".to_string(), json!(hash_type));
     let source = build_full_path(&remote, &path);
 
-    run_fs_command_as_job(
+    run_job(
         app,
         operations::HASHSUMFILE,
         json!(params),

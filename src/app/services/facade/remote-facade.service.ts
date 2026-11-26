@@ -510,14 +510,6 @@ export class RemoteFacadeService {
     }
   }
 
-  /** The same for the whole of a remote. */
-  generateRemoteIndex(
-    remote: { name: string; isLocal?: boolean },
-    origin: Origin = 'dashboard'
-  ): Promise<boolean> {
-    return this.generateIndex(this.rootOf(remote), '', origin);
-  }
-
   /** Asks for confirmation, then deletes the saved settings (profiles, automations) of a remote. */
   async resetSettings(remoteName: string): Promise<void> {
     if (!remoteName) return;

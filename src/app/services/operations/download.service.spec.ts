@@ -76,7 +76,7 @@ describe('DownloadService', () => {
         .mockResolvedValueOnce('/home/user/Downloads/file.txt')
         .mockResolvedValueOnce(undefined);
 
-      await service.download('my-remote', 'folder/file.txt', 'file.txt', false, 1024);
+      await service.download('my-remote', 'folder/file.txt', 'file.txt', false);
 
       expect(apiClientMock.invoke).toHaveBeenCalledWith('get_save_file_location', {
         defaultName: 'file.txt',
@@ -85,8 +85,8 @@ describe('DownloadService', () => {
         remote: 'my-remote',
         path: 'folder/file.txt',
         destination: '/home/user/Downloads/file.txt',
-        totalSize: 1024,
         isLocal: false,
+        origin: 'filemanager',
       });
       expect(notificationServiceMock.showInfo).toHaveBeenCalled();
       expect(notificationServiceMock.showSuccess).toHaveBeenCalled();
@@ -159,6 +159,7 @@ describe('DownloadService', () => {
         path: 'path/file.txt',
         fileName: 'file.txt',
         isLocal: false,
+        origin: 'filemanager',
       });
       expect(notificationServiceMock.showInfo).toHaveBeenCalled();
     });
@@ -173,6 +174,7 @@ describe('DownloadService', () => {
         path: 'path/file.txt',
         fileName: 'file.txt',
         isLocal: false,
+        origin: 'filemanager',
       });
       expect(notificationServiceMock.showInfo).toHaveBeenCalled();
     });

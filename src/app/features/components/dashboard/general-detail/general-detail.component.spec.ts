@@ -4,7 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideTranslateService, TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ActionState, Remote } from '@app/types';
+import { ActionState, DEFAULT_JOB_STATS, JobInfo, Remote } from '@app/types';
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { GeneralDetailComponent } from './general-detail.component';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -24,6 +25,15 @@ describe('GeneralDetailComponent controls', () => {
   ]);
   const workflows = signal<unknown[]>([]);
   const listWorkflowsUsingRemote = vi.fn();
+  const jobs = signal<JobInfo[]>([]);
+  const remoteNames = new Set(['remote', 'other']);
+  const pathService = {
+    isLocalPath: (path: string): boolean => pathUtils.isLocalPath(path, remoteNames),
+    getRemoteNameFromFs: (fs: string): string =>
+      pathUtils.isLocalPath(fs, remoteNames)
+        ? 'local'
+        : pathUtils.normalizeRemoteName(fs.split(':')[0]),
+  };
 
   beforeEach(() => {
     selectedRemote.set({
@@ -35,6 +45,7 @@ describe('GeneralDetailComponent controls', () => {
     } as Remote);
     actionInProgress.set({});
     workflows.set([]);
+    jobs.set([]);
     listWorkflowsUsingRemote.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({
       imports: [GeneralDetailComponent],
@@ -42,7 +53,7 @@ describe('GeneralDetailComponent controls', () => {
         provideTranslateService(),
         {
           provide: RemoteFacadeService,
-          useValue: { selectedRemote, actionInProgress, jobs: signal([]) },
+          useValue: { selectedRemote, actionInProgress, jobs },
         },
         { provide: AutomationService, useValue: { automations } },
         { provide: WorkflowStorageService, useValue: { workflows, listWorkflowsUsingRemote } },
@@ -51,7 +62,7 @@ describe('GeneralDetailComponent controls', () => {
           useValue: { quickRuns: signal([]), runningIds: signal(new Set()) },
         },
         { provide: IconService, useValue: { getIconName: (): string => 'server' } },
-        { provide: PathService, useValue: {} },
+        { provide: PathService, useValue: pathService },
         { provide: MatDialog, useValue: {} },
       ],
     }).overrideComponent(GeneralDetailComponent, {
@@ -138,6 +149,35 @@ describe('GeneralDetailComponent controls', () => {
     expect(fixture.componentInstance.currentAutomationCardIndex()).toBe(1);
     expect(buttons[0].hasAttribute('aria-current')).toBe(false);
     expect(buttons[1].getAttribute('aria-current')).toBe('true');
+  });
+
+  it('lists every job that reads or writes this remote, however the job names it', () => {
+    const job = (
+      jobid: number,
+      remote_name: string,
+      source: string | string[],
+      destination: string
+    ): JobInfo => ({
+      jobid,
+      execute_id: `exec-${jobid}`,
+      job_type: 'copy',
+      remote_name,
+      source,
+      destination,
+      start_time: '2026-09-02T10:00:00Z',
+      status: 'Completed',
+      stats: { ...DEFAULT_JOB_STATS },
+    });
+    jobs.set([
+      job(1, 'remote', 'remote:', '/home/me'), // a profile names the bare remote
+      job(2, 'remote:', ['remote:a.txt'], 'other:'), // the file browser writes it for rclone
+      job(3, 'other:', 'other:a.txt', 'remote{ab12}:backup'), // copied onto this remote
+      job(4, '/', ['/home/me/a.txt', 'remote:b.txt'], '/tmp'), // one of several sources
+      job(5, 'multiple', ['/home/me/a.txt', 'other:b.txt'], 'other:'),
+      job(6, '/', '/home/me/remote:x', '/tmp/remote'), // a local path that only mentions it
+      job(7, 'remotes', 'remotes:', 'other:'),
+    ]);
+    expect(fixture.componentInstance.jobs().map(j => j.jobid)).toEqual([1, 2, 3, 4]);
   });
 
   describe('workflows', () => {

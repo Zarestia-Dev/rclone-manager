@@ -1,5 +1,4 @@
-import { GlobalStats, JobStatus } from './jobs';
-import { Starter } from './starter';
+import { GlobalStats, JobInfo } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
@@ -138,22 +137,22 @@ export interface OAuthUrlEvent {
   url: string;
 }
 
+/** A job was added, changed or removed. */
 export interface JobChangeEvent {
-  jobId: string;
-  backendName?: string;
-  status: JobStatus;
-  remote?: string;
-  source?: string;
-  sources?: string[];
-  destination?: string;
-  starter?: Starter;
+  jobId: number;
+  backendName: string;
+  /** The job after the change; null once it was removed from the list. */
+  job: JobInfo | null;
+  /** Set only by the change that ended the job, so a listener reacts to the end once. */
+  ended?: boolean;
 }
 
 export interface JobStatsUpdatedEvent {
   jobId: number;
   backendName: string;
   executeId?: string | null;
-  statsRevision?: number;
+  /** Grows with every change of this run's stats, so a late event can be told apart. */
+  statsRevision: number;
   stats: GlobalStats;
 }
 

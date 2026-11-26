@@ -96,14 +96,16 @@ pub const WINDOW_BUTTON_LAYOUT_CHANGED: &str = "window_button_layout_changed";
 /// - Handled by: `WindowService`
 pub const SYSTEM_ACCENT_COLOR_CHANGED: &str = "system_accent_color_changed";
 
-/// Emitted when a background job starts, completes, fails, stops, or is removed (lifecycle change).
+/// Emitted when a job is added, starts, completes, fails, stops, or is removed, with the job
+/// itself ([`JobChangeEvent`]), so a listener need not fetch the whole list again.
 /// - Emitted by: `rclone::state::job`
-/// - Handled by: `services::event_listener` (tray update & workflow engine), `JobManagementService`
+/// - Handled by: `services::event_listener` (tray update & workflow engine), `JobManagementService`,
+///   `NautilusTabService` (refreshes the folders a job that ended changed)
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 
 /// Emitted during ongoing job monitoring when transfer progress or speed statistics are updated.
 /// - Emitted by: `rclone::state::job`
-/// - Handled by: `JobManagementService`
+/// - Handled by: `JobManagementService`, `services::event_listener` (Android notification progress)
 pub const JOB_STATS_UPDATED: &str = "job_stats_updated";
 
 /// Emitted when a remote mount state changes (mounted, unmounted, error).
@@ -196,22 +198,6 @@ pub const APP_EXIT_REQUESTED: &str = "app_exit_requested";
 
 pub const BROWSE: &str = "browse";
 
-// --- File Transfer Events ---
-
-/// Emitted during native file downloads to report throttled progress updates.
-/// - Emitted by: `native::files::download_file`
-/// - Completion is returned by the download command; no UI listener currently subscribes.
-pub const FILE_DOWNLOAD_PROGRESS: &str = "file_download_progress";
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct FileDownloadProgressPayload {
-    pub destination: String,
-    pub downloaded: u64,
-    pub total: Option<u64>,
-    pub percentage: Option<f64>,
-}
-
 /// Events a locked interface still receives. They carry no vault data: the vault state
 /// itself and display state the lock screen needs to look right. Every other event is
 /// withheld until the vault is unlocked.
@@ -253,7 +239,6 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     UPDATER_STATE_CHANGED,
     ALERT_FIRED,
     SYSTEM_STATUS,
-    FILE_DOWNLOAD_PROGRESS,
     VAULT_STATE_CHANGED,
 ];
 
@@ -357,34 +342,39 @@ pub struct VaultStatePayload {
     pub lock_timeout: Option<u64>,
 }
 
-/// Strongly typed payload for job cache change events
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+/// A change in the list of jobs: one was added, changed or removed.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JobChangeEvent {
-    pub job_id: String,
-    #[serde(default = "crate::rclone::backend::types::default_backend_name")]
+    pub job_id: u64,
     pub backend_name: String,
-    pub status: crate::utils::types::jobs::JobStatus,
-    pub remote: Option<String>,
-    pub source: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sources: Vec<String>,
-    pub destination: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub starter: Option<crate::utils::types::starter::Starter>,
+    /// The job after the change, as the job lists carry it ([`super::jobs::JobInfo::summary`]);
+    /// none once it was removed from the list.
+    pub job: Option<super::jobs::JobInfo>,
+    /// Set only by the change that ended the job, not by later ones (its final stats, a parent
+    /// refresh), so a listener reacts to the end once.
+    #[serde(default)]
+    pub ended: bool,
 }
 
-impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
-    fn from(job: &crate::utils::types::jobs::JobInfo) -> Self {
+impl JobChangeEvent {
+    #[must_use]
+    pub fn changed(job: &super::jobs::JobInfo, ended: bool) -> Self {
         Self {
-            job_id: job.jobid.to_string(),
+            job_id: job.jobid,
             backend_name: job.backend_name.clone(),
-            status: job.status.clone(),
-            remote: Some(job.remote_name.clone()),
-            source: Some(job.source.join(", ")),
-            sources: job.source.clone(),
-            destination: Some(job.destination.clone()),
-            starter: job.starter.clone(),
+            job: Some(job.summary()),
+            ended,
+        }
+    }
+
+    #[must_use]
+    pub fn removed(job: &super::jobs::JobInfo) -> Self {
+        Self {
+            job_id: job.jobid,
+            backend_name: job.backend_name.clone(),
+            job: None,
+            ended: false,
         }
     }
 }
@@ -459,70 +449,35 @@ mod tests {
     }
 
     #[test]
-    fn test_job_change_event_from_job_info() {
-        use crate::utils::types::jobs::{JobInfo, JobStatus};
+    fn a_job_change_carries_the_job_and_a_removal_carries_none() {
+        use crate::utils::types::jobs::JobInfo;
 
-        let mut job = JobInfo {
+        let job = JobInfo {
             jobid: 42,
-            execute_id: Some("exec-42".to_string()),
-            remote_name: "gdrive".to_string(),
-            source: vec!["/local/dir".to_string()],
+            source: vec!["first:folder/a, b.txt".into(), "second:c.txt".into()],
             destination: "gdrive:backup".to_string(),
-            group: "job/42".to_string(),
-            starter: Some(Starter::profile("daily-backup")),
-            backend_name: "default".to_string(),
+            starter: Some(Starter::Workflow(WorkflowRun::new(
+                "wf-b",
+                "Workflow",
+                "node-1",
+                vec!["wf-a".into()],
+            ))),
+            backend_name: "NAS".to_string(),
             ..JobInfo::for_test()
         };
 
-        let ev: JobChangeEvent = (&job).into();
-        assert_eq!(ev.job_id, "42");
-        assert_eq!(ev.status, JobStatus::Running);
-        assert_eq!(ev.remote.as_deref(), Some("gdrive"));
-        assert_eq!(ev.source.as_deref(), Some("/local/dir"));
-        assert_eq!(ev.destination.as_deref(), Some("gdrive:backup"));
-        assert_eq!(ev.starter, Some(Starter::profile("daily-backup")));
+        let json = serde_json::to_value(JobChangeEvent::changed(&job, true)).unwrap();
+        assert_eq!(json["jobId"], 42);
+        assert_eq!(json["backendName"], "NAS");
+        assert_eq!(json["ended"], true);
+        assert_eq!(json["job"]["source"], json!(job.source));
+        assert_eq!(json["job"]["starter"]["workflowId"], "wf-b");
+        let parsed: JobChangeEvent = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed.job.unwrap().destination, "gdrive:backup");
 
-        let serialized = serde_json::to_string(&ev).unwrap();
-        assert!(serialized.contains(r#""jobId":"42""#));
-        assert!(serialized.contains(r#""starter":{"kind":"profile","name":"daily-backup"}"#));
-
-        let deserialized: JobChangeEvent = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized, ev);
-        job.starter = Some(Starter::quick_run("qr-99", "Nightly", None));
-        let event = JobChangeEvent::from(&job);
-        let json = serde_json::to_value(&event).unwrap();
-        assert_eq!(
-            json["starter"],
-            json!({ "kind": "quick_run", "id": "qr-99", "name": "Nightly" })
-        );
-        job.starter = Some(Starter::Workflow(WorkflowRun::new(
-            "wf-b",
-            "Workflow",
-            "node-1",
-            vec!["wf-a".into()],
-        )));
-        assert_eq!(
-            serde_json::to_value(JobChangeEvent::from(&job)).unwrap()["starter"],
-            json!({
-                "kind": "workflow",
-                "workflowId": "wf-b",
-                "workflowName": "Workflow",
-                "nodeId": "node-1",
-                "ancestors": ["wf-a"],
-            })
-        );
-        job.source = vec!["first:folder/a, b.txt".into(), "second:folder/c.txt".into()];
-        let event = JobChangeEvent::from(&job);
-        let json = serde_json::to_value(&event).unwrap();
-        assert_eq!(json["sources"], serde_json::json!(job.source));
-        let mut legacy = json;
-        legacy.as_object_mut().unwrap().remove("sources");
-        assert!(
-            serde_json::from_value::<JobChangeEvent>(legacy)
-                .unwrap()
-                .sources
-                .is_empty()
-        );
+        let removed = serde_json::to_value(JobChangeEvent::removed(&job)).unwrap();
+        assert_eq!(removed["job"], serde_json::Value::Null);
+        assert_eq!(removed["ended"], false);
     }
 
     #[test]

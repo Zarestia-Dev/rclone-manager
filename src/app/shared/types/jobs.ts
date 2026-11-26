@@ -184,6 +184,18 @@ export interface JobInfo {
   transfer_options?: string;
   /** Files listed per report of a finished sync, copy or move; the lists come from `getJobReport`. */
   report_counts?: JobReportCounts;
+  /** The backend still has the request that started it, so a failed or stopped run can retry. */
+  retryable?: boolean;
+  /**
+   * How many files of a finished job failed. The list leaves a finished job's file rows out of
+   * `stats`; a view of the job fetches them (`JobManagementService.detailedStats`).
+   */
+  failed_files?: number;
+}
+
+/** Whether a job can run again: it failed or was stopped, and its request is still known. */
+export function canRetryJob(job: Pick<JobInfo, 'status' | 'retryable'>): boolean {
+  return !!job.retryable && (job.status === JOB_STATUS.Failed || job.status === JOB_STATUS.Stopped);
 }
 
 /** The report parameters rclone accepts on sync/copy, sync/move and sync/sync. */
@@ -221,4 +233,5 @@ export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
   rmdirs: 'broom',
   index: 'file-lines',
   upload: 'file-arrow-up',
+  download: 'download',
 });

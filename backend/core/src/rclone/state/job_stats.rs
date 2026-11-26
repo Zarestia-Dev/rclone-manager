@@ -138,17 +138,8 @@ pub fn compute_completed_transfers(
                 .or_else(|| val.get("completedAt"))
                 .and_then(|v| serde_json::from_value::<DateTime<Utc>>(v.clone()).ok());
 
-            let src_fs = val
-                .get("srcFs")
-                .or_else(|| val.get("src_fs"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-
-            let dst_fs = val
-                .get("dstFs")
-                .or_else(|| val.get("dst_fs"))
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let src_fs = val.get("srcFs").and_then(Value::as_str).map(str::to_owned);
+            let dst_fs = val.get("dstFs").and_then(Value::as_str).map(str::to_owned);
 
             let group_val = val
                 .get("group")

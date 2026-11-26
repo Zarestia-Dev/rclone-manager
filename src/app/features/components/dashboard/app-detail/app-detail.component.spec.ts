@@ -84,6 +84,7 @@ describe('AppDetailComponent', () => {
     jobs: ReturnType<typeof signal<unknown[]>>;
     getLatestJobForQuickRun: ReturnType<typeof vi.fn>;
     getLatestJobForRemote: ReturnType<typeof vi.fn>;
+    detailedStats: (job: () => JobInfo | null) => Signal<JobInfo['stats'] | null>;
   };
 
   let quickRunServiceMock: {
@@ -138,6 +139,8 @@ describe('AppDetailComponent', () => {
       jobs: signal([]),
       getLatestJobForQuickRun: vi.fn().mockReturnValue(null),
       getLatestJobForRemote: vi.fn().mockReturnValue(null),
+      detailedStats: (job: () => JobInfo | null): Signal<JobInfo['stats'] | null> =>
+        computed(() => job()?.stats ?? null),
     };
 
     quickRunServiceMock = {
@@ -493,6 +496,19 @@ describe('AppDetailComponent', () => {
     fixture.componentRef.setInput('remoteSettings', {
       syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', dstFs: '/tmp' } } },
       backendConfigs: { Default: { dry_run: true, transfers: 8 } },
+    });
+    expect(component.isDryRun()).toBe(true);
+    await component.toggleDryRun();
+    expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenCalledWith('test-remote', {
+      backendConfigs: { Default: { dry_run: false, transfers: 8 } },
+    });
+  });
+
+  it('reads a dry run saved under an older name and saves it as dry_run alone', async () => {
+    fixture.componentRef.setInput('mainOperationType', 'sync');
+    fixture.componentRef.setInput('remoteSettings', {
+      syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', dstFs: '/tmp' } } },
+      backendConfigs: { Default: { DryRun: true, transfers: 8 } },
     });
     expect(component.isDryRun()).toBe(true);
     await component.toggleDryRun();

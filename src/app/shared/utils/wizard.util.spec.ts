@@ -716,8 +716,8 @@ describe('dry run helpers', () => {
   it('turns a run into a dry run without schedules and out of the tray', () => {
     const dry = asDryRun(run);
     expect(dry.config.app).toEqual({ showOnTray: false });
-    expect(dry.config.rclone).toMatchObject({ dryRun: true, resync: true });
-    expect(run.config.rclone['dryRun']).toBeUndefined();
+    expect(dry.config.rclone).toMatchObject({ dry_run: true, resync: true });
+    expect(run.config.rclone['dry_run']).toBeUndefined();
   });
 
   it('asks a sync, copy or move for the file report and no other operation', () => {

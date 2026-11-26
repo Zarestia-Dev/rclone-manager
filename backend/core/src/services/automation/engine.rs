@@ -581,7 +581,7 @@ async fn run_profile(
     drop(selection.take());
     start_resolved_profile_batch(app.clone(), resolved?, transfer_type, params)
         .await
-        .map(AutomationExecutionOutcome::Running)
+        .map(|job_id| AutomationExecutionOutcome::Running(job_id.to_string()))
 }
 
 /// Records how a started execution ended, unless a newer execution replaced it.

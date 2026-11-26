@@ -13,21 +13,49 @@ import {
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { ExplorerRoot, FileBrowserItem, FsTransferItem, UploadTargets } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { findCopyName } from 'src/app/services/remote/utils/unique-name.util';
 import type { TransferOptionValues } from 'src/app/shared/modals/transfer-options-modal/transfer-options-modal.component';
+import type {
+  ConflictChoices,
+  ConflictEntry,
+  TransferConflict,
+} from 'src/app/shared/modals/transfer-conflict-modal/transfer-conflict-modal.component';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
+  /** The job that last ran this copy or move, so its row in the operations list can undo it. */
+  jobid?: number;
   items: {
     remote: string;
     path: string;
     dstRemote: string;
+    /** Where it landed, under the name it got there. */
     dstFullPath: string;
     isDir: boolean;
+    /** Its own name, which a move puts back. */
     name: string;
   }[];
 }
+
+/** An item the conflict question looks at; one copied into its own folder is kept beside itself. */
+type IncomingItem = ConflictEntry & { inPlace?: boolean };
+
+/** The targets an upload sends for the items kept under another name or merged keeping files. */
+function uploadTargets(choices: ConflictChoices): UploadTargets {
+  const targets: UploadTargets = {};
+  for (const [name, choice] of Object.entries(choices)) {
+    if (choice.name || choice.existingFiles) {
+      targets[name] = { name: choice.name, existingFiles: choice.existingFiles };
+    }
+  }
+  return targets;
+}
+
+/** The path without the slashes that start or end it, so `/a/` and `a` compare equal. */
+const trimSlashes = (path: string): string => path.replace(/^\/+|\/+$/g, '');
 
 @Injectable()
 export class NautilusFileOperationsService {
@@ -41,6 +69,7 @@ export class NautilusFileOperationsService {
   private readonly fileSystem = inject(FileSystemService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly appSettings = inject(AppSettingsService);
+  private readonly remoteMetadata = inject(RemoteManagementService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
@@ -58,6 +87,7 @@ export class NautilusFileOperationsService {
   private readonly _undoStack = signal<UndoEntry[]>([]);
   private readonly _redoStack = signal<UndoEntry[]>([]);
   readonly canUndo = computed(() => this._undoStack().length > 0);
+  readonly lastUndoJobId = computed(() => this._undoStack().at(-1)?.jobid);
   readonly canRedo = computed(() => this._redoStack().length > 0);
 
   copyItems(items: FileBrowserItem[]): void {
@@ -202,15 +232,67 @@ export class NautilusFileOperationsService {
     if (items.length === 0) return;
 
     const normalizedDst = this.pathService.normalizeRemoteForRclone(dstRemote.name);
-    const transferItems = items.map(item => ({
-      remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
-      path: item.entry.Path,
-      name: item.entry.Name,
-      isDir: !!item.entry.IsDir,
-    }));
+    const sources = items.map(item => {
+      const transfer: FsTransferItem = {
+        remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
+        path: item.entry.Path,
+        name: item.entry.Name,
+        isDir: !!item.entry.IsDir,
+      };
+      const inPlace =
+        transfer.remote === normalizedDst &&
+        trimSlashes(pathUtils.getDirname(transfer.path)) === trimSlashes(dstPath);
+      return { item, transfer, inPlace };
+    });
+    // rclone would copy a folder into itself without end, each pass copying what the last made.
+    const destination = trimSlashes(dstPath);
+    const intoItself = sources.find(({ transfer }) => {
+      const source = trimSlashes(transfer.path);
+      return (
+        transfer.isDir &&
+        transfer.remote === normalizedDst &&
+        (destination === source || destination.startsWith(`${source}/`))
+      );
+    });
+    if (intoItself) {
+      this.notifications.showError(
+        this.translate.instant('backendErrors.file.intoItself', {
+          name: intoItself.item.entry.Name,
+        })
+      );
+      return;
+    }
+    // Moving an item into the folder it is in leaves it where it is.
+    const incoming = mode === 'move' ? sources.filter(source => !source.inPlace) : sources;
+    if (incoming.length === 0) return;
+
+    const choices = await this.resolveConflicts(
+      mode,
+      normalizedDst,
+      dstPath,
+      incoming.map(({ item, inPlace }) => ({
+        name: item.entry.Name,
+        isDir: !!item.entry.IsDir,
+        size: item.entry.Size,
+        modTime: item.entry.ModTime,
+        inPlace,
+      }))
+    );
+    if (!choices) return;
+    const transferItems = incoming.flatMap(({ transfer }): FsTransferItem[] => {
+      const choice = choices[transfer.name];
+      if (choice?.action === 'skip') return [];
+      return [
+        { ...transfer, name: choice?.name ?? transfer.name, existingFiles: choice?.existingFiles },
+      ];
+    });
+    if (transferItems.length === 0) return;
+    // Undoing a replace or a merge would remove or move away what was there before.
+    const undoable = !Object.values(choices).some(choice => choice.action === 'replace');
+
     // Within one remote rclone copies and moves on the server, where the options do not apply.
     const options = transferItems.some(item => item.remote !== normalizedDst)
-      ? await this.pickTransferOptions(mode, items.length, normalizedDst + dstPath, [
+      ? await this.pickTransferOptions(mode, transferItems.length, normalizedDst + dstPath, [
           normalizedDst,
           ...transferItems.map(item => item.remote),
         ])
@@ -222,12 +304,12 @@ export class NautilusFileOperationsService {
         mode === 'copy'
           ? 'nautilus.notifications.copyStarted'
           : 'nautilus.notifications.moveStarted',
-        { count: items.length }
+        { count: transferItems.length }
       )
     );
 
     try {
-      await this.remoteOps.transferItems(
+      const jobid = await this.remoteOps.transferItems(
         transferItems,
         normalizedDst,
         dstPath,
@@ -238,29 +320,103 @@ export class NautilusFileOperationsService {
         options
       );
 
-      const succeededItems: UndoEntry['items'] = items.map(item => ({
-        remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
-        path: item.entry.Path,
-        dstRemote: normalizedDst,
-        dstFullPath: pathUtils.joinPath(dstPath, item.entry.Name),
-        isDir: !!item.entry.IsDir,
-        name: item.entry.Name,
-      }));
-
-      this._undoStack.update(s => [
-        ...s.slice(-(this.MAX_UNDO_STACK - 1)),
-        { mode, items: succeededItems },
-      ]);
+      if (undoable) {
+        const succeededItems: UndoEntry['items'] = transferItems.map(item => ({
+          remote: item.remote,
+          path: item.path,
+          dstRemote: normalizedDst,
+          dstFullPath: pathUtils.joinPath(dstPath, item.name),
+          isDir: item.isDir,
+          name: pathUtils.getFilename(item.path),
+        }));
+        this._undoStack.update(s => [
+          ...s.slice(-(this.MAX_UNDO_STACK - 1)),
+          { mode, jobid, items: succeededItems },
+        ]);
+      } else {
+        // An earlier entry may name a file this one replaced.
+        this._undoStack.set([]);
+      }
       this._redoStack.set([]);
     } catch (e) {
       console.error(`${mode} batch failed`, e);
       this.notifications.showError(
-        this.translate.instant(
-          mode === 'copy' ? 'nautilus.errors.copyFailed' : 'nautilus.errors.moveFailed',
-          { count: items.length }
-        )
+        this.backendTranslation.translateBackendMessage(e) ||
+          this.translate.instant(
+            mode === 'copy' ? 'nautilus.errors.copyFailed' : 'nautilus.errors.moveFailed',
+            { count: transferItems.length }
+          )
       );
     }
+  }
+
+  /**
+   * How the incoming items land where the destination holds items of the same name: a choice for
+   * each by its own name, or null when the user cancels. An item copied into its own folder is
+   * kept beside itself without a question. A destination that cannot be listed is left to rclone.
+   * Names are compared as the destination does: Dropbox, OneDrive and the local disk of Windows or
+   * macOS hold one of `Report.pdf` and `report.pdf` (rclone's `CaseInsensitive`, read from the
+   * features the file browser keeps for each remote).
+   */
+  private async resolveConflicts(
+    operation: 'copy' | 'move' | 'upload',
+    dstFs: string,
+    dstPath: string,
+    incoming: IncomingItem[]
+  ): Promise<ConflictChoices | null> {
+    let existing;
+    let caseInsensitive: boolean;
+    try {
+      const [listing, features] = await Promise.all([
+        this.remoteOps.getRemotePaths(dstFs, dstPath === '/' ? '' : dstPath, {}, 'filemanager'),
+        this.remoteMetadata.getFeatures(dstFs, { source: 'filemanager' }),
+      ]);
+      existing = listing.list ?? [];
+      caseInsensitive = !!features['CaseInsensitive'];
+    } catch (error) {
+      console.warn('Cannot list the destination to look for name conflicts', error);
+      return {};
+    }
+    const fold = (name: string): string => (caseInsensitive ? name.toLowerCase() : name);
+    const there = new Map(existing.map(entry => [fold(entry.Name), entry]));
+    const taken = new Set([...existing.map(entry => entry.Name), ...incoming.map(e => e.name)]);
+    const choices: ConflictChoices = {};
+    const conflicts: TransferConflict[] = [];
+    for (const { inPlace, ...entry } of incoming) {
+      if (inPlace) {
+        const name = findCopyName(entry.name, entry.isDir, taken, caseInsensitive);
+        taken.add(name);
+        choices[entry.name] = { action: 'keepBoth', name };
+        continue;
+      }
+      const other = there.get(fold(entry.name));
+      if (other) {
+        conflicts.push({
+          incoming: entry,
+          existing: {
+            name: other.Name,
+            isDir: other.IsDir,
+            size: other.Size,
+            modTime: other.ModTime,
+          },
+        });
+      }
+    }
+    if (conflicts.length === 0) return choices;
+
+    const answer = await firstValueFrom(
+      this.modalService
+        .openTransferConflicts({
+          operation,
+          destination: dstFs + dstPath,
+          total: incoming.length,
+          conflicts,
+          taken: [...taken],
+          caseInsensitive,
+        })
+        .afterClosed()
+    );
+    return answer ? { ...choices, ...answer } : null;
   }
 
   async deleteItems(remote: ExplorerRoot, items: FileBrowserItem[]): Promise<boolean> {
@@ -403,6 +559,7 @@ export class NautilusFileOperationsService {
           sourcePath: item.dstFullPath,
           dstRemote: item.remote,
           dstPath: this.pathService.getParentPath(item.path),
+          name: item.name,
         }));
 
         for (const group of groups.values()) {
@@ -439,10 +596,12 @@ export class NautilusFileOperationsService {
         sourcePath: item.path,
         dstRemote: item.dstRemote,
         dstPath: this.pathService.getParentPath(item.dstFullPath),
+        name: pathUtils.getFilename(item.dstFullPath),
       }));
 
+      let jobid = entry.jobid;
       for (const group of groups.values()) {
-        await this.remoteOps.transferItems(
+        jobid = await this.remoteOps.transferItems(
           group.items,
           group.dstRemote,
           group.dstPath,
@@ -452,7 +611,7 @@ export class NautilusFileOperationsService {
       }
 
       this._redoStack.set(stack.slice(0, -1));
-      this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
+      this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), { ...entry, jobid }]);
       this.notifications.showSuccess(this.translate.instant('nautilus.notifications.redoComplete'));
     } catch (e) {
       console.error('Batch redo failed', e);
@@ -469,6 +628,8 @@ export class NautilusFileOperationsService {
       sourcePath: string;
       dstRemote: string;
       dstPath: string;
+      /** The name it gets where it goes. */
+      name: string;
     }
   ): Map<
     string,
@@ -488,7 +649,7 @@ export class NautilusFileOperationsService {
     >();
 
     for (const item of items) {
-      const { sourceRemote, sourcePath, dstRemote, dstPath } = getDstInfo(item);
+      const { sourceRemote, sourcePath, dstRemote, dstPath, name } = getDstInfo(item);
       const key = `${dstRemote}:${dstPath}`;
 
       let group = groups.get(key);
@@ -500,7 +661,7 @@ export class NautilusFileOperationsService {
       group.items.push({
         remote: sourceRemote,
         path: sourcePath,
-        name: item.name,
+        name,
         isDir: item.isDir,
       });
     }
@@ -564,9 +725,42 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!files.length && !emptyDirectories.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
+
+    // What lands in the destination folder itself: a picked file, or the folder a path starts in.
+    const topName = (path: string): string => path.split('/')[0];
+    const picked = new Map<string, ConflictEntry>();
+    for (const { file, relativePath } of files) {
+      const path = relativePath || file.name;
+      const name = topName(path);
+      if (picked.has(name)) continue;
+      picked.set(
+        name,
+        path === name
+          ? {
+              name,
+              isDir: false,
+              size: file.size,
+              modTime: new Date(file.lastModified).toISOString(),
+            }
+          : { name, isDir: true }
+      );
+    }
+    for (const dir of emptyDirectories) {
+      const name = topName(dir);
+      if (name && !picked.has(name)) picked.set(name, { name, isDir: true });
+    }
+    const choices = await this.resolveConflicts('upload', normalized, currentPath, [
+      ...picked.values(),
+    ]);
+    if (!choices) return false;
+    const sent = (path: string): boolean => choices[topName(path)]?.action !== 'skip';
+    const sendFiles = files.filter(({ file, relativePath }) => sent(relativePath || file.name));
+    const sendDirs = emptyDirectories.filter(sent);
+    if (!sendFiles.length && !sendDirs.length) return false;
+
     const options = await this.pickTransferOptions(
       'upload',
-      files.length || emptyDirectories.length,
+      sendFiles.length || sendDirs.length,
       normalized + currentPath,
       [normalized]
     );
@@ -577,12 +771,13 @@ export class NautilusFileOperationsService {
         this.remoteOps.uploadWebFilesBatch(
           normalized,
           currentPath,
-          files,
+          sendFiles,
           'filemanager',
-          emptyDirectories,
-          options
+          sendDirs,
+          options,
+          uploadTargets(choices)
         ),
-      { files: files.length, items: files.length || emptyDirectories.length }
+      { files: sendFiles.length, items: sendFiles.length || sendDirs.length }
     );
   }
 
@@ -848,26 +1043,37 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     if (!paths.length) return false;
     const normalized = this.pathService.normalizeExplorerRoot(remote);
-    const options = await this.pickTransferOptions(
-      'upload',
-      paths.length,
-      normalized + currentPath,
-      [normalized]
-    );
-    if (options === null) return false;
     try {
-      const batchId = await this.remoteOps.uploadLocalDropPaths(
+      const picked = await this.remoteOps.localPathInfo(paths);
+      const choices = await this.resolveConflicts('upload', normalized, currentPath, picked);
+      if (!choices) return false;
+      const sendPaths = paths.filter((_, i) => choices[picked[i].name]?.action !== 'skip');
+      if (!sendPaths.length) return false;
+
+      const options = await this.pickTransferOptions(
+        'upload',
+        sendPaths.length,
+        normalized + currentPath,
+        [normalized]
+      );
+      if (options === null) return false;
+      // Id 0 means every file was kept as it was there: the upload still succeeded.
+      await this.remoteOps.uploadLocalDropPaths(
         normalized,
         currentPath,
-        paths,
+        sendPaths,
         'filemanager',
         undefined,
-        options
+        options,
+        uploadTargets(choices)
       );
-      return !!batchId;
+      return true;
     } catch (err) {
       console.error('Local upload failed', err);
-      this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+      this.notifications.showError(
+        this.backendTranslation.translateBackendMessage(err) ||
+          this.translate.instant('nautilus.errors.externalDropFailed')
+      );
       return false;
     }
   }

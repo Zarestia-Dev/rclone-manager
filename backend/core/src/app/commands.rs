@@ -109,7 +109,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (resolve_bisync_conflict, $crate::rclone::commands::bisync_conflict::resolve_bisync_conflict, [path1: String, path2: String, conflict: $crate::rclone::commands::bisync_conflict::BisyncConflict, keep: $crate::rclone::commands::bisync_conflict::Side, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, options: Option<serde_json::Value>]);
+            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, options: Option<serde_json::Value>, targets: Option<std::collections::HashMap<String, $crate::rclone::commands::upload::UploadTarget>>]);
+            (local_path_info, $crate::rclone::commands::upload::local_path_info, [paths: Vec<String>], [no_app]);
             (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (generate_index, $crate::rclone::commands::index::generate_index, [remote: String, path: String, options: serde_json::Value, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
@@ -186,9 +187,11 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // JOBS
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
-            (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
+            (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64]);
             (get_job_report, $crate::rclone::commands::job::get_job_report, [jobid: u64]);
+            (get_job_stats, $crate::rclone::commands::job::get_job_stats, [jobid: u64, execute_id: Option<String>]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
+            (retry_job, $crate::rclone::commands::job::retry_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
             (stop_all_active_jobs, $crate::services::lifecycle::shutdown::stop_all_active_jobs, []);
 

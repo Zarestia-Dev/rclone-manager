@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "Stop Job",
-        "delete": "Delete Job"
+        "delete": "Delete Job",
+        "retry": "Retry Job"
       },
       "empty": "No jobs found"
     },
@@ -1902,6 +1903,18 @@
       "cancelled": "Cancelled",
       "cancelJob": "Cancel",
       "removeJob": "Remove",
+      "clearFinished": "Clear finished",
+      "openDestination": "Open destination",
+      "undo": "Undo",
+      "timeLeft": "{{time}} left",
+      "failedOf": {
+        "one": "{{count}} of {{total}} failed",
+        "other": "{{count}} of {{total}} failed"
+      },
+      "itemsCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} items"
+      },
       "resumeUpload": "Continue upload",
       "resumeWithFiles": "Select the same files to continue",
       "resumeWithFolder": "Select the same folder to continue",
@@ -1909,24 +1922,6 @@
       "uploadPausedReselect": {
         "one": "Paused: select {{count}} file again to continue",
         "other": "Paused: select {{count}} files again to continue"
-      },
-      "progress": "Progress",
-      "files": "Files",
-      "speed": "Speed",
-      "eta": "ETA",
-      "currentFile": "Current File",
-      "currentFiles": "Current Files",
-      "details": {
-        "source": "Source",
-        "destination": "Destination",
-        "startTime": "Start Time",
-        "uploadedFiles": "Uploaded files",
-        "deletedFiles": "Deleted files",
-        "movedFiles": "Moved files",
-        "copiedFiles": "Copied files",
-        "syncedFiles": "Synced files",
-        "processedFiles": "Processed files",
-        "options": "Options"
       },
       "running": "Running",
       "filesCount": {
@@ -1947,7 +1942,8 @@
         "upload": "Upload",
         "archivecreate": "Archive",
         "archiveextract": "Extract Archive",
-        "index": "Directory Listings"
+        "index": "Directory Listings",
+        "download": "Download"
       }
     },
     "fileViewer": {
@@ -2047,6 +2043,11 @@
       "delete": "Delete",
       "deleteDesc": "Permanently delete files matching filters",
       "copyurl": "Copy URL",
+      "upload": "Upload",
+      "rename": "Rename",
+      "cleanup": "Cleanup",
+      "rmdirs": "Remove Empty Dirs",
+      "archiveextract": "Extract Archive",
       "copyUrlDesc": "Generate public download URLs for files",
       "archivecreate": "Archive",
       "archivecreateDesc": "Compress folders/files into an archive (Zip, Tar, etc.)",
@@ -2081,7 +2082,8 @@
       "remoteSettings": "Remote Settings",
       "indexSettings": "Directory Listings Settings",
       "index": "Directory Listings",
-      "indexDesc": "Write browsable listings into folders for static websites"
+      "indexDesc": "Write browsable listings into folders for static websites",
+      "download": "Download"
     },
     "generalDetail": {
       "automations": "Automations",
@@ -3608,7 +3610,12 @@
       "viewOptions": "View Options",
       "showingItems": "Showing {{count}} of {{total}}",
       "decreaseIconSize": "Decrease icon size",
-      "increaseIconSize": "Increase icon size"
+      "increaseIconSize": "Increase icon size",
+      "tabCount": {
+        "one": "{{count}} Tab",
+        "other": "{{count}} Tabs"
+      },
+      "showTabs": "Show Open Tabs"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3702,6 +3709,60 @@
       "useAsDefault": "Use these options by default",
       "dontAskAgain": "Don't ask again (File Browser Preferences)",
       "start": "Start"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” already exists",
+      "fileExists": "A file with this name is already in {{destination}}.",
+      "folderExists": "A folder with this name is already in {{destination}}.",
+      "mergeExplain": "Merging adds the incoming files to it.",
+      "thereNow": "There now",
+      "incoming": "Incoming",
+      "replace": "Replace",
+      "merge": "Merge",
+      "skip": "Skip",
+      "keepBoth": "Keep both",
+      "replaceOrMerge": "Replace or merge",
+      "forAll": "For all:",
+      "keptAs": "Kept as “{{name}}”",
+      "skipped": "Skipped",
+      "replaces": "Replaces the file there",
+      "merges": {
+        "newer": "Merged, keeping the newer of each file",
+        "keep": "Merged, adding only the missing files",
+        "replace": "Merged, replacing files with the same name"
+      },
+      "title": {
+        "one": "{{count}} of {{total}} items already exists in {{destination}}",
+        "other": "{{count}} of {{total}} items already exist in {{destination}}"
+      },
+      "others": {
+        "one": "The other {{count}} item has no conflict.",
+        "other": "The other {{count}} items have no conflict."
+      },
+      "start": {
+        "copy": {
+          "one": "Copy {{count}} item",
+          "other": "Copy {{count}} items"
+        },
+        "move": {
+          "one": "Move {{count}} item",
+          "other": "Move {{count}} items"
+        },
+        "upload": {
+          "one": "Upload {{count}} item",
+          "other": "Upload {{count}} items"
+        }
+      },
+      "skipAll": "Skip all",
+      "replaceWarning": "Replaced files can't be restored, and this can't be undone.",
+      "mergeWarning": "Merging folders can't be undone.",
+      "sameNames": "Files with the same name:",
+      "sameNamesAll": "Files with the same name in merged folders:",
+      "existingFiles": {
+        "newer": "Keep the newer one",
+        "keep": "Keep the one there",
+        "replace": "Replace with the incoming one"
+      }
     }
   },
   "home": {
@@ -3814,7 +3875,6 @@
       "progress": "Progress:",
       "of": "of",
       "eta": "ETA:",
-      "elapsed": "Elapsed:",
       "speed": "Transfer Speed:",
       "transfers": "Transfers:",
       "checks": "Checks:",
@@ -3826,6 +3886,7 @@
       "serverMoves": "Server Moves:",
       "lastError": "Last Error:",
       "runningJobs": "Running Jobs",
+      "recentJobs": "Recent Jobs",
       "starting": "Starting...",
       "noRunning": "No active jobs are currently running."
     },
@@ -3904,7 +3965,6 @@
       "missingMountPoint": "Missing 'mountPoint' in unmount node config and target node produced no mount point",
       "missingStopServeTarget": "Missing both 'targetNodeId'/'serverId' and 'remoteName' in stop_serve node config",
       "rcCommandFailed": "RC command '{{command}}' failed: {{error}}",
-      "invalidJobId": "Invalid job ID returned by batch submission: {{error}}",
       "unsupportedNodeType": "Unsupported workflow node type '{{type}}' on this platform or version",
       "nodeCrashed": "Node '{{node}}' crashed: {{reason}}",
       "notificationFailed": "Notification error ({{kind}}): {{error}}",
@@ -3996,7 +4056,9 @@
       "diskFull": "Target disk or drive is full. Not enough free disk space available.",
       "fileLocked": "The file is currently locked or in use by another process.",
       "readOnly": "The target file system is read-only or write-protected.",
-      "ioError": "IO error: {{error}}"
+      "ioError": "IO error: {{error}}",
+      "intoItself": "The folder “{{name}}” cannot be copied or moved into itself.",
+      "noItems": "Nothing was selected."
     },
     "upload": {
       "legacyBatch": "This upload was started by an outdated page. Reload the application and try again.",
@@ -4005,7 +4067,8 @@
       "invalidModifiedTime": "The upload contains an invalid modification time.",
       "sessionGone": "The server no longer has this upload, because it was cancelled or stayed inactive too long. Start it again.",
       "invalidChunk": "The upload sent data that does not belong to any of its files.",
-      "incomplete": "The upload was finished before all of its files arrived."
+      "incomplete": "The upload was finished before all of its files arrived.",
+      "filesFailed": "Files that could not be uploaded: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",
@@ -4074,14 +4137,15 @@
       "tooSlowReverted": "The backend accepted the connection but was too slow to list its items. Reverted to Local."
     },
     "job": {
-      "notFound": "JobInfo not found",
+      "notFound": "Job not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
       "executionFailed": "Job execution failed: {{error}}",
       "corruptedTransfer": "File corrupted during transfer or checksum verification failed.",
       "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}",
       "stopped": "Job stopped",
       "failed": "Job failed",
-      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable."
+      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable.",
+      "notRetryable": "This job cannot run again: only a failed or stopped job started since the app opened can."
     },
     "cache": {
       "fetchConfigFailed": "Failed to fetch remotes config",
@@ -4203,7 +4267,8 @@
     },
     "job": {
       "stopped": "Job stopped successfully",
-      "deleted": "Job deleted successfully"
+      "deleted": "Job deleted successfully",
+      "retried": "Job {{id}} is running again"
     },
     "security": {
       "passwordRemoved": "Password removed successfully",
@@ -4316,7 +4381,11 @@
     "reason": "Active operations running: {{details}}",
     "mounts": "Mounts: {{count}}",
     "jobs": "Jobs: {{count}}",
-    "serves": "Servers: {{count}}"
+    "serves": "Servers: {{count}}",
+    "progress": "{{done}} of {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "{{time}} left",
+    "checked": "Checked: {{count}}"
   },
   "notification": {
     "title": {
@@ -4407,6 +4476,26 @@
       "powerInhibited": "Active operations are preventing system sleep.",
       "unmountFailed": "Failed to unmount {{remote}} from {{backend}}: {{error}}",
       "serveStopFailed": "Failed to stop serve {{protocol}} for {{remote}} on {{backend}}: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Sync",
+      "copy": "Copy",
+      "move": "Move",
+      "bisync": "BiSync",
+      "check": "Check",
+      "mount": "Mount",
+      "copyurl": "Copy URL",
+      "mkdir": "Folder Creation",
+      "cleanup": "Cleanup",
+      "delete": "Delete",
+      "rename": "Rename",
+      "rmdirs": "Remove Empty Dirs",
+      "index": "Directory Listings",
+      "upload": "Upload",
+      "download": "Download",
+      "archivecreate": "Archive",
+      "archiveextract": "Extract Archive",
+      "cryptcheck": "Crypt Check"
     }
   },
   "repairSheet": {

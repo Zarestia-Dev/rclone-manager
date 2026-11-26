@@ -32,4 +32,14 @@ class RcloneKeepAliveServiceTest {
     assertEquals(listOf("serves 1", "autostart"), lines(0, 1))
     assertEquals(listOf("jobs 2", "serves 1", "autostart"), lines(2, 1))
   }
+
+  @Test fun theStatusChipShowsHowFarJobsAreWhenThatIsKnown() {
+    assertEquals("42%", statusChipText(working = true, percent = 42, active = 3))
+    assertEquals("0%", statusChipText(working = true, percent = 0, active = 1))
+    // rclone does not know the size yet: the number of running items, as before.
+    assertEquals("3", statusChipText(working = true, percent = -1, active = 3))
+    // Only mounts or servers run.
+    assertEquals("2", statusChipText(working = false, percent = 50, active = 2))
+    assertEquals(null, statusChipText(working = false, percent = -1, active = 0))
+  }
 }

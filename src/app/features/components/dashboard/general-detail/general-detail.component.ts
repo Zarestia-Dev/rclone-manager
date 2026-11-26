@@ -155,9 +155,18 @@ export class GeneralDetailComponent {
   }
 
   // Derivations
-  readonly jobs = computed(() =>
-    this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
-  );
+  /**
+   * Every job that reads or writes this remote. A job names one remote only, and the file
+   * browser names it the way rclone writes it (`drive:`), so its paths are checked as well.
+   */
+  readonly jobs = computed(() => {
+    const name = this.selectedRemote().name;
+    const onRemote = (fs: string): boolean =>
+      !this.pathService.isLocalPath(fs) && this.pathService.getRemoteNameFromFs(fs) === name;
+    return this.remoteFacade
+      .jobs()
+      .filter(job => [job.remote_name, job.destination, job.source].flat().some(onRemote));
+  });
   /**
    * This remote's automations, plus the workflows that mention it. A workflow has no remote of its
    * own, so the backend, which reads the workflows, says which ones use this remote.

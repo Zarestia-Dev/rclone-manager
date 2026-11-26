@@ -11,7 +11,7 @@ use super::job_resolver::{link_resolving_jobs, sanitize_finished_stats};
 use super::job_stats::normalize_job_stats;
 use crate::utils::types::{
     events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobChangeEvent, JobStatsUpdatedEvent},
-    jobs::{JobCache, JobInfo, JobStatus, JobType},
+    jobs::{JobCache, JobInfo, JobProgress, JobStatus, JobType},
     starter,
 };
 
@@ -56,49 +56,42 @@ pub struct JobActivity {
     pub last_finished: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Result of [`JobCache::poll_job`].
-pub enum JobPoll {
-    Missing,
-    Running,
-    Completed(Box<JobInfo>),
-    Failed(Box<JobInfo>),
-    Stopped,
-}
-
 impl JobCache {
     #[must_use]
     pub fn new() -> Self {
         Self {
             jobs: RwLock::new(HashMap::new()),
-            uploads: parking_lot::Mutex::new(HashMap::new()),
+            own_jobs: parking_lot::Mutex::new(HashMap::new()),
             changed: tokio::sync::Notify::new(),
         }
     }
 
-    pub(crate) async fn cancel_upload(&self, jobid: u64) -> Result<bool, String> {
-        let upload = self.uploads.lock().get(&jobid).cloned();
-        let Some(mut upload) = upload else {
+    /// Stops a job this process carries out itself and waits until it has stopped; false for
+    /// any other job.
+    pub(crate) async fn cancel_own_job(&self, jobid: u64) -> Result<bool, String> {
+        let job = self.own_jobs.lock().get(&jobid).cloned();
+        let Some(mut job) = job else {
             return Ok(false);
         };
-        upload.token.cancel();
+        job.token.cancel();
         loop {
-            if let Some(result) = upload.result.borrow_and_update().clone() {
+            if let Some(result) = job.result.borrow_and_update().clone() {
                 return result.map(|()| true);
             }
-            upload
-                .result
+            job.result
                 .changed()
                 .await
-                .map_err(|_| "Upload ended without confirming cancellation".to_string())?;
+                .map_err(|_| crate::localized_error!("backendErrors.job.failed"))?;
         }
     }
 
-    /// Registers a new job with the cache.
+    /// Registers a new job with the cache, with the request a retry would send again, if any.
     pub async fn create_job(
         &self,
         jobid: u64,
         metadata: crate::rclone::commands::job::JobMetadata,
         backend_name: String,
+        request: Option<Arc<crate::rclone::commands::job::JobRequest>>,
     ) {
         let group = metadata.group_name();
         let exec_id = metadata
@@ -128,6 +121,8 @@ impl JobCache {
 
             report: None,
             report_counts: None,
+            request,
+            failed_files: None,
         };
 
         self.add_job(job).await;
@@ -136,7 +131,7 @@ impl JobCache {
     pub async fn add_job(&self, job: JobInfo) {
         let jobid = job.jobid;
         let parent_id = job.parent_job_id;
-        let event = JobChangeEvent::from(&job);
+        let event = JobChangeEvent::changed(&job, false);
         {
             let mut jobs = self.jobs.write().await;
             jobs.insert(jobid, job);
@@ -182,17 +177,11 @@ impl JobCache {
         }
 
         drop(children_by_parent);
-        let mut removed_jobs = Vec::with_capacity(ids_to_delete.len());
-        for id in &ids_to_delete {
-            if let Some(job) = jobs.remove(id) {
-                if let Some(parent_id) = job.parent_job_id
-                    && !seen.contains(&parent_id)
-                {
-                    link_resolving_jobs(&mut jobs, parent_id);
-                }
-                removed_jobs.push(job);
-            }
-        }
+        let removed_jobs: Vec<JobInfo> = ids_to_delete
+            .iter()
+            .filter_map(|id| jobs.remove(id))
+            .collect();
+        let relinked = relink_parents(&mut jobs, &removed_jobs);
 
         let remaining_groups: HashSet<String> = jobs.values().map(|j| j.group.clone()).collect();
 
@@ -203,7 +192,7 @@ impl JobCache {
             return Err(crate::localized_error!("backendErrors.job.notFound"));
         }
 
-        self.announce_removed(removed_jobs, &remaining_groups, app)
+        self.announce_removed(removed_jobs, relinked, &remaining_groups, app)
             .await;
         Ok(())
     }
@@ -220,18 +209,22 @@ impl JobCache {
             .filter(|job| execute_id.is_none_or(|id| job.execute_id.as_deref() == Some(id)))
             .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
 
+        let was_running = job.status.is_running();
         update_fn(job);
         job.stats_revision += 1;
+        let ended = was_running && job.status.is_finished();
 
         let parent_id = job.parent_job_id;
-        let parent_change = if let Some(p_id) = parent_id {
-            link_resolving_jobs(&mut jobs, p_id);
-            jobs.get(&p_id).map(JobChangeEvent::from)
+        let parent_change = if let Some(p_id) = parent_id
+            && link_resolving_jobs(&mut jobs, p_id)
+        {
+            jobs.get(&p_id)
+                .map(|parent| JobChangeEvent::changed(parent, false))
         } else {
             None
         };
         link_resolving_jobs(&mut jobs, jobid);
-        let event = JobChangeEvent::from(&jobs[&jobid]);
+        let event = JobChangeEvent::changed(&jobs[&jobid], ended);
         let status = jobs[&jobid].status.clone();
 
         drop(jobs);
@@ -326,6 +319,10 @@ impl JobCache {
                 };
                 j.error = error;
                 j.end_time = Some(chrono::Utc::now());
+                // A job that succeeded has nothing to retry; drop its request from memory.
+                if success {
+                    j.request = None;
+                }
             }
             if let Some(mut stats) = final_stats {
                 preserve_completed_history(&mut stats, j.stats.as_ref());
@@ -335,6 +332,22 @@ impl JobCache {
                 sanitize_finished_stats(stats);
             }
             normalize_job_stats(j);
+        })
+        .await
+    }
+
+    /// After a job failed with `output`, keeps only the parts of its request a retry has to send.
+    pub(crate) async fn narrow_retry_request(
+        &self,
+        jobid: u64,
+        execute_id: Option<&str>,
+        output: &Value,
+    ) -> Result<JobStatus, String> {
+        self.update_job_for_execution(jobid, execute_id, |j| {
+            j.request = j
+                .request
+                .take()
+                .map(|request| Arc::new(request.after_failure(output)));
         })
         .await
     }
@@ -371,23 +384,43 @@ impl JobCache {
         self.jobs.read().await.get(&jobid).cloned()
     }
 
-    /// Looks at a job without copying it while it is still running; a finished
-    /// job is returned whole.
-    pub async fn poll_job(&self, jobid: u64) -> JobPoll {
-        let jobs = self.jobs.read().await;
-        let Some(job) = jobs.get(&jobid) else {
-            return JobPoll::Missing;
-        };
-        match job.status {
-            JobStatus::Running => JobPoll::Running,
-            JobStatus::Completed => JobPoll::Completed(Box::new(job.clone())),
-            JobStatus::Failed => JobPoll::Failed(Box::new(job.clone())),
-            JobStatus::Stopped => JobPoll::Stopped,
+    /// Waits until the job no longer runs: the job as it ended, or `None` once it was removed.
+    /// Every change of a job's status wakes it, so it does not poll.
+    pub async fn wait_until_finished(&self, jobid: u64) -> Option<JobInfo> {
+        loop {
+            // Registered before the look, so a job that finishes in between still wakes it.
+            let changed = self.changed.notified();
+            tokio::pin!(changed);
+            changed.as_mut().enable();
+            match self.jobs.read().await.get(&jobid) {
+                None => return None,
+                Some(job) if job.status.is_finished() => return Some(job.clone()),
+                Some(_) => {}
+            }
+            changed.await;
         }
     }
 
+    /// Every job as the job lists carry it ([`JobInfo::summary`]).
     pub async fn get_jobs(&self) -> Vec<JobInfo> {
-        self.jobs.read().await.values().cloned().collect()
+        self.jobs
+            .read()
+            .await
+            .values()
+            .map(JobInfo::summary)
+            .collect()
+    }
+
+    /// A job's stats with its file rows, if `execute_id` (when given) names its run: rclone
+    /// numbers its jobs from 1 again after a restart.
+    pub async fn job_stats(&self, jobid: u64, execute_id: Option<&str>) -> Option<Value> {
+        self.jobs
+            .read()
+            .await
+            .get(&jobid)
+            .filter(|job| execute_id.is_none_or(|id| job.execute_id.as_deref() == Some(id)))?
+            .stats
+            .clone()
     }
 
     pub async fn get_active_jobs(&self) -> Vec<JobInfo> {
@@ -400,14 +433,6 @@ impl JobCache {
             .collect()
     }
 
-    pub async fn has_running_jobs(&self) -> bool {
-        self.jobs
-            .read()
-            .await
-            .values()
-            .any(|j| j.status.is_running())
-    }
-
     pub async fn active_job_count(&self) -> usize {
         self.jobs
             .read()
@@ -415,6 +440,46 @@ impl JobCache {
             .values()
             .filter(|j| j.status.is_running())
             .count()
+    }
+
+    /// The progress of the running jobs, summed.
+    pub async fn running_progress(&self) -> JobProgress {
+        self.progress_where(|_| true).await
+    }
+
+    /// The progress of the running jobs this process carries out itself (an upload streamed to
+    /// an rclone on another computer, a file downloaded or opened), summed: they run on this
+    /// device, whichever engine they read from or write to.
+    pub async fn own_job_progress(&self) -> JobProgress {
+        let streamed: HashSet<u64> = self.own_jobs.lock().keys().copied().collect();
+        if streamed.is_empty() {
+            return JobProgress::default();
+        }
+        self.progress_where(|job| streamed.contains(&job.jobid))
+            .await
+    }
+
+    /// Sums the running jobs `include` picks, reading their stats in place.
+    async fn progress_where(&self, include: impl Fn(&JobInfo) -> bool) -> JobProgress {
+        let mut progress = JobProgress::default();
+        for job in self
+            .jobs
+            .read()
+            .await
+            .values()
+            .filter(|job| job.status.is_running() && include(job))
+        {
+            let stat = |key: &str| job.stats.as_ref().and_then(|stats| stats.get(key));
+            let count = |key: &str| stat(key).and_then(Value::as_u64).unwrap_or(0);
+            progress.add(JobProgress {
+                jobs: 1,
+                bytes: count("bytes"),
+                total_bytes: count("totalBytes"),
+                speed: stat("speed").and_then(Value::as_f64).unwrap_or(0.0),
+                checks: count("checks"),
+            });
+        }
+        progress
     }
 
     /// Whether a job of this profile runs, and when the last one ended, without copying jobs.
@@ -440,7 +505,8 @@ impl JobCache {
     }
 
     pub async fn delete_jobs_by_remote(&self, remote_name: &str, app: Option<&AppHandle>) {
-        self.delete_matching(|j| j.remote_name == remote_name, app)
+        // The file browser names a remote as rclone writes it (`drive:`), a profile without the colon.
+        self.delete_matching(|j| j.remote_name.trim_end_matches(':') == remote_name, app)
             .await;
         info!("📡 All jobs for remote {remote_name} deleted");
     }
@@ -506,11 +572,12 @@ impl JobCache {
             }
         }
 
+        let relinked = relink_parents(&mut jobs, &removed_jobs);
         let remaining_groups: HashSet<String> = jobs.values().map(|j| j.group.clone()).collect();
 
         drop(jobs);
 
-        self.announce_removed(removed_jobs, &remaining_groups, app)
+        self.announce_removed(removed_jobs, relinked, &remaining_groups, app)
             .await;
     }
 
@@ -536,13 +603,17 @@ impl JobCache {
             .collect();
         let remaining_groups: HashSet<String> = jobs.values().map(|j| j.group.clone()).collect();
         drop(jobs);
-        self.announce_removed(removed, &remaining_groups, app).await;
+        // Only jobs without children go, so no remaining job links to one of them.
+        self.announce_removed(removed, Vec::new(), &remaining_groups, app)
+            .await;
     }
 
-    /// Drops rclone's stats of the groups no remaining job uses, then announces the removals.
+    /// Drops rclone's stats of the groups no remaining job uses, then announces the removals and
+    /// the parents that no longer link to a removed job.
     async fn announce_removed(
         &self,
         removed_jobs: Vec<JobInfo>,
+        relinked: Vec<JobChangeEvent>,
         remaining_groups: &HashSet<String>,
         app: Option<&AppHandle>,
     ) {
@@ -553,14 +624,33 @@ impl JobCache {
                 }
             }
         }
+        if !removed_jobs.is_empty() {
+            // A wait for a removed job ends: it can no longer finish.
+            self.changed.notify_waiters();
+        }
         for job in &removed_jobs {
-            self.notify_change(job);
+            crate::services::bridge::emit(JOB_CACHE_CHANGED, JobChangeEvent::removed(job));
+        }
+        for parent in relinked {
+            crate::services::bridge::emit(JOB_CACHE_CHANGED, parent);
         }
     }
+}
 
-    fn notify_change(&self, job: &JobInfo) {
-        crate::services::bridge::emit(JOB_CACHE_CHANGED, JobChangeEvent::from(job));
+/// Updates the remaining parents of `removed` jobs, whose rows linked to them, and returns the
+/// change of each parent that changed.
+fn relink_parents(jobs: &mut HashMap<u64, JobInfo>, removed: &[JobInfo]) -> Vec<JobChangeEvent> {
+    let parents: HashSet<u64> = removed.iter().filter_map(|job| job.parent_job_id).collect();
+    let mut changed = Vec::new();
+    for parent in parents {
+        if link_resolving_jobs(jobs, parent) {
+            changed.extend(
+                jobs.get(&parent)
+                    .map(|job| JobChangeEvent::changed(job, false)),
+            );
+        }
     }
+    changed
 }
 
 async fn cleanup_job_stats(app: &AppHandle, job: &JobInfo) {
@@ -586,6 +676,130 @@ impl Default for JobCache {
 mod tests {
     use super::*;
     use crate::utils::types::starter::Starter;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn the_list_leaves_out_the_rows_a_view_of_one_run_fetches() {
+        let cache = JobCache::new();
+        let stats = json!({ "bytes": 1, "completed": [{ "name": "a", "status": "failed" }] });
+        cache.jobs.write().await.insert(
+            1,
+            JobInfo {
+                status: JobStatus::Failed,
+                execute_id: Some("run-1".into()),
+                stats: Some(stats.clone()),
+                ..JobInfo::for_test()
+            },
+        );
+        let listed = cache.get_jobs().await;
+        assert_eq!(listed[0].stats, Some(json!({ "bytes": 1 })));
+        assert_eq!(listed[0].failed_files, Some(1));
+        assert_eq!(cache.job_stats(1, Some("run-1")).await, Some(stats.clone()));
+        assert_eq!(cache.job_stats(1, None).await, Some(stats));
+        // Another run under the same id, after rclone restarted.
+        assert_eq!(cache.job_stats(1, Some("run-2")).await, None);
+        assert_eq!(cache.job_stats(2, None).await, None);
+    }
+
+    #[tokio::test]
+    async fn progress_sums_running_jobs_and_streamed_uploads_only() {
+        let cache = JobCache::new();
+        let stats = |bytes: u64, total: u64| serde_json::json!({"bytes": bytes, "totalBytes": total, "speed": 10.5, "checks": 1});
+        cache.jobs.write().await.extend([
+            (
+                1,
+                JobInfo {
+                    jobid: 1,
+                    stats: Some(stats(10, 100)),
+                    ..JobInfo::for_test()
+                },
+            ),
+            (
+                2,
+                JobInfo {
+                    jobid: 2,
+                    stats: Some(stats(5, 50)),
+                    ..JobInfo::for_test()
+                },
+            ),
+            (
+                3,
+                JobInfo {
+                    jobid: 3,
+                    status: JobStatus::Completed,
+                    stats: Some(stats(70, 70)),
+                    ..JobInfo::for_test()
+                },
+            ),
+            // Not polled yet: counted, with nothing transferred.
+            (
+                4,
+                JobInfo {
+                    jobid: 4,
+                    ..JobInfo::for_test()
+                },
+            ),
+        ]);
+        assert_eq!(
+            cache.running_progress().await,
+            JobProgress {
+                jobs: 3,
+                bytes: 15,
+                total_bytes: 150,
+                speed: 21.0,
+                checks: 2,
+            }
+        );
+
+        assert_eq!(cache.own_job_progress().await, JobProgress::default());
+        let (_, result) = tokio::sync::watch::channel(None);
+        cache.own_jobs.lock().insert(
+            2,
+            crate::utils::types::jobs::OwnJobCancellation {
+                token: tokio_util::sync::CancellationToken::new(),
+                result,
+            },
+        );
+        assert_eq!(cache.own_job_progress().await.bytes, 5);
+        assert_eq!(cache.own_job_progress().await.jobs, 1);
+    }
+
+    #[tokio::test]
+    async fn a_finished_job_keeps_its_request_only_while_it_has_something_to_retry() {
+        let cache = JobCache::new();
+        let metadata = crate::rclone::commands::job::JobMetadata::new(
+            "drive",
+            JobType::Copy,
+            vec![],
+            "drive:",
+        );
+        let request = crate::rclone::commands::job::JobRequest::for_test(&metadata);
+        for jobid in [1, 2] {
+            cache
+                .create_job(
+                    jobid,
+                    metadata.clone(),
+                    "Local".into(),
+                    Some(request.clone()),
+                )
+                .await;
+        }
+        let retryable = |job: &JobInfo| serde_json::to_value(job).unwrap()["retryable"].clone();
+        assert_eq!(
+            retryable(&cache.get_job(1).await.unwrap()),
+            serde_json::json!(true)
+        );
+
+        cache.complete_job(1, true, None).await.unwrap();
+        cache
+            .complete_job(2, false, Some("failed".into()))
+            .await
+            .unwrap();
+        let succeeded = cache.get_job(1).await.unwrap();
+        assert!(succeeded.request.is_none());
+        assert_eq!(retryable(&succeeded), serde_json::json!(false));
+        assert!(cache.get_job(2).await.unwrap().request.is_some());
+    }
 
     #[tokio::test]
     async fn profile_cleanup_only_removes_finished_jobs_of_the_same_operation() {
@@ -622,6 +836,137 @@ mod tests {
             starter: profile.map(Starter::profile),
             ..JobInfo::for_test()
         }
+    }
+
+    /// Listens to the job changes the cache announces, keeping those of `backend`: each test
+    /// names its own, as the event bridge is shared by every test.
+    fn job_changes(
+        backend: &'static str,
+    ) -> impl FnMut() -> Vec<crate::utils::types::events::JobChangeEvent> {
+        use crate::services::bridge::{EventBridge, init_event_bridge, subscribe};
+        static BRIDGE: std::sync::Once = std::sync::Once::new();
+        BRIDGE.call_once(|| init_event_bridge(Arc::new(EventBridge::new(1 << 16, None))));
+        let mut events = subscribe().expect("bridge initialized");
+        move || {
+            let mut changes = Vec::new();
+            while let Ok(event) = events.try_recv() {
+                if event.event == JOB_CACHE_CHANGED
+                    && let Ok(change) = serde_json::from_value::<
+                        crate::utils::types::events::JobChangeEvent,
+                    >(event.payload.clone())
+                    && change.backend_name == backend
+                {
+                    changes.push(change);
+                }
+            }
+            changes
+        }
+    }
+
+    #[tokio::test]
+    async fn a_change_carries_the_job_and_only_the_one_that_ends_it_says_so() {
+        let mut changes = job_changes("ended-test");
+        let cache = JobCache::new();
+        let job = |jobid| JobInfo {
+            jobid,
+            backend_name: "ended-test".into(),
+            ..JobInfo::for_test()
+        };
+        cache.add_job(job(1)).await;
+        cache.add_job(job(2)).await;
+        cache.complete_job(1, true, None).await.unwrap();
+        // The monitor stores the final stats of a job that already ended.
+        cache
+            .complete_job_for_execution(1, None, true, None, Some(json!({"bytes": 3})), None)
+            .await
+            .unwrap();
+        cache.stop_job(2).await.unwrap();
+        cache.stop_job(2).await.unwrap();
+        cache.delete_job(1, None).await.unwrap();
+
+        let seen: Vec<_> = changes()
+            .into_iter()
+            .map(|change| {
+                (
+                    change.job_id,
+                    change.job.map(|job| job.status),
+                    change.ended,
+                )
+            })
+            .collect();
+        assert_eq!(
+            seen,
+            [
+                (1, Some(JobStatus::Running), false),
+                (2, Some(JobStatus::Running), false),
+                (1, Some(JobStatus::Completed), true),
+                (1, Some(JobStatus::Completed), false),
+                (2, Some(JobStatus::Stopped), true),
+                (2, Some(JobStatus::Stopped), false),
+                (1, None, false),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn removing_a_repair_announces_the_parent_whose_row_it_cleared() {
+        let mut changes = job_changes("relink-test");
+        let cache = JobCache::new();
+        let mut parent = mock_job(1, "drive:", JobType::Copy, None);
+        parent.backend_name = "relink-test".into();
+        parent.stats = Some(json!({"completed": [{
+            "name": "file.txt", "srcFs": "drive:root", "dstFs": "backup:root", "error": "denied"
+        }]}));
+        cache.add_job(parent).await;
+        let mut child = mock_job(2, "drive:", JobType::Copy, None);
+        child.backend_name = "relink-test".into();
+        child.parent_job_id = Some(1);
+        child.source = vec!["drive:root/file.txt".into()];
+        child.destination = "backup:root".into();
+        cache.add_job(child).await;
+        changes();
+
+        cache.delete_job(2, None).await.unwrap();
+        let after = changes();
+        assert_eq!(after.len(), 2);
+        assert!(after[0].job_id == 2 && after[0].job.is_none());
+        let parent = after[1].job.as_ref().unwrap();
+        assert_eq!(parent.jobid, 1);
+        assert!(
+            parent.stats.as_ref().unwrap()["completed"][0]
+                .get("resolveJobId")
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_wait_ends_with_the_job_and_at_once_when_it_is_removed() {
+        let cache = Arc::new(JobCache::new());
+        cache.add_job(JobInfo::for_test()).await;
+        cache
+            .add_job(JobInfo {
+                jobid: 2,
+                ..JobInfo::for_test()
+            })
+            .await;
+        let wait = |jobid| {
+            let cache = cache.clone();
+            tokio::spawn(async move { cache.wait_until_finished(jobid).await })
+        };
+        let (failed, removed) = (wait(1), wait(2));
+        tokio::task::yield_now().await;
+        assert!(!failed.is_finished() && !removed.is_finished());
+
+        cache
+            .complete_job(1, false, Some("boom".into()))
+            .await
+            .unwrap();
+        cache.delete_job(2, None).await.unwrap();
+        let within = |task| tokio::time::timeout(std::time::Duration::from_millis(200), task);
+        let failed = within(failed).await.unwrap().unwrap().unwrap();
+        assert_eq!(failed.status, JobStatus::Failed);
+        assert_eq!(failed.error.as_deref(), Some("boom"));
+        assert!(within(removed).await.unwrap().unwrap().is_none());
     }
 
     #[tokio::test]
@@ -1083,27 +1428,6 @@ mod tests {
         assert_eq!(completed[1]["name"].as_str().unwrap(), "file1.txt");
         assert_eq!(completed[1]["status"].as_str().unwrap(), "completed");
         assert_eq!(completed[1]["error"].as_str().unwrap(), "");
-    }
-
-    #[tokio::test]
-    async fn polling_copies_a_job_only_once_it_has_finished() {
-        let cache = JobCache::new();
-        let metadata = crate::rclone::commands::job::JobMetadata::new(
-            "drive",
-            JobType::Sync,
-            vec!["a".into()],
-            "b",
-        );
-        assert!(matches!(cache.poll_job(1).await, JobPoll::Missing));
-
-        cache.create_job(1, metadata, "Local".into()).await;
-        assert!(matches!(cache.poll_job(1).await, JobPoll::Running));
-
-        cache.complete_job(1, true, None).await.unwrap();
-        match cache.poll_job(1).await {
-            JobPoll::Completed(job) => assert_eq!(job.jobid, 1),
-            _ => panic!("a completed job must be returned whole"),
-        }
     }
 
     #[tokio::test]

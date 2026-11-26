@@ -26,11 +26,8 @@ pub async fn set_theme(system_is_dark: Option<bool>) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(any(
-    feature = "tray",
-    test,
-    not(any(target_os = "linux", windows, target_os = "macos"))
-))]
+/// What the tray icon follows; nothing else reads it, so builds without a tray leave it out.
+#[cfg(any(feature = "tray", test))]
 #[must_use]
 pub fn is_system_dark() -> bool {
     SYSTEM_THEME_IS_DARK.load(Ordering::Relaxed)

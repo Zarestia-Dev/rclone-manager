@@ -10,12 +10,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe } from '@ngx-translate/core';
+import { PillDirective } from 'src/app/shared/directives/pill.directive';
 import { isMobile as isMobileOS } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-nautilus-bottom-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
+  imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe, PillDirective],
   templateUrl: './nautilus-bottom-bar.component.html',
   styleUrl: './nautilus-bottom-bar.component.scss',
 })
@@ -26,12 +27,14 @@ export class NautilusBottomBarComponent {
   public readonly isPickerMode = input(false);
   public readonly isConfirmDisabled = input(false);
   public readonly isSidebarOpen = input(false);
+  public readonly tabCount = input(0);
 
   // --- Outputs ---
   public readonly setLayout = output<'grid' | 'list'>();
   public readonly confirmSelection = output<void>();
   public readonly toggleSidebar = output<void>();
   public readonly popOutToWindow = output<void>();
+  public readonly showTabs = output<void>();
 
   protected readonly isMobileOS = isMobileOS;
 

@@ -1168,8 +1168,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         this.fsName,
         this.currentItem().Path,
         this.fileName(),
-        this.data.isLocal,
-        this.fileSize() || undefined
+        this.data.isLocal
       );
     } catch (err) {
       console.error('Failed to download file:', err);

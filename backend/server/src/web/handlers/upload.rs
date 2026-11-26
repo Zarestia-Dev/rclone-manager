@@ -75,6 +75,9 @@ pub struct NewUpload {
     /// The options to transfer with, as the transfer dialog sets them: absent for the
     /// file browser's default.
     options: Option<serde_json::Value>,
+    /// How a picked file or folder lands where one of the same name exists, by its name.
+    #[serde(default)]
+    targets: std::collections::HashMap<String, crate::rclone::commands::upload::UploadTarget>,
     #[serde(flatten)]
     entries: UploadEntries,
 }
@@ -524,6 +527,7 @@ async fn stage_session(
             origin: request.origin,
             group: request.group,
             options: request.options,
+            targets: request.targets,
         },
         last_used: Mutex::new(Instant::now()),
     })
@@ -696,6 +700,7 @@ mod tests {
             origin: None,
             group: Some("upload-group".into()),
             options: None,
+            targets: Default::default(),
             entries: entries(files, empty_dirs),
         }
     }

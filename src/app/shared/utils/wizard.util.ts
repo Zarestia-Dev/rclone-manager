@@ -667,7 +667,7 @@ export function asDryRun(input: QuickRunInput): QuickRunInput {
     config: {
       app: { showOnTray: false },
       rclone: withFileReport(
-        { ...input.config.rclone, dryRun: true },
+        { ...input.config.rclone, dry_run: true },
         FILE_REPORT_OPERATIONS.has(input.operationType)
       ),
     },

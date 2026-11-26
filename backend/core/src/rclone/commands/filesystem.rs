@@ -7,7 +7,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::rclone::commands::common::RclonePayloadBuilder;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
+use crate::rclone::commands::job::{
+    JobMetadata, SubmitJobOptions, run_job, submit_job_with_options,
+};
 use crate::rclone::commands::sync::lookup_dry_run;
 use crate::rclone::endpoints::operations;
 use crate::rclone::endpoints::sync;
@@ -21,9 +23,38 @@ use crate::utils::types::remotes::OperationType;
 pub struct FsItem {
     pub remote: String,
     pub path: String,
+    /// The name it gets at the destination: its own, or another one that keeps both.
     #[serde(default)]
     pub name: String,
     pub is_dir: bool,
+    /// For a folder merged into one of the same name: what happens to the files of the same
+    /// name there.
+    #[serde(default)]
+    pub existing_files: ExistingFiles,
+}
+
+/// What a folder merged into one of the same name does with the files of the same name there.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ExistingFiles {
+    /// The incoming file replaces the one there, as rclone does by default.
+    #[default]
+    Replace,
+    /// The file there stays (`--ignore-existing`).
+    Keep,
+    /// The newer of the two stays (`--update`).
+    Newer,
+}
+
+impl ExistingFiles {
+    /// The rclone option that keeps the files there, if any.
+    fn flag(self) -> Option<&'static str> {
+        match self {
+            Self::Replace => None,
+            Self::Keep => Some("ignore_existing"),
+            Self::Newer => Some("update"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -55,27 +86,11 @@ pub async fn mkdir(
         .state::<crate::rclone::backend::BackendManager>()
         .get_active_checked(backend_name.as_deref())
         .await?;
-
-    let payload = json!({
-        "fs": &remote,
-        "remote": &path,
-        "_async": true,
-    });
-
+    let payload = json!({ "fs": &remote, "remote": &path });
     let metadata = JobMetadata::for_mutation(remote, vec![path], "", JobType::Mkdir, origin, group);
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        operations::MKDIR,
-        payload,
-        metadata,
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-            backend: Some(backend),
-        },
-    )
-    .await?;
-
-    Ok(())
+    run_job(app, operations::MKDIR, payload, metadata, Some(backend))
+        .await
+        .map(|_| ())
 }
 
 pub async fn cleanup(
@@ -85,37 +100,17 @@ pub async fn cleanup(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let path_str = path.as_deref().unwrap_or("");
-    debug!("cleanup: remote={remote} path={path_str}");
-
-    let mut payload = serde_json::Map::new();
-    payload.insert("fs".to_string(), json!(&remote));
-    if let Some(ref p) = path {
-        payload.insert("remote".to_string(), json!(p));
+    let path = path.unwrap_or_default();
+    debug!("cleanup: remote={remote} path={path}");
+    let mut payload = json!({ "fs": &remote });
+    if !path.is_empty() {
+        payload["remote"] = json!(&path);
     }
-    payload.insert("_async".to_string(), json!(true));
-
-    let metadata = JobMetadata::for_mutation(
-        remote,
-        vec![path_str.to_string()],
-        "",
-        JobType::Cleanup,
-        origin,
-        group,
-    );
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        operations::CLEANUP,
-        json!(payload),
-        metadata,
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-            ..Default::default()
-        },
-    )
-    .await?;
-
-    Ok(())
+    let metadata =
+        JobMetadata::for_mutation(remote, vec![path], "", JobType::Cleanup, origin, group);
+    run_job(app, operations::CLEANUP, payload, metadata, None)
+        .await
+        .map(|_| ())
 }
 
 pub async fn copy_url(
@@ -128,15 +123,12 @@ pub async fn copy_url(
     group: Option<String>,
 ) -> Result<(), String> {
     debug!("copy_url: remote={remote} path={path} url={url_to_copy}");
-
     let payload = json!({
         "fs": &remote,
         "remote": &path,
         "url": &url_to_copy,
         "autoFilename": auto_filename,
-        "_async": true,
     });
-
     let metadata = JobMetadata::for_mutation(
         remote,
         vec![url_to_copy],
@@ -144,21 +136,10 @@ pub async fn copy_url(
         JobType::CopyUrl,
         origin,
         group,
-    )
-    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        operations::COPYURL,
-        payload,
-        metadata,
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-            ..Default::default()
-        },
-    )
-    .await?;
-
-    Ok(())
+    );
+    run_job(app, operations::COPYURL, payload, metadata, None)
+        .await
+        .map(|_| ())
 }
 
 pub async fn remove_empty_dirs(
@@ -169,36 +150,54 @@ pub async fn remove_empty_dirs(
     group: Option<String>,
 ) -> Result<(), String> {
     debug!("remove_empty_dirs: remote={remote} path={path}");
-
-    let payload = json!({
-        "fs": &remote,
-        "remote": &path,
-        "leaveRoot": true,
-        "_async": true,
-    });
-
+    let payload = json!({ "fs": &remote, "remote": &path, "leaveRoot": true });
     let metadata =
         JobMetadata::for_mutation(remote, vec![path], "", JobType::Rmdirs, origin, group);
-    let _ = crate::rclone::commands::job::submit_job_with_options(
-        app.clone(),
-        operations::RMDIRS,
-        payload,
-        metadata,
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-            ..Default::default()
-        },
-    )
-    .await?;
+    run_job(app, operations::RMDIRS, payload, metadata, None)
+        .await
+        .map(|_| ())
+}
 
+/// Refuses to copy or move a folder into itself or into a folder inside it. rclone copies
+/// such a folder without end: each pass lists the folder it has just made and copies it again.
+pub(crate) fn refuse_transfer_into_itself(
+    items: &[FsItem],
+    dst_remote: &str,
+    dst_path: &str,
+) -> Result<(), String> {
+    let destination = build_full_path(dst_remote, dst_path);
+    let destination = destination.trim_end_matches('/');
+    for item in items.iter().filter(|item| item.is_dir) {
+        let source = build_full_path(&item.remote, &item.path);
+        let source = source.trim_end_matches('/');
+        let inside = destination
+            .strip_prefix(source)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'));
+        if inside {
+            let name = if item.name.is_empty() {
+                source
+            } else {
+                &item.name
+            };
+            return Err(crate::localized_error!(
+                "backendErrors.file.intoItself",
+                "name" => name
+            ));
+        }
+    }
     Ok(())
 }
 
 /// The `job/batch` inputs that copy or move `items` into `dst_path` on `dst_remote`:
 /// `copyfile`/`movefile` for a file, `sync/copy`/`sync/move` for a folder.
 ///
+/// A file is named from its folder on both sides: rclone lists a transfer under the source's
+/// name and the destination's root, so a root above the folder would point the job's rows at a
+/// file that is not there.
+///
 /// A copied folder is created first: `sync/copy` creates nothing for a folder without
-/// entries, so an empty folder would not arrive (`sync/move` creates it).
+/// entries, so an empty folder would not arrive (`sync/move` creates it). An item that keeps
+/// what exists runs with `ignore_existing`, on top of the batch's own options.
 pub(crate) fn transfer_inputs(
     items: &[FsItem],
     dst_remote: &str,
@@ -215,6 +214,21 @@ pub(crate) fn transfer_inputs(
 
         let src_full = build_full_path(&item.remote, &item.path);
         let dst_full = build_full_path(dst_remote, &dst_file);
+        let transfers_from = inputs.len();
+        let (src_dir, src_name) = item
+            .path
+            .trim_matches('/')
+            .rsplit_once('/')
+            .unwrap_or(("", item.path.trim_matches('/')));
+        let file_input = |endpoint: &str| {
+            json!({
+                "_path": endpoint,
+                "srcFs": build_full_path(&item.remote, src_dir),
+                "srcRemote": src_name,
+                "dstFs": build_full_path(dst_remote, dst_path.trim_end_matches('/')),
+                "dstRemote": &item.name,
+            })
+        };
 
         match (mode, item.is_dir) {
             (TransferMode::Copy, true) => {
@@ -230,13 +244,7 @@ pub(crate) fn transfer_inputs(
                     "createEmptySrcDirs": true,
                 }));
             }
-            (TransferMode::Copy, false) => inputs.push(json!({
-                "_path": operations::COPYFILE,
-                "srcFs": item.remote,
-                "srcRemote": item.path,
-                "dstFs": dst_remote,
-                "dstRemote": dst_file,
-            })),
+            (TransferMode::Copy, false) => inputs.push(file_input(operations::COPYFILE)),
             (TransferMode::Move, true) => inputs.push(json!({
                 "_path": sync::MOVE,
                 "srcFs": src_full,
@@ -244,13 +252,14 @@ pub(crate) fn transfer_inputs(
                 "createEmptySrcDirs": true,
                 "deleteEmptySrcDirs": true,
             })),
-            (TransferMode::Move, false) => inputs.push(json!({
-                "_path": operations::MOVEFILE,
-                "srcFs": item.remote,
-                "srcRemote": item.path,
-                "dstFs": dst_remote,
-                "dstRemote": dst_file,
-            })),
+            (TransferMode::Move, false) => inputs.push(file_input(operations::MOVEFILE)),
+        }
+        if let Some(flag) = item.existing_files.flag() {
+            for input in &mut inputs[transfers_from..] {
+                if input["_path"] != operations::MKDIR {
+                    input[flag] = json!(true);
+                }
+            }
         }
     }
     inputs
@@ -347,6 +356,18 @@ impl TransferOptions {
     }
 }
 
+/// The remote a file browser job names: the one all its items are on, or `multiple`.
+fn items_remote<'a>(mut remotes: impl Iterator<Item = &'a str>) -> Result<String, String> {
+    let first = remotes
+        .next()
+        .ok_or_else(|| crate::localized_error!("backendErrors.file.noItems"))?;
+    Ok(if remotes.all(|remote| remote == first) {
+        first.to_owned()
+    } else {
+        "multiple".to_owned()
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     app: AppHandle,
@@ -358,7 +379,7 @@ pub async fn transfer(
     group: Option<String>,
     parent_job_id: Option<u64>,
     options: Option<Value>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let dst_path = if dst_path == "/" {
         String::new()
     } else {
@@ -370,6 +391,7 @@ pub async fn transfer(
         items.len()
     );
 
+    refuse_transfer_into_itself(&items, &dst_remote, &dst_path)?;
     let inputs = transfer_inputs(&items, &dst_remote, &dst_path, mode);
 
     let job_type = if mode == TransferMode::Move {
@@ -378,15 +400,7 @@ pub async fn transfer(
         JobType::Copy
     };
 
-    let first_item = items
-        .first()
-        .ok_or_else(|| "No items to transfer".to_string())?;
-    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
-    let remote_name = if all_same_remote {
-        first_item.remote.clone()
-    } else {
-        "multiple".to_string()
-    };
+    let remote_name = items_remote(items.iter().map(|item| item.remote.as_str()))?;
     let source = items
         .iter()
         .map(|item| build_full_path(&item.remote, &item.path))
@@ -400,8 +414,7 @@ pub async fn transfer(
     )
     .with_origin(origin)
     .with_group(group)
-    .with_parent_job_id(parent_job_id)
-    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+    .with_parent_job_id(parent_job_id);
 
     let options = transfer_options(&app, options, mode);
     submit_transfer_job(app, inputs, options, metadata, Default::default()).await
@@ -416,7 +429,7 @@ pub(crate) async fn submit_transfer_job(
     options: TransferOptions,
     metadata: JobMetadata,
     submit: SubmitJobOptions,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let inputs = inputs
         .into_iter()
         .map(|input| match input {
@@ -427,7 +440,6 @@ pub(crate) async fn submit_transfer_job(
     let summary = options.summary();
     let mut payload = options.options;
     let dry_run = lookup_dry_run(&Value::Object(payload.clone()), None, OperationType::Copy);
-    payload.insert("_async".into(), json!(true));
     payload.insert("inputs".into(), json!(inputs));
     submit_job_with_options(
         app,
@@ -439,7 +451,7 @@ pub(crate) async fn submit_transfer_job(
         submit,
     )
     .await
-    .map(|submission| submission.job_id.to_string())
+    .map(|submission| submission.job_id)
 }
 
 pub async fn delete(
@@ -447,7 +459,7 @@ pub async fn delete(
     items: Vec<FsItem>,
     origin: Option<Origin>,
     group: Option<String>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     debug!("delete: {} items", items.len());
 
     let mut inputs = Vec::new();
@@ -460,15 +472,7 @@ pub async fn delete(
         inputs.push(json!({ "_path": endpoint, "fs": item.remote, "remote": item.path }));
     }
 
-    let first_item = items
-        .first()
-        .ok_or_else(|| "No items to delete".to_string())?;
-    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
-    let remote_name = if all_same_remote {
-        first_item.remote.clone()
-    } else {
-        "multiple".to_string()
-    };
+    let remote_name = items_remote(items.iter().map(|item| item.remote.as_str()))?;
     let source = items
         .iter()
         .map(|item| build_full_path(&item.remote, &item.path))
@@ -476,8 +480,7 @@ pub async fn delete(
 
     let metadata = JobMetadata::new(remote_name, JobType::Delete, source, "trash")
         .with_origin(origin)
-        .with_group(group)
-        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+        .with_group(group);
 
     crate::rclone::commands::job::submit_batch_job_with_options(
         app,
@@ -493,7 +496,7 @@ pub async fn rename(
     items: Vec<RenameItem>,
     origin: Option<Origin>,
     group: Option<String>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     debug!("rename: {} items", items.len());
 
     let mut inputs = Vec::new();
@@ -520,25 +523,17 @@ pub async fn rename(
         }
     }
 
-    let first_item = items
-        .first()
-        .ok_or_else(|| "No items to rename".to_string())?;
-    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
-    let remote_name = if all_same_remote {
-        first_item.remote.clone()
-    } else {
-        "multiple".to_string()
-    };
+    let remote_name = items_remote(items.iter().map(|item| item.remote.as_str()))?;
     let source = items
         .iter()
         .map(|item| build_full_path(&item.remote, &item.src_path))
         .collect::<Vec<String>>();
-    let destination = first_item.dst_path.clone();
+    // The new name of the first item; the list of renames names the rest.
+    let destination = items[0].dst_path.clone();
 
     let metadata = JobMetadata::new(remote_name, JobType::Rename, source, destination)
         .with_origin(origin)
-        .with_group(group)
-        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+        .with_group(group);
 
     crate::rclone::commands::job::submit_batch_job_with_options(
         app,
@@ -551,7 +546,10 @@ pub async fn rename(
 
 #[cfg(test)]
 mod tests {
-    use super::{FsItem, TransferMode, TransferOptions, transfer_inputs};
+    use super::{
+        ExistingFiles, FsItem, TransferMode, TransferOptions, refuse_transfer_into_itself,
+        transfer_inputs,
+    };
     use serde_json::{Value, json};
 
     fn item(remote: &str, path: &str, name: &str, is_dir: bool) -> FsItem {
@@ -560,7 +558,86 @@ mod tests {
             path: path.into(),
             name: name.into(),
             is_dir,
+            existing_files: ExistingFiles::Replace,
         }
+    }
+
+    #[test]
+    fn a_folder_cannot_go_into_itself_or_a_folder_inside_it() {
+        let folder = [item("dropbox:", "test/dfsgh", "dfsgh", true)];
+        for inside in ["test/dfsgh", "test/dfsgh/", "/test/dfsgh/sub/deeper"] {
+            assert!(
+                refuse_transfer_into_itself(&folder, "dropbox:", inside)
+                    .unwrap_err()
+                    .contains("backendErrors.file.intoItself"),
+                "{inside}"
+            );
+        }
+        // Beside it, above it, a name that only starts the same or another remote: fine.
+        for (remote, outside) in [
+            ("dropbox:", "test"),
+            ("dropbox:", ""),
+            ("dropbox:", "test/dfsgh (2)"),
+            ("dropbox:", "test/dfsghx/sub"),
+            ("drive:", "test/dfsgh"),
+        ] {
+            assert!(refuse_transfer_into_itself(&folder, remote, outside).is_ok());
+        }
+        // A file may go anywhere; a local folder is compared by its path.
+        let file = [item("dropbox:", "test/a.txt", "a.txt", false)];
+        assert!(refuse_transfer_into_itself(&file, "dropbox:", "test/a.txt").is_ok());
+        let local = [item("/home/me/Photos", "", "Photos", true)];
+        assert!(refuse_transfer_into_itself(&local, "/", "home/me/Photos/2026").is_err());
+        assert!(refuse_transfer_into_itself(&local, "/", "home/me").is_ok());
+    }
+
+    #[test]
+    fn an_item_lands_under_its_new_name_and_a_merge_can_keep_what_exists() {
+        let items = [
+            FsItem {
+                existing_files: ExistingFiles::Keep,
+                ..item("src:", "docs", "docs", true)
+            },
+            item("src:", "a.txt", "a (2).txt", false),
+        ];
+        assert_eq!(
+            transfer_inputs(&items, "dst:", "", TransferMode::Copy),
+            [
+                // The folder exists already; creating it again changes nothing.
+                json!({"_path": "operations/mkdir", "fs": "dst:", "remote": "docs"}),
+                json!({
+                    "_path": "sync/copy",
+                    "srcFs": "src:docs",
+                    "dstFs": "dst:docs",
+                    "createEmptySrcDirs": true,
+                    "ignore_existing": true,
+                }),
+                json!({
+                    "_path": "operations/copyfile",
+                    "srcFs": "src:",
+                    "srcRemote": "a.txt",
+                    "dstFs": "dst:",
+                    "dstRemote": "a (2).txt",
+                }),
+            ]
+        );
+        let moved = transfer_inputs(&items[..1], "dst:", "", TransferMode::Move);
+        assert_eq!(moved[0]["ignore_existing"], json!(true));
+
+        // Keeping the newer of each file is rclone's --update.
+        let newer = [FsItem {
+            existing_files: ExistingFiles::Newer,
+            ..item("src:", "docs", "docs", true)
+        }];
+        let inputs = transfer_inputs(&newer, "dst:", "", TransferMode::Copy);
+        assert_eq!(inputs[1]["update"], json!(true));
+        assert!(inputs[1].get("ignore_existing").is_none());
+        assert!(inputs[0].get("update").is_none());
+        let wire: FsItem = serde_json::from_value(json!({
+            "remote": "src:", "path": "docs", "isDir": true, "existingFiles": "newer"
+        }))
+        .unwrap();
+        assert_eq!(wire.existing_files, ExistingFiles::Newer);
     }
 
     #[test]
@@ -581,10 +658,10 @@ mod tests {
                 }),
                 json!({
                     "_path": "operations/copyfile",
-                    "srcFs": "src:",
-                    "srcRemote": "a/b.txt",
-                    "dstFs": "dst:",
-                    "dstRemote": "target/b.txt",
+                    "srcFs": "src:a",
+                    "srcRemote": "b.txt",
+                    "dstFs": "dst:target",
+                    "dstRemote": "b.txt",
                 }),
             ]
         );
@@ -698,7 +775,7 @@ mod tests {
             .collect();
         let named = "drive,acknowledge_abuse='true',chunk_size='64M':";
         assert_eq!(requests[0]["srcFs"], named);
-        assert_eq!(requests[0]["dstFs"], named);
+        assert_eq!(requests[0]["dstFs"], format!("{named}dest"));
         // A local path names no remote and stays as it is.
         assert_eq!(requests[2]["srcFs"], "/home/b");
         assert_eq!(requests[2]["dstFs"], format!("{named}dest/b"));

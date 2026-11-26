@@ -33,6 +33,9 @@ use crate::{
 ))]
 use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
+#[cfg(target_os = "android")]
+use crate::utils::types::events::JOB_STATS_UPDATED;
+
 #[cfg(feature = "tray")]
 use crate::utils::types::events::{
     BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU, VAULT_STATE_CHANGED,
@@ -345,20 +348,19 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
     let payload = payload.clone();
 
     spawn(async move {
-        if let Ok(ev) = serde_json::from_value::<JobChangeEvent>(payload)
-            && let Ok(id) = ev.job_id.parse::<u64>()
-            && let Some(job) = app
-                .state::<BackendManager>()
-                .job_cache_for(&ev.backend_name)
-                .get_job(id)
-                .await
+        // A removed job carries none: its removal changes nothing these follow.
+        if let Ok(JobChangeEvent {
+            job: Some(job),
+            ended,
+            ..
+        }) = serde_json::from_value::<JobChangeEvent>(payload)
         {
             #[cfg(feature = "tray")]
             if job.job_type.is_tray_relevant() {
                 crate::services::tray::native::refresh_in_background(app.clone());
             }
 
-            if job.status.is_finished() {
+            if ended {
                 crate::services::flow::workflow::engine::trigger_workflows_for_job_finish(
                     &app, &job,
                 )
@@ -401,10 +403,11 @@ fn dispatch_bridge_event(app: &AppHandle, event: &BridgeEvent) {
         _ => {}
     }
 
+    // Stats updates carry the progress the notification shows.
     #[cfg(target_os = "android")]
     if matches!(
         event.event.as_str(),
-        JOB_CACHE_CHANGED | MOUNT_STATE_CHANGED | SERVE_STATE_CHANGED
+        JOB_CACHE_CHANGED | JOB_STATS_UPDATED | MOUNT_STATE_CHANGED | SERVE_STATE_CHANGED
     ) {
         crate::services::lifecycle::keep_alive::request_sync(app);
     }

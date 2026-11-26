@@ -2,7 +2,6 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
 
 use log::info;
 use parking_lot::RwLock;
@@ -14,15 +13,16 @@ use crate::rclone::commands::{
     common::parse_common_config, job::JobMetadata, job_chain::ChainMode,
     sync::submit_transfer_batch,
 };
-use crate::rclone::state::job::JobPoll;
 use crate::rclone::state::job_stats::check_reports;
 use crate::services::flow::workflow::engine::RunContext;
 use crate::services::flow::workflow::engine::nodes::extract_node_op_config;
 use crate::services::flow::workflow::types::{NodeExecutionOutput, WorkflowNode};
 use crate::utils::format::format_file_size;
 use crate::utils::types::starter::Starter;
-use crate::utils::types::state::sleep_unless_cancelled;
-use crate::utils::types::{jobs::JobType, remotes::OperationType};
+use crate::utils::types::{
+    jobs::{JobStatus, JobType},
+    remotes::OperationType,
+};
 use tokio_util::sync::CancellationToken;
 
 /// Helper RAII guard ensuring a job ID is removed from the active jobs set upon exit.
@@ -251,9 +251,6 @@ fn build_job_execution_output(
     out
 }
 
-/// How often a running job is checked.
-const JOB_POLL_INTERVAL: Duration = Duration::from_millis(250);
-
 /// Awaits an active Rclone job until it reaches a terminal state or the run is cancelled.
 async fn await_rclone_job(
     app: &AppHandle,
@@ -272,47 +269,34 @@ async fn await_rclone_job(
     let backend_manager = app.state::<BackendManager>();
     let job_cache = backend_manager.job_cache_for(&backend.name);
 
-    loop {
-        if cancel.is_cancelled() {
+    let finished = tokio::select! {
+        biased;
+        () = cancel.cancelled() => None,
+        finished = job_cache.wait_until_finished(job_id) => Some(finished),
+    };
+    match finished {
+        None => {
             info!("Workflow '{workflow_id}' cancelled; aborting job {job_id} in Rclone");
-            let remote = job_cache
-                .get_job(job_id)
-                .await
-                .map(|j| j.remote_name)
-                .unwrap_or_default();
             let _ = crate::rclone::commands::job::stop_job_on_backend(
                 app.clone(),
                 backend.clone(),
                 job_id,
-                remote,
             )
             .await;
-            return Err(crate::localized_error!("backendErrors.workflow.cancelled"));
+            Err(crate::localized_error!("backendErrors.workflow.cancelled"))
         }
-
-        match job_cache.poll_job(job_id).await {
-            JobPoll::Missing => {
-                return Err(crate::localized_error!(
-                    "backendErrors.workflow.jobUntracked",
-                    "id" => job_id
-                ));
-            }
-            JobPoll::Running => {
-                sleep_unless_cancelled(cancel, JOB_POLL_INTERVAL).await;
-            }
-            JobPoll::Completed(job) => {
-                return Ok(NodeExecutionOutput::new(build_job_execution_output(
-                    *job, true, None,
-                )));
-            }
-            JobPoll::Failed(job) => return Ok(failed_job_output(job_id, *job)),
-            JobPoll::Stopped => {
-                return Err(crate::localized_error!(
-                    "backendErrors.workflow.jobStopped",
-                    "id" => job_id
-                ));
-            }
-        }
+        Some(Some(job)) if job.status == JobStatus::Completed => Ok(NodeExecutionOutput::new(
+            build_job_execution_output(job, true, None),
+        )),
+        Some(Some(job)) if job.status == JobStatus::Failed => Ok(failed_job_output(job_id, job)),
+        Some(Some(_)) => Err(crate::localized_error!(
+            "backendErrors.workflow.jobStopped",
+            "id" => job_id
+        )),
+        Some(None) => Err(crate::localized_error!(
+            "backendErrors.workflow.jobUntracked",
+            "id" => job_id
+        )),
     }
 }
 
@@ -447,7 +431,7 @@ pub(crate) async fn transfer_node(
     .with_starter(Some(Starter::Workflow(ctx.workflow_run(node))))
     .with_dry_run(*dry_run);
 
-    let job_id_str = submit_transfer_batch(
+    let job_id = submit_transfer_batch(
         app.clone(),
         backend.clone(),
         op_type,
@@ -457,10 +441,6 @@ pub(crate) async fn transfer_node(
         metadata,
     )
     .await?;
-
-    let job_id = job_id_str.parse::<u64>().map_err(
-        |e| crate::localized_error!("backendErrors.workflow.invalidJobId", "error" => e),
-    )?;
 
     await_rclone_job(app, backend, job_id, cancel, active_jobs, &workflow.id).await
 }
@@ -568,7 +548,7 @@ mod tests {
         let metadata =
             JobMetadata::new("drive", JobType::Copy, vec!["source".into()], "destination");
         owner
-            .create_job(7, metadata.clone(), backend.name.clone())
+            .create_job(7, metadata.clone(), backend.name.clone(), None)
             .await;
         owner
             .update_job_stats(7, json!({"bytes": 123}))
@@ -576,7 +556,7 @@ mod tests {
             .unwrap();
         owner.complete_job(7, true, None).await.unwrap();
         let selected = manager.job_cache().await;
-        selected.create_job(7, metadata, "Local".into()).await;
+        selected.create_job(7, metadata, "Local".into(), None).await;
         let active_jobs = Arc::new(RwLock::new(HashSet::new()));
 
         let output = await_rclone_job(
@@ -644,8 +624,7 @@ mod tests {
     fn test_workflow_bisync_and_transfer_dry_run_payload_generation() {
         let dry_run = true;
 
-        // 1. Bisync payload verification: GenericTransferParams automatically injects
-        // both modern flat dryRun/dry_run and legacy _config.DryRun without manual map mutations
+        // 1. Bisync: the dry run reaches rclone only as the flat `dry_run`.
         let bisync_params = crate::rclone::commands::sync::GenericTransferParams {
             source: "remote:path1".to_string(),
             dest: "local:/path2".to_string(),
@@ -675,10 +654,7 @@ mod tests {
             bisync_obj.get("path2").and_then(Value::as_str),
             Some("local:/path2")
         );
-        assert_eq!(
-            bisync_obj.get("dryRun").and_then(Value::as_bool),
-            Some(true)
-        );
+        assert!(bisync_obj.get("dryRun").is_none());
         assert_eq!(
             bisync_obj.get("dry_run").and_then(Value::as_bool),
             Some(true)
@@ -687,12 +663,11 @@ mod tests {
             bisync_obj.get("resync").and_then(Value::as_bool),
             Some(true)
         );
-        assert_eq!(
+        assert!(
             bisync_obj
                 .get("_config")
                 .and_then(|c| c.get("DryRun"))
-                .and_then(Value::as_bool),
-            Some(true)
+                .is_none()
         );
 
         // 2. Standard Sync payload verification
@@ -717,14 +692,13 @@ mod tests {
 
         assert_eq!(sync_obj.get("srcFs").and_then(Value::as_str), Some("src:"));
         assert_eq!(sync_obj.get("dstFs").and_then(Value::as_str), Some("dst:"));
-        assert_eq!(sync_obj.get("dryRun").and_then(Value::as_bool), Some(true));
+        assert!(sync_obj.get("dryRun").is_none());
         assert_eq!(sync_obj.get("dry_run").and_then(Value::as_bool), Some(true));
-        assert_eq!(
+        assert!(
             sync_obj
                 .get("_config")
                 .and_then(|c| c.get("DryRun"))
-                .and_then(Value::as_bool),
-            Some(true)
+                .is_none()
         );
     }
 

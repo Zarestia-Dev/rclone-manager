@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "Detener trabajo",
-        "delete": "Borrar trabajo"
+        "delete": "Borrar trabajo",
+        "retry": "Reintentar trabajo"
       },
       "empty": "No se han encontrado trabajos"
     },
@@ -1902,6 +1903,18 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Eliminar",
+      "clearFinished": "Quitar las terminadas",
+      "openDestination": "Abrir destino",
+      "undo": "Deshacer",
+      "timeLeft": "quedan {{time}}",
+      "failedOf": {
+        "one": "{{count}} de {{total}} falló",
+        "other": "{{count}} de {{total}} fallaron"
+      },
+      "itemsCount": {
+        "one": "{{count}} elemento",
+        "other": "{{count}} elementos"
+      },
       "resumeUpload": "Continuar la subida",
       "resumeWithFiles": "Selecciona los mismos archivos para continuar",
       "resumeWithFolder": "Selecciona la misma carpeta para continuar",
@@ -1909,24 +1922,6 @@
       "uploadPausedReselect": {
         "one": "En pausa: vuelve a seleccionar {{count}} archivo para continuar",
         "other": "En pausa: vuelve a seleccionar {{count}} archivos para continuar"
-      },
-      "progress": "Progreso",
-      "files": "Archivos",
-      "speed": "Velocidad",
-      "eta": "Tiempo restante",
-      "currentFile": "Archivo actual",
-      "currentFiles": "Archivos actuales",
-      "details": {
-        "source": "Origen",
-        "destination": "Destino",
-        "startTime": "Hora de inicio",
-        "uploadedFiles": "Archivos subidos",
-        "deletedFiles": "Archivos eliminados",
-        "movedFiles": "Archivos movidos",
-        "copiedFiles": "Archivos copiados",
-        "syncedFiles": "Archivos sincronizados",
-        "processedFiles": "Archivos procesados",
-        "options": "Opciones"
       },
       "running": "En ejecución",
       "filesCount": {
@@ -1947,7 +1942,8 @@
         "upload": "Subir",
         "archivecreate": "Archivar",
         "archiveextract": "Extraer archivo",
-        "index": "Listados de directorio"
+        "index": "Listados de directorio",
+        "download": "Descargar"
       }
     },
     "fileViewer": {
@@ -2047,6 +2043,11 @@
       "delete": "Eliminar",
       "deleteDesc": "Eliminar permanentemente archivos que coincidan con los filtros",
       "copyurl": "Copiar URL",
+      "upload": "Subir",
+      "rename": "Renombrar",
+      "cleanup": "Limpiar",
+      "rmdirs": "Eliminar directorios vacíos",
+      "archiveextract": "Extraer archivo",
       "copyUrlDesc": "Generar URLs públicas de descarga para archivos",
       "archivecreate": "Archivar",
       "archivecreateDesc": "Comprimir carpetas/archivos en un archivo (Zip, Tar, etc.)",
@@ -2081,7 +2082,8 @@
       "remoteSettings": "Ajustes de remoto",
       "indexSettings": "Ajustes de listados de directorio",
       "index": "Listados de directorio",
-      "indexDesc": "Escribe listados navegables en las carpetas para sitios web estáticos"
+      "indexDesc": "Escribe listados navegables en las carpetas para sitios web estáticos",
+      "download": "Descargar"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -3567,7 +3569,12 @@
       "viewOptions": "Opciones de vista",
       "showingItems": "Mostrando {{count}} de {{total}}",
       "decreaseIconSize": "Reducir tamaño de icono",
-      "increaseIconSize": "Aumentar tamaño de icono"
+      "increaseIconSize": "Aumentar tamaño de icono",
+      "tabCount": {
+        "one": "{{count}} pestaña",
+        "other": "{{count}} pestañas"
+      },
+      "showTabs": "Mostrar pestañas abiertas"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3661,6 +3668,60 @@
       "useAsDefault": "Usar estas opciones de forma predeterminada",
       "dontAskAgain": "No volver a preguntar (Preferencias del Explorador de archivos)",
       "start": "Iniciar"
+    },
+    "conflicts": {
+      "exists": "«{{name}}» ya existe",
+      "fileExists": "Ya hay un archivo con este nombre en {{destination}}.",
+      "folderExists": "Ya hay una carpeta con este nombre en {{destination}}.",
+      "mergeExplain": "Al combinar, se añaden a ella los archivos entrantes.",
+      "thereNow": "Ahora allí",
+      "incoming": "Entrante",
+      "replace": "Reemplazar",
+      "merge": "Combinar",
+      "skip": "Omitir",
+      "keepBoth": "Conservar ambos",
+      "replaceOrMerge": "Reemplazar o combinar",
+      "forAll": "Para todos:",
+      "keptAs": "Se guarda como «{{name}}»",
+      "skipped": "Omitido",
+      "replaces": "Reemplaza el archivo de allí",
+      "merges": {
+        "newer": "Se combina y se conserva el más reciente de cada archivo",
+        "keep": "Se combina y solo se añaden los que faltan",
+        "replace": "Se combina y se reemplazan los archivos con el mismo nombre"
+      },
+      "title": {
+        "one": "{{count}} de {{total}} elementos ya existe en {{destination}}",
+        "other": "{{count}} de {{total}} elementos ya existen en {{destination}}"
+      },
+      "others": {
+        "one": "{{count}} elemento más no tiene conflicto.",
+        "other": "{{count}} elementos más no tienen conflicto."
+      },
+      "start": {
+        "copy": {
+          "one": "Copiar {{count}} elemento",
+          "other": "Copiar {{count}} elementos"
+        },
+        "move": {
+          "one": "Mover {{count}} elemento",
+          "other": "Mover {{count}} elementos"
+        },
+        "upload": {
+          "one": "Subir {{count}} elemento",
+          "other": "Subir {{count}} elementos"
+        }
+      },
+      "skipAll": "Omitir todo",
+      "replaceWarning": "Los archivos reemplazados no se pueden recuperar y esta acción no se puede deshacer.",
+      "mergeWarning": "La combinación de carpetas no se puede deshacer.",
+      "sameNames": "Archivos con el mismo nombre:",
+      "sameNamesAll": "Archivos con el mismo nombre en las carpetas combinadas:",
+      "existingFiles": {
+        "newer": "Conservar el más reciente",
+        "keep": "Conservar el que ya está",
+        "replace": "Reemplazar con el entrante"
+      }
     }
   },
   "home": {
@@ -3773,7 +3834,6 @@
       "progress": "Progreso:",
       "of": "de",
       "eta": "Tiempo restante:",
-      "elapsed": "Transcurrido:",
       "speed": "Velocidad de transferencia:",
       "transfers": "Transferencias:",
       "checks": "Comprobaciones:",
@@ -3785,6 +3845,7 @@
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
       "runningJobs": "Tareas en Ejecución",
+      "recentJobs": "Tareas recientes",
       "starting": "Iniciando...",
       "noRunning": "No hay trabajos activos en ejecución."
     },
@@ -3863,7 +3924,6 @@
       "missingMountPoint": "Falta 'mountPoint' en la configuración del nodo unmount y el nodo de destino no produjo un punto de montaje",
       "missingStopServeTarget": "Faltan 'targetNodeId'/'serverId' y 'remoteName' en la configuración del nodo stop_serve",
       "rcCommandFailed": "El comando RC '{{command}}' falló: {{error}}",
-      "invalidJobId": "ID de trabajo no válido devuelto por el envío por lotes: {{error}}",
       "unsupportedNodeType": "Tipo de nodo de flujo de trabajo '{{type}}' no compatible con esta plataforma o versión",
       "nodeCrashed": "El nodo '{{node}}' falló inesperadamente: {{reason}}",
       "notificationFailed": "Error de notificación ({{kind}}): {{error}}",
@@ -3955,7 +4015,9 @@
       "diskFull": "El disco o unidad de destino está lleno. No hay suficiente espacio libre.",
       "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
       "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura.",
-      "ioError": "Error de E/S: {{error}}"
+      "ioError": "Error de E/S: {{error}}",
+      "intoItself": "La carpeta «{{name}}» no se puede copiar ni mover dentro de sí misma.",
+      "noItems": "No se seleccionó ningún elemento."
     },
     "upload": {
       "legacyBatch": "Esta subida la inició una página desactualizada. Recarga la aplicación e inténtalo de nuevo.",
@@ -3964,7 +4026,8 @@
       "invalidModifiedTime": "La subida contiene una fecha de modificación no válida.",
       "sessionGone": "El servidor ya no tiene esta subida porque se canceló o estuvo inactiva demasiado tiempo. Iníciala de nuevo.",
       "invalidChunk": "La subida envió datos que no pertenecen a ninguno de sus archivos.",
-      "incomplete": "La subida se terminó antes de que llegaran todos sus archivos."
+      "incomplete": "La subida se terminó antes de que llegaran todos sus archivos.",
+      "filesFailed": "Archivos que no se pudieron subir: {{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
@@ -4033,14 +4096,15 @@
       "tooSlowReverted": "El backend aceptó la conexión pero tardó demasiado en listar sus elementos. Se volvió a Local."
     },
     "job": {
-      "notFound": "JobInfo no encontrado",
+      "notFound": "Trabajo no encontrado",
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
       "executionFailed": "Ejecución del trabajo fallida: {{error}}",
       "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación.",
       "profileNotRunning": "No se encontró ningún trabajo {{jobType}} activo para el perfil '{{profile}}' en {{remote}}",
       "stopped": "Trabajo detenido",
       "failed": "El trabajo falló",
-      "lost": "Rclone ya no conoce este trabajo. Caducó tras finalizar o el motor se reinició, por lo que su resultado no está disponible."
+      "lost": "Rclone ya no conoce este trabajo. Caducó tras finalizar o el motor se reinició, por lo que su resultado no está disponible.",
+      "notRetryable": "Este trabajo no se puede repetir: solo se puede repetir un trabajo fallido o detenido que se inició después de abrir la aplicación."
     },
     "cache": {
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
@@ -4162,7 +4226,8 @@
     },
     "job": {
       "stopped": "Trabajo detenido exitosamente",
-      "deleted": "Trabajo eliminado exitosamente"
+      "deleted": "Trabajo eliminado exitosamente",
+      "retried": "El trabajo {{id}} se está ejecutando de nuevo"
     },
     "security": {
       "passwordRemoved": "Contraseña eliminada exitosamente",
@@ -4275,17 +4340,21 @@
     "reason": "Operaciones activas en curso: {{details}}",
     "mounts": "Montajes: {{count}}",
     "jobs": "Tareas: {{count}}",
-    "serves": "Servidores: {{count}}"
+    "serves": "Servidores: {{count}}",
+    "progress": "{{done}} de {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "quedan {{time}}",
+    "checked": "Comprobados: {{count}}"
   },
   "notification": {
     "title": {
       "mountSucceeded": "Montaje exitoso",
       "mountFailed": "Error de montaje",
       "unmountSucceeded": "Desconectado",
-      "jobStarted": "Proceso de {{type}} iniciado",
-      "jobCompleted": "{{type}} completado",
-      "jobFailed": "{{type}} fallido",
-      "jobStopped": "{{type}} detenido",
+      "jobStarted": "Operación iniciada: {{type}}",
+      "jobCompleted": "Operación completada: {{type}}",
+      "jobFailed": "Operación fallida: {{type}}",
+      "jobStopped": "Operación detenida: {{type}}",
       "serveStarted": "Servidor en línea",
       "serveFailed": "Error del servidor",
       "serveStopped": "Servidor detenido",
@@ -4326,10 +4395,10 @@
       "mountSucceeded": "{{remote}} de {{backend}} montado con éxito en {{mountPoint}}.",
       "mountFailed": "Error al montar {{remote}} de {{backend}}: {{error}}",
       "unmountSucceeded": "{{remote}} desconectado de {{backend}}.",
-      "jobStarted": "Se inició {{type}} para {{remote}} en {{backend}}.",
-      "jobCompleted": "Se completó con éxito {{type}} para {{remote}} en {{backend}}.",
-      "jobFailed": "Error en {{type}} para {{remote}} en {{backend}}: {{error}}",
-      "jobStopped": "Se detuvo {{type}} para {{remote}} en {{backend}}.",
+      "jobStarted": "Se inició «{{type}}» para {{remote}} en {{backend}}.",
+      "jobCompleted": "«{{type}}» se completó con éxito para {{remote}} en {{backend}}.",
+      "jobFailed": "Falló «{{type}}» para {{remote}} en {{backend}}: {{error}}",
+      "jobStopped": "Se detuvo «{{type}}» para {{remote}} en {{backend}}.",
       "serveStarted": "Servicio iniciado para {{remote}} en {{backend}}.",
       "serveFailed": "Error al iniciar el servicio para {{remote}} en {{backend}}: {{error}}",
       "serveStopped": "Servidor detenido para {{remote}} en {{backend}}.",
@@ -4366,6 +4435,26 @@
       "workflowStopped": "El flujo '{{name}}' fue detenido.",
       "unmountFailed": "Error al desmontar {{remote}} desde {{backend}}: {{error}}",
       "serveStopFailed": "Error al detener el servidor {{protocol}} para {{remote}} en {{backend}}: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Sincronización",
+      "copy": "Copia",
+      "move": "Movimiento",
+      "bisync": "BiSync",
+      "check": "Verificación",
+      "mount": "Montaje",
+      "copyurl": "Copia de URL",
+      "mkdir": "Creación de carpeta",
+      "cleanup": "Limpieza",
+      "delete": "Eliminación",
+      "rename": "Cambio de nombre",
+      "rmdirs": "Eliminación de directorios vacíos",
+      "index": "Listados de directorio",
+      "upload": "Subida",
+      "download": "Descarga",
+      "archivecreate": "Archivado",
+      "archiveextract": "Extracción de archivo",
+      "cryptcheck": "Verificación cifrada"
     }
   },
   "repairSheet": {

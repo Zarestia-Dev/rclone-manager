@@ -1355,7 +1355,8 @@ mod tests {
             }
             .to_rclone_body(false)
             .unwrap();
-            assert_eq!(body["_config"]["DryRun"], true);
+            assert_eq!(body["dry_run"], true);
+            assert!(body["_config"].get("DryRun").is_none());
             assert_eq!(body["_config"]["Transfers"], 2);
             assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg"]));
             let source_field = if operation == OperationType::Sync {

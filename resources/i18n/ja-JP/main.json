@@ -243,7 +243,8 @@
       },
       "actions": {
         "stop": "ジョブを停止",
-        "delete": "ジョブを削除"
+        "delete": "ジョブを削除",
+        "retry": "ジョブを再試行"
       },
       "empty": "ジョブが見つかりません"
     },
@@ -1889,30 +1890,22 @@
       "cancelled": "キャンセル済み",
       "cancelJob": "キャンセル",
       "removeJob": "削除",
+      "clearFinished": "完了した項目を消去",
+      "openDestination": "保存先を開く",
+      "undo": "元に戻す",
+      "timeLeft": "残り {{time}}",
+      "failedOf": {
+        "other": "{{total}} 件中 {{count}} 件が失敗"
+      },
+      "itemsCount": {
+        "other": "{{count}} 個の項目"
+      },
       "resumeUpload": "アップロードを再開",
       "resumeWithFiles": "同じファイルを選択して再開",
       "resumeWithFolder": "同じフォルダーを選択して再開",
       "uploadPausedConnection": "一時停止中: サーバーとの接続が切れました",
       "uploadPausedReselect": {
         "other": "一時停止中: 再開するには {{count}} 個のファイルをもう一度選択してください"
-      },
-      "progress": "進捗",
-      "files": "ファイル",
-      "speed": "速度",
-      "eta": "残り時間",
-      "currentFile": "現在のファイル",
-      "currentFiles": "現在のファイル",
-      "details": {
-        "source": "転送元",
-        "destination": "転送先",
-        "startTime": "開始日時",
-        "uploadedFiles": "アップロードされたファイル",
-        "deletedFiles": "削除されたファイル",
-        "movedFiles": "移動されたファイル",
-        "copiedFiles": "コピーされたファイル",
-        "syncedFiles": "同期されたファイル",
-        "processedFiles": "処理されたファイル",
-        "options": "オプション"
       },
       "running": "実行中",
       "filesCount": {
@@ -1932,7 +1925,8 @@
         "upload": "アップロード",
         "archivecreate": "圧縮",
         "archiveextract": "アーカイブを展開",
-        "index": "ディレクトリ一覧"
+        "index": "ディレクトリ一覧",
+        "download": "ダウンロード"
       }
     },
     "fileViewer": {
@@ -2030,6 +2024,11 @@
       "delete": "削除",
       "deleteDesc": "フィルタに一致するファイルを永久削除します",
       "copyurl": "URLコピー",
+      "upload": "アップロード",
+      "rename": "名前の変更",
+      "cleanup": "クリーンアップ",
+      "rmdirs": "空のディレクトリの削除",
+      "archiveextract": "アーカイブの展開",
       "copyUrlDesc": "ファイルの公開ダウンロードURLを生成します",
       "archivecreate": "圧縮",
       "archivecreateDesc": "フォルダ/ファイルをZip, Tarなどに圧縮します",
@@ -2064,7 +2063,8 @@
       "remoteSettings": "リモート設定",
       "indexSettings": "ディレクトリ一覧設定",
       "index": "ディレクトリ一覧",
-      "indexDesc": "静的ウェブサイト向けに閲覧用の一覧をフォルダーへ書き込みます"
+      "indexDesc": "静的ウェブサイト向けに閲覧用の一覧をフォルダーへ書き込みます",
+      "download": "ダウンロード"
     },
     "generalDetail": {
       "automations": "自動化",
@@ -3524,7 +3524,11 @@
       "viewOptions": "表示オプション",
       "showingItems": "{{total}} 件中 {{count}} 件を表示中",
       "decreaseIconSize": "アイコンサイズを縮小",
-      "increaseIconSize": "アイコンサイズを拡大"
+      "increaseIconSize": "アイコンサイズを拡大",
+      "tabCount": {
+        "other": "{{count}} 個のタブ"
+      },
+      "showTabs": "開いているタブを表示"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3606,6 +3610,55 @@
       "useAsDefault": "これらのオプションを既定として使用",
       "dontAskAgain": "今後確認しない(ファイルブラウザの環境設定)",
       "start": "開始"
+    },
+    "conflicts": {
+      "exists": "「{{name}}」は既に存在します",
+      "fileExists": "{{destination}} には同じ名前のファイルが既にあります。",
+      "folderExists": "{{destination}} には同じ名前のフォルダーが既にあります。",
+      "mergeExplain": "統合すると、追加するファイルがこのフォルダーに加わります。",
+      "thereNow": "現在の項目",
+      "incoming": "追加する項目",
+      "replace": "置き換え",
+      "merge": "統合",
+      "skip": "スキップ",
+      "keepBoth": "両方残す",
+      "replaceOrMerge": "置き換え/統合",
+      "forAll": "すべてに適用:",
+      "keptAs": "「{{name}}」として追加",
+      "skipped": "スキップ",
+      "replaces": "既存のファイルを置き換えます",
+      "merges": {
+        "newer": "統合し、各ファイルの新しい方を残します",
+        "keep": "統合し、足りないファイルだけを追加します",
+        "replace": "統合し、同じ名前のファイルは置き換えます"
+      },
+      "title": {
+        "other": "{{total}} 個中 {{count}} 個の項目が {{destination}} に既に存在します"
+      },
+      "others": {
+        "other": "残りの {{count}} 個の項目は競合しません。"
+      },
+      "start": {
+        "copy": {
+          "other": "{{count}} 個の項目をコピー"
+        },
+        "move": {
+          "other": "{{count}} 個の項目を移動"
+        },
+        "upload": {
+          "other": "{{count}} 個の項目をアップロード"
+        }
+      },
+      "skipAll": "すべてスキップ",
+      "replaceWarning": "置き換えたファイルは元に戻せず、この操作は取り消せません。",
+      "mergeWarning": "フォルダーの統合は取り消せません。",
+      "sameNames": "同じ名前のファイル:",
+      "sameNamesAll": "統合するフォルダー内の同じ名前のファイル:",
+      "existingFiles": {
+        "newer": "新しい方を残す",
+        "keep": "既にある方を残す",
+        "replace": "追加する方で置き換える"
+      }
     }
   },
   "home": {
@@ -3717,7 +3770,6 @@
       "progress": "進捗:",
       "of": "/",
       "eta": "完了見込み:",
-      "elapsed": "経過時間:",
       "speed": "転送速度:",
       "transfers": "転送ファイル数:",
       "checks": "チェック数:",
@@ -3729,6 +3781,7 @@
       "serverMoves": "サーバーサイド移動数:",
       "lastError": "最後のエラー:",
       "runningJobs": "実行中のジョブ",
+      "recentJobs": "最近のジョブ",
       "starting": "開始中...",
       "noRunning": "現在実行中のアクティブなジョブはありません。"
     },
@@ -3805,7 +3858,6 @@
       "missingMountPoint": "unmount ノードの設定に 'mountPoint' がなく、対象ノードもマウントポイントを生成しませんでした",
       "missingStopServeTarget": "stop_serve ノードの設定に 'targetNodeId'/'serverId' も 'remoteName' もありません",
       "rcCommandFailed": "RC コマンド '{{command}}' が失敗しました: {{error}}",
-      "invalidJobId": "バッチ送信から無効なジョブ ID が返されました: {{error}}",
       "unsupportedNodeType": "ワークフローのノードタイプ '{{type}}' はこのプラットフォームまたはバージョンではサポートされていません",
       "nodeCrashed": "ノード '{{node}}' がクラッシュしました: {{reason}}",
       "notificationFailed": "通知エラー ({{kind}}): {{error}}",
@@ -3897,7 +3949,9 @@
       "diskFull": "ターゲットディスクの空き容量が不足しています。",
       "fileLocked": "ファイルがロックされているか、別のプロセスで使用されています。",
       "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。",
-      "ioError": "入出力(IO)エラー: {{error}}"
+      "ioError": "入出力(IO)エラー: {{error}}",
+      "intoItself": "フォルダー「{{name}}」をそれ自体の中にコピーまたは移動することはできません。",
+      "noItems": "項目が選択されていません。"
     },
     "upload": {
       "legacyBatch": "このアップロードは古いページから開始されました。アプリケーションを再読み込みして、もう一度お試しください。",
@@ -3906,7 +3960,8 @@
       "invalidModifiedTime": "アップロードに無効な更新日時が含まれています。",
       "sessionGone": "このアップロードはキャンセルされたか、長時間操作がなかったため、サーバーに残っていません。もう一度開始してください。",
       "invalidChunk": "アップロードが、どのファイルにも属さないデータを送信しました。",
-      "incomplete": "すべてのファイルが届く前にアップロードが終了しました。"
+      "incomplete": "すべてのファイルが届く前にアップロードが終了しました。",
+      "filesFailed": "アップロードできなかったファイル: {{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "マウントプラグインのインストールに失敗しました: {{error}}",
@@ -3975,14 +4030,15 @@
       "tooSlowReverted": "バックエンドは接続を受け付けましたが、項目の一覧取得が遅すぎました。Local に戻しました。"
     },
     "job": {
-      "notFound": "JobInfoが見つかりません",
+      "notFound": "ジョブが見つかりません",
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
       "executionFailed": "ジョブの実行に失敗しました: {{error}}",
       "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。",
       "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません",
       "stopped": "ジョブが停止されました",
       "failed": "ジョブが失敗しました",
-      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。"
+      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。",
+      "notRetryable": "このジョブは再実行できません。アプリを開いてから開始され、失敗または停止したジョブのみ再実行できます。"
     },
     "cache": {
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
@@ -4103,7 +4159,8 @@
     },
     "job": {
       "stopped": "ジョブを正常に停止しました",
-      "deleted": "ジョブを正常に削除しました"
+      "deleted": "ジョブを正常に削除しました",
+      "retried": "ジョブ {{id}} を再実行しています"
     },
     "security": {
       "passwordRemoved": "パスワードを正常に削除しました",
@@ -4216,7 +4273,11 @@
     "reason": "アクティブな操作を実行中: {{details}}",
     "mounts": "{{count}} マウント",
     "jobs": "{{count}} ジョブ",
-    "serves": "{{count}} サーバー"
+    "serves": "{{count}} サーバー",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/秒",
+    "timeLeft": "残り {{time}}",
+    "checked": "{{count}} 件確認済み"
   },
   "notification": {
     "title": {
@@ -4307,6 +4368,26 @@
       "workflowStopped": "ワークフロー '{{name}}' が停止されました。",
       "unmountFailed": "{{backend}} から {{remote}} のアンマウントに失敗しました: {{error}}",
       "serveStopFailed": "{{backend}} 上の {{remote}} の {{protocol}} サーバー停止に失敗しました: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "同期",
+      "copy": "コピー",
+      "move": "移動",
+      "bisync": "双方向同期",
+      "check": "チェック",
+      "mount": "マウント",
+      "copyurl": "URLコピー",
+      "mkdir": "フォルダの作成",
+      "cleanup": "クリーンアップ",
+      "delete": "削除",
+      "rename": "名前の変更",
+      "rmdirs": "空のディレクトリの削除",
+      "index": "ディレクトリ一覧",
+      "upload": "アップロード",
+      "download": "ダウンロード",
+      "archivecreate": "圧縮",
+      "archiveextract": "アーカイブの展開",
+      "cryptcheck": "暗号チェック"
     }
   },
   "repairSheet": {
