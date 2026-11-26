@@ -48,16 +48,14 @@
     "unknown": "Unknown",
     "notAvailable": "N/A",
     "unlimited": "Unlimited",
-    "limitedTo": "Limited to {{rate}}",
-    "none": "None",
-    "add": "Add",
-    "select": "Select"
+    "limitedTo": "Limited to {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "Clean & Empty",
       "nonEmpty": "Directory has files",
-      "colliding": "In use by {{details}}",
+      "collidingProfile": "In use by the profile “{{name}}” of {{remote}}",
+      "collidingQuickRun": "In use by the Quick Run “{{name}}”",
       "willCreate": "Folder will be created after remote creation.",
       "checking": "Checking path...",
       "notDirectory": "This path points to a file. Choose a folder.",
@@ -72,10 +70,8 @@
     "sizeSuffix": "Invalid size format. Use: 100Ki, 16Mi, 1Gi, or \"off\"",
     "tristate": "Value must be true, false, or unset",
     "time": "Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "List cannot contain only whitespace",
     "bwTimetable": "Invalid bandwidth format",
     "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
-    "enum": "Must be one of: {{values}}",
     "urlArray": "All URLs must be valid and start with http:// or https://",
     "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
     "passwordMismatch": "Passwords do not match",
@@ -84,10 +80,6 @@
       "invalidStart": "Remote name cannot start with dash or space",
       "invalidEnd": "Remote name cannot end with space",
       "nameTaken": "This remote name is already in use"
-    },
-    "password": {
-      "minLength": "Password must be at least 3 characters",
-      "invalidChars": "Password cannot contain quotes"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "Copy URL Active",
     "archivecreateActive": "Archive Active",
     "archivecreating": "Archiving",
-    "syncSummary": "Syncing ({{count}})",
     "toggleSync": "Toggle Sync as Quick Action",
     "toggleCopy": "Toggle Copy as Quick Action",
     "toggleMove": "Toggle Move as Quick Action",
@@ -134,7 +125,6 @@
     "serving": "Serving",
     "servingWithProfile": "Serving ({{profile}}): {{type}} on {{addr}}",
     "servingMultiple": "Serves ({{count}}): {{profiles}}",
-    "serveSummary": "Serving ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Toggle Serve as Quick Action",
     "successStart": "Successfully started serve for {{remote}} ({{profile}}) on {{addr}}",
@@ -161,24 +151,60 @@
       "stop": "Stop current run"
     },
     "nextRun": {
-      "disabled": "Automation is disabled",
       "stopping": "Disabling after current run",
       "notScheduled": "Not scheduled"
     },
-    "lastRun": {
-      "never": "Never"
-    },
     "monitoring": {
-      "realtime": "Real-time Monitoring",
-      "debounce": "Debounce Delay",
       "watcherActive": "Watcher Active",
       "watchedFolder": "Watched folder",
-      "seconds": "seconds",
-      "realtimeSchedule": "Real-time File Watcher",
-      "changedOnlyShort": "Subdirectories Only",
-      "changedOnlyActive": "Subdirectories Only",
-      "syncScope": "Sync Scope",
-      "realtimeChangedOnly": "Real-time Monitoring (Subdirectories only)"
+      "changedOnlyShort": "Subdirectories Only"
+    },
+    "startup": {
+      "badge": "At startup",
+      "startsIn": {
+        "one": "Starts in {{count}} second",
+        "other": "Starts in {{count}} seconds"
+      },
+      "delay": {
+        "one": "After {{count}} second",
+        "other": "After {{count}} seconds"
+      },
+      "immediately": "As soon as the app starts"
+    },
+    "card": {
+      "waiting": "Waiting",
+      "started": "Started {{time}}",
+      "lastTry": "Last try {{time}}",
+      "nextRun": "Next run {{time}}",
+      "lastRun": "Last run {{time}}",
+      "neverRun": "Never run",
+      "notStarted": "Not started yet",
+      "watching": {
+        "one": "Watching · {{count}} s",
+        "other": "Watching · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "At startup · after {{count}} s",
+        "other": "At startup · after {{count}} s"
+      },
+      "lastFailed": "The last run failed",
+      "whenItRuns": "When it runs",
+      "onChange": "When files change",
+      "waitsAfterChange": {
+        "one": "Waits {{count}} second after the last change",
+        "other": "Waits {{count}} seconds after the last change"
+      },
+      "folders": {
+        "one": "{{count}} folder",
+        "other": "{{count}} folders"
+      },
+      "onAppStart": "When the app starts",
+      "lastStart": "Last start",
+      "servingAt": "Serving at {{address}}",
+      "notServing": "Not running",
+      "source": "Source",
+      "sources": "Sources",
+      "destination": "Destination"
     }
   },
   "actions": {
@@ -253,7 +279,8 @@
       },
       "actions": {
         "stop": "Stop Job",
-        "delete": "Delete Job"
+        "delete": "Delete Job",
+        "retry": "Retry Job"
       },
       "empty": "No jobs found"
     },
@@ -277,11 +304,8 @@
     "cancelled": "Rclone update download cancelled.",
     "cancelFailed": "Failed to cancel Rclone update download.",
     "failed": "Update failed: {{error}}",
-    "channelChanged": "Rclone update channel changed to {{channel}}",
     "skipped": "Rclone version {{version}} skipped",
-    "restored": "Rclone version {{version}} restored",
-    "autoCheckEnabled": "Rclone auto-check updates enabled",
-    "autoCheckDisabled": "Rclone auto-check updates disabled"
+    "restored": "Rclone version {{version}} restored"
   },
   "alerts": {
     "title": "Alerts & Notifications",
@@ -634,13 +658,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Starred Items",
-        "description": "List of starred files and folders in the file browser."
+      "layout": {
+        "label": "Layout",
+        "description": "How the File Browser shows files: as icons in a grid or as rows in a list. The layout button in the File Browser changes it too.",
+        "options": {
+          "grid": "Grid",
+          "list": "List"
+        }
       },
-      "bookmarks": {
-        "label": "Bookmarks",
-        "description": "List of bookmarked locations for quick access."
+      "sort": {
+        "label": "Sort",
+        "description": "The order of files in the File Browser. Sort in View Options changes it too."
+      },
+      "show_hidden": {
+        "label": "Show Hidden Files",
+        "description": "Show files and folders whose names start with a dot."
+      },
+      "upload_request_mib": {
+        "label": "Largest Upload Request (MiB)",
+        "description": "Uploads from the web interface are sent in requests no larger than this. Set it to the request limit of a reverse proxy in front of the server (nginx allows 1 MiB unless client_max_body_size is raised). When a proxy refuses a request, smaller ones are tried on their own. A larger value can speed up a single large file over a fast connection with high latency."
+      },
+      "parallel_uploads": {
+        "label": "Files Uploaded at Once",
+        "description": "How many files the web interface sends to the server at the same time. Fewer suit a slow connection."
+      },
+      "ask_transfer_options": {
+        "label": "Ask for the Options on Each Transfer",
+        "description": "Before an upload, or a copy or move to another remote, show the transfer options. The default transfer options are filled in, and a template can be imported."
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "Show the mascot",
+        "description": "Shows Tia, the little mascot, in the corner of the main window. Off by default."
+      },
+      "after_remote": {
+        "label": "Show the setup wizard after adding a cloud",
+        "description": "Opens the “What do you want to do?” wizard when you finish adding a new cloud."
+      },
+      "destination": {
+        "label": "Where the setup wizard keeps its setups",
+        "description": "Automatic follows the default startup view: the main menu keeps a profile on the cloud's page, the other views keep a Quick Run.",
+        "options": {
+          "auto": "Automatic",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Cloud profile (main menu)"
+        }
       }
     }
   },
@@ -745,7 +808,8 @@
       "shortcuts": "Keyboard Shortcuts",
       "about": "About RClone Manager",
       "quickRemote": "Quick Remote",
-      "detailedRemote": "Detailed Remote"
+      "detailedRemote": "Detailed Remote",
+      "wizard": "Wizard"
     }
   },
   "onboarding": {
@@ -852,8 +916,7 @@
       "destination": "Destination",
       "openViewer": "Open in Viewer",
       "openViewerTooltip": "Open full media preview",
-      "inferredFromUrl": "Inferred from URL",
-      "imageAlt": "Preview"
+      "inferredFromUrl": "Inferred from URL"
     },
     "installationOptions": {
       "tabs": {
@@ -919,14 +982,7 @@
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred",
-        "file": "File",
-        "direction": "Direction",
-        "took": "Took",
-        "when": "When",
-        "progress": "Progress",
-        "speed": "Speed",
-        "eta": "ETA"
+        "transferred": "transferred"
       },
       "status": {
         "failed": "Failed",
@@ -1293,8 +1349,7 @@
         "one": "{{count}} unknown option: {{keys}}. It might be ignored by rclone.",
         "other": "{{count}} unknown options: {{keys}}. These might be ignored by rclone."
       },
-      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead.",
-      "fieldsOverview": "Config fields overview"
+      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead."
     },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
@@ -1378,8 +1433,7 @@
       "appliedToast": {
         "one": "Successfully imported {{count}} option",
         "other": "Successfully imported {{count}} options"
-      },
-      "profileNamePlaceholder": "e.g. daily-backup"
+      }
     },
     "obscure": {
       "title": "Obscure Password",
@@ -1524,8 +1578,8 @@
       "mountDiskName": "Disk name (optional)",
       "mountNetworkName": "Network name (optional)",
       "mountAutomaticName": "Automatic name",
-      "mountLocalDriveHint": "Local disk is the usual choice. Try a network drive if a program has trouble.",
-      "mountNetworkDriveHint": "Windows shows the disk as a network drive. The storage stays the same.",
+      "mountLocalDriveHint": "Windows treats it as a fixed disk and may build previews of your files. Choose this if a program does not work with a network drive.",
+      "mountNetworkDriveHint": "Windows treats it as a network drive. File Explorer shows icons instead of previews, which suits cloud storage.",
       "mountDriveTarget": "Drive letter",
       "mountFolderPathRequired": "Enter a full path to a new subfolder.",
       "mountFolderQuotesRemoved": "Quotation marks were removed from the path.",
@@ -1533,19 +1587,25 @@
       "mountLocalDrive": "Local disk",
       "mountNetworkDrive": "Network drive",
       "mountDriveOccupied": "In use",
+      "mountDriveOccupiedHint": "{{letter}} is in use right now. Mounting works only if it is free again by then.",
+      "mountNoFreeLetter": "No drive letter is free right now. Choose “Folder” to mount without one.",
       "mountDriveCurrent": "Current",
       "mountDriveChecking": "Checking drive letters…",
       "mountUseParent": "Use as parent folder",
-      "mountDriveSuggestion": "Suggested drive: {{letter}} · Choose a letter from the list to use it every time.",
       "mountAutomaticDriveHint": "A free drive letter is selected when mounting.",
       "mountDriveReserved": "Reserved by another profile",
       "mountDriveLetter": "Drive letter",
+      "mountExplorerPreview": "Shown in File Explorer as",
       "mountParentFolder": "Choose parent folder",
       "mountFolderHint": "A folder mount uses a local disk. Choose its parent and use a folder name that does not exist yet.",
       "mountDriveLettersUnavailable": "Could not verify drive letters. Try again.",
       "mountFolderLocalDrive": "Choose a folder on a local drive.",
       "mountFolderAlreadyExists": "The mount folder already exists. Use a new folder name.",
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
+      "multiSourceSyncInfo": "The sources are synced as one folder: the destination keeps every file that is in at least one of them. If the same path is in more than one source, the file from the first source in the list is used; with “Fast List” turned on, this is not guaranteed. Server-side copy is not used, even when a source and the destination are on the same remote.",
+      "multiSourceCopyInfo": "The sources are copied one after another, starting with the last one in the list. If the same path is in more than one source, the file from the first source in the list ends up in the destination. If a source fails, the sources still waiting are not copied.",
+      "multiSourceMoveInfo": "The sources are moved one after another, starting with the last one in the list. If the same path is in more than one source, the file from the first source in the list ends up in the destination and the other versions are deleted; set “Backup Dir” to keep them. If a source fails, the sources still waiting are not moved.",
+      "multiSourceSyncChangedOnlyNote": "With more than one source, every change syncs all sources in full: “Sync only changed subdirectories” does not apply.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
       "autoStartDelay": "Startup Delay",
       "autoStartDelayHint": "Wait this long after the app starts before launching. Useful when the network, VPN or other mounts are not ready yet.",
@@ -1775,9 +1835,7 @@
       "confirm": "Apply",
       "cancel": "Cancel"
     },
-    "restored": "Update {{version}} restored",
-    "restoreFailed": "Failed to restore update",
-    "channelChanged": "Update channel changed to {{channel}}."
+    "restored": "Update {{version}} restored"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Could not resolve remote for this item",
@@ -1885,22 +1943,25 @@
       "cancelled": "Cancelled",
       "cancelJob": "Cancel",
       "removeJob": "Remove",
-      "progress": "Progress",
-      "files": "Files",
-      "speed": "Speed",
-      "eta": "ETA",
-      "currentFile": "Current File",
-      "currentFiles": "Current Files",
-      "details": {
-        "source": "Source",
-        "destination": "Destination",
-        "startTime": "Start Time",
-        "uploadedFiles": "Uploaded files",
-        "deletedFiles": "Deleted files",
-        "movedFiles": "Moved files",
-        "copiedFiles": "Copied files",
-        "syncedFiles": "Synced files",
-        "processedFiles": "Processed files"
+      "clearFinished": "Clear finished",
+      "openDestination": "Open destination",
+      "undo": "Undo",
+      "timeLeft": "{{time}} left",
+      "failedOf": {
+        "one": "{{count}} of {{total}} failed",
+        "other": "{{count}} of {{total}} failed"
+      },
+      "itemsCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} items"
+      },
+      "resumeUpload": "Continue upload",
+      "resumeWithFiles": "Select the same files to continue",
+      "resumeWithFolder": "Select the same folder to continue",
+      "uploadPausedConnection": "Paused: the connection to the server was lost",
+      "uploadPausedReselect": {
+        "one": "Paused: select {{count}} file again to continue",
+        "other": "Paused: select {{count}} files again to continue"
       },
       "running": "Running",
       "filesCount": {
@@ -1921,7 +1982,8 @@
         "upload": "Upload",
         "archivecreate": "Archive",
         "archiveextract": "Extract Archive",
-        "index": "Directory Listings"
+        "index": "Directory Listings",
+        "download": "Download"
       }
     },
     "fileViewer": {
@@ -1965,8 +2027,7 @@
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
       "resetZoom": "Reset Zoom",
-      "hexPreview": "Hex Preview",
-      "playVideo": "Play in Video Player"
+      "hexPreview": "Hex Preview"
     }
   },
   "dashboard": {
@@ -2022,6 +2083,11 @@
       "delete": "Delete",
       "deleteDesc": "Permanently delete files matching filters",
       "copyurl": "Copy URL",
+      "upload": "Upload",
+      "rename": "Rename",
+      "cleanup": "Cleanup",
+      "rmdirs": "Remove Empty Dirs",
+      "archiveextract": "Extract Archive",
       "copyUrlDesc": "Generate public download URLs for files",
       "archivecreate": "Archive",
       "archivecreateDesc": "Compress folders/files into an archive (Zip, Tar, etc.)",
@@ -2056,28 +2122,19 @@
       "remoteSettings": "Remote Settings",
       "indexSettings": "Directory Listings Settings",
       "index": "Directory Listings",
-      "indexDesc": "Write browsable listings into folders for static websites"
+      "indexDesc": "Write browsable listings into folders for static websites",
+      "download": "Download"
     },
     "generalDetail": {
       "automations": "Automations",
-      "goToAutomation": "Go to automation {{index}}",
-      "schedule": "Schedule",
-      "cronExpression": "Cron Expression:",
       "nextRunLabel": "Next Run:",
-      "lastRunLabel": "Last Run:",
       "statistics": "Statistics",
       "successful": "Successful",
       "failedCount": "Failed",
       "stoppedCount": "Stopped",
       "totalRuns": "Total Runs",
       "paths": "Paths",
-      "sourceLabel": "Source:",
-      "destinationLabel": "Destination:",
-      "lastError": "Last Error",
-      "currentlyRunning": "Currently Running",
       "jobIdLabel": "Job ID:",
-      "previousAutomationTooltip": "Previous automation",
-      "nextAutomationTooltip": "Next automation",
       "remoteConfiguration": "Remote Configuration",
       "editConfiguration": "Edit Configuration",
       "remoteActionQuickSelection": "Remote action quick selection"
@@ -2249,6 +2306,7 @@
       "skipVersion": "Skip Version",
       "upToDate": "Up to Date",
       "latestVersionMsg": "You're running the latest version",
+      "statusUnknown": "Update Status Unknown",
       "checkUpdates": "Check for Updates",
       "checking": "Checking...",
       "updateSettings": "Update Settings",
@@ -2265,11 +2323,9 @@
       "whatsNewRclone": "What's New in Rclone",
       "updateRclone": "Download Rclone Update",
       "rcloneUpToDate": "Rclone Up to Date",
-      "checkRcloneUpdates": "Check for Rclone Updates",
       "rcloneUpdateSettings": "Rclone Update Settings",
       "skippedRcloneUpdates": "Skipped Rclone Updates",
       "devTeam": "Development Team",
-      "leadDeveloper": "Lead Developer",
       "contributors": "Contributors",
       "acknowledgments": "Acknowledgments",
       "ackText": "This application is built with modern web technologies and relies on the excellent Rclone project for cloud storage management.",
@@ -2280,6 +2336,7 @@
       "updateSettingFailed": "Failed to update setting",
       "channelStable": "Stable",
       "channelBeta": "Beta",
+      "channelDev": "Dev",
       "channelStableDesc": "Recommended for most users",
       "channelBetaDesc": "Latest features",
       "downloadPage": "Download Page",
@@ -2351,6 +2408,7 @@
     },
     "preferences": {
       "title": "Preferences",
+      "fileBrowserTitle": "File Browser Preferences",
       "searchResults": "Search Results",
       "searchPlaceholder": "Search settings...",
       "resetAll": "Reset All Settings",
@@ -2379,6 +2437,7 @@
       "tabs": {
         "general": "General",
         "core": "Core",
+        "nautilus": "File Browser",
         "developer": "Developer",
         "vault": "Vault"
       },
@@ -2888,6 +2947,429 @@
         "newLine": "new line",
         "clear": "clear"
       }
+    },
+    "wizard": {
+      "title": "What do you want to do?",
+      "stepOf": "Step {{current}} of {{total}}",
+      "loadFailed": "Could not load your cloud storages.",
+      "noRemotes": "Add a cloud storage first, then come back here.",
+      "remoteLabel": "Which cloud?",
+      "recommended": "Recommended",
+      "applyFailed": "It could not be set up. Check the folders and try again.",
+      "hello": {
+        "created": "{{remote}} is ready! What would you like to do with it?",
+        "default": "What would you like to do with your cloud?",
+        "subtitle": "Pick what you want in your own words. We set up the rest, and nothing starts until you say so.",
+        "dontShow": "Don't open this after I add a cloud",
+        "dontShowHint": "Okay. You can turn it back on with the ⚙ button at the top."
+      },
+      "places": {
+        "thisDevice": "This device",
+        "server": "The server",
+        "filesApp": "Files app",
+        "tv": "TV or player",
+        "device": "Phone or computer",
+        "browser": "Web browser",
+        "homeNetwork": "Your home network",
+        "automaticDrive": "A free drive letter"
+      },
+      "goals": {
+        "access": {
+          "title": "Use my cloud like a folder on this device",
+          "description": "Like a network drive: your files show up in a folder and download when you open them.",
+          "descriptionApp": "Like the {{app}} app on Windows: your files show up in a folder and download when you open them.",
+          "titlePhone": "See my cloud in the phone's Files app",
+          "descriptionPhone": "Your cloud shows up next to your other storage, and files download when you open them."
+        },
+        "backup": {
+          "title": "Back up my files to the cloud",
+          "description": "Keep a copy of a folder in the cloud, in case something happens to this device."
+        },
+        "devices": {
+          "title": "Keep a copy on this device, the same as the cloud",
+          "description": "Works without internet and on several devices: changes go both ways. Great for Obsidian or Logseq notes."
+        },
+        "download": {
+          "title": "Get my cloud files onto this device",
+          "description": "Download a folder or everything, once or kept up to date."
+        },
+        "migrate": {
+          "title": "Move to another cloud",
+          "description": "Copy everything from this cloud to another one, for example from Google Drive to OneDrive."
+        },
+        "share": {
+          "title": "Open my files on my TV or phone",
+          "description": "Make your cloud available to a TV, phone or computer on your home network."
+        },
+        "explore": {
+          "title": "Just look around or check something",
+          "description": "Browse your files, or check that a folder matches the cloud."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "If you delete a file here, what should happen to its backup?"
+        },
+        "keepOld": {
+          "title": "Should the files stay in the old cloud?"
+        },
+        "device": {
+          "title": "What will open the files?"
+        },
+        "explore": {
+          "title": "What would you like to do?"
+        }
+      },
+      "about": {
+        "title": "What is the difference?",
+        "deleted": {
+          "same": "Either way, new and changed files are copied to the cloud, and your own folder is never touched.",
+          "differ": "“Keep it in the cloud”: if you delete a file here, the cloud still has it. “Delete it there too”: the cloud always matches your folder, so a file you delete here disappears from the cloud too."
+        },
+        "keepOld": {
+          "same": "Either way, everything is copied to the new cloud.",
+          "differ": "“Yes, keep them there”: the old cloud stays exactly as it is. “No, move them”: each file is removed from the old cloud once it has arrived safely in the new one."
+        },
+        "device": {
+          "same": "Every choice makes your cloud available to other devices on your home network. It only works while this app is open.",
+          "differ": "A network folder opens like any other folder in Finder, Explorer or a files app, and can allow changes. A web browser can only look through the files and download them. A TV or player finds it by itself and can only play things."
+        },
+        "explore": {
+          "same": "Either way, nothing is changed.",
+          "differ": "“Look through my files”: your cloud opens in this app so you can look around. “Check a folder against the cloud”: shows which files are different between a folder on this device and the cloud. “Check one cloud against another”: shows which files are different between two clouds."
+        },
+        "where": {
+          "stream": "This folder is a doorway: your files stay in the cloud, show up here and download when you open them. Pick an empty folder. Anything you put in it is saved to the cloud too.",
+          "twoWay": "You can pick a folder you already use. The first run compares it with the cloud and merges both, and nothing is deleted. After that, a change on one side, deleting a file included, shows up on the other.",
+          "mirror": "The cloud folder will become an exact copy of your folder. Files in it that are not in your folder will be deleted. A new or empty cloud folder is the safest choice.",
+          "streamWindows": "The cloud shows up as a drive in File Explorer, like a USB stick. Your files stay in the cloud and download when you open them. You can also pick a folder instead. Anything you put in it is saved to the cloud too."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Keep it in the cloud",
+            "description": "Like a safety copy: even if you delete a file here, the cloud still has it."
+          },
+          "mirror": {
+            "title": "Delete it there too",
+            "description": "Like a mirror: the cloud always looks exactly like your folder, deleted files included."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Yes, keep them there",
+            "description": "Like making a copy: the old cloud stays exactly as it is, so you can always go back."
+          },
+          "move": {
+            "title": "No, move them",
+            "description": "Like moving house: each file leaves the old cloud once it has safely arrived in the new one."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "A network folder",
+            "description": "Like a shared folder: it opens in Finder, Explorer or a files app, with the user name and password you choose. You decide whether devices may change files."
+          },
+          "browser": {
+            "title": "A web browser",
+            "description": "Like a web page: a phone or computer with the address and password can look through the files and download them. Nothing can be changed."
+          },
+          "tv": {
+            "title": "A TV or media player",
+            "description": "Like a media server: smart TVs, consoles and players find it on their own. They can watch and listen, but not change anything."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Look through my files",
+            "description": "Like opening a folder: look through your cloud inside this app. Nothing is downloaded or changed."
+          },
+          "compare": {
+            "title": "Check a folder against the cloud",
+            "description": "Like comparing two folders: see which files differ between a folder here and the cloud. Nothing changes."
+          },
+          "compareClouds": {
+            "title": "Check one cloud against another",
+            "description": "Like comparing two folders: see which files differ between two of your clouds. Nothing changes."
+          }
+        }
+      },
+      "where": {
+        "heading": "Where?",
+        "target": "Where should the files go?",
+        "targetCompare": "Which cloud should it be compared with?",
+        "noOtherRemote": "Add your new cloud first, then come back here.",
+        "shareLogin": "Login for the other device",
+        "shareHint": "The phone or computer asks for these when it connects.",
+        "shareUser": "User name",
+        "sharePassword": "Password",
+        "local": {
+          "stream": "the cloud appears in this folder",
+          "twoWay": "your files are kept in this folder",
+          "download": "files are downloaded here",
+          "upload": "which folder should be backed up?",
+          "compare": "which folder should be checked?",
+          "devices": "which folder should stay the same?",
+          "streamWindows": "the cloud appears as a drive or a folder"
+        },
+        "cloud": {
+          "stream": "which part of the cloud?",
+          "twoWay": "kept in step with this folder",
+          "download": "which folder should be downloaded?",
+          "upload": "the backup goes here",
+          "cloudToCloud": "what should be copied?",
+          "share": "what should be shared?",
+          "compare": "compared with this folder",
+          "cloudCompare": "which folder should be checked?"
+        },
+        "localPlaceholder": "Choose or type a folder",
+        "cloudPlaceholder": "Leave empty for the whole cloud",
+        "shareConnection": "How devices connect",
+        "sharePort": "Port",
+        "sharePortHint": "The number after the colon in the address. Keep 8080 unless something else already uses it.",
+        "portInvalid": "Pick a port between 1024 and 65535.",
+        "shareReadOnly": "Devices can only look, not change files",
+        "shareReadOnlyHint": "Turn this off if phones or computers should also be able to upload, rename or delete.",
+        "shareName": "Name on the TV",
+        "shareNameHint": "This is what you will see in the media server list of the TV or player.",
+        "shareNameLabel": "Name",
+        "portBusy": "Port {{port}} is already used by another program. Pick a different one.",
+        "portUseFree": "Use port {{port}}"
+      },
+      "review": {
+        "heading": "Here is what will happen",
+        "advanced": "Open in the full editor",
+        "start": "Set up and start",
+        "firstRun": "The first run compares both sides and merges them. It can take a while, and nothing is deleted.",
+        "startOnLogin": "Also start this app when the computer starts",
+        "mountPlugin": {
+          "title": "One more thing is needed",
+          "description": "Showing the cloud as a folder needs a small system component (FUSE or WinFsp) that is not installed yet.",
+          "install": "Install it"
+        },
+        "summary": {
+          "stream": "{{cloud}} shows up in {{local}}.",
+          "streamSaf": "{{cloud}} shows up in the Files app.",
+          "twoWay": "{{local}} and {{cloud}} are kept the same.",
+          "upload_copy": "{{local}} is backed up to {{cloud}}.",
+          "upload_sync": "{{cloud}} becomes an exact copy of {{local}}.",
+          "download": "{{cloud}} is downloaded to {{local}}.",
+          "cloudToCloud_copy": "{{cloud}} is copied to {{target}}.",
+          "cloudToCloud_move": "{{cloud}} is moved to {{target}}.",
+          "share_dlna": "{{cloud}} is shared with the TVs and players on your network.",
+          "share_webdav": "{{cloud}} is shared on your network with a password.",
+          "share_http": "{{cloud}} is shared on your network as a web page, with a password.",
+          "compare": "{{local}} is compared with {{cloud}}.",
+          "cloudCompare": "{{cloud}} is compared with {{target}}.",
+          "streamDrive": "{{cloud}} shows up as drive {{local}}.",
+          "streamAutoDrive": "{{cloud}} shows up as a new drive. Windows picks the letter when it connects."
+        },
+        "flow": {
+          "stream": "Opens as you use it",
+          "upload": "Goes to the cloud",
+          "download": "Comes from the cloud",
+          "twoWay": "Kept the same on both sides",
+          "cloudToCloud": "Goes to the other cloud",
+          "share": "Shared on your network",
+          "compare": "Only compared, nothing changes"
+        },
+        "schedule": {
+          "watch": "It runs on its own whenever a file changes.",
+          "startup": "It runs on its own whenever the app starts.",
+          "startupMount": "It connects on its own whenever the app starts.",
+          "cron": "Schedule: {{when}}",
+          "manual": "It runs only when you start it."
+        },
+        "detailsTitle": "Good to know",
+        "destination": {
+          "quickRun": "Quick Run",
+          "profile": "Profile in the main menu",
+          "hintQuickRun": "Listed under Flow › Quick Runs.",
+          "hintProfile": "Listed on the page of “{{remote}}” in the main menu, where you can start and stop it."
+        },
+        "wholeCloud": "Whole cloud",
+        "duplicate": "You already have a setup that does this: “{{name}}”.",
+        "duplicateShow": "Open"
+      },
+      "effects": {
+        "streamOpen": "Opening a file downloads it from the cloud.",
+        "streamSave": "Saving a file uploads it to the cloud.",
+        "streamDelete": "Deleting a file in this folder deletes it from the cloud too.",
+        "uploadNew": "New and changed files are uploaded.",
+        "keepDelete": "Files you delete here stay in the cloud.",
+        "uploadCloudChange": "Nothing in your folder is ever changed by the backup.",
+        "mirrorDelete": "Files you delete here are deleted from the cloud too.",
+        "mirrorExtra": "Files that exist only in the cloud folder are deleted.",
+        "downloadNew": "New and changed cloud files are downloaded.",
+        "downloadKeep": "Files deleted in the cloud stay on this device.",
+        "downloadLocalChange": "Nothing in the cloud is ever changed.",
+        "twoWayChange": "A change on either side is copied to the other.",
+        "twoWayDelete": "A file deleted on one side is deleted on the other.",
+        "twoWayConflict": "If a file changes on both sides, both versions are kept.",
+        "migrateCopy": "Every file is copied to the new cloud.",
+        "migrateKeep": "The old cloud stays as it is.",
+        "migrateMove": "Files are removed from the old cloud once they are copied.",
+        "shareTv": "TVs and players on your network find it on their own.",
+        "shareReadOnly": "They can watch and listen, but cannot change anything.",
+        "shareBrowse": "Devices can look through the files and download them, but cannot change anything.",
+        "shareStops": "Sharing stops when the app is closed.",
+        "sharePassword": "Only devices with your password can connect.",
+        "shareWrite": "Connected devices can change and delete files.",
+        "compareNothing": "No file is changed.",
+        "compareList": "You get a list of the files that differ.",
+        "browseNothing": "Nothing changes."
+      },
+      "advice": {
+        "tooBigForDisk": "This is {{size}}, but this device has only {{free}} free. It will not fit.",
+        "tightOnDisk": "This is {{size}} and this device has {{free}} free. It fits, but the disk will be almost full.",
+        "fitsOnDisk": "This is {{size}} and this device has {{free}} free. It fits comfortably.",
+        "cloudTooFull": "The folder is {{size}}, but the cloud has only {{free}} free. It will not fit.",
+        "streamSavesSpace": "Your cloud holds {{cloud}} and this device has {{free}} free, so this is the right choice: only the files you open take up space."
+      },
+      "preview": {
+        "title": "See what will happen first",
+        "description": "A test run compares both sides and lists every file it would copy, replace or delete. No file is changed.",
+        "run": "Show me what will change",
+        "running": "Comparing files…",
+        "checked": {
+          "one": "{{count}} file checked so far",
+          "other": "{{count}} files checked so far"
+        },
+        "transfers": {
+          "one": "{{count}} file will be copied",
+          "other": "{{count}} files will be copied"
+        },
+        "deletes": {
+          "one": "{{count}} file will be deleted",
+          "other": "{{count}} files will be deleted"
+        },
+        "errors": {
+          "one": "{{count}} file could not be read",
+          "other": "{{count}} files could not be read"
+        },
+        "noDeletes": "No file will be deleted",
+        "nothing": "Everything is already up to date; nothing would change.",
+        "failed": "The test run did not finish. You can still set it up, or change the folders.",
+        "runName": "{{name}} (test)",
+        "groups": {
+          "delete": "Will be deleted",
+          "add": "New files",
+          "replace": "Will be replaced",
+          "copy": "Will be copied",
+          "error": "Problems",
+          "untouched": "Left alone"
+        },
+        "groupCount": "{{label}}: {{count}}",
+        "unchanged": {
+          "one": "{{count}} file is already the same on both sides",
+          "other": "{{count}} files are already the same on both sides"
+        },
+        "deleteWarning": "Look through this list before you start: these files will be removed from the destination.",
+        "again": "Run the test again",
+        "slowNote": "This can take a while, depending on how many files there are. It is not stuck, so please wait.",
+        "elapsed": "Running for {{time}}",
+        "andMore": {
+          "one": "…and {{count}} more file",
+          "other": "…and {{count}} more files"
+        }
+      },
+      "working": {
+        "saving": "Setting it up…",
+        "firstRun": "Running the first sync…",
+        "canClose": "You can close this window; it keeps running in the background.",
+        "slowNote": "The first sync can take a long time, depending on how many files there are. It is not stuck."
+      },
+      "done": {
+        "title": "All set!",
+        "stream": "Your cloud is now in {{path}}.",
+        "streamSaf": "Your cloud is now in the Files app.",
+        "twoWayReady": "The first sync is done. From now on both sides stay the same.",
+        "twoWayFailed": "It is set up, but the first sync did not finish.",
+        "started": "It has started. You can follow its progress in the app.",
+        "checkStarted": "The check has started. When it ends, you can see which files differ.",
+        "findIt": "You can find it later under Flow › Quick Runs as “{{name}}”.",
+        "openFolder": "Open the folder",
+        "openCloud": "Show in the file browser",
+        "openRun": "Show progress and result",
+        "openRunHint": "See how it went and which files were involved.",
+        "another": "Set up something else",
+        "shareWebdav": "Sharing is on. On the phone or computer, connect to one of these addresses:",
+        "shareHttp": "Sharing is on. In a browser on the phone or computer, open one of these addresses:",
+        "shareAddress": "Address",
+        "shareOtherAddresses": "Also works",
+        "shareUser": "User name",
+        "sharePassword": "Password",
+        "sharePasswordHint": "The one you chose",
+        "shareDlna": "Sharing is on. Look for “{{name}}” in the media list of your TV or player.",
+        "noAddress": "Sharing is on. Connect to this device's network address, port {{port}}.",
+        "findItProfile": "You can find it later on the page of “{{remote}}” in the main menu as the profile “{{name}}”.",
+        "whereQuickRun": "Show in Quick Runs",
+        "whereProfile": "Show in the main menu",
+        "failureReason": "What went wrong: {{reason}}",
+        "streamDrive": "Your cloud is now drive {{path}}.",
+        "streamAutoDrive": "Your cloud is now a new drive in File Explorer.",
+        "openFilesApp": "Open the Files app"
+      },
+      "runNames": {
+        "access": "{{remote}} folder",
+        "backup": "{{remote}} backup",
+        "devices": "{{remote}} sync",
+        "download": "{{remote}} download",
+        "migrate": "{{remote}} move",
+        "share": "{{remote}} sharing",
+        "explore": "{{remote}} check"
+      },
+      "when": {
+        "heading": "When should it run?",
+        "subtitle": "Pick any you like and combine them. Pick none and it runs only when you start it.",
+        "watch": {
+          "title": "Whenever a file changes",
+          "description": "The folder is watched and changes go up within seconds, like automatic photo upload on your phone."
+        },
+        "cron": {
+          "title": "On a schedule",
+          "description": "Every day, every hour, on weekdays, or at any time you choose."
+        },
+        "startup": {
+          "title": "When the app starts",
+          "description": "It runs by itself each time the app opens.",
+          "descriptionMount": "Your cloud connects by itself each time the app opens."
+        },
+        "cloudHint": "Watching only sees changes on this device. Add a schedule too, so changes made in the cloud arrive.",
+        "invalidCron": "This schedule is not complete yet. Pick one of the times above."
+      },
+      "details": {
+        "cache": "Files you open stay on this device for up to {{age}}, using at most {{size}} of disk.",
+        "writeBack": "Changes you make are sent to the cloud after {{time}}.",
+        "minFree": "The cache stops growing when less than {{size}} is free on the disk.",
+        "address": "Address:",
+        "addressUnknown": "Use this device's address with the port:",
+        "addressViaBackend": "This is the address the app connects to that computer with. A phone on another network may not reach it.",
+        "port": "Port:",
+        "user": "User name:",
+        "tvName": "Shown on the TV as:"
+      },
+      "settings": {
+        "title": "Wizard settings",
+        "subtitle": "These choices are remembered for next time.",
+        "afterRemote": "Show this wizard after I add a cloud",
+        "destinationTitle": "Keep what the wizard sets up as",
+        "auto": "Automatic",
+        "hintAuto": "Follows the startup view: a profile when the app starts on the main menu, a Quick Run otherwise.",
+        "done": "Done"
+      },
+      "undo": {
+        "action": "Remove this setup",
+        "hint": "It stops and disappears from the app. Your files are not touched.",
+        "confirm": "“{{name}}” stops running and disappears from the app. Your files are not touched.",
+        "working": "Removing…",
+        "failed": "It could not be removed. You can still remove it from the place where it is listed.",
+        "removedTitle": "Removed",
+        "removed": "Your files were not changed.",
+        "title": "Remove this setup?",
+        "remove": "Remove"
+      }
     }
   },
   "nautilus": {
@@ -3039,9 +3521,7 @@
         "statsConflicts": {
           "one": "{{count}} conflict",
           "other": "{{count}} conflicts"
-        },
-        "findPlaceholder": "text to find",
-        "replacePlaceholder": "replacement text"
+        }
       },
       "index": {
         "title": "Generate Directory Listings",
@@ -3160,7 +3640,12 @@
       "viewOptions": "View Options",
       "showingItems": "Showing {{count}} of {{total}}",
       "decreaseIconSize": "Decrease icon size",
-      "increaseIconSize": "Increase icon size"
+      "increaseIconSize": "Increase icon size",
+      "tabCount": {
+        "one": "{{count}} Tab",
+        "other": "{{count}} Tabs"
+      },
+      "showTabs": "Show Open Tabs"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3170,6 +3655,20 @@
       "uploadFailed": {
         "one": "Failed to upload {{count}} file.",
         "other": "Failed to upload {{count}} files."
+      },
+      "uploadInterrupted": "The connection to the server was lost. Continue the upload in Operations.",
+      "uploadFilesNotInUpload": "None of the selected files is one that this upload still needs.",
+      "uploadFilesStillMissing": {
+        "one": "{{count}} file of this upload is still missing. Select it in Operations to finish the upload.",
+        "other": "{{count}} files of this upload are still missing. Select them in Operations to finish the upload."
+      },
+      "copyingPickedFiles": {
+        "one": "Preparing {{count}} selected item for upload…",
+        "other": "Preparing {{count}} selected items for upload…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "{{count}} selected item could not be read and will not be uploaded.",
+        "other": "{{count}} selected items could not be read and will not be uploaded."
       },
       "trashEmptied": "Cleanup operation completed",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
@@ -3211,6 +3710,89 @@
       "cancelLoading": "Cancel loading",
       "star": "Add to starred",
       "unstar": "Remove from starred"
+    },
+    "transferOptions": {
+      "title": "Transfer Options",
+      "defaultTitle": "Default Transfer Options",
+      "summary": {
+        "upload": {
+          "one": "{{count}} item will be uploaded to {{destination}}.",
+          "other": "{{count}} items will be uploaded to {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} item will be copied to {{destination}}.",
+          "other": "{{count}} items will be copied to {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} item will be moved to {{destination}}.",
+          "other": "{{count}} items will be moved to {{destination}}."
+        }
+      },
+      "engine": {
+        "local": "Runs on {{name}}, the rclone this app runs.",
+        "remote": "Runs on {{name}}, an rclone on another computer. The options below are the ones that rclone offers."
+      },
+      "defaultIntro": "Copies, moves and uploads in the File Browser start with these options.",
+      "remoteNote": "These options apply to {{name}} only during this transfer. Its saved settings do not change.",
+      "streamNote": "The files go one by one to the rclone on the other computer, which uses no copy, Filter or Backend options for them. Only the destination's own options apply.",
+      "nothingToSet": "This upload has no options to set.",
+      "useAsDefault": "Use these options by default",
+      "dontAskAgain": "Don't ask again (File Browser Preferences)",
+      "start": "Start"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” already exists",
+      "fileExists": "A file with this name is already in {{destination}}.",
+      "folderExists": "A folder with this name is already in {{destination}}.",
+      "mergeExplain": "Merging adds the incoming files to it.",
+      "thereNow": "There now",
+      "incoming": "Incoming",
+      "replace": "Replace",
+      "merge": "Merge",
+      "skip": "Skip",
+      "keepBoth": "Keep both",
+      "replaceOrMerge": "Replace or merge",
+      "forAll": "For all:",
+      "keptAs": "Kept as “{{name}}”",
+      "skipped": "Skipped",
+      "replaces": "Replaces the file there",
+      "merges": {
+        "newer": "Merged, keeping the newer of each file",
+        "keep": "Merged, adding only the missing files",
+        "replace": "Merged, replacing files with the same name"
+      },
+      "title": {
+        "one": "{{count}} of {{total}} items already exists in {{destination}}",
+        "other": "{{count}} of {{total}} items already exist in {{destination}}"
+      },
+      "others": {
+        "one": "The other {{count}} item has no conflict.",
+        "other": "The other {{count}} items have no conflict."
+      },
+      "start": {
+        "copy": {
+          "one": "Copy {{count}} item",
+          "other": "Copy {{count}} items"
+        },
+        "move": {
+          "one": "Move {{count}} item",
+          "other": "Move {{count}} items"
+        },
+        "upload": {
+          "one": "Upload {{count}} item",
+          "other": "Upload {{count}} items"
+        }
+      },
+      "skipAll": "Skip all",
+      "replaceWarning": "Replaced files can't be restored, and this can't be undone.",
+      "mergeWarning": "Merging folders can't be undone.",
+      "sameNames": "Files with the same name:",
+      "sameNamesAll": "Files with the same name in merged folders:",
+      "existingFiles": {
+        "newer": "Keep the newer one",
+        "keep": "Keep the one there",
+        "replace": "Replace with the incoming one"
+      }
     }
   },
   "home": {
@@ -3257,9 +3839,6 @@
       "generic": "An unexpected error occurred. Please check the logs for more details.",
       "openFailed": "Failed to open {{name}}"
     }
-  },
-  "transfer": {
-    "error": "Transfer error"
   },
   "generalOverview": {
     "panels": {
@@ -3326,7 +3905,6 @@
       "progress": "Progress:",
       "of": "of",
       "eta": "ETA:",
-      "elapsed": "Elapsed:",
       "speed": "Transfer Speed:",
       "transfers": "Transfers:",
       "checks": "Checks:",
@@ -3338,6 +3916,7 @@
       "serverMoves": "Server Moves:",
       "lastError": "Last Error:",
       "runningJobs": "Running Jobs",
+      "recentJobs": "Recent Jobs",
       "starting": "Starting...",
       "noRunning": "No active jobs are currently running."
     },
@@ -3362,6 +3941,14 @@
       },
       "noActive": "No active mounts",
       "noMounted": "No remotes are mounted. Mount a remote to use its files as a folder on your computer."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} more hidden",
+        "other": "{{count}} more hidden"
+      },
+      "empty": "Nothing matches this filter. The rest is hidden.",
+      "showAll": "Show all"
     }
   },
   "appOverview": {
@@ -3416,7 +4003,6 @@
       "missingMountPoint": "Missing 'mountPoint' in unmount node config and target node produced no mount point",
       "missingStopServeTarget": "Missing both 'targetNodeId'/'serverId' and 'remoteName' in stop_serve node config",
       "rcCommandFailed": "RC command '{{command}}' failed: {{error}}",
-      "invalidJobId": "Invalid job ID returned by batch submission: {{error}}",
       "unsupportedNodeType": "Unsupported workflow node type '{{type}}' on this platform or version",
       "nodeCrashed": "Node '{{node}}' crashed: {{reason}}",
       "notificationFailed": "Notification error ({{kind}}): {{error}}",
@@ -3479,17 +4065,18 @@
       "profileNotMounted": "Profile '{{profile}}' is not mounted on {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuration incomplete for profile '{{profile}}'",
       "singleSourceOnly": "{{operation}} supports only a single source path",
       "directoriesOnly": "{{operation}} supports only directories, not files: {{source}}",
       "sourcePathInvalid": "Could not read the source path: {{path}}",
       "destinationPathInvalid": "Could not read the destination path: {{path}}",
       "filePathsInvalid": "Could not read source '{{source}}' or destination '{{destination}}' as a file path. Use the format 'remote:path/to/file' or a local path.",
       "unsupportedOperation": "The operation {{operation}} cannot run as a transfer",
-      "destinationMissing": "No destination specified"
+      "destinationMissing": "No destination specified",
+      "sourceOverlapsDestination": "The source {{source}} and the destination {{destination}} overlap: one is inside the other. Choose a destination that does not overlap any source.",
+      "overlappingRemotes": "The source and the destination overlap: one is inside the other. Choose a destination outside the source, or exclude it with a filter rule.",
+      "backupDirOverlaps": "“Backup Dir” must not be inside the source or the destination, and must not contain either of them."
     },
     "serve": {
-      "parseFailed": "Failed to parse response: {{error}}",
       "remoteEmpty": "Remote name cannot be empty",
       "addressAlreadyInUse": "The selected port or address is already in use by another application. Please choose a different port.",
       "privilegedPort": "Ports below 1024 require administrator privileges. Please choose a port numbered 1024 or higher.",
@@ -3510,13 +4097,19 @@
       "diskFull": "Target disk or drive is full. Not enough free disk space available.",
       "fileLocked": "The file is currently locked or in use by another process.",
       "readOnly": "The target file system is read-only or write-protected.",
-      "ioError": "IO error: {{error}}"
+      "ioError": "IO error: {{error}}",
+      "intoItself": "The folder “{{name}}” cannot be copied or moved into itself.",
+      "noItems": "Nothing was selected."
     },
     "upload": {
       "legacyBatch": "This upload was started by an outdated page. Reload the application and try again.",
       "noFiles": "The upload contains no files.",
       "invalidPath": "The upload contains an invalid file or folder path.",
-      "invalidModifiedTime": "The upload contains an invalid modification time."
+      "invalidModifiedTime": "The upload contains an invalid modification time.",
+      "sessionGone": "The server no longer has this upload, because it was cancelled or stayed inactive too long. Start it again.",
+      "invalidChunk": "The upload sent data that does not belong to any of its files.",
+      "incomplete": "The upload was finished before all of its files arrived.",
+      "filesFailed": "Files that could not be uploaded: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",
@@ -3535,11 +4128,7 @@
       "notFound": "Rclone binary not found at {{path}}",
       "spawnFailed": "Failed to start rclone process: {{error}}",
       "invalidPath": "Invalid rclone path specified",
-      "killFailed": "Failed to terminate rclone process: {{error}}",
-      "portCleanupFailed": "Failed to clean up rclone ports: {{error}}",
       "configValidationFailed": "Rclone configuration validation failed: {{error}}",
-      "lockFailed": "Failed to acquire rclone configuration lock: {{error}}",
-      "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
       "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
       "backupFailed": "Failed to backup current rclone binary: {{error}}",
@@ -3589,14 +4178,15 @@
       "tooSlowReverted": "The backend accepted the connection but was too slow to list its items. Reverted to Local."
     },
     "job": {
-      "notFound": "JobInfo not found",
+      "notFound": "Job not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
       "executionFailed": "Job execution failed: {{error}}",
       "corruptedTransfer": "File corrupted during transfer or checksum verification failed.",
       "profileNotRunning": "No active {{jobType}} job found for profile '{{profile}}' on {{remote}}",
       "stopped": "Job stopped",
       "failed": "Job failed",
-      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable."
+      "lost": "Rclone no longer knows this job. It expired after finishing or the engine restarted, so its result is unavailable.",
+      "notRetryable": "This job cannot run again: only a failed or stopped job started since the app opened can."
     },
     "cache": {
       "fetchConfigFailed": "Failed to fetch remotes config",
@@ -3634,7 +4224,8 @@
       "authExpired": "Remote authentication expired or invalid. Please re-authenticate the remote.",
       "quotaExceeded": "Remote storage API rate limit or storage quota exceeded. Please try again later.",
       "networkError": "Unable to reach the remote server. Please check your network connection and remote address.",
-      "notFound": "Target directory or file was not found on the remote."
+      "notFound": "Target directory or file was not found on the remote.",
+      "notInConfig": "The remote “{{remote}}” is not in the rclone config. It was deleted or renamed outside the app, or a different config file is in use."
     },
     "updater": {
       "noPending": "There is no pending update",
@@ -3644,34 +4235,21 @@
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",
       "notWritable": "Update path is not writable",
-      "rollback": {
-        "exited": "The updated application exited before it confirmed startup (code {{code}}).",
-        "couldNotStart": "The updated application could not be started: {{error}}",
-        "interrupted": "Startup of the updated application was interrupted by a shutdown.",
-        "notConfirmed": "The updated application did not confirm startup in time.",
-        "installFailed": "The update could not be installed: {{error}}"
-      },
-      "rolledBack": "Update {{version}} was rolled back: {{reason}}",
       "ioError": "IO error: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "notBuilt": "This release has no automatic update for this installation. Install it by hand.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "Installing this package needs an administrator password prompt (pkexec, zenity or kdialog), but none was found.",
+      "noPrivilegePrompt": "No administrator password prompt is available here (pkexec with a polkit agent, or sudo with zenity or kdialog). Download the package with “View on GitHub” and install it in a terminal: {{command}}",
       "verificationFailed": "The update could not be verified: its signature, checksum or metadata does not match.",
       "insecureDownload": "The update download was not served over HTTPS.",
       "downloadTooLarge": "The update download is larger than expected.",
       "missingAsset": "The release has no update file named {{name}}.",
-      "unexpectedAsset": "The release lists an unexpected or duplicate update file.",
       "argumentsTooLong": "The launch arguments are too long to keep across an update.",
-      "startupPending": "The previous update is still confirming that it started. Try again in a few seconds.",
-      "versionMustIncrease": "A follow-up update must have a newer version.",
       "invalidBundle": "The portable app is not a complete macOS app bundle.",
-      "missingBackup": "The backup of the current version is missing.",
       "invalidStagingDirectory": "The update staging folder is invalid.",
-      "helperFailed": "The update helper could not start ({{error}}), and restarting the application failed: {{restart}}",
-      "processUnavailable": "The updated application's process could not be supervised.",
       "ownedByAnotherUser": "The application file belongs to another user."
     },
     "settings": {
@@ -3731,7 +4309,8 @@
     },
     "job": {
       "stopped": "Job stopped successfully",
-      "deleted": "Job deleted successfully"
+      "deleted": "Job deleted successfully",
+      "retried": "Job {{id}} is running again"
     },
     "security": {
       "passwordRemoved": "Password removed successfully",
@@ -3835,11 +4414,8 @@
     "quickRunsCount": "Quick Runs [{{active}}/{{total}}]",
     "workflowsCount": "Workflows [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Job",
     "tooltipTasks": "Jobs: {{count}}",
-    "tooltipMount": "1 Mount",
     "tooltipMounts": "Mounts: {{count}}",
-    "tooltipServe": "1 Serve",
     "tooltipServes": "Serves: {{count}}",
     "indexCount": "Directory Listings [{{active}}/{{total}}]"
   },
@@ -3847,7 +4423,11 @@
     "reason": "Active operations running: {{details}}",
     "mounts": "Mounts: {{count}}",
     "jobs": "Jobs: {{count}}",
-    "serves": "Servers: {{count}}"
+    "serves": "Servers: {{count}}",
+    "progress": "{{done}} of {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "{{time}} left",
+    "checked": "Checked: {{count}}"
   },
   "notification": {
     "title": {
@@ -3938,6 +4518,26 @@
       "powerInhibited": "Active operations are preventing system sleep.",
       "unmountFailed": "Failed to unmount {{remote}} from {{backend}}: {{error}}",
       "serveStopFailed": "Failed to stop serve {{protocol}} for {{remote}} on {{backend}}: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Sync",
+      "copy": "Copy",
+      "move": "Move",
+      "bisync": "BiSync",
+      "check": "Check",
+      "mount": "Mount",
+      "copyurl": "Copy URL",
+      "mkdir": "Folder Creation",
+      "cleanup": "Cleanup",
+      "delete": "Delete",
+      "rename": "Rename",
+      "rmdirs": "Remove Empty Dirs",
+      "index": "Directory Listings",
+      "upload": "Upload",
+      "download": "Download",
+      "archivecreate": "Archive",
+      "archiveextract": "Extract Archive",
+      "cryptcheck": "Crypt Check"
     }
   },
   "repairSheet": {
@@ -4160,6 +4760,11 @@
     "tabs": {
       "quickRun": "Quick Run",
       "workflow": "Workflow"
+    },
+    "addMenu": {
+      "remote": "Create Remote",
+      "quickRun": "Create Quick Run",
+      "workflow": "Create Workflow"
     },
     "workflow": {
       "untitled": "Untitled Workflow",
@@ -4465,8 +5070,6 @@
         "appStartDesc": "Trigger automatically when RClone Manager starts",
         "cleanup": "Cleanup Trash",
         "cleanupDesc": "Empty remote trash or recycle bin",
-        "cryptcheck": "Cryptcheck",
-        "cryptcheckDesc": "Verify integrity of encrypted remote",
         "execScript": "Execute Script",
         "execScriptDesc": "Run local shell command or script",
         "quickRun": "Quick Run",
