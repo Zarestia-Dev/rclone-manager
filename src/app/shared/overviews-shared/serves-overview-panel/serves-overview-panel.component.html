@@ -1,4 +1,5 @@
 @let servesList = allServes();
+@let total = totalCount();
 
 <mat-expansion-panel
   [expanded]="expanded()"
@@ -8,14 +9,14 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="satellite-dish" data-tone="primary" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="satellite-dish" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.serves' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span appPill [tone]="servesList.length > 0 ? 'primary' : 'dim'">
+      <span appPill [tone]="total > 0 ? tone : 'dim'">
         {{
-          servesList.length > 0
-            ? ('generalOverview.serves.activeCount' | translate: { count: servesList.length })
+          total > 0
+            ? ('generalOverview.serves.activeCount' | translate: { count: total })
             : ('generalOverview.serves.noActive' | translate)
         }}
       </span>
@@ -23,13 +24,24 @@
   </mat-expansion-panel-header>
 
   @if (showFilterChips()) {
-    <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
+    <app-origin-filter-bar
+      [selected]="selectedOriginFilter()"
+      (selectedChange)="originFilters.set('serves', $event)"
+      [hiddenCount]="hiddenCount()"
+    ></app-origin-filter-bar>
   }
 
   @if (servesList.length === 0) {
     <div class="empty-state" role="status">
       <mat-icon svgIcon="satellite-dish" aria-hidden="true"></mat-icon>
-      <p>{{ 'generalOverview.serves.noRunning' | translate }}</p>
+      <p>
+        {{
+          (hiddenCount() > 0
+            ? 'generalOverview.originFilter.empty'
+            : 'generalOverview.serves.noRunning'
+          ) | translate
+        }}
+      </p>
     </div>
   } @else {
     <div class="grid">

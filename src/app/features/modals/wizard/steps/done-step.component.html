@@ -1,0 +1,230 @@
+<!-- The button that copies an address, a user name or any other text shown on this screen. -->
+<ng-template #copy let-text>
+  <button
+    type="button"
+    class="action-button"
+    [appCopyToClipboard]="text"
+    [attr.aria-label]="'common.copy' | translate"
+    [attr.title]="'common.copy' | translate"
+  >
+    <mat-icon svgIcon="copy"></mat-icon>
+  </button>
+</ng-template>
+
+@let r = state.result();
+@if (state.undoState() === 'removed') {
+  <section class="wizard-step done done-removed">
+    <span class="done-badge" data-tone="dim">
+      <mat-icon svgIcon="trash" aria-hidden="true"></mat-icon>
+    </span>
+    <h2>{{ 'modals.wizard.undo.removedTitle' | translate }}</h2>
+    <p class="done-note">{{ 'modals.wizard.undo.removed' | translate }}</p>
+    <div class="done-actions">
+      <button matButton="filled" data-tone="accent" (click)="state.startOver()">
+        <mat-icon svgIcon="plus"></mat-icon>
+        {{ 'modals.wizard.done.another' | translate }}
+      </button>
+      <button matButton (click)="state.close()">{{ 'common.close' | translate }}</button>
+    </div>
+  </section>
+} @else {
+  <section class="wizard-step done">
+    <mat-icon
+      class="done-icon"
+      svgIcon="check-circle"
+      data-tone="primary"
+      aria-hidden="true"
+    ></mat-icon>
+    <h2>{{ 'modals.wizard.done.title' | translate }}</h2>
+    <p class="done-note">
+      {{
+        'modals.wizard.done.' + state.doneKey()
+          | translate
+            : {
+                path: r?.execution?.mountPoint || state.localLabel(),
+                name: state.shareName() || state.remoteName(),
+                port: state.servePort(),
+              }
+      }}
+    </p>
+    @if (state.failureReason(); as reason) {
+      <p class="failure-reason">
+        {{ 'modals.wizard.done.failureReason' | translate: { reason } }}
+      </p>
+    }
+    @let links = state.shareLinks();
+    @if (links.length) {
+      <div class="share-card">
+        <div class="share-block">
+          <span class="share-label">
+            {{ 'modals.wizard.done.shareAddress' | translate }}
+          </span>
+          <div class="share-field is-main">
+            <code>{{ links[0] }}</code>
+            <ng-container *ngTemplateOutlet="copy; context: { $implicit: links[0] }" />
+          </div>
+        </div>
+        @if (links.length > 1) {
+          <div class="share-block">
+            <span class="share-label">
+              {{ 'modals.wizard.done.shareOtherAddresses' | translate }}
+            </span>
+            @for (url of links.slice(1); track url) {
+              <div class="share-field">
+                <code>{{ url }}</code>
+                <ng-container *ngTemplateOutlet="copy; context: { $implicit: url }" />
+              </div>
+            }
+          </div>
+        }
+        <dl class="share-login">
+          <div>
+            <dt>
+              <mat-icon svgIcon="user" aria-hidden="true"></mat-icon>
+              {{ 'modals.wizard.done.shareUser' | translate }}
+            </dt>
+            <dd>
+              <code>{{ state.shareUser() }}</code>
+              <ng-container *ngTemplateOutlet="copy; context: { $implicit: state.shareUser() }" />
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <mat-icon svgIcon="key" aria-hidden="true"></mat-icon>
+              {{ 'modals.wizard.done.sharePassword' | translate }}
+            </dt>
+            <dd class="dim">
+              {{ 'modals.wizard.done.sharePasswordHint' | translate }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    }
+    <div class="choice-grid single compact">
+      @if (state.openablePath(); as folder) {
+        <button
+          type="button"
+          class="choice-card"
+          [attr.data-tone]="state.doneMain() === 'folder' ? 'primary' : 'accent'"
+          (click)="state.openFolder()"
+        >
+          <span class="choice-tile"><mat-icon svgIcon="folder-open"></mat-icon></span>
+          <span class="choice-text">
+            @if (state.usesSaf()) {
+              <span class="choice-title">
+                {{ 'modals.wizard.done.openFilesApp' | translate }}
+              </span>
+              <span class="choice-description truncate">{{ state.remoteName() }}</span>
+            } @else {
+              <span class="choice-title">
+                {{ 'modals.wizard.done.openFolder' | translate }}
+              </span>
+              <span class="choice-description truncate">{{ folder }}</span>
+            }
+          </span>
+          <mat-icon class="choice-chevron" svgIcon="chevron-right"></mat-icon>
+        </button>
+      }
+      @if (state.resultJob()) {
+        <button
+          type="button"
+          class="choice-card"
+          [attr.data-tone]="state.doneMain() === 'run' ? 'primary' : 'accent'"
+          (click)="state.openRun()"
+        >
+          <span class="choice-tile"><mat-icon svgIcon="list"></mat-icon></span>
+          <span class="choice-text">
+            <span class="choice-title">
+              {{ 'modals.wizard.done.openRun' | translate }}
+            </span>
+            <span class="choice-description">
+              {{ 'modals.wizard.done.openRunHint' | translate }}
+            </span>
+          </span>
+          <mat-icon class="choice-chevron" svgIcon="chevron-right"></mat-icon>
+        </button>
+      }
+      <button
+        type="button"
+        class="choice-card"
+        [attr.data-tone]="state.doneMain() === 'where' ? 'primary' : 'accent'"
+        (click)="state.showWhere()"
+      >
+        <span class="choice-tile">
+          <mat-icon [svgIcon]="r?.destination === 'profile' ? 'server' : 'bolt'"></mat-icon>
+        </span>
+        <span class="choice-text">
+          <span class="choice-title">
+            {{
+              (r?.destination === 'profile'
+                ? 'modals.wizard.done.whereProfile'
+                : 'modals.wizard.done.whereQuickRun'
+              ) | translate
+            }}
+          </span>
+          @if (r) {
+            <span class="choice-description">
+              {{
+                (r.destination === 'profile'
+                  ? 'modals.wizard.done.findItProfile'
+                  : 'modals.wizard.done.findIt'
+                ) | translate: { name: r.name, remote: state.remoteName() }
+              }}
+            </span>
+          }
+        </span>
+        <mat-icon class="choice-chevron" svgIcon="chevron-right"></mat-icon>
+      </button>
+      @if (state.browseLabel(); as place) {
+        <button type="button" class="choice-card" data-tone="accent" (click)="state.openInFiles()">
+          <span class="choice-tile"><mat-icon svgIcon="cloud"></mat-icon></span>
+          <span class="choice-text">
+            <span class="choice-title">
+              {{ 'modals.wizard.done.openCloud' | translate }}
+            </span>
+            <span class="choice-description truncate">{{ place }}</span>
+          </span>
+          <mat-icon class="choice-chevron" svgIcon="chevron-right"></mat-icon>
+        </button>
+      }
+    </div>
+    <button matButton (click)="state.startOver()">
+      <mat-icon svgIcon="plus"></mat-icon>
+      {{ 'modals.wizard.done.another' | translate }}
+    </button>
+    @if (r) {
+      <div class="undo-row">
+        <button
+          matButton="filled"
+          data-tone="warn"
+          class="undo-button"
+          [disabled]="state.undoState() === 'working'"
+          (click)="state.undo()"
+        >
+          <mat-icon
+            [svgIcon]="state.undoState() === 'working' ? 'spinner' : 'trash'"
+            [class.colorful-spinner]="state.undoState() === 'working'"
+          ></mat-icon>
+          {{
+            (state.undoState() === 'working'
+              ? 'modals.wizard.undo.working'
+              : 'modals.wizard.undo.action'
+            ) | translate
+          }}
+        </button>
+        <p class="hint">{{ 'modals.wizard.undo.hint' | translate }}</p>
+      </div>
+      @if (state.undoState() === 'failed') {
+        <app-alert-banner
+          severity="error"
+          [title]="'modals.wizard.undo.failed' | translate"
+          [description]="
+            state.undoReason()
+              ? ('modals.wizard.done.failureReason' | translate: { reason: state.undoReason() })
+              : ''
+          "
+        />
+      }
+    }
+  </section>
+}

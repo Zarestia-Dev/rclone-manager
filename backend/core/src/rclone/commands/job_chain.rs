@@ -1,9 +1,8 @@
-//! Jobs of one request that must run one after another (archive, cryptcheck).
+//! Jobs of one request that must run one after another (archive, cryptcheck, and copies or
+//! moves of several sources into one destination).
 //!
 //! rclone runs each of them as its own job, so a request with several sources is a chain:
 //! the next job starts when the previous one has finished.
-
-use std::time::Duration;
 
 use serde_json::Value;
 
@@ -11,14 +10,10 @@ use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use super::job_parser::JobOutcome;
 use crate::context::AppHandle;
 use crate::rclone::backend::{BackendManager, types::Backend};
-use crate::rclone::state::job::JobPoll;
-
-/// The longest a running link of the chain goes unchecked. A link is normally noticed the
-/// moment it finishes (the cache wakes the chain); this only covers a wake-up that was missed.
-const POLL_INTERVAL: Duration = Duration::from_millis(250);
+use crate::utils::types::jobs::JobStatus;
 
 pub(crate) struct ChainJob {
-    pub endpoint: &'static str,
+    pub endpoint: String,
     pub payload: Value,
     pub metadata: JobMetadata,
 }
@@ -64,7 +59,7 @@ async fn submit(
 ) -> Result<u64, String> {
     submit_job_with_options(
         app.clone(),
-        job.endpoint,
+        &job.endpoint,
         job.payload,
         job.metadata,
         SubmitJobOptions {
@@ -150,31 +145,18 @@ async fn wait_for_job(
     cache: &crate::utils::types::jobs::JobCache,
     id: u64,
 ) -> Result<(), JobOutcome> {
-    loop {
-        // Registered before the look, so a job that finishes in between wakes the wait.
-        let changed = cache.changed.notified();
-        tokio::pin!(changed);
-        changed.as_mut().enable();
-        match cache.poll_job(id).await {
-            JobPoll::Running => {
-                let _ = tokio::time::timeout(POLL_INTERVAL, changed).await;
-            }
-            JobPoll::Completed(_) => return Ok(()),
-            JobPoll::Failed(job) => return Err(failure(job.error)),
-            JobPoll::Stopped => {
-                return Err(JobOutcome {
-                    success: false,
-                    stopped: true,
-                    error_msg: None,
-                    cryptcheck_output: None,
-                });
-            }
-            JobPoll::Missing => {
-                return Err(failure(Some(crate::localized_error!(
-                    "backendErrors.job.lost"
-                ))));
-            }
-        }
+    match cache.wait_until_finished(id).await {
+        Some(job) if job.status == JobStatus::Completed => Ok(()),
+        Some(job) if job.status == JobStatus::Failed => Err(failure(job.error)),
+        Some(_) => Err(JobOutcome {
+            success: false,
+            stopped: true,
+            error_msg: None,
+            cryptcheck_output: None,
+        }),
+        None => Err(failure(Some(crate::localized_error!(
+            "backendErrors.job.lost"
+        )))),
     }
 }
 
@@ -192,6 +174,7 @@ mod tests {
     use super::*;
     use crate::utils::types::jobs::{JobCache, JobInfo, JobStatus, JobType};
     use serde_json::json;
+    use std::time::Duration;
 
     async fn cache_with(status: JobStatus, error: Option<&str>) -> JobCache {
         let cache = JobCache::new();
@@ -216,7 +199,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_chain_notices_a_finished_job_without_waiting_out_the_poll_interval() {
+    async fn the_chain_notices_a_finished_job_at_once() {
         let cache = std::sync::Arc::new(cache_with(JobStatus::Running, None).await);
         let finisher = cache.clone();
         let started = std::time::Instant::now();
@@ -227,7 +210,7 @@ mod tests {
 
         assert!(wait_for_job(&cache, 1).await.is_ok());
         assert!(
-            started.elapsed() < POLL_INTERVAL,
+            started.elapsed() < Duration::from_millis(200),
             "took {:?}",
             started.elapsed()
         );
@@ -371,7 +354,7 @@ mod tests {
     fn archive_jobs(count: usize, execute_id: &str) -> Vec<ChainJob> {
         (0..count)
             .map(|n| ChainJob {
-                endpoint: "operations/archive",
+                endpoint: "operations/archive".into(),
                 payload: json!({"src": format!("drive:{n}"), "dst": "/out"}),
                 metadata: JobMetadata::new(
                     "drive:",
@@ -402,7 +385,7 @@ mod tests {
         );
         cache.add_automation(automation).await.unwrap();
         cache
-            .try_start_automation("chain", &daemon.backend.name, None)
+            .try_start_automation("chain", &daemon.backend.name, None, true)
             .await
             .unwrap()
             .unwrap()

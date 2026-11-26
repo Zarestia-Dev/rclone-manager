@@ -8,9 +8,11 @@ import {
   NautilusDragDropService,
 } from './nautilus-drag-drop.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { NotificationService } from './notification.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
+import { AppSettingsService } from '../settings/app-settings.service';
 import { NautilusService } from './nautilus.service';
 import { ModalService } from './modal.service';
 import { FileSystemService } from '../operations/file-system.service';
@@ -75,7 +77,18 @@ describe('Nautilus external folder drops', () => {
     TestBed.configureTestingModule({
       providers: [
         NautilusDragDropService,
-        { provide: RemoteFileOperationsService, useValue: { makeDirectory, uploadWebFilesBatch } },
+        {
+          provide: RemoteFileOperationsService,
+          useValue: {
+            makeDirectory,
+            uploadWebFilesBatch,
+            getRemotePaths: vi.fn().mockResolvedValue({ list: [] }),
+          },
+        },
+        {
+          provide: RemoteManagementService,
+          useValue: { getFeatures: vi.fn().mockResolvedValue({}) },
+        },
         {
           provide: PathService,
           useValue: {
@@ -92,6 +105,10 @@ describe('Nautilus external folder drops', () => {
         { provide: ModalService, useValue: {} },
         { provide: FileSystemService, useValue: {} },
         { provide: NautilusService, useValue: {} },
+        {
+          provide: AppSettingsService,
+          useValue: { getSettingValue: async (): Promise<undefined> => undefined },
+        },
       ],
     });
     service = TestBed.inject(NautilusDragDropService);
@@ -125,16 +142,24 @@ describe('Nautilus external folder drops', () => {
       '',
       expect.arrayContaining([expect.objectContaining({ relativePath: 'folder/a.txt' })]),
       'filemanager',
-      ['folder/empty-parent/leaf']
+      ['folder/empty-parent/leaf'],
+      undefined,
+      {}
     );
   });
 
   it('preserves a completely empty dropped folder and refreshes without uploading files', async () => {
     await service.dropToRemote(drop([directory('empty')]), remote);
     expect(makeDirectory).not.toHaveBeenCalled();
-    expect(uploadWebFilesBatch).toHaveBeenCalledExactlyOnceWith('drive:', '', [], 'filemanager', [
-      'empty',
-    ]);
+    expect(uploadWebFilesBatch).toHaveBeenCalledExactlyOnceWith(
+      'drive:',
+      '',
+      [],
+      'filemanager',
+      ['empty'],
+      undefined,
+      {}
+    );
     expect(refresh).toHaveBeenCalledWith('drive', '');
   });
 

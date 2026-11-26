@@ -74,7 +74,7 @@ body:
       options:
         - label: Desktop (Windows, macOS, Linux)
         - label: Android (Mobile)
-        - label: Headless (Web server / NAS / VPS)
+        - label: Server (Web server / NAS / VPS)
         - label: Portable (Standalone executable)
         - label: All platforms
 

@@ -203,8 +203,27 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
         }
 
         migrate_profiles_format(obj);
+        rename_saved_dry_runs(obj);
     }
     settings
+}
+
+/// Profiles saved a dry run as `dryRun` or `DryRun`; it is `dry_run` now, rclone's own name.
+fn rename_saved_dry_runs(obj: &mut serde_json::Map<String, Value>) {
+    use crate::rclone::commands::sync::normalize_dry_run;
+    for (key, configs) in obj.iter_mut().filter(|(key, _)| key.ends_with("Configs")) {
+        let Some(profiles) = configs.as_object_mut() else {
+            continue;
+        };
+        for profile in profiles.values_mut().filter_map(Value::as_object_mut) {
+            match profile.get_mut("rclone").and_then(Value::as_object_mut) {
+                Some(rclone) => normalize_dry_run(rclone),
+                // Backend profiles keep their options at the top.
+                None if key == "backendConfigs" => normalize_dry_run(profile),
+                None => {}
+            }
+        }
+    }
 }
 
 fn promote_options(profile: &mut serde_json::Map<String, Value>, keys: &[&str]) {
@@ -723,7 +742,8 @@ mod tests {
         let rclone = &bisync["rclone"];
         assert_eq!(rclone["path1"], "remote:path1");
         assert_eq!(rclone["path2"], "remote:path2");
-        assert_eq!(rclone["dryRun"], true);
+        assert_eq!(rclone["dry_run"], true);
+        assert!(rclone.get("dryRun").is_none());
         assert_eq!(rclone["resync"], true);
         assert_eq!(rclone["maxDelete"], 50);
         assert_eq!(rclone["_config"]["customFlag"], "hello");

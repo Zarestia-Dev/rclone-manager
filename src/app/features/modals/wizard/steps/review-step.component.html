@@ -1,0 +1,333 @@
+@let p = state.plan();
+@if (p) {
+  <section class="wizard-step">
+    <h2 class="wizard-heading">{{ 'modals.wizard.review.heading' | translate }}</h2>
+
+    @if (state.sameSetup(); as same) {
+      <app-alert-banner
+        severity="info"
+        [title]="'modals.wizard.review.duplicate' | translate: { name: same.name }"
+      >
+        <button bannerAction matButton="outlined" (click)="state.showSetup(same)">
+          <mat-icon svgIcon="open-link"></mat-icon>
+          {{ 'modals.wizard.review.duplicateShow' | translate }}
+        </button>
+      </app-alert-banner>
+    }
+
+    <div class="detail-card review-card" [attr.data-tone]="state.operationTone()">
+      <app-wizard-flow-diagram
+        [from]="flow().from"
+        [to]="flow().to"
+        [direction]="state.flowDirection()"
+      >
+        <span appPill [tone]="state.operationTone()">
+          <mat-icon [svgIcon]="state.operationIcon()"></mat-icon>
+          {{ 'modals.wizard.review.flow.' + state.flowCaption() | translate }}
+        </span>
+      </app-wizard-flow-diagram>
+
+      <p class="wizard-summary">
+        {{
+          'modals.wizard.review.summary.' + state.summaryKey()
+            | translate
+              : {
+                  local: state.localLabel(),
+                  cloud: state.cloudLabel(),
+                  target: state.targetLabel(),
+                }
+        }}
+      </p>
+
+      <ul class="effect-list">
+        @for (e of state.effects(); track e.key) {
+          <li [attr.data-tone]="e.tone">
+            <mat-icon [svgIcon]="e.icon" aria-hidden="true"></mat-icon>
+            <span>{{ 'modals.wizard.effects.' + e.key | translate }}</span>
+          </li>
+        }
+      </ul>
+
+      <!-- When it starts is not something it does to the files: its own, quieter list. -->
+      <ul class="effect-list when-lines">
+        @for (line of state.scheduleLines(); track line.key) {
+          <li data-tone="dim">
+            <mat-icon [svgIcon]="line.icon" aria-hidden="true"></mat-icon>
+            <span>
+              {{ 'modals.wizard.review.schedule.' + line.key | translate: { when: line.when } }}
+            </span>
+          </li>
+        }
+      </ul>
+
+      <!-- Where the setup is kept, in the words of the settings. -->
+      <p class="hint saved-note">
+        <mat-icon
+          [svgIcon]="state.destination() === 'profile' ? 'server' : 'quick-run'"
+          aria-hidden="true"
+        ></mat-icon>
+        {{
+          (state.destination() === 'profile'
+            ? 'modals.wizard.review.destination.hintProfile'
+            : 'modals.wizard.review.destination.hintQuickRun'
+          ) | translate: { remote: state.remoteName() }
+        }}
+      </p>
+    </div>
+
+    @if (state.details().length) {
+      <div class="detail-card">
+        <span class="section-label">
+          <mat-icon svgIcon="info" aria-hidden="true"></mat-icon>
+          {{ 'modals.wizard.review.detailsTitle' | translate }}
+        </span>
+        <ul class="detail-list">
+          @for (d of state.details(); track $index) {
+            <li>
+              <mat-icon [svgIcon]="d.icon" aria-hidden="true"></mat-icon>
+              <span class="detail-text">
+                {{ 'modals.wizard.details.' + d.key | translate: d.params }}
+                @if (d.value) {
+                  <code class="detail-value">{{ d.value }}</code>
+                }
+              </span>
+              @if (d.copy && d.value) {
+                <button
+                  type="button"
+                  class="action-button"
+                  [appCopyToClipboard]="d.value"
+                  [attr.aria-label]="'common.copy' | translate"
+                  [attr.title]="'common.copy' | translate"
+                >
+                  <mat-icon svgIcon="copy"></mat-icon>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    @let a = state.advice();
+    @if (a) {
+      <app-alert-banner
+        [severity]="a.tone === 'warn' ? 'warning' : 'success'"
+        [icon]="a.tone === 'warn' ? 'warning' : 'check-circle'"
+        [title]="
+          'modals.wizard.advice.' + a.key
+            | translate
+              : {
+                  size: a.bytes['size'] | formatFileSize,
+                  free: a.bytes['free'] | formatFileSize,
+                  cloud: a.bytes['cloud'] | formatFileSize,
+                }
+        "
+      />
+    }
+
+    @if (state.needsMountPlugin()) {
+      <app-alert-banner
+        severity="warning"
+        [title]="'modals.wizard.review.mountPlugin.title' | translate"
+        [description]="'modals.wizard.review.mountPlugin.description' | translate"
+      >
+        <button
+          bannerAction
+          matButton="filled"
+          data-tone="primary"
+          (click)="state.installMountPlugin()"
+        >
+          {{ 'modals.wizard.review.mountPlugin.install' | translate }}
+        </button>
+      </app-alert-banner>
+    }
+
+    @if (p.firstRunResync) {
+      <app-alert-banner severity="info" [title]="'modals.wizard.review.firstRun' | translate" />
+    }
+
+    @if (state.offersStartOnLogin()) {
+      <mat-slide-toggle
+        data-tone="accent"
+        [checked]="state.startOnLogin()"
+        (change)="state.startOnLogin.set($event.checked)"
+      >
+        {{ 'modals.wizard.review.startOnLogin' | translate }}
+      </mat-slide-toggle>
+    }
+
+    @if (p.canPreview) {
+      @let pv = state.preview();
+      <div class="preview-card">
+        @switch (pv.state) {
+          @case ('idle') {
+            <div class="preview-intro">
+              <mat-icon svgIcon="eye" aria-hidden="true"></mat-icon>
+              <div>
+                <strong>{{ 'modals.wizard.preview.title' | translate }}</strong>
+                <p>{{ 'modals.wizard.preview.description' | translate }}</p>
+              </div>
+            </div>
+            <button matButton="tonal" type="button" (click)="state.runPreview()">
+              {{ 'modals.wizard.preview.run' | translate }}
+            </button>
+          }
+          @case ('running') {
+            @let job = state.previewJob();
+            <div class="preview-intro">
+              <mat-icon svgIcon="spinner" aria-hidden="true"></mat-icon>
+              <div>
+                <strong>{{ 'modals.wizard.preview.running' | translate }}</strong>
+                @if (job) {
+                  <p>
+                    {{
+                      'modals.wizard.preview.checked'
+                        | translate: { count: job.stats.checks + job.stats.transfers }
+                    }}
+                    @if (job.stats.elapsedTime > 0) {
+                      ·
+                      {{
+                        'modals.wizard.preview.elapsed'
+                          | translate: { time: job.stats.elapsedTime | formatEta }
+                      }}
+                    }
+                  </p>
+                }
+              </div>
+            </div>
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            <p class="slow-note">
+              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+              {{ 'modals.wizard.preview.slowNote' | translate }}
+            </p>
+            <button matButton type="button" (click)="state.cancelPreview()">
+              {{ 'common.cancel' | translate }}
+            </button>
+          }
+          @case ('done') {
+            @if (state.previewResult(); as r) {
+              @if (r.groups.length) {
+                <div class="preview-kinds">
+                  @for (g of r.groups; track g.kind) {
+                    <span
+                      appPill
+                      size="sm"
+                      [tone]="state.previewStyle[g.kind].tone"
+                      [title]="'modals.wizard.preview.groups.' + g.kind | translate"
+                    >
+                      <mat-icon [svgIcon]="state.previewStyle[g.kind].icon"></mat-icon>
+                      {{
+                        'modals.wizard.preview.groupCount'
+                          | translate
+                            : {
+                                label: 'modals.wizard.preview.groups.' + g.kind | translate,
+                                count: g.files.length,
+                              }
+                      }}
+                      @if (g.bytes) {
+                        · {{ g.bytes | formatFileSize }}
+                      }
+                    </span>
+                  }
+                </div>
+                @if (state.previewDeleted(); as deleted) {
+                  <app-alert-banner
+                    severity="warning"
+                    [title]="'modals.wizard.preview.deleteWarning' | translate"
+                  />
+                  <details class="preview-deleted">
+                    <summary>
+                      {{ 'modals.wizard.preview.groups.delete' | translate }}
+                    </summary>
+                    <ul>
+                      @for (f of deleted.files; track f.path) {
+                        <li class="truncate" [attr.title]="f.path">{{ f.path }}</li>
+                      }
+                    </ul>
+                    @if (deleted.more) {
+                      <p class="hint">
+                        {{ 'modals.wizard.preview.andMore' | translate: { count: deleted.more } }}
+                      </p>
+                    }
+                  </details>
+                }
+                @if (r.matched) {
+                  <p class="hint">
+                    <mat-icon svgIcon="check-circle" aria-hidden="true"></mat-icon>
+                    {{ 'modals.wizard.preview.unchanged' | translate: { count: r.matched } }}
+                  </p>
+                }
+              } @else if (r.counts.transfers || r.counts.deletes) {
+                <ul class="effect-list">
+                  <li data-tone="accent">
+                    <mat-icon svgIcon="copy" aria-hidden="true"></mat-icon>
+                    <span>
+                      {{
+                        'modals.wizard.preview.transfers' | translate: { count: r.counts.transfers }
+                      }}
+                      @if (r.counts.bytes) {
+                        <span class="dim">({{ r.counts.bytes | formatFileSize }})</span>
+                      }
+                    </span>
+                  </li>
+                  <li [attr.data-tone]="r.counts.deletes ? 'warn' : 'primary'">
+                    <mat-icon
+                      [svgIcon]="r.counts.deletes ? 'trash' : 'shield'"
+                      aria-hidden="true"
+                    ></mat-icon>
+                    <span>
+                      @if (r.counts.deletes) {
+                        {{
+                          'modals.wizard.preview.deletes' | translate: { count: r.counts.deletes }
+                        }}
+                      } @else {
+                        {{ 'modals.wizard.preview.noDeletes' | translate }}
+                      }
+                    </span>
+                  </li>
+                </ul>
+              } @else {
+                <div class="preview-intro">
+                  <mat-icon
+                    svgIcon="check-circle"
+                    data-tone="primary"
+                    aria-hidden="true"
+                  ></mat-icon>
+                  <strong>{{ 'modals.wizard.preview.nothing' | translate }}</strong>
+                </div>
+              }
+              @if (r.counts.errors && !r.groups.some(g => g.kind === 'error')) {
+                <p class="hint" data-tone="warn">
+                  {{ 'modals.wizard.preview.errors' | translate: { count: r.counts.errors } }}
+                </p>
+              }
+              <button matButton type="button" (click)="state.runPreview()">
+                <mat-icon svgIcon="refresh"></mat-icon>
+                {{ 'modals.wizard.preview.again' | translate }}
+              </button>
+            }
+          }
+          @case ('failed') {
+            <app-alert-banner
+              severity="warning"
+              [title]="'modals.wizard.preview.failed' | translate"
+            >
+              <button bannerAction matButton="outlined" type="button" (click)="state.runPreview()">
+                <mat-icon svgIcon="refresh"></mat-icon>
+                {{ 'modals.wizard.preview.again' | translate }}
+              </button>
+            </app-alert-banner>
+          }
+        }
+      </div>
+    }
+
+    @if (state.applyFailed()) {
+      <app-alert-banner severity="error" [title]="'modals.wizard.applyFailed' | translate" />
+    }
+
+    <button matButton type="button" class="advanced" (click)="state.openAdvanced()">
+      {{ 'modals.wizard.review.advanced' | translate }}
+    </button>
+  </section>
+}

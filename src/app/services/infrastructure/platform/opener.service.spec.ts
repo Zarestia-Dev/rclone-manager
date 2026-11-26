@@ -28,10 +28,6 @@ describe('OpenerService', () => {
     await expect(service.openUrl('')).resolves.toBeUndefined();
   });
 
-  it('should handle empty or null paths gracefully', async (): Promise<void> => {
-    await expect(service.openPath('')).resolves.toBeUndefined();
-  });
-
   it('should initialize link interceptor without throwing', (): void => {
     expect(() => service.initializeGlobalLinkInterceptor()).not.toThrow();
   });

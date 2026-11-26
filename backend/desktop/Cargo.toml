@@ -23,7 +23,6 @@ rcman = { workspace = true }
 
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false }
-rclone-manager-server = { path = "../server", optional = true, default-features = false }
 tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -54,7 +53,6 @@ notify-rust = { version = "4", optional = true }
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.22"
 [target.'cfg(windows)'.dependencies]
-winreg = "0.56"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Registry", "Win32_System_Threading"] }
 # Reads the system accent colour (see native/accent.rs).
 windows = { version = "0.62", features = ["Foundation", "UI", "UI_ViewManagement"], optional = true }
@@ -71,7 +69,7 @@ tauri-plugin-window-state = { version = "2", optional = true, default-features =
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
-# Application builds. Server/mobile builds require --no-default-features.
+# Application builds. Mobile builds require --no-default-features.
 default = ["desktop", "tray"]
 desktop = [
     "rclone-manager-core/desktop",
@@ -89,17 +87,14 @@ desktop = [
     "dep:objc2-foundation",
 ]
 mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile", "rclone-manager-core/updater"]
-web-server = ["dep:rclone-manager-server"]
 
 # Distribution variants retain all default desktop functionality.
 portable = ["desktop", "tray", "rclone-manager-core/portable"]
 flatpak = ["desktop", "tray", "rclone-manager-core/flatpak"]
 
-# Optional native integrations, also usable with the web server.
+# Optional native integrations.
 tray = [
-    "rclone-manager-core/tray",
-    "tauri/tray-icon",
-    "tauri/image-png",
+    "rclone-manager-core/tray-gtk",
     "tauri-plugin-opener",
     "tauri-plugin-autostart",
     "tauri-plugin-single-instance",

@@ -1,4 +1,5 @@
 @let mountsList = allMounts();
+@let total = totalCount();
 
 <mat-expansion-panel
   [expanded]="expanded()"
@@ -8,14 +9,14 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="mount" data-tone="accent" aria-hidden="true"></mat-icon>
+      <mat-icon svgIcon="mount" [attr.data-tone]="tone" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.mounts' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
-      <span appPill [tone]="mountsList.length > 0 ? 'primary' : 'dim'">
+      <span appPill [tone]="total > 0 ? tone : 'dim'">
         {{
-          mountsList.length > 0
-            ? ('generalOverview.mounts.activeCount' | translate: { count: mountsList.length })
+          total > 0
+            ? ('generalOverview.mounts.activeCount' | translate: { count: total })
             : ('generalOverview.mounts.noActive' | translate)
         }}
       </span>
@@ -23,13 +24,24 @@
   </mat-expansion-panel-header>
 
   @if (showFilterChips()) {
-    <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
+    <app-origin-filter-bar
+      [selected]="selectedOriginFilter()"
+      (selectedChange)="originFilters.set('mounts', $event)"
+      [hiddenCount]="hiddenCount()"
+    ></app-origin-filter-bar>
   }
 
   @if (mountsList.length === 0) {
     <div class="empty-state" role="status">
       <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
-      <p>{{ 'generalOverview.mounts.noMounted' | translate }}</p>
+      <p>
+        {{
+          (hiddenCount() > 0
+            ? 'generalOverview.originFilter.empty'
+            : 'generalOverview.mounts.noMounted'
+          ) | translate
+        }}
+      </p>
     </div>
   } @else {
     <div class="grid">

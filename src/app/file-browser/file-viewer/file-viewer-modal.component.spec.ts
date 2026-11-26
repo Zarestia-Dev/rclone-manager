@@ -599,8 +599,7 @@ describe('FileViewerModalComponent', () => {
         'local',
         mockItems[0].Path,
         mockItems[0].Name,
-        true,
-        mockItems[0].Size
+        true
       );
       expect(component.isDownloading()).toBe(false);
     });

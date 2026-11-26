@@ -3,7 +3,7 @@ use crate::context::BackendContext;
 use tauri::Manager;
 // Local desktop lifecycle controls remain available while the vault is locked.
 // HTTP still goes through the shared dispatcher and its unchanged access boundary.
-#[cfg(all(desktop, not(feature = "web-server")))]
+#[cfg(desktop)]
 #[derive(Debug, PartialEq)]
 enum NativeLifecycleCommand {
     Request,
@@ -11,7 +11,7 @@ enum NativeLifecycleCommand {
     Pending,
 }
 
-#[cfg(all(desktop, not(feature = "web-server")))]
+#[cfg(desktop)]
 impl NativeLifecycleCommand {
     fn parse(command: &str) -> Option<Self> {
         match command {
@@ -51,7 +51,7 @@ const LOCKED_NATIVE_COMMANDS: &[&str] = &[
 
 pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
     let command = invoke.message.command().to_owned();
-    #[cfg(all(desktop, not(feature = "web-server")))]
+    #[cfg(desktop)]
     if let Some(command) = NativeLifecycleCommand::parse(&command) {
         if command == NativeLifecycleCommand::Pending
             && invoke.message.webview_ref().label() != "main"
@@ -93,41 +93,30 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         return true;
     }
     let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::open_in_files,
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::open_file_natively,
-        #[cfg(all(desktop, not(feature = "web-server")))]
+        #[cfg(desktop)]
         crate::native::files::get_folder_location,
-        #[cfg(all(desktop, target_os = "windows", not(feature = "web-server")))]
+        #[cfg(all(desktop, target_os = "windows"))]
         crate::native::files::get_available_drive_letters,
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::get_file_location,
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::get_files_location,
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::get_save_file_location,
-        #[cfg(not(feature = "web-server"))]
         crate::native::files::download_file,
-        #[cfg(not(feature = "web-server"))]
         crate::native::theme::set_theme,
-        #[cfg(all(
-            not(feature = "web-server"),
-            not(target_os = "android"),
-            not(target_os = "ios")
-        ))]
+        #[cfg(desktop)]
         crate::desktop::debug::open_devtools,
-        #[cfg(all(desktop, not(feature = "web-server")))]
+        #[cfg(desktop)]
         crate::desktop::window::new_window,
-        #[cfg(all(desktop, not(feature = "web-server")))]
+        #[cfg(desktop)]
         crate::native::window::get_window_button_layout,
-        #[cfg(all(desktop, not(feature = "web-server")))]
+        #[cfg(desktop)]
         crate::native::window::get_system_accent_color,
     ];
     handler(invoke)
 }
 
-#[cfg(all(test, desktop, not(feature = "web-server")))]
+#[cfg(all(test, desktop))]
 mod tests {
     use super::NativeLifecycleCommand;
 

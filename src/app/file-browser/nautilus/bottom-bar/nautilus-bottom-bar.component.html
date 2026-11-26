@@ -7,6 +7,8 @@
     >
       <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
+    <!-- The file browser's own controls, such as its operations -->
+    <ng-content></ng-content>
   </div>
 
   <div class="bar-center">
@@ -23,6 +25,16 @@
   </div>
 
   <div class="bar-right">
+    @if (!isPickerMode()) {
+      <button
+        class="nav-button"
+        (click)="showTabs.emit()"
+        [attr.title]="'nautilus.view.showTabs' | translate"
+        [attr.aria-label]="'nautilus.view.showTabs' | translate"
+      >
+        <span appPill="outline" size="xs">{{ tabCount() }}</span>
+      </button>
+    }
     @if (!isMobileOS()) {
       <button
         class="nav-button"

@@ -81,6 +81,11 @@ pub struct Automation {
     #[serde(skip)]
     pub execution_id: Option<String>,
 
+    /// Whether the automation announced the run in progress. A start with the app announces
+    /// nothing itself: the work it starts does, as work of the start.
+    #[serde(skip)]
+    pub announced: bool,
+
     /// Total number of times this automation has run
     pub run_count: u64,
 
@@ -105,6 +110,18 @@ pub struct Automation {
     /// Only synchronize directories containing changed files when triggered by file watcher
     #[serde(default)]
     pub watch_changed_only: bool,
+
+    /// Runs once when the app starts.
+    #[serde(default)]
+    pub auto_start: bool,
+
+    /// Seconds to wait after the app has started before the automation runs.
+    #[serde(default)]
+    pub auto_start_delay: u64,
+
+    /// When the start with the app is due, while it waits for its delay.
+    #[serde(default)]
+    pub auto_start_at: Option<DateTime<Utc>>,
 }
 
 impl Automation {
@@ -132,6 +149,7 @@ impl Automation {
             last_error: None,
             current_job_id: None,
             execution_id: None,
+            announced: false,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -139,6 +157,9 @@ impl Automation {
             watch_enabled: false,
             watch_delay: DEFAULT_WATCH_DELAY,
             watch_changed_only: false,
+            auto_start: false,
+            auto_start_delay: 0,
+            auto_start_at: None,
         }
     }
 
@@ -206,6 +227,16 @@ impl Automation {
         } else {
             AutomationStatus::Failed
         };
+    }
+
+    /// Update the automation after a run that ended with `error`: a run the user stopped did not
+    /// fail.
+    pub fn mark_ended_with(&mut self, error: String) {
+        if error == crate::localized_error!("backendErrors.job.stopped") {
+            self.mark_stopped();
+        } else {
+            self.mark_failure(error);
+        }
     }
 
     /// Mark automation as starting execution
@@ -281,6 +312,7 @@ mod tests {
             last_error: None,
             current_job_id: None,
             execution_id: None,
+            announced: false,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -288,6 +320,9 @@ mod tests {
             watch_enabled: false,
             watch_delay: 5,
             watch_changed_only: false,
+            auto_start: false,
+            auto_start_delay: 0,
+            auto_start_at: None,
         }
     }
 

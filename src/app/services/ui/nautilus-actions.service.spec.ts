@@ -32,6 +32,7 @@ describe('Nautilus action refresh destination', () => {
   const bookmarks = { isSaved: vi.fn(() => false), toggleItem: vi.fn() };
   const viewer = { open: vi.fn() };
   const fileOps = { openNewFolderDialog: vi.fn(), openCopyUrlDialog: vi.fn() };
+  const modal = { openPreferences: vi.fn() };
 
   beforeEach(() => {
     tab.activeRemote.set(remote);
@@ -46,6 +47,7 @@ describe('Nautilus action refresh destination', () => {
         { provide: NautilusFileOperationsService, useValue: fileOps },
         { provide: FileViewerService, useValue: viewer },
         { provide: NautilusService, useValue: bookmarks },
+        { provide: ModalService, useValue: modal },
         {
           provide: PathService,
           useValue: {
@@ -59,7 +61,6 @@ describe('Nautilus action refresh destination', () => {
           RemoteFileOperationsService,
           RemoteFacadeService,
           RemoteManagementService,
-          ModalService,
           DownloadService,
           Clipboard,
         ].map(provide => ({ provide, useValue: {} })),
@@ -138,6 +139,11 @@ describe('Nautilus action refresh destination', () => {
       expect(tab.refreshPath).toHaveBeenCalledExactlyOnceWith('drive', 'original');
     }
   );
+
+  it("opens the file browser's own preferences", () => {
+    service.openPreferencesModal();
+    expect(modal.openPreferences).toHaveBeenCalledExactlyOnceWith('nautilus');
+  });
 
   it('does not refresh a cancelled operation', async () => {
     fileOps.openNewFolderDialog.mockResolvedValueOnce(false);

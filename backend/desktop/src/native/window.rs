@@ -59,7 +59,7 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
 fn has_visible_tray(app: &rclone_manager_core::context::AppHandle) -> bool {
     #[cfg(feature = "tray")]
     return app
-        .try_state::<crate::desktop::tray::TrayMenuState>()
+        .try_state::<crate::services::tray::TrayMenuState>()
         .is_some_and(|state| state.visible.load(std::sync::atomic::Ordering::SeqCst));
     #[cfg(not(feature = "tray"))]
     {
@@ -203,7 +203,7 @@ mod tests {
     #[cfg(feature = "tray")]
     #[test]
     fn visible_tray_keeps_the_app_running_when_settings_are_unavailable() {
-        use crate::desktop::tray::TrayMenuState;
+        use crate::services::tray::TrayMenuState;
         use std::sync::atomic::Ordering;
 
         // Vault-protected settings must not be needed for this native decision.

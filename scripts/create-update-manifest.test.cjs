@@ -117,6 +117,36 @@ test('accepts Rust fixtures and rejects unknown catalog, entry, and archive fiel
   }
 });
 
+test('catalogs keep exactly the fields versions up to 0.3.7-beta.1 accept', () => {
+  // Those versions reject any field they do not know and never update again.
+  const fixtures = path.join(__dirname, '../backend/core/src/services/updates/fixtures');
+  for (const file of ['portable-catalog.json', 'server-catalog.json', 'appimage-catalog.json']) {
+    const catalog = JSON.parse(fs.readFileSync(path.join(fixtures, file), 'utf8'));
+    assert.deepEqual(Object.keys(catalog).sort(), ['entries', 'schemaVersion', 'version']);
+    for (const entry of Object.values(catalog.entries)) {
+      assert.deepEqual(Object.keys(entry).sort(), ['manifest', 'signature']);
+      const manifest = JSON.parse(Buffer.from(entry.manifest, 'base64'));
+      const { archive, ...fields } = manifest;
+      assert.deepEqual(Object.keys(fields).sort(), [
+        'asset',
+        'kind',
+        'sha256',
+        'signature',
+        'size',
+        'target',
+        'version',
+      ]);
+      if (archive)
+        assert.deepEqual(Object.keys(archive).sort(), [
+          'binaryPath',
+          'sha256',
+          'signature',
+          'size',
+        ]);
+    }
+  }
+});
+
 test('server ZIP metadata accepts the shared catalog format and rejects unsafe or non-ZIP archives', () => {
   const fixtures = path.join(__dirname, '../backend/core/src/services/updates/fixtures');
   const source = JSON.parse(fs.readFileSync(path.join(fixtures, 'server-catalog.json'), 'utf8'));
@@ -322,6 +352,58 @@ test('publishes multiple signed targets into one catalog without signature sidec
         'server-windows-x86_64-1.2.3.zip',
       ].sort()
     );
+    // An AppImage keeps the name GitHub gives the Tauri bundle and is never archived.
+    const appimageOutput = path.join(directory, 'appimage-output');
+    const bundle = path.join(directory, 'RClone Manager_1.2.3_amd64.AppImage');
+    fs.writeFileSync(bundle, payload);
+    const appimage = publish('appimage', 'linux', 'x86_64', '1.2.3', bundle, appimageOutput);
+    assert.equal(appimage.asset, 'RClone.Manager_1.2.3_amd64.AppImage');
+    assert.equal(appimage.kind, 'appimage');
+    assert.equal(appimage.archive, undefined);
+    const catalog = JSON.parse(fs.readFileSync(path.join(appimageOutput, MANIFEST_NAME), 'utf8'));
+    assert.deepEqual(Object.keys(mergeCatalogs('1.2.3', [catalog]).entries), [
+      'appimage-linux-x86_64',
+    ]);
+    assert.throws(() =>
+      publish('appimage', 'linux', 'x86_64', '1.2.3', bundle, appimageOutput, bundle, 'a')
+    );
+    assert.throws(() => publish('appimage', 'macos', 'aarch64', '1.2.3', bundle, appimageOutput));
+    assert.throws(() => publish('appimage', 'linux', 'x86_64', '1.2.3', inputFile, appimageOutput));
+    // The headless packages are signed under their own file names too.
+    const packageOutput = path.join(directory, 'package-output');
+    for (const [kind, os, name] of [
+      ['deb', 'linux', 'RClone Manager Server_1.2.3_amd64.deb'],
+      ['rpm', 'linux', 'RClone Manager Server-1.2.3-1.x86_64.rpm'],
+      ['pacman', 'linux', 'RClone Manager Server-1.2.3-1-x86_64.pkg.tar.zst'],
+      ['nsis', 'windows', 'RClone Manager Server_1.2.3_x64-setup.exe'],
+      ['msi', 'windows', 'RClone Manager Server_1.2.3_x64_en-US.msi'],
+    ]) {
+      const file = path.join(directory, name);
+      fs.writeFileSync(file, payload);
+      const manifest = publish(kind, os, 'x86_64', '1.2.3', file, packageOutput);
+      assert.equal(manifest.asset, name.replaceAll(' ', '.'));
+      assert.equal(manifest.archive, undefined);
+      assert.throws(() => publish(kind, os, 'x86_64', '1.2.3', file, packageOutput, file, 'a'));
+    }
+    assert.deepEqual(
+      Object.keys(
+        mergeCatalogs('1.2.3', [
+          JSON.parse(fs.readFileSync(path.join(packageOutput, MANIFEST_NAME), 'utf8')),
+        ]).entries
+      ).sort(),
+      [
+        'deb-linux-x86_64',
+        'msi-windows-x86_64',
+        'nsis-windows-x86_64',
+        'pacman-linux-x86_64',
+        'rpm-linux-x86_64',
+      ]
+    );
+    // A package for another platform, or of another format, is refused.
+    assert.throws(() => publish('deb', 'windows', 'x86_64', '1.2.3', bundle, packageOutput));
+    const msi = path.join(packageOutput, 'RClone.Manager.Server_1.2.3_x64_en-US.msi');
+    assert.throws(() => publish('nsis', 'windows', 'x86_64', '1.2.3', msi, packageOutput));
+    assert.throws(() => publish('msi', 'linux', 'x86_64', '1.2.3', msi, packageOutput));
   } finally {
     if (previousKey === undefined) delete process.env.TAURI_SIGNING_PRIVATE_KEY;
     else process.env.TAURI_SIGNING_PRIVATE_KEY = previousKey;

@@ -11,7 +11,7 @@ use crate::{
         endpoints::mount,
     },
     services::{automation::engine::AutomationScheduler, bridge},
-    utils::types::{events::APP_EVENT, state::RcloneState},
+    utils::types::{events::APP_SHUTTING_DOWN, state::RcloneState},
 };
 
 /// Longest shutdown waits for in-flight initialization before tearing services down anyway.
@@ -133,6 +133,8 @@ async fn shutdown(app_handle: AppHandle, verified_unmount: Option<Duration>) {
 
     let runtime = app_handle.state::<RcloneState>();
     runtime.set_shutting_down();
+    // Before the wait below, so the closing screen appears at once.
+    bridge::emit(APP_SHUTTING_DOWN, ());
     // Let in-flight initialization finish before tearing its services down. A slow
     // auto-start must not keep the app from exiting.
     let _startup =
@@ -143,11 +145,6 @@ async fn shutdown(app_handle: AppHandle, verified_unmount: Option<Duration>) {
                 None
             }
         };
-
-    bridge::emit(
-        APP_EVENT,
-        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
-    );
 
     let scheduler_state = app_handle.state::<AutomationScheduler>();
 
@@ -293,7 +290,7 @@ async fn stop_active_jobs(app: AppHandle, backends: Vec<Backend>) -> Result<(), 
             let app = app.clone();
             let backend = backend.clone();
             tasks.push(crate::utils::spawn(async move {
-                stop_job_on_backend(app, backend, job.jobid, job.remote_name).await
+                stop_job_on_backend(app, backend, job.jobid).await
             }));
         }
     }

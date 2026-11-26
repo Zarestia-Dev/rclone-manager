@@ -8,8 +8,13 @@ import {
 } from '../../../shared/utils/path.utils';
 import { TauriBaseService } from './tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
+import { RemoteFacadeService } from '../../facade/remote-facade.service';
+import {
+  NAMES_ONLY,
+  RemoteFileOperationsService,
+} from '../../remote/remote-file-operations.service';
 import { MountManagementService } from '../../operations/mount-management.service';
+import { QuickRunService } from '../../flow/quick-run.service';
 import { PathService } from './path.service';
 
 const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
@@ -38,22 +43,71 @@ export const PATH_INSPECTION_UNAVAILABLE: Readonly<PathInspectionStatus> = {
   labelKey: 'remoteConfig.pathStatus.unavailable',
 };
 
+const INSPECTION_PAUSE_MS = 300;
+
+/**
+ * Inspects a path once the user has paused typing. It reports a "checking" status first and then
+ * the answer, or `PATH_INSPECTION_UNAVAILABLE` when the check fails. The returned function cancels
+ * the pending check; call it whenever the path changes or the field goes away.
+ */
+export function inspectAfterPause(
+  inspector: Pick<PathInspectionService, 'inspect'>,
+  request: {
+    path: string;
+    remoteName: string;
+    profileName?: string;
+    operation?: DefaultPathOp;
+    quickRunId?: string | null;
+  },
+  report: (status: PathInspectionStatus | null) => void
+): () => void {
+  let cancelled = false;
+  const timer = setTimeout(() => {
+    report({
+      state: 'checking',
+      icon: 'spinner',
+      badgeClass: 'checking',
+      labelKey: 'remoteConfig.pathStatus.checking',
+    });
+    inspector
+      .inspect(
+        request.path,
+        request.remoteName,
+        request.profileName,
+        request.operation,
+        request.quickRunId
+      )
+      .catch(() => PATH_INSPECTION_UNAVAILABLE)
+      .then(status => {
+        if (!cancelled) report(status);
+      });
+  }, INSPECTION_PAUSE_MS);
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PathInspectionService extends TauriBaseService {
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly remoteFileOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly mounts = inject(MountManagementService);
+  private readonly quickRuns = inject(QuickRunService);
 
   /**
    * Freshly inspects the given path and returns its status.
-   * No caching — callers are responsible for managing reactive state.
+   * No caching — callers are responsible for managing reactive state. The profile or Quick Run
+   * being edited does not collide with itself.
    */
   async inspect(
     path: string,
     remoteName: string,
     currentProfileName?: string,
-    currentOperation?: DefaultPathOp
+    currentOperation?: DefaultPathOp,
+    currentQuickRunId?: string | null
   ): Promise<PathInspectionStatus | null> {
     const pathStyle = this.pathService.enginePathStyle();
     const windowsMount = currentOperation === 'mount' && pathStyle === 'windows';
@@ -61,22 +115,26 @@ export class PathInspectionService extends TauriBaseService {
     if (windowsMount && path === '*') return null;
 
     // Saved path collisions take precedence over filesystem inspection.
-    const allSettings = await this.appSettingsService.getRemoteSettings();
+    const allSettings = this.remoteFacade.remoteSettings();
     const collisions = this.pathService.checkMountPathCollision(
       path,
       remoteName,
       allSettings,
       currentProfileName,
-      currentOperation
+      currentOperation,
+      { runs: this.quickRuns.quickRuns(), exceptId: currentQuickRunId }
     );
     if (collisions.length > 0) {
-      const c = collisions[0];
+      const { kind, name, remoteName: owner } = collisions[0];
       return {
         state: 'colliding',
-        details: `${c.remoteName} (${c.opType})`,
         icon: 'warning',
         badgeClass: 'colliding',
-        labelKey: 'remoteConfig.pathStatus.colliding',
+        labelKey:
+          kind === 'quick_run'
+            ? 'remoteConfig.pathStatus.collidingQuickRun'
+            : 'remoteConfig.pathStatus.collidingProfile',
+        labelParams: { name, remote: owner },
       };
     }
 
@@ -91,7 +149,7 @@ export class PathInspectionService extends TauriBaseService {
     const inspectedPath = pathForInspection(path, pathStyle);
     const { root, relative } = this.pathService.splitLocalForStat(inspectedPath);
     try {
-      const statRes = await this.remoteFileOps.getStat(root, relative);
+      const statRes = await this.remoteFileOps.getStat(root, relative, NAMES_ONLY);
       if (!statRes || !Object.prototype.hasOwnProperty.call(statRes, 'item')) {
         throw new Error('Invalid path stat response');
       }
@@ -163,16 +221,22 @@ export class PathInspectionService extends TauriBaseService {
   }
 
   /**
-   * Resolve a unique default local path for mount or bisync based on config templates.
+   * Resolve a unique default local path for mount or bisync based on config templates. A folder
+   * that a saved profile or Quick Run already uses is skipped, like one that is not empty.
    */
   async resolveDefaultPath(remoteName: string, opType: DefaultPathOp): Promise<string> {
     const [template, home] = await Promise.all([this.getPathTemplate(opType), this.resolveHome()]);
+    const saved = this.remoteFacade.remoteSettings();
+    const usedBySaved = (candidate: string): boolean =>
+      this.pathService.checkMountPathCollision(candidate, remoteName, saved, undefined, opType, {
+        runs: this.quickRuns.quickRuns(),
+      }).length > 0;
     const remote = this.sanitizeRemoteName(remoteName);
     const raw = this.substitute(template, home, remote);
     const normalized = this.pathService.normalizeForPlatform(raw);
     const requiresMissingTarget =
       opType === 'mount' && this.pathService.enginePathStyle() === 'windows';
-    return this.ensureMountableDefault(normalized, requiresMissingTarget);
+    return this.ensureMountableDefault(normalized, requiresMissingTarget, usedBySaved);
   }
 
   private async getPathTemplate(opType: DefaultPathOp): Promise<string> {
@@ -187,8 +251,7 @@ export class PathInspectionService extends TauriBaseService {
       const drives = await this.invokeCommand<LocalDrive[]>('get_local_drives');
       if (drives && drives.length > 0) {
         const first = drives[0];
-        const candidate = first.name || first.mount_point || '';
-        if (candidate) return candidate;
+        if (first.name) return first.name;
       }
     } catch (err) {
       console.warn('[PathInspectionService] Could not query Rclone local drives:', err);
@@ -205,7 +268,10 @@ export class PathInspectionService extends TauriBaseService {
   }
 
   private async isDirectoryEmpty(root: string, relative: string): Promise<boolean> {
-    const response = await this.remoteFileOps.getRemotePaths(root, relative, { recurse: false });
+    const response = await this.remoteFileOps.getRemotePaths(root, relative, {
+      ...NAMES_ONLY,
+      recurse: false,
+    });
     if (!Array.isArray(response?.list)) {
       throw new Error('Invalid directory listing response');
     }
@@ -214,7 +280,8 @@ export class PathInspectionService extends TauriBaseService {
 
   private async ensureMountableDefault(
     path: string,
-    requiresMissingTarget: boolean
+    requiresMissingTarget: boolean,
+    usedBySaved: (candidate: string) => boolean
   ): Promise<string> {
     const { root, relative } = this.pathService.splitLocalForStat(path);
 
@@ -222,8 +289,9 @@ export class PathInspectionService extends TauriBaseService {
       const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
       const candidate = `${path}${suffix}`;
       const candidateRel = `${relative}${suffix}`;
+      if (usedBySaved(candidate)) continue;
 
-      const stat = await this.remoteFileOps.getStat(root, candidateRel);
+      const stat = await this.remoteFileOps.getStat(root, candidateRel, NAMES_ONLY);
       if (!stat || !Object.prototype.hasOwnProperty.call(stat, 'item')) {
         throw new Error('Invalid path stat response');
       }

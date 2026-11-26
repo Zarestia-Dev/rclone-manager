@@ -8,6 +8,14 @@ import {
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
 import { Subject, Observable, from, of, switchMap, take } from 'rxjs';
+import type {
+  TransferOptionValues,
+  TransferOptionsModalData,
+} from '../../shared/modals/transfer-options-modal/transfer-options-modal.component';
+import type {
+  ConflictChoices,
+  TransferConflictModalData,
+} from '../../shared/modals/transfer-conflict-modal/transfer-conflict-modal.component';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -27,9 +35,11 @@ import {
   ExplorerRoot,
   ExportType,
   ExportModalData,
+  PendingProfile,
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import type { CheckCompareData } from '../../shared/detail-shared/transfer-activity-panel/check-compare-dialog.component';
+import type { WizardAnswers, WizardGoalId } from '../../shared/utils/wizard.util';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { VaultService } from '../security/vault.service';
@@ -43,6 +53,23 @@ export interface RemoteConfigModalOptions {
   targetProfile?: string;
   autoAddProfile?: boolean;
   cloneFrom?: string;
+  /** A profile made elsewhere and not saved yet; it opens filled in, as a new profile. */
+  initialProfile?: PendingProfile;
+}
+
+/** What a wizard that was closed to add a cloud has chosen so far, so it can carry on afterwards. */
+export interface WizardResume {
+  /** The remote the user was working with; the new remote becomes the other side. */
+  remoteName: string;
+  goal: WizardGoalId;
+  answers: WizardAnswers;
+}
+
+export interface WizardModalOptions {
+  /** The remote the wizard starts with, for example the one that was just created. */
+  remoteName?: string;
+  /** Carries on with the choices of a wizard that was closed to add this remote. */
+  resume?: WizardResume;
 }
 
 export interface ExportModalOptions {
@@ -162,6 +189,8 @@ export class StandaloneWindowRef<R = unknown> implements DialogRefLike<R> {
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
   private readonly vault = inject(VaultService);
+  /** Set while the wizard is closed for the quick add dialog; the next wizard may carry on. */
+  private wizardResume: WizardResume | null = null;
   private readonly dialog = inject(MatDialog);
   private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
@@ -211,6 +240,10 @@ export class ModalService extends TauriBaseService {
     'quick-add-remote': () =>
       import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
         m => m.QuickAddRemoteComponent
+      ),
+    wizard: () =>
+      import('../../features/modals/wizard/wizard-modal.component').then(
+        m => m.WizardModalComponent
       ),
     'remote-config': () =>
       import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
@@ -295,6 +328,14 @@ export class ModalService extends TauriBaseService {
     'apply-template': () =>
       import('../../shared/remote-config/apply-template-modal/apply-template-modal.component').then(
         m => m.ApplyTemplateModalComponent
+      ),
+    'transfer-options': () =>
+      import('../../shared/modals/transfer-options-modal/transfer-options-modal.component').then(
+        m => m.TransferOptionsModalComponent
+      ),
+    'transfer-conflicts': () =>
+      import('../../shared/modals/transfer-conflict-modal/transfer-conflict-modal.component').then(
+        m => m.TransferConflictModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -540,6 +581,7 @@ export class ModalService extends TauriBaseService {
       targetProfile: options.targetProfile,
       autoAddProfile: options.autoAddProfile,
       cloneFrom: options.cloneFrom,
+      initialProfile: options.initialProfile,
     };
     return this.openModal(
       'remote-config',
@@ -630,7 +672,29 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openQuickAddRemote<TResult = unknown>(): DialogRefLike<TResult> {
+  openWizard<TResult = unknown>(options: WizardModalOptions = {}): DialogRefLike<TResult> {
+    // A wizard that was closed to add a cloud continues only with the cloud that was added.
+    const resume = this.wizardResume;
+    this.wizardResume = null;
+    const carriesOn = !!resume && !!options.remoteName && options.remoteName !== resume.remoteName;
+    return this.openModal(
+      'wizard',
+      {
+        ...CONFIG_MODAL_SIZE,
+        disableClose: true,
+        data: { remoteName: options.remoteName, resume: carriesOn ? resume : undefined },
+      },
+      {
+        title: this.translate.instant('modals.wizard.title'),
+        width: 1024,
+        height: 768,
+      }
+    );
+  }
+
+  /** Opens the quick add dialog; the wizard it was opened from can carry on with the new remote. */
+  openQuickAddRemote<TResult = unknown>(resumeWizard?: WizardResume): DialogRefLike<TResult> {
+    this.wizardResume = resumeWizard ?? null;
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -654,20 +718,19 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openPreferences<TResult = unknown>(): DialogRefLike<TResult> {
+  /** The app's preferences, or with `nautilus` the file browser's on their own. */
+  openPreferences<TResult = unknown>(category?: 'nautilus'): DialogRefLike<TResult> {
+    const title = category ? 'modals.preferences.fileBrowserTitle' : 'modals.preferences.title';
     return this.openModal(
       'preferences',
-      // The header shows the tabs instead of a title on wide windows.
       {
         ...STANDARD_MODAL_SIZE,
         disableClose: true,
-        ariaLabel: this.translate.instant('modals.preferences.title'),
+        // The header shows the tabs instead of a title on wide windows.
+        ariaLabel: this.translate.instant(title),
+        data: category ? { category, title } : undefined,
       },
-      {
-        title: this.translate.instant('modals.preferences.title'),
-        width: 680,
-        height: 600,
-      }
+      { title: this.translate.instant(title), width: 680, height: 600, suffix: category }
     );
   }
 
@@ -832,6 +895,31 @@ export class ModalService extends TauriBaseService {
         currentValues: options.currentValues,
         applicableCategories: options.applicableCategories,
       },
+    });
+  }
+
+  /**
+   * The options of a file browser transfer, or with `mode: 'default'` the options every one
+   * starts from. Closes with the options, or with nothing when cancelled.
+   */
+  openTransferOptions(data: TransferOptionsModalData): DialogRefLike<TransferOptionValues> {
+    return this.openModal('transfer-options', {
+      ...CONFIG_MODAL_SIZE,
+      disableClose: true,
+      data,
+    });
+  }
+
+  /**
+   * Asks how the items of a file browser transfer that share a name with one at the destination
+   * land there. Closes with the choices, or with nothing when cancelled.
+   */
+  openTransferConflicts(data: TransferConflictModalData): DialogRefLike<ConflictChoices> {
+    return this.openModal('transfer-conflicts', {
+      width: '90vw',
+      maxWidth: data.conflicts.length === 1 ? '480px' : '600px',
+      disableClose: true,
+      data,
     });
   }
 

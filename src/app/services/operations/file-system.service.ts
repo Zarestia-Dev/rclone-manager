@@ -8,6 +8,17 @@ import { isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { generatePrefixedId } from 'src/app/shared/utils';
 
+interface AndroidUploadPicker {
+  pickUploadFiles?: (folder: boolean) => boolean;
+  clearSharedFiles?: (paths: string) => void;
+}
+
+const getBridge = (): AndroidUploadPicker | undefined =>
+  (window as Window & { __rclone__?: AndroidUploadPicker }).__rclone__;
+
+type AndroidUploadPick =
+  { stage: 'copying'; count: number } | { stage: 'done'; paths: string[]; failed: number };
+
 /**
  * Service for file system operations
  * Handles file/folder selection and system integration
@@ -139,11 +150,14 @@ export class FileSystemService extends TauriBaseService {
 
   /**
    * Select multiple local files for uploading.
-   * On mobile/headless: uses Nautilus in local-only mode.
-   * On desktop: uses native multi-file dialog.
+   * An upload sends files from this device, so the desktop always uses its native dialog, also
+   * with a remote engine (whose own disk is the file browser's Local root), and Android its own
+   * picker, which needs no storage permission and reaches every provider. Headless uses Nautilus
+   * in local-only mode. Pass the paths to `releaseUploadPaths` when their upload ended.
    */
   async selectFilesForUpload(): Promise<string[]> {
-    if (this.isInternalBrowserPreferred()) {
+    if (this.isTauri && isMobile()) return this.pickOnAndroid(false);
+    if (!this.isTauri) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'files',
@@ -159,6 +173,65 @@ export class FileSystemService extends TauriBaseService {
     } catch {
       return [];
     }
+  }
+
+  /** Select a folder to upload, from this device like `selectFilesForUpload`. Null when cancelled. */
+  async selectFolderForUpload(): Promise<string | null> {
+    if (this.isTauri && isMobile()) return (await this.pickOnAndroid(true))[0] ?? null;
+    if (!this.isTauri) {
+      const result = await this.selectPathWithNautilus({
+        mode: 'local',
+        selection: 'folders',
+        multi: false,
+      });
+      return result.cancelled ? null : (result.paths[0] ?? null);
+    }
+    return this.invokeCommand<string | null>('get_folder_location', { requireEmpty: false });
+  }
+
+  /** Removes the copies the Android picker made of `paths`. */
+  releaseUploadPaths(paths: string[]): void {
+    // Only the Android picker hands out copies; the app removes nothing outside their folder.
+    if (this.isTauri && isMobile()) getBridge()?.clearSharedFiles?.(JSON.stringify(paths));
+  }
+
+  /**
+   * Opens the Android picker. Android gives the app only content it may read, which no engine can
+   * open by path, so the picked items are copied into the app's cache first; a large pick takes a
+   * moment, which the user is told. (Copying a file of the phone in the file browser reads it in
+   * place.)
+   */
+  private pickOnAndroid(folder: boolean): Promise<string[]> {
+    const bridge = getBridge();
+    if (!bridge?.pickUploadFiles) return Promise.resolve([]);
+    return new Promise(resolve => {
+      const onPick = (event: Event): void => {
+        const pick = (event as CustomEvent<AndroidUploadPick>).detail;
+        if (pick.stage === 'copying') {
+          this.notificationService.showInfo(
+            this.translate.instant('nautilus.notifications.copyingPickedFiles', {
+              count: pick.count,
+            })
+          );
+          return;
+        }
+        window.removeEventListener('android-upload-picked', onPick);
+        if (pick.failed > 0) {
+          this.notificationService.showError(
+            this.translate.instant('nautilus.notifications.pickedFilesNotCopied', {
+              count: pick.failed,
+            })
+          );
+        }
+        resolve(pick.paths);
+      };
+      window.addEventListener('android-upload-picked', onPick);
+      // Called on the bridge: a Java method detached from its object cannot be invoked.
+      if (!bridge.pickUploadFiles?.(folder)) {
+        window.removeEventListener('android-upload-picked', onPick);
+        resolve([]);
+      }
+    });
   }
 
   /**

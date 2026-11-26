@@ -4,14 +4,14 @@ use chrono::Utc;
 use log::info;
 use serde_json::{Value, json};
 
-use crate::services::flow::workflow::engine::cancel::CancelToken;
 use crate::services::flow::workflow::types::{NodeExecutionOutput, WorkflowDefinition};
+use tokio_util::sync::CancellationToken;
 
 /// Executes a local shell command or script node ('exec_script') using the cross-platform Command wrapper.
 /// Respects dry_run simulation, working directory, process cancellation, and failOnError.
 pub(crate) async fn handle_exec_script_node(
     config: &Value,
-    cancel: &CancelToken,
+    cancel: &CancellationToken,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     let command = config
@@ -210,7 +210,7 @@ mod tests {
             "args": "--no-preserve-root",
             "failOnError": true
         });
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         let result = handle_exec_script_node(&config, &cancel, true)
             .await
@@ -229,7 +229,7 @@ mod tests {
     #[tokio::test]
     async fn test_exec_script_missing_command() {
         let config = json!({ "command": "   ", "args": "-a" });
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         let result = handle_exec_script_node(&config, &cancel, false).await;
         assert!(result.is_err());
@@ -246,7 +246,7 @@ mod tests {
             "command": "echo",
             "args": "hello_from_test"
         });
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         let result = handle_exec_script_node(&config, &cancel, false)
             .await
@@ -264,7 +264,7 @@ mod tests {
             "command": "exit 42",
             "failOnError": true
         });
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         let result = handle_exec_script_node(&config, &cancel, false).await;
         assert!(result.is_err());
@@ -278,7 +278,7 @@ mod tests {
             "command": "exit 42",
             "failOnError": false
         });
-        let cancel = CancelToken::new();
+        let cancel = CancellationToken::new();
 
         let result = handle_exec_script_node(&config, &cancel, false)
             .await

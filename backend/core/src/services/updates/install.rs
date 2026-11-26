@@ -231,24 +231,6 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
             crate::utils::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 match outcome {
-                    #[cfg(unix)]
-                    InstallOutcome::RestartBinary {
-                        executable,
-                        previous,
-                        arguments,
-                        working_directory,
-                    } => {
-                        crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
-                        let result = app.host().restart_updated_binary(
-                            &executable,
-                            &previous,
-                            &arguments,
-                            &working_directory,
-                        );
-                        if let Err(error) = result {
-                            exit_after_failed_restart(&app, &error);
-                        }
-                    }
                     InstallOutcome::Exit => {
                         crate::services::lifecycle::shutdown::handle_shutdown(app.clone()).await;
                         app.exit(0);

@@ -94,6 +94,8 @@ export enum BackendUpdateStatus {
 export interface UpdatePolicy {
   installation:
     | 'native'
+    | 'nsis'
+    | 'msi'
     | 'portable'
     | 'server'
     | 'android'
@@ -113,13 +115,11 @@ export interface UpdatePolicy {
   command?: string;
 }
 
-export interface UpdateInfo {
+/** A release as the backend describes it: an update found, or the installed version. */
+export interface UpdateMetadata {
   version: string;
   currentVersion: string;
   updateAvailable: boolean;
-  status: BackendUpdateStatus;
-  download?: DownloadStatus;
-  installation?: UpdatePolicy;
   releaseTag?: string;
   releaseNotes?: string;
   releaseDate?: string;
@@ -129,10 +129,10 @@ export interface UpdateInfo {
   prerelease?: boolean;
 }
 
-/** An update the supervisor rolled back because the new version did not start. */
-export interface RolledBackUpdate {
-  version: string;
-  reason: string;
+export interface UpdateInfo extends UpdateMetadata {
+  status: BackendUpdateStatus;
+  download?: DownloadStatus;
+  installation?: UpdatePolicy;
 }
 
 /** The backend's updater state, complete enough to rebuild the view after a reload. */
@@ -143,7 +143,6 @@ export interface UpdaterSnapshot {
   lastCheckedAt?: string | null;
   /** Localized failure of the last check (rclone: or update). */
   error?: string | null;
-  rolledBack?: RolledBackUpdate[];
   /** Localized note that outlives the action that caused it. */
   notice?: string;
 }
@@ -186,6 +185,8 @@ export interface RcloneFlagMetadata {
   required?: boolean;
   engine_restart?: boolean;
   placeholder?: string;
+  /** Kept with the settings but not shown in the preferences window. */
+  hidden?: boolean;
 }
 
 export interface SettingMetadata<T = ConfigValue> {
@@ -221,6 +222,13 @@ export interface LocalDiskUsage {
   dir?: string;
 }
 
+/** The names other devices can use to reach the machine the backend runs on. */
+export interface LocalAddresses {
+  hostName?: string | null;
+  /** IPv4 addresses, a home or office network first. */
+  addresses: string[];
+}
+
 export interface PendingChange {
   category: string;
   key: string;
@@ -239,10 +247,11 @@ export type ViewId =
   | 'details'
   | 'about-app'
   | 'about-rclone'
+  | 'app-update-settings'
+  | 'rclone-update-settings'
   | 'credits'
   | 'legal'
-  | 'whats-new-app'
-  | 'whats-new-rclone'
+  | 'release-notes'
   | 'memory'
   | 'debugging';
 

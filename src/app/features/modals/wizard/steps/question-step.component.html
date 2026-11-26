@@ -1,0 +1,41 @@
+@let q = state.question();
+@if (q) {
+  <section class="wizard-step">
+    <h2 class="wizard-heading">
+      {{ 'modals.wizard.questions.' + q + '.title' | translate }}
+    </h2>
+    <div class="choice-grid single">
+      @for (option of state.questionOptions(); track option.id) {
+        <button
+          type="button"
+          class="choice-card"
+          data-tone="accent"
+          [class.recommended]="state.recommended() === option.id"
+          (click)="state.answer(option.id)"
+        >
+          <span class="choice-tile"
+            ><mat-icon [svgIcon]="option.icon" aria-hidden="true"></mat-icon
+          ></span>
+          <span class="choice-text">
+            <span class="choice-title">
+              {{ 'modals.wizard.options.' + q + '.' + option.id + '.title' | translate }}
+              @if (state.recommended() === option.id) {
+                <span appPill size="xs" tone="accent">
+                  {{ 'modals.wizard.recommended' | translate }}
+                </span>
+              }
+            </span>
+            <span class="choice-description">
+              {{ 'modals.wizard.options.' + q + '.' + option.id + '.description' | translate }}
+            </span>
+          </span>
+          <mat-icon class="choice-chevron" svgIcon="chevron-right" aria-hidden="true"></mat-icon>
+        </button>
+      }
+    </div>
+    <app-alert-banner severity="info" [title]="'modals.wizard.about.title' | translate">
+      <p>{{ 'modals.wizard.about.' + q + '.same' | translate }}</p>
+      <p>{{ 'modals.wizard.about.' + q + '.differ' | translate }}</p>
+    </app-alert-banner>
+  </section>
+}

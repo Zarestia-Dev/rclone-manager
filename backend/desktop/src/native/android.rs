@@ -139,6 +139,8 @@ pub unsafe extern "C" fn Java_com_rclone_manager_RcloneSafBridge_nativeStartCore
         let cache_dir = read_string(env, cache_dir).into();
         match start(data_dir, cache_dir) {
             Ok(core) => {
+                // A locked vault stops initialization before its own sync.
+                rclone_manager_core::services::lifecycle::keep_alive::request_sync(&core);
                 let _ =
                     rclone_manager_core::rclone::engine::poller::set_poller_visibility(core, false);
             }

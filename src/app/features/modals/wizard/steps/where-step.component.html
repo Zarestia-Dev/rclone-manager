@@ -1,0 +1,223 @@
+@let p = state.plan();
+@let place = 'modals.wizard.places.' + state.localPlace() | translate;
+<!-- What a block of this screen is about: the place, in bold, and what it is for in a quieter voice. -->
+<ng-template #head let-icon="icon" let-title="title" let-description="description">
+  <span class="section-label where-head">
+    <mat-icon [svgIcon]="icon" aria-hidden="true"></mat-icon>
+    <span>
+      <span class="where-title">{{ title }}</span>
+      <span class="where-desc">· {{ description }}</span>
+    </span>
+  </span>
+</ng-template>
+@if (p) {
+  <section class="wizard-step">
+    <h2 class="wizard-heading">{{ 'modals.wizard.where.heading' | translate }}</h2>
+
+    @if (state.whereAbout(); as about) {
+      <app-alert-banner severity="info" [title]="'modals.wizard.review.detailsTitle' | translate">
+        <p>{{ 'modals.wizard.about.where.' + about | translate }}</p>
+      </app-alert-banner>
+    }
+
+    @if (state.showsLocal()) {
+      <div class="detail-card">
+        <ng-container
+          *ngTemplateOutlet="
+            head;
+            context: {
+              icon: state.localPlaceIcon(),
+              title: place,
+              description: ('modals.wizard.where.local.' + state.localWhereKey() | translate),
+            }
+          "
+        />
+        @if (state.localIsSource() && state.homeFolders()?.length) {
+          <div class="folder-chips">
+            @for (folder of state.homeFolders(); track folder) {
+              <button
+                appPill
+                type="button"
+                [selected]="state.localFolderName() === folder"
+                (click)="state.chooseHomeFolder(folder)"
+              >
+                <mat-icon svgIcon="folder"></mat-icon>{{ folder }}
+              </button>
+            }
+          </div>
+        }
+        @if (state.usesDriveLetter()) {
+          <!-- Windows: a drive letter (shown as a network drive or a disk) or a folder. -->
+          <app-windows-mount-target
+            [pathControl]="state.localGroup.controls.path"
+            [networkModeControl]="state.mountNetworkMode"
+            [volumeNameControl]="state.mountVolumeName"
+            [currentRemoteName]="state.remoteName()"
+            (selectFolder)="state.selectMountParent()"
+          />
+        } @else {
+          <app-path-field
+            [control]="state.localGroup"
+            fieldId="wizard-local"
+            [currentRemote]="state.remoteName()"
+            lock="local"
+            defaultType="local"
+            placeholderKey="modals.wizard.where.localPlaceholder"
+            [requireEmpty]="p.flow === 'stream'"
+            [inspect]="state.inspectOp()"
+          />
+        }
+      </div>
+    }
+
+    <div class="detail-card">
+      <ng-container
+        *ngTemplateOutlet="
+          head;
+          context: {
+            icon: iconService.getIconName(state.remoteType()),
+            title: state.remoteName(),
+            description: ('modals.wizard.where.cloud.' + p.flow | translate),
+          }
+        "
+      />
+      <app-path-field
+        [control]="state.cloudGroup"
+        fieldId="wizard-cloud"
+        [currentRemote]="state.remoteName()"
+        lock="currentRemote"
+        [restrictToCurrentRemote]="true"
+        placeholderKey="modals.wizard.where.cloudPlaceholder"
+      />
+    </div>
+
+    @if (p.needsSecondRemote) {
+      <div class="detail-card">
+        <span class="section-label">
+          <mat-icon svgIcon="right-left" aria-hidden="true"></mat-icon>
+          {{
+            (p.flow === 'cloudCompare'
+              ? 'modals.wizard.where.targetCompare'
+              : 'modals.wizard.where.target'
+            ) | translate
+          }}
+        </span>
+        @if (state.otherRemotes().length) {
+          <app-path-field
+            [control]="state.targetGroup"
+            fieldId="wizard-target"
+            [currentRemote]="state.remoteName()"
+            [otherRemotes]="state.otherRemoteNames()"
+            [types]="['otherRemote']"
+            placeholderKey="modals.wizard.where.cloudPlaceholder"
+          />
+        } @else {
+          <app-alert-banner
+            severity="info"
+            [title]="'modals.wizard.where.noOtherRemote' | translate"
+          >
+            <button bannerAction matButton="filled" data-tone="primary" (click)="state.addRemote()">
+              {{ 'titlebar.menu.quickRemote' | translate }}
+            </button>
+          </app-alert-banner>
+        }
+      </div>
+    }
+
+    @if (state.sharesLogin()) {
+      <div class="detail-card">
+        <span class="section-label">
+          <mat-icon svgIcon="lock" aria-hidden="true"></mat-icon>
+          {{ 'modals.wizard.where.shareLogin' | translate }}
+        </span>
+        <p class="hint">{{ 'modals.wizard.where.shareHint' | translate }}</p>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'modals.wizard.where.shareUser' | translate }}</mat-label>
+            <input
+              matInput
+              autocomplete="off"
+              [ngModel]="state.shareUser()"
+              (ngModelChange)="state.shareUser.set($event)"
+            />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>{{ 'modals.wizard.where.sharePassword' | translate }}</mat-label>
+            <input
+              matInput
+              type="password"
+              autocomplete="new-password"
+              [ngModel]="state.sharePassword()"
+              (ngModelChange)="state.sharePassword.set($event)"
+            />
+          </mat-form-field>
+        </div>
+      </div>
+      <div class="detail-card">
+        <span class="section-label">
+          <mat-icon svgIcon="server" aria-hidden="true"></mat-icon>
+          {{ 'modals.wizard.where.shareConnection' | translate }}
+        </span>
+        <div class="delay-row">
+          <div class="delay-info">
+            <span class="delay-title">{{ 'modals.wizard.where.sharePort' | translate }}</span>
+            <span class="delay-hint">{{ 'modals.wizard.where.sharePortHint' | translate }}</span>
+          </div>
+          <app-number-input
+            [ngModel]="state.sharePort()"
+            (ngModelChange)="state.setSharePort($event)"
+            [min]="1024"
+            [allowNegative]="false"
+            [ariaLabel]="'modals.wizard.where.sharePort' | translate"
+          />
+        </div>
+        @if (!state.sharePortValid()) {
+          <app-alert-banner
+            severity="warning"
+            [title]="'modals.wizard.where.portInvalid' | translate"
+          />
+        } @else if (state.sharePortBusy()) {
+          <app-alert-banner
+            severity="warning"
+            [title]="'modals.wizard.where.portBusy' | translate: { port: state.sharePort() }"
+          >
+            @if (state.freePortSuggestion(); as free) {
+              <button bannerAction matButton="outlined" type="button" (click)="state.useFreePort()">
+                {{ 'modals.wizard.where.portUseFree' | translate: { port: free } }}
+              </button>
+            }
+          </app-alert-banner>
+        }
+        @if (p.serveType === 'webdav') {
+          <mat-slide-toggle
+            data-tone="accent"
+            [checked]="state.shareReadOnly()"
+            (change)="state.shareReadOnly.set($event.checked)"
+          >
+            {{ 'modals.wizard.where.shareReadOnly' | translate }}
+          </mat-slide-toggle>
+          <p class="hint">{{ 'modals.wizard.where.shareReadOnlyHint' | translate }}</p>
+        }
+      </div>
+    }
+
+    @if (p.serveType === 'dlna') {
+      <div class="detail-card">
+        <span class="section-label">
+          <mat-icon svgIcon="tv" aria-hidden="true"></mat-icon>
+          {{ 'modals.wizard.where.shareName' | translate }}
+        </span>
+        <p class="hint">{{ 'modals.wizard.where.shareNameHint' | translate }}</p>
+        <mat-form-field>
+          <mat-label>{{ 'modals.wizard.where.shareNameLabel' | translate }}</mat-label>
+          <input
+            matInput
+            autocomplete="off"
+            [ngModel]="state.shareName()"
+            (ngModelChange)="state.shareName.set($event)"
+          />
+        </mat-form-field>
+      </div>
+    }
+  </section>
+}

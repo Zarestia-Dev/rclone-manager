@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { of, Subject } from 'rxjs';
@@ -43,9 +43,15 @@ describe('SystemHealthService', () => {
   };
 
   let skipSettingSubject: Subject<SettingMetadata | undefined>;
+  let mountPluginInstalledEvent: Subject<void>;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   beforeEach(() => {
     skipSettingSubject = new Subject<SettingMetadata | undefined>();
+    mountPluginInstalledEvent = new Subject<void>();
 
     systemInfoMock = {
       isRcloneAvailable: vi.fn().mockResolvedValue(true),
@@ -74,7 +80,9 @@ describe('SystemHealthService', () => {
       listenToRcloneEnginePasswordError: vi.fn().mockReturnValue(of(undefined)),
       listenToRcloneEngineAuthError: vi.fn().mockReturnValue(of({ message: 'auth error' })),
       listenToRcloneEnginePortError: vi.fn().mockReturnValue(of({ port: 51900, message: 'error' })),
-      listenToMountPluginInstalled: vi.fn().mockReturnValue(of(undefined)),
+      listenToMountPluginInstalled: vi
+        .fn()
+        .mockReturnValue(mountPluginInstalledEvent.asObservable()),
     };
 
     backendMock = {
@@ -143,14 +151,23 @@ describe('SystemHealthService', () => {
     expect(service.isInitialized()).toBe(true);
   });
 
-  it('checkMountPlugin should return true immediately when skipped without checking installationService', async () => {
+  it('checkMountPlugin should still read the real state when skipped', async () => {
     service.setSkipMountPluginCheck(true);
+    installationMock.isMountPluginInstalled.mockResolvedValueOnce(true);
 
     const result = await service.checkMountPlugin();
 
     expect(result).toBe(true);
     expect(service.mountPluginInstalled()).toBe(true);
-    expect(installationMock.isMountPluginInstalled).not.toHaveBeenCalled();
+    expect(installationMock.isMountPluginInstalled).toHaveBeenCalled();
+  });
+
+  it('checkMountPlugin should report a missing plugin even when skipped', async () => {
+    service.setSkipMountPluginCheck(true);
+    installationMock.isMountPluginInstalled.mockResolvedValueOnce(false);
+
+    expect(await service.checkMountPlugin()).toBe(false);
+    expect(service.mountPluginInstalled()).toBe(false);
   });
 
   it('checkMountPlugin should query installationService when not skipped', async () => {
@@ -170,6 +187,81 @@ describe('SystemHealthService', () => {
     await service.checkMountPluginAndPromptRepair();
 
     expect(bottomSheetMock.open).not.toHaveBeenCalled();
+  });
+
+  it('checkMountPluginAndPromptRepair should still record a missing plugin when skipped, without prompting', async () => {
+    service.setSkipMountPluginCheck(true);
+    installationMock.isMountPluginInstalled.mockResolvedValueOnce(false);
+
+    await service.checkMountPluginAndPromptRepair();
+
+    expect(service.mountPluginInstalled()).toBe(false);
+    expect(bottomSheetMock.open).not.toHaveBeenCalled();
+  });
+
+  describe('mount plugin installed event', () => {
+    it('reports the plugin as missing only once the check found it missing', async () => {
+      expect(service.mountPluginMissing()).toBe(false);
+      installationMock.isMountPluginInstalled.mockResolvedValueOnce(false);
+
+      await service.checkMountPlugin();
+
+      expect(service.mountPluginMissing()).toBe(true);
+    });
+
+    it('clears the missing state when the plugin gets installed, with no start-up prompt before', async () => {
+      vi.useFakeTimers();
+      // Seen as missing without the start-up repair sheet: the check was skipped.
+      service.setSkipMountPluginCheck(true);
+      installationMock.isMountPluginInstalled.mockResolvedValueOnce(false);
+      await service.checkMountPluginAndPromptRepair();
+      expect(service.mountPluginMissing()).toBe(true);
+
+      installationMock.isMountPluginInstalled.mockResolvedValueOnce(true);
+      mountPluginInstalledEvent.next();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(service.mountPluginInstalled()).toBe(true);
+      expect(service.mountPluginMissing()).toBe(false);
+    });
+
+    it('closes the open mount plugin repair sheet once the plugin is detected', async () => {
+      vi.useFakeTimers();
+      const dismiss = vi.fn();
+      bottomSheetMock.open.mockReturnValueOnce({
+        afterDismissed: () => new Subject().asObservable(),
+        dismiss,
+        instance: {},
+      });
+      await service.showRepairSheet({ type: RepairSheetType.MOUNT_PLUGIN });
+
+      installationMock.isMountPluginInstalled.mockResolvedValueOnce(true);
+      mountPluginInstalledEvent.next();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(dismiss).toHaveBeenCalled();
+    });
+
+    it('keeps the missing state when the event comes but the plugin is still not found', async () => {
+      vi.useFakeTimers();
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      installationMock.isMountPluginInstalled.mockResolvedValue(false);
+
+      mountPluginInstalledEvent.next();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(service.mountPluginMissing()).toBe(true);
+      warn.mockRestore();
+    });
+
+    it('listens once, however often the start-up check runs', async () => {
+      installationMock.isMountPluginInstalled.mockResolvedValue(false);
+
+      await service.checkMountPluginAndPromptRepair();
+      await service.checkMountPluginAndPromptRepair();
+
+      expect(eventListenersMock.listenToMountPluginInstalled).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('checkMountPluginAndPromptRepair should show repair sheet when plugin missing and not skipped', async () => {

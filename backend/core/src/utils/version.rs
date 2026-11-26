@@ -5,7 +5,10 @@
 //! and safe normalization for repository release tags (`headless-`, `v`, `+metadata`).
 
 pub fn clean_app_version(tag: &str) -> &str {
-    let tag = tag.strip_prefix("headless-").unwrap_or(tag);
+    let tag = tag
+        .strip_prefix("headless-")
+        .or_else(|| tag.strip_prefix("server-"))
+        .unwrap_or(tag);
     let tag = tag.strip_prefix('v').unwrap_or(tag);
     tag.split_once('+').map(|(c, _)| c).unwrap_or(tag)
 }
@@ -189,6 +192,8 @@ mod tests {
         assert_eq!(clean_app_version("0.3.3"), "0.3.3");
         assert_eq!(clean_app_version("headless-v0.3.4"), "0.3.4");
         assert_eq!(clean_app_version("headless-0.3.4"), "0.3.4");
+        assert_eq!(clean_app_version("server-v0.3.8"), "0.3.8");
+        assert!(is_version_newer("headless-v0.3.7", "server-v0.3.8"));
         assert_eq!(clean_app_version("v1.0.0-beta.1"), "1.0.0-beta.1");
         assert_eq!(clean_app_version("v1.0.0+build.42"), "1.0.0");
     }

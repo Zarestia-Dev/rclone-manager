@@ -2,12 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Служба зберігання Rclone SAF</string>
-    <string name="saf_keepalive_text">Активний фоновий потік файлів</string>
-    <string name="saf_keepalive_channel_name">Служба зберігання Rclone</string>
+    <string name="saf_keepalive_text">Файли відкрито в іншому застосунку</string>
+    <string name="saf_upload_text">Вивантаження файлів, збережених в іншому застосунку</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Працює у фоновому режимі</string>
-    <string name="keepalive_stopped_text">Android зупинив фонову службу. Торкніться, щоб відновити.</string>
+    <string name="keepalive_locked_text">Сховище заблоковано. Торкніться, щоб розблокувати.</string>
     <string name="keepalive_channel_name">Фонова служба RClone</string>
     <string name="keepalive_channel_desc">Підтримує активні змонтовані диски, передачі та фонові завдання</string>
     <string name="shortcut_file_manager_short">Файли</string>
@@ -20,4 +19,18 @@
     <string name="quit_confirm_title">Вийти з RClone Manager?</string>
     <string name="quit_confirm_message">Поточні передачі, підключення та сервери буде зупинено.</string>
     <string name="alerts_channel_name">Сповіщення</string>
+    <string name="app_closed_title">Застосунок було закрито у фоновому режимі</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="one">%d завдання перервано.</item>
+        <item quantity="few">%d завдання перервано.</item>
+        <item quantity="many">%d завдань перервано.</item>
+        <item quantity="other">%d завдання перервано.</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="one">%d сервер зупинено.</item>
+        <item quantity="few">%d сервери зупинено.</item>
+        <item quantity="many">%d серверів зупинено.</item>
+        <item quantity="other">%d сервера зупинено.</item>
+    </plurals>
+    <string name="autostart_restarts">Сервери з автозапуском знову запустяться разом із застосунком.</string>
 </resources>

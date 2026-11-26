@@ -15,9 +15,13 @@ export interface PathGroup {
 
 export type DefaultPathOp = 'mount' | 'bisync';
 
+/** What already uses a folder: a saved profile of a remote, or a Quick Run. */
 export interface MountPathCollision {
+  kind: 'profile' | 'quick_run';
+  /** The remote the profile belongs to, or the one the Quick Run is bound to. */
   remoteName: string;
-  profileName: string;
+  /** The name of the profile or of the Quick Run. */
+  name: string;
   opType: string;
   path: string;
 }
@@ -32,8 +36,9 @@ export interface PathInspectionStatus {
     | 'checking'
     | 'unavailable'
     | 'notDirectory';
-  details?: string;
   icon: string;
   badgeClass: string;
   labelKey: string;
+  /** Values for the placeholders of `labelKey`. */
+  labelParams?: Readonly<Record<string, string>>;
 }

@@ -154,6 +154,50 @@ pub async fn is_directory(
     Ok(is_dir)
 }
 
+/// Each remote's runtime options as a connection string prefix: (`drive:`, `drive,region='eu':`).
+/// Every option is checked, whether a path uses its remote or not.
+pub(crate) fn remote_connections(
+    opts: Option<&HashMap<String, Value>>,
+) -> Result<Vec<(String, String)>, String> {
+    let mut connections = Vec::new();
+    for (remote, options) in opts.into_iter().flatten() {
+        let options = options.as_object().ok_or_else(
+            || crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => remote),
+        )?;
+        let mut connection = remote.clone();
+        for (key, value) in options {
+            let invalid =
+                || crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => key);
+            if key.is_empty()
+                || !key
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
+            {
+                return Err(invalid());
+            }
+            let value = match value {
+                Value::String(value) => value.clone(),
+                Value::Number(_) | Value::Bool(_) => value.to_string(),
+                _ => return Err(invalid()),
+            };
+            connection.push_str(&format!(",{key}='{}'", value.replace('\'', "''")));
+        }
+        connections.push((format!("{remote}:"), format!("{connection}:")));
+    }
+    Ok(connections)
+}
+
+/// `path` on its remote's connection string (`drive:dir` → `drive,region='eu':dir`).
+pub(crate) fn connect_path(path: &str, connections: &[(String, String)]) -> String {
+    connections
+        .iter()
+        .find_map(|(prefix, connection)| {
+            path.strip_prefix(prefix.as_str())
+                .map(|root| format!("{connection}{root}"))
+        })
+        .unwrap_or_else(|| path.to_string())
+}
+
 /// Common resolved parameters used by mount, sync, copy, etc.
 pub struct CommonConfigParams {
     pub source: Vec<String>,
@@ -278,40 +322,11 @@ impl RclonePayloadBuilder {
         &mut self,
         opts: Option<&HashMap<String, Value>>,
     ) -> Result<&mut Self, String> {
-        let Some(opts) = opts else { return Ok(self) };
-        for (remote, options) in opts {
-            let options = options.as_object().ok_or_else(
-                || crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => remote),
-            )?;
-            let mut connection = remote.clone();
-            for (key, value) in options {
-                let invalid =
-                    || crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => key);
-                if key.is_empty()
-                    || !key
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
-                {
-                    return Err(invalid());
-                }
-                let value = match value {
-                    Value::String(value) => value.clone(),
-                    Value::Number(_) | Value::Bool(_) => value.to_string(),
-                    _ => return Err(invalid()),
-                };
-                connection.push_str(&format!(",{key}='{}'", value.replace('\'', "''")));
-            }
-            let prefix = format!("{remote}:");
-            for field in ["fs", "srcFs", "dstFs", "path1", "path2", "src", "dst"] {
-                if let Some(root) = self
-                    .body
-                    .get(field)
-                    .and_then(Value::as_str)
-                    .and_then(|path| path.strip_prefix(&prefix))
-                {
-                    let path = format!("{connection}:{root}");
-                    self.body.insert(field.to_string(), json!(path));
-                }
+        let connections = remote_connections(opts)?;
+        for field in ["fs", "srcFs", "dstFs", "path1", "path2", "src", "dst"] {
+            if let Some(path) = self.body.get(field).and_then(Value::as_str) {
+                let path = connect_path(path, &connections);
+                self.body.insert(field.to_string(), json!(path));
             }
         }
         Ok(self)
@@ -1355,7 +1370,8 @@ mod tests {
             }
             .to_rclone_body(false)
             .unwrap();
-            assert_eq!(body["_config"]["DryRun"], true);
+            assert_eq!(body["dry_run"], true);
+            assert!(body["_config"].get("DryRun").is_none());
             assert_eq!(body["_config"]["Transfers"], 2);
             assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg"]));
             let source_field = if operation == OperationType::Sync {

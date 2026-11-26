@@ -11,6 +11,7 @@ import {
   OnInit,
   output,
   signal,
+  linkedSignal,
   untracked,
   viewChild,
   ChangeDetectionStrategy,
@@ -53,7 +54,9 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
 import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
+import { OperationsPanelComponent } from '../operations-panel/operations-panel.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
+import { NautilusTabOverviewComponent, TabPreview } from './tabs/nautilus-tab-overview.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 import { AndroidShareService } from 'src/app/services/ui/android-share.service';
@@ -65,7 +68,9 @@ import { NautilusContextMenuComponent } from './context-menu/nautilus-context-me
   imports: [
     NautilusSidebarComponent,
     NautilusToolbarComponent,
+    OperationsPanelComponent,
     NautilusTabsComponent,
+    NautilusTabOverviewComponent,
     NautilusViewPaneComponent,
     NautilusBottomBarComponent,
     TranslatePipe,
@@ -246,6 +251,25 @@ export class NautilusComponent implements OnInit {
   protected readonly files = computed(() => this._getPaneFiles(0));
   protected readonly filesRight = computed(() => this._getPaneFiles(1));
 
+  // ── Tab overview (narrow screens) ────────────────────────────────────────────
+  /** Closed again whenever the window changes between the narrow and the wide layout. */
+  protected readonly isTabOverviewOpen = linkedSignal({
+    source: this.isMobile,
+    computation: () => false,
+  });
+  /** Each tab with the first entries of its folder, as the list would show them. */
+  protected readonly tabPreviews = computed((): TabPreview[] =>
+    this.tabSvc.tabs().map(tab => ({
+      id: tab.id,
+      title: tab.title,
+      files: this._sortFiles(
+        tab.left
+          .rawFiles()
+          .filter(item => this.settings.showHidden() || !item.entry.Name.startsWith('.'))
+      ).slice(0, 5),
+    }))
+  );
+
   protected readonly visiblePanes = computed((): PaneViewModel[] => {
     const leftKey = this.tabSvc.starredMode()
       ? '__starred__'
@@ -280,23 +304,27 @@ export class NautilusComponent implements OnInit {
     ];
   });
 
-  protected readonly selectionSummary = computed(() => {
+  /**
+   * What is selected: `name` is the one selected item's name, which the summary may shorten,
+   * and `detail` the rest, which always stays in view.
+   */
+  protected readonly selectionSummary = computed((): { name: string; detail: string } | null => {
     this._langChange(); // recompute on language change
 
     const selectedPaths = this.tabSvc.activeSelection();
     const count = selectedPaths.size;
-    if (count === 0) return '';
+    if (count === 0) return null;
 
     const allFiles = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
     const selected = allFiles.filter(item => selectedPaths.has(this.getItemKey(item)));
 
     if (count === 1) {
       const item = selected[0];
-      if (!item) return '';
+      if (!item) return null;
       const name = `"${item.entry.Name}"`;
       const sel = this.translate.instant('nautilus.selection.selected');
-      if (item.entry.IsDir) return `${name} ${sel}`;
-      return `${name} ${sel} (${this.formatFileSizePipe.transform(item.entry.Size)})`;
+      if (item.entry.IsDir) return { name, detail: sel };
+      return { name, detail: `${sel} (${this.formatFileSizePipe.transform(item.entry.Size)})` };
     }
 
     const parts: string[] = [];
@@ -318,7 +346,7 @@ export class NautilusComponent implements OnInit {
       );
     }
 
-    return parts.join(', ');
+    return { name: '', detail: parts.join(', ') };
   });
 
   // ---------------------------------------------------------------------------

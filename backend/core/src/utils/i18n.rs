@@ -283,6 +283,43 @@ pub fn localized_operation_counts(
     .collect()
 }
 
+/// The line the Android notification shows under the counts while jobs run: how much of how
+/// much, at what speed and how long the rest takes, or, while rclone does not know the size yet,
+/// how many files it has checked. Empty when there is nothing to say.
+pub fn localized_progress(progress: &crate::utils::types::jobs::JobProgress) -> String {
+    use crate::utils::format::{format_clock, format_file_size};
+    if progress.total_bytes == 0 {
+        return if progress.checks > 0 {
+            t_with_params(
+                "powerInhibitor.checked",
+                &[("count", &progress.checks.to_string())],
+            )
+        } else {
+            String::new()
+        };
+    }
+    let mut parts = vec![t_with_params(
+        "powerInhibitor.progress",
+        &[
+            ("done", &format_file_size(progress.bytes)),
+            ("total", &format_file_size(progress.total_bytes)),
+        ],
+    )];
+    if progress.speed >= 1.0 {
+        parts.push(t_with_params(
+            "powerInhibitor.speed",
+            &[("speed", &format_file_size(progress.speed as u64))],
+        ));
+    }
+    if let Some(seconds) = progress.seconds_left() {
+        parts.push(t_with_params(
+            "powerInhibitor.timeLeft",
+            &[("time", &format_clock(seconds))],
+        ));
+    }
+    parts.join(" · ")
+}
+
 /// Macro for ergonomic translations
 ///
 /// # Usage
@@ -357,6 +394,34 @@ mod tests {
         assert!(localized_operation_counts(0, 0, 0).is_empty());
         assert_eq!(localized_operation_counts(0, 2, 0).len(), 1);
         assert_eq!(localized_operation_counts(1, 2, 3).len(), 3);
+    }
+
+    #[test]
+    fn progress_names_size_speed_and_time_left_or_the_files_checked() {
+        use crate::utils::types::jobs::JobProgress;
+        let moving = JobProgress {
+            jobs: 1,
+            bytes: 1024 * 1024,
+            total_bytes: 3 * 1024 * 1024,
+            speed: 4096.0,
+            checks: 0,
+        };
+        assert_eq!(
+            localized_progress(&moving),
+            "1.00 MiB of 3.00 MiB · 4.00 KiB/s · 8:32 left"
+        );
+        let stalled = JobProgress {
+            speed: 0.0,
+            ..moving
+        };
+        assert_eq!(localized_progress(&stalled), "1.00 MiB of 3.00 MiB");
+        let sizing = JobProgress {
+            jobs: 1,
+            checks: 120,
+            ..Default::default()
+        };
+        assert_eq!(localized_progress(&sizing), "Checked: 120");
+        assert_eq!(localized_progress(&JobProgress::default()), "");
     }
 
     #[test]

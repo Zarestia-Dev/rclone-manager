@@ -16,7 +16,13 @@ pub enum UpdateMethod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstallationKind {
+    /// The desktop app on Windows and macOS, updated by Tauri. On Linux the
+    /// package format names it instead.
     Native,
+    /// The server setup, installed for the current user.
+    Nsis,
+    /// The server MSI, installed for all users.
+    Msi,
     Portable,
     Server,
     Android,
@@ -75,8 +81,9 @@ fn build_kind(
         // Linux builds are told apart by the package format Tauri patched into them.
         UpdateMethod::Tauri => match bundle {
             Some(kind @ (InstallationKind::Deb | InstallationKind::Rpm)) => kind,
-            // Tauri's AppImage installer also handles a build without the marker.
-            Some(InstallationKind::Appimage) | None if appimage => InstallationKind::Appimage,
+            // `$APPIMAGE` names the file that gets replaced, and child processes
+            // inherit it: only a build bundled as an AppImage may trust it.
+            Some(InstallationKind::Appimage) if appimage => InstallationKind::Appimage,
             _ => InstallationKind::Unknown,
         },
         UpdateMethod::Unavailable => InstallationKind::Unknown,
@@ -113,10 +120,30 @@ fn classify(
     declared: Option<InstallationKind>,
     owner: Option<InstallationKind>,
 ) -> (InstallationKind, UpdateMethod) {
+    // The server packages hold the server build: the one that installed it is the
+    // build the core replaces.
+    let build = match owner {
+        Some(
+            package @ (InstallationKind::Deb
+            | InstallationKind::Rpm
+            | InstallationKind::Pacman
+            | InstallationKind::Nsis
+            | InstallationKind::Msi),
+        ) if build == InstallationKind::Server => package,
+        _ => build,
+    };
     let kind = declared.unwrap_or(build);
-    let packaged = matches!(build, InstallationKind::Deb | InstallationKind::Rpm);
+    let packaged = matches!(
+        build,
+        InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
+    );
     if kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build)) {
-        (kind, method)
+        // The core replaces an AppImage itself, like a portable executable.
+        if kind == InstallationKind::Appimage {
+            (kind, UpdateMethod::Binary)
+        } else {
+            (kind, method)
+        }
     } else {
         (kind, UpdateMethod::Unavailable)
     }
@@ -189,15 +216,17 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
             {
                 Some(crate::localized_error!("backendErrors.updater.notWritable"))
             }
-            // Tauri asks for the administrator password through one of these.
-            InstallationKind::Deb | InstallationKind::Rpm
-                if !["pkexec", "zenity", "kdialog"]
-                    .iter()
-                    .any(|tool| which::which(tool).is_ok()) =>
+            // Tauri also reads the password through zenity or kdialog itself.
+            InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
+                if !(if method == UpdateMethod::Tauri {
+                    ["pkexec", "zenity", "kdialog"]
+                        .iter()
+                        .any(|tool| which::which(tool).is_ok())
+                } else {
+                    can_install_as_root()
+                }) =>
             {
-                Some(crate::localized_error!(
-                    "backendErrors.updater.noPrivilegePrompt"
-                ))
+                Some(no_privilege_prompt(kind))
             }
             // Native installers and Android own their authorization flows.
             _ => None,
@@ -298,10 +327,10 @@ fn package_owner(
         ("dpkg-query", "-S", InstallationKind::Deb),
         ("rpm", "-qf", InstallationKind::Rpm),
     ];
-    for (tool, flag, kind) in queries
-        .into_iter()
-        .filter(|(_, _, kind)| *kind == InstallationKind::Pacman || *kind == build)
-    {
+    // The server build is in the server DEB and RPM.
+    for (tool, flag, kind) in queries.into_iter().filter(|(_, _, kind)| {
+        *kind == InstallationKind::Pacman || *kind == build || build == InstallationKind::Server
+    }) {
         match query_owner(tool, flag, path) {
             Ok(Some(name)) => {
                 owner = Some((kind, name));
@@ -357,6 +386,65 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
     }
 }
 
+/// The core installs a package as root through pkexec, whose polkit agent asks for
+/// the password, or, where no agent runs, through `sudo -A` with a zenity or
+/// kdialog password dialog. Either way the password never reaches the application.
+#[cfg(target_os = "linux")]
+fn can_install_as_root() -> bool {
+    system_program("pkexec").is_some()
+        || (system_program("sudo").is_some() && password_dialog().is_some())
+}
+
+/// The tool that installs a Linux package as root, its arguments as the user would
+/// type them, and the package's extension. rpm 6 (Fedora 45 and later) refuses a
+/// package without a signature its keyring knows: the RPM is unsigned, the signed
+/// catalog verifies it, and rpm still checks its digests.
+pub(super) fn linux_installer(
+    kind: InstallationKind,
+) -> (&'static str, &'static [&'static str], &'static str) {
+    match kind {
+        InstallationKind::Rpm => ("rpm", &["-U", "--nosignature"], "rpm"),
+        InstallationKind::Pacman => ("pacman", &["-U", "--noconfirm"], "pkg.tar.zst"),
+        _ => ("dpkg", &["-i"], "deb"),
+    }
+}
+
+/// No way to ask for the administrator password here: the command that installs
+/// the package downloaded from the release page instead.
+pub(super) fn no_privilege_prompt(kind: InstallationKind) -> String {
+    let (tool, flags, extension) = linux_installer(kind);
+    let command = format!(
+        "sudo {tool} {} RClone.Manager*.{extension}",
+        flags.join(" ")
+    );
+    crate::localized_error!("backendErrors.updater.noPrivilegePrompt", "command" => command)
+}
+
+/// The dialog `sudo -A` asks for the password with. It runs as the user, so the
+/// `PATH` may choose it.
+#[cfg(target_os = "linux")]
+pub(super) fn password_dialog() -> Option<&'static str> {
+    ["zenity", "kdialog"]
+        .into_iter()
+        .find(|dialog| which::which(dialog).is_ok())
+}
+
+/// A program that runs as root, looked up in the system folders only: a folder on
+/// the user's `PATH` could hold a program of the same name, which the password the
+/// user types would then run as root.
+#[cfg(target_os = "linux")]
+pub(super) fn system_program(name: &str) -> Option<std::path::PathBuf> {
+    ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]
+        .into_iter()
+        .map(|directory| std::path::Path::new(directory).join(name))
+        .find(|path| path.is_file())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn can_install_as_root() -> bool {
+    false
+}
+
 /// `pacman -Qqo` prints the name; `dpkg-query -S` prints `name: path`.
 #[cfg(target_os = "linux")]
 fn owner_name(output: &str) -> String {
@@ -367,7 +455,41 @@ fn owner_name(output: &str) -> String {
         .to_owned()
 }
 
-#[cfg(not(target_os = "linux"))]
+/// The server setup (for the current user) and MSI (for all users) record the
+/// folder they installed in (`backend/server/package/`).
+#[cfg(windows)]
+fn package_owner(
+    path: &std::path::Path,
+    build: InstallationKind,
+) -> Option<(InstallationKind, String)> {
+    use winreg::{RegKey, enums::*};
+    if build != InstallationKind::Server {
+        return None;
+    }
+    let directory = std::fs::canonicalize(path.parent()?).ok()?;
+    let installed_by = |root, value: &str| {
+        [KEY_WOW64_64KEY, KEY_WOW64_32KEY].into_iter().any(|view| {
+            RegKey::predef(root)
+                .open_subkey_with_flags(
+                    r"Software\Zarestia Dev\RClone Manager Server",
+                    KEY_READ | view,
+                )
+                .and_then(|key| key.get_value::<String, _>(value))
+                .ok()
+                .and_then(|folder| std::fs::canonicalize(folder).ok())
+                .is_some_and(|folder| folder == directory)
+        })
+    };
+    if installed_by(HKEY_CURRENT_USER, "") {
+        Some((InstallationKind::Nsis, String::new()))
+    } else if installed_by(HKEY_LOCAL_MACHINE, "MsiInstallFolder") {
+        Some((InstallationKind::Msi, String::new()))
+    } else {
+        None
+    }
+}
+
+#[cfg(not(any(target_os = "linux", windows)))]
 fn package_owner(
     _path: &std::path::Path,
     _build: InstallationKind,
@@ -455,7 +577,14 @@ mod tests {
                 Unknown
             );
             assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Unknown);
-            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, true), Appimage);
+            // An unbundled build may run with another AppImage's inherited `$APPIMAGE`.
+            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, true), Unknown);
+            for kind in [Deb, Rpm] {
+                assert_eq!(
+                    build_kind(UpdateMethod::Tauri, false, Some(kind), true),
+                    kind
+                );
+            }
         } else {
             assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Native);
         }
@@ -501,7 +630,7 @@ mod tests {
     #[test]
     fn package_ownership_overrides_repackaged_and_portable_builds() {
         for owner in [Pacman, Deb, Rpm] {
-            for build in [Portable, Server, Appimage, Native] {
+            for build in [Portable, Appimage, Native] {
                 let declared = declared_kind(None, false, Some(owner));
                 assert_eq!(
                     classify(UpdateMethod::Binary, build, declared, Some(owner)),
@@ -509,6 +638,37 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_server_packages_update_the_server_build_they_installed() {
+        // The AUR package holds the same files as the release's Arch package.
+        for owner in [Deb, Rpm, Pacman, Nsis, Msi] {
+            let declared = declared_kind(None, false, Some(owner));
+            assert_eq!(
+                classify(UpdateMethod::Binary, Server, declared, Some(owner)),
+                (owner, UpdateMethod::Binary)
+            );
+        }
+        // A container or a declaration without an owner is not ours.
+        assert_eq!(
+            classify(
+                UpdateMethod::Binary,
+                Server,
+                declared_kind(Some("docker"), false, Some(Deb)),
+                Some(Deb)
+            ),
+            (Container, UpdateMethod::Unavailable)
+        );
+        assert_eq!(
+            classify(
+                UpdateMethod::Binary,
+                Server,
+                declared_kind(Some("deb"), false, None),
+                None
+            ),
+            (Deb, UpdateMethod::Unavailable)
+        );
     }
 
     #[test]
@@ -552,11 +712,15 @@ mod tests {
             (Portable, UpdateMethod::Binary),
             (Server, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
-            (Appimage, UpdateMethod::Tauri),
             (Native, UpdateMethod::Tauri),
         ] {
             assert_eq!(classify(method, build, None, None), (build, method));
         }
+        // Tauri bundled the AppImage, but the core replaces it.
+        assert_eq!(
+            classify(UpdateMethod::Tauri, Appimage, None, None),
+            (Appimage, UpdateMethod::Binary)
+        );
     }
 
     #[test]
@@ -567,8 +731,8 @@ mod tests {
             "paru -S rclone-manager"
         );
         assert_eq!(
-            update_command(Pacman, Some("rclone-manager-headless"), None, id).unwrap(),
-            "git clone https://aur.archlinux.org/rclone-manager-headless.git && cd rclone-manager-headless && makepkg -si"
+            update_command(Pacman, Some("rclone-manager-server"), None, id).unwrap(),
+            "git clone https://aur.archlinux.org/rclone-manager-server.git && cd rclone-manager-server && makepkg -si"
         );
         assert!(update_command(Pacman, None, Some("yay"), id).is_none());
         assert_eq!(
@@ -578,6 +742,24 @@ mod tests {
         assert!(update_command(Container, None, None, id).is_some());
         for kind in [Deb, Rpm, Unknown, Portable] {
             assert!(update_command(kind, None, Some("paru"), id).is_none());
+        }
+    }
+
+    #[test]
+    fn without_a_password_prompt_the_user_gets_the_install_command() {
+        for (kind, command) in [
+            (Deb, "sudo dpkg -i RClone.Manager*.deb"),
+            (Rpm, "sudo rpm -U --nosignature RClone.Manager*.rpm"),
+            (
+                Pacman,
+                "sudo pacman -U --noconfirm RClone.Manager*.pkg.tar.zst",
+            ),
+        ] {
+            assert!(
+                no_privilege_prompt(kind).contains(command),
+                "{kind:?}: {}",
+                no_privilege_prompt(kind)
+            );
         }
     }
 

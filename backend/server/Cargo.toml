@@ -13,7 +13,7 @@ tauri-winres = "0.3"
 
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false, features = ["updater"] }
-axum = { version = "0.8", features = ["multipart"] }
+axum = "0.8"
 tower-http = { version = "0.7", features = ["cors", "fs", "trace", "compression-gzip"] }
 async-stream = "0.3"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
@@ -31,7 +31,20 @@ dirs = { workspace = true }
 clap = { workspace = true }
 async-trait = { workspace = true }
 tempfile = { workspace = true }
+sysinfo = "0.39"
 percent-encoding = "2"
+notify = "8"
+
+# A system tray over D-Bus on Linux (no GTK) or on its own thread on Windows, and
+# start at login. Without a desktop to show it, the tray never appears. macOS
+# draws a tray only on the main thread, which the server keeps for its runtime.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+rclone-manager-core = { path = "../core", default-features = false, features = ["updater", "tray-dbus", "autostart"] }
+open = "5"
+auto-launch = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
 
 [dev-dependencies]
 rcman = { workspace = true, features = ["json", "backup"] }

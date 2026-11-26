@@ -2,13 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Rclone SAF Storage Service</string>
-    <string name="saf_keepalive_text">Active background file stream in progress</string>
-    <string name="saf_keepalive_channel_name">Rclone Storage Service</string>
-    <string name="saf_keepalive_channel_desc">Keeps Rclone process active during external SAF file streaming</string>
+    <string name="saf_keepalive_text">Files are open in another app</string>
+    <string name="saf_upload_text">Uploading files saved in another app</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Running in background</string>
-    <string name="keepalive_stopped_text">Background service was stopped by Android. Tap to resume.</string>
+    <string name="keepalive_locked_text">Vault locked. Tap to unlock.</string>
     <string name="keepalive_channel_name">RClone Background Service</string>
     <string name="keepalive_channel_desc">Maintains active mounts, transfers, and background tasks</string>
     <string name="shortcut_file_manager_short">File Manager</string>
@@ -21,4 +19,14 @@
     <string name="quit_confirm_title">Quit RClone Manager?</string>
     <string name="quit_confirm_message">Running transfers, mounts and servers will be stopped.</string>
     <string name="alerts_channel_name">Notifications</string>
+    <string name="app_closed_title">The app was closed in the background</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="one">%d job was interrupted.</item>
+        <item quantity="other">%d jobs were interrupted.</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="one">%d server was stopped.</item>
+        <item quantity="other">%d servers were stopped.</item>
+    </plurals>
+    <string name="autostart_restarts">Servers set to start automatically start again with the app.</string>
 </resources>

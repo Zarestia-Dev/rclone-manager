@@ -4,53 +4,35 @@ import {
   computed,
   inject,
   input,
-  linkedSignal,
   model,
+  signal,
 } from '@angular/core';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-import {
-  JobInfo,
-  JobStatItem,
-  OPERATION_TONE,
-  Origin,
-  PillTone,
-  JOB_ICON_MAP,
-  getExecutionOrigin,
-  getStarterOrigin,
-  matchesOriginFilter,
-  ORIGIN_META,
-} from '@app/types';
+import { JobStatItem, JOB_STATUS, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import {
   FormatEtaPipe,
   FormatFileSizePipe,
   FormatRateValuePipe,
   FormatNumberPipe,
-  FormatTimePipe,
 } from '@app/pipes';
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
-import { ModalService } from '../../../services/ui/modal.service';
+import { LocalStorageService } from '../../../services/ui/state/local-storage.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
+import { OriginFilterService } from '../../../services/ui/state/origin-filter.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
-import { StarterPillComponent } from '../../components/starter-pill/starter-pill.component';
+import { JobsPanelComponent } from '../../detail-shared/jobs-panel/jobs-panel.component';
 
 import { PillDirective } from '../../directives/pill.directive';
-export interface RunningJobViewModel {
-  job: JobInfo;
-  typeIcon: string;
-  typeTone: PillTone;
-  animationClass: string;
-  label: string;
-  /** The origin to name next to the job; none when its Quick Run or workflow already names it. */
-  origin: { labelKey: string; tone: PillTone } | null;
-  progressPercentage: number;
-}
+
+/** How many finished jobs the panel lists; the backend keeps many more. */
+const RECENT_JOBS_SHOWN = 50;
+const RECENT_OPEN_KEY = 'jobsOverview.recentOpen';
 
 @Component({
   selector: 'app-jobs-overview-panel',
@@ -60,46 +42,74 @@ export interface RunningJobViewModel {
     FormatNumberPipe,
     MatExpansionModule,
     MatIconModule,
-    MatButtonModule,
     MatProgressBarModule,
     TranslatePipe,
     FormatEtaPipe,
-    FormatTimePipe,
     FormatFileSizePipe,
     FormatRateValuePipe,
     CopyToClipboardDirective,
     AlertBannerComponent,
     OriginFilterBarComponent,
-    StarterPillComponent,
     PillDirective,
+    JobsPanelComponent,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],
 })
 export class JobsOverviewPanelComponent {
+  /** The colour role of the panel's icon and count pill. */
+  protected readonly tone = PANEL_TONE.jobs;
   readonly expanded = model<boolean>(false);
 
-  readonly defaultOriginFilter = input<Origin | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
 
   private readonly jobService = inject(JobManagementService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
-  private readonly modalService = inject(ModalService);
-  private readonly translate = inject(TranslateService);
+  private readonly localStorage = inject(LocalStorageService);
 
-  readonly selectedOriginFilter = linkedSignal<string>(() => this.defaultOriginFilter());
+  protected readonly originFilters = inject(OriginFilterService);
+
+  /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
+  readonly selectedOriginFilter = computed(() =>
+    this.showFilterChips() ? this.originFilters.get('jobs') : 'all'
+  );
 
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly isLoadingStats = this.rcloneStatusService.isLoading;
 
+  private readonly allRunningJobs = computed(() =>
+    this.jobService.jobs().filter(j => j.status === JOB_STATUS.Running && !j.parent_job_id)
+  );
+
   readonly runningJobs = computed(() => {
+    const filter = this.selectedOriginFilter();
+    return this.allRunningJobs().filter(j => matchesOriginFilter(j, filter));
+  });
+
+  /** Every running job, whatever the chip: the header counts what runs, not what the chip shows. */
+  readonly activeJobsCount = computed(() => this.allRunningJobs().length);
+
+  /** Running jobs the origin chip hides. */
+  readonly hiddenCount = computed(() => this.activeJobsCount() - this.runningJobs().length);
+
+  /** The latest finished jobs of every remote and local disk, newest first like the job list. */
+  readonly recentJobs = computed(() => {
     const filter = this.selectedOriginFilter();
     return this.jobService
       .jobs()
-      .filter(j => j.status === 'Running' && !j.parent_job_id && matchesOriginFilter(j, filter));
+      .filter(
+        j => j.status !== JOB_STATUS.Running && !j.parent_job_id && matchesOriginFilter(j, filter)
+      )
+      .slice(0, RECENT_JOBS_SHOWN);
   });
 
-  readonly activeJobsCount = computed(() => this.runningJobs().length);
+  /** Finished jobs stay folded away until the user opens them; the choice is remembered. */
+  readonly recentOpen = signal(this.localStorage.get(RECENT_OPEN_KEY, false));
+
+  setRecentOpen(open: boolean): void {
+    this.recentOpen.set(open);
+    this.localStorage.set(RECENT_OPEN_KEY, open);
+  }
 
   readonly jobCompletionPercentage = computed(() => {
     const { totalBytes = 0, bytes = 0 } = this.jobStats();
@@ -121,52 +131,11 @@ export class JobsOverviewPanelComponent {
     ];
   });
 
-  readonly runningJobViewModels = computed<RunningJobViewModel[]>(() =>
-    this.runningJobs().map(job => {
-      const stats = job.stats;
-      const progressPercentage =
-        stats && stats.totalBytes > 0 ? Math.min(100, (stats.bytes / stats.totalBytes) * 100) : 0;
-      return {
-        job,
-        typeIcon: this.getJobTypeIcon(job),
-        typeTone: this.getJobTone(job),
-        animationClass: this.getJobAnimationClass(job),
-        label: this.getJobLabel(job),
-        origin: getStarterOrigin(job) ? null : ORIGIN_META[getExecutionOrigin(job)],
-        progressPercentage,
-      };
-    })
-  );
-
-  getJobTypeIcon(job: JobInfo): string {
-    return JOB_ICON_MAP[job.job_type] ?? 'folder';
-  }
-
-  /** The colour of the job's operation, from the operation registry; accent for any other job. */
-  getJobTone(job: JobInfo): PillTone {
-    return OPERATION_TONE[job.job_type] ?? 'accent';
-  }
-
-  getJobAnimationClass(job: JobInfo): string {
-    return job.job_type === 'sync' || job.job_type === 'bisync' ? 'animate-spin' : '';
-  }
-
-  getJobLabel(job: JobInfo): string {
-    const key = `dashboard.appDetail.${job.job_type}`;
-    const translated = this.translate.instant(key);
-    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
-  }
-
-  onJobRowClick(job: JobInfo): void {
-    this.modalService.openJobDetail(job);
-  }
-
-  async onStopJobClick(job: JobInfo, event: MouseEvent): Promise<void> {
-    event.stopPropagation();
+  async onDeleteJob(jobid: number): Promise<void> {
     try {
-      await this.jobService.stopJob(job.jobid, job.remote_name);
+      await this.jobService.deleteJob(jobid);
     } catch (error) {
-      console.error('Failed to stop job:', error);
+      console.error('Failed to delete job:', error);
     }
   }
 }

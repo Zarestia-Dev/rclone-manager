@@ -141,6 +141,8 @@ mod tests {
         copy_in_chunks(&mut source, staged.writer(), |_| Ok(()))
             .await
             .unwrap();
+        // The download closes its reader before it commits; Windows cannot replace an open file.
+        drop(source);
         staged.commit(&destination).await.unwrap();
         assert_eq!(
             tokio::fs::read(destination).await.unwrap(),

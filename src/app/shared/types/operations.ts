@@ -13,6 +13,7 @@ export type FileOperationType =
   | 'delete'
   | 'rename'
   | 'upload'
+  | 'download'
   | 'copyurl'
   | 'cleanup'
   | 'rmdirs'
@@ -213,6 +214,7 @@ export const TRANSFER_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobAction
   ...CORE_SYNC_OPS,
   'bisync',
   'upload',
+  'download',
   'copyurl',
   'archivecreate',
   'archiveextract',

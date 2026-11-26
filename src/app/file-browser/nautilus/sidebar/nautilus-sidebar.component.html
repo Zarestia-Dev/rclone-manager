@@ -112,7 +112,6 @@
               remote: drive,
               icon: 'hard-drive',
               label: drive.label,
-              sub: drive.showName ? drive.name : null,
             }"
           ></ng-container>
         }
@@ -129,19 +128,16 @@
               remote: remote,
               icon: iconService.getIconName(remote.type),
               label: remote.label,
-              sub: null,
             }"
           ></ng-container>
         }
       }
     </nav>
   </div>
-
-  <app-operations-panel></app-operations-panel>
 </div>
 
 <!-- Remote item template -->
-<ng-template #remoteItem let-remote="remote" let-icon="icon" let-label="label" let-sub="sub">
+<ng-template #remoteItem let-remote="remote" let-icon="icon" let-label="label">
   <button
     class="sidebar-item"
     [attr.data-sidebar-remote-name]="remote.name"
@@ -160,9 +156,6 @@
     <mat-icon [svgIcon]="icon"></mat-icon>
     <span class="item-label">
       {{ label | translate }}
-      @if (sub) {
-        <em>({{ sub }})</em>
-      }
     </span>
   </button>
 </ng-template>
@@ -189,6 +182,9 @@
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="onConfigureSidebar()">
       <span class="item-label">{{ 'nautilus.sidebar.configureTitle' | translate }}</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="requestPreferences.emit()">
+      <span class="item-label">{{ 'modals.preferences.fileBrowserTitle' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestShortcuts.emit()">

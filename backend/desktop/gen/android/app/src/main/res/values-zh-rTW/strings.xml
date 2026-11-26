@@ -2,12 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Rclone SAF 儲存服務</string>
-    <string name="saf_keepalive_text">背景檔案串流傳輸進行中</string>
-    <string name="saf_keepalive_channel_name">Rclone 儲存服務</string>
+    <string name="saf_keepalive_text">檔案正在其他應用程式中開啟</string>
+    <string name="saf_upload_text">正在上傳在其他應用程式中儲存的檔案</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">正在後台執行</string>
-    <string name="keepalive_stopped_text">Android 已停止背景服務。輕觸即可恢復。</string>
+    <string name="keepalive_locked_text">保存庫已鎖定。輕觸即可解鎖。</string>
     <string name="keepalive_channel_name">RClone 後台服務</string>
     <string name="keepalive_channel_desc">保持作用中掛載、傳輸與後台任務執行</string>
     <string name="shortcut_file_manager_short">檔案</string>
@@ -20,4 +19,12 @@
     <string name="quit_confirm_title">結束 RClone Manager？</string>
     <string name="quit_confirm_message">正在執行的傳輸、掛載和伺服器將被停止。</string>
     <string name="alerts_channel_name">通知</string>
+    <string name="app_closed_title">應用程式在背景被關閉</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="other">%d 個任務已中斷。</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="other">%d 個服務已停止。</item>
+    </plurals>
+    <string name="autostart_restarts">設為自動啟動的服務會隨應用程式重新啟動。</string>
 </resources>

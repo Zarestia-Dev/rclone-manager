@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/rclone/rclone/cmd/bisync"
-	"github.com/rclone/rclone/fs/config"
 	"github.com/rclone/rclone/fs/rc"
 )
 
@@ -22,6 +21,7 @@ func TestVfsEndpointsRegistration(t *testing.T) {
 		"vfs/stream/write",
 		"vfs/stream/close",
 		"vfs/stream/forget",
+		"vfs/stream/busy",
 	}
 
 	for _, ep := range endpoints {
@@ -313,19 +313,19 @@ func TestBisyncWorkdirWrapper(t *testing.T) {
 		t.Fatal("expected sync/bisync call to be registered in rc")
 	}
 
-	// Verify wrapper corrects workdir when missing or pointing to /data/local/tmp
-	in := rc.Params{
-		"workdir": "/data/local/tmp/rclone/bisync",
-	}
-	ensureWritableCacheDir()
-	if workdir, _ := in.GetString("workdir"); workdir == "" || workdir == "/data/local/tmp/rclone/bisync" {
-		cache := config.GetCacheDir()
-		if cache != "" {
-			in["workdir"] = filepath.Join(cache, "bisync")
+	// A saved default under /data/local/tmp and a missing workdir both move to the cache.
+	for _, in := range []rc.Params{{"workdir": "/data/local/tmp/rclone/bisync"}, {}} {
+		fixBisyncWorkdir(in)
+		if in["workdir"] != expectedWorkdir {
+			t.Errorf("expected workdir %q, got %v", expectedWorkdir, in["workdir"])
 		}
 	}
-	if in["workdir"] != expectedWorkdir {
-		t.Errorf("expected workdir %q, got %v", expectedWorkdir, in["workdir"])
+
+	// A workdir the user chose stays.
+	chosen := rc.Params{"workdir": "/storage/emulated/0/bisync"}
+	fixBisyncWorkdir(chosen)
+	if chosen["workdir"] != "/storage/emulated/0/bisync" {
+		t.Errorf("expected the chosen workdir to stay, got %v", chosen["workdir"])
 	}
 }
 
@@ -426,5 +426,57 @@ func TestVfsStreamListSeesRemoteChangesWithoutPolling(t *testing.T) {
 	}
 	if !names("sub")["inner.txt"] {
 		t.Error("subdirectory listing is stale")
+	}
+}
+
+func vfsBusy(t *testing.T) bool {
+	t.Helper()
+	res, err := rcVfsBusy(context.Background(), rc.Params{})
+	if err != nil {
+		t.Fatalf("rcVfsBusy failed: %v", err)
+	}
+	busy, ok := res["busy"].(bool)
+	if !ok {
+		t.Fatalf("expected a bool busy flag, got %v", res["busy"])
+	}
+	return busy
+}
+
+func TestVfsBusyUntilWriteBackUploaded(t *testing.T) {
+	tmpDir := t.TempDir()
+	openRes, err := rcVfsOpen(context.Background(), rc.Params{
+		"fs":     tmpDir,
+		"remote": "pending_upload.txt",
+		"mode":   "w",
+	})
+	if err != nil {
+		t.Fatalf("rcVfsOpen write failed: %v", err)
+	}
+	handleID := openRes["handle_id"].(int64)
+	if _, err := rcVfsWrite(context.Background(), rc.Params{
+		"handle_id": handleID,
+		"offset":    int64(0),
+		"data":      base64.StdEncoding.EncodeToString([]byte("uploaded after close")),
+	}); err != nil {
+		t.Fatalf("rcVfsWrite failed: %v", err)
+	}
+	if _, err := rcVfsClose(context.Background(), rc.Params{"handle_id": handleID}); err != nil {
+		t.Fatalf("rcVfsClose failed: %v", err)
+	}
+
+	// The write-back delay holds the closed file in the queue.
+	if !vfsBusy(t) {
+		t.Fatal("expected the VFS to be busy with the closed file")
+	}
+
+	deadline := time.Now().Add(30 * time.Second)
+	for vfsBusy(t) {
+		if time.Now().After(deadline) {
+			t.Fatal("uploads still pending after 30 seconds")
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "pending_upload.txt")); err != nil {
+		t.Fatalf("expected the file to be uploaded: %v", err)
 	}
 }

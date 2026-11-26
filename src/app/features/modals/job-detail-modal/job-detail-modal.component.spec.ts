@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
-import { signal } from '@angular/core';
+import { computed, Signal, signal } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { JobDetailModalComponent } from './job-detail-modal.component';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -21,9 +21,11 @@ describe('JobDetailModalComponent', () => {
   let jobManagementSpy: {
     jobs: ReturnType<typeof signal<JobInfo[]>>;
     deleteJob: ReturnType<typeof vi.fn>;
+    retryJob: ReturnType<typeof vi.fn>;
     resetGroupStats: ReturnType<typeof vi.fn>;
     getJob: ReturnType<typeof vi.fn>;
     getJobReport: ReturnType<typeof vi.fn>;
+    detailedStats: (job: () => JobInfo | null) => Signal<JobInfo['stats'] | null>;
   };
   let fileSystemSpy: {
     openInFiles: ReturnType<typeof vi.fn>;
@@ -94,9 +96,12 @@ describe('JobDetailModalComponent', () => {
     jobManagementSpy = {
       jobs: signal([mockJob]),
       deleteJob: vi.fn().mockResolvedValue(undefined),
+      retryJob: vi.fn().mockResolvedValue(43),
       resetGroupStats: vi.fn().mockResolvedValue(undefined),
       getJob: vi.fn().mockReturnValue(mockJob),
       getJobReport: vi.fn().mockResolvedValue(null),
+      detailedStats: (job: () => JobInfo | null): Signal<JobInfo['stats'] | null> =>
+        computed(() => job()?.stats ?? null),
     };
     fileSystemSpy = {
       openInFiles: vi.fn().mockResolvedValue(undefined),
@@ -182,6 +187,28 @@ describe('JobDetailModalComponent', () => {
   it('should delete job and close dialog on onDeleteJob', async () => {
     await component.onDeleteJob();
     expect(jobManagementSpy.deleteJob).toHaveBeenCalledWith(42);
+    expect(dialogRefSpy.close).toHaveBeenCalled();
+  });
+
+  it('offers to retry only a failed or stopped job the backend can still run again', async () => {
+    // The real service reads its job list, so the modal follows the job as it changes.
+    jobManagementSpy.getJob.mockImplementation(() => jobManagementSpy.jobs()[0]);
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    const retryButton = (): HTMLButtonElement | null =>
+      fixture.nativeElement.querySelector('footer button');
+    const show = (job: JobInfo): void => {
+      jobManagementSpy.jobs.set([job]);
+      fixture.detectChanges();
+    };
+    show({ ...mockJob, status: 'Failed' });
+    expect(retryButton()).toBeNull();
+    show({ ...mockJob, status: 'Completed', retryable: true });
+    expect(retryButton()).toBeNull();
+
+    show({ ...mockJob, status: 'Stopped', retryable: true });
+    retryButton()?.click();
+    await fixture.whenStable();
+    expect(jobManagementSpy.retryJob).toHaveBeenCalledExactlyOnceWith(42);
     expect(dialogRefSpy.close).toHaveBeenCalled();
   });
 

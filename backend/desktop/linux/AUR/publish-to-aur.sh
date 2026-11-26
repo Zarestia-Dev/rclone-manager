@@ -4,8 +4,11 @@
 # Packages (PKGBUILD templates live next to this script):
 #   rclone-manager           PKGBUILD           desktop .deb from the v<version> release
 #   rclone-manager-git       PKGBUILD-git       built from source, follows the stable version
-#   rclone-manager-headless  PKGBUILD-headless  server + tray .deb from the headless-v<version> release
-#   rclone-manager-server    PKGBUILD-server    pure server zip (no GTK/WebKit) from headless-v<version>
+#   rclone-manager-server    PKGBUILD-server    server Arch package from the headless-v<version> release
+#
+# rclone-manager-server replaced rclone-manager-headless, the RClone Manager Headless
+# app (0.3.6 and older). Releases up to headless-v0.3.6 have no RClone.Manager.Server
+# Arch package, so the package waits for the first release that has one.
 #
 # For every package it finds the newest stable GitHub release, takes the asset sha256 sums
 # from the release, rewrites a copy of the template, regenerates .SRCINFO and pushes to the AUR
@@ -305,7 +308,7 @@ main() {
     fetch_releases || exit 1
     LATEST_STABLE_VERSION=$(latest_release "v" | cut -d' ' -f2)
 
-    local packages=(rclone-manager rclone-manager-git rclone-manager-headless rclone-manager-server)
+    local packages=(rclone-manager rclone-manager-git rclone-manager-server)
     local failed=() name rc
     for name in "${packages[@]}"; do
         if [ ${#ONLY[@]} -gt 0 ] && [[ ! " ${ONLY[*]} " == *" $name "* ]]; then continue; fi
@@ -317,12 +320,9 @@ main() {
                     'RClone.Manager_%s_amd64.deb' 'RClone.Manager_%s_arm64.deb' || rc=$? ;;
             rclone-manager-git)
                 stage_git_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-git" || rc=$? ;;
-            rclone-manager-headless)
-                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-headless" "headless-v" \
-                    'RClone.Manager.Headless_%s_amd64.deb' 'RClone.Manager.Headless_%s_arm64.deb' || rc=$? ;;
             rclone-manager-server)
                 stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-server" "headless-v" \
-                    'server-linux-x86_64-%s.zip' 'server-linux-aarch64-%s.zip' || rc=$? ;;
+                    'RClone.Manager.Server-%s-1-x86_64.pkg.tar.zst' 'RClone.Manager.Server-%s-1-aarch64.pkg.tar.zst' || rc=$? ;;
         esac
         [ "$rc" = 2 ] && continue   # release not ready, retry on the next run
         if [ "$rc" != 0 ] || ! publish_package "$name"; then failed+=("$name"); fi

@@ -48,16 +48,14 @@
     "unknown": "不明",
     "notAvailable": "該当なし",
     "unlimited": "無制限",
-    "limitedTo": "{{rate}} に制限",
-    "none": "なし",
-    "add": "追加",
-    "select": "選択"
+    "limitedTo": "{{rate}} に制限"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "空のディレクトリ",
       "nonEmpty": "ファイルが存在します",
-      "colliding": "{{details}} で使用中",
+      "collidingProfile": "{{remote}} のプロファイル「{{name}}」が使用中",
+      "collidingQuickRun": "クイック実行「{{name}}」が使用中",
       "willCreate": "リモート作成後にフォルダが作成されます",
       "checking": "パスを確認中...",
       "notDirectory": "このパスはファイルを指しています。フォルダーを選択してください。",
@@ -72,10 +70,8 @@
     "sizeSuffix": "サイズ形式が無効です。使用例: 100Ki, 16Mi, 1Gi, または \"off\"",
     "tristate": "値は true、false、または未設定である必要があります",
     "time": "日時形式が無効です。ISO 8601 形式を使用してください: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "リストを空白のみにすることはできません",
     "bwTimetable": "帯域幅の形式が無効です",
     "fileMode": "8進数形式（0〜7の3〜4桁）である必要があります。例: 755",
-    "enum": "次のいずれかである必要があります: {{values}}",
     "urlArray": "全てのURLは有効で、http:// または https:// で始まる必要があります",
     "bandwidth": "帯域幅の形式が無効です。使用例: 10M, 1G, 100K またはその組み合わせ",
     "passwordMismatch": "パスワードが一致しません",
@@ -84,10 +80,6 @@
       "invalidStart": "リモート名の先頭にハイフンやスペースを使用することはできません",
       "invalidEnd": "リモート名の末尾にスペースを使用することはできません",
       "nameTaken": "このリモート名は既に使用されています"
-    },
-    "password": {
-      "minLength": "パスワードは3文字以上である必要があります",
-      "invalidChars": "パスワードに引用符を含めることはできません"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "URLコピー 実行中",
     "archivecreateActive": "圧縮 実行中",
     "archivecreating": "圧縮中",
-    "syncSummary": "同期中 ({{count}})",
     "toggleSync": "クイックアクションとして同期を切り替え",
     "toggleCopy": "クイックアクションとしてコピーを切り替え",
     "toggleMove": "クイックアクションとして移動を切り替え",
@@ -134,7 +125,6 @@
     "serving": "公開中",
     "servingWithProfile": "公開中 ({{profile}}): {{addr}} 上の {{type}}",
     "servingMultiple": "公開サーバー ({{count}}): {{profiles}}",
-    "serveSummary": "公開中 ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "クイックアクションとして公開を切り替え",
     "successStart": "{{remote}} ({{profile}}) の {{addr}} での公開サーバーを開始しました",
@@ -161,24 +151,54 @@
       "stop": "実行中の処理を停止"
     },
     "nextRun": {
-      "disabled": "自動化は無効です",
       "stopping": "現在の実行完了後に無効化します",
       "notScheduled": "スケジュールされていません"
     },
-    "lastRun": {
-      "never": "実行履歴なし"
-    },
     "monitoring": {
-      "realtime": "リアルタイム監視",
-      "debounce": "デバウンス遅延",
       "watcherActive": "監視中",
       "watchedFolder": "監視フォルダー",
-      "seconds": "秒",
-      "realtimeSchedule": "リアルタイムファイル監視",
-      "changedOnlyShort": "サブディレクトリのみ",
-      "changedOnlyActive": "サブディレクトリのみ",
-      "syncScope": "同期スコープ",
-      "realtimeChangedOnly": "リアルタイム監視（サブディレクトリのみ）"
+      "changedOnlyShort": "サブディレクトリのみ"
+    },
+    "startup": {
+      "badge": "起動時",
+      "startsIn": {
+        "other": "{{count}} 秒後に開始"
+      },
+      "delay": {
+        "other": "{{count}} 秒後"
+      },
+      "immediately": "アプリの起動と同時"
+    },
+    "card": {
+      "waiting": "待機中",
+      "started": "{{time}}に開始",
+      "lastTry": "最終試行: {{time}}",
+      "nextRun": "次回実行: {{time}}",
+      "lastRun": "前回実行: {{time}}",
+      "neverRun": "未実行",
+      "notStarted": "まだ開始していません",
+      "watching": {
+        "other": "監視中 · {{count}} 秒"
+      },
+      "startupAfter": {
+        "other": "起動時 · {{count}} 秒後"
+      },
+      "lastFailed": "前回の実行は失敗しました",
+      "whenItRuns": "実行タイミング",
+      "onChange": "ファイルの変更時",
+      "waitsAfterChange": {
+        "other": "最後の変更から {{count}} 秒待機"
+      },
+      "folders": {
+        "other": "{{count}} フォルダー"
+      },
+      "onAppStart": "アプリの起動時",
+      "lastStart": "前回の起動",
+      "servingAt": "{{address}} で提供中",
+      "notServing": "停止中",
+      "source": "転送元",
+      "sources": "転送元",
+      "destination": "転送先"
     }
   },
   "actions": {
@@ -253,7 +273,8 @@
       },
       "actions": {
         "stop": "ジョブを停止",
-        "delete": "ジョブを削除"
+        "delete": "ジョブを削除",
+        "retry": "ジョブを再試行"
       },
       "empty": "ジョブが見つかりません"
     },
@@ -276,11 +297,8 @@
     "cancelled": "Rcloneアップデートのダウンロードがキャンセルされました。",
     "cancelFailed": "Rcloneアップデートのダウンロードのキャンセルに失敗しました。",
     "failed": "アップデートに失敗しました: {{error}}",
-    "channelChanged": "Rcloneアップデートチャンネルが {{channel}} に変更されました",
     "skipped": "Rclone バージョン {{version}} をスキップしました",
-    "restored": "Rclone バージョン {{version}} を元に戻しました",
-    "autoCheckEnabled": "Rcloneの自動アップデートチェックが有効になりました",
-    "autoCheckDisabled": "Rcloneの自動アップデートチェックが無効になりました"
+    "restored": "Rclone バージョン {{version}} を元に戻しました"
   },
   "alerts": {
     "title": "アラートと通知",
@@ -633,13 +651,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "スター付きアイテム",
-        "description": "ファイルブラウザでスターが付いたファイルおよびフォルダのリスト。"
+      "layout": {
+        "label": "レイアウト",
+        "description": "ファイルブラウザでのファイルの表示方法です。グリッドのアイコンまたはリストの行で表示します。ファイルブラウザのレイアウトボタンでも変更できます。",
+        "options": {
+          "grid": "グリッド",
+          "list": "リスト"
+        }
       },
-      "bookmarks": {
-        "label": "ブックマーク",
-        "description": "素早くアクセスするためのブックマーク場所のリスト。"
+      "sort": {
+        "label": "並べ替え",
+        "description": "ファイルブラウザでのファイルの並び順です。「表示オプション」の「並べ替え」でも変更できます。"
+      },
+      "show_hidden": {
+        "label": "隠しファイルを表示",
+        "description": "名前がドットで始まるファイルとフォルダーを表示します。"
+      },
+      "upload_request_mib": {
+        "label": "アップロード リクエストの最大サイズ (MiB)",
+        "description": "Web インターフェースからのアップロードは、このサイズを超えないリクエストで送信されます。サーバーの前にリバース プロキシがある場合は、そのリクエスト上限に合わせてください (nginx は client_max_body_size を引き上げない限り 1 MiB まで受け付けます)。プロキシがリクエストを拒否した場合は、より小さいリクエストが自動的に試されます。値を大きくすると、高速でも遅延の大きい接続で、1 つの大きなファイルを速くアップロードできることがあります。"
+      },
+      "parallel_uploads": {
+        "label": "同時にアップロードするファイル数",
+        "description": "Web インターフェースがサーバーへ同時に送信するファイルの数です。低速な接続では少なめが適しています。"
+      },
+      "ask_transfer_options": {
+        "label": "転送ごとにオプションを確認",
+        "description": "アップロード、または別のリモートへのコピーや移動の前に、転送オプションを表示します。既定の転送オプションが入力済みで、テンプレートを読み込むこともできます。"
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "マスコットを表示",
+        "description": "メインウィンドウの隅に、マスコットのティア（Tia）を表示します。初期設定では非表示です。"
+      },
+      "after_remote": {
+        "label": "クラウドを追加したあとにセットアップウィザードを表示",
+        "description": "新しいクラウドの追加が終わると、「何をしたいですか？」ウィザードを開きます。"
+      },
+      "destination": {
+        "label": "セットアップウィザードの保存先",
+        "description": "「自動」は既定の起動ビューに従います。メインメニューではクラウドのページにプロファイルを、それ以外のビューでは Quick Run を保存します。",
+        "options": {
+          "auto": "自動",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "クラウドのプロファイル (メインメニュー)"
+        }
       }
     }
   },
@@ -744,7 +801,8 @@
       "shortcuts": "キーボードショートカット",
       "about": "RClone Manager について",
       "quickRemote": "クイックリモート作成",
-      "detailedRemote": "詳細リモート作成"
+      "detailedRemote": "詳細リモート作成",
+      "wizard": "ウィザード"
     }
   },
   "onboarding": {
@@ -851,8 +909,7 @@
       "destination": "宛先",
       "openViewer": "ビューアで開く",
       "openViewerTooltip": "全画面メディアプレビューを開く",
-      "inferredFromUrl": "URLから推測",
-      "imageAlt": "プレビュー"
+      "inferredFromUrl": "URLから推測"
     },
     "installationOptions": {
       "tabs": {
@@ -918,14 +975,7 @@
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み",
-        "file": "ファイル",
-        "direction": "方向",
-        "took": "所要時間",
-        "when": "日時",
-        "progress": "進捗",
-        "speed": "速度",
-        "eta": "残り時間"
+        "transferred": "転送済み"
       },
       "status": {
         "failed": "失敗",
@@ -1283,8 +1333,7 @@
       "unknownWarning": {
         "other": "{{count}} 件の不明なオプション: {{keys}}。これらはrcloneによって無視される可能性があります。"
       },
-      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。",
-      "fieldsOverview": "設定フィールドの概要"
+      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。"
     },
     "passwordManager": {
       "placeholder": "rclone設定のパスワードを入力",
@@ -1367,8 +1416,7 @@
       "applyToTask": "タスクに適用",
       "appliedToast": {
         "other": "{{count}} 件の設定を正常にインポートしました"
-      },
-      "profileNamePlaceholder": "例: daily-backup"
+      }
     },
     "obscure": {
       "title": "パスワードの難読化",
@@ -1510,8 +1558,8 @@
       "mountDiskName": "ドライブ名（任意）",
       "mountNetworkName": "ネットワーク名（任意）",
       "mountAutomaticName": "自動で設定",
-      "mountLocalDriveHint": "通常はローカルディスクを選びます。アプリで問題が起きる場合はネットワークドライブを試してください。",
-      "mountNetworkDriveHint": "Windows ではネットワークドライブとして表示されます。ストレージは変わりません。",
+      "mountLocalDriveHint": "Windows は固定ディスクとして扱い、ファイルのプレビューを作成することがあります。アプリがネットワークドライブで動作しない場合に選んでください。",
+      "mountNetworkDriveHint": "Windows はネットワークドライブとして扱います。エクスプローラーではプレビューの代わりにアイコンが表示されるため、クラウドストレージに向いています。",
       "mountDriveTarget": "ドライブ",
       "mountFolderPathRequired": "新しいサブフォルダーの完全なパスを入力してください。",
       "mountFolderQuotesRemoved": "パスを囲む引用符を削除しました。",
@@ -1519,19 +1567,25 @@
       "mountLocalDrive": "ローカルディスク",
       "mountNetworkDrive": "ネットワークドライブ",
       "mountDriveOccupied": "使用中",
+      "mountDriveOccupiedHint": "{{letter}} は現在使用中です。マウント時に空いていなければマウントできません。",
+      "mountNoFreeLetter": "空いているドライブ文字がありません。文字を使わずにマウントするには「フォルダー」を選んでください。",
       "mountDriveCurrent": "現在の割り当て",
       "mountDriveChecking": "ドライブ文字を確認中…",
       "mountUseParent": "親フォルダーとして使用",
-      "mountDriveSuggestion": "推奨ドライブ: {{letter}}。毎回同じ文字を使うには、一覧から選択してください。",
       "mountAutomaticDriveHint": "マウント時に空いているドライブ文字が選択されます。",
       "mountDriveReserved": "別のプロファイルで予約済み",
       "mountDriveLetter": "ドライブ文字",
+      "mountExplorerPreview": "エクスプローラーでの表示名",
       "mountParentFolder": "親フォルダーを選択",
       "mountFolderHint": "フォルダーへのマウントにはローカルディスクを使用します。親フォルダーと、まだ存在しないフォルダー名を指定してください。",
       "mountDriveLettersUnavailable": "ドライブ文字を確認できませんでした。もう一度お試しください。",
       "mountFolderLocalDrive": "ローカルドライブ上のフォルダーを選択してください。",
       "mountFolderAlreadyExists": "マウント先のフォルダーは既に存在します。新しい名前を使用してください。",
       "multiSourceOneWayInfo": "複数の転送元パスが検出されました。rcloneが各転送元を転送先に対して確実に検証できるように、片方向の検証（ワンウェイチェック）が自動的に有効になりました。",
+      "multiSourceSyncInfo": "転送元はひとつのフォルダーとして同期されます。転送先には、いずれかの転送元にあるファイルがすべて残ります。同じパスが複数の転送元にある場合は、リストで先にある転送元のファイルが使われます。ただし「高速リスト取得 (Fast List)」が有効な場合、これは保証されません。転送元と転送先が同じリモートにあっても、サーバーサイドコピーは使われません。",
+      "multiSourceCopyInfo": "転送元はリストの最後のものから順に、ひとつずつコピーされます。同じパスが複数の転送元にある場合、転送先にはリストで先にある転送元のファイルが残ります。いずれかの転送元が失敗すると、まだ順番が来ていない転送元はコピーされません。",
+      "multiSourceMoveInfo": "転送元はリストの最後のものから順に、ひとつずつ移動されます。同じパスが複数の転送元にある場合、転送先にはリストで先にある転送元のファイルが残り、ほかのバージョンは削除されます。残しておくには「バックアップ用ディレクトリ」を設定してください。いずれかの転送元が失敗すると、まだ順番が来ていない転送元は移動されません。",
+      "multiSourceSyncChangedOnlyNote": "転送元が複数ある場合、変更があるたびにすべての転送元が全体同期されます。「変更されたサブディレクトリのみ同期」は適用されません。",
       "enableAutoStart": "起動時に自動{{type}}を有効化",
       "autoStartDelay": "起動遅延",
       "autoStartDelayHint": "アプリの起動後、実行を開始するまでの待機時間。ネットワークやVPN、他のマウントが未準備の場合に便利です。",
@@ -1762,9 +1816,7 @@
       "confirm": "適用",
       "cancel": "キャンセル"
     },
-    "restored": "アップデート {{version}} を元に戻しました",
-    "restoreFailed": "アップデートの復元に失敗しました",
-    "channelChanged": "更新チャンネルが {{channel}} に変更されました。"
+    "restored": "アップデート {{version}} を元に戻しました"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "この項目のリモートを解決できませんでした",
@@ -1872,22 +1924,22 @@
       "cancelled": "キャンセル済み",
       "cancelJob": "キャンセル",
       "removeJob": "削除",
-      "progress": "進捗",
-      "files": "ファイル",
-      "speed": "速度",
-      "eta": "残り時間",
-      "currentFile": "現在のファイル",
-      "currentFiles": "現在のファイル",
-      "details": {
-        "source": "転送元",
-        "destination": "転送先",
-        "startTime": "開始日時",
-        "uploadedFiles": "アップロードされたファイル",
-        "deletedFiles": "削除されたファイル",
-        "movedFiles": "移動されたファイル",
-        "copiedFiles": "コピーされたファイル",
-        "syncedFiles": "同期されたファイル",
-        "processedFiles": "処理されたファイル"
+      "clearFinished": "完了した項目を消去",
+      "openDestination": "保存先を開く",
+      "undo": "元に戻す",
+      "timeLeft": "残り {{time}}",
+      "failedOf": {
+        "other": "{{total}} 件中 {{count}} 件が失敗"
+      },
+      "itemsCount": {
+        "other": "{{count}} 個の項目"
+      },
+      "resumeUpload": "アップロードを再開",
+      "resumeWithFiles": "同じファイルを選択して再開",
+      "resumeWithFolder": "同じフォルダーを選択して再開",
+      "uploadPausedConnection": "一時停止中: サーバーとの接続が切れました",
+      "uploadPausedReselect": {
+        "other": "一時停止中: 再開するには {{count}} 個のファイルをもう一度選択してください"
       },
       "running": "実行中",
       "filesCount": {
@@ -1907,7 +1959,8 @@
         "upload": "アップロード",
         "archivecreate": "圧縮",
         "archiveextract": "アーカイブを展開",
-        "index": "ディレクトリ一覧"
+        "index": "ディレクトリ一覧",
+        "download": "ダウンロード"
       }
     },
     "fileViewer": {
@@ -1950,8 +2003,7 @@
       "zoomIn": "拡大",
       "zoomOut": "縮小",
       "resetZoom": "ズームをリセット",
-      "hexPreview": "16進プレビュー",
-      "playVideo": "動画プレーヤーで再生"
+      "hexPreview": "16進プレビュー"
     }
   },
   "dashboard": {
@@ -2006,6 +2058,11 @@
       "delete": "削除",
       "deleteDesc": "フィルタに一致するファイルを永久削除します",
       "copyurl": "URLコピー",
+      "upload": "アップロード",
+      "rename": "名前の変更",
+      "cleanup": "クリーンアップ",
+      "rmdirs": "空のディレクトリの削除",
+      "archiveextract": "アーカイブの展開",
       "copyUrlDesc": "ファイルの公開ダウンロードURLを生成します",
       "archivecreate": "圧縮",
       "archivecreateDesc": "フォルダ/ファイルをZip, Tarなどに圧縮します",
@@ -2040,28 +2097,19 @@
       "remoteSettings": "リモート設定",
       "indexSettings": "ディレクトリ一覧設定",
       "index": "ディレクトリ一覧",
-      "indexDesc": "静的ウェブサイト向けに閲覧用の一覧をフォルダーへ書き込みます"
+      "indexDesc": "静的ウェブサイト向けに閲覧用の一覧をフォルダーへ書き込みます",
+      "download": "ダウンロード"
     },
     "generalDetail": {
       "automations": "自動化",
-      "goToAutomation": "自動化 {{index}} に移動",
-      "schedule": "スケジュール",
-      "cronExpression": "Cron式:",
       "nextRunLabel": "次回実行:",
-      "lastRunLabel": "前回実行:",
       "statistics": "統計情報",
       "successful": "成功",
       "failedCount": "失敗",
       "stoppedCount": "停止",
       "totalRuns": "総実行回数",
       "paths": "パス",
-      "sourceLabel": "転送元:",
-      "destinationLabel": "転送先:",
-      "lastError": "最後のエラー",
-      "currentlyRunning": "現在実行中",
       "jobIdLabel": "ジョブID:",
-      "previousAutomationTooltip": "前の自動化",
-      "nextAutomationTooltip": "次の自動化",
       "remoteConfiguration": "リモート設定",
       "editConfiguration": "設定を編集",
       "remoteActionQuickSelection": "リモートアクションクイック選択"
@@ -2192,6 +2240,7 @@
       "skipVersion": "このバージョンをスキップ",
       "upToDate": "最新状態です",
       "latestVersionMsg": "最新バージョンを使用しています",
+      "statusUnknown": "アップデートの状態は不明です",
       "checkUpdates": "アップデートを確認",
       "checking": "確認中...",
       "updateSettings": "アップデート設定",
@@ -2208,11 +2257,9 @@
       "whatsNewRclone": "Rcloneの新機能・更新内容",
       "updateRclone": "Rcloneアップデートをダウンロード",
       "rcloneUpToDate": "Rcloneは最新状態です",
-      "checkRcloneUpdates": "Rcloneのアップデートを確認",
       "rcloneUpdateSettings": "Rcloneのアップデート設定",
       "skippedRcloneUpdates": "スキップされたRcloneアップデート",
       "devTeam": "開発チーム",
-      "leadDeveloper": "リードデベロッパー",
       "contributors": "コントリビューター",
       "acknowledgments": "謝辞",
       "ackText": "本アプリケーションはモダンなWeb技術で構築されており、クラウドストレージ管理のために優れた Rclone プロジェクトを利用しています。",
@@ -2223,6 +2270,7 @@
       "updateSettingFailed": "設定の更新に失敗しました",
       "channelStable": "安定版 (Stable)",
       "channelBeta": "ベータ版 (Beta)",
+      "channelDev": "開発版",
       "channelStableDesc": "ほとんどのユーザーに推奨",
       "channelBetaDesc": "最新機能（テスト用）",
       "downloadPage": "ダウンロードページ",
@@ -2294,6 +2342,7 @@
     },
     "preferences": {
       "title": "環境設定",
+      "fileBrowserTitle": "ファイルブラウザの環境設定",
       "searchResults": "検索結果",
       "searchPlaceholder": "設定を検索...",
       "resetAll": "全ての設定をリセット",
@@ -2322,6 +2371,7 @@
       "tabs": {
         "general": "一般",
         "core": "コア",
+        "nautilus": "ファイルブラウザ",
         "developer": "開発者向け",
         "vault": "ボルト"
       },
@@ -2822,6 +2872,423 @@
         "newLine": "改行",
         "clear": "クリア"
       }
+    },
+    "wizard": {
+      "title": "何をしたいですか？",
+      "stepOf": "ステップ {{current}} / {{total}}",
+      "loadFailed": "クラウドストレージを読み込めませんでした。",
+      "noRemotes": "先にクラウドストレージを追加してから、ここに戻ってください。",
+      "remoteLabel": "どのクラウド？",
+      "recommended": "おすすめ",
+      "applyFailed": "設定できませんでした。フォルダーを確認して、もう一度お試しください。",
+      "hello": {
+        "created": "{{remote}} の準備ができました！何をしますか？",
+        "default": "クラウドで何をしたいですか？",
+        "subtitle": "やりたいことを選ぶだけで大丈夫です。残りはこちらで設定し、確認するまで何も始まりません。",
+        "dontShow": "クラウドを追加したあとに開かない",
+        "dontShowHint": "わかりました。上の ⚙ ボタンからいつでも元に戻せます。"
+      },
+      "places": {
+        "thisDevice": "この端末",
+        "server": "サーバー",
+        "filesApp": "ファイルアプリ",
+        "tv": "テレビ・プレーヤー",
+        "device": "スマホ・PC",
+        "browser": "Webブラウザー",
+        "homeNetwork": "家庭内ネットワーク",
+        "automaticDrive": "空いているドライブ文字"
+      },
+      "goals": {
+        "access": {
+          "title": "クラウドをこの端末のフォルダーのように使う",
+          "description": "ネットワークドライブのように、ファイルがフォルダーに表示され、開いたときにダウンロードされます。",
+          "descriptionApp": "Windows の {{app}} アプリのように、ファイルがフォルダーに表示され、開いたときにダウンロードされます。",
+          "titlePhone": "スマートフォンのファイルアプリでクラウドを見る",
+          "descriptionPhone": "ほかのストレージと並んでクラウドが表示され、ファイルは開いたときにダウンロードされます。"
+        },
+        "backup": {
+          "title": "ファイルをクラウドにバックアップする",
+          "description": "この端末に何かあったときのために、フォルダーのコピーをクラウドに置いておきます。"
+        },
+        "devices": {
+          "title": "クラウドと同じコピーをこの端末にも置く",
+          "description": "インターネットがなくても使え、複数のデバイスで同じ状態を保てます。変更は双方向に反映されます。Obsidian や Logseq のノートに最適です。"
+        },
+        "download": {
+          "title": "クラウドのファイルをこの端末に取り込む",
+          "description": "フォルダーまたはすべてを、1回だけ、または常に最新でダウンロードします。"
+        },
+        "migrate": {
+          "title": "別のクラウドに乗り換える",
+          "description": "このクラウドのすべてを別のクラウドにコピーします。例: Google Drive から OneDrive へ。"
+        },
+        "share": {
+          "title": "テレビやスマホでファイルを開く",
+          "description": "家庭内ネットワークのテレビ、スマホ、PCからクラウドを使えるようにします。"
+        },
+        "explore": {
+          "title": "見るだけ・確認するだけ",
+          "description": "ファイルを閲覧したり、フォルダーがクラウドと一致しているか確認したりします。"
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "ここでファイルを削除したら、バックアップはどうしますか？"
+        },
+        "keepOld": {
+          "title": "古いクラウドにファイルを残しますか？"
+        },
+        "device": {
+          "title": "何でファイルを開きますか？"
+        },
+        "explore": {
+          "title": "何をしますか？"
+        }
+      },
+      "about": {
+        "title": "違いについて",
+        "deleted": {
+          "same": "どちらも、新しいファイルや変更したファイルがクラウドにコピーされます。フォルダー側は何も変更されません。",
+          "differ": "「クラウドに残す」：ここでファイルを削除しても、クラウドには残ります。「クラウドからも削除する」：クラウドは常にフォルダーと同じになるので、ここで削除したファイルはクラウドからもなくなります。"
+        },
+        "keepOld": {
+          "same": "どちらも、すべてが新しいクラウドにコピーされます。",
+          "differ": "「はい、残す」：古いクラウドはそのままです。「いいえ、移動する」：各ファイルが新しいクラウドに無事届くと、古いクラウドから削除されます。"
+        },
+        "device": {
+          "same": "どれを選んでも、クラウドが家庭内ネットワークの他の機器から使えるようになります。このアプリを開いている間だけ動作します。",
+          "differ": "ネットワークフォルダーは、Finder、エクスプローラー、ファイルアプリで普通のフォルダーのように開け、変更を許可することもできます。Webブラウザーでは、ファイルを見たりダウンロードしたりするだけです。テレビやプレーヤーは自動で見つけ、再生だけができます。"
+        },
+        "explore": {
+          "same": "どちらも、何も変更されません。",
+          "differ": "「ファイルを見る」：このアプリでクラウドを開いて見て回れます。「フォルダーをクラウドと比べる」：この端末のフォルダーとクラウドで、どのファイルが違うかを表示します。「クラウドを別のクラウドと比べる」：2つのクラウドで、どのファイルが違うかを表示します。"
+        },
+        "where": {
+          "stream": "このフォルダーは入り口のようなものです。ファイルはクラウドに置かれたまま、ここに表示され、開いたときにダウンロードされます。空のフォルダーを選んでください。ここに入れたものはクラウドにも保存されます。",
+          "twoWay": "すでに使っているフォルダーを選べます。最初の実行でクラウドと比べて統合され、削除されるものはありません。その後は、片方での変更（ファイルの削除も含む）がもう片方にも反映されます。",
+          "mirror": "クラウドのフォルダーは、手元のフォルダーとまったく同じ内容になります。手元のフォルダーにないファイルがクラウド側にあると、削除されます。新しいフォルダーか空のフォルダーを選ぶのが最も安全です。",
+          "streamWindows": "クラウドはエクスプローラーにドライブとして表示されます。USB メモリのような感覚です。ファイルはクラウドに残り、開いたときにダウンロードされます。ドライブの代わりにフォルダーを選ぶこともできます。そこに入れたものはクラウドにも保存されます。"
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "クラウドに残す",
+            "description": "バックアップのコピーのように：ここでファイルを削除しても、クラウドには残ります。"
+          },
+          "mirror": {
+            "title": "クラウドからも削除する",
+            "description": "鏡のように：削除したファイルも含め、クラウドは常にフォルダーとまったく同じに見えます。"
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "はい、残す",
+            "description": "コピーを取るように：古いクラウドはそのままなので、いつでも戻れます。"
+          },
+          "move": {
+            "title": "いいえ、移動する",
+            "description": "引っ越しのように：各ファイルが新しいクラウドに無事届いたら、古いクラウドから出ていきます。"
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "ネットワークフォルダー",
+            "description": "共有フォルダーのように：Finder、エクスプローラー、ファイルアプリで開け、自分で決めたユーザー名とパスワードで接続します。ファイルの変更を許可するかどうかは自分で決められます。"
+          },
+          "browser": {
+            "title": "Webブラウザー",
+            "description": "Webページのように：アドレスとパスワードがあれば、スマホやPCからファイルを見たりダウンロードしたりできます。変更はできません。"
+          },
+          "tv": {
+            "title": "テレビ・メディアプレーヤー",
+            "description": "メディアサーバーのように：スマートテレビ、ゲーム機、プレーヤーが自動で見つけます。視聴はできますが、変更はできません。"
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "ファイルを見る",
+            "description": "フォルダーを開くように：このアプリの中でクラウドを閲覧します。ダウンロードも変更もされません。"
+          },
+          "compare": {
+            "title": "フォルダーをクラウドと比べる",
+            "description": "2つのフォルダーを比べるように：ここのフォルダーとクラウドで違うファイルを確認します。何も変更されません。"
+          },
+          "compareClouds": {
+            "title": "クラウドを別のクラウドと比べる",
+            "description": "2つのフォルダーを比べるように：2つのクラウドで違うファイルを確認します。何も変更されません。"
+          }
+        }
+      },
+      "where": {
+        "heading": "どこで？",
+        "target": "ファイルの移動先は？",
+        "targetCompare": "どのクラウドと比較しますか？",
+        "noOtherRemote": "先に新しいクラウドを追加してから、ここに戻ってください。",
+        "shareLogin": "ほかのデバイス用のログイン",
+        "shareHint": "スマホやPCが接続するときに入力を求めます。",
+        "shareUser": "ユーザー名",
+        "sharePassword": "パスワード",
+        "local": {
+          "stream": "このフォルダーにクラウドが表示されます",
+          "twoWay": "ファイルはこのフォルダーに置かれます",
+          "download": "ここにダウンロードされます",
+          "upload": "どのフォルダーをバックアップしますか？",
+          "compare": "どのフォルダーを確認しますか？",
+          "devices": "どのフォルダーを同じに保ちますか？",
+          "streamWindows": "クラウドがドライブまたはフォルダーとして表示されます"
+        },
+        "cloud": {
+          "stream": "クラウドのどの部分？",
+          "twoWay": "このフォルダーと同じに保たれます",
+          "download": "どのフォルダーをダウンロードしますか？",
+          "upload": "バックアップの保存先",
+          "cloudToCloud": "何をコピーしますか？",
+          "share": "何を共有しますか？",
+          "compare": "このフォルダーと比較されます",
+          "cloudCompare": "どのフォルダーを確認しますか？"
+        },
+        "localPlaceholder": "フォルダーを選ぶか入力",
+        "cloudPlaceholder": "空のままにするとクラウド全体",
+        "shareConnection": "デバイスの接続方法",
+        "sharePort": "ポート",
+        "sharePortHint": "アドレスのコロンの後の数字です。ほかで使われていなければ 8080 のままで大丈夫です。",
+        "portInvalid": "1024〜65535 のポートを選んでください。",
+        "shareReadOnly": "デバイスは見るだけで、ファイルは変更できません",
+        "shareReadOnlyHint": "スマホやPCからもアップロード・名前変更・削除できるようにするには、オフにします。",
+        "shareName": "テレビでの名前",
+        "shareNameHint": "テレビやプレーヤーのメディアサーバー一覧に表示される名前です。",
+        "shareNameLabel": "名前",
+        "portBusy": "ポート {{port}} はほかのプログラムがすでに使っています。別のポートを選んでください。",
+        "portUseFree": "ポート {{port}} を使う"
+      },
+      "review": {
+        "heading": "こうなります",
+        "advanced": "詳細エディターで開く",
+        "start": "設定して開始",
+        "firstRun": "初回は両側を比較してまとめます。少し時間がかかることがありますが、何も削除されません。",
+        "startOnLogin": "PCの起動時にこのアプリも起動する",
+        "mountPlugin": {
+          "title": "もう1つ必要なものがあります",
+          "description": "クラウドをフォルダーとして表示するには、まだインストールされていない小さなシステムコンポーネント（FUSE または WinFsp）が必要です。",
+          "install": "インストール"
+        },
+        "summary": {
+          "stream": "{{cloud}} が {{local}} に表示されます。",
+          "streamSaf": "{{cloud}} がファイルアプリに表示されます。",
+          "twoWay": "{{local}} と {{cloud}} が同じに保たれます。",
+          "upload_copy": "{{local}} が {{cloud}} にバックアップされます。",
+          "upload_sync": "{{cloud}} が {{local}} とまったく同じになります。",
+          "download": "{{cloud}} が {{local}} にダウンロードされます。",
+          "cloudToCloud_copy": "{{cloud}} が {{target}} にコピーされます。",
+          "cloudToCloud_move": "{{cloud}} が {{target}} に移動されます。",
+          "share_dlna": "{{cloud}} がネットワーク内のテレビやプレーヤーと共有されます。",
+          "share_webdav": "{{cloud}} がパスワード付きでネットワークに共有されます。",
+          "share_http": "{{cloud}} がパスワード付きのWebページとしてネットワークに共有されます。",
+          "compare": "{{local}} と {{cloud}} が比較されます。",
+          "cloudCompare": "{{cloud}} と {{target}} が比較されます。",
+          "streamDrive": "{{cloud}} が {{local}} ドライブとして表示されます。",
+          "streamAutoDrive": "{{cloud}} が新しいドライブとして表示されます。ドライブ文字は接続時に Windows が選びます。"
+        },
+        "flow": {
+          "stream": "使うときに開きます",
+          "upload": "クラウドへ送られます",
+          "download": "クラウドから届きます",
+          "twoWay": "両側が同じに保たれます",
+          "cloudToCloud": "もう一方のクラウドへ送られます",
+          "share": "ネットワークで共有されます",
+          "compare": "比較するだけで、何も変わりません"
+        },
+        "schedule": {
+          "watch": "ファイルが変わると自動で実行されます。",
+          "startup": "アプリが起動するたびに自動で実行されます。",
+          "startupMount": "アプリが起動するたびに自動で接続します。",
+          "cron": "スケジュール: {{when}}",
+          "manual": "あなたが開始したときだけ実行されます。"
+        },
+        "detailsTitle": "知っておくと便利",
+        "destination": {
+          "quickRun": "クイック実行",
+          "profile": "メインメニューのプロファイル",
+          "hintQuickRun": "Flow › クイック実行 に表示されます。",
+          "hintProfile": "メインメニューの「{{remote}}」のページに表示され、そこから開始・停止できます。"
+        },
+        "wholeCloud": "クラウド全体",
+        "duplicate": "すでに同じ内容の設定があります:「{{name}}」",
+        "duplicateShow": "開く"
+      },
+      "effects": {
+        "streamOpen": "ファイルを開くとクラウドからダウンロードされます。",
+        "streamSave": "ファイルを保存するとクラウドにアップロードされます。",
+        "streamDelete": "このフォルダーで削除したファイルはクラウドからも削除されます。",
+        "uploadNew": "新しいファイルと変更されたファイルがアップロードされます。",
+        "keepDelete": "ここで削除したファイルはクラウドに残ります。",
+        "uploadCloudChange": "バックアップがフォルダーの中身を変えることはありません。",
+        "mirrorDelete": "ここで削除したファイルはクラウドからも削除されます。",
+        "mirrorExtra": "クラウドのフォルダーにしかないファイルは削除されます。",
+        "downloadNew": "クラウドの新しいファイルと変更されたファイルがダウンロードされます。",
+        "downloadKeep": "クラウドで削除されたファイルはこの端末に残ります。",
+        "downloadLocalChange": "クラウドの中身が変わることはありません。",
+        "twoWayChange": "どちらかの変更がもう一方にコピーされます。",
+        "twoWayDelete": "一方で削除したファイルはもう一方でも削除されます。",
+        "twoWayConflict": "両側で同じファイルが変わった場合は、両方のバージョンを残します。",
+        "migrateCopy": "すべてのファイルが新しいクラウドにコピーされます。",
+        "migrateKeep": "古いクラウドはそのままです。",
+        "migrateMove": "コピーが終わったファイルは古いクラウドから削除されます。",
+        "shareTv": "ネットワーク内のテレビやプレーヤーが自動で見つけます。",
+        "shareReadOnly": "見たり聴いたりはできますが、変更はできません。",
+        "shareBrowse": "デバイスはファイルを見たりダウンロードしたりできますが、変更はできません。",
+        "shareStops": "アプリを閉じると共有は止まります。",
+        "sharePassword": "パスワードを知っているデバイスだけが接続できます。",
+        "shareWrite": "接続したデバイスはファイルを変更・削除できます。",
+        "compareNothing": "ファイルは一切変更されません。",
+        "compareList": "違うファイルの一覧が表示されます。",
+        "browseNothing": "何も変更されません。"
+      },
+      "advice": {
+        "tooBigForDisk": "{{size}} ありますが、この端末の空きは {{free}} だけです。入りきりません。",
+        "tightOnDisk": "{{size}} あり、この端末の空きは {{free}} です。入りますが、ディスクがほぼいっぱいになります。",
+        "fitsOnDisk": "{{size}} あり、この端末の空きは {{free}} です。余裕で入ります。",
+        "cloudTooFull": "フォルダーは {{size}} ありますが、クラウドの空きは {{free}} だけです。入りきりません。",
+        "streamSavesSpace": "クラウドには {{cloud}} あり、この端末の空きは {{free}} です。開いたファイルだけが容量を使うので、この方法が最適です。"
+      },
+      "preview": {
+        "title": "先に何が起こるか確認する",
+        "description": "テスト実行は両側を比較し、コピー・置き換え・削除するすべてのファイルを一覧にします。ファイルは1つも変更されません。",
+        "run": "変更内容を表示",
+        "running": "ファイルを比較中…",
+        "checked": {
+          "other": "これまでに {{count}} 個のファイルを確認しました"
+        },
+        "transfers": {
+          "other": "{{count}} 個のファイルがコピーされます"
+        },
+        "deletes": {
+          "other": "{{count}} 個のファイルが削除されます"
+        },
+        "errors": {
+          "other": "{{count}} 個のファイルを読み取れませんでした"
+        },
+        "noDeletes": "削除されるファイルはありません",
+        "nothing": "すべて最新です。何も変わりません。",
+        "failed": "テスト実行が完了しませんでした。このまま設定するか、フォルダーを変更できます。",
+        "runName": "{{name}}（テスト）",
+        "groups": {
+          "delete": "削除されます",
+          "add": "新しいファイル",
+          "replace": "置き換えられます",
+          "copy": "コピーされます",
+          "error": "問題あり",
+          "untouched": "そのまま残ります"
+        },
+        "groupCount": "{{label}}：{{count}}",
+        "unchanged": {
+          "other": "{{count}} 個のファイルは両側ですでに同じです"
+        },
+        "deleteWarning": "開始する前にこのリストを確認してください。これらのファイルはコピー先から削除されます。",
+        "again": "テストをもう一度実行",
+        "slowNote": "ファイルの数によっては時間がかかることがあります。止まっているわけではないので、そのままお待ちください。",
+        "elapsed": "{{time}} 実行中",
+        "andMore": {
+          "other": "…ほか {{count}} 個のファイル"
+        }
+      },
+      "working": {
+        "saving": "設定中…",
+        "firstRun": "初回の同期を実行中…",
+        "canClose": "このウィンドウは閉じても大丈夫です。バックグラウンドで続きます。",
+        "slowNote": "最初の同期は、ファイルの数によっては長くかかることがあります。止まっているわけではありません。"
+      },
+      "done": {
+        "title": "完了しました！",
+        "stream": "クラウドは {{path}} にあります。",
+        "streamSaf": "クラウドはファイルアプリにあります。",
+        "twoWayReady": "初回の同期が終わりました。これからは両側が常に同じに保たれます。",
+        "twoWayFailed": "設定は完了しましたが、最初の同期は完了しませんでした。",
+        "started": "開始しました。進行状況はアプリで確認できます。",
+        "checkStarted": "確認を開始しました。終わると、違うファイルを確認できます。",
+        "findIt": "あとで Flow › クイック実行 に「{{name}}」として表示されます。",
+        "openFolder": "フォルダーを開く",
+        "openCloud": "ファイルブラウザーで表示",
+        "openRun": "進行状況と結果を表示",
+        "openRunHint": "どうなったか、どのファイルが対象かを確認できます。",
+        "another": "ほかのものを設定する",
+        "shareWebdav": "共有を開始しました。スマホやPCから、次のいずれかのアドレスに接続してください：",
+        "shareHttp": "共有を開始しました。スマホやPCのブラウザーで、次のいずれかのアドレスを開いてください：",
+        "shareAddress": "アドレス",
+        "shareOtherAddresses": "これらも使えます",
+        "shareUser": "ユーザー名",
+        "sharePassword": "パスワード",
+        "sharePasswordHint": "設定したもの",
+        "shareDlna": "共有を開始しました。テレビやプレーヤーのメディア一覧で「{{name}}」を探してください。",
+        "noAddress": "共有を開始しました。この端末のネットワークアドレスのポート {{port}} に接続してください。",
+        "findItProfile": "あとでメインメニューの「{{remote}}」のページに、プロファイル「{{name}}」として表示されます。",
+        "whereQuickRun": "クイック実行で表示",
+        "whereProfile": "メインメニューで表示",
+        "failureReason": "原因: {{reason}}",
+        "streamDrive": "クラウドは {{path}} ドライブになりました。",
+        "streamAutoDrive": "クラウドはエクスプローラーの新しいドライブになりました。",
+        "openFilesApp": "ファイルアプリを開く"
+      },
+      "runNames": {
+        "access": "{{remote}} フォルダー",
+        "backup": "{{remote}} バックアップ",
+        "devices": "{{remote}} 同期",
+        "download": "{{remote}} ダウンロード",
+        "migrate": "{{remote}} 移行",
+        "share": "{{remote}} 共有",
+        "explore": "{{remote}} 確認"
+      },
+      "when": {
+        "heading": "いつ実行しますか？",
+        "subtitle": "好きなものを選んで組み合わせられます。何も選ばなければ、自分で開始したときだけ実行されます。",
+        "watch": {
+          "title": "ファイルが変わるたびに",
+          "description": "フォルダーを監視し、変更は数秒でアップロードされます。スマホの写真自動アップロードのようなものです。"
+        },
+        "cron": {
+          "title": "スケジュールで",
+          "description": "毎日、毎時、平日、または好きな時刻に。"
+        },
+        "startup": {
+          "title": "アプリの起動時に",
+          "description": "アプリを開くたびに自動で実行されます。",
+          "descriptionMount": "アプリを開くたびにクラウドが自動で接続されます。"
+        },
+        "cloudHint": "監視で分かるのはこの端末側の変更だけです。クラウド側の変更も届くよう、スケジュールも追加してください。",
+        "invalidCron": "このスケジュールはまだ完成していません。上の候補から選んでください。"
+      },
+      "details": {
+        "cache": "開いたファイルはこの端末に最大 {{age}} 残り、ディスクは最大 {{size}} 使います。",
+        "writeBack": "行った変更は {{time}} 後にクラウドへ送られます。",
+        "minFree": "ディスクの空きが {{size}} を下回ると、キャッシュはそれ以上増えません。",
+        "address": "アドレス：",
+        "addressUnknown": "この端末のアドレスにポートを付けて使います：",
+        "addressViaBackend": "アプリがそのコンピューターに接続するときのアドレスです。別のネットワークにあるスマートフォンからは届かない場合があります。",
+        "port": "ポート：",
+        "user": "ユーザー名：",
+        "tvName": "テレビでの表示："
+      },
+      "settings": {
+        "title": "ウィザードの設定",
+        "subtitle": "この選択は次回も使われます。",
+        "afterRemote": "クラウドを追加したあとにこのウィザードを表示する",
+        "destinationTitle": "ウィザードが設定した内容の保存形式",
+        "auto": "自動",
+        "hintAuto": "起動ビューに従います。メインメニューで起動する場合はプロファイル、それ以外は クイック実行。",
+        "done": "完了"
+      },
+      "undo": {
+        "action": "この設定を削除",
+        "hint": "実行が止まり、アプリから消えます。ファイルには何も起こりません。",
+        "confirm": "「{{name}}」は実行が止まり、アプリから消えます。ファイルには何も起こりません。",
+        "working": "削除しています…",
+        "failed": "削除できませんでした。表示されている場所から削除できます。",
+        "removedTitle": "削除しました",
+        "removed": "ファイルは変更されていません。",
+        "title": "この設定を削除しますか？",
+        "remove": "削除"
+      }
     }
   },
   "nautilus": {
@@ -2968,9 +3435,7 @@
         "statsUnchanged": "{{count}} 件の未変更",
         "statsConflicts": {
           "other": "{{count}} 件の競合"
-        },
-        "findPlaceholder": "検索するテキスト",
-        "replacePlaceholder": "置換後のテキスト"
+        }
       },
       "index": {
         "title": "ディレクトリ一覧を生成",
@@ -3083,7 +3548,11 @@
       "viewOptions": "表示オプション",
       "showingItems": "{{total}} 件中 {{count}} 件を表示中",
       "decreaseIconSize": "アイコンサイズを縮小",
-      "increaseIconSize": "アイコンサイズを拡大"
+      "increaseIconSize": "アイコンサイズを拡大",
+      "tabCount": {
+        "other": "{{count}} 個のタブ"
+      },
+      "showTabs": "開いているタブを表示"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3091,6 +3560,17 @@
       },
       "uploadFailed": {
         "other": "{{count}} 個のファイルのアップロードに失敗しました。"
+      },
+      "uploadInterrupted": "サーバーとの接続が切れました。「操作履歴」からアップロードを再開してください。",
+      "uploadFilesNotInUpload": "選択したファイルの中に、このアップロードでまだ必要なファイルはありません。",
+      "uploadFilesStillMissing": {
+        "other": "このアップロードのファイルがまだ {{count}} 個足りません。アップロードを完了するには、「操作履歴」でそれらを選択してください。"
+      },
+      "copyingPickedFiles": {
+        "other": "選択した {{count}} 個の項目をアップロード用に準備しています…"
+      },
+      "pickedFilesNotCopied": {
+        "other": "選択した {{count}} 個の項目を読み取れなかったため、アップロードされません。"
       },
       "trashEmptied": "クリーンアップ操作が完了しました",
       "rmdirsStarted": "「{{name}}」内の空フォルダを削除中...",
@@ -3128,6 +3608,81 @@
       "cancelLoading": "読み込みをキャンセル",
       "star": "スターを追加",
       "unstar": "スターを解除"
+    },
+    "transferOptions": {
+      "title": "転送オプション",
+      "defaultTitle": "既定の転送オプション",
+      "summary": {
+        "upload": {
+          "other": "{{count}} 個の項目を {{destination}} にアップロードします。"
+        },
+        "copy": {
+          "other": "{{count}} 個の項目を {{destination}} にコピーします。"
+        },
+        "move": {
+          "other": "{{count}} 個の項目を {{destination}} に移動します。"
+        }
+      },
+      "engine": {
+        "local": "{{name}} で実行されます。このアプリが実行する rclone です。",
+        "remote": "{{name}} で実行されます。別のコンピューターの rclone です。以下のオプションは、その rclone が提供するものです。"
+      },
+      "defaultIntro": "ファイルブラウザでのコピー、移動、アップロードは、これらのオプションで開始されます。",
+      "remoteNote": "これらのオプションは、この転送の間だけ {{name}} に適用されます。保存されている設定は変わりません。",
+      "streamNote": "ファイルは別のコンピューターの rclone に 1 つずつ送られます。その rclone は、これらのファイルにコピー、フィルター、バックエンドのオプションを使いません。適用されるのは宛先自身のオプションだけです。",
+      "nothingToSet": "このアップロードで設定できるオプションはありません。",
+      "useAsDefault": "これらのオプションを既定として使用",
+      "dontAskAgain": "今後確認しない(ファイルブラウザの環境設定)",
+      "start": "開始"
+    },
+    "conflicts": {
+      "exists": "「{{name}}」は既に存在します",
+      "fileExists": "{{destination}} には同じ名前のファイルが既にあります。",
+      "folderExists": "{{destination}} には同じ名前のフォルダーが既にあります。",
+      "mergeExplain": "統合すると、追加するファイルがこのフォルダーに加わります。",
+      "thereNow": "現在の項目",
+      "incoming": "追加する項目",
+      "replace": "置き換え",
+      "merge": "統合",
+      "skip": "スキップ",
+      "keepBoth": "両方残す",
+      "replaceOrMerge": "置き換え/統合",
+      "forAll": "すべてに適用:",
+      "keptAs": "「{{name}}」として追加",
+      "skipped": "スキップ",
+      "replaces": "既存のファイルを置き換えます",
+      "merges": {
+        "newer": "統合し、各ファイルの新しい方を残します",
+        "keep": "統合し、足りないファイルだけを追加します",
+        "replace": "統合し、同じ名前のファイルは置き換えます"
+      },
+      "title": {
+        "other": "{{total}} 個中 {{count}} 個の項目が {{destination}} に既に存在します"
+      },
+      "others": {
+        "other": "残りの {{count}} 個の項目は競合しません。"
+      },
+      "start": {
+        "copy": {
+          "other": "{{count}} 個の項目をコピー"
+        },
+        "move": {
+          "other": "{{count}} 個の項目を移動"
+        },
+        "upload": {
+          "other": "{{count}} 個の項目をアップロード"
+        }
+      },
+      "skipAll": "すべてスキップ",
+      "replaceWarning": "置き換えたファイルは元に戻せず、この操作は取り消せません。",
+      "mergeWarning": "フォルダーの統合は取り消せません。",
+      "sameNames": "同じ名前のファイル:",
+      "sameNamesAll": "統合するフォルダー内の同じ名前のファイル:",
+      "existingFiles": {
+        "newer": "新しい方を残す",
+        "keep": "既にある方を残す",
+        "replace": "追加する方で置き換える"
+      }
     }
   },
   "home": {
@@ -3174,9 +3729,6 @@
       "generic": "予期しないエラーが発生しました。詳細についてはログを確認してください。",
       "openFailed": "{{name}} を開けませんでした"
     }
-  },
-  "transfer": {
-    "error": "転送エラー"
   },
   "generalOverview": {
     "panels": {
@@ -3242,7 +3794,6 @@
       "progress": "進捗:",
       "of": "/",
       "eta": "完了見込み:",
-      "elapsed": "経過時間:",
       "speed": "転送速度:",
       "transfers": "転送ファイル数:",
       "checks": "チェック数:",
@@ -3254,6 +3805,7 @@
       "serverMoves": "サーバーサイド移動数:",
       "lastError": "最後のエラー:",
       "runningJobs": "実行中のジョブ",
+      "recentJobs": "最近のジョブ",
       "starting": "開始中...",
       "noRunning": "現在実行中のアクティブなジョブはありません。"
     },
@@ -3276,6 +3828,13 @@
       },
       "noActive": "アクティブなマウントはありません",
       "noMounted": "マウントされているリモートはありません。リモートをマウントすると、そのファイルをコンピューター上のフォルダーとして使えます。"
+    },
+    "originFilter": {
+      "hidden": {
+        "other": "他 {{count}} 件が非表示"
+      },
+      "empty": "このフィルタに一致する項目はありません。残りは非表示です。",
+      "showAll": "すべて表示"
     }
   },
   "appOverview": {
@@ -3330,7 +3889,6 @@
       "missingMountPoint": "unmount ノードの設定に 'mountPoint' がなく、対象ノードもマウントポイントを生成しませんでした",
       "missingStopServeTarget": "stop_serve ノードの設定に 'targetNodeId'/'serverId' も 'remoteName' もありません",
       "rcCommandFailed": "RC コマンド '{{command}}' が失敗しました: {{error}}",
-      "invalidJobId": "バッチ送信から無効なジョブ ID が返されました: {{error}}",
       "unsupportedNodeType": "ワークフローのノードタイプ '{{type}}' はこのプラットフォームまたはバージョンではサポートされていません",
       "nodeCrashed": "ノード '{{node}}' がクラッシュしました: {{reason}}",
       "notificationFailed": "通知エラー ({{kind}}): {{error}}",
@@ -3393,17 +3951,18 @@
       "profileNotMounted": "{{remote}} のプロファイル「{{profile}}」はマウントされていません"
     },
     "operations": {
-      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です",
       "singleSourceOnly": "{{operation}} は単一のソースパスのみ対応しています",
       "directoriesOnly": "{{operation}} はディレクトリのみ対応しており、ファイルには対応していません: {{source}}",
       "sourcePathInvalid": "ソースパスを解析できませんでした: {{path}}",
       "destinationPathInvalid": "宛先パスを解析できませんでした: {{path}}",
       "filePathsInvalid": "ソース '{{source}}' または宛先 '{{destination}}' をファイルパスとして解析できませんでした。'remote:path/to/file' 形式かローカルパスを使用してください。",
       "unsupportedOperation": "操作 {{operation}} は転送として実行できません",
-      "destinationMissing": "宛先が指定されていません"
+      "destinationMissing": "宛先が指定されていません",
+      "sourceOverlapsDestination": "ソース {{source}} と宛先 {{destination}} が重なっています。一方がもう一方の中にあります。どのソースとも重ならない宛先を選択してください。",
+      "overlappingRemotes": "ソースと宛先が重なっています。一方がもう一方の中にあります。ソースの外にある宛先を選択するか、フィルタ規則で宛先を除外してください。",
+      "backupDirOverlaps": "「バックアップ用ディレクトリ」は、ソースや宛先の中に置くことも、それらを含むこともできません。"
     },
     "serve": {
-      "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
       "remoteEmpty": "リモート名を空欄にすることはできません",
       "addressAlreadyInUse": "選択したポートまたはアドレスは他のアプリケーションによって使用されています。別のポートを選択してください。",
       "privilegedPort": "1024 未満のポートには管理者権限が必要です。1024 以上のポートを選択してください。",
@@ -3424,13 +3983,19 @@
       "diskFull": "ターゲットディスクの空き容量が不足しています。",
       "fileLocked": "ファイルがロックされているか、別のプロセスで使用されています。",
       "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。",
-      "ioError": "入出力(IO)エラー: {{error}}"
+      "ioError": "入出力(IO)エラー: {{error}}",
+      "intoItself": "フォルダー「{{name}}」をそれ自体の中にコピーまたは移動することはできません。",
+      "noItems": "項目が選択されていません。"
     },
     "upload": {
       "legacyBatch": "このアップロードは古いページから開始されました。アプリケーションを再読み込みして、もう一度お試しください。",
       "noFiles": "アップロードにファイルが含まれていません。",
       "invalidPath": "アップロードに無効なファイルまたはフォルダーのパスが含まれています。",
-      "invalidModifiedTime": "アップロードに無効な更新日時が含まれています。"
+      "invalidModifiedTime": "アップロードに無効な更新日時が含まれています。",
+      "sessionGone": "このアップロードはキャンセルされたか、長時間操作がなかったため、サーバーに残っていません。もう一度開始してください。",
+      "invalidChunk": "アップロードが、どのファイルにも属さないデータを送信しました。",
+      "incomplete": "すべてのファイルが届く前にアップロードが終了しました。",
+      "filesFailed": "アップロードできなかったファイル: {{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "マウントプラグインのインストールに失敗しました: {{error}}",
@@ -3447,11 +4012,7 @@
       "notFound": "{{path}} にRclone実行ファイルが見つかりません",
       "spawnFailed": "rcloneプロセスの開始に失敗しました: {{error}}",
       "invalidPath": "無効なrcloneパスが指定されました",
-      "killFailed": "rcloneプロセスの終了に失敗しました: {{error}}",
-      "portCleanupFailed": "rcloneポートのクリーンアップに失敗しました: {{error}}",
       "configValidationFailed": "Rclone設定の検証に失敗しました: {{error}}",
-      "lockFailed": "Rclone設定のロック取得に失敗しました: {{error}}",
-      "cacheRefreshFailed": "Rcloneキャッシュの更新に失敗しました: {{error}}",
       "invalidFlags": "無効なrcloneフラグが検出されました: {{error}}",
       "updateRemoteUnsupported": "このrcloneバージョンではリモート更新はサポートされていません",
       "backupFailed": "現在のrclone実行ファイルのバックアップに失敗しました: {{error}}",
@@ -3503,14 +4064,15 @@
       "tooSlowReverted": "バックエンドは接続を受け付けましたが、項目の一覧取得が遅すぎました。Local に戻しました。"
     },
     "job": {
-      "notFound": "JobInfoが見つかりません",
+      "notFound": "ジョブが見つかりません",
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
       "executionFailed": "ジョブの実行に失敗しました: {{error}}",
       "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。",
       "profileNotRunning": "{{remote}} のプロファイル「{{profile}}」で実行中の {{jobType}} ジョブが見つかりません",
       "stopped": "ジョブが停止されました",
       "failed": "ジョブが失敗しました",
-      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。"
+      "lost": "Rclone はこのジョブを認識しなくなりました。完了後に期限切れになったか、エンジンが再起動したため、結果を取得できません。",
+      "notRetryable": "このジョブは再実行できません。アプリを開いてから開始され、失敗または停止したジョブのみ再実行できます。"
     },
     "cache": {
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
@@ -3548,7 +4110,8 @@
       "authExpired": "リモート認証の有効期限が切れたか無効です。設定で再認証してください。",
       "quotaExceeded": "リモートストレージの API レート制限またはストレージ容量上限を超過しました。しばらく待ってから再試行してください。",
       "networkError": "リモートサーバーに接続できません。ネットワーク接続とリモートアドレスを確認してください。",
-      "notFound": "ターゲットディレクトリまたはファイルがリモートで見つかりませんでした。"
+      "notFound": "ターゲットディレクトリまたはファイルがリモートで見つかりませんでした。",
+      "notInConfig": "リモート「{{remote}}」が rclone 設定にありません。アプリの外で削除または名前変更されたか、別の設定ファイルが使われています。"
     },
     "updater": {
       "noPending": "保留中のアップデートはありません",
@@ -3558,34 +4121,21 @@
       "updateUnavailable": "アップデートファイルは利用できなくなりました: {{error}}",
       "relaunchFailed": "再起動に失敗しました: {{error}}",
       "notWritable": "アップデート先のパスに書き込み権限がありません",
-      "rollback": {
-        "exited": "更新後のアプリケーションは、起動を確認する前に終了しました (コード {{code}})。",
-        "couldNotStart": "更新後のアプリケーションを起動できませんでした: {{error}}",
-        "interrupted": "更新後のアプリケーションの起動はシャットダウンにより中断されました。",
-        "notConfirmed": "更新後のアプリケーションが時間内に起動を確認しませんでした。",
-        "installFailed": "アップデートをインストールできませんでした: {{error}}"
-      },
-      "rolledBack": "アップデート {{version}} を元に戻しました: {{reason}}",
       "ioError": "入出力(IO)エラー: {{error}}",
-      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "externallyManaged": "このインストールはパッケージマネージャーまたはデプロイシステムによって更新されます。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "このインストールは自動インストールに対応していません。",
+      "notBuilt": "このリリースには、このインストール向けの自動アップデートがありません。手動でインストールしてください。",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "このパッケージのインストールには管理者パスワードの入力手段（pkexec、zenity、kdialog）が必要ですが、見つかりませんでした。",
+      "noPrivilegePrompt": "ここでは管理者パスワードを求める手段がありません（polkit エージェントと pkexec、または zenity か kdialog と sudo）。「GitHub で表示」からパッケージをダウンロードし、ターミナルでインストールしてください: {{command}}",
       "verificationFailed": "アップデートを検証できませんでした。署名、チェックサム、またはメタデータが一致しません。",
       "insecureDownload": "アップデートのダウンロードが HTTPS で提供されませんでした。",
       "downloadTooLarge": "アップデートのダウンロードが想定より大きいです。",
       "missingAsset": "このリリースには {{name}} という名前のアップデートファイルがありません。",
-      "unexpectedAsset": "このリリースに予期しない、または重複したアップデートファイルがあります。",
       "argumentsTooLong": "起動引数が長すぎるため、アップデート後に引き継げません。",
-      "startupPending": "前回のアップデートの起動確認がまだ完了していません。数秒後にもう一度お試しください。",
-      "versionMustIncrease": "続けて適用するアップデートは、より新しいバージョンである必要があります。",
       "invalidBundle": "ポータブルアプリが完全な macOS アプリバンドルではありません。",
-      "missingBackup": "現在のバージョンのバックアップが見つかりません。",
       "invalidStagingDirectory": "アップデートの準備フォルダーが無効です。",
-      "helperFailed": "アップデートヘルパーを起動できず（{{error}}）、アプリの再起動にも失敗しました: {{restart}}",
-      "processUnavailable": "更新されたアプリのプロセスを監視できませんでした。",
       "ownedByAnotherUser": "アプリのファイルは別のユーザーが所有しています。"
     },
     "settings": {
@@ -3644,7 +4194,8 @@
     },
     "job": {
       "stopped": "ジョブを正常に停止しました",
-      "deleted": "ジョブを正常に削除しました"
+      "deleted": "ジョブを正常に削除しました",
+      "retried": "ジョブ {{id}} を再実行しています"
     },
     "security": {
       "passwordRemoved": "パスワードを正常に削除しました",
@@ -3747,11 +4298,8 @@
     "serveCount": "公開サーバー [{{active}}/{{total}}]",
     "quickRunsCount": "クイック実行 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "ジョブ 1件",
     "tooltipTasks": "ジョブ {{count}}件",
-    "tooltipMount": "マウント 1件",
     "tooltipMounts": "マウント {{count}}件",
-    "tooltipServe": "公開サーバー 1件",
     "tooltipServes": "公開サーバー {{count}}件",
     "workflowsCount": "ワークフロー [{{active}}/{{total}}]",
     "indexCount": "ディレクトリ一覧 [{{active}}/{{total}}]"
@@ -3760,7 +4308,11 @@
     "reason": "アクティブな操作を実行中: {{details}}",
     "mounts": "{{count}} マウント",
     "jobs": "{{count}} ジョブ",
-    "serves": "{{count}} サーバー"
+    "serves": "{{count}} サーバー",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/秒",
+    "timeLeft": "残り {{time}}",
+    "checked": "{{count}} 件確認済み"
   },
   "notification": {
     "title": {
@@ -3851,6 +4403,26 @@
       "workflowStopped": "ワークフロー '{{name}}' が停止されました。",
       "unmountFailed": "{{backend}} から {{remote}} のアンマウントに失敗しました: {{error}}",
       "serveStopFailed": "{{backend}} 上の {{remote}} の {{protocol}} サーバー停止に失敗しました: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "同期",
+      "copy": "コピー",
+      "move": "移動",
+      "bisync": "双方向同期",
+      "check": "チェック",
+      "mount": "マウント",
+      "copyurl": "URLコピー",
+      "mkdir": "フォルダの作成",
+      "cleanup": "クリーンアップ",
+      "delete": "削除",
+      "rename": "名前の変更",
+      "rmdirs": "空のディレクトリの削除",
+      "index": "ディレクトリ一覧",
+      "upload": "アップロード",
+      "download": "ダウンロード",
+      "archivecreate": "圧縮",
+      "archiveextract": "アーカイブの展開",
+      "cryptcheck": "暗号チェック"
     }
   },
   "repairSheet": {
@@ -4073,6 +4645,11 @@
     "tabs": {
       "quickRun": "クイック実行",
       "workflow": "ワークフロー"
+    },
+    "addMenu": {
+      "remote": "リモートを作成",
+      "quickRun": "クイック実行を作成",
+      "workflow": "ワークフローを作成"
     },
     "workflow": {
       "untitled": "無題のワークフロー",
@@ -4372,8 +4949,6 @@
         "appStartDesc": "RClone Managerの起動時に自動でトリガー",
         "cleanup": "ゴミ箱のクリーンアップ",
         "cleanupDesc": "リモートのゴミ箱を空にする",
-        "cryptcheck": "暗号化整合性チェック",
-        "cryptcheckDesc": "暗号化されたリモートの整合性を検証",
         "execScript": "スクリプト実行",
         "execScriptDesc": "ローカルのシェルコマンドまたはスクリプトを実行",
         "quickRun": "クイック実行",

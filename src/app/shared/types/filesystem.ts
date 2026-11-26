@@ -23,9 +23,34 @@ export interface FsInfo {
 export interface FsTransferItem {
   remote: string;
   path: string;
+  /** The name it gets at the destination: its own, or another one that keeps both. */
   name: string;
   isDir: boolean;
+  /** For a folder merged into one of the same name: what happens to the files of the same name. */
+  existingFiles?: ExistingFiles;
 }
+
+/**
+ * What a folder merged into one of the same name does with the files of the same name there:
+ * the incoming file replaces it, the one there stays, or the newer of the two stays.
+ */
+export type ExistingFiles = 'replace' | 'keep' | 'newer';
+
+/** A picked local file or folder, as `local_path_info` reads it. */
+export interface LocalPathInfo {
+  name: string;
+  isDir: boolean;
+  /** Zero for a folder. */
+  size: number;
+  /** ISO time, when the system keeps one. */
+  modTime?: string;
+}
+
+/**
+ * How a picked file or folder lands where one of the same name exists, by its own name: under
+ * another name, or merged into the folder there with a choice for its files of the same name.
+ */
+export type UploadTargets = Record<string, { name?: string; existingFiles?: ExistingFiles }>;
 
 export interface FsDeleteItem {
   remote: string;

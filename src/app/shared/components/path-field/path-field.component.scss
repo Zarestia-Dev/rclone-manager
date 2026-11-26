@@ -1,0 +1,58 @@
+:host {
+  display: block;
+  width: 100%;
+  // The container its small-screen layout (type above the path) reads: the field decides by its
+  // own width, wherever it is used.
+  container-type: inline-size;
+}
+
+.path-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+// Typing in the field or tabbing to its button is shown by a soft ring around the card. In a list
+// the row is tinted instead, and a ring around one row would be cut by the list.
+.path-row-wrapper.path-list:focus-within {
+  outline: 2px solid rgba(var(--accent-color-rgb), 0.4);
+}
+
+.path-status {
+  border-radius: 0;
+
+  > mat-icon {
+    flex: none;
+  }
+
+  > span {
+    min-inline-size: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@container (max-width: 40rem) {
+  .path-item-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto;
+
+    > .path-type-selector {
+      grid-column: 1 / span 2;
+      grid-row: 1;
+      justify-content: center;
+      padding: var(--space-xs) var(--space-md);
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    > mat-form-field.path-input-field {
+      grid-column: 1;
+      grid-row: 2;
+      width: 100%;
+      height: calc(var(--space-2xl) + var(--space-xl));
+    }
+  }
+}

@@ -16,8 +16,6 @@ pub fn setup_context(
     event_sink: Option<Arc<dyn crate::services::bridge::event::EventSink>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app;
-    #[cfg(feature = "updater")]
-    app.manage(services::updates::health::StartupHealth::default());
 
     let event_bridge = Arc::new(crate::services::bridge::EventBridge::new(1000, event_sink));
     crate::services::bridge::init_event_bridge(event_bridge.clone());

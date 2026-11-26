@@ -1,13 +1,15 @@
 @let cfg = config();
 
 <mat-card class="detail-panel jobs-panel">
-  <mat-card-header class="panel-header">
-    <mat-card-title>
-      <mat-icon svgIcon="jobs" style="color: var(--mat-sys-primary)"></mat-icon>
-      <span>{{ 'detailShared.jobs.title' | translate }}</span>
-      <span appPill size="xs" tone="dim">{{ cfg.jobs.length }}</span>
-    </mat-card-title>
-  </mat-card-header>
+  @if (!cfg.hideTitle) {
+    <mat-card-header class="panel-header">
+      <mat-card-title>
+        <mat-icon svgIcon="jobs" style="color: var(--mat-sys-primary)"></mat-icon>
+        <span>{{ 'detailShared.jobs.title' | translate }}</span>
+        <span appPill size="xs" tone="dim">{{ cfg.jobs.length }}</span>
+      </mat-card-title>
+    </mat-card-header>
+  }
 
   <mat-card-content class="card-list-container">
     @for (job of enrichedJobs(); track job.execute_id || job.jobid) {
@@ -23,10 +25,10 @@
           <div class="card-info-left">
             <mat-icon
               [svgIcon]="job.icon"
-              class="card-primary-icon job-type-icon"
-              [class]="job.iconClass"
+              class="card-primary-icon"
+              [attr.data-tone]="job.typeTone"
             ></mat-icon>
-            <span class="card-title-text truncate">
+            <span class="card-title-text">
               {{ job.typeLabel }}
             </span>
             <span
@@ -38,8 +40,19 @@
               "
               >#{{ job.jobid }}</span
             >
-            <app-starter-pill [starter]="job.starter" />
           </div>
+
+          @if (job.starter || job.originBadge) {
+            <div class="job-tags">
+              <app-starter-pill [starter]="job.starter" />
+              @if (job.originBadge; as origin) {
+                <span appPill size="xs" [tone]="origin.tone">
+                  <mat-icon [svgIcon]="origin.icon"></mat-icon>
+                  <span>{{ origin.labelKey | translate }}</span>
+                </span>
+              }
+            </div>
+          }
 
           <div class="card-info-right">
             <span
@@ -95,6 +108,54 @@
               </span>
             </div>
             <div class="card-footer-right">
+              @if (job.running) {
+                <span
+                  appPill
+                  tone="primary"
+                  size="xs"
+                  [attr.title]="'generalOverview.jobs.speed' | translate"
+                >
+                  <mat-icon svgIcon="bolt"></mat-icon>
+                  <span>{{
+                    job.stats.speed > 0
+                      ? (job.stats.speed | formatRateValue)
+                      : ('generalOverview.jobs.starting' | translate)
+                  }}</span>
+                </span>
+                @if (job.stats.eta > 0) {
+                  <span
+                    appPill
+                    tone="accent"
+                    size="xs"
+                    [attr.title]="'generalOverview.jobs.eta' | translate"
+                  >
+                    <mat-icon svgIcon="clock"></mat-icon>
+                    <span>{{ job.stats.eta | formatEta }}</span>
+                  </span>
+                }
+                @if (job.stats.totalTransfers > 0) {
+                  <span
+                    appPill
+                    tone="dim"
+                    size="xs"
+                    [attr.title]="'generalOverview.jobs.transfers' | translate"
+                  >
+                    <mat-icon svgIcon="file"></mat-icon>
+                    <span>{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span>
+                  </span>
+                }
+                @if (job.stats.errors > 0) {
+                  <span
+                    appPill
+                    tone="warn"
+                    size="xs"
+                    [attr.title]="'generalOverview.jobs.errors' | translate"
+                  >
+                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                    <span>{{ job.stats.errors }}</span>
+                  </span>
+                }
+              }
               @if (job.dry_run) {
                 <span appPill tone="accent" size="xs">
                   {{ 'detailShared.jobs.dryRun' | translate }}

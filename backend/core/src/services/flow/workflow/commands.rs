@@ -390,7 +390,6 @@ mod tests {
         use crate::rclone::backend::{BackendManager, types::Backend};
         use crate::services::flow::workflow::engine::{
             active::{ActiveWorkflowState, register_active_run},
-            cancel::CancelToken,
             record::RunHandle,
         };
 
@@ -400,7 +399,7 @@ mod tests {
         let register = |backend: &str, id: &str| {
             let state = ActiveWorkflowState {
                 backend: Backend::new_local(backend),
-                cancel: CancelToken::new(),
+                cancel: tokio_util::sync::CancellationToken::new(),
                 active_job_ids: Default::default(),
             };
             register_active_run(

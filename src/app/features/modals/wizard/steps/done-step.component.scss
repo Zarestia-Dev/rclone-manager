@@ -1,0 +1,166 @@
+.done {
+  align-items: center;
+  text-align: center;
+
+  h2 {
+    margin: 0;
+  }
+
+  .done-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--tone);
+  }
+}
+
+// A short screen sits in the middle of the space, not at the top of an empty one.
+.done-removed {
+  flex: 1;
+  justify-content: center;
+}
+
+// A soft round badge in the colour of what happened, instead of a bare icon.
+.done-badge {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  color: var(--tone);
+  background: rgba(var(--tone-rgb), 0.12);
+  border-radius: 50%;
+
+  mat-icon {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+// On a phone the two ways out are one under the other, as wide as the screen allows.
+@media (max-width: 450px) {
+  .done-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+.failure-reason {
+  max-width: 520px;
+  color: var(--warn-color);
+  text-align: center;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.undo-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: center;
+
+  .hint {
+    max-width: 420px;
+    text-align: center;
+  }
+}
+
+// Where and how to connect: the address to type is the card's headline, the rest sits below it.
+.share-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 520px;
+  padding: var(--space-md);
+  text-align: start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.share-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.share-label {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.share-field {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  background: var(--bg-elevated-2);
+  border-radius: var(--radius-sm);
+
+  code {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+
+  .action-button {
+    flex: none;
+  }
+
+  &.is-main code {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+  }
+}
+
+.share-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+
+  > div {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+  }
+
+  dt {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    color: var(--dim-color);
+  }
+
+  dd {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    margin: 0;
+
+    &.dim {
+      color: var(--dim-color);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      user-select: text;
+    }
+  }
+}

@@ -12,10 +12,9 @@ macro_rules! MASTER_COMMAND_LIST {
     ($action:ident) => {
         $action! {
             // PLATFORM
-            #[cfg(feature = "updater")]
-            (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [sync, infallible]);
             (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
+            (get_local_addresses, $crate::utils::app::platform::get_local_addresses, [], [sync, no_app]);
             (check_pending_app_exit, $crate::services::lifecycle::exit::check_pending_app_exit, [], [sync, infallible]);
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
             (request_app_exit, $crate::services::lifecycle::exit::request_app_exit, []);
@@ -41,6 +40,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (check_rclone_update, $crate::rclone::binaries::updater::check_rclone_update, [channel: Option<String>]);
             #[cfg(not(feature = "librclone"))]
             (get_rclone_update_info, $crate::rclone::binaries::updater::get_rclone_update_info, []);
+            #[cfg(not(feature = "librclone"))]
+            (get_rclone_release_notes, $crate::rclone::binaries::updater::get_rclone_release_notes, [version: String], [no_app]);
             #[cfg(not(feature = "librclone"))]
             (update_rclone, $crate::rclone::binaries::updater::update_rclone, [channel: Option<String>]);
             #[cfg(not(feature = "librclone"))]
@@ -103,12 +104,13 @@ macro_rules! MASTER_COMMAND_LIST {
             // FILESYSTEM COMMANDS
             (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, backend_name: Option<String>]);
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: $crate::rclone::commands::filesystem::TransferMode, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
+            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: $crate::rclone::commands::filesystem::TransferMode, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>, options: Option<serde_json::Value>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (resolve_bisync_conflict, $crate::rclone::commands::bisync_conflict::resolve_bisync_conflict, [path1: String, path2: String, conflict: $crate::rclone::commands::bisync_conflict::BisyncConflict, keep: $crate::rclone::commands::bisync_conflict::Side, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, options: Option<serde_json::Value>, targets: Option<std::collections::HashMap<String, $crate::rclone::commands::upload::UploadTarget>>]);
+            (local_path_info, $crate::rclone::commands::upload::local_path_info, [paths: Vec<String>], [no_app]);
             (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (generate_index, $crate::rclone::commands::index::generate_index, [remote: String, path: String, options: serde_json::Value, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
@@ -185,9 +187,11 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // JOBS
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
-            (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
+            (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64]);
             (get_job_report, $crate::rclone::commands::job::get_job_report, [jobid: u64]);
+            (get_job_stats, $crate::rclone::commands::job::get_job_stats, [jobid: u64, execute_id: Option<String>]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
+            (retry_job, $crate::rclone::commands::job::retry_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
             (stop_all_active_jobs, $crate::services::lifecycle::shutdown::stop_all_active_jobs, []);
 
@@ -290,6 +294,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // DESKTOP & HEADLESS UTILITIES
             (fetch_update, $crate::services::updates::fetch_update, [channel: String]);
             (get_app_update_info, $crate::services::updates::get_app_update_info, []);
+            (get_app_release_notes, $crate::services::updates::get_app_release_notes, []);
             #[cfg(feature = "updater")]
             (install_update, $crate::services::updates::install::install_update, []);
             #[cfg(feature = "updater")]

@@ -1,0 +1,151 @@
+<div class="path-row-wrapper" [class.path-list]="!inList()">
+  <div class="path-item-row" [formGroup]="control()">
+    <div class="path-type-selector">
+      @if (lock() === 'local') {
+        <div appPill tone="purple">
+          <mat-icon svgIcon="folder" data-tone="purple"></mat-icon>
+          <span class="truncate">{{ 'wizards.appOperation.localPath' | translate }}</span>
+        </div>
+      } @else if (lock() === 'currentRemote') {
+        <div appPill tone="primary">
+          <mat-icon svgIcon="hard-drive" data-tone="primary"></mat-icon>
+          <span class="truncate">{{ currentRemote() }}:</span>
+        </div>
+      } @else {
+        <button appPill type="button" [cdkMenuTriggerFor]="typeMenu" [tone]="typeTone()">
+          @switch (type()) {
+            @case ('local') {
+              <mat-icon svgIcon="folder" data-tone="purple"></mat-icon>
+              <span class="truncate">{{ 'wizards.appOperation.localPath' | translate }}</span>
+            }
+            @case ('currentRemote') {
+              <mat-icon svgIcon="hard-drive" data-tone="primary"></mat-icon>
+              <span class="truncate">{{ currentRemote() }}:</span>
+            }
+            @case ('otherRemote') {
+              <mat-icon svgIcon="cloud" data-tone="accent"></mat-icon>
+              <span class="truncate">{{ remoteName() }}:</span>
+            }
+          }
+          <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
+        </button>
+      }
+    </div>
+
+    <mat-form-field class="path-input-field">
+      <input
+        matInput
+        formControlName="path"
+        [placeholder]="placeholderKey() | translate"
+        (input)="onInput($event)"
+        [cdkMenuTriggerFor]="pickerDisabled() || !suggest() ? null : suggestionsMenu"
+        (cdkMenuOpened)="onMenuOpened()"
+      />
+    </mat-form-field>
+
+    <div class="action-suffix">
+      @if (showPicker()) {
+        <button
+          matIconButton
+          type="button"
+          [disabled]="pickerDisabled()"
+          [attr.aria-label]="'common.browse' | translate"
+          [attr.title]="'common.browse' | translate"
+          (click)="pick(); $event.stopPropagation()"
+        >
+          <mat-icon
+            [svgIcon]="type() === 'local' ? 'folder-open' : 'hard-drive'"
+            [attr.data-tone]="pickerDisabled() ? null : typeTone()"
+          ></mat-icon>
+        </button>
+      }
+      @if (removable()) {
+        <button
+          class="action-button"
+          type="button"
+          [attr.aria-label]="'common.delete' | translate"
+          [attr.title]="'common.delete' | translate"
+          (click)="removed.emit()"
+        >
+          <mat-icon svgIcon="trash" data-tone="warn"></mat-icon>
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (type() === 'local' && path()) {
+    @if (status(); as info) {
+      <div appPill class="path-status" [tone]="inspectionTone(info.state)">
+        <mat-icon [svgIcon]="info.icon"></mat-icon>
+        <span>{{ info.labelKey | translate: info.labelParams ?? {} }}</span>
+      </div>
+    }
+  }
+</div>
+
+<ng-template #suggestionsMenu>
+  @if (suggestions()?.(); as state) {
+    <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
+      @if (state.isLoading) {
+        <div class="menu-item disabled">
+          <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+          <span class="item-label">{{ 'wizards.appOperation.loading' | translate }}</span>
+        </div>
+      } @else {
+        @if (state.currentPath) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="goUp()">
+            <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+            <span class="item-label">{{ 'wizards.appOperation.upFolder' | translate }}</span>
+          </button>
+          <mat-divider />
+        }
+        @for (entry of entries(); track entry.Path) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="onEntryPicked(entry.Name)">
+            <mat-icon
+              [svgIcon]="entry.IsDir ? 'folder' : 'file'"
+              [attr.data-tone]="entry.IsDir ? 'accent' : null"
+            ></mat-icon>
+            <span class="item-label">{{ entry.Name }}</span>
+          </button>
+        } @empty {
+          <div class="empty-state">
+            <span class="item-label">{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
+          </div>
+        }
+      }
+    </div>
+  }
+</ng-template>
+
+<ng-template #typeMenu>
+  <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
+    @if (types().includes('local')) {
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType('local')">
+        <mat-icon svgIcon="folder" data-tone="purple"></mat-icon>
+        <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
+      </button>
+    }
+    @if (types().includes('currentRemote') && currentRemote()) {
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType('currentRemote')">
+        <mat-icon svgIcon="hard-drive" data-tone="primary"></mat-icon>
+        <span class="item-label">{{ currentRemote() }}:</span>
+      </button>
+    }
+    @if (types().includes('otherRemote') && otherRemotes().length) {
+      @if (types().length > 1) {
+        <mat-divider />
+      }
+      <div class="menu-group-label">{{ 'wizards.appOperation.otherRemotes' | translate }}</div>
+      @for (remote of otherRemotes(); track remote) {
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (cdkMenuItemTriggered)="setType('otherRemote:' + remote)"
+        >
+          <mat-icon data-tone="accent" svgIcon="cloud"></mat-icon>
+          <span class="item-label">{{ remote }}:</span>
+        </button>
+      }
+    }
+  </div>
+</ng-template>

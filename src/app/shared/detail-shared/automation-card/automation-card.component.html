@@ -1,314 +1,404 @@
 @let auto = automation();
-@let nextKey = nextRunKey();
-
-<ng-template #actions>
-  @if (canRun()) {
-    <button
-      matIconButton
-      class="automation-toggle-btn"
-      (click)="onRun($event)"
-      [attr.title]="'automation.actions.run' | translate"
-    >
-      <mat-icon svgIcon="play"></mat-icon>
-    </button>
-  }
-  @if (canStop()) {
-    <button
-      matIconButton
-      class="automation-toggle-btn"
-      (click)="onStop($event)"
-      [attr.title]="'automation.actions.stop' | translate"
-    >
-      <mat-icon svgIcon="stop"></mat-icon>
-    </button>
-  }
-  <button
-    matIconButton
-    class="automation-toggle-btn"
-    (click)="onToggle($event)"
-    [attr.title]="toggleState().tooltip | translate"
-    [disabled]="auto.status === 'stopping'"
-  >
-    <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
-  </button>
-</ng-template>
+@let status = statusPill();
+@let type = typeMeta();
 
 @if (variant() === 'compact') {
   <mat-card
     class="automation-card compact"
     [class.disabled]="auto.status === 'disabled'"
-    [class.stopping]="auto.status === 'stopping'"
     role="button"
     tabindex="0"
     (keydown.enter)="onKeyActivate($event)"
     (keydown.space)="onKeyActivate($event)"
   >
-    <mat-card-header class="automation-header">
-      <div class="automation-info-section">
-        <div class="automation-icon-wrapper" [attr.data-tone]="typeMeta().tone">
-          <mat-icon [svgIcon]="typeMeta().icon"></mat-icon>
+    <header class="card-head">
+      <div class="type-tile" [attr.data-tone]="type.tone">
+        <mat-icon [svgIcon]="type.icon"></mat-icon>
+      </div>
+      <div class="titles">
+        <div class="name-row">
+          <span class="name truncate">{{ auto.profileName }}</span>
+          <mat-icon
+            class="origin-icon"
+            [svgIcon]="origin().icon"
+            [attr.title]="origin().labelKey | translate"
+          ></mat-icon>
         </div>
-        <div class="automation-title-section">
-          <div class="automation-title-row">
-            <span class="automation-name truncate">{{ auto.profileName }}</span>
-            <mat-icon
-              [svgIcon]="origin().icon"
-              [attr.data-tone]="origin().tone"
-              [attr.title]="origin().labelKey | translate"
-            ></mat-icon>
-          </div>
-          <span class="automation-subtitle truncate">
+        <span class="subtitle truncate">
+          @if (typeLabelKey(); as typeKey) {
+            {{ auto.remoteName }} · {{ typeKey | translate }}
+          } @else {
+            {{ origin().labelKey | translate }}
+          }
+        </span>
+      </div>
+      @if (status) {
+        <span appPill size="xs" [tone]="status.tone">{{ status.key | translate }}</span>
+      }
+    </header>
+
+    <div class="trigger-pills">
+      @for (trigger of triggers(); track trigger.kind) {
+        <span appPill size="sm" [tone]="trigger.tone" [attr.title]="trigger.label">
+          <mat-icon [svgIcon]="trigger.icon"></mat-icon>
+          <span>{{ trigger.label }}</span>
+        </span>
+      }
+      @if (auto.watchEnabled && auto.watchChangedOnly) {
+        <span appPill size="sm" tone="dim">{{
+          'automation.monitoring.changedOnlyShort' | translate
+        }}</span>
+      }
+    </div>
+
+    @if (auto.status === 'failed' && lastErrorText(); as error) {
+      <p class="error-box" [attr.title]="error">
+        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        <span>{{ error }}</span>
+      </p>
+    }
+
+    <footer class="card-foot">
+      <span class="fact truncate">{{ fact() }}</span>
+      <div class="actions">
+        @if (auto.status === 'running') {
+          <button
+            type="button"
+            class="action-button"
+            (click)="onStop($event)"
+            [attr.title]="'automation.actions.stop' | translate"
+          >
+            <mat-icon svgIcon="stop"></mat-icon>
+          </button>
+        } @else if (auto.status === 'failed') {
+          <button
+            type="button"
+            class="action-button"
+            (click)="onRun($event)"
+            [attr.title]="'common.retry' | translate"
+          >
+            <mat-icon svgIcon="refresh"></mat-icon>
+          </button>
+        } @else if (!isResource() && !startsIn() && auto.status === 'enabled') {
+          <button
+            type="button"
+            class="action-button"
+            (click)="onRun($event)"
+            [attr.title]="'automation.actions.run' | translate"
+          >
+            <mat-icon svgIcon="play"></mat-icon>
+          </button>
+        }
+        @if (canPause()) {
+          <button
+            type="button"
+            class="action-button"
+            (click)="onToggle($event)"
+            [attr.title]="
+              (auto.status === 'disabled'
+                ? 'automation.toggle.enable'
+                : 'automation.toggle.disable'
+              ) | translate
+            "
+          >
+            <mat-icon [svgIcon]="auto.status === 'disabled' ? 'play' : 'pause'"></mat-icon>
+          </button>
+        }
+      </div>
+    </footer>
+  </mat-card>
+} @else {
+  <mat-expansion-panel
+    class="automation-card detailed"
+    [class.disabled]="auto.status === 'disabled'"
+    [expanded]="expanded()"
+    (opened)="expanded.set(true)"
+    (closed)="expanded.set(false)"
+  >
+    <mat-expansion-panel-header collapsedHeight="auto" expandedHeight="auto">
+      <div class="card-head">
+        <div class="type-tile" [attr.data-tone]="type.tone">
+          <mat-icon [svgIcon]="type.icon"></mat-icon>
+        </div>
+        <div class="titles">
+          <span class="name truncate">{{ auto.profileName }}</span>
+          <span class="subtitle truncate">
             @if (typeLabelKey(); as typeKey) {
-              {{ auto.remoteName }} · {{ typeKey | translate }}
-            } @else {
-              {{ origin().labelKey | translate }}
+              {{ auto.remoteName }} · {{ typeKey | translate }} ·
             }
-            @if (auto.watchEnabled) {
-              ·
+            {{ origin().labelKey | translate }}
+          </span>
+        </div>
+        <div class="head-pills">
+          @for (trigger of triggers(); track trigger.kind) {
+            <span appPill size="sm" [tone]="trigger.tone" [attr.title]="trigger.label">
+              <mat-icon [svgIcon]="trigger.icon"></mat-icon>
+              <span>{{ trigger.label }}</span>
+            </span>
+          }
+        </div>
+        <div class="head-end">
+          @if (live(); as state) {
+            @if (state.kind === 'mount') {
               <span
-                class="watcher-mini-badge"
+                appPill
+                size="xs"
+                [tone]="state.mountPoint ? 'primary' : 'dim'"
+                [attr.title]="state.mountPoint"
+              >
+                {{ (state.mountPoint ? 'mount.mounted' : 'mount.notMounted') | translate }}
+              </span>
+            } @else {
+              <span appPill size="xs" class="selectable" [tone]="state.address ? 'primary' : 'dim'">
+                {{
+                  state.address
+                    ? ('automation.card.servingAt' | translate: { address: state.address })
+                    : ('automation.card.notServing' | translate)
+                }}
+              </span>
+            }
+          }
+          @if (status) {
+            <!-- A workflow has no job of its own to name. -->
+            <span
+              appPill
+              size="xs"
+              [tone]="status.tone"
+              [attr.title]="
+                auto.currentJobId && !isWorkflow()
+                  ? ('dashboard.generalDetail.jobIdLabel' | translate) + ' ' + auto.currentJobId
+                  : null
+              "
+              >{{ status.key | translate }}</span
+            >
+          }
+          <!-- The header opens the panel: keys on the buttons must not toggle it. -->
+          <div class="actions">
+            @if (auto.status === 'running') {
+              <button
+                type="button"
+                class="action-button"
+                (keydown)="$event.stopPropagation()"
+                (click)="onStop($event)"
+                [attr.title]="'automation.actions.stop' | translate"
+              >
+                <mat-icon svgIcon="stop"></mat-icon>
+              </button>
+            } @else if (!isResource() && !startsIn() && auto.status === 'enabled') {
+              <button
+                type="button"
+                class="action-button"
+                (keydown)="$event.stopPropagation()"
+                (click)="onRun($event)"
+                [attr.title]="'automation.actions.run' | translate"
+              >
+                <mat-icon svgIcon="play"></mat-icon>
+              </button>
+            }
+            @if (canPause()) {
+              <button
+                type="button"
+                class="action-button"
+                (keydown)="$event.stopPropagation()"
+                (click)="onToggle($event)"
                 [attr.title]="
-                  (auto.watchChangedOnly
-                    ? 'automation.monitoring.realtimeChangedOnly'
-                    : 'automation.monitoring.realtime'
+                  (auto.status === 'disabled'
+                    ? 'automation.toggle.enable'
+                    : 'automation.toggle.disable'
                   ) | translate
                 "
               >
-                <mat-icon svgIcon="eye" class="watcher-mini-icon"></mat-icon>
-              </span>
+                <mat-icon [svgIcon]="auto.status === 'disabled' ? 'play' : 'pause'"></mat-icon>
+              </button>
             }
-          </span>
-        </div>
-      </div>
-
-      <div class="automation-header-end">
-        <span
-          appPill
-          size="xs"
-          [tone]="statusPill()"
-          [attr.title]="auto.status === 'failed' ? auto.lastError : null"
-        >
-          {{ 'automation.status.' + auto.status | translate }}
-        </span>
-        <ng-container *ngTemplateOutlet="actions" />
-      </div>
-    </mat-card-header>
-
-    <mat-card-footer class="automation-footer">
-      <div class="automation-stats">
-        <div class="stat-item" [attr.title]="'dashboard.generalDetail.successful' | translate">
-          <mat-icon svgIcon="check-circle" class="stat-icon" data-tone="primary"></mat-icon>
-          <span class="stat-value">{{ auto.successCount }}</span>
-        </div>
-        <div class="stat-item" [attr.title]="'dashboard.generalDetail.failedCount' | translate">
-          <mat-icon svgIcon="circle-exclamation" class="stat-icon" data-tone="warn"></mat-icon>
-          <span class="stat-value">{{ auto.failureCount }}</span>
-        </div>
-        <div class="stat-item" [attr.title]="'dashboard.generalDetail.stoppedCount' | translate">
-          <mat-icon svgIcon="stop" class="stat-icon" data-tone="orange"></mat-icon>
-          <span class="stat-value">{{ auto.stoppedCount }}</span>
-        </div>
-        <div class="stat-item" [attr.title]="'dashboard.generalDetail.totalRuns' | translate">
-          <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
-          <span class="stat-value">{{ auto.runCount }}</span>
-        </div>
-      </div>
-
-      <div class="automation-schedule">
-        <span class="schedule-label">{{ 'generalOverview.automations.nextRun' | translate }}</span>
-        <span class="schedule-value">{{ nextKey ? (nextKey | translate) : nextRunTime() }}</span>
-      </div>
-    </mat-card-footer>
-  </mat-card>
-} @else {
-  <mat-card
-    class="automation-card detailed"
-    [class.disabled]="auto.status === 'disabled'"
-    [class.stopping]="auto.status === 'stopping'"
-  >
-    <mat-card-header class="automation-header">
-      <div class="automation-title-row">
-        <div class="automation-icon-wrapper" [attr.data-tone]="typeMeta().tone">
-          <mat-icon [svgIcon]="typeMeta().icon"></mat-icon>
-        </div>
-        <div class="title-text">
-          <div class="title-heading-row">
-            <h4 class="truncate">{{ auto.profileName }} · {{ auto.backendName }}</h4>
-            <span appPill size="xs" [tone]="origin().tone">
-              {{ origin().labelKey | translate }}
-            </span>
           </div>
-          @if (typeLabelKey(); as typeKey) {
-            <span class="automation-type-label">
-              {{ auto.remoteName }} · {{ typeKey | translate }}
-            </span>
+        </div>
+      </div>
+    </mat-expansion-panel-header>
+
+    @if (auto.status === 'failed') {
+      <div class="failure" role="alert">
+        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        <div class="failure-text">
+          <strong>{{ 'automation.card.lastFailed' | translate }}</strong>
+          @if (lastErrorText(); as error) {
+            <span [appCopyToClipboard]="error" [attr.title]="'common.copy' | translate">{{
+              error
+            }}</span>
+          }
+          @if (formatDate(auto.lastRun); as when) {
+            <small>{{ when }}</small>
           }
         </div>
-        <span appPill size="xs" [tone]="statusPill()">
-          {{ 'automation.status.' + auto.status | translate }}
-        </span>
+        <button
+          type="button"
+          class="action-button"
+          (click)="onRun($event)"
+          [attr.title]="'common.retry' | translate"
+        >
+          <mat-icon svgIcon="refresh"></mat-icon>
+        </button>
       </div>
-      <ng-container *ngTemplateOutlet="actions" />
-    </mat-card-header>
+    }
 
-    <div class="automation-body">
-      <div class="detail-section">
+    <div class="card-body">
+      <section class="detail-section">
         <h5 class="section-title">
           <mat-icon svgIcon="clock"></mat-icon>
-          {{ 'dashboard.generalDetail.schedule' | translate }}
+          {{ 'automation.card.whenItRuns' | translate }}
         </h5>
-        <div class="detail-grid">
-          @if (auto.cronExpression) {
-            <div class="detail-item">
-              <span class="label">{{ 'dashboard.generalDetail.cronExpression' | translate }}</span>
-              <code class="value cron-expression">{{ auto.cronExpression }}</code>
-              <span class="label">{{ cronDescription() }}</span>
+        @for (trigger of triggers(); track trigger.kind) {
+          <div class="trigger-row">
+            <div class="type-tile small" [attr.data-tone]="trigger.tone">
+              <mat-icon [svgIcon]="trigger.icon"></mat-icon>
             </div>
-          }
-          <div class="detail-item">
-            <span class="label">{{ 'dashboard.generalDetail.nextRunLabel' | translate }}</span>
-            <span class="value next-run">{{
-              nextKey ? (nextKey | translate) : nextRunTime()
-            }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="label">{{ 'dashboard.generalDetail.lastRunLabel' | translate }}</span>
-            <span class="value">{{
-              lastRunTime() ?? ('automation.lastRun.never' | translate)
-            }}</span>
-          </div>
-          @if (auto.watchEnabled) {
-            <div class="detail-item">
-              <span class="label">{{ 'automation.monitoring.realtime' | translate }}</span>
-              <span class="value">{{ 'automation.monitoring.watcherActive' | translate }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">{{ 'automation.monitoring.debounce' | translate }}</span>
-              <span class="value"
-                >{{ auto.watchDelay }} {{ 'automation.monitoring.seconds' | translate }}</span
-              >
-            </div>
-            @if (auto.watchChangedOnly) {
-              <div class="detail-item">
-                <span class="label">{{ 'automation.monitoring.syncScope' | translate }}</span>
-                <span class="value">{{
-                  'automation.monitoring.changedOnlyActive' | translate
-                }}</span>
-              </div>
+            @switch (trigger.kind) {
+              @case ('schedule') {
+                <div class="trigger-main">
+                  <span class="trigger-title">{{ cronDescription() }}</span>
+                  <code class="trigger-detail">{{ auto.cronExpression }}</code>
+                </div>
+                <div class="trigger-side" [attr.title]="formatDate(auto.nextRun)">
+                  <span class="side-label">{{
+                    'dashboard.generalDetail.nextRunLabel' | translate
+                  }}</span>
+                  <span class="side-value">{{
+                    auto.status === 'disabled'
+                      ? ('automation.status.disabled' | translate)
+                      : (nextRunRelative() ?? ('automation.nextRun.notScheduled' | translate))
+                  }}</span>
+                </div>
+              }
+              @case ('watch') {
+                <div class="trigger-main">
+                  <span class="trigger-title">{{ 'automation.card.onChange' | translate }}</span>
+                  <span class="trigger-detail">
+                    {{ 'automation.card.waitsAfterChange' | translate: { count: auto.watchDelay } }}
+                    @if (auto.watchChangedOnly) {
+                      · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+                    }
+                  </span>
+                </div>
+                <div class="trigger-side">
+                  <span class="side-label">{{
+                    'automation.monitoring.watcherActive' | translate
+                  }}</span>
+                  <span class="side-value">{{
+                    'automation.card.folders' | translate: { count: auto.args.srcPaths.length }
+                  }}</span>
+                </div>
+              }
+              @case ('startup') {
+                <div class="trigger-main">
+                  <span class="trigger-title">{{ 'automation.card.onAppStart' | translate }}</span>
+                  <span class="trigger-detail">{{
+                    auto.autoStartDelay > 0
+                      ? ('automation.startup.delay' | translate: { count: auto.autoStartDelay })
+                      : ('automation.startup.immediately' | translate)
+                  }}</span>
+                </div>
+                @if (startsIn(); as seconds) {
+                  <div class="trigger-side">
+                    <span class="side-value">{{
+                      'automation.startup.startsIn' | translate: { count: seconds }
+                    }}</span>
+                  </div>
+                } @else if (startsOnlyWithTheApp() && auto.lastRun) {
+                  <!-- Only then is the last run the last start: a schedule runs it too. -->
+                  <div class="trigger-side" [attr.title]="formatDate(auto.lastRun)">
+                    <span class="side-label">{{ 'automation.card.lastStart' | translate }}</span>
+                    <span class="side-value">{{ lastRunRelative() }}</span>
+                  </div>
+                }
+              }
             }
-          }
-        </div>
-      </div>
+          </div>
+        }
+      </section>
 
-      <div class="detail-section">
-        <h5 class="section-title">
-          <mat-icon svgIcon="chart"></mat-icon>
-          {{ 'dashboard.generalDetail.statistics' | translate }}
-        </h5>
-        <div class="stats-grid">
-          <div class="stat-card success">
-            <div class="stat-value">{{ auto.successCount }}</div>
-            <div class="stat-label">{{ 'dashboard.generalDetail.successful' | translate }}</div>
-          </div>
-          <div class="stat-card failed">
-            <div class="stat-value">{{ auto.failureCount }}</div>
-            <div class="stat-label">{{ 'dashboard.generalDetail.failedCount' | translate }}</div>
-          </div>
-          <div class="stat-card stopped">
-            <div class="stat-value">{{ auto.stoppedCount }}</div>
-            <div class="stat-label">{{ 'dashboard.generalDetail.stoppedCount' | translate }}</div>
-          </div>
-          <div class="stat-card total">
-            <div class="stat-value">{{ auto.runCount }}</div>
-            <div class="stat-label">{{ 'dashboard.generalDetail.totalRuns' | translate }}</div>
-          </div>
-        </div>
-      </div>
-
-      @if (automationPaths(); as paths) {
-        @if (paths.sourcePaths.length || paths.destPaths.length) {
-          <div class="detail-section">
+      @if (paths(); as p) {
+        @if (p.sources.length || p.destinations.length) {
+          <section class="detail-section">
             <h5 class="section-title">
               <mat-icon svgIcon="folder"></mat-icon>
               {{ 'dashboard.generalDetail.paths' | translate }}
             </h5>
-            <div class="path-grid">
-              @for (src of paths.sourcePaths; track src.path; let idx = $index) {
-                <div class="path-item">
-                  <div class="path-content">
-                    <span class="path-label">
-                      {{
-                        (isWorkflow()
-                          ? 'automation.monitoring.watchedFolder'
-                          : 'dashboard.generalDetail.sourceLabel'
-                        ) | translate
-                      }}
-                      @if (paths.isMultiSource) {
-                        #{{ idx + 1 }}
-                      }
-                    </span>
-                    <code class="path-value">{{ src.path }}</code>
+            <!-- Every source goes to the same destination: one block each, with one arrow. -->
+            <div class="path-flow">
+              <div class="path-column">
+                <span class="path-label">
+                  {{ (p.sources.length > 1 ? p.labels.sources : p.labels.source) | translate }}
+                  @if (p.sources.length > 1) {
+                    <span appPill size="xs" tone="dim">{{ p.sources.length }}</span>
+                  }
+                </span>
+                @for (src of p.sources; track src.path) {
+                  <div class="path-value">
+                    <code class="truncate" [attr.title]="src.path">{{ src.path }}</code>
+                    <button
+                      type="button"
+                      class="action-button"
+                      [attr.title]="'shared.actions.open' | translate"
+                      (click)="onOpenInFiles(src.path, $event)"
+                    >
+                      <mat-icon [svgIcon]="src.icon"></mat-icon>
+                    </button>
                   </div>
-                  <button
-                    matIconButton
-                    [attr.title]="'shared.actions.open' | translate"
-                    (click)="onOpenInFiles(src.path, $event)"
-                  >
-                    <mat-icon [svgIcon]="src.icon"></mat-icon>
-                  </button>
-                </div>
-              }
-
-              @for (dest of paths.destPaths; track dest.path; let idx = $index) {
-                <div class="path-item">
-                  <div class="path-content">
-                    <span class="path-label">
-                      {{ 'dashboard.generalDetail.destinationLabel' | translate }}
-                      @if (paths.isMultiDest) {
-                        #{{ idx + 1 }}
-                      }
-                    </span>
-                    <code class="path-value">{{ dest.path }}</code>
-                  </div>
-                  <button
-                    matIconButton
-                    [attr.title]="'shared.actions.open' | translate"
-                    (click)="onOpenInFiles(dest.path, $event)"
-                  >
-                    <mat-icon [svgIcon]="dest.icon"></mat-icon>
-                  </button>
+                }
+              </div>
+              @if (p.destinations.length) {
+                <mat-icon class="path-arrow" svgIcon="right-arrow"></mat-icon>
+                <div class="path-column">
+                  <span class="path-label">{{ p.labels.destination | translate }}</span>
+                  @for (dest of p.destinations; track dest.path) {
+                    <div class="path-value">
+                      <code class="truncate" [attr.title]="dest.path">{{ dest.path }}</code>
+                      <button
+                        type="button"
+                        class="action-button"
+                        [attr.title]="'shared.actions.open' | translate"
+                        (click)="onOpenInFiles(dest.path, $event)"
+                      >
+                        <mat-icon [svgIcon]="dest.icon"></mat-icon>
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
-          </div>
+          </section>
         }
       }
 
-      @if (auto.lastError; as error) {
+      <!-- A start with the app happens once: there are no runs to count. -->
+      @if (!startsOnlyWithTheApp()) {
         <section class="detail-section">
-          <span class="section-title error">
-            <mat-icon svgIcon="circle-exclamation"></mat-icon>
-            {{ 'dashboard.generalDetail.lastError' | translate }}
-          </span>
-          <app-alert-banner
-            severity="error"
-            [description]="error"
-            [appCopyToClipboard]="error"
-            [attr.title]="'common.copy' | translate"
-          />
+          <h5 class="section-title">
+            <mat-icon svgIcon="chart"></mat-icon>
+            {{ 'dashboard.generalDetail.statistics' | translate }}
+          </h5>
+          @let r = runs();
+          <div class="run-bar" role="presentation">
+            @for (part of r.parts; track part.key) {
+              @if (part.width > 0) {
+                <span [attr.data-tone]="part.tone" [style.width.%]="part.width"></span>
+              }
+            }
+          </div>
+          <div class="run-legend">
+            @for (part of r.parts; track part.key) {
+              <span class="legend-item" [attr.data-tone]="part.tone">
+                <i class="legend-dot"></i>{{ part.key | translate }}
+                <strong>{{ part.count }}</strong>
+              </span>
+            }
+            <span class="legend-item">
+              {{ 'dashboard.generalDetail.totalRuns' | translate }} <strong>{{ r.total }}</strong>
+            </span>
+            <span class="ml-auto secondary-text">{{ lastRunText() }}</span>
+          </div>
         </section>
       }
-
-      <!-- A workflow has no job of its own: the Running pill in the header already says it. -->
-      @if (auto.currentJobId && !isWorkflow()) {
-        <div class="running-section">
-          <mat-icon svgIcon="play"></mat-icon>
-          <span>{{ 'dashboard.generalDetail.currentlyRunning' | translate }}</span>
-          <span class="running-info">
-            {{ 'dashboard.generalDetail.jobIdLabel' | translate }} {{ auto.currentJobId }}
-          </span>
-        </div>
-      }
     </div>
-  </mat-card>
+  </mat-expansion-panel>
 }

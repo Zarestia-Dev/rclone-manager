@@ -28,8 +28,14 @@ describe('AboutModalComponent', () => {
   let installationCommand: WritableSignal<string>;
   let installationPackage: WritableSignal<string>;
   let updateAvailable: WritableSignal<UpdateInfo | null>;
+  let lastCheckedAt: WritableSignal<string | null>;
+  let checkError: WritableSignal<string>;
+  let autoCheckEnabled: WritableSignal<boolean>;
+  let skippedVersions: WritableSignal<string[]>;
   const cancelUpdate = vi.fn();
+  const setChannel = vi.fn();
   const relaunchApp = vi.fn();
+  const installedRelease = vi.fn();
 
   beforeEach(async () => {
     buildType = signal<string | null>(null);
@@ -39,6 +45,12 @@ describe('AboutModalComponent', () => {
     installationCommand = signal('');
     installationPackage = signal('');
     updateAvailable = signal<UpdateInfo | null>(null);
+    lastCheckedAt = signal<string | null>(null);
+    checkError = signal('');
+    autoCheckEnabled = signal(true);
+    skippedVersions = signal<string[]>([]);
+    installedRelease.mockReset();
+    setChannel.mockReset();
     cancelUpdate.mockReset().mockResolvedValue(undefined);
     relaunchApp.mockReset().mockResolvedValue(undefined);
     dialogRefSpy = { close: vi.fn() };
@@ -48,11 +60,13 @@ describe('AboutModalComponent', () => {
     };
 
     const mockAppUpdaterService = {
-      autoCheckEnabled: signal(true),
+      autoCheckEnabled,
       updateAvailable,
       updateInProgress: signal(false),
+      downloading: signal(false),
       updateChannel: signal('stable'),
-      skippedVersions: signal([]),
+      setChannel,
+      skippedVersions,
       readyToRestart,
       isCancelling: signal(false),
       cancelUpdate,
@@ -64,14 +78,15 @@ describe('AboutModalComponent', () => {
       installationFailure,
       installationCommand,
       installationPackage,
-      lastCheckedAt: signal(null),
-      checkError: signal(''),
-      rolledBack: signal([]),
+      lastCheckedAt,
+      checkError,
+      installedRelease,
     };
 
     const mockRcloneUpdateService = {
       updateAvailable: signal(null),
       hasUpdates: signal(false),
+      isCancelling: signal(false),
       downloading: signal(false),
       isChecking: signal(false),
       readyToRestart: signal(false),
@@ -196,10 +211,10 @@ describe('AboutModalComponent', () => {
     expect(component.updateInstructions()?.links[0].url).toBe(
       'https://aur.archlinux.org/packages/rclone-manager-headless'
     );
-    expect(component.getPlatformLabel('pacman')).toBe('AUR');
+    expect(component.getPlatform('pacman').label).toBe('Pacman');
   });
 
-  it('labels the release by its pre-release flag rather than its tag text', () => {
+  it('marks an offered update as beta by its pre-release flag rather than its tag text', () => {
     const update: UpdateInfo = {
       version: '1.2.0-rc.1',
       currentVersion: '1.1.0',
@@ -209,9 +224,55 @@ describe('AboutModalComponent', () => {
       prerelease: true,
     };
     updateAvailable.set(update);
-    expect(component.appUpdateReleaseChannel()).toBe('beta');
+    component.navigateTo('about-app');
+    fixture.detectChanges();
+    const pill = (): Element | null =>
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.update-card[data-tone="accent"] .new-version .app-pill'
+      );
+    expect(pill()?.textContent).toContain('modals.about.channelBeta');
     updateAvailable.set({ ...update, prerelease: false, releaseTag: 'v1.2.0-beta-notes' });
-    expect(component.appUpdateReleaseChannel()).toBe('stable');
+    fixture.detectChanges();
+    expect(pill()).toBeNull();
+  });
+
+  it('says up to date only after a check that succeeded', () => {
+    component.navigateTo('about-app');
+    const title = (): string | undefined => {
+      fixture.detectChanges();
+      return (fixture.nativeElement as HTMLElement)
+        .querySelector('.update-card h4')
+        ?.textContent?.trim();
+    };
+    expect(title()).toBe('modals.about.statusUnknown');
+    lastCheckedAt.set('2026-11-24T12:00:00Z');
+    expect(title()).toBe('modals.about.upToDate');
+    checkError.set('rate limited');
+    expect(title()).toBe('modals.about.statusUnknown');
+  });
+
+  it('shows the notes of the installed version and drops an answer that arrives too late', async () => {
+    let resolveFirst!: (value: unknown) => void;
+    installedRelease
+      .mockReturnValueOnce(new Promise(resolve => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({ version: '0.3.7', releaseNotes: '# Second' });
+    const first = component.showInstalledReleaseNotes('app');
+    expect(component.currentView().id).toBe('release-notes');
+    expect(component.shownRelease()).toBeNull();
+    await component.showInstalledReleaseNotes('app');
+    resolveFirst({ version: '0.3.6', releaseNotes: '# First' });
+    await first;
+    expect(component.shownRelease()?.version).toBe('0.3.7');
+  });
+
+  it('reports a failure to load the installed release notes', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const translate = TestBed.inject(BackendTranslationService);
+    vi.mocked(translate.translateBackendMessage).mockReturnValueOnce('GitHub API error: 404');
+    installedRelease.mockRejectedValueOnce('backendErrors.updater.github');
+    await component.showInstalledReleaseNotes('app');
+    expect(component.shownRelease()).toBeNull();
+    expect(component.releaseNotesError()).toBe('GitHub API error: 404');
   });
 
   it('provides the download page for portable installations', () => {
@@ -230,12 +291,24 @@ describe('AboutModalComponent', () => {
   it('shows Docker as installation information only when supplied by the backend', () => {
     buildType.set('container');
     fixture.detectChanges();
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('.platform-badge')?.textContent
-    ).toContain('Docker');
+    const pills = (): NodeListOf<Element> =>
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.version-info .app-pill');
+    expect(pills()[1]?.textContent).toContain('Docker');
     buildType.set(null);
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).querySelector('.platform-badge')).toBeNull();
+    expect(pills().length).toBe(1);
+  });
+
+  it('lists its pages as plain buttons, not as tabs', async () => {
+    const list = (fixture.nativeElement as HTMLElement).querySelector('.about-list') as HTMLElement;
+    expect(list.querySelector('[role="tablist"], [role="tab"], [aria-selected]')).toBeNull();
+    expect(await axeViolations(list)).toEqual([]);
+  });
+
+  it('lists its pages as plain buttons, not as tabs', async () => {
+    const list = (fixture.nativeElement as HTMLElement).querySelector('.about-list') as HTMLElement;
+    expect(list.querySelector('[role="tablist"], [role="tab"], [aria-selected]')).toBeNull();
+    expect(await axeViolations(list)).toEqual([]);
   });
 
   it('lists its pages as plain buttons, not as tabs', async () => {
@@ -255,7 +328,7 @@ describe('AboutModalComponent', () => {
     fixture.detectChanges();
     const buttons = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
-        '.restart-required button'
+        '.update-card[data-tone="warn"] button'
       )
     );
     const discard = buttons.find(button => button.textContent?.includes('updates.discardDownload'));
@@ -315,6 +388,9 @@ describe('AboutModalComponent', () => {
     const hrefs = Array.from(links).map(l => l.getAttribute('href'));
     expect(hrefs).toContain('https://github.com/DraftingDreamer');
     expect(hrefs).toContain('https://github.com/nvandamme');
+    expect(hrefs).toContain('https://github.com/repires');
+    expect(hrefs).toContain('https://github.com/Vaso73');
+    expect(hrefs).toContain('https://github.com/powerAn2020');
     expect(hrefs).toContain('https://github.com/Hakanbaban53');
   });
 
@@ -327,5 +403,95 @@ describe('AboutModalComponent', () => {
 
     component.close();
     expect(dialogRefSpy.close).toHaveBeenCalledTimes(1);
+  });
+
+  describe('update settings row', () => {
+    const row = (): HTMLElement | null =>
+      (fixture.nativeElement as HTMLElement).querySelector('.item-label')?.closest('button') ??
+      null;
+    const subtitle = (): string[] =>
+      Array.from(row()?.querySelectorAll('.item-subtitle span') ?? []).map(
+        span => span.textContent?.trim() ?? ''
+      );
+    const skippedCount = (): string | undefined =>
+      row()?.querySelector('.item-title .app-pill')?.textContent?.trim();
+
+    beforeEach(() => {
+      component.navigateTo('about-app');
+      fixture.detectChanges();
+    });
+
+    it('summarises the channel and auto-check without showing the settings themselves', () => {
+      expect(subtitle()).toEqual(['modals.about.channelStable', 'modals.about.autoCheck']);
+      expect((fixture.nativeElement as HTMLElement).querySelector('.settings-card')).toBeNull();
+    });
+
+    it('leaves auto-check out of the summary while it is off', () => {
+      autoCheckEnabled.set(false);
+      fixture.detectChanges();
+      expect(subtitle()).toEqual(['modals.about.channelStable']);
+    });
+
+    it('counts skipped versions only when there are some', () => {
+      expect(skippedCount()).toBeUndefined();
+      skippedVersions.set(['1.0.1', '1.0.2']);
+      fixture.detectChanges();
+      expect(skippedCount()).toBe('2');
+    });
+
+    it('opens the settings page with the toggle, the channel and the skipped versions', () => {
+      skippedVersions.set(['1.0.1']);
+      row()?.click();
+      fixture.detectChanges();
+      expect(component.currentView().id).toBe('app-update-settings');
+      expect(component.pageTitles['app-update-settings']).toBe('modals.about.updateSettings');
+      const page = fixture.nativeElement as HTMLElement;
+      expect(page.querySelector('.settings-card mat-slide-toggle')).not.toBeNull();
+      const channels = Array.from(page.querySelectorAll<HTMLElement>('[role="radio"]'));
+      expect(channels.map(c => c.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+      channels[1].click();
+      expect(setChannel).toHaveBeenCalledWith('beta');
+      expect(page.querySelectorAll('.skipped-item')).toHaveLength(1);
+    });
+  });
+
+  describe('release notes links', () => {
+    const notes = [
+      '[Dosya](/dosya/)',
+      '[S3 Neon](/s3/#neon)',
+      '[Resolve](#conflict-resolve)',
+      '[Docs](https://rclone.org/docs/)',
+      '[Mail](mailto:a@b.c)',
+    ].join('\n\n');
+    const hrefs = (target: 'app' | 'rclone'): (string | null)[] => {
+      component.showReleaseNotes(
+        { version: '1.0.0', currentVersion: '1.0.0', updateAvailable: false, releaseNotes: notes },
+        target
+      );
+      fixture.detectChanges();
+      return Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.release-notes a')
+      ).map(a => a.getAttribute('href'));
+    };
+
+    it("resolves rclone's site-relative links against rclone.org", () => {
+      expect(hrefs('rclone')).toEqual([
+        'https://rclone.org/dosya/',
+        'https://rclone.org/s3/#neon',
+        'https://rclone.org/changelog/#conflict-resolve',
+        'https://rclone.org/docs/',
+        'mailto:a@b.c',
+      ]);
+    });
+
+    it('leaves the links of the app notes as they are', () => {
+      expect(hrefs('app')).toEqual([
+        '/dosya/',
+        '/s3/#neon',
+        '#conflict-resolve',
+        'https://rclone.org/docs/',
+        'mailto:a@b.c',
+      ]);
+    });
   });
 });

@@ -2,12 +2,11 @@
 <resources>
     <string name="app_name">RClone Manager</string>
     <string name="main_activity_title">RClone Manager</string>
-    <string name="saf_keepalive_title">Serviço de Armazenamento Rclone SAF</string>
-    <string name="saf_keepalive_text">Transmissão de arquivos em segundo plano ativa</string>
-    <string name="saf_keepalive_channel_name">Serviço de Armazenamento Rclone</string>
+    <string name="saf_keepalive_text">Há arquivos abertos em outro aplicativo</string>
+    <string name="saf_upload_text">Enviando arquivos salvos em outro aplicativo</string>
     <string name="keepalive_title">RClone Manager</string>
     <string name="keepalive_text">Em execução em segundo plano</string>
-    <string name="keepalive_stopped_text">O Android parou o serviço em segundo plano. Toque para retomar.</string>
+    <string name="keepalive_locked_text">Cofre bloqueado. Toque para desbloquear.</string>
     <string name="keepalive_channel_name">Serviço em Segundo Plano do RClone</string>
     <string name="keepalive_channel_desc">Mantém montagens ativas, transferências e tarefas em segundo plano</string>
     <string name="shortcut_file_manager_short">Arquivos</string>
@@ -20,4 +19,16 @@
     <string name="quit_confirm_title">Sair do RClone Manager?</string>
     <string name="quit_confirm_message">As transferências, montagens e servidores em execução serão interrompidos.</string>
     <string name="alerts_channel_name">Notificações</string>
+    <string name="app_closed_title">O aplicativo foi fechado em segundo plano</string>
+    <plurals name="jobs_interrupted">
+        <item quantity="one">%d tarefa foi interrompida.</item>
+        <item quantity="many">%d de tarefas foram interrompidas.</item>
+        <item quantity="other">%d tarefas foram interrompidas.</item>
+    </plurals>
+    <plurals name="serves_stopped">
+        <item quantity="one">%d servidor foi interrompido.</item>
+        <item quantity="many">%d de servidores foram interrompidos.</item>
+        <item quantity="other">%d servidores foram interrompidos.</item>
+    </plurals>
+    <string name="autostart_restarts">Os servidores configurados para iniciar automaticamente voltam a iniciar com o aplicativo.</string>
 </resources>

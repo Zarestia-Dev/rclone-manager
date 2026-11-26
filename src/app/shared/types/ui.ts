@@ -1,7 +1,7 @@
 import type { PillTone } from './pill';
 import { ALL_PRIMARY_ACTIONS, PrimaryActionType, SYNC_TYPES } from './operations';
 import { Remote } from './remotes';
-import { OPERATION_REGISTRY } from './operation-registry';
+import { OPERATION_REGISTRY, OPERATION_TONE } from './operation-registry';
 import { Entry, RcConfigOption } from './remote-config';
 import { VfsStats, VfsQueueItem } from 'src/app/services/operations/vfs.service';
 
@@ -112,6 +112,21 @@ export type ConnectionStatus = 'online' | 'offline' | 'checking';
 
 export type PanelId =
   'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'mounts' | 'serves' | 'quickRuns';
+
+/**
+ * The colour role of each overview panel: its icon and its count pill. Mounts and serves read the
+ * role of their operation; the others have none and keep their own.
+ */
+export const PANEL_TONE: Readonly<Record<PanelId, PillTone>> = Object.freeze({
+  remotes: 'primary',
+  bandwidth: 'primary',
+  system: 'orange',
+  jobs: 'yellow',
+  automations: 'purple',
+  mounts: OPERATION_TONE['mount'],
+  serves: OPERATION_TONE['serve'],
+  quickRuns: 'primary',
+});
 
 export interface PanelConfig {
   id: PanelId;

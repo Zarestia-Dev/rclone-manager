@@ -90,7 +90,9 @@
     @for (item of addRemoteMenuItems; track item.label) {
       <button cdkMenuItem class="menu-item" (click)="item.action()">
         <span>{{ item.label | translate }}</span>
-        <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+        @if (item.shortcut) {
+          <span class="shortcut" aria-hidden="true">{{ item.shortcut }}</span>
+        }
       </button>
     }
   </div>

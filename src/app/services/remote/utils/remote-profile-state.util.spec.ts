@@ -69,8 +69,6 @@ describe('remote profile state', () => {
     const first = view(settings, jobs).status;
     const reversed = view(settings, [...jobs].reverse()).status;
     expect(first.sync).toEqual(reversed.sync);
-    expect(first.sync.jobId).toBe(9);
-    expect(first.sync.lastRunProfiles).toEqual({ photos: 9 });
     expect(first.sync.active).toBe(false);
     expect(first.copy.active).toBe(true);
     expect(first.copy.activeProfiles).toEqual({});
@@ -115,9 +113,7 @@ describe('remote profile state', () => {
         status: 'Completed',
       },
     ] as JobInfo[]);
-    expect(remote.status.sync.jobId).toBe(5);
     expect(remote.status.sync.activeProfiles).toEqual({ main: 5 });
-    expect(remote.status.sync.lastRunProfiles).toEqual({ main: 8 });
     expect(remote.status.sync.configuredProfiles).toEqual(['main']);
     expect(remote.status.mount.configuredProfiles).toEqual([]);
   });
@@ -208,8 +204,6 @@ describe('remote profile state', () => {
       },
     ] as JobInfo[]);
     expect(remote.status.sync.active).toBe(false);
-    expect(remote.status.sync.jobId).toBe(1);
-    expect(remote.status.sync.lastRunProfiles).toEqual({ main: 1 });
   });
   it('uses timestamps rather than numeric IDs when a newer engine execution has a lower ID', () => {
     const remote = view({ syncConfigs: { main: {} } }, [
@@ -228,8 +222,6 @@ describe('remote profile state', () => {
         start_time: '2026-10-02T10:00:00Z',
       },
     ] as JobInfo[]);
-    expect(remote.status.sync.jobId).toBe(1);
-    expect(remote.status.sync.lastRunProfiles).toEqual({ main: 1 });
     expect(remote.status.sync.activeProfiles).toEqual({ main: 1 });
   });
 });

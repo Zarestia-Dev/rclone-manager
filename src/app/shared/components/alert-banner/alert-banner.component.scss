@@ -1,4 +1,5 @@
 :host {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -7,20 +8,46 @@
   border-radius: var(--card-border-radius);
   animation: fadeInUp var(--transition-cubic) both;
 
-  > div,
+  // The icon and the text are one block; the actions and the close button sit beside it.
+  .alert-body {
+    display: flex;
+    flex: 1;
+    gap: var(--space-xs);
+    align-items: center;
+    min-width: 0;
+  }
+
   .alert-content {
     flex: 1;
     min-width: 0;
   }
 
   .alert-icon {
+    flex: none;
     align-self: baseline;
   }
 
+  // Buttons marked `bannerAction` sit at the end of the row, centred on it, not under the text.
+  .alert-actions {
+    display: flex;
+    flex: none;
+    gap: var(--space-xs);
+    align-items: center;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // The close button sits in the top-right corner; the row leaves room for it.
+  &:has(> .dismiss-button) {
+    padding-right: calc(var(--space-xs) + 32px + var(--space-sm));
+  }
+
   .dismiss-button {
-    align-self: flex-start;
-    flex-shrink: 0;
-    margin-left: auto;
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
   }
 
   strong {
@@ -28,6 +55,11 @@
     font-weight: 600;
     font-size: var(--font-size-md);
     margin-bottom: var(--space-xs);
+
+    // A title with nothing below it is the whole message: no gap under it to throw it off centre.
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
   p,
@@ -71,11 +103,11 @@
   &.warning {
     background: rgba(var(--orange-rgb), 0.1);
 
-    > mat-icon,
-    > div strong {
+    .alert-icon,
+    .alert-content strong {
       color: var(--orange);
     }
-    > div a {
+    .alert-content a {
       color: var(--accent-color);
     }
   }
@@ -83,11 +115,11 @@
   &.info {
     background: rgba(var(--accent-color-rgb), 0.1);
 
-    > mat-icon,
-    > div strong {
+    .alert-icon,
+    .alert-content strong {
       color: var(--accent-color);
     }
-    > div a {
+    .alert-content a {
       color: var(--accent-color);
     }
   }
@@ -95,11 +127,11 @@
   &.error {
     background: rgba(var(--warn-color-rgb), 0.1);
 
-    > mat-icon,
-    > div strong {
+    .alert-icon,
+    .alert-content strong {
       color: var(--warn-color);
     }
-    > div a {
+    .alert-content a {
       color: var(--accent-color);
     }
   }
@@ -107,21 +139,21 @@
   &.success {
     background: rgba(var(--primary-color-rgb), 0.1);
 
-    > mat-icon,
-    > div strong {
+    .alert-icon,
+    .alert-content strong {
       color: var(--primary-color);
     }
-    > div a {
+    .alert-content a {
       color: var(--primary-color);
     }
   }
 
   &.dim {
-    background: var(--bg-elevated-4);
+    background: var(--bg-elevated-2);
     box-shadow: none;
 
-    > mat-icon,
-    > div strong {
+    .alert-icon,
+    .alert-content strong {
       color: var(--dim-color);
     }
 
@@ -130,29 +162,45 @@
       color: var(--dim-color);
     }
 
-    > div a {
+    .alert-content a {
       color: var(--dim-color);
     }
   }
 
   @media (max-width: 600px) {
+    flex-wrap: wrap;
     padding: var(--space-sm);
     gap: var(--space-sm);
 
-    > mat-icon {
+    // The close button stays beside the text on the first row; the actions fill the row below it.
+    .alert-actions {
+      flex-basis: 100%;
+      order: 1;
+
+      ::ng-deep > * {
+        flex: 1;
+      }
+    }
+
+    &:has(> .dismiss-button) {
+      padding-right: var(--space-sm);
+    }
+
+    .dismiss-button {
+      position: static;
+      align-self: flex-start;
+    }
+
+    .alert-icon {
       width: 20px;
       height: 20px;
       font-size: 20px;
     }
 
-    > div {
-      a {
-        mat-icon {
-          width: 14px;
-          height: 14px;
-          font-size: 14px;
-        }
-      }
+    .alert-content a mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
     }
   }
 }

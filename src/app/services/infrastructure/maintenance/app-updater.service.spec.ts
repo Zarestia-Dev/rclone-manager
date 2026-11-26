@@ -106,31 +106,6 @@ describe('AppUpdaterService state restoration', () => {
     service = TestBed.inject(AppUpdaterService);
   });
 
-  it('confirms a rendered native frontend without waiting for vault unlock or updater settings', async () => {
-    Object.defineProperty(service, 'isTauri', { value: true });
-    await service.confirmStartup();
-    expect(invoke).toHaveBeenCalledWith('confirm_app_update_startup', undefined);
-    expect(invoke).not.toHaveBeenCalledWith('get_update_policy', undefined);
-  });
-
-  it('does not use browser sessions to confirm server startup', async () => {
-    Object.defineProperty(service, 'isTauri', { value: false });
-    await service.confirmStartup();
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('handles a missing native startup command without rejecting frontend startup', async () => {
-    Object.defineProperty(service, 'isTauri', { value: true });
-    invoke.mockRejectedValueOnce(new Error('IPC unavailable'));
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    try {
-      await expect(service.confirmStartup()).resolves.toBeUndefined();
-      expect(error).toHaveBeenCalled();
-    } finally {
-      error.mockRestore();
-    }
-  });
-
   it('restores an active download with auto-check disabled and a skipped release', async () => {
     await service.initialize();
     expect(service.autoCheckEnabled()).toBe(false);
@@ -196,7 +171,7 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.readyToRestart()).toBe(true);
   });
 
-  it('shows checks, failures and rollbacks the backend recorded, also after a reload', async () => {
+  it('shows checks and failures the backend recorded, also after a reload', async () => {
     invoke.mockImplementation(async (command: string) => {
       if (command === 'get_app_update_info') {
         return {
@@ -204,7 +179,6 @@ describe('AppUpdaterService state restoration', () => {
           checking: true,
           lastCheckedAt: '2026-11-05T10:00:00Z',
           error: 'backendErrors.updater.githubRateLimit',
-          rolledBack: [{ version: '1.2.0', reason: 'did not start' }],
         } satisfies UpdaterSnapshot;
       }
       if (command === 'get_update_policy') return policy;
@@ -215,7 +189,6 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.isChecking()).toBe(true);
     expect(service.lastCheckedAt()).toBe('2026-11-05T10:00:00Z');
     expect(service.checkError()).toBe('backendErrors.updater.githubRateLimit');
-    expect(service.rolledBack()).toEqual([{ version: '1.2.0', reason: 'did not start' }]);
   });
 
   it('keeps the active state when a status request fails', async () => {
@@ -300,6 +273,36 @@ describe('AppUpdaterService state restoration', () => {
     progress.next({ ...download, downloadedBytes: 60, percentage: 60 });
     expect(service.downloadStatus().percentage).toBe(60);
     expect(service.updateInProgress()).toBe(true);
+    expect(service.downloading()).toBe(true);
+  });
+
+  it('is downloading only while bytes arrive, not while a complete download installs', async () => {
+    info = {
+      ...available,
+      status: BackendUpdateStatus.Installing,
+      download: { ...download, state: { status: DownloadStateStatus.Complete } },
+    };
+    await service.initialize();
+    expect(service.updateInProgress()).toBe(true);
+    expect(service.downloading()).toBe(false);
+  });
+
+  it('keeps the channel and does not check again when saving the channel fails', async () => {
+    info = null;
+    await service.initialize();
+    invoke.mockClear();
+    saveSetting.mockRejectedValueOnce(new Error('disk full'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await service.setChannel('beta');
+    expect(service.updateChannel()).toBe('stable');
+    expect(showError).toHaveBeenCalledWith('modals.about.updateSettingFailed');
+    expect(invoke).not.toHaveBeenCalledWith('fetch_update', expect.anything());
+  });
+
+  it('reads the notes of the installed release from the backend', async () => {
+    invoke.mockResolvedValueOnce({ version: '0.3.7', releaseNotes: 'notes' });
+    await expect(service.installedRelease()).resolves.toMatchObject({ releaseNotes: 'notes' });
+    expect(invoke).toHaveBeenCalledWith('get_app_release_notes', undefined);
   });
 
   it('restores state even if capability detection fails', async () => {

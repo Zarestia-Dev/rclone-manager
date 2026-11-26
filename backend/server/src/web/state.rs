@@ -13,6 +13,7 @@ use std::{
 };
 use tokio::sync::RwLock;
 
+use super::handlers::UploadSessions;
 use crate::services::bridge::EventBridge;
 
 pub type SessionStore = Arc<RwLock<HashMap<String, Instant>>>;
@@ -28,6 +29,7 @@ pub struct WebServerState {
     pub failed_logins: Arc<FailedLogins>,
     /// The listener terminates TLS itself, so session cookies can be `Secure`.
     pub tls: bool,
+    pub uploads: Arc<UploadSessions>,
 }
 
 impl WebServerState {
@@ -44,6 +46,7 @@ impl WebServerState {
             sessions: SessionStore::default(),
             failed_logins: Arc::default(),
             tls,
+            uploads: Arc::default(),
         }
     }
 }

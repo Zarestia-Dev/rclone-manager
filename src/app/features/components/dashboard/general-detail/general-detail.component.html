@@ -129,68 +129,27 @@
         <mat-card-title>
           <mat-icon svgIcon="clock"></mat-icon>
           <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
-          <span appPill size="xs" tone="dim"
-            >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
-          >
+          <span appPill size="xs" tone="dim">{{ remoteAutomations().length }}</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <app-origin-filter-bar [(selected)]="automationOriginFilter"></app-origin-filter-bar>
 
-        @if (remoteAutomations().length > 1) {
-          <div class="carousel-indicators">
-            @for (automation of remoteAutomations(); track automation.id) {
-              <button
-                type="button"
-                class="action-button"
-                (click)="goToAutomationCard($index)"
-                [attr.title]="automation.profileName"
-                [attr.aria-current]="$index === currentAutomationCardIndex() ? 'true' : null"
-                [attr.aria-label]="
-                  'dashboard.generalDetail.goToAutomation' | translate: { index: $index + 1 }
-                "
-              >
-                <span
-                  class="indicator"
-                  [class.active]="$index === currentAutomationCardIndex()"
-                ></span>
-              </button>
+        <!-- One panel open at a time; the first one opens with the page. -->
+        @if (remoteAutomations().length) {
+          <mat-accordion>
+            @for (automation of remoteAutomations(); track automation.id; let first = $first) {
+              <app-automation-card
+                [automation]="automation"
+                variant="detailed"
+                [expanded]="first"
+                (openInFiles)="onOpenAutomationInFiles($event)"
+              ></app-automation-card>
             }
-          </div>
-        }
-
-        @if (currentAutomation(); as automation) {
-          <app-automation-card
-            [automation]="automation"
-            variant="detailed"
-            (openInFiles)="onOpenAutomationInFiles($event)"
-          ></app-automation-card>
+          </mat-accordion>
         } @else {
           <div class="empty-state" role="status">
             <span>{{ 'generalOverview.automations.noScheduled' | translate }}</span>
-          </div>
-        }
-
-        @if (remoteAutomations().length > 1) {
-          <div class="carousel-navigation">
-            <button
-              matIconButton
-              (click)="previousAutomationCard()"
-              [disabled]="currentAutomationCardIndex() === 0"
-              [attr.title]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
-              class="nav-button"
-            >
-              <mat-icon svgIcon="left-arrow"></mat-icon>
-            </button>
-            <button
-              matIconButton
-              (click)="nextAutomationCard()"
-              [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
-              [attr.title]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
-              class="nav-button"
-            >
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </button>
           </div>
         }
       </mat-card-content>

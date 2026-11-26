@@ -1,10 +1,21 @@
-import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
+import {
+  DestroyRef,
+  inject,
+  Injectable,
+  signal,
+  computed,
+  linkedSignal,
+  resource,
+  Signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import {
   BatchApiLabel,
+  GlobalStats,
   JobInfo,
   JobActionType,
+  JobChangeEvent,
   JobReport,
   JobStatsUpdatedEvent,
   JOB_STATUS,
@@ -71,7 +82,12 @@ export class JobManagementService extends TauriBaseService {
     this.eventListeners
       .listenToJobCacheChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => refresh());
+      .subscribe(event => {
+        // While the whole list loads, its answer may be older than this change: load it again.
+        // Before the first answer the selected backend is not known yet.
+        if (this.statsDuringRefresh || !this.selectedBackend) refresh();
+        else this.applyJobChange(event);
+      });
     this.eventListeners
       .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -97,17 +113,38 @@ export class JobManagementService extends TauriBaseService {
       });
   }
 
+  /** Puts the job an event carries into the list, or takes it out, without loading the list. */
+  private applyJobChange({ backendName, jobId, job }: JobChangeEvent): void {
+    if (backendName !== this.selectedBackend) return;
+    this._jobs.update(jobs => {
+      const idx = jobs.findIndex(j => j.backend_name === backendName && j.jobid === jobId);
+      if (!job) return idx === -1 ? jobs : jobs.filter((_, i) => i !== idx);
+      const current = idx === -1 ? undefined : jobs[idx];
+      // A change of the same run that arrives after a newer one is stale.
+      if (
+        current?.execute_id === job.execute_id &&
+        (job.stats_revision ?? 0) < (current?.stats_revision ?? 0)
+      ) {
+        return jobs;
+      }
+      const next = { ...job, stats: normalizeJobStats(job.stats) };
+      if (current?.start_time === next.start_time) {
+        const updated = [...jobs];
+        updated[idx] = next;
+        return updated;
+      }
+      // A new job, or a new run under an id rclone reused, takes its place by start time.
+      return [...jobs.filter((_, i) => i !== idx), next].sort(compareJobsNewestFirst);
+    });
+  }
+
   private updateJobStats(event: JobStatsUpdatedEvent): void {
     const { backendName, jobId } = event;
     if (this.selectedBackend && backendName !== this.selectedBackend) return;
     if (this.statsDuringRefresh) {
       const key = statsKey(backendName, jobId, event.executeId);
       const pending = this.statsDuringRefresh.get(key);
-      if (
-        !pending ||
-        event.statsRevision === undefined ||
-        event.statsRevision > (pending.statsRevision ?? -1)
-      ) {
+      if (!pending || event.statsRevision > pending.statsRevision) {
         this.statsDuringRefresh.set(key, event);
       }
     }
@@ -117,10 +154,59 @@ export class JobManagementService extends TauriBaseService {
       const updated = [...jobs];
       updated[idx] = {
         ...updated[idx],
-        stats: normalizeJobStats(event.stats),
+        stats: listedStats(updated[idx], event.stats),
         stats_revision: event.statsRevision,
       };
       return updated;
+    });
+  }
+
+  /**
+   * The stats of the job `job` returns, with its file rows. The list carries a finished job
+   * without them (they can be thousands), so they are fetched for it, again whenever the job
+   * changes; a running job brings its own with every update.
+   */
+  detailedStats(job: () => JobInfo | null | undefined): Signal<GlobalStats | null> {
+    const runOf = (j: JobInfo): string => JSON.stringify([j.backend_name, j.jobid, j.execute_id]);
+    const fetched = resource({
+      params: () => {
+        const j = job();
+        return j && j.status !== JOB_STATUS.Running
+          ? { run: runOf(j), jobid: j.jobid, executeId: j.execute_id, revision: j.stats_revision }
+          : undefined;
+      },
+      loader: async ({ params }) => ({
+        run: params.run,
+        stats: await this.getJobStats(params.jobid, params.executeId),
+      }),
+    });
+    // A later fetch of the same run keeps showing the rows it had until it answers.
+    const loaded = linkedSignal<
+      { run: string; stats: Partial<GlobalStats> | null } | undefined,
+      { run: string; stats: Partial<GlobalStats> | null } | undefined
+    >({
+      source: () => (fetched.hasValue() ? fetched.value() : undefined),
+      computation: (next, previous) => next ?? previous?.value,
+    });
+    return computed(() => {
+      const j = job();
+      if (!j) return null;
+      const full = loaded();
+      if (j.status === JOB_STATUS.Running || full?.run !== runOf(j) || !full.stats) return j.stats;
+      // The figures of the list are as new as the job; the rows come from the fetch.
+      return {
+        ...j.stats,
+        completed: full.stats.completed ?? [],
+        checkOutput: full.stats.checkOutput,
+      };
+    });
+  }
+
+  /** A job's stats with its file rows; `null` when that run of the job is gone. */
+  async getJobStats(jobid: number, executeId?: string): Promise<Partial<GlobalStats> | null> {
+    return this.invokeCommand<Partial<GlobalStats> | null>('get_job_stats', {
+      jobid,
+      executeId: executeId || null,
     });
   }
 
@@ -204,18 +290,14 @@ export class JobManagementService extends TauriBaseService {
       this._jobs.set(
         jobs
           .map(job => {
-            const update =
-              pendingStats.get(statsKey(job.backend_name, job.jobid, job.execute_id)) ??
-              pendingStats.get(statsKey(job.backend_name, job.jobid));
-            const applyUpdate =
-              update &&
-              isNewerJobStats(job, update) &&
-              (update.statsRevision !== undefined || job.status === JOB_STATUS.Running);
-            return {
-              ...job,
-              stats: normalizeJobStats(applyUpdate ? update.stats : job.stats),
-              stats_revision: applyUpdate ? update.statsRevision : job.stats_revision,
-            };
+            const update = pendingStats.get(statsKey(job.backend_name, job.jobid, job.execute_id));
+            return update && isNewerJobStats(job, update)
+              ? {
+                  ...job,
+                  stats: listedStats(job, update.stats),
+                  stats_revision: update.statsRevision,
+                }
+              : { ...job, stats: normalizeJobStats(job.stats) };
           })
           .sort(compareJobsNewestFirst)
       );
@@ -254,10 +336,10 @@ export class JobManagementService extends TauriBaseService {
     );
   }
 
-  async stopJob(jobid: number, remoteName: string): Promise<void> {
+  async stopJob(jobid: number): Promise<void> {
     await this.invokeWithNotification(
       'stop_job',
-      { jobid, remoteName },
+      { jobid },
       {
         successKey: 'backendSuccess.job.stopped',
         successParams: { id: jobid.toString() },
@@ -283,6 +365,20 @@ export class JobManagementService extends TauriBaseService {
         errorParams: { id: jobid.toString() },
       }
     );
+  }
+
+  /** Runs a failed or stopped job again as a new job (only its failed parts, for a batch). */
+  async retryJob(jobid: number): Promise<number> {
+    return this.invokeWithNotification<number>(
+      'retry_job',
+      { jobid },
+      { successKey: 'backendSuccess.job.retried', successParams: { id: jobid.toString() } }
+    );
+  }
+
+  /** Removes finished jobs from the list at once, without a notification for each. */
+  async clearJobs(jobids: readonly number[]): Promise<void> {
+    await Promise.all(jobids.map(jobid => this.invokeCommand('delete_job', { jobid })));
   }
 
   async resetGroupStats(group?: string): Promise<void> {
@@ -343,6 +439,13 @@ export function areJobListsEqual(prev: JobInfo[], next: JobInfo[]): boolean {
     }
   }
   return true;
+}
+
+/** Stats as the list keeps them: a finished job without its file rows, as the backend sends it. */
+function listedStats(job: JobInfo, stats: Partial<GlobalStats>): GlobalStats {
+  if (job.status === JOB_STATUS.Running) return normalizeJobStats(stats);
+  const { completed: _rows, checkOutput: _report, ...rest } = stats;
+  return normalizeJobStats(rest);
 }
 
 function statsKey(

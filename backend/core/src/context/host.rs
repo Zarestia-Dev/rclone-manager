@@ -25,21 +25,6 @@ pub trait Host: Send + Sync {
     }
     fn resolve_paths(&self, app: &AppHandle) -> Result<AppPaths, String>;
     fn restart(&self, app: &AppHandle) -> Result<(), String>;
-    #[cfg(all(feature = "updater", unix))]
-    fn restart_updated_binary(
-        &self,
-        executable: &std::path::Path,
-        previous: &std::path::Path,
-        arguments: &[std::ffi::OsString],
-        working_directory: &std::path::Path,
-    ) -> Result<(), String> {
-        crate::services::updates::binary::restart(
-            executable,
-            previous,
-            arguments,
-            working_directory,
-        )
-    }
     fn exit(&self, _code: i32) {}
     /// Main window HWND, if this host has a native Windows window.
     #[cfg(all(target_os = "windows", feature = "desktop"))]
@@ -58,14 +43,25 @@ pub trait Host: Send + Sync {
     ) -> ExitDecision {
         ExitDecision::Proceed
     }
+    /// Runs `task` on the thread that owns the UI event loop, where native tray
+    /// objects must be created and changed.
     #[cfg(feature = "tray")]
-    async fn setup_tray(&self) -> Result<(), String> {
-        Ok(())
+    fn run_on_main_thread(&self, _task: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+        Err("This host has no UI thread".into())
     }
+    /// Opens the part of the interface a tray entry points to.
     #[cfg(feature = "tray")]
-    fn update_tray(&self) {}
+    fn open_view(&self, _view: crate::services::tray::actions::TrayView<'_>) {}
+    /// Opens a local folder, such as a mount point, in the file manager.
     #[cfg(feature = "tray")]
-    fn set_tray_visible(&self, _enabled: bool) {}
+    fn open_folder(&self, _path: &std::path::Path) -> Result<(), String> {
+        Err("Opening folders is unavailable".into())
+    }
+    /// Whether the system uses a dark theme, for a tray icon that follows it.
+    #[cfg(feature = "tray")]
+    fn is_system_dark(&self) -> bool {
+        false
+    }
     #[cfg(any(feature = "autostart", feature = "flatpak"))]
     fn set_autostart(&self, _enabled: bool) {}
     /// Re-register the OS autostart entry when the setting is on but the entry is gone,
@@ -85,8 +81,8 @@ pub trait Host: Send + Sync {
         &self,
         _release: &crate::utils::github_client::Release,
         _expected_version: &str,
-    ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
-        Ok(None)
+    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
+        Ok(crate::utils::types::updater::ReleaseArtifact::Unpublished)
     }
 }
 

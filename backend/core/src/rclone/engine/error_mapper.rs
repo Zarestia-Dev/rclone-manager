@@ -28,11 +28,9 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
 
     // rclone/cmd/mountlib/check_linux.go: "directory already mounted, use --allow-non-empty to mount anyway"
     // rclone/cmd/mountlib/utils.go: "mount point ... and directory to be mounted ... mustn't overlap"
-    // rclone/fs/fs.go: "can't sync or move files on overlapping remotes"
     if raw_lower.contains("directory already mounted")
         || raw_lower.contains("already mounted, use --allow-non-empty")
-        || raw_lower.contains("mustn't overlap")
-        || raw_lower.contains("overlapping remotes")
+        || (raw_lower.contains("directory to be mounted") && raw_lower.contains("mustn't overlap"))
         || raw_lower.contains("already mounted")
     {
         return Some(crate::localized_error!(
@@ -191,6 +189,17 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
         return Some(crate::localized_error!("backendErrors.remote.networkError"));
     }
 
+    // rclone/fs/newfs.go: `didn't find section in config file ("drive")`: the remote is not in
+    // the rclone config, which is not a missing folder.
+    if let Some((_, rest)) = raw_error.split_once("didn't find section in config file (\"")
+        && let Some((remote, _)) = rest.split_once("\")")
+    {
+        return Some(crate::localized_error!(
+            "backendErrors.remote.notInConfig",
+            "remote" => remote
+        ));
+    }
+
     // Object / Directory / Config not found (rclone/fs/fs.go: ErrorDirNotFound, ErrorObjectNotFound, ErrorNotFoundInConfigFile)
     if raw_lower.contains("directory not found")
         || raw_lower.contains("object not found")
@@ -232,7 +241,27 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
     }
 
     // -------------------------------------------------------------------------
-    // 5. Checksum & Corruption (Source: rclone/fs/operations/check.go)
+    // 5. Transfer paths (Source: rclone/fs/fs.go, rclone/fs/operations/operations.go)
+    // -------------------------------------------------------------------------
+
+    // rclone/fs/fs.go ErrorOverlapping: "can't sync or move files on overlapping remotes (try
+    // excluding the destination with a filter rule)"
+    if raw_lower.contains("overlapping remotes") {
+        return Some(crate::localized_error!(
+            "backendErrors.operations.overlappingRemotes"
+        ));
+    }
+
+    // rclone/fs/operations/operations.go: "destination and parameter to --backup-dir mustn't
+    // overlap", "source and parameter to --backup-dir mustn't overlap"
+    if raw_lower.contains("--backup-dir mustn't overlap") {
+        return Some(crate::localized_error!(
+            "backendErrors.operations.backupDirOverlaps"
+        ));
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. Checksum & Corruption (Source: rclone/fs/operations/check.go)
     // -------------------------------------------------------------------------
 
     // Checksum & Corruption errors: "corrupted on transfer", "checksum mismatch", "files differ", "contents differ"
@@ -316,6 +345,22 @@ mod tests {
     }
 
     #[test]
+    fn test_transfer_overlaps_are_not_mount_errors() {
+        let sync = "rclone RPC failed: sync/sync -> HTTP 500: can't sync or move files on overlapping remotes (try excluding the destination with a filter rule)";
+        assert_eq!(
+            map_rclone_error(sync),
+            Some("backendErrors.operations.overlappingRemotes".to_string())
+        );
+        for side in ["destination", "source"] {
+            let err = format!("{side} and parameter to --backup-dir mustn't overlap");
+            assert_eq!(
+                map_rclone_error(&err),
+                Some("backendErrors.operations.backupDirOverlaps".to_string())
+            );
+        }
+    }
+
+    #[test]
     fn test_mount_directory_not_empty() {
         let err = "\"/mnt/data\" is not empty, use --allow-non-empty to mount anyway";
         let mapped = map_rclone_error(err);
@@ -378,6 +423,17 @@ mod tests {
         let err = "didn't find section in config file";
         let mapped = map_rclone_error(err);
         assert_eq!(mapped, Some("backendErrors.remote.notFound".to_string()));
+    }
+
+    #[test]
+    fn a_remote_missing_from_the_config_is_named() {
+        let err = r#"rclone RPC failed: mount/mount -> HTTP 500: failed to create file system for "drive:folder": didn't find section in config file ("drive")"#;
+        let mapped = map_rclone_error(err).unwrap();
+        assert!(
+            mapped.contains("backendErrors.remote.notInConfig"),
+            "{mapped}"
+        );
+        assert!(mapped.contains(r#""remote":"drive""#), "{mapped}");
     }
 
     #[test]

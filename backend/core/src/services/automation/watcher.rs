@@ -21,6 +21,53 @@ const TICK: Duration = Duration::from_millis(500);
 /// A watcher does not start an automation again this soon after its last run.
 const COOLDOWN_SECS: i64 = 5;
 
+/// Sessions with changes waiting for their run. Android suspends the CPU without a wake lock,
+/// which would stop the quiet-period clock, so the device stays awake while one waits.
+static AWAKE_SESSIONS: parking_lot::Mutex<usize> = parking_lot::Mutex::new(0);
+
+/// Held by a session from its first waiting change until its run has started.
+struct AwakeHold;
+
+/// Counts a session joining or leaving, and returns the pending state when it changes: only
+/// the first session in and the last one out change it.
+fn count_awake(sessions: &mut usize, joining: bool) -> Option<bool> {
+    if joining {
+        *sessions += 1;
+        (*sessions == 1).then_some(true)
+    } else {
+        *sessions -= 1;
+        (*sessions == 0).then_some(false)
+    }
+}
+
+impl AwakeHold {
+    fn new() -> Self {
+        // The lock stays held across the call, so the service gets the changes in order.
+        let mut sessions = AWAKE_SESSIONS.lock();
+        if let Some(pending) = count_awake(&mut sessions, true) {
+            set_watch_pending(pending);
+        }
+        Self
+    }
+}
+
+impl Drop for AwakeHold {
+    fn drop(&mut self) {
+        let mut sessions = AWAKE_SESSIONS.lock();
+        if let Some(pending) = count_awake(&mut sessions, false) {
+            set_watch_pending(pending);
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+fn set_watch_pending(pending: bool) {
+    crate::rclone::backend::saf_bridge::set_watch_pending(pending);
+}
+
+#[cfg(not(target_os = "android"))]
+fn set_watch_pending(_pending: bool) {}
+
 /// Roots that do not exist yet. The session keeps retrying them.
 type PendingRoots = Arc<parking_lot::Mutex<Vec<String>>>;
 
@@ -296,10 +343,15 @@ async fn watch_loop(
     let mut in_flight: Option<tokio::task::JoinHandle<Result<bool, String>>> = None;
     let mut tick = tokio::time::interval(TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let mut awake: Option<AwakeHold> = None;
     loop {
+        // A missing root alone does not keep the device awake: it may stay missing for days.
+        let waiting = !changes.waiting.is_empty() || in_flight.is_some();
+        if waiting != awake.is_some() {
+            awake = waiting.then(AwakeHold::new);
+        }
         // An idle session has nothing to look at, so it does not wake up.
-        let busy =
-            !changes.waiting.is_empty() || in_flight.is_some() || !pending_roots.lock().is_empty();
+        let busy = waiting || !pending_roots.lock().is_empty();
         tokio::select! {
             event = events.recv() => match event {
                 None => break,
@@ -674,6 +726,16 @@ async fn is_busy_or_cooling_down(automation: &Automation, app: &AppHandle) -> bo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_first_and_last_session_change_the_awake_state() {
+        let mut sessions = 0;
+        assert_eq!(count_awake(&mut sessions, true), Some(true));
+        assert_eq!(count_awake(&mut sessions, true), None);
+        assert_eq!(count_awake(&mut sessions, false), None);
+        assert_eq!(count_awake(&mut sessions, false), Some(false));
+        assert_eq!(sessions, 0);
+    }
     async fn watch_fixture(
         root: &std::path::Path,
         source: &std::path::Path,

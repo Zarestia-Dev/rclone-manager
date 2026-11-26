@@ -8,14 +8,12 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { AlertService } from 'src/app/services/alerts/alert.service';
-import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
-import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
+import { AppNavigationService } from 'src/app/services/ui/app-navigation.service';
 import { LongPressDirective } from 'src/app/shared/directives/long-press.directive';
 import { SlideMenuController } from 'src/app/shared/utils';
 import { Theme, MainView } from '@app/types';
@@ -39,13 +37,11 @@ import { Theme, MainView } from '@app/types';
 export class AppMenuComponent {
   private readonly modalService = inject(ModalService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
-  private readonly nautilusService = inject(NautilusService);
   private readonly windowService = inject(WindowService);
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly translateService = inject(TranslateService);
-  private readonly flowOverlayService = inject(FlowOverlayService);
-  private readonly mainUiOverlayService = inject(MainUiOverlayService);
+  private readonly navigation = inject(AppNavigationService);
 
   readonly uiStateService = inject(UiStateService);
   readonly alertService = inject(AlertService);
@@ -104,31 +100,10 @@ export class AppMenuComponent {
     await this.windowService.setTheme(theme);
   }
 
-  readonly baseWorkspace = this.uiStateService.defaultView;
-
   readonly activeWorkspace = this.uiStateService.activeWorkspace;
 
-  goBackToBaseWorkspace(): void {
-    this.nautilusService.closeBrowserOverlay();
-    this.flowOverlayService.closeOverlay();
-    this.mainUiOverlayService.closeOverlay();
-    this.uiStateService.setMainView(this.baseWorkspace());
-  }
-
-  async openWorkspace(target: MainView): Promise<void> {
-    if (target === this.baseWorkspace()) {
-      this.goBackToBaseWorkspace();
-      return;
-    }
-
-    // Keep the current workspace visible until the target has finished loading.
-    if (target === 'nautilus') await this.nautilusService.openBrowserOverlay(null, null);
-    else if (target === 'flow') await this.flowOverlayService.openOverlay();
-    else await this.mainUiOverlayService.openOverlay();
-
-    if (target !== 'nautilus') this.nautilusService.closeBrowserOverlay();
-    if (target !== 'flow') this.flowOverlayService.closeOverlay();
-    if (target !== 'main_menu') this.mainUiOverlayService.closeOverlay();
+  openWorkspace(target: MainView): Promise<void> {
+    return this.navigation.openWorkspace(target);
   }
 
   openPreferencesModal(): void {

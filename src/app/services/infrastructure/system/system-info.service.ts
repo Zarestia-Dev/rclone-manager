@@ -1,5 +1,10 @@
 import { Injectable, signal } from '@angular/core';
-import { BandwidthLimitResponse, LocalDiskUsage, SystemStatusPayload } from '@app/types';
+import {
+  BandwidthLimitResponse,
+  LocalAddresses,
+  LocalDiskUsage,
+  SystemStatusPayload,
+} from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 /**
@@ -96,6 +101,11 @@ export class SystemInfoService extends TauriBaseService {
    */
   async getLocalDiskUsage(dir?: string): Promise<LocalDiskUsage> {
     return this.invokeCommand<LocalDiskUsage>('get_local_disk_usage', { dir });
+  }
+
+  /** Host name and network addresses of this machine, for telling another device where to connect. */
+  async getLocalAddresses(): Promise<LocalAddresses> {
+    return this.invokeCommand<LocalAddresses>('get_local_addresses');
   }
 
   /**

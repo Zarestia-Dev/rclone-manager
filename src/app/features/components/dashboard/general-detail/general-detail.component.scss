@@ -129,51 +129,6 @@
   }
 }
 
-/* --- Automations Card --- */
-.automations-card {
-  .carousel-indicators {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-xs);
-    padding-bottom: var(--space-xs);
-    flex-wrap: wrap;
-
-    .indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(var(--dim-color-rgb), 0.3);
-      transition:
-        background-color 0.3s ease,
-        transform 0.3s ease;
-
-      &:hover {
-        background: rgba(var(--primary-color-rgb), 0.5);
-        transform: scale(1.2);
-      }
-
-      &.active {
-        background: var(--primary-color);
-        transform: scale(1.25);
-      }
-    }
-  }
-
-  .carousel-navigation {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-sm);
-    padding-top: var(--space-sm);
-
-    .nav-button {
-      color: var(--accent-color);
-      &:disabled {
-        opacity: 0.3;
-      }
-    }
-  }
-}
-
 /* --- Quick Runs Card --- */
 .quick-runs-card {
   mat-card-header {

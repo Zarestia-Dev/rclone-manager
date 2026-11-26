@@ -1,6 +1,6 @@
 {
   "name": "rclone-manager",
-  "version": "0.3.6",
+  "version": "0.3.7-beta.4",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -9,11 +9,9 @@
     "tauri": "node scripts/tauri.cjs",
     "dev:portable": "npm run tauri dev -- --features portable",
     "dev:flatpak": "npm run tauri dev -- --features flatpak",
-    "dev:headless": "npm run tauri dev -- --config backend/desktop/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
     "dev:android": "npm run tauri android dev -- --features mobile -- --no-default-features",
     "build:portable": "npm run tauri build -- --features portable --no-bundle",
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
-    "build:headless": "npm run tauri build -- --config backend/desktop/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
     "test": "ng test",
     "test:ci": "ng test --no-watch",
     "test:coverage": "ng test --no-watch --code-coverage",
@@ -27,7 +25,7 @@
     "sync:endpoints": "node scripts/update-endpoints.cjs",
     "optimize:svg": "svgo -f src/assets -r && node scripts/fix-svg-ids.cjs",
     "prepare": "husky",
-    "dev:server": "cargo run --manifest-path backend/Cargo.toml -p rclone-manager-server --",
+    "dev:server": "node scripts/dev-server.cjs",
     "build:server": "npm run build && cargo build --manifest-path backend/Cargo.toml -p rclone-manager-server --release"
   },
   "private": true,
@@ -87,8 +85,7 @@
     "svgo": "^4.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
-    "vitest": "^5.0.5",
-    "zone.js": "^0.16.3"
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "@angular/build": {

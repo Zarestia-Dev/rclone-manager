@@ -1,9 +1,8 @@
 //! Starting workflows when a job finishes (`job_event` triggers).
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use log::{info, warn};
 use serde_json::Value;
 
@@ -16,42 +15,6 @@ use crate::services::flow::workflow::types::{NodeKind, WorkflowDefinition};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::types::jobs::JobStatus;
 use crate::utils::types::starter::{self, Starter, WorkflowRun};
-
-/// Identifies one job run: rclone numbers jobs per process, so after a restart
-/// the same id belongs to a different job with a different start time.
-type JobRunKey = (String, u64, DateTime<Utc>);
-
-/// Jobs already offered to `job_event` triggers. The oldest are forgotten first.
-#[derive(Default)]
-struct RecentJobs {
-    order: VecDeque<JobRunKey>,
-    seen: HashSet<JobRunKey>,
-}
-
-impl RecentJobs {
-    const CAPACITY: usize = 2000;
-
-    fn contains(&self, key: &JobRunKey) -> bool {
-        self.seen.contains(key)
-    }
-
-    /// Returns `false` when the job was already recorded.
-    fn insert(&mut self, key: JobRunKey) -> bool {
-        if !self.seen.insert(key.clone()) {
-            return false;
-        }
-        self.order.push_back(key);
-        if self.order.len() > Self::CAPACITY
-            && let Some(oldest) = self.order.pop_front()
-        {
-            self.seen.remove(&oldest);
-        }
-        true
-    }
-}
-
-static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<parking_lot::Mutex<RecentJobs>> =
-    std::sync::LazyLock::new(|| parking_lot::Mutex::new(RecentJobs::default()));
 
 /// The workflows a job leads back to: the ones before it and the one that started it.
 fn job_lineage(job: &crate::utils::types::jobs::JobInfo) -> Vec<String> {
@@ -120,28 +83,21 @@ fn live_event_inputs(
     }
 }
 
-/// Evaluates all registered workflows and executes those matching a completed job event.
+/// Whether a job's end can start workflows: it ended for real, not as a simulation (a dry run
+/// changed nothing), on the selected backend. Workflows are stored per backend and only the
+/// selected backend's can be read, so jobs of the others start none (their schedules are
+/// suspended the same way).
+fn can_start_workflows(job: &crate::utils::types::jobs::JobInfo, active_backend: &str) -> bool {
+    job.status.is_finished() && !job.dry_run && job.backend_name == active_backend
+}
+
+/// Starts the workflows a job's end triggers. Called once per job, when it ends.
 pub async fn trigger_workflows_for_job_finish(
     app: &AppHandle,
     job: &crate::utils::types::jobs::JobInfo,
 ) {
-    if !job.status.is_finished() {
-        return;
-    }
-
-    // A simulated job changed nothing, so it has nothing to react to.
-    if job.dry_run {
-        return;
-    }
-
-    // Workflows are stored per backend and only the selected backend's can be read,
-    // so jobs of the others start none (their schedules are suspended the same way).
-    if job.backend_name != app.state::<BackendManager>().get_active_name().await {
-        return;
-    }
-
-    let job_key = (job.backend_name.clone(), job.jobid, job.start_time);
-    if TRIGGERED_JOB_FINISH_EVENTS.lock().contains(&job_key) {
+    let active = app.state::<BackendManager>().get_active_name().await;
+    if !can_start_workflows(job, &active) {
         return;
     }
 
@@ -167,11 +123,6 @@ pub async fn trigger_workflows_for_job_finish(
             (None, runtime.event_workflows())
         }
     };
-    // Mark processed only after inputs were obtained, atomically with other listeners.
-    if !TRIGGERED_JOB_FINISH_EVENTS.lock().insert(job_key) {
-        return;
-    }
-
     let lineage = job_lineage(job);
     for wf in workflows
         .as_deref()
@@ -226,7 +177,7 @@ pub async fn trigger_workflows_for_job_finish(
 #[cfg(test)]
 mod tests {
 
-    use chrono::{DateTime, Utc};
+    use chrono::Utc;
 
     use serde_json::json;
 
@@ -340,76 +291,23 @@ mod tests {
     }
 
     #[test]
-    fn job_event_dedup_distinguishes_restarted_jobs_and_forgets_oldest_first() {
-        let at = |seconds: i64| DateTime::<Utc>::from_timestamp(seconds, 0).unwrap();
-        let mut recent = RecentJobs::default();
-        assert!(recent.insert(("Local".into(), 1, at(100))));
-        assert!(!recent.insert(("Local".into(), 1, at(100))));
-        // rclone restarted: job 1 is a different job now.
-        assert!(recent.insert(("Local".into(), 1, at(900))));
-        assert!(recent.insert(("NAS".into(), 1, at(100))));
-
-        // Three entries exist; one more than the capacity forces a single eviction.
-        let last = RecentJobs::CAPACITY as u64 - 1;
-        for id in 2..=last {
-            recent.insert(("Local".into(), id, at(1000)));
-        }
-        assert!(!recent.contains(&("Local".into(), 1, at(100))));
-        assert!(recent.contains(&("Local".into(), 1, at(900))));
-        assert!(recent.contains(&("NAS".into(), 1, at(100))));
-        assert!(recent.contains(&("Local".into(), last, at(1000))));
-        assert_eq!(recent.seen.len(), RecentJobs::CAPACITY);
-        assert_eq!(recent.order.len(), RecentJobs::CAPACITY);
-    }
-
-    #[tokio::test]
-    async fn only_jobs_of_the_selected_backend_can_start_workflows() {
-        use crate::utils::types::jobs::JobInfo;
-        let directory = tempfile::tempdir().unwrap();
-        let settings: AppSettingsManager = rcman::SettingsManager::builder("trigger-test", "1")
-            .with_config_dir(directory.path())
-            .with_schema::<crate::services::settings::schema::AppSettings>()
-            .with_sub_settings(rcman::SubSettingsConfig::singlefile(
-                crate::utils::constants::SUB_WORKFLOWS,
-            ))
-            .with_sub_settings(rcman::SubSettingsConfig::singlefile(
-                crate::utils::constants::SUB_QUICK_RUNS,
-            ))
-            .build()
-            .unwrap();
-        let app = AppHandle::default();
-        app.manage(settings);
-        app.manage(BackendManager::new());
-        let selected = app.state::<BackendManager>().get_active_name().await;
-        let finished = |backend: &str| JobInfo {
-            jobid: 4242,
-            source: vec!["src".into()],
-            destination: "dst".into(),
-            start_time: DateTime::<Utc>::from_timestamp(1_700_000_000, 0).unwrap(),
+    fn only_real_ends_on_the_selected_backend_start_workflows() {
+        let ended = JobInfo {
             status: JobStatus::Completed,
-            backend_name: backend.into(),
+            backend_name: "Local".into(),
             ..JobInfo::for_test()
         };
-        let seen = |job: &JobInfo| {
-            TRIGGERED_JOB_FINISH_EVENTS.lock().contains(&(
-                job.backend_name.clone(),
-                job.jobid,
-                job.start_time,
-            ))
+        assert!(can_start_workflows(&ended, "Local"));
+        assert!(!can_start_workflows(&ended, "NAS"), "another backend's job");
+        let simulated = JobInfo {
+            dry_run: true,
+            ..ended.clone()
         };
-
-        let elsewhere = finished("Elsewhere-backend");
-        trigger_workflows_for_job_finish(&app, &elsewhere).await;
-        assert!(
-            !seen(&elsewhere),
-            "a job of another backend must be ignored"
-        );
-
-        let here = finished(&selected);
-        trigger_workflows_for_job_finish(&app, &here).await;
-        assert!(
-            seen(&here),
-            "a job of the selected backend is processed once"
-        );
+        assert!(!can_start_workflows(&simulated, "Local"));
+        let running = JobInfo {
+            status: JobStatus::Running,
+            ..ended
+        };
+        assert!(!can_start_workflows(&running, "Local"));
     }
 }

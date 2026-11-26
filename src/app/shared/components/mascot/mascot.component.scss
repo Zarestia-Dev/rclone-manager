@@ -1,0 +1,955 @@
+// Turning: the eyes get there first; every other part of the head turns together on one timing,
+// with a slight wind-up and a slight overshoot, so nothing lags or runs ahead.
+$head-turn: 650ms;
+$head-ease: cubic-bezier(0.45, -0.12, 0.25, 1.12);
+// Every shake effect ends within this time, so the class can go when the body stops.
+$shake: 1200ms;
+$hop: 620ms;
+$bounce: 560ms;
+// How fast a press squashes the body.
+$press: 120ms;
+// The long-press moods (HOLD_TIMELINE in the component): the cuddle's purr fills the cuddle, from
+// 700ms to 4200ms, and the squirm runs until Tia frees itself.
+$purr: 160ms;
+$purr-count: 22;
+$squirm: 900ms;
+$heart: 1400ms;
+
+$size: 80px;
+$size-small: 64px;
+
+// Bottom-right corner of the nearest positioned container (the home drawer content), above the
+// floating navigation on small screens.
+:host {
+  position: absolute;
+  right: var(--space-lg);
+  bottom: calc(var(--space-lg) + var(--workspace-navigation-clearance));
+  display: block;
+  width: $size;
+  height: $size;
+  pointer-events: none;
+
+  @media (max-width: 599.98px) {
+    bottom: var(--workspace-navigation-clearance);
+    width: $size-small;
+    height: $size-small;
+  }
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  // A long press is a feature here: no panning, and no long-press callout on touch screens.
+  touch-action: none;
+  -webkit-touch-callout: none;
+
+  // data-look names where the mascot looks; --look is the sideways part (-1 left, 1 right) and
+  // --look-up is 1 when it looks up.
+  --look: 0;
+  --look-up: 0;
+
+  &[data-look$="left"] {
+    --look: -1;
+  }
+
+  &[data-look$="right"] {
+    --look: 1;
+  }
+
+  &[data-look^="up"] {
+    --look-up: 1;
+  }
+}
+
+// The side the mascot turns towards rotates away from the viewer and looks narrower; the other
+// side comes round to the front.
+.left,
+.right {
+  --toward: 0;
+  --away: 0;
+}
+
+.left {
+  --side: -1;
+}
+
+.right {
+  --side: 1;
+}
+
+[data-look$="left"] .left,
+[data-look$="right"] .right {
+  --toward: 1;
+}
+
+[data-look$="right"] .left,
+[data-look$="left"] .right {
+  --away: 1;
+}
+
+// Groups whose content moves get fixed pivots in their own user units, so the pivot does not
+// drift while an ear flaps inside them: the body squashes on the ground under its middle, and
+// each ear swings from its root (0, 4 in the leaf's own frame).
+.motion,
+.turn,
+.ears,
+.eyes,
+.ear-turn,
+.ear,
+.ear-edge {
+  transform-box: view-box;
+}
+
+.motion,
+.turn {
+  transform-origin: 60px 106px;
+}
+
+.ears {
+  transform-origin: 60px 51px;
+}
+
+.eyes {
+  transform-origin: 60px 78px;
+}
+
+.ear-turn,
+.ear,
+.ear-edge {
+  transform-origin: 0 4px;
+}
+
+// Parts with still content turn and scale around their own middle.
+.eye,
+.squint,
+.happy,
+.blush,
+.shadow,
+.flyleaf,
+.heart {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+// ---- Body ----
+
+.body {
+  // The plain colour is used if the gradient reference cannot be resolved.
+  fill: url(#mascot-body) var(--gnome-light-2);
+  stroke: var(--gnome-light-4);
+  stroke-width: 1.5;
+}
+
+.stop-light {
+  stop-color: var(--gnome-light-1);
+}
+
+.stop-milk {
+  stop-color: var(--gnome-light-2);
+}
+
+.stop-rim {
+  stop-color: var(--gnome-light-3);
+}
+
+.shine {
+  fill: var(--gnome-light-1);
+  opacity: 0.9;
+}
+
+// The host lets clicks through to the page; only the painted body and leaves can be pressed.
+.body,
+.leaf {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+}
+
+.shadow {
+  // Darker in the dark theme, where a faint black would vanish.
+  fill: var(--shadow-color);
+}
+
+// ---- Leaf ears ----
+// The right ear is a mirror image of the left one, so one set of rotations moves both outwards.
+
+.leaf {
+  fill: var(--tone);
+}
+
+// The inner half of a leaf catches more light.
+.leaf-light {
+  fill: var(--gnome-light-1);
+  opacity: 0.22;
+}
+
+.vein {
+  fill: none;
+  stroke: var(--gnome-light-1);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+
+// ---- Face ----
+
+.eyes {
+  transition: opacity 120ms ease;
+
+  rect {
+    fill: var(--gnome-dark-4);
+  }
+}
+
+.sparkles {
+  fill: var(--gnome-light-1);
+
+  .small {
+    opacity: 0.8;
+  }
+}
+
+.squint,
+.happy {
+  fill: none;
+  stroke: var(--gnome-dark-4);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+.squint {
+  transition:
+    opacity 120ms ease,
+    transform $head-turn $head-ease;
+}
+
+.blush {
+  fill: var(--gnome-red-1);
+  opacity: 0.2;
+}
+
+// ---- Looking around ----
+// The head is a ball: turning it moves the face most, the ear roots less (they sit further round)
+// and leaves the light where it is.
+
+.turn {
+  transform: rotate(calc(var(--look) * 2deg));
+  transition: transform $head-turn $head-ease;
+}
+
+// The shadow follows the lean; its hop and shake keyframes keep the same lean.
+.shadow {
+  --lean: calc(var(--look) * 1.5px);
+
+  transform: translateX(var(--lean)) scale(1, 1);
+  transition: transform $head-turn $head-ease;
+}
+
+.face {
+  transform: translate(calc(var(--look) * 4.5px), calc(var(--look-up) * -3px));
+  transition: transform $head-turn $head-ease;
+}
+
+// The eyes look first; the face catches up.
+.gaze {
+  transform: translate(calc(var(--look) * 2px), calc(var(--look-up) * -2px));
+  transition: transform 180ms ease-out;
+}
+
+// The eye on the turning side narrows, and so do the ( > < ) and ( ^ ^ ) drawn in its place.
+.eye,
+.squint,
+.happy {
+  transform: scaleX(calc(1 - var(--toward) * 0.16));
+  transition: transform $head-turn $head-ease;
+}
+
+.blush {
+  // A cuddle makes the cheeks glow and spread.
+  --blush-grow: 1;
+
+  transform: scale(calc((1 - var(--toward) * 0.4) * var(--blush-grow)), var(--blush-grow));
+  transition:
+    transform $head-turn $head-ease,
+    opacity 400ms ease;
+}
+
+// The light stays where it is, so the catchlights and the highlight slide back over the turn.
+.sparkles {
+  transform: translate(calc(var(--look) * -0.8px), calc(var(--look-up) * 0.6px));
+  transition: transform $head-turn $head-ease;
+}
+
+.shine {
+  transform: translate(calc(var(--look) * -4px), calc(var(--look-up) * 2px));
+  transition: transform $head-turn $head-ease;
+}
+
+// Looking up tips the top of the head back: the ears sink and shorten a little.
+.ears {
+  transform: translateY(calc(var(--look-up) * 2px)) scale(1, calc(1 - var(--look-up) * 0.06));
+  transition: transform $head-turn $head-ease;
+}
+
+// Both roots move with the turn: the near one (coming round to the front) further than the far
+// one (going round the side).
+.ear-slot {
+  transform: translateX(calc(var(--look) * (var(--toward) * 1.5px + var(--away) * 3.5px)));
+  transition: transform $head-turn $head-ease;
+}
+
+// Both ears tip the way the head turns, so the far ear leans out and the near one stands up; each
+// ear's own frame is mirrored, hence the side.
+.ear-turn {
+  transform: rotate(calc(var(--look) * var(--side) * -10deg));
+  transition: transform $head-turn $head-ease;
+}
+
+// The far ear also turns a little edge-on (x runs across the leaf).
+.ear-edge {
+  transform: scaleX(calc(1 - var(--toward) * 0.14));
+  transition: transform $head-turn $head-ease;
+}
+
+.blinking .eyes {
+  animation: mascot-blink 220ms ease-in-out var(--blinks);
+}
+
+.ear.twitching {
+  animation: mascot-twitch 420ms ease-out;
+}
+
+// ---- Hopping ----
+
+.hopping {
+  .motion {
+    animation: mascot-hop $hop ease-in-out;
+  }
+
+  .ear {
+    animation: mascot-ear-hop $hop ease-in-out;
+  }
+
+  .shadow {
+    animation: mascot-shadow-hop $hop ease-in-out;
+  }
+
+  // ( ^ ^ ) while in the air.
+  .eyes {
+    animation: mascot-eyes-away $hop linear;
+  }
+
+  .happy {
+    animation: mascot-happy $hop linear;
+  }
+}
+
+// ---- Pressed and bouncing back ----
+// The squash sits on .motion, outside the head turn, so a turned head stays turned while pressed.
+
+.pressed {
+  .motion {
+    transform: translate(0, 0) scale(1.1, 0.86);
+    transition: transform $press ease-out;
+  }
+
+  .ear {
+    transform: rotate(-14deg);
+    transition: transform $press ease-out;
+  }
+
+  .shadow {
+    transform: translateX(var(--lean)) scale(1.14, 1);
+    transition: transform $press ease-out;
+  }
+
+  .eyes {
+    opacity: 0;
+  }
+
+  .squint {
+    opacity: 1;
+  }
+}
+
+// ---- Held long ----
+// Each mood sits on top of the pressed pose; the component sets data-hold only while pressed.
+
+// Melting: ( ^ ^ ), glowing cheeks, ears flopped out, and a faint purr.
+[data-hold="cuddle"] {
+  .squint {
+    opacity: 0;
+  }
+
+  .happy {
+    opacity: 1;
+    transition:
+      opacity 200ms ease,
+      transform $head-turn $head-ease;
+  }
+
+  .blush {
+    --blush-grow: 1.3;
+
+    opacity: 0.5;
+  }
+
+  .ear {
+    transform: rotate(-26deg);
+    transition: transform 700ms ease-in-out;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .motion {
+      animation: mascot-purr $purr linear $purr-count;
+    }
+  }
+}
+
+// Had enough: the eyes open, the ears prick up while it looks round.
+[data-hold="sated"] {
+  .eyes {
+    opacity: 1;
+  }
+
+  .squint {
+    opacity: 0;
+  }
+
+  .ear {
+    transform: rotate(6deg);
+    transition: transform 220ms ease-out;
+  }
+}
+
+// Squirming free: it ends unsquashed and upright, where the shake starts.
+[data-hold="squirm"] {
+  .motion {
+    animation: mascot-squirm $squirm ease-in-out forwards;
+  }
+
+  .ear {
+    animation: mascot-ear-squirm $squirm ease-in-out forwards;
+  }
+
+  .shadow {
+    animation: mascot-shadow-squirm $squirm ease-in-out forwards;
+  }
+}
+
+// Pink like the cheeks, with a dot of light.
+.heart {
+  fill: color-mix(in srgb, var(--gnome-red-1) 70%, var(--gnome-light-1));
+  opacity: 0;
+}
+
+.heart-shine {
+  fill: var(--gnome-light-1);
+  opacity: 0.75;
+}
+
+.loving .heart {
+  animation: mascot-heart $heart ease-out var(--delay) both;
+}
+
+// Each bounce animation starts from the pressed pose, so letting go does not jump.
+.bouncing {
+  .motion {
+    animation: mascot-bounce $bounce ease-out;
+  }
+
+  .ear {
+    animation: mascot-ear-bounce $bounce ease-out;
+  }
+
+  .shadow {
+    animation: mascot-shadow-bounce $bounce ease-out;
+  }
+
+  // ( ^ ^ ) right after letting go.
+  .eyes {
+    animation: mascot-eyes-away-bounce $bounce linear;
+  }
+
+  .happy {
+    animation: mascot-happy-bounce $bounce linear;
+  }
+
+  // Swap ( > < ) for ( ^ ^ ) at once instead of fading one over the other.
+  .squint {
+    transition: none;
+  }
+}
+
+// ---- Shaking ----
+
+.swirl {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+// A long streak led by a short one (58 together); pathLength="100" makes the numbers
+// path-relative, and the 200 gap keeps a single streak on the path. Offset 60 hides it just before
+// the start: a dash ending exactly on the start would still draw its round cap as a dot.
+.gust {
+  stroke-dasharray: 6 6 46 200;
+  stroke-dashoffset: 60;
+}
+
+.swirl-main .gust {
+  stroke: var(--tone);
+  stroke-width: 3.6;
+}
+
+.swirl-soft .gust {
+  stroke: color-mix(in srgb, var(--tone) 55%, var(--gnome-light-1));
+  stroke-width: 2.6;
+}
+
+.flyleaf {
+  fill: var(--tone);
+  opacity: 0;
+
+  &.soft {
+    fill: color-mix(in srgb, var(--tone) 55%, var(--gnome-light-1));
+  }
+}
+
+.shaking {
+  .motion {
+    animation: mascot-shake $shake ease-in-out;
+  }
+
+  .ear {
+    animation: mascot-ear-shake $shake ease-in-out;
+  }
+
+  .shadow {
+    animation: mascot-shadow-shake $shake ease-in-out;
+  }
+
+  .eyes {
+    opacity: 0;
+  }
+
+  .squint {
+    opacity: 1;
+  }
+
+  .swirl {
+    animation: mascot-fade $shake ease-out both;
+  }
+
+  // Two laps; the front half starts half a lap after the back half, so the streak runs on.
+  .gust {
+    animation: mascot-gust var(--period) linear var(--delay) 2 both;
+  }
+
+  .flyleaf {
+    animation: mascot-flyleaf 700ms ease-out var(--delay) both;
+  }
+}
+
+// Shut quickly, stay shut a moment, open a little slower.
+@keyframes mascot-blink {
+  35%,
+  55% {
+    transform: scaleY(0.08);
+  }
+}
+
+// A quick swap at take-off and back before landing.
+@keyframes mascot-eyes-away {
+  0%,
+  22%,
+  78%,
+  100% {
+    opacity: 1;
+  }
+  30%,
+  70% {
+    opacity: 0;
+  }
+}
+
+@keyframes mascot-happy {
+  0%,
+  22%,
+  78%,
+  100% {
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+}
+
+@keyframes mascot-bounce {
+  0% {
+    transform: translate(0, 0) scale(1.1, 0.86);
+  }
+  25% {
+    transform: translate(0, -5px) scale(0.92, 1.1);
+  }
+  45% {
+    transform: translate(0, 0) scale(1.05, 0.95);
+  }
+  65% {
+    transform: translate(0, 0) scale(0.98, 1.02);
+  }
+  82% {
+    transform: translate(0, 0) scale(1.01, 0.99);
+  }
+  100% {
+    transform: translate(0, 0) scale(1, 1);
+  }
+}
+
+@keyframes mascot-ear-bounce {
+  0% {
+    transform: rotate(-14deg);
+  }
+  25% {
+    transform: rotate(12deg);
+  }
+  45% {
+    transform: rotate(-6deg);
+  }
+  65% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes mascot-shadow-bounce {
+  0% {
+    transform: translateX(var(--lean)) scale(1.14, 1);
+  }
+  25% {
+    transform: translateX(var(--lean)) scale(0.85, 0.9);
+    opacity: 0.7;
+  }
+  45% {
+    transform: translateX(var(--lean)) scale(1.05, 1);
+  }
+}
+
+@keyframes mascot-eyes-away-bounce {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  85%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes mascot-happy-bounce {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  85%,
+  100% {
+    opacity: 0;
+  }
+}
+
+// A faint shiver in the pressed pose.
+@keyframes mascot-purr {
+  0%,
+  50%,
+  100% {
+    transform: translate(0, 0) scale(1.1, 0.86);
+  }
+  25% {
+    transform: translate(-0.9px, 0) scale(1.1, 0.86);
+  }
+  75% {
+    transform: translate(0.9px, 0) scale(1.1, 0.86);
+  }
+}
+
+// Three twists, each wider, then it pushes up out of the press.
+@keyframes mascot-squirm {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1.1, 0.86);
+  }
+  18% {
+    transform: translate(-1px, 0) rotate(-5deg) scale(1.09, 0.88);
+  }
+  38% {
+    transform: translate(1.5px, 0) rotate(7deg) scale(1.07, 0.9);
+  }
+  60% {
+    transform: translate(-2px, 0) rotate(-10deg) scale(1.04, 0.93);
+  }
+  80% {
+    transform: translate(1px, -2px) rotate(4deg) scale(0.97, 1.05);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1, 1);
+  }
+}
+
+// The ears swing against the twists, from the pricked-up pose to rest.
+@keyframes mascot-ear-squirm {
+  0% {
+    transform: rotate(6deg);
+  }
+  18% {
+    transform: rotate(-16deg);
+  }
+  38% {
+    transform: rotate(14deg);
+  }
+  60% {
+    transform: rotate(-20deg);
+  }
+  80% {
+    transform: rotate(8deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes mascot-shadow-squirm {
+  0% {
+    transform: translateX(var(--lean)) scale(1.14, 1);
+  }
+  60% {
+    transform: translateX(var(--lean)) scale(1.1, 1);
+  }
+  100% {
+    transform: translateX(var(--lean)) scale(1, 1);
+  }
+}
+
+// Pops in, sways up and fades.
+@keyframes mascot-heart {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.1), calc(var(--dy) * 0.15)) scale(1.15);
+  }
+  35% {
+    transform: translate(calc(var(--dx) * -0.3), calc(var(--dy) * 0.4)) scale(1);
+  }
+  65% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.6), calc(var(--dy) * 0.7)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.85);
+  }
+}
+
+// One ear flicks up and settles.
+@keyframes mascot-twitch {
+  25% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+// Crouch, jump, land with a squash.
+@keyframes mascot-hop {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1);
+  }
+  18% {
+    transform: translate(0, 0) scale(1.06, 0.93);
+  }
+  45% {
+    transform: translate(0, -8px) scale(0.96, 1.05);
+  }
+  70% {
+    transform: translate(0, 0) scale(1.05, 0.95);
+  }
+  85% {
+    transform: translate(0, 0) scale(0.99, 1.01);
+  }
+}
+
+// The ears lift on the crouch, droop while in the air and flick back on landing.
+@keyframes mascot-ear-hop {
+  18% {
+    transform: rotate(4deg);
+  }
+  45% {
+    transform: rotate(-10deg);
+  }
+  70% {
+    transform: rotate(6deg);
+  }
+  85% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes mascot-shadow-hop {
+  18% {
+    transform: translateX(var(--lean)) scale(1.06, 1);
+  }
+  45% {
+    transform: translateX(var(--lean)) scale(0.75, 0.85);
+    opacity: 0.5;
+  }
+  70% {
+    transform: translateX(var(--lean)) scale(1.06, 1);
+  }
+}
+
+// A squash to wind up, a quick fading shiver, then a little hop and landing.
+@keyframes mascot-shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1, 1);
+  }
+  8% {
+    transform: translate(0, 0) rotate(0deg) scale(1.08, 0.9);
+  }
+  16% {
+    transform: translate(-3px, 0) rotate(-11deg) scale(1, 1);
+  }
+  24% {
+    transform: translate(3px, 0) rotate(10deg) scale(1, 1);
+  }
+  32% {
+    transform: translate(-2px, 0) rotate(-8deg) scale(1, 1);
+  }
+  40% {
+    transform: translate(2px, 0) rotate(7deg) scale(1, 1);
+  }
+  48% {
+    transform: translate(-1px, 0) rotate(-5deg) scale(1, 1);
+  }
+  56% {
+    transform: translate(0, 0) rotate(3deg) scale(1, 1);
+  }
+  63% {
+    transform: translate(0, 0) rotate(0deg) scale(1.07, 0.92);
+  }
+  73% {
+    transform: translate(0, -10px) rotate(0deg) scale(0.95, 1.07);
+  }
+  83% {
+    transform: translate(0, 0) rotate(0deg) scale(1.08, 0.93);
+  }
+  91% {
+    transform: translate(0, 0) rotate(0deg) scale(0.98, 1.02);
+  }
+}
+
+// The leaves lag behind the body, swing wider, droop on the hop and flick up on landing.
+@keyframes mascot-ear-shake {
+  10% {
+    transform: rotate(6deg);
+  }
+  20% {
+    transform: rotate(-18deg);
+  }
+  28% {
+    transform: rotate(14deg);
+  }
+  36% {
+    transform: rotate(-14deg);
+  }
+  44% {
+    transform: rotate(10deg);
+  }
+  52% {
+    transform: rotate(-8deg);
+  }
+  62% {
+    transform: rotate(4deg);
+  }
+  74% {
+    transform: rotate(-12deg);
+  }
+  84% {
+    transform: rotate(8deg);
+  }
+  92% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes mascot-shadow-shake {
+  8%,
+  63% {
+    transform: translateX(var(--lean)) scale(1.08, 1);
+  }
+  73% {
+    transform: translateX(var(--lean)) scale(0.7, 0.8);
+    opacity: 0.5;
+  }
+  83% {
+    transform: translateX(var(--lean)) scale(1.1, 1);
+  }
+}
+
+@keyframes mascot-fade {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+// The streak runs from just before the start to just past the end: 162 of the 200 a lap takes
+// over both halves (the head covers 100 on each), so it stays hidden for the rest of the period.
+@keyframes mascot-gust {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  81%,
+  100% {
+    stroke-dashoffset: -102;
+  }
+}
+
+@keyframes mascot-flyleaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.4), calc(var(--dy) * 0.6))
+      rotate(calc(var(--rot) * 0.3)) scale(1);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * 0.7)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) + 22px)) rotate(var(--rot))
+      scale(0.9);
+  }
+}

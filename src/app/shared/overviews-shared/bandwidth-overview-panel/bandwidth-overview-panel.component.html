@@ -6,7 +6,7 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon data-tone="primary" svgIcon="mobiledata-arrows" aria-hidden="true"></mat-icon>
+      <mat-icon [attr.data-tone]="tone" svgIcon="mobiledata-arrows" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.bandwidth' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>

@@ -1,5 +1,4 @@
 import { CdkMenuModule, type CdkMenuTrigger } from '@angular/cdk/menu';
-import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -15,31 +14,60 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators, type ValidatorFn } from '@angular/forms';
-import { type PathInspectionStatus } from '@app/types';
+import { type PathInspectionStatus, type PillTone } from '@app/types';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
+import {
+  inspectAfterPause,
+  PathInspectionService,
+} from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CdkOverlayAutoposDirective } from '../../directives/cdk-overlay-autopos.directive';
 import { generatePrefixedId } from '../../utils/id.util';
 import { PillDirective } from '../../directives/pill.directive';
+import { controlVersion } from '../../utils/form-signal';
 import {
   isWindowsDriveFolder,
   isWindowsDrivePath,
   isWindowsMountNetworkPath,
   mountDriveLetter,
   unquoteWindowsPath,
+  windowsDriveLabel,
   windowsMountFolderTarget,
 } from '../../utils/path.utils';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import {
+  isOfferedLetter,
   type MountDriveOption,
+  OFFERED_LETTERS,
   WindowsMountTargetService,
 } from 'src/app/services/operations/windows-mount-target.service';
 
 type MountLocation = 'letter' | 'folder';
+
+/** The offered letters as plain choices: shown at once, before it is known which are taken. */
+const PLAIN_LETTERS: readonly MountDriveOption[] = OFFERED_LETTERS.map(letter => ({
+  letter,
+  status: 'free' as const,
+  availableForAutomatic: false,
+}));
+
+/** One drive letter of the picker: how it looks and what it says about the letter. */
+interface DriveChip {
+  letter: string;
+  status: MountDriveOption['status'];
+  selected: boolean;
+  tone: PillTone | null;
+  icon: string | null;
+}
+
+interface MountHint {
+  key: string;
+  params?: PathInspectionStatus['labelParams'];
+  tone: 'warn' | 'dim' | null;
+}
 
 interface MountTargetDraft {
   location: MountLocation | null;
@@ -53,20 +81,19 @@ interface MountTargetDraft {
   imports: [
     CdkMenuModule,
     CdkOverlayAutoposDirective,
-    NgTemplateOutlet,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     PillDirective,
-    MatSelectModule,
     TranslatePipe,
   ],
   templateUrl: './windows-mount-target.component.html',
+  // The shared row first: the container rules of this component's own file must come after it.
   styleUrls: [
-    './windows-mount-target.component.scss',
     '../app-operation-config/operation-path-row.scss',
+    './windows-mount-target.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -74,14 +101,20 @@ export class WindowsMountTargetComponent {
   readonly pathControl = input.required<FormControl>();
   readonly networkModeControl = input<FormControl | null>(null);
   readonly volumeNameControl = input<FormControl | null>(null);
-  readonly inspection = input<PathInspectionStatus | null>(null);
   readonly currentRemoteName = input.required<string>();
   readonly currentProfileName = input<string | null>(null);
+  /** The Quick Run being edited, so that its own folder or letter does not count as taken. */
+  readonly currentQuickRunId = input<string | null>(null);
   readonly mountProfiles = input<Record<string, unknown>>();
   readonly folderPickerDisabled = input(false);
   readonly selectFolder = output();
 
   private readonly windowsMountTarget = inject(WindowsMountTargetService);
+  private readonly inspector = inject(PathInspectionService);
+  /** What the mount path is now: free, taken by another mount, an existing folder or a file. */
+  protected readonly inspection = signal<PathInspectionStatus | null>(null);
+  private cancelInspection: (() => void) | null = null;
+  private lastInspection: string | null = null;
   private readonly destroyRef = inject(DestroyRef);
   private readonly pathSelection = inject(PathSelectionService);
   private readonly folderField = generatePrefixedId('mount-folder');
@@ -101,41 +134,78 @@ export class WindowsMountTargetComponent {
     );
   });
   private reopeningFolderMenu = false;
-  private readonly pathValueVersion = signal(0);
-  private readonly networkModeVersion = signal(0);
+  private readonly pathValueVersion = controlVersion(this.pathControl);
+  private readonly networkModeVersion = controlVersion(this.networkModeControl);
+  private readonly volumeNameVersion = controlVersion(this.volumeNameControl);
   /** Changes whenever the edited remote, profile or path control changes: state tied to it resets. */
   private readonly targetContext = computed(() => ({
     remote: this.currentRemoteName(),
     profile: this.currentProfileName(),
+    quickRunId: this.currentQuickRunId(),
     control: this.pathControl(),
   }));
 
+  private inspectPath(
+    path: string,
+    remote: string,
+    profile: string | null,
+    quickRunId: string | null
+  ): void {
+    const key = JSON.stringify([remote, profile, quickRunId, path]);
+    if (this.lastInspection === key) return;
+    this.lastInspection = key;
+    this.cancelInspection?.();
+    this.cancelInspection = null;
+    this.inspection.set(null);
+    if (!path) return;
+    this.cancelInspection = inspectAfterPause(
+      this.inspector,
+      {
+        path,
+        remoteName: remote,
+        profileName: profile ?? undefined,
+        operation: 'mount',
+        quickRunId,
+      },
+      status => {
+        if (String(this.pathControl().value ?? '').trim() === path) this.inspection.set(status);
+      }
+    );
+  }
+
   constructor() {
-    this.destroyRef.onDestroy(() => this.pathSelection.unregisterField(this.folderField));
+    this.destroyRef.onDestroy(() => {
+      this.pathSelection.unregisterField(this.folderField);
+      this.cancelInspection?.();
+    });
     effect(() => {
-      this.targetContext();
+      this.pathValueVersion();
+      const context = this.targetContext();
+      const path = String(context.control.value ?? '').trim();
+      untracked(() => this.inspectPath(path, context.remote, context.profile, context.quickRunId));
+    });
+    effect(() => {
+      const context = this.targetContext();
       this.mountProfiles();
-      // Untracked: only the context and the profiles reload the drives, not what the load reads.
+      const letters = this.mountLocation() === 'letter';
+      // Untracked: only the context, the profiles and the location reload the drives, not what
+      // the load reads.
       untracked(() => {
-        this.driveOptions.set([]);
-        if (this.mountLocation() === 'letter') void this.loadDriveOptions();
+        // Another remote, profile or Quick Run has other letters of its own: its answer must not
+        // wear the old one. The same owner keeps its letters until the new answer replaces them.
+        const owner = JSON.stringify([context.remote, context.profile, context.quickRunId]);
+        if (owner !== this.driveOwner) {
+          this.driveOptions.set([]);
+          this.driveOwner = owner;
+        }
+        if (letters) void this.loadDriveOptions();
         else ++this.driveRequest;
       });
     });
     effect(onCleanup => {
-      const subscriptions = [this.networkModeControl(), this.volumeNameControl()].map(control =>
-        control?.valueChanges.subscribe(() => this.networkModeVersion.update(value => value + 1))
-      );
-      onCleanup(() => subscriptions.forEach(subscription => subscription?.unsubscribe()));
-    });
-    effect(onCleanup => {
       const control = this.pathControl();
       control.addValidators(this.mountTargetRequired);
-      const subscription = control.valueChanges.subscribe(() =>
-        this.pathValueVersion.update(version => version + 1)
-      );
       onCleanup(() => {
-        subscription.unsubscribe();
         control.removeValidators(this.mountTargetRequired);
         control.updateValueAndValidity({ emitEvent: false });
       });
@@ -144,8 +214,9 @@ export class WindowsMountTargetComponent {
 
   protected readonly driveOptions = signal<MountDriveOption[]>([]);
   protected readonly driveStatus = signal<'checking' | 'ready' | 'unavailable'>('checking');
-  protected readonly suggestedDrive = computed(() =>
-    this.mountPath() === this.automaticDrive && this.driveStatus() === 'ready'
+  /** The letter Automatic would take now, once the letters are known. */
+  protected readonly automaticLetter = computed(() =>
+    this.driveStatus() === 'ready'
       ? this.driveOptions().find(option => option.availableForAutomatic)?.letter
       : undefined
   );
@@ -188,7 +259,7 @@ export class WindowsMountTargetComponent {
     return !this.mountPath() || this.driveSelection() ? 'letter' : 'folder';
   });
   private readonly volumeName = computed(() => {
-    this.networkModeVersion();
+    this.volumeNameVersion();
     this.targetContext();
     return String(this.volumeNameControl()?.value ?? '');
   });
@@ -207,6 +278,88 @@ export class WindowsMountTargetComponent {
   protected readonly displayedVolumeName = computed(
     () => this.legacyNetworkPath() || this.volumeName()
   );
+  /** Closed at first: most people keep the defaults. It opens when a disk name is set. */
+  protected readonly appearanceOpen = linkedSignal<unknown, boolean>({
+    source: this.targetContext,
+    computation: () => untracked(() => !!this.displayedVolumeName()),
+  });
+  /** What File Explorer will call the drive. */
+  protected readonly explorerLabel = computed(() =>
+    this.mountLocation() === 'letter'
+      ? windowsDriveLabel(
+          this.selectedDriveLetter() ?? this.automaticLetter(),
+          this.displayedVolumeName(),
+          this.networkDrive(),
+          this.currentRemoteName()
+        )
+      : ''
+  );
+  protected readonly driveChips = computed((): DriveChip[] => {
+    const selected =
+      this.driveSelection() === this.automaticDrive ? undefined : this.selectedDriveLetter();
+    const options = this.driveOptions();
+    // Until the check answers, and if it cannot, every letter is shown as an ordinary choice, so
+    // the row has its size from the start and does not grow when the answer comes. A saved letter
+    // outside D: to Z: stays visible.
+    const known = options.length ? options : PLAIN_LETTERS;
+    const shown: readonly MountDriveOption[] =
+      selected && !known.some(({ letter }) => letter === selected)
+        ? [...known, { letter: selected, status: 'free', availableForAutomatic: false }]
+        : known;
+    return shown
+      .filter(({ letter }) => isOfferedLetter(letter) || letter === selected)
+      .map(({ letter, status }) => ({
+        letter,
+        status,
+        selected: letter === selected,
+        tone:
+          letter === selected
+            ? 'purple'
+            : status === 'reserved'
+              ? 'yellow'
+              : status === 'occupied'
+                ? 'dim'
+                : null,
+        icon: status === 'occupied' ? 'lock' : status === 'current' ? 'check-circle' : null,
+      }));
+  });
+  /** The one line below the drive picker, the most important thing first. */
+  protected readonly letterHint = computed((): MountHint | null => {
+    const status = this.inspection();
+    if (status?.state === 'notDirectory') return { key: status.labelKey, tone: 'warn' };
+    if (this.driveStatus() === 'unavailable') {
+      return { key: 'wizards.appOperation.mountDriveLettersUnavailable', tone: null };
+    }
+    // Only the letters that are shown count: A: to C: are never offered.
+    const options = this.driveOptions().filter(({ letter }) => isOfferedLetter(letter));
+    if (
+      this.driveStatus() === 'ready' &&
+      options.length &&
+      !options.some(({ status }) => status === 'free' || status === 'current')
+    ) {
+      return { key: 'wizards.appOperation.mountNoFreeLetter', tone: 'warn' };
+    }
+    const option = this.selectedDriveOption();
+    if (option && option.status !== 'free' && option.status !== 'current') {
+      return option.status === 'occupied'
+        ? {
+            key: 'wizards.appOperation.mountDriveOccupiedHint',
+            params: { letter: option.letter },
+            tone: 'warn',
+          }
+        : { key: this.driveStatusLabels[option.status], tone: 'warn' };
+    }
+    // A check under way is no news: it ends at once for a letter, and showing it would move
+    // everything below the hint down and back up.
+    if (status && status.state !== 'clean' && status.state !== 'checking') {
+      const warns = ['colliding', 'nonEmpty', 'exists'].includes(status.state);
+      return { key: status.labelKey, params: status.labelParams, tone: warns ? 'warn' : 'dim' };
+    }
+    return this.driveSelection() === this.automaticDrive
+      ? { key: 'wizards.appOperation.mountAutomaticDriveHint', tone: null }
+      : null;
+  });
+  protected readonly locations: readonly MountLocation[] = ['letter', 'folder'];
   protected readonly locationIcons = { letter: 'hard-drive', folder: 'folder' };
   protected readonly locationLabels = {
     letter: 'wizards.appOperation.mountDriveTarget',
@@ -220,6 +373,7 @@ export class WindowsMountTargetComponent {
   private readonly mountTargetRequired: ValidatorFn = control =>
     this.targetDraft().location && Validators.required(control) ? { required: true } : null;
   private driveRequest = 0;
+  private driveOwner = '';
 
   protected async loadDriveOptions(): Promise<void> {
     const request = ++this.driveRequest;
@@ -229,7 +383,8 @@ export class WindowsMountTargetComponent {
         this.currentRemoteName(),
         this.currentProfileName() ?? undefined,
         this.mountProfiles(),
-        untracked(this.selectedDriveLetter)
+        untracked(this.selectedDriveLetter),
+        this.currentQuickRunId()
       );
       if (!this.destroyRef.destroyed && request === this.driveRequest) {
         this.driveOptions.set(options);
@@ -254,7 +409,8 @@ export class WindowsMountTargetComponent {
     this.setDiskAppearance(location === 'letter' && networkDrive);
     this.targetDraft.update(state => ({ ...state, location, paths, networkDrive }));
     control.markAsDirty();
-    control.setValue(paths[location] ?? '');
+    // Letters start on Automatic, so the picker is never empty; a folder starts empty.
+    control.setValue(paths[location] || (location === 'letter' ? this.automaticDrive : ''));
   }
 
   protected selectDiskType(useNetwork: boolean): void {

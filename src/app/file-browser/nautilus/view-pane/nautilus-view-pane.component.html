@@ -146,7 +146,16 @@
                 [ngTemplateOutlet]="fileEntryIcon"
                 [ngTemplateOutletContext]="{ item, isCut, sizeBinding: false }"
               ></ng-container>
-              <span class="truncate">{{ item.entry.Name }}</span>
+              <div class="name-text">
+                <span class="truncate">{{ item.entry.Name }}</span>
+                <!-- Size and date move under the name when the pane is too narrow for their columns. -->
+                <span class="name-caption truncate">
+                  @if (!item.entry.IsDir) {
+                    {{ item.entry.Size | formatFileSize }} ·
+                  }
+                  {{ item.entry.ModTime | formatRelativeDate }}
+                </span>
+              </div>
               @let share = getShareInfo(item);
               @if (share.isShared || share.isShortcut) {
                 <span appPill tone="dim" size="xs" [attr.title]="share.tooltipKey | translate">

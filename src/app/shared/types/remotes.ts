@@ -84,9 +84,7 @@ export interface DiskUsage {
 
 export interface RemoteOperationState {
   active: boolean;
-  jobId?: number;
   activeProfiles?: Record<string, number | string>;
-  lastRunProfiles?: Record<string, number | string>;
   configuredProfiles?: string[];
   profileBrowsePaths?: Record<string, string[]>;
 }
@@ -96,7 +94,6 @@ export interface RemoteServeState {
   count: number;
   serves: ServeListItem[];
   activeProfiles?: Record<string, string>;
-  lastRunProfiles?: Record<string, string>;
   configuredProfiles?: string[];
   profileBrowsePaths?: Record<string, string[]>;
 }

@@ -27,6 +27,7 @@ export class AppNavigationService {
   private readonly started = signal(false);
   private readonly restoringWorkspace = signal(false);
   private workspaceRequest = 0;
+  private standaloneView: MainView | null = null;
   private readonly pendingRemote = signal<string | null>(null);
 
   constructor() {
@@ -87,22 +88,12 @@ export class AppNavigationService {
     const request = ++this.workspaceRequest;
     this.restoringWorkspace.set(true);
     try {
-      if (view !== this.ui.selectedMainView()) {
-        if (view === 'nautilus') await this.nautilus.openBrowserOverlay(null, null);
-        else if (view === 'flow') await this.flowOverlay.openOverlay();
-        else await this.mainOverlay.openOverlay();
-      }
-      if (request !== this.workspaceRequest) return;
-      if (view !== 'nautilus' || view === this.ui.selectedMainView())
-        this.nautilus.closeBrowserOverlay();
-      if (view !== 'flow' || view === this.ui.selectedMainView()) this.flowOverlay.closeOverlay();
-      if (view !== 'main_menu' || view === this.ui.selectedMainView())
-        this.mainOverlay.closeOverlay();
+      // The base view needs no loading, so restoring it finishes in the same turn.
+      if (view === this.baseView()) this.showBaseView(view);
+      else await this.openWorkspace(view, () => request === this.workspaceRequest);
     } catch (error) {
       if (request === this.workspaceRequest) {
-        this.nautilus.closeBrowserOverlay();
-        this.flowOverlay.closeOverlay();
-        this.mainOverlay.closeOverlay();
+        this.closeOverlays();
         this.ui.setMainView(view);
         console.error('Failed to restore workspace overlay:', error);
       }
@@ -111,7 +102,49 @@ export class AppNavigationService {
     }
   }
 
+  /**
+   * The workspace that fills the window: the default view, or the one a standalone window was
+   * opened for. Every other workspace is an overlay on top of it.
+   */
+  private baseView(): MainView {
+    return this.standaloneView ?? this.ui.defaultView();
+  }
+
+  private showBaseView(view: MainView): void {
+    this.closeOverlays();
+    this.ui.setMainView(view);
+  }
+
+  private closeOverlays(): void {
+    this.nautilus.closeBrowserOverlay();
+    this.flowOverlay.closeOverlay();
+    this.mainOverlay.closeOverlay();
+  }
+
+  /**
+   * The one way to show a workspace, for the menu, for history and for every link that leads to
+   * one. The base view is shown by closing the overlays; any other workspace opens as an overlay
+   * on the base view and the other overlays close. Replacing the base view instead would make the
+   * window open on the wrong workspace until it is reloaded. `isCurrent` lets a caller drop the
+   * rest of the work when a newer request has started while the overlay was loading.
+   */
+  async openWorkspace(target: MainView, isCurrent: () => boolean = () => true): Promise<void> {
+    if (target === this.baseView()) {
+      this.showBaseView(target);
+      return;
+    }
+    // Keep the current workspace visible until the target has finished loading.
+    if (target === 'nautilus') await this.nautilus.openBrowserOverlay(null, null);
+    else if (target === 'flow') await this.flowOverlay.openOverlay();
+    else await this.mainOverlay.openOverlay();
+    if (!isCurrent()) return;
+    if (target !== 'nautilus') this.nautilus.closeBrowserOverlay();
+    if (target !== 'flow') this.flowOverlay.closeOverlay();
+    if (target !== 'main_menu') this.mainOverlay.closeOverlay();
+  }
+
   initialize(standalone: MainView | null): void {
+    this.standaloneView = standalone;
     if (standalone) this.ui.setMainView(standalone);
     this.history.initialize(this.snapshot(), standalone);
     this.started.set(true);

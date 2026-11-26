@@ -5,8 +5,6 @@ import {
   signal,
   computed,
   output,
-  effect,
-  untracked,
   resource,
   DestroyRef,
   ChangeDetectionStrategy,
@@ -14,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCardModule } from '@angular/material/card';
 import { TitleCasePipe } from '@angular/common';
 import {
@@ -67,6 +66,7 @@ import { PillDirective } from '../../../../shared/directives/pill.directive';
     MatCardModule,
     MatIconModule,
     MatButtonModule,
+    MatExpansionModule,
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,
@@ -112,7 +112,6 @@ export class GeneralDetailComponent {
 
   // State
   private readonly allAutomations = this.automationService.automations;
-  readonly currentAutomationCardIndex = signal(0);
 
   readonly remoteQuickRuns = computed(() =>
     this.quickRunService.quickRuns().filter(qr => qr.remoteName === this.selectedRemote().name)
@@ -155,9 +154,18 @@ export class GeneralDetailComponent {
   }
 
   // Derivations
-  readonly jobs = computed(() =>
-    this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
-  );
+  /**
+   * Every job that reads or writes this remote. A job names one remote only, and the file
+   * browser names it the way rclone writes it (`drive:`), so its paths are checked as well.
+   */
+  readonly jobs = computed(() => {
+    const name = this.selectedRemote().name;
+    const onRemote = (fs: string): boolean =>
+      !this.pathService.isLocalPath(fs) && this.pathService.getRemoteNameFromFs(fs) === name;
+    return this.remoteFacade
+      .jobs()
+      .filter(job => [job.remote_name, job.destination, job.source].flat().some(onRemote));
+  });
   /**
    * This remote's automations, plus the workflows that mention it. A workflow has no remote of its
    * own, so the backend, which reads the workflows, says which ones use this remote.
@@ -183,10 +191,6 @@ export class GeneralDetailComponent {
   });
 
   readonly hasAutomations = computed(() => this.scopedAutomations().length > 0);
-
-  readonly currentAutomation = computed(
-    () => this.remoteAutomations()[this.currentAutomationCardIndex()] ?? null
-  );
 
   readonly viewActionConfigs = computed<ActionViewModel[]>(() => {
     const remote = this.selectedRemote();
@@ -256,14 +260,6 @@ export class GeneralDetailComponent {
     () =>
       new Set((this.remoteWorkflows.hasValue() ? this.remoteWorkflows.value() : []).map(w => w.id))
   );
-
-  constructor() {
-    effect(() => {
-      this.selectedRemoteName();
-      this.automationOriginFilter();
-      untracked(() => this.currentAutomationCardIndex.set(0));
-    });
-  }
 
   // --- Actions ---
 
@@ -350,21 +346,5 @@ export class GeneralDetailComponent {
   onOpenAutomationInFiles(path: string): void {
     const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
-  }
-
-  // --- Carousel ---
-
-  nextAutomationCard(): void {
-    this.currentAutomationCardIndex.update(i =>
-      i < this.remoteAutomations().length - 1 ? i + 1 : i
-    );
-  }
-
-  previousAutomationCard(): void {
-    this.currentAutomationCardIndex.update(i => (i > 0 ? i - 1 : i));
-  }
-
-  goToAutomationCard(index: number): void {
-    this.currentAutomationCardIndex.set(index);
   }
 }

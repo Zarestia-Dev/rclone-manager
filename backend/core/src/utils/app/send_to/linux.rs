@@ -1,4 +1,6 @@
-use crate::utils::app::send_to::common::{apply_template, get_home_dir};
+use crate::utils::app::send_to::common::{
+    Entry, apply_template, get_home_dir, is_named_for, send_to_arguments,
+};
 use std::path::{Path, PathBuf};
 
 struct LinuxPaths {
@@ -138,6 +140,49 @@ pub fn unregister(name: &str, _product: &crate::context::ProductInfo) -> Result<
     Ok(())
 }
 
+/// The entries a product called `display_name` registered: name, remote and path.
+pub fn entries_named(display_name: &str, _product: &crate::context::ProductInfo) -> Vec<Entry> {
+    get_home_dir()
+        .map(|home| entries_named_in(&LinuxPaths::new(&home), display_name))
+        .unwrap_or_default()
+}
+
+/// The Nautilus extension is skipped: it lists its arguments as separate strings,
+/// and the other three files of the same entry carry them too.
+fn entries_named_in(paths: &LinuxPaths, display_name: &str) -> Vec<Entry> {
+    let mut entries: Vec<Entry> = Vec::new();
+    for (directory, extension) in [
+        (&paths.nautilus, ""),
+        (&paths.dolphin, ".desktop"),
+        (&paths.nemo, ".nemo_action"),
+    ] {
+        let Ok(files) = std::fs::read_dir(directory) else {
+            continue;
+        };
+        for file in files.flatten() {
+            let file_name = file.file_name().to_string_lossy().into_owned();
+            let Some(name) = file_name.strip_suffix(extension) else {
+                continue;
+            };
+            if !is_named_for(name, display_name) || entries.iter().any(|entry| entry.name == name) {
+                continue;
+            }
+            let arguments = std::fs::read_to_string(file.path())
+                .ok()
+                .as_deref()
+                .and_then(send_to_arguments);
+            if let Some((remote, path)) = arguments {
+                entries.push(Entry {
+                    name: name.to_string(),
+                    remote,
+                    path,
+                });
+            }
+        }
+    }
+    entries
+}
+
 pub fn is_registered(name: &str, _product: &crate::context::ProductInfo) -> Result<bool, String> {
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
@@ -146,4 +191,49 @@ pub fn is_registered(name: &str, _product: &crate::context::ProductInfo) -> Resu
         || paths.nautilus_python.join(format!("{name}.py")).exists()
         || paths.dolphin.join(format!("{name}.desktop")).exists()
         || paths.nemo.join(format!("{name}.nemo_action")).exists())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entries_of_a_former_product_name_are_found_once_with_their_arguments() {
+        let home = tempfile::tempdir().unwrap();
+        let paths = LinuxPaths::new(home.path());
+        for directory in [&paths.nautilus, &paths.dolphin, &paths.nemo] {
+            std::fs::create_dir_all(directory).unwrap();
+        }
+        let old = "gdrive - a (RClone Manager Headless)";
+        let arguments = r#"--send-to-remote "gdrive" --send-to-path "a""#;
+        std::fs::write(paths.nautilus.join(old), format!("exec /x {arguments}")).unwrap();
+        std::fs::write(paths.nemo.join(format!("{old}.nemo_action")), arguments).unwrap();
+        // Dolphin's file alone still counts, and another product's entry does not.
+        let dolphin_only = "photos (RClone Manager Headless)";
+        std::fs::write(
+            paths.dolphin.join(format!("{dolphin_only}.desktop")),
+            r#"Exec=/x --send-to-remote "photos" --send-to-path "" %F"#,
+        )
+        .unwrap();
+        std::fs::write(paths.nautilus.join("gdrive (RClone Manager)"), arguments).unwrap();
+
+        let mut found = entries_named_in(&paths, "RClone Manager Headless");
+        found.sort();
+        assert_eq!(
+            found,
+            [
+                Entry {
+                    name: old.into(),
+                    remote: "gdrive".into(),
+                    path: "a".into(),
+                },
+                Entry {
+                    name: dolphin_only.into(),
+                    remote: "photos".into(),
+                    path: String::new(),
+                },
+            ]
+        );
+        assert!(entries_named_in(&LinuxPaths::new(&home.path().join("none")), "x").is_empty());
+    }
 }

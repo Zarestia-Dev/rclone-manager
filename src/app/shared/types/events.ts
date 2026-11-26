@@ -1,5 +1,4 @@
-import { GlobalStats, JobStatus } from './jobs';
-import { Starter } from './starter';
+import { GlobalStats, JobInfo } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
@@ -31,6 +30,7 @@ export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+export const APP_SHUTTING_DOWN = 'app_shutting_down' as const;
 /** `status` values of updater app events; see `app_event_status` in events.rs. */
 export const APP_EVENT_STATUS = {
   updateFound: 'update_found',
@@ -137,22 +137,22 @@ export interface OAuthUrlEvent {
   url: string;
 }
 
+/** A job was added, changed or removed. */
 export interface JobChangeEvent {
-  jobId: string;
-  backendName?: string;
-  status: JobStatus;
-  remote?: string;
-  source?: string;
-  sources?: string[];
-  destination?: string;
-  starter?: Starter;
+  jobId: number;
+  backendName: string;
+  /** The job after the change; null once it was removed from the list. */
+  job: JobInfo | null;
+  /** Set only by the change that ended the job, so a listener reacts to the end once. */
+  ended?: boolean;
 }
 
 export interface JobStatsUpdatedEvent {
   jobId: number;
   backendName: string;
   executeId?: string | null;
-  statsRevision?: number;
+  /** Grows with every change of this run's stats, so a late event can be told apart. */
+  statsRevision: number;
   stats: GlobalStats;
 }
 

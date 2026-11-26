@@ -48,16 +48,14 @@
     "unknown": "Neznáme",
     "notAvailable": "Nedostupné",
     "unlimited": "Bez obmedzenia",
-    "limitedTo": "Obmedzené na {{rate}}",
-    "none": "Žiadne",
-    "add": "Pridať",
-    "select": "Vybrať"
+    "limitedTo": "Obmedzené na {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "Čistý a prázdny",
       "nonEmpty": "Priečinok obsahuje súbory",
-      "colliding": "Používa: {{details}}",
+      "collidingProfile": "Používa ho profil „{{name}}“ ({{remote}})",
+      "collidingQuickRun": "Používa ho rýchle spustenie „{{name}}“",
       "willCreate": "Priečinok sa vytvorí po vytvorení vzdialeného úložiska.",
       "checking": "Kontroluje sa cesta...",
       "notDirectory": "Cesta vedie na súbor. Vyber priečinok.",
@@ -72,10 +70,8 @@
     "sizeSuffix": "Neplatný formát veľkosti. Použite: 100Ki, 16Mi, 1Gi alebo \"off\"",
     "tristate": "Hodnota musí byť true, false alebo nenastavená",
     "time": "Neplatný formát dátumu a času. Použite ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "Zoznam nemôže obsahovať iba medzery",
     "bwTimetable": "Neplatný formát šírky pásma",
     "fileMode": "Musí byť v osmičkovom formáte (3 – 4 číslice, každá 0 – 7). Príklad: 755",
-    "enum": "Musí byť jedna z hodnôt: {{values}}",
     "urlArray": "Všetky URL adresy musia byť platné a začínať na http:// alebo https://",
     "bandwidth": "Neplatný formát šírky pásma. Použite: 10M, 1G, 100K alebo ich kombinácie",
     "passwordMismatch": "Heslá sa nezhodujú",
@@ -84,10 +80,6 @@
       "invalidStart": "Názov vzdialeného úložiska nemôže začínať pomlčkou ani medzerou",
       "invalidEnd": "Názov vzdialeného úložiska nemôže končiť medzerou",
       "nameTaken": "Tento názov vzdialeného úložiska sa už používa"
-    },
-    "password": {
-      "minLength": "Heslo musí mať aspoň 3 znaky",
-      "invalidChars": "Heslo nemôže obsahovať úvodzovky"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "Kopírovanie URL je aktívne",
     "archivecreateActive": "Archivácia je aktívna",
     "archivecreating": "Archivuje sa",
-    "syncSummary": "Synchronizuje sa ({{count}})",
     "toggleSync": "Prepnúť synchronizáciu ako rýchlu akciu",
     "toggleCopy": "Prepnúť kopírovanie ako rýchlu akciu",
     "toggleMove": "Prepnúť presun ako rýchlu akciu",
@@ -134,7 +125,6 @@
     "serving": "Server beží",
     "servingWithProfile": "Server ({{profile}}): {{type}} na {{addr}}",
     "servingMultiple": "Servery ({{count}}): {{profiles}}",
-    "serveSummary": "Servery ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Prepnúť server ako rýchlu akciu",
     "successStart": "Server pre {{remote}} ({{profile}}) bol úspešne spustený na {{addr}}",
@@ -161,24 +151,66 @@
       "stop": "Zastaviť aktuálny beh"
     },
     "nextRun": {
-      "disabled": "Automatizácia je vypnutá",
       "stopping": "Vypne sa po aktuálnom behu",
       "notScheduled": "Nenaplánované"
     },
-    "lastRun": {
-      "never": "Nikdy"
-    },
     "monitoring": {
-      "realtime": "Sledovanie v reálnom čase",
-      "debounce": "Oneskorenie reakcie (debounce)",
       "watcherActive": "Sledovanie je aktívne",
       "watchedFolder": "Sledovaný priečinok",
-      "seconds": "sekúnd",
-      "realtimeSchedule": "Sledovanie súborov v reálnom čase",
-      "changedOnlyShort": "Iba podpriečinky",
-      "changedOnlyActive": "Iba podpriečinky",
-      "syncScope": "Rozsah synchronizácie",
-      "realtimeChangedOnly": "Sledovanie v reálnom čase (iba podpriečinky)"
+      "changedOnlyShort": "Iba podpriečinky"
+    },
+    "startup": {
+      "badge": "Pri spustení",
+      "startsIn": {
+        "one": "Spustí sa o {{count}} sekundu",
+        "few": "Spustí sa o {{count}} sekundy",
+        "other": "Spustí sa o {{count}} sekúnd"
+      },
+      "delay": {
+        "one": "Po {{count}} sekunde",
+        "few": "Po {{count}} sekundách",
+        "other": "Po {{count}} sekundách"
+      },
+      "immediately": "Hneď po spustení aplikácie"
+    },
+    "card": {
+      "waiting": "Čaká",
+      "started": "Spustené {{time}}",
+      "lastTry": "Posledný pokus {{time}}",
+      "nextRun": "Ďalšie spustenie {{time}}",
+      "lastRun": "Posledné spustenie {{time}}",
+      "neverRun": "Ešte nebolo spustené",
+      "notStarted": "Ešte nespustené",
+      "watching": {
+        "one": "Sledovanie · {{count}} s",
+        "few": "Sledovanie · {{count}} s",
+        "other": "Sledovanie · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Pri spustení · po {{count}} s",
+        "few": "Pri spustení · po {{count}} s",
+        "other": "Pri spustení · po {{count}} s"
+      },
+      "lastFailed": "Posledné spustenie zlyhalo",
+      "whenItRuns": "Kedy sa spúšťa",
+      "onChange": "Pri zmene súborov",
+      "waitsAfterChange": {
+        "one": "Čaká {{count}} sekundu po poslednej zmene",
+        "few": "Čaká {{count}} sekundy po poslednej zmene",
+        "other": "Čaká {{count}} sekúnd po poslednej zmene"
+      },
+      "folders": {
+        "one": "{{count}} priečinok",
+        "few": "{{count}} priečinky",
+        "other": "{{count}} priečinkov"
+      },
+      "onAppStart": "Pri spustení aplikácie",
+      "lastStart": "Naposledy spustené",
+      "servingAt": "Dostupné na adrese {{address}}",
+      "notServing": "Nebeží",
+      "source": "Zdroj",
+      "sources": "Zdroje",
+      "destination": "Cieľ"
     }
   },
   "actions": {
@@ -253,7 +285,8 @@
       },
       "actions": {
         "stop": "Zastaviť úlohu",
-        "delete": "Odstrániť úlohu"
+        "delete": "Odstrániť úlohu",
+        "retry": "Zopakovať úlohu"
       },
       "empty": "Nenašli sa žiadne úlohy"
     },
@@ -278,11 +311,8 @@
     "cancelled": "Sťahovanie aktualizácie rclone bolo zrušené.",
     "cancelFailed": "Zrušenie sťahovania aktualizácie rclone zlyhalo.",
     "failed": "Aktualizácia zlyhala: {{error}}",
-    "channelChanged": "Kanál aktualizácií rclone bol zmenený na {{channel}}",
     "skipped": "Verzia rclone {{version}} bola preskočená",
-    "restored": "Verzia rclone {{version}} bola obnovená",
-    "autoCheckEnabled": "Automatická kontrola aktualizácií rclone je zapnutá",
-    "autoCheckDisabled": "Automatická kontrola aktualizácií rclone je vypnutá"
+    "restored": "Verzia rclone {{version}} bola obnovená"
   },
   "alerts": {
     "title": "Výstrahy a upozornenia",
@@ -635,13 +665,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Položky s hviezdičkou",
-        "description": "Zoznam súborov a priečinkov označených hviezdičkou v prehliadači súborov."
+      "layout": {
+        "label": "Rozloženie",
+        "description": "Ako Prehliadač súborov zobrazuje súbory: ako ikony v mriežke alebo ako riadky v zozname. Mení ho aj tlačidlo rozloženia v Prehliadači súborov.",
+        "options": {
+          "grid": "Mriežka",
+          "list": "Zoznam"
+        }
       },
-      "bookmarks": {
-        "label": "Záložky",
-        "description": "Zoznam umiestnení v záložkách pre rýchly prístup."
+      "sort": {
+        "label": "Zoradiť",
+        "description": "Poradie súborov v Prehliadači súborov. Mení ho aj Zoradiť v Možnostiach zobrazenia."
+      },
+      "show_hidden": {
+        "label": "Zobraziť skryté súbory",
+        "description": "Zobrazí súbory a priečinky, ktorých názov sa začína bodkou."
+      },
+      "upload_request_mib": {
+        "label": "Najväčšia požiadavka nahrávania (MiB)",
+        "description": "Nahrávanie z webového rozhrania sa odosiela v požiadavkách, ktoré túto veľkosť neprekročia. Nastavte ju na limit požiadavky reverzného proxy pred serverom (nginx povoľuje 1 MiB, ak sa nezvýši client_max_body_size). Ak proxy požiadavku odmietne, automaticky sa skúsia menšie požiadavky. Vyššia hodnota môže zrýchliť nahrávanie jedného veľkého súboru cez rýchle pripojenie s vysokou latenciou."
+      },
+      "parallel_uploads": {
+        "label": "Súbory nahrávané naraz",
+        "description": "Koľko súborov odosiela webové rozhranie na server súčasne. Pri pomalom pripojení je vhodnejšie menej."
+      },
+      "ask_transfer_options": {
+        "label": "Pýtať sa na možnosti pri každom prenose",
+        "description": "Pred nahrávaním alebo pred kopírovaním či presunom do iného vzdialeného úložiska zobrazí možnosti prenosu. Predvolené možnosti sú už vyplnené a dá sa importovať šablóna."
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "Zobraziť maskota",
+        "description": "Zobrazuje Tiu, malého maskota, v rohu hlavného okna. Predvolene vypnuté."
+      },
+      "after_remote": {
+        "label": "Zobraziť sprievodcu nastavením po pridaní cloudu",
+        "description": "Otvorí sprievodcu „Čo chcete urobiť?“, keď dokončíte pridávanie nového cloudu."
+      },
+      "destination": {
+        "label": "Kde sprievodca ukladá, čo nastaví",
+        "description": "Automaticky sleduje predvolené úvodné zobrazenie: hlavná ponuka ukladá profil na stránke cloudu, ostatné zobrazenia ukladajú Quick Run.",
+        "options": {
+          "auto": "Automaticky",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Profil cloudu (hlavná ponuka)"
+        }
       }
     }
   },
@@ -746,7 +815,8 @@
       "shortcuts": "Klávesové skratky",
       "about": "O aplikácii RClone Manager",
       "quickRemote": "Rýchle vzdialené úložisko",
-      "detailedRemote": "Podrobné vzdialené úložisko"
+      "detailedRemote": "Podrobné vzdialené úložisko",
+      "wizard": "Sprievodca"
     }
   },
   "onboarding": {
@@ -853,8 +923,7 @@
       "destination": "Cieľ",
       "openViewer": "Otvoriť v prehliadači",
       "openViewerTooltip": "Otvoriť úplný náhľad média",
-      "inferredFromUrl": "Odvodené z URL",
-      "imageAlt": "Náhľad"
+      "inferredFromUrl": "Odvodené z URL"
     },
     "installationOptions": {
       "tabs": {
@@ -920,14 +989,7 @@
       },
       "table": {
         "size": "Veľkosť",
-        "transferred": "prenesené",
-        "file": "Súbor",
-        "direction": "Smer",
-        "took": "Trvalo",
-        "when": "Kedy",
-        "progress": "Priebeh",
-        "speed": "Rýchlosť",
-        "eta": "Zostáva"
+        "transferred": "prenesené"
       },
       "status": {
         "failed": "Zlyhalo",
@@ -1303,8 +1365,7 @@
         "few": "{{count}} neznáme možnosti: {{keys}}. Rclone ich môže ignorovať.",
         "other": "{{count}} neznámych možností: {{keys}}. Rclone ich môže ignorovať."
       },
-      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec.",
-      "fieldsOverview": "Prehľad konfiguračných polí"
+      "invalidArrayPath": "Vlastnosť '{{key}}' nepodporuje viacero ciest. Zadajte namiesto toho jednu cestu ako reťazec."
     },
     "passwordManager": {
       "placeholder": "Zadajte heslo ku konfigurácii rclone",
@@ -1389,8 +1450,7 @@
         "one": "Úspešne importovaná {{count}} možnosť",
         "few": "Úspešne importované {{count}} možnosti",
         "other": "Úspešne importovaných {{count}} možností"
-      },
-      "profileNamePlaceholder": "napr. daily-backup"
+      }
     },
     "obscure": {
       "title": "Zamaskovať heslo",
@@ -1535,8 +1595,8 @@
       "mountDiskName": "Názov disku (voliteľné)",
       "mountNetworkName": "Sieťový názov (voliteľné)",
       "mountAutomaticName": "Automatický názov",
-      "mountLocalDriveHint": "Lokálny disk je bežná voľba. Sieťový skús pri problémoch s programom.",
-      "mountNetworkDriveHint": "Windows zobrazí disk ako sieťovú jednotku. Úložisko zostáva rovnaké.",
+      "mountLocalDriveHint": "Windows ho berie ako pevný disk a môže vytvárať ukážky tvojich súborov. Vyber ho, ak program so sieťovým diskom nefunguje.",
+      "mountNetworkDriveHint": "Windows ho berie ako sieťový disk. Prieskumník zobrazuje ikony namiesto ukážok, čo sa hodí pre cloudové úložisko.",
       "mountDriveTarget": "Jednotka",
       "mountFolderPathRequired": "Zadaj úplnú cestu k novému podpriečinku.",
       "mountFolderQuotesRemoved": "Úvodzovky sme z cesty odstránili.",
@@ -1544,19 +1604,25 @@
       "mountLocalDrive": "Lokálny disk",
       "mountNetworkDrive": "Sieťový disk",
       "mountDriveOccupied": "Obsadené",
+      "mountDriveOccupiedHint": "Písmeno {{letter}} je práve obsadené. Pripojenie bude fungovať, len ak sa dovtedy uvoľní.",
+      "mountNoFreeLetter": "Momentálne nie je voľné žiadne písmeno jednotky. Vyber „Priečinok“, ak chceš pripojiť bez písmena.",
       "mountDriveCurrent": "Aktuálne",
       "mountDriveChecking": "Overujú sa písmená jednotiek…",
       "mountUseParent": "Použiť ako nadradený priečinok",
-      "mountDriveSuggestion": "Návrh jednotky: {{letter}} · Ak chceš používať stále rovnaké písmeno, vyber ho zo zoznamu.",
       "mountAutomaticDriveHint": "Voľné písmeno jednotky sa vyberie pri pripojení.",
       "mountDriveReserved": "Priradené inému profilu",
       "mountDriveLetter": "Písmeno jednotky",
+      "mountExplorerPreview": "V Prieskumníkovi sa zobrazí ako",
       "mountParentFolder": "Vybrať nadradený priečinok",
       "mountFolderHint": "Pripojenie do priečinka používa lokálny disk. Vyber nadradený priečinok a zadaj názov, ktorý ešte neexistuje.",
       "mountDriveLettersUnavailable": "Písmená jednotiek sa nepodarilo overiť. Skús znova.",
       "mountFolderLocalDrive": "Vyber priečinok na lokálnom disku.",
       "mountFolderAlreadyExists": "Priečinok pripojenia už existuje. Použi nový názov.",
       "multiSourceOneWayInfo": "Zistilo sa viacero zdrojových ciest. Automaticky sa zapla jednosmerná kontrola, aby rclone overil každý zdroj voči cieľu.",
+      "multiSourceSyncInfo": "Zdroje sa synchronizujú ako jeden priečinok: v cieli zostane každý súbor, ktorý je aspoň v jednom z nich. Ak je rovnaká cesta vo viacerých zdrojoch, použije sa súbor zo zdroja, ktorý je v zozname prvý; ak je zapnutý „Rýchly výpis“, nie je to zaručené. Kopírovanie na strane servera sa nepoužije, ani keď sú zdroj a cieľ na tom istom vzdialenom úložisku.",
+      "multiSourceCopyInfo": "Zdroje sa kopírujú jeden po druhom, počnúc posledným v zozname. Ak je rovnaká cesta vo viacerých zdrojoch, v cieli zostane súbor zo zdroja, ktorý je v zozname prvý. Ak niektorý zdroj zlyhá, zdroje, ktoré ešte čakajú, sa neskopírujú.",
+      "multiSourceMoveInfo": "Zdroje sa presúvajú jeden po druhom, počnúc posledným v zozname. Ak je rovnaká cesta vo viacerých zdrojoch, v cieli zostane súbor zo zdroja, ktorý je v zozname prvý, a ostatné verzie sa odstránia; ak ich chcete zachovať, nastavte „Priečinok záloh“. Ak niektorý zdroj zlyhá, zdroje, ktoré ešte čakajú, sa nepresunú.",
+      "multiSourceSyncChangedOnlyNote": "Pri viacerých zdrojoch každá zmena synchronizuje všetky zdroje celé: „Synchronizovať iba zmenené podpriečinky“ sa neuplatní.",
       "enableAutoStart": "Zapnúť automatické spustenie ({{type}}) pri štarte",
       "autoStartDelay": "Oneskorenie pri štarte",
       "autoStartDelayHint": "Po spustení aplikácie počkať takto dlho pred spustením. Užitočné, keď sieť, VPN alebo iné pripojenia ešte nie sú pripravené.",
@@ -1788,9 +1854,7 @@
       "confirm": "Použiť",
       "cancel": "Zrušiť"
     },
-    "restored": "Aktualizácia {{version}} bola obnovená",
-    "restoreFailed": "Obnovenie aktualizácie zlyhalo",
-    "channelChanged": "Kanál aktualizácií bol zmenený na {{channel}}."
+    "restored": "Aktualizácia {{version}} bola obnovená"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Pre túto položku sa nepodarilo určiť vzdialené úložisko",
@@ -1898,22 +1962,28 @@
       "cancelled": "Zrušené",
       "cancelJob": "Zrušiť",
       "removeJob": "Odstrániť",
-      "progress": "Priebeh",
-      "files": "Súbory",
-      "speed": "Rýchlosť",
-      "eta": "Zostáva",
-      "currentFile": "Aktuálny súbor",
-      "currentFiles": "Aktuálne súbory",
-      "details": {
-        "source": "Zdroj",
-        "destination": "Cieľ",
-        "startTime": "Čas spustenia",
-        "uploadedFiles": "Nahraté súbory",
-        "deletedFiles": "Odstránené súbory",
-        "movedFiles": "Presunuté súbory",
-        "copiedFiles": "Skopírované súbory",
-        "syncedFiles": "Synchronizované súbory",
-        "processedFiles": "Spracované súbory"
+      "clearFinished": "Vymazať dokončené",
+      "openDestination": "Otvoriť cieľ",
+      "undo": "Späť",
+      "timeLeft": "zostáva {{time}}",
+      "failedOf": {
+        "one": "zlyhalo: {{count}} z {{total}}",
+        "few": "zlyhalo: {{count}} z {{total}}",
+        "other": "zlyhalo: {{count}} z {{total}}"
+      },
+      "itemsCount": {
+        "one": "{{count}} položka",
+        "few": "{{count}} položky",
+        "other": "{{count}} položiek"
+      },
+      "resumeUpload": "Pokračovať v nahrávaní",
+      "resumeWithFiles": "Ak chcete pokračovať, vyberte tie isté súbory",
+      "resumeWithFolder": "Ak chcete pokračovať, vyberte ten istý priečinok",
+      "uploadPausedConnection": "Pozastavené: spojenie so serverom sa prerušilo",
+      "uploadPausedReselect": {
+        "one": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbor",
+        "few": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súbory",
+        "other": "Pozastavené: ak chcete pokračovať, znova vyberte {{count}} súborov"
       },
       "running": "Beží",
       "filesCount": {
@@ -1935,7 +2005,8 @@
         "upload": "Nahrávanie",
         "archivecreate": "Archivácia",
         "archiveextract": "Rozbalenie archívu",
-        "index": "Výpisy priečinkov"
+        "index": "Výpisy priečinkov",
+        "download": "Sťahovanie"
       }
     },
     "fileViewer": {
@@ -1980,8 +2051,7 @@
       "zoomIn": "Priblížiť",
       "zoomOut": "Oddialiť",
       "resetZoom": "Obnoviť priblíženie",
-      "hexPreview": "Hexadecimálny náhľad",
-      "playVideo": "Prehrať v prehrávači videa"
+      "hexPreview": "Hexadecimálny náhľad"
     }
   },
   "dashboard": {
@@ -2038,6 +2108,11 @@
       "delete": "Odstraňovanie",
       "deleteDesc": "Natrvalo odstrániť súbory zodpovedajúce filtrom",
       "copyurl": "Kopírovanie URL",
+      "upload": "Nahrávanie",
+      "rename": "Premenovanie",
+      "cleanup": "Vyčistenie",
+      "rmdirs": "Odstránenie prázdnych priečinkov",
+      "archiveextract": "Rozbalenie archívu",
       "copyUrlDesc": "Vygenerovať verejné URL na stiahnutie súborov",
       "archivecreate": "Archivácia",
       "archivecreateDesc": "Skomprimovať priečinky/súbory do archívu (Zip, Tar atď.)",
@@ -2072,28 +2147,19 @@
       "remoteSettings": "Nastavenia vzdialených úložísk",
       "indexSettings": "Nastavenia výpisov priečinkov",
       "index": "Výpisy priečinkov",
-      "indexDesc": "Zapisovať prehliadateľné výpisy do priečinkov pre statické webové stránky"
+      "indexDesc": "Zapisovať prehliadateľné výpisy do priečinkov pre statické webové stránky",
+      "download": "Sťahovanie"
     },
     "generalDetail": {
       "automations": "Automatizácie",
-      "goToAutomation": "Prejsť na automatizáciu {{index}}",
-      "schedule": "Plán",
-      "cronExpression": "Výraz cron:",
       "nextRunLabel": "Ďalšie spustenie:",
-      "lastRunLabel": "Posledné spustenie:",
       "statistics": "Štatistiky",
       "successful": "Úspešné",
       "failedCount": "Zlyhané",
       "stoppedCount": "Zastavené",
       "totalRuns": "Spustenia celkom",
       "paths": "Cesty",
-      "sourceLabel": "Zdroj:",
-      "destinationLabel": "Cieľ:",
-      "lastError": "Posledná chyba",
-      "currentlyRunning": "Práve beží",
       "jobIdLabel": "ID úlohy:",
-      "previousAutomationTooltip": "Predchádzajúca automatizácia",
-      "nextAutomationTooltip": "Nasledujúca automatizácia",
       "remoteConfiguration": "Konfigurácia vzdialeného úložiska",
       "editConfiguration": "Upraviť konfiguráciu",
       "remoteActionQuickSelection": "Rýchly výber akcie vzdialeného úložiska"
@@ -2265,6 +2331,7 @@
       "skipVersion": "Preskočiť verziu",
       "upToDate": "Aktuálne",
       "latestVersionMsg": "Používate najnovšiu verziu",
+      "statusUnknown": "Stav aktualizácií neznámy",
       "checkUpdates": "Skontrolovať aktualizácie",
       "checking": "Kontroluje sa...",
       "updateSettings": "Nastavenia aktualizácií",
@@ -2281,11 +2348,9 @@
       "whatsNewRclone": "Čo je nové v rclone",
       "updateRclone": "Stiahnuť aktualizáciu rclone",
       "rcloneUpToDate": "Rclone je aktuálny",
-      "checkRcloneUpdates": "Skontrolovať aktualizácie rclone",
       "rcloneUpdateSettings": "Nastavenia aktualizácií rclone",
       "skippedRcloneUpdates": "Preskočené aktualizácie rclone",
       "devTeam": "Vývojový tím",
-      "leadDeveloper": "Hlavný vývojár",
       "contributors": "Prispievatelia",
       "acknowledgments": "Poďakovanie",
       "ackText": "Táto aplikácia je postavená na moderných webových technológiách a pri správe cloudových úložísk sa spolieha na vynikajúci projekt rclone.",
@@ -2296,6 +2361,7 @@
       "updateSettingFailed": "Aktualizácia nastavenia zlyhala",
       "channelStable": "Stabilný",
       "channelBeta": "Beta",
+      "channelDev": "Vývojová",
       "channelStableDesc": "Odporúča sa pre väčšinu používateľov",
       "channelBetaDesc": "Najnovšie funkcie",
       "downloadPage": "Stránka na stiahnutie",
@@ -2367,6 +2433,7 @@
     },
     "preferences": {
       "title": "Predvoľby",
+      "fileBrowserTitle": "Predvoľby Prehliadača súborov",
       "searchResults": "Výsledky vyhľadávania",
       "searchPlaceholder": "Hľadať v nastaveniach...",
       "resetAll": "Obnoviť všetky nastavenia",
@@ -2395,6 +2462,7 @@
       "tabs": {
         "general": "Všeobecné",
         "core": "Jadro",
+        "nautilus": "Prehliadač súborov",
         "developer": "Vývojár",
         "vault": "Trezor"
       },
@@ -2913,6 +2981,435 @@
         "newLine": "nový riadok",
         "clear": "vymazať"
       }
+    },
+    "wizard": {
+      "title": "Čo chcete urobiť?",
+      "stepOf": "Krok {{current}} z {{total}}",
+      "loadFailed": "Cloudové úložiská sa nepodarilo načítať.",
+      "noRemotes": "Najprv pridajte cloudové úložisko a potom sa vráťte sem.",
+      "remoteLabel": "Ktorý cloud?",
+      "recommended": "Odporúčané",
+      "applyFailed": "Nepodarilo sa to nastaviť. Skontrolujte priečinky a skúste to znova.",
+      "hello": {
+        "created": "{{remote}} je pripravené! Čo s ním chcete robiť?",
+        "default": "Čo chcete robiť so svojím cloudom?",
+        "subtitle": "Vyberte, čo chcete, vlastnými slovami. Zvyšok nastavíme my a nič sa nespustí bez vášho súhlasu.",
+        "dontShow": "Neotvárať po pridaní cloudu",
+        "dontShowHint": "Dobre. Znova to zapnete tlačidlom ⚙ hore."
+      },
+      "places": {
+        "thisDevice": "Toto zariadenie",
+        "server": "Server",
+        "filesApp": "Aplikácia Súbory",
+        "tv": "TV alebo prehrávač",
+        "device": "Telefón alebo počítač",
+        "browser": "Webový prehliadač",
+        "homeNetwork": "Vaša domáca sieť",
+        "automaticDrive": "Voľné písmeno jednotky"
+      },
+      "goals": {
+        "access": {
+          "title": "Používať cloud ako priečinok v tomto zariadení",
+          "description": "Ako sieťový disk: súbory sa zobrazia v priečinku a stiahnu sa pri otvorení.",
+          "descriptionApp": "Ako aplikácia {{app}} vo Windows: súbory sa zobrazia v priečinku a stiahnu sa pri otvorení.",
+          "titlePhone": "Vidieť cloud v aplikácii Súbory v telefóne",
+          "descriptionPhone": "Cloud sa zobrazí vedľa ostatných úložísk a súbory sa stiahnu pri otvorení."
+        },
+        "backup": {
+          "title": "Zálohovať súbory do cloudu",
+          "description": "Majte kópiu priečinka v cloude pre prípad, že sa zariadeniu niečo stane."
+        },
+        "devices": {
+          "title": "Mať kópiu v tomto zariadení rovnakú ako v cloude",
+          "description": "Funguje bez internetu a na viacerých zariadeniach: zmeny idú oboma smermi. Ideálne pre poznámky Obsidian alebo Logseq."
+        },
+        "download": {
+          "title": "Stiahnuť súbory z cloudu do tohto zariadenia",
+          "description": "Stiahnite priečinok alebo všetko, raz alebo s priebežnou aktualizáciou."
+        },
+        "migrate": {
+          "title": "Prejsť na iný cloud",
+          "description": "Skopírujte všetko z tohto cloudu do iného, napríklad z Google Drive do OneDrive."
+        },
+        "share": {
+          "title": "Otvárať súbory v televízore alebo telefóne",
+          "description": "Sprístupnite cloud televízoru, telefónu alebo počítaču v domácej sieti."
+        },
+        "explore": {
+          "title": "Len sa pozrieť alebo niečo skontrolovať",
+          "description": "Prezrite si súbory alebo skontrolujte, či priečinok zodpovedá cloudu."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "Ak tu súbor vymažete, čo sa má stať s jeho zálohou?"
+        },
+        "keepOld": {
+          "title": "Majú súbory zostať v starom cloude?"
+        },
+        "device": {
+          "title": "Čím budete súbory otvárať?"
+        },
+        "explore": {
+          "title": "Čo by ste chceli urobiť?"
+        }
+      },
+      "about": {
+        "title": "Aký je rozdiel?",
+        "deleted": {
+          "same": "V oboch prípadoch sa nové a zmenené súbory skopírujú do cloudu a váš priečinok zostane nedotknutý.",
+          "differ": "„Ponechať v cloude“: ak tu súbor vymažete, v cloude zostane. „Vymazať aj tam“: cloud je vždy rovnaký ako váš priečinok, takže súbor vymazaný tu zmizne aj z cloudu."
+        },
+        "keepOld": {
+          "same": "V oboch prípadoch sa všetko skopíruje do nového cloudu.",
+          "differ": "„Áno, ponechať ich tam“: starý cloud zostane presne taký, aký je. „Nie, presunúť ich“: každý súbor sa zo starého cloudu odstráni, keď bezpečne dorazí do nového."
+        },
+        "device": {
+          "same": "Pri každej možnosti bude váš cloud dostupný pre ostatné zariadenia vo vašej domácej sieti. Funguje to, len kým je aplikácia otvorená.",
+          "differ": "Sieťový priečinok sa otvorí ako každý iný priečinok vo Finderi, Prieskumníkovi alebo aplikácii na súbory a môže povoliť zmeny. Webový prehliadač môže súbory len prezerať a sťahovať. Televízor alebo prehrávač cloud nájde sám a môže len prehrávať."
+        },
+        "explore": {
+          "same": "V oboch prípadoch sa nič nezmení.",
+          "differ": "„Prezrieť si súbory“: váš cloud sa otvorí v tejto aplikácii a môžete si ho pozrieť. „Porovnať priečinok s cloudom“: ukáže, ktoré súbory sa líšia medzi priečinkom v tomto zariadení a cloudom. „Porovnať jeden cloud s iným“: ukáže, ktoré súbory sa líšia medzi dvoma cloudmi."
+        },
+        "where": {
+          "stream": "Tento priečinok je ako dvere: súbory zostávajú v cloude, zobrazia sa tu a stiahnu sa, keď ich otvoríte. Vyberte prázdny priečinok. Všetko, čo do neho vložíte, sa uloží aj do cloudu.",
+          "twoWay": "Môžete vybrať priečinok, ktorý už používate. Pri prvom spustení sa porovná s cloudom a obe strany sa spoja, nič sa nevymaže. Potom sa zmena na jednej strane, vrátane vymazania súboru, prejaví aj na druhej.",
+          "mirror": "Priečinok v cloude sa stane presnou kópiou vášho priečinka. Súbory, ktoré v ňom sú a vo vašom priečinku nie, sa vymažú. Najbezpečnejšie je vybrať nový alebo prázdny priečinok v cloude.",
+          "streamWindows": "Cloud sa v Prieskumníkovi zobrazí ako jednotka, podobne ako USB kľúč. Vaše súbory ostanú v cloude a stiahnu sa, keď ich otvoríte. Namiesto jednotky môžete vybrať aj priečinok. Všetko, čo do nej vložíte, sa uloží aj do cloudu."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Ponechať v cloude",
+            "description": "Ako záložná kópia: aj keď tu súbor vymažete, cloud ho stále má."
+          },
+          "mirror": {
+            "title": "Vymazať aj tam",
+            "description": "Ako zrkadlo: cloud vždy vyzerá presne ako váš priečinok, vrátane vymazaných súborov."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Áno, ponechať ich tam",
+            "description": "Ako vyrobiť kópiu: starý cloud zostane presne taký, aký je, a vždy sa môžete vrátiť."
+          },
+          "move": {
+            "title": "Nie, presunúť ich",
+            "description": "Ako sťahovanie: každý súbor opustí starý cloud, keď bezpečne dorazí do nového."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "Sieťový priečinok",
+            "description": "Ako zdieľaný priečinok: otvorí sa vo Finderi, Prieskumníkovi alebo aplikácii na súbory s menom a heslom, ktoré si zvolíte. Vy rozhodnete, či môžu zariadenia súbory meniť."
+          },
+          "browser": {
+            "title": "Webový prehliadač",
+            "description": "Ako webová stránka: telefón alebo počítač s adresou a heslom si môže súbory prezrieť a stiahnuť. Nič sa nedá zmeniť."
+          },
+          "tv": {
+            "title": "Televízor alebo prehrávač médií",
+            "description": "Ako mediálny server: smart TV, konzoly a prehrávače ho nájdu samy. Môžu pozerať a počúvať, ale nič nemeniť."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Prezrieť si súbory",
+            "description": "Ako otvorenie priečinka: prezerajte si cloud priamo v tejto aplikácii. Nič sa nesťahuje ani nemení."
+          },
+          "compare": {
+            "title": "Porovnať priečinok s cloudom",
+            "description": "Ako porovnanie dvoch priečinkov: zistite, ktoré súbory sa líšia medzi priečinkom tu a cloudom. Nič sa nemení."
+          },
+          "compareClouds": {
+            "title": "Porovnať jeden cloud s iným",
+            "description": "Ako porovnanie dvoch priečinkov: zistite, ktoré súbory sa líšia medzi dvoma vašimi cloudmi. Nič sa nemení."
+          }
+        }
+      },
+      "where": {
+        "heading": "Kde?",
+        "target": "Kam majú súbory ísť?",
+        "targetCompare": "S ktorým cloudom ho porovnať?",
+        "noOtherRemote": "Najprv pridajte nový cloud a potom sa vráťte sem.",
+        "shareLogin": "Prihlásenie pre druhé zariadenie",
+        "shareHint": "Telefón alebo počítač si ich vypýta pri pripojení.",
+        "shareUser": "Používateľské meno",
+        "sharePassword": "Heslo",
+        "local": {
+          "stream": "cloud sa zobrazí v tomto priečinku",
+          "twoWay": "súbory budú v tomto priečinku",
+          "download": "súbory sa stiahnu sem",
+          "upload": "ktorý priečinok zálohovať?",
+          "compare": "ktorý priečinok skontrolovať?",
+          "devices": "ktorý priečinok má zostať rovnaký?",
+          "streamWindows": "cloud sa zobrazí ako jednotka alebo priečinok"
+        },
+        "cloud": {
+          "stream": "ktorú časť cloudu?",
+          "twoWay": "bude rovnaký ako tento priečinok",
+          "download": "ktorý priečinok stiahnuť?",
+          "upload": "záloha pôjde sem",
+          "cloudToCloud": "čo kopírovať?",
+          "share": "čo zdieľať?",
+          "compare": "porovná sa s týmto priečinkom",
+          "cloudCompare": "ktorý priečinok skontrolovať?"
+        },
+        "localPlaceholder": "Vyberte alebo zadajte priečinok",
+        "cloudPlaceholder": "Nechajte prázdne pre celý cloud",
+        "shareConnection": "Ako sa zariadenia pripájajú",
+        "sharePort": "Port",
+        "sharePortHint": "Číslo za dvojbodkou v adrese. Ponechajte 8080, ak ho nepoužíva niečo iné.",
+        "portInvalid": "Vyberte port od 1024 do 65535.",
+        "shareReadOnly": "Zariadenia môžu len pozerať, nie meniť súbory",
+        "shareReadOnlyHint": "Vypnite, ak majú telefóny alebo počítače aj nahrávať, premenúvať alebo mazať.",
+        "shareName": "Názov v televízore",
+        "shareNameHint": "Toto uvidíte v zozname mediálnych serverov televízora alebo prehrávača.",
+        "shareNameLabel": "Názov",
+        "portBusy": "Port {{port}} už používa iný program. Vyberte iný.",
+        "portUseFree": "Použiť port {{port}}"
+      },
+      "review": {
+        "heading": "Toto sa stane",
+        "advanced": "Otvoriť v úplnom editore",
+        "start": "Nastaviť a spustiť",
+        "firstRun": "Prvé spustenie porovná obe strany a spojí ich. Môže to chvíľu trvať a nič sa nevymaže.",
+        "startOnLogin": "Spúšťať aj túto aplikáciu pri štarte počítača",
+        "mountPlugin": {
+          "title": "Ešte niečo je potrebné",
+          "description": "Na zobrazenie cloudu ako priečinka je potrebný malý systémový komponent (FUSE alebo WinFsp), ktorý zatiaľ nie je nainštalovaný.",
+          "install": "Nainštalovať"
+        },
+        "summary": {
+          "stream": "{{cloud}} sa zobrazí v {{local}}.",
+          "streamSaf": "{{cloud}} sa zobrazí v aplikácii Súbory.",
+          "twoWay": "{{local}} a {{cloud}} zostanú rovnaké.",
+          "upload_copy": "{{local}} sa zálohuje do {{cloud}}.",
+          "upload_sync": "{{cloud}} sa stane presnou kópiou {{local}}.",
+          "download": "{{cloud}} sa stiahne do {{local}}.",
+          "cloudToCloud_copy": "{{cloud}} sa skopíruje do {{target}}.",
+          "cloudToCloud_move": "{{cloud}} sa presunie do {{target}}.",
+          "share_dlna": "{{cloud}} sa zdieľa s televízormi a prehrávačmi vo vašej sieti.",
+          "share_webdav": "{{cloud}} sa zdieľa vo vašej sieti s heslom.",
+          "share_http": "{{cloud}} sa zdieľa vo vašej sieti ako webová stránka s heslom.",
+          "compare": "{{local}} sa porovná s {{cloud}}.",
+          "cloudCompare": "{{cloud}} sa porovná s {{target}}.",
+          "streamDrive": "{{cloud}} sa zobrazí ako jednotka {{local}}.",
+          "streamAutoDrive": "{{cloud}} sa zobrazí ako nová jednotka. Písmeno vyberie Windows pri pripojení."
+        },
+        "flow": {
+          "stream": "Otvára sa pri používaní",
+          "upload": "Ide do cloudu",
+          "download": "Prichádza z cloudu",
+          "twoWay": "Rovnaké na oboch stranách",
+          "cloudToCloud": "Ide do iného cloudu",
+          "share": "Zdieľané vo vašej sieti",
+          "compare": "Len sa porovná, nič sa nemení"
+        },
+        "schedule": {
+          "watch": "Spustí sa samo, keď sa súbor zmení.",
+          "startup": "Spustí sa samo pri každom spustení aplikácie.",
+          "startupMount": "Pripojí sa samo pri každom spustení aplikácie.",
+          "cron": "Plán: {{when}}",
+          "manual": "Spúšťa sa len vtedy, keď to spustíte."
+        },
+        "detailsTitle": "Dobre vedieť",
+        "destination": {
+          "quickRun": "Rýchle spustenie",
+          "profile": "Profil v hlavnej ponuke",
+          "hintQuickRun": "Zobrazí sa v Flow › Rýchle spustenia.",
+          "hintProfile": "Zobrazí sa na stránke „{{remote}}“ v hlavnej ponuke, kde ho môžete spustiť a zastaviť."
+        },
+        "wholeCloud": "Celé cloudové úložisko",
+        "duplicate": "Už máte nastavenie, ktoré to robí: „{{name}}“.",
+        "duplicateShow": "Otvoriť"
+      },
+      "effects": {
+        "streamOpen": "Otvorenie súboru ho stiahne z cloudu.",
+        "streamSave": "Uloženie súboru ho nahrá do cloudu.",
+        "streamDelete": "Vymazanie súboru v tomto priečinku ho vymaže aj z cloudu.",
+        "uploadNew": "Nové a zmenené súbory sa nahrajú.",
+        "keepDelete": "Súbory, ktoré tu vymažete, zostanú v cloude.",
+        "uploadCloudChange": "Záloha nikdy nič vo vašom priečinku nezmení.",
+        "mirrorDelete": "Súbory, ktoré tu vymažete, sa vymažú aj z cloudu.",
+        "mirrorExtra": "Súbory, ktoré sú len v cloudovom priečinku, sa vymažú.",
+        "downloadNew": "Nové a zmenené súbory z cloudu sa stiahnu.",
+        "downloadKeep": "Súbory vymazané v cloude zostanú v tomto zariadení.",
+        "downloadLocalChange": "V cloude sa nikdy nič nezmení.",
+        "twoWayChange": "Zmena na ktorejkoľvek strane sa skopíruje na druhú.",
+        "twoWayDelete": "Súbor vymazaný na jednej strane sa vymaže aj na druhej.",
+        "twoWayConflict": "Ak sa súbor zmení na oboch stranách, zachovajú sa obe verzie.",
+        "migrateCopy": "Každý súbor sa skopíruje do nového cloudu.",
+        "migrateKeep": "Starý cloud zostane, ako je.",
+        "migrateMove": "Súbory sa po skopírovaní odstránia zo starého cloudu.",
+        "shareTv": "Televízory a prehrávače vo vašej sieti ho nájdu samy.",
+        "shareReadOnly": "Môžu pozerať a počúvať, ale nič nemenia.",
+        "shareBrowse": "Zariadenia môžu súbory prezerať a sťahovať, ale nič nemenia.",
+        "shareStops": "Zdieľanie sa zastaví, keď sa aplikácia zavrie.",
+        "sharePassword": "Pripojiť sa môžu len zariadenia s vaším heslom.",
+        "shareWrite": "Pripojené zariadenia môžu súbory meniť a mazať.",
+        "compareNothing": "Žiadny súbor sa nezmení.",
+        "compareList": "Dostanete zoznam súborov, ktoré sa líšia.",
+        "browseNothing": "Nič sa nemení."
+      },
+      "advice": {
+        "tooBigForDisk": "Má to {{size}}, ale toto zariadenie má voľných len {{free}}. Nezmestí sa to.",
+        "tightOnDisk": "Má to {{size}} a toto zariadenie má voľných {{free}}. Zmestí sa to, ale disk bude takmer plný.",
+        "fitsOnDisk": "Má to {{size}} a toto zariadenie má voľných {{free}}. Pohodlne sa to zmestí.",
+        "cloudTooFull": "Priečinok má {{size}}, ale cloud má voľných len {{free}}. Nezmestí sa to.",
+        "streamSavesSpace": "V cloude máte {{cloud}} a toto zariadenie má voľných {{free}}, preto je toto správna voľba: miesto zaberajú len súbory, ktoré otvoríte."
+      },
+      "preview": {
+        "title": "Najprv si pozrite, čo sa stane",
+        "description": "Skúšobné spustenie porovná obe strany a vypíše každý súbor, ktorý by skopírovalo, nahradilo alebo vymazalo. Žiadny súbor sa nezmení.",
+        "run": "Ukázať, čo sa zmení",
+        "running": "Porovnávame súbory…",
+        "checked": {
+          "one": "Zatiaľ skontrolovaný {{count}} súbor",
+          "few": "Zatiaľ skontrolované {{count}} súbory",
+          "other": "Zatiaľ skontrolovaných {{count}} súborov"
+        },
+        "transfers": {
+          "one": "Skopíruje sa {{count}} súbor",
+          "few": "Skopírujú sa {{count}} súbory",
+          "other": "Skopíruje sa {{count}} súborov"
+        },
+        "deletes": {
+          "one": "Vymaže sa {{count}} súbor",
+          "few": "Vymažú sa {{count}} súbory",
+          "other": "Vymaže sa {{count}} súborov"
+        },
+        "errors": {
+          "one": "{{count}} súbor sa nepodarilo prečítať",
+          "few": "{{count}} súbory sa nepodarilo prečítať",
+          "other": "{{count}} súborov sa nepodarilo prečítať"
+        },
+        "noDeletes": "Žiadny súbor sa nevymaže",
+        "nothing": "Všetko je už aktuálne; nič by sa nezmenilo.",
+        "failed": "Skúšobné spustenie sa nedokončilo. Aj tak to môžete nastaviť alebo zmeniť priečinky.",
+        "runName": "{{name}} (skúška)",
+        "groups": {
+          "delete": "Budú vymazané",
+          "add": "Nové súbory",
+          "replace": "Budú nahradené",
+          "copy": "Budú skopírované",
+          "error": "Problémy",
+          "untouched": "Zostanú, ako sú"
+        },
+        "groupCount": "{{label}}: {{count}}",
+        "unchanged": {
+          "one": "{{count}} súbor je už na oboch stranách rovnaký",
+          "few": "{{count}} súbory sú už na oboch stranách rovnaké",
+          "other": "{{count}} súborov je už na oboch stranách rovnakých"
+        },
+        "deleteWarning": "Pred spustením si pozrite tento zoznam: tieto súbory sa z cieľa odstránia.",
+        "again": "Spustiť skúšku znova",
+        "slowNote": "Môže to chvíľu trvať, podľa počtu súborov. Nezasekol sa, počkajte, prosím.",
+        "elapsed": "Beží už {{time}}",
+        "andMore": {
+          "one": "…a ešte {{count}} súbor",
+          "few": "…a ešte {{count}} súbory",
+          "other": "…a ešte {{count}} súborov"
+        }
+      },
+      "working": {
+        "saving": "Nastavujeme…",
+        "firstRun": "Prebieha prvá synchronizácia…",
+        "canClose": "Toto okno môžete zavrieť; beží to ďalej na pozadí.",
+        "slowNote": "Prvá synchronizácia môže trvať dlho, podľa počtu súborov. Nezasekla sa."
+      },
+      "done": {
+        "title": "Hotovo!",
+        "stream": "Váš cloud je teraz v {{path}}.",
+        "streamSaf": "Váš cloud je teraz v aplikácii Súbory.",
+        "twoWayReady": "Prvá synchronizácia je hotová. Odteraz zostanú obe strany rovnaké.",
+        "twoWayFailed": "Je to nastavené, ale prvá synchronizácia sa nedokončila.",
+        "started": "Spustilo sa. Priebeh môžete sledovať v aplikácii.",
+        "checkStarted": "Kontrola sa spustila. Keď skončí, uvidíte, ktoré súbory sa líšia.",
+        "findIt": "Neskôr to nájdete v časti Flow › Rýchle spustenia pod názvom „{{name}}“.",
+        "openFolder": "Otvoriť priečinok",
+        "openCloud": "Zobraziť v prehliadači súborov",
+        "openRun": "Zobraziť priebeh a výsledok",
+        "openRunHint": "Pozrite si, ako to dopadlo a ktorých súborov sa to týka.",
+        "another": "Nastaviť niečo iné",
+        "shareWebdav": "Zdieľanie je zapnuté. V telefóne alebo počítači sa pripojte na jednu z týchto adries:",
+        "shareHttp": "Zdieľanie je zapnuté. V telefóne alebo počítači otvorte v prehliadači jednu z týchto adries:",
+        "shareAddress": "Adresa",
+        "shareOtherAddresses": "Fungujú aj tieto",
+        "shareUser": "Používateľské meno",
+        "sharePassword": "Heslo",
+        "sharePasswordHint": "To, ktoré ste zvolili",
+        "shareDlna": "Zdieľanie je zapnuté. V zozname médií televízora alebo prehrávača hľadajte „{{name}}“.",
+        "noAddress": "Zdieľanie je zapnuté. Pripojte sa na sieťovú adresu tohto zariadenia, port {{port}}.",
+        "findItProfile": "Neskôr ho nájdete na stránke „{{remote}}“ v hlavnej ponuke ako profil „{{name}}“.",
+        "whereQuickRun": "Zobraziť v Rýchlych spusteniach",
+        "whereProfile": "Zobraziť v hlavnej ponuke",
+        "failureReason": "Čo sa pokazilo: {{reason}}",
+        "streamDrive": "Váš cloud je teraz jednotka {{path}}.",
+        "streamAutoDrive": "Váš cloud je teraz nová jednotka v Prieskumníkovi.",
+        "openFilesApp": "Otvoriť aplikáciu Súbory"
+      },
+      "runNames": {
+        "access": "Priečinok {{remote}}",
+        "backup": "Záloha {{remote}}",
+        "devices": "Synchronizácia {{remote}}",
+        "download": "Stiahnutie {{remote}}",
+        "migrate": "Presun {{remote}}",
+        "share": "Zdieľanie {{remote}}",
+        "explore": "Kontrola {{remote}}"
+      },
+      "when": {
+        "heading": "Kedy sa má spustiť?",
+        "subtitle": "Vyberte čokoľvek a kombinujte. Ak nevyberiete nič, spustí sa len vtedy, keď to spustíte.",
+        "watch": {
+          "title": "Pri každej zmene súboru",
+          "description": "Priečinok sa sleduje a zmeny sa nahrajú v priebehu sekúnd, ako automatické nahrávanie fotiek z telefónu."
+        },
+        "cron": {
+          "title": "Podľa plánu",
+          "description": "Každý deň, každú hodinu, vo všedné dni alebo kedykoľvek si zvolíte."
+        },
+        "startup": {
+          "title": "Pri spustení aplikácie",
+          "description": "Spustí sa samo pri každom otvorení aplikácie.",
+          "descriptionMount": "Váš cloud sa pripojí sám pri každom otvorení aplikácie."
+        },
+        "cloudHint": "Sledovanie vidí len zmeny v tomto zariadení. Pridajte aj plán, aby prišli zmeny urobené v cloude.",
+        "invalidCron": "Tento plán ešte nie je úplný. Vyberte jednu z možností vyššie."
+      },
+      "details": {
+        "cache": "Súbory, ktoré otvoríte, zostanú v tomto zariadení až {{age}} a zaberú najviac {{size}} disku.",
+        "writeBack": "Vaše zmeny sa odošlú do cloudu po {{time}}.",
+        "minFree": "Medzipamäť prestane rásť, keď na disku zostane menej ako {{size}} voľného miesta.",
+        "address": "Adresa:",
+        "addressUnknown": "Použite adresu tohto zariadenia s portom:",
+        "addressViaBackend": "Toto je adresa, ktorou sa aplikácia pripája k tomu počítaču. Telefón v inej sieti sa k nej nemusí dostať.",
+        "port": "Port:",
+        "user": "Používateľské meno:",
+        "tvName": "V televízore sa zobrazí ako:"
+      },
+      "settings": {
+        "title": "Nastavenia sprievodcu",
+        "subtitle": "Tieto voľby sa zapamätajú na nabudúce.",
+        "afterRemote": "Zobraziť tohto sprievodcu po pridaní cloudu",
+        "destinationTitle": "Ukladať, čo sprievodca nastaví, ako",
+        "auto": "Automaticky",
+        "hintAuto": "Sleduje úvodné zobrazenie: profil, ak sa aplikácia spúšťa v hlavnej ponuke, inak rýchle spustenie.",
+        "done": "Hotovo"
+      },
+      "undo": {
+        "action": "Odstrániť toto nastavenie",
+        "hint": "Nastavenie prestane fungovať a zmizne z aplikácie. Vaše súbory sa nedotknú.",
+        "confirm": "„{{name}}“ prestane fungovať a zmizne z aplikácie. Vaše súbory sa nedotknú.",
+        "working": "Odstraňuje sa…",
+        "failed": "Nepodarilo sa ho odstrániť. Stále ho môžete odstrániť tam, kde je zobrazené.",
+        "removedTitle": "Odstránené",
+        "removed": "Vaše súbory sa nezmenili.",
+        "title": "Odstrániť toto nastavenie?",
+        "remove": "Odstrániť"
+      }
     }
   },
   "nautilus": {
@@ -3069,9 +3566,7 @@
           "one": "{{count}} konflikt",
           "few": "{{count}} konflikty",
           "other": "{{count}} konfliktov"
-        },
-        "findPlaceholder": "hľadaný text",
-        "replacePlaceholder": "nahradzujúci text"
+        }
       },
       "index": {
         "title": "Generovať výpisy priečinkov",
@@ -3196,7 +3691,13 @@
       "viewOptions": "Možnosti zobrazenia",
       "showingItems": "Zobrazuje sa {{count}} z {{total}}",
       "decreaseIconSize": "Zmenšiť ikony",
-      "increaseIconSize": "Zväčšiť ikony"
+      "increaseIconSize": "Zväčšiť ikony",
+      "tabCount": {
+        "one": "{{count}} karta",
+        "few": "{{count}} karty",
+        "other": "{{count}} kariet"
+      },
+      "showTabs": "Zobraziť otvorené karty"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3208,6 +3709,23 @@
         "one": "Nepodarilo sa nahrať {{count}} súbor.",
         "few": "Nepodarilo sa nahrať {{count}} súbory.",
         "other": "Nepodarilo sa nahrať {{count}} súborov."
+      },
+      "uploadInterrupted": "Spojenie so serverom sa prerušilo. V nahrávaní pokračujte v časti Operácie.",
+      "uploadFilesNotInUpload": "Žiadny z vybraných súborov nepatrí medzi tie, ktoré toto nahrávanie ešte potrebuje.",
+      "uploadFilesStillMissing": {
+        "one": "Tomuto nahrávaniu ešte chýba {{count}} súbor. Vyberte ho v časti Operácie a nahrávanie sa dokončí.",
+        "few": "Tomuto nahrávaniu ešte chýbajú {{count}} súbory. Vyberte ich v časti Operácie a nahrávanie sa dokončí.",
+        "other": "Tomuto nahrávaniu ešte chýba {{count}} súborov. Vyberte ich v časti Operácie a nahrávanie sa dokončí."
+      },
+      "copyingPickedFiles": {
+        "one": "Pripravuje sa {{count}} vybraná položka na nahrávanie…",
+        "few": "Pripravujú sa {{count}} vybrané položky na nahrávanie…",
+        "other": "Pripravuje sa {{count}} vybraných položiek na nahrávanie…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "{{count}} vybranú položku sa nepodarilo prečítať a nenahrá sa.",
+        "few": "{{count}} vybrané položky sa nepodarilo prečítať a nenahrajú sa.",
+        "other": "{{count}} vybraných položiek sa nepodarilo prečítať a nenahrajú sa."
       },
       "trashEmptied": "Čistenie bolo dokončené",
       "rmdirsStarted": "Odstraňujú sa prázdne priečinky v „{{name}}“...",
@@ -3253,6 +3771,97 @@
       "cancelLoading": "Zrušiť načítavanie",
       "star": "Pridať medzi obľúbené",
       "unstar": "Odstrániť z obľúbených"
+    },
+    "transferOptions": {
+      "title": "Možnosti prenosu",
+      "defaultTitle": "Predvolené možnosti prenosu",
+      "summary": {
+        "upload": {
+          "one": "{{count}} položka sa nahrá do {{destination}}.",
+          "few": "{{count}} položky sa nahrajú do {{destination}}.",
+          "other": "{{count}} položiek sa nahrá do {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} položka sa skopíruje do {{destination}}.",
+          "few": "{{count}} položky sa skopírujú do {{destination}}.",
+          "other": "{{count}} položiek sa skopíruje do {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} položka sa presunie do {{destination}}.",
+          "few": "{{count}} položky sa presunú do {{destination}}.",
+          "other": "{{count}} položiek sa presunie do {{destination}}."
+        }
+      },
+      "engine": {
+        "local": "Beží na {{name}}, rclone, ktorý spúšťa táto aplikácia.",
+        "remote": "Beží na {{name}}, rclone na inom počítači. Nižšie sú možnosti, ktoré ten rclone ponúka."
+      },
+      "defaultIntro": "Kopírovanie, presúvanie a nahrávanie v Prehliadači súborov sa začína s týmito možnosťami.",
+      "remoteNote": "Tieto možnosti platia pre {{name}} iba počas tohto prenosu. Jeho uložené nastavenia sa nezmenia.",
+      "streamNote": "Súbory sa po jednom posielajú do rclone na inom počítači, ktorý pre ne nepoužíva možnosti kopírovania, Filter ani Backend. Platia iba vlastné možnosti cieľa.",
+      "nothingToSet": "Pre toto nahrávanie nie sú žiadne možnosti na nastavenie.",
+      "useAsDefault": "Používať tieto možnosti predvolene",
+      "dontAskAgain": "Už sa nepýtať (Predvoľby Prehliadača súborov)",
+      "start": "Spustiť"
+    },
+    "conflicts": {
+      "exists": "„{{name}}“ už existuje",
+      "fileExists": "V {{destination}} už je súbor s týmto názvom.",
+      "folderExists": "V {{destination}} už je priečinok s týmto názvom.",
+      "mergeExplain": "Zlúčením sa do neho pridajú prichádzajúce súbory.",
+      "thereNow": "Teraz tam",
+      "incoming": "Prichádzajúci",
+      "replace": "Nahradiť",
+      "merge": "Zlúčiť",
+      "skip": "Preskočiť",
+      "keepBoth": "Ponechať oba",
+      "replaceOrMerge": "Nahradiť alebo zlúčiť",
+      "forAll": "Pre všetky:",
+      "keptAs": "Uloží sa ako „{{name}}“",
+      "skipped": "Preskočené",
+      "replaces": "Nahradí tamojší súbor",
+      "merges": {
+        "newer": "Zlúči sa, z každého súboru sa ponechá novší",
+        "keep": "Zlúči sa, pridajú sa iba chýbajúce súbory",
+        "replace": "Zlúči sa, súbory s rovnakým názvom sa nahradia"
+      },
+      "title": {
+        "one": "Už existuje v {{destination}}: {{count}} z {{total}}",
+        "few": "Už existuje v {{destination}}: {{count}} z {{total}}",
+        "other": "Už existuje v {{destination}}: {{count}} z {{total}}"
+      },
+      "others": {
+        "one": "Ďalšia {{count}} položka nemá konflikt.",
+        "few": "Ďalšie {{count}} položky nemajú konflikt.",
+        "other": "Ďalších {{count}} položiek nemá konflikt."
+      },
+      "start": {
+        "copy": {
+          "one": "Kopírovať {{count}} položku",
+          "few": "Kopírovať {{count}} položky",
+          "other": "Kopírovať {{count}} položiek"
+        },
+        "move": {
+          "one": "Presunúť {{count}} položku",
+          "few": "Presunúť {{count}} položky",
+          "other": "Presunúť {{count}} položiek"
+        },
+        "upload": {
+          "one": "Nahrať {{count}} položku",
+          "few": "Nahrať {{count}} položky",
+          "other": "Nahrať {{count}} položiek"
+        }
+      },
+      "skipAll": "Preskočiť všetky",
+      "replaceWarning": "Nahradené súbory sa nedajú obnoviť a túto akciu nemožno vrátiť späť.",
+      "mergeWarning": "Zlúčenie priečinkov nemožno vrátiť späť.",
+      "sameNames": "Súbory s rovnakým názvom:",
+      "sameNamesAll": "Súbory s rovnakým názvom v zlučovaných priečinkoch:",
+      "existingFiles": {
+        "newer": "Ponechať novší",
+        "keep": "Ponechať ten, ktorý tam je",
+        "replace": "Nahradiť prichádzajúcim"
+      }
     }
   },
   "home": {
@@ -3299,9 +3908,6 @@
       "generic": "Vyskytla sa neočakávaná chyba. Podrobnosti nájdete v záznamoch.",
       "openFailed": "Otvorenie {{name}} zlyhalo"
     }
-  },
-  "transfer": {
-    "error": "Chyba prenosu"
   },
   "generalOverview": {
     "panels": {
@@ -3369,7 +3975,6 @@
       "progress": "Priebeh:",
       "of": "z",
       "eta": "Zostáva:",
-      "elapsed": "Uplynulo:",
       "speed": "Rýchlosť prenosu:",
       "transfers": "Prenosy:",
       "checks": "Kontroly:",
@@ -3381,6 +3986,7 @@
       "serverMoves": "Presuny na serveri:",
       "lastError": "Posledná chyba:",
       "runningJobs": "Bežiace úlohy",
+      "recentJobs": "Nedávne úlohy",
       "starting": "Spúšťa sa...",
       "noRunning": "Momentálne nebežia žiadne aktívne úlohy."
     },
@@ -3407,6 +4013,15 @@
       },
       "noActive": "Žiadne aktívne pripojenia",
       "noMounted": "Nie je pripojené žiadne úložisko. Pripojte úložisko a používajte jeho súbory ako priečinok v počítači."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "skrytých ďalších: {{count}}",
+        "few": "skrytých ďalších: {{count}}",
+        "other": "skrytých ďalších: {{count}}"
+      },
+      "empty": "Tomuto filtru nič nezodpovedá. Ostatné je skryté.",
+      "showAll": "Zobraziť všetko"
     }
   },
   "appOverview": {
@@ -3461,7 +4076,6 @@
       "missingMountPoint": "V konfigurácii uzla unmount chýba 'mountPoint' a cieľový uzol nevytvoril žiadny bod pripojenia",
       "missingStopServeTarget": "V konfigurácii uzla stop_serve chýba 'targetNodeId'/'serverId' aj 'remoteName'",
       "rcCommandFailed": "Príkaz RC '{{command}}' zlyhal: {{error}}",
-      "invalidJobId": "Hromadné odoslanie vrátilo neplatné ID úlohy: {{error}}",
       "unsupportedNodeType": "Typ uzla pracovného postupu '{{type}}' nie je na tejto platforme alebo vo verzii podporovaný",
       "nodeCrashed": "Uzol '{{node}}' zlyhal: {{reason}}",
       "notificationFailed": "Chyba upozornenia ({{kind}}): {{error}}",
@@ -3524,17 +4138,18 @@
       "profileNotMounted": "Profil '{{profile}}' nie je pripojený na {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Konfigurácia pre profil '{{profile}}' je neúplná",
       "singleSourceOnly": "{{operation}} podporuje iba jednu zdrojovú cestu",
       "directoriesOnly": "{{operation}} podporuje iba priečinky, nie súbory: {{source}}",
       "sourcePathInvalid": "Zdrojovú cestu sa nepodarilo prečítať: {{path}}",
       "destinationPathInvalid": "Cieľovú cestu sa nepodarilo prečítať: {{path}}",
       "filePathsInvalid": "Zdroj '{{source}}' ani cieľ '{{destination}}' sa nepodarilo prečítať ako cestu k súboru. Použite formát 'remote:path/to/file' alebo lokálnu cestu.",
       "unsupportedOperation": "Operáciu {{operation}} nie je možné spustiť ako prenos",
-      "destinationMissing": "Nebol zadaný žiadny cieľ"
+      "destinationMissing": "Nebol zadaný žiadny cieľ",
+      "sourceOverlapsDestination": "Zdroj {{source}} a cieľ {{destination}} sa prekrývajú: jeden je vnútri druhého. Vyberte cieľ, ktorý sa neprekrýva so žiadnym zdrojom.",
+      "overlappingRemotes": "Zdroj a cieľ sa prekrývajú: jeden je vnútri druhého. Vyberte cieľ mimo zdroja alebo ho vylúčte pravidlom filtra.",
+      "backupDirOverlaps": "„Priečinok záloh“ nesmie byť vnútri zdroja ani cieľa a nesmie ich ani obsahovať."
     },
     "serve": {
-      "parseFailed": "Spracovanie odpovede zlyhalo: {{error}}",
       "remoteEmpty": "Názov vzdialeného úložiska nemôže byť prázdny",
       "addressAlreadyInUse": "Vybraný port alebo adresu už používa iná aplikácia. Vyberte iný port.",
       "privilegedPort": "Porty pod 1024 vyžadujú oprávnenia správcu. Vyberte port s číslom 1024 alebo vyšším.",
@@ -3555,13 +4170,19 @@
       "diskFull": "Cieľový disk alebo jednotka je plná. Nie je k dispozícii dostatok voľného miesta.",
       "fileLocked": "Súbor je momentálne zamknutý alebo ho používa iný proces.",
       "readOnly": "Cieľový súborový systém je iba na čítanie alebo chránený proti zápisu.",
-      "ioError": "Chyba vstupu/výstupu: {{error}}"
+      "ioError": "Chyba vstupu/výstupu: {{error}}",
+      "intoItself": "Priečinok „{{name}}“ nemožno skopírovať ani presunúť do seba samého.",
+      "noItems": "Nebola vybraná žiadna položka."
     },
     "upload": {
       "legacyBatch": "Toto nahrávanie spustila zastaraná stránka. Znova načítajte aplikáciu a skúste to znova.",
       "noFiles": "Nahrávanie neobsahuje žiadne súbory.",
       "invalidPath": "Nahrávanie obsahuje neplatnú cestu k súboru alebo priečinku.",
-      "invalidModifiedTime": "Nahrávanie obsahuje neplatný čas úpravy."
+      "invalidModifiedTime": "Nahrávanie obsahuje neplatný čas úpravy.",
+      "sessionGone": "Server už toto nahrávanie nemá, pretože bolo zrušené alebo príliš dlho nečinné. Spustite ho znova.",
+      "invalidChunk": "Nahrávanie odoslalo údaje, ktoré nepatria k žiadnemu z jeho súborov.",
+      "incomplete": "Nahrávanie bolo ukončené skôr, ako prišli všetky jeho súbory.",
+      "filesFailed": "Súbory, ktoré sa nepodarilo nahrať: {{count}}"
     },
     "rclone": {
       "downloadCancelled": "Sťahovanie zrušil používateľ",
@@ -3580,11 +4201,7 @@
       "notFound": "Binárny súbor rclone sa nenašiel v {{path}}",
       "spawnFailed": "Spustenie procesu rclone zlyhalo: {{error}}",
       "invalidPath": "Bola zadaná neplatná cesta k rclone",
-      "killFailed": "Ukončenie procesu rclone zlyhalo: {{error}}",
-      "portCleanupFailed": "Uvoľnenie portov rclone zlyhalo: {{error}}",
       "configValidationFailed": "Overenie konfigurácie rclone zlyhalo: {{error}}",
-      "lockFailed": "Získanie zámku konfigurácie rclone zlyhalo: {{error}}",
-      "cacheRefreshFailed": "Obnovenie vyrovnávacej pamäte rclone zlyhalo: {{error}}",
       "invalidFlags": "Zistené neplatné prepínače rclone: {{error}}",
       "updateRemoteUnsupported": "Pre túto verziu rclone nie je aktualizácia na diaľku podporovaná",
       "backupFailed": "Zálohovanie aktuálneho binárneho súboru rclone zlyhalo: {{error}}",
@@ -3634,14 +4251,15 @@
       "tooSlowReverted": "Backend prijal spojenie, ale výpis jeho položiek bol príliš pomalý. Vrátené na lokálny backend."
     },
     "job": {
-      "notFound": "JobInfo sa nenašlo",
+      "notFound": "Úloha sa nenašla",
       "monitoringFailed": "Príliš veľa chýb pri sledovaní úlohy: {{error}}",
       "executionFailed": "Vykonanie úlohy zlyhalo: {{error}}",
       "corruptedTransfer": "Súbor sa počas prenosu poškodil alebo overenie kontrolného súčtu zlyhalo.",
       "profileNotRunning": "Pre profil '{{profile}}' na {{remote}} sa nenašla žiadna aktívna úloha typu {{jobType}}",
       "stopped": "Úloha bola zastavená",
       "failed": "Úloha zlyhala",
-      "lost": "Rclone už túto úlohu nepozná. Po dokončení jej platnosť vypršala alebo sa jadro reštartovalo, takže jej výsledok nie je k dispozícii."
+      "lost": "Rclone už túto úlohu nepozná. Po dokončení jej platnosť vypršala alebo sa jadro reštartovalo, takže jej výsledok nie je k dispozícii.",
+      "notRetryable": "Túto úlohu nemožno zopakovať: zopakovať sa dá len neúspešná alebo zastavená úloha spustená od otvorenia aplikácie."
     },
     "cache": {
       "fetchConfigFailed": "Načítanie konfigurácie vzdialených úložísk zlyhalo",
@@ -3679,7 +4297,8 @@
       "authExpired": "Overenie vzdialeného úložiska vypršalo alebo je neplatné. Overte vzdialené úložisko znova.",
       "quotaExceeded": "Prekročený limit požiadaviek API alebo kvóta úložiska vzdialeného úložiska. Skúste to neskôr.",
       "networkError": "Vzdialený server je nedostupný. Skontrolujte sieťové pripojenie a adresu vzdialeného úložiska.",
-      "notFound": "Cieľový priečinok alebo súbor sa vo vzdialenom úložisku nenašiel."
+      "notFound": "Cieľový priečinok alebo súbor sa vo vzdialenom úložisku nenašiel.",
+      "notInConfig": "Vzdialené úložisko „{{remote}}“ nie je v konfigurácii rclone. Bolo odstránené alebo premenované mimo aplikácie, alebo sa používa iný konfiguračný súbor."
     },
     "updater": {
       "noPending": "Nie je k dispozícii žiadna čakajúca aktualizácia",
@@ -3689,34 +4308,21 @@
       "updateUnavailable": "Súbor aktualizácie už nie je k dispozícii: {{error}}",
       "relaunchFailed": "Opätovné spustenie zlyhalo: {{error}}",
       "notWritable": "Do cesty aktualizácie nie je možné zapisovať",
-      "rollback": {
-        "exited": "Aktualizovaná aplikácia sa ukončila skôr, ako potvrdila spustenie (kód {{code}}).",
-        "couldNotStart": "Aktualizovanú aplikáciu sa nepodarilo spustiť: {{error}}",
-        "interrupted": "Spúšťanie aktualizovanej aplikácie prerušilo vypnutie.",
-        "notConfirmed": "Aktualizovaná aplikácia nepotvrdila spustenie včas.",
-        "installFailed": "Aktualizáciu sa nepodarilo nainštalovať: {{error}}"
-      },
-      "rolledBack": "Aktualizácia {{version}} bola vrátená späť: {{reason}}",
       "ioError": "Chyba vstupu/výstupu: {{error}}",
       "externallyManaged": "Táto inštalácia sa aktualizuje cez správcu balíkov alebo systém nasadzovania.",
       "disabledByAdministrator": "Aktualizácie aplikácie zakázal správca.",
       "unsupportedInstallation": "Pre túto inštaláciu nie je automatická inštalácia podporovaná.",
+      "notBuilt": "Toto vydanie neobsahuje automatickú aktualizáciu pre túto inštaláciu. Nainštalujte ho ručne.",
       "androidInstallPermission": "V nastaveniach systému Android povoľte tejto aplikácii inštalovať aktualizácie a potom inštaláciu zopakujte.",
       "invalidAndroidPackage": "APK musí byť novšia verzia tejto aplikácie podpísaná tým istým vydavateľom.",
-      "noPrivilegePrompt": "Inštalácia tohto balíka vyžaduje výzvu na zadanie hesla správcu (pkexec, zenity alebo kdialog), no žiadna sa nenašla.",
+      "noPrivilegePrompt": "Tu sa nedá vyžiadať heslo správcu (pkexec s agentom polkit alebo sudo so zenity či kdialog). Stiahnite balík cez „Zobraziť na GitHube“ a nainštalujte ho v termináli: {{command}}",
       "verificationFailed": "Aktualizáciu sa nepodarilo overiť: jej podpis, kontrolný súčet alebo metadáta sa nezhodujú.",
       "insecureDownload": "Aktualizácia nebola stiahnutá cez HTTPS.",
       "downloadTooLarge": "Stiahnutá aktualizácia je väčšia, ako sa očakávalo.",
       "missingAsset": "Vydanie neobsahuje súbor aktualizácie s názvom {{name}}.",
-      "unexpectedAsset": "Vydanie uvádza neočakávaný alebo duplicitný súbor aktualizácie.",
       "argumentsTooLong": "Argumenty spustenia sú príliš dlhé na to, aby sa zachovali počas aktualizácie.",
-      "startupPending": "Predchádzajúca aktualizácia ešte potvrdzuje svoje spustenie. Skúste to znova o niekoľko sekúnd.",
-      "versionMustIncrease": "Nadväzujúca aktualizácia musí mať novšiu verziu.",
       "invalidBundle": "Prenosná aplikácia nie je úplný balík aplikácie macOS.",
-      "missingBackup": "Chýba záloha aktuálnej verzie.",
       "invalidStagingDirectory": "Prípravný priečinok aktualizácie je neplatný.",
-      "helperFailed": "Pomocný program aktualizácie sa nepodarilo spustiť ({{error}}) a reštart aplikácie zlyhal: {{restart}}",
-      "processUnavailable": "Proces aktualizovanej aplikácie nebolo možné dozorovať.",
       "ownedByAnotherUser": "Súbor aplikácie patrí inému používateľovi."
     },
     "settings": {
@@ -3777,7 +4383,8 @@
     },
     "job": {
       "stopped": "Úloha bola úspešne zastavená",
-      "deleted": "Úloha bola úspešne odstránená"
+      "deleted": "Úloha bola úspešne odstránená",
+      "retried": "Úloha {{id}} beží znova"
     },
     "security": {
       "passwordRemoved": "Heslo bolo úspešne odstránené",
@@ -3881,11 +4488,8 @@
     "quickRunsCount": "Rýchle spustenia [{{active}}/{{total}}]",
     "workflowsCount": "Pracovné postupy [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 úloha",
     "tooltipTasks": "Úlohy: {{count}}",
-    "tooltipMount": "1 pripojenie",
     "tooltipMounts": "Pripojenia: {{count}}",
-    "tooltipServe": "1 server",
     "tooltipServes": "Servery: {{count}}",
     "indexCount": "Výpisy priečinkov [{{active}}/{{total}}]"
   },
@@ -3893,7 +4497,11 @@
     "reason": "Prebiehajú aktívne operácie: {{details}}",
     "mounts": "pripojenia: {{count}}",
     "jobs": "úlohy: {{count}}",
-    "serves": "servery: {{count}}"
+    "serves": "servery: {{count}}",
+    "progress": "{{done}} z {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "zostáva {{time}}",
+    "checked": "skontrolované: {{count}}"
   },
   "notification": {
     "title": {
@@ -3984,6 +4592,26 @@
       "powerInhibited": "Aktívne operácie bránia uspaniu systému.",
       "unmountFailed": "Odpojenie {{remote}} z {{backend}} zlyhalo: {{error}}",
       "serveStopFailed": "Zastavenie servera {{protocol}} pre {{remote}} na {{backend}} zlyhalo: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Synchronizácia",
+      "copy": "Kopírovanie",
+      "move": "Presun",
+      "bisync": "Bisync",
+      "check": "Kontrola",
+      "mount": "Pripojenie",
+      "copyurl": "Kopírovanie URL",
+      "mkdir": "Vytvorenie priečinka",
+      "cleanup": "Vyčistenie",
+      "delete": "Odstraňovanie",
+      "rename": "Premenovanie",
+      "rmdirs": "Odstránenie prázdnych priečinkov",
+      "index": "Výpisy priečinkov",
+      "upload": "Nahrávanie",
+      "download": "Sťahovanie",
+      "archivecreate": "Archivácia",
+      "archiveextract": "Rozbalenie archívu",
+      "cryptcheck": "Kontrola šifrovania"
     }
   },
   "repairSheet": {
@@ -4206,6 +4834,11 @@
     "tabs": {
       "quickRun": "Rýchle spustenie",
       "workflow": "Pracovný postup"
+    },
+    "addMenu": {
+      "remote": "Vytvoriť vzdialené úložisko",
+      "quickRun": "Vytvoriť rýchle spustenie",
+      "workflow": "Vytvoriť pracovný postup"
     },
     "workflow": {
       "untitled": "Pracovný postup bez názvu",
@@ -4511,8 +5144,6 @@
         "appStartDesc": "Spustiť automaticky pri štarte RClone Managera",
         "cleanup": "Vyčistiť kôš",
         "cleanupDesc": "Vyprázdniť kôš vzdialeného úložiska",
-        "cryptcheck": "Cryptcheck",
-        "cryptcheckDesc": "Overiť integritu šifrovaného vzdialeného úložiska",
         "execScript": "Spustiť skript",
         "execScriptDesc": "Spustiť lokálny príkaz shellu alebo skript",
         "quickRun": "Rýchle spustenie",

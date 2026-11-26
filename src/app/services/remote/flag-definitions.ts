@@ -263,14 +263,14 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   bisync: [
     {
-      Name: 'dryRun',
+      Name: 'dry_run',
       Help: 'Perform a dry-run.',
       Default: false,
       DefaultStr: 'false',
       Value: false,
       Type: 'bool',
       Advanced: false,
-      FieldName: 'dryRun',
+      FieldName: 'dry_run',
     },
     {
       Name: 'resync',

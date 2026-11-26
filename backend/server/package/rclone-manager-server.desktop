@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=RClone Manager Server
+Comment=User-friendly WebUI for Rclone
+Comment[tr]=Rclone için kullanıcı dostu Web Arayüzü
+Comment[es]=Interfaz Web amigable para Rclone
+Comment[fr]=Interface Web conviviale pour Rclone
+Comment[uk]=Зручний веб-інтерфейс для Rclone
+Comment[zh_CN]=易于使用的 Rclone Web 界面
+Exec=rclone-manager-server --host 127.0.0.1 --port 8080
+Icon=rclone-manager-server
+Terminal=false
+Categories=Utility;FileTools;
+Keywords=rclone;cloud;backup;sync;server;headless;

@@ -148,14 +148,20 @@ describe('DeleteRemoteModalComponent', () => {
         job_type: 'sync',
         status: 'Running',
       } as unknown as JobInfo,
+      // The file browser names the remote as rclone writes it.
+      {
+        jobid: 4,
+        remote_name: 'test-remote:',
+        job_type: 'copy',
+        status: 'Running',
+      } as unknown as JobInfo,
     ]);
 
     expect(component.activeMounts().length).toBe(1);
     expect(component.activeMounts()[0].mount_point).toBe('/mnt/test');
     expect(component.activeServes().length).toBe(1);
     expect(component.activeServes()[0].id).toBe('serve-1');
-    expect(component.activeJobs().length).toBe(1);
-    expect(component.activeJobs()[0].jobid).toBe(1);
+    expect(component.activeJobs().map(job => job.jobid)).toEqual([1, 4]);
     expect(component.hasActiveOperations()).toBe(true);
   });
 

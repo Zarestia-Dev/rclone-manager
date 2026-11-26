@@ -46,185 +46,56 @@
   gap: var(--space-md);
 }
 
+// Heading of the running and the recent jobs
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--window-fg-color);
+
+  mat-icon {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
+    color: var(--primary-color);
+  }
+}
+
 // Running Jobs Section
 .running-jobs-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   margin-top: var(--space-xxs);
-
-  .section-heading {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-
-    mat-icon {
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-      font-size: var(--icon-size-sm);
-      color: var(--primary-color);
-    }
-  }
-
-  .running-jobs-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 21.25rem), 1fr));
-    gap: var(--space-sm);
-
-    @media (max-width: 540px) {
-      grid-template-columns: 1fr;
-    }
-  }
 }
 
-// Running Job Card
-.running-job-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  background: var(--card-bg-color);
-  box-shadow: var(--box-shadow);
-  cursor: pointer;
-  outline: none;
-  transition: var(--transition-standard);
+// Recent Jobs: a section that opens like <details>
+.recent-jobs {
+  > summary {
+    cursor: pointer;
+    list-style: none;
 
-  &:hover {
-    background: var(--hover-bg-color);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-sm);
-  }
-
-  .card-identity {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-sm);
-    min-width: 0;
-    flex: 1;
-  }
-
-  .job-icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-xs);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    mat-icon {
-      width: 20px;
-      height: 20px;
-      font-size: 20px;
+    &::-webkit-details-marker {
+      display: none;
     }
 
-    &[data-tone] {
-      background: rgba(var(--tone-rgb), 0.12);
-      color: var(--tone);
+    mat-icon.disclosure-icon {
+      color: var(--dim-color);
+      transition: var(--transition-fast);
     }
   }
 
-  .job-details {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
-    min-width: 0;
-    flex: 1;
+  &[open] > summary .disclosure-icon {
+    transform: rotate(90deg);
   }
 
-  .job-title-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    flex-wrap: wrap;
-    line-height: 1.2;
-  }
-
-  .job-title {
-    font-size: var(--font-size-md);
-    font-weight: 700;
-    color: var(--window-fg-color);
-    text-transform: capitalize;
-    max-width: 100%;
-  }
-
-  // Unified metadata tag (id, remote, profile)
-  .job-path-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: var(--font-size-sm);
-    color: var(--dim-color);
-    min-width: 0;
-
-    .path-icon {
-      width: 14px;
-      height: 14px;
-      font-size: 14px;
-      flex-shrink: 0;
-      opacity: 0.7;
-    }
-  }
-
-  .card-progress-section {
+  .recent-jobs-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
-
-    .progress-info-row {
-      flex-wrap: wrap;
-      gap: var(--space-xs);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: var(--font-size-sm);
-      line-height: 1;
-
-      .bytes-info {
-        color: var(--dim-color);
-        font-weight: 500;
-
-        .dim-slash {
-          opacity: 0.5;
-          margin: 0 2px;
-        }
-      }
-
-      .percentage-badge {
-        font-weight: 700;
-        color: var(--primary-color);
-        font-size: var(--font-size-sm);
-      }
-    }
-
-    mat-progress-bar.job-progress-bar {
-      height: 6px;
-      border-radius: var(--radius-xs);
-      overflow: hidden;
-    }
-  }
-
-  .card-metrics-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    padding-top: var(--space-xs);
-    border-top: 1px solid var(--border-color);
+    margin-top: var(--space-sm);
   }
 }
 

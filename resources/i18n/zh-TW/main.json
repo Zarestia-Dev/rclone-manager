@@ -48,16 +48,14 @@
     "unknown": "未知",
     "notAvailable": "不適用",
     "unlimited": "無限制",
-    "limitedTo": "限制為 {{rate}}",
-    "none": "無",
-    "add": "新增",
-    "select": "選取"
+    "limitedTo": "限制為 {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "乾淨且為空",
       "nonEmpty": "目錄包含檔案",
-      "colliding": "已被 {{details}} 使用",
+      "collidingProfile": "已被 {{remote}} 的設定檔「{{name}}」使用",
+      "collidingQuickRun": "已被快速執行「{{name}}」使用",
       "willCreate": "建立遠端連線後將建立資料夾。",
       "checking": "正在檢查路徑...",
       "notDirectory": "此路徑指向檔案。請選擇資料夾。",
@@ -72,10 +70,8 @@
     "sizeSuffix": "大小格式無效。示例：100Ki、16Mi、1Gi 或 off",
     "tristate": "值必須為 true、false 或 unset",
     "time": "日期時間格式無效，請使用 ISO 8601：YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "列表不能僅包含空白字元",
     "bwTimetable": "頻寬格式無效",
     "fileMode": "必須為八進位制格式（3–4 位數字，每位 0–7）。示例：755",
-    "enum": "必須為以下值之一：{{values}}",
     "urlArray": "所有 URL 必須有效並以 http:// 或 https:// 開頭",
     "bandwidth": "頻寬格式無效。示例：10M、1G、100K 或組合格式",
     "passwordMismatch": "兩次輸入的密碼不一致",
@@ -84,10 +80,6 @@
       "invalidStart": "遠端連線名稱不能以橫槓或空格開頭",
       "invalidEnd": "遠端連線名稱不能以空格結尾",
       "nameTaken": "該遠端連線名稱已被使用"
-    },
-    "password": {
-      "minLength": "密碼長度至少 3 位",
-      "invalidChars": "密碼不能包含引號"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "複製 URL 進行中",
     "archivecreateActive": "封存進行中",
     "archivecreating": "封存中",
-    "syncSummary": "同步中（{{count}}）",
     "toggleSync": "切換同步快捷操作",
     "toggleCopy": "切換複製快捷操作",
     "toggleMove": "切換移動快捷操作",
@@ -134,7 +125,6 @@
     "serving": "服務執行中",
     "servingWithProfile": "服務執行中（{{profile}}）：{{type}} 在 {{addr}}",
     "servingMultiple": "服務執行中（{{count}}）：{{profiles}}",
-    "serveSummary": "服務執行中（{{count}}）",
     "profileInfo": "{{profile}}（{{type}}）",
     "toggleAction": "切換服務快捷操作",
     "successStart": "{{remote}}（{{profile}}）服務已在 {{addr}} 啟動",
@@ -161,24 +151,54 @@
       "stop": "停止目前執行"
     },
     "nextRun": {
-      "disabled": "自動化已禁用",
       "stopping": "當前執行結束後禁用",
       "notScheduled": "未計劃"
     },
-    "lastRun": {
-      "never": "從未執行"
-    },
     "monitoring": {
-      "realtime": "實時監控",
-      "debounce": "防抖延遲",
       "watcherActive": "監控器處於活動狀態",
       "watchedFolder": "監看資料夾",
-      "seconds": "秒",
-      "realtimeSchedule": "實時檔案監控",
-      "changedOnlyShort": "僅子目錄",
-      "changedOnlyActive": "僅子目錄",
-      "syncScope": "同步範圍",
-      "realtimeChangedOnly": "實時監控（僅子目錄）"
+      "changedOnlyShort": "僅子目錄"
+    },
+    "startup": {
+      "badge": "啟動時",
+      "startsIn": {
+        "other": "{{count}} 秒後啟動"
+      },
+      "delay": {
+        "other": "{{count}} 秒後"
+      },
+      "immediately": "應用程式啟動後立即"
+    },
+    "card": {
+      "waiting": "等待中",
+      "started": "{{time}}啟動",
+      "lastTry": "上次嘗試：{{time}}",
+      "nextRun": "下次執行：{{time}}",
+      "lastRun": "上次執行：{{time}}",
+      "neverRun": "從未執行",
+      "notStarted": "尚未啟動",
+      "watching": {
+        "other": "監控中 · {{count}} 秒"
+      },
+      "startupAfter": {
+        "other": "啟動時 · {{count}} 秒後"
+      },
+      "lastFailed": "上次執行失敗",
+      "whenItRuns": "執行時機",
+      "onChange": "檔案變更時",
+      "waitsAfterChange": {
+        "other": "最後一次變更後等待 {{count}} 秒"
+      },
+      "folders": {
+        "other": "{{count}} 個資料夾"
+      },
+      "onAppStart": "應用程式啟動時",
+      "lastStart": "上次啟動",
+      "servingAt": "正在 {{address}} 提供服務",
+      "notServing": "未執行",
+      "source": "源路徑",
+      "sources": "源路徑",
+      "destination": "目標路徑"
     }
   },
   "actions": {
@@ -253,7 +273,8 @@
       },
       "actions": {
         "stop": "停止任務",
-        "delete": "刪除任務"
+        "delete": "刪除任務",
+        "retry": "重試任務"
       },
       "empty": "未找到任務"
     },
@@ -276,11 +297,8 @@
     "cancelled": "Rclone 更新下載已取消。",
     "cancelFailed": "取消 Rclone 更新下載失敗。",
     "failed": "更新失敗：{{error}}",
-    "channelChanged": "Rclone 更新通道已切換為 {{channel}}",
     "skipped": "已跳過 Rclone 版本 {{version}}",
-    "restored": "已恢復 Rclone 版本 {{version}}",
-    "autoCheckEnabled": "已啟用 Rclone 自動檢查更新",
-    "autoCheckDisabled": "已禁用 Rclone 自動檢查更新"
+    "restored": "已恢復 Rclone 版本 {{version}}"
   },
   "alerts": {
     "title": "警報與通知",
@@ -633,13 +651,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "收藏專案",
-        "description": "檔案瀏覽器中收藏的檔案和資料夾列表"
+      "layout": {
+        "label": "佈局",
+        "description": "檔案瀏覽器顯示檔案的方式：格狀的圖示或清單中的列。檔案瀏覽器中的佈局按鈕也可以變更。",
+        "options": {
+          "grid": "格狀",
+          "list": "清單"
+        }
       },
-      "bookmarks": {
-        "label": "書籤",
-        "description": "快速訪問的書籤路徑列表"
+      "sort": {
+        "label": "排序",
+        "description": "檔案瀏覽器中檔案的順序。「檢視選項」中的「排序」也可以變更。"
+      },
+      "show_hidden": {
+        "label": "顯示隱藏檔案",
+        "description": "顯示名稱以點開頭的檔案和資料夾。"
+      },
+      "upload_request_mib": {
+        "label": "上傳請求的最大大小 (MiB)",
+        "description": "從網頁介面上傳時，每個請求都不會超過此大小。如果伺服器前面有反向代理，請將其設為該代理的請求大小上限（除非調高 client_max_body_size，nginx 只允許 1 MiB）。代理拒絕某個請求時，會自動改用較小的請求重試。較大的值可以加快在高速但延遲較高的連線上上傳單一大型檔案。"
+      },
+      "parallel_uploads": {
+        "label": "同時上傳的檔案數",
+        "description": "網頁介面同時傳送到伺服器的檔案數量。網路較慢時，數量少一些較合適。"
+      },
+      "ask_transfer_options": {
+        "label": "每次傳輸時詢問選項",
+        "description": "在上傳，或複製、移動到其他遠端之前，顯示傳輸選項。預設傳輸選項已預先填好，也可以匯入範本。"
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "顯示吉祥物",
+        "description": "在主視窗角落顯示小吉祥物 Tia。預設為關閉。"
+      },
+      "after_remote": {
+        "label": "新增雲端後顯示設定精靈",
+        "description": "新增完新的雲端後，開啟「你想做什麼？」精靈。"
+      },
+      "destination": {
+        "label": "設定精靈的儲存位置",
+        "description": "「自動」會跟隨預設啟動檢視：主選單會在雲端頁面儲存一個設定檔，其他檢視儲存一個 Quick Run。",
+        "options": {
+          "auto": "自動",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "雲端設定檔（主選單）"
+        }
       }
     }
   },
@@ -744,7 +801,8 @@
       "shortcuts": "鍵盤快速鍵",
       "about": "關於 RClone Manager",
       "quickRemote": "快速新增遠端連線",
-      "detailedRemote": "詳細新增遠端連線"
+      "detailedRemote": "詳細新增遠端連線",
+      "wizard": "精靈"
     }
   },
   "onboarding": {
@@ -851,8 +909,7 @@
       "destination": "目標路徑",
       "openViewer": "在檢視器中開啟",
       "openViewerTooltip": "開啟完整媒體預覽",
-      "inferredFromUrl": "由 URL 推斷",
-      "imageAlt": "預覽"
+      "inferredFromUrl": "由 URL 推斷"
     },
     "installationOptions": {
       "tabs": {
@@ -918,14 +975,7 @@
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸",
-        "file": "檔案",
-        "direction": "方向",
-        "took": "耗時",
-        "when": "時間",
-        "progress": "進度",
-        "speed": "速度",
-        "eta": "剩餘時間"
+        "transferred": "已傳輸"
       },
       "status": {
         "failed": "失敗",
@@ -1283,8 +1333,7 @@
       "unknownWarning": {
         "other": "{{count}} 個未知選項：{{keys}}。這些選項可能被 rclone 忽略。"
       },
-      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。",
-      "fieldsOverview": "設定欄位概覽"
+      "invalidArrayPath": "屬性 '{{key}}' 不支援多路徑，請提供單個字串路徑。"
     },
     "passwordManager": {
       "placeholder": "輸入 rclone 設定密碼",
@@ -1367,8 +1416,7 @@
       "applyToTask": "應用到任務",
       "appliedToast": {
         "other": "已成功匯入 {{count}} 個設定專案"
-      },
-      "profileNamePlaceholder": "例如：daily-backup"
+      }
     },
     "obscure": {
       "title": "混淆密碼",
@@ -1513,8 +1561,8 @@
       "mountDiskName": "磁碟名稱（選填）",
       "mountNetworkName": "網路名稱（選填）",
       "mountAutomaticName": "自動命名",
-      "mountLocalDriveHint": "通常選擇本機磁碟。如果程式遇到問題，可以試用網路磁碟機。",
-      "mountNetworkDriveHint": "Windows 會將其顯示為網路磁碟機。實際儲存位置維持不變。",
+      "mountLocalDriveHint": "Windows 會將其視為固定磁碟，並可能為檔案產生預覽。如果程式無法在網路磁碟機上正常運作，請選擇此項。",
+      "mountNetworkDriveHint": "Windows 會將其視為網路磁碟機。檔案總管顯示圖示而非預覽，更適合雲端儲存。",
       "mountDriveTarget": "磁碟機",
       "mountFolderPathRequired": "請輸入新子資料夾的完整路徑。",
       "mountFolderQuotesRemoved": "已移除路徑兩端的引號。",
@@ -1522,19 +1570,25 @@
       "mountLocalDrive": "本機磁碟",
       "mountNetworkDrive": "網路磁碟機",
       "mountDriveOccupied": "使用中",
+      "mountDriveOccupiedHint": "{{letter}} 目前使用中。只有掛載時它已空出，掛載才會成功。",
+      "mountNoFreeLetter": "目前沒有可用的磁碟機代號。選擇「資料夾」即可不使用代號進行掛載。",
       "mountDriveCurrent": "目前",
       "mountDriveChecking": "正在檢查磁碟機代號…",
       "mountUseParent": "用作上層資料夾",
-      "mountDriveSuggestion": "建議的磁碟機：{{letter}}。若要固定使用同一代號，請從清單中選取。",
       "mountAutomaticDriveHint": "掛載時會選取一個可用的磁碟機代號。",
       "mountDriveReserved": "由其他設定檔保留",
       "mountDriveLetter": "磁碟機代號",
+      "mountExplorerPreview": "在檔案總管中顯示為",
       "mountParentFolder": "選擇上層資料夾",
       "mountFolderHint": "掛載到資料夾時會使用本機磁碟。請選擇上層資料夾，並使用尚不存在的資料夾名稱。",
       "mountDriveLettersUnavailable": "無法確認磁碟機代號。請重試。",
       "mountFolderLocalDrive": "請選擇本機磁碟機上的資料夾。",
       "mountFolderAlreadyExists": "掛載資料夾已存在，請使用新名稱。",
       "multiSourceOneWayInfo": "檢測到多個源路徑。已自動啟用單向檢查，以確保 rclone 對比每個源與目標。",
+      "multiSourceSyncInfo": "這些源會作為一個資料夾同步：目標中會保留至少存在於其中一個源中的所有檔案。如果同一路徑存在於多個源中，將使用清單中靠前的源的檔案；開啟「快速列表」時無法保證這一點。即使源和目標位於同一遠端連線，也不會使用服務端複製。",
+      "multiSourceCopyInfo": "這些源會從清單中的最後一個開始依次複製。如果同一路徑存在於多個源中，目標中保留的是清單中靠前的源的檔案。如果某個源失敗，尚未輪到的源將不會被複製。",
+      "multiSourceMoveInfo": "這些源會從清單中的最後一個開始依次移動。如果同一路徑存在於多個源中，目標中保留的是清單中靠前的源的檔案，其他版本會被刪除；如需保留，請設定「備份目錄」。如果某個源失敗，尚未輪到的源將不會被移動。",
+      "multiSourceSyncChangedOnlyNote": "有多個源時，每次更改都會完整同步所有源：「僅同步已更改的子目錄」不適用。",
       "enableAutoStart": "開機自動{{type}}",
       "autoStartDelay": "啟動延遲",
       "autoStartDelayHint": "應用程式啟動後等待多久再開始執行。當網路、VPN 或其他掛載尚未就緒時很有用。",
@@ -1762,9 +1816,7 @@
       "confirm": "應用",
       "cancel": "取消"
     },
-    "restored": "已恢復版本 {{version}}",
-    "restoreFailed": "恢復更新失敗",
-    "channelChanged": "更新通道已切換為 {{channel}}."
+    "restored": "已恢復版本 {{version}}"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "無法解析此專案的遠端連線",
@@ -1872,22 +1924,22 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
-      "progress": "進度",
-      "files": "檔案",
-      "speed": "速度",
-      "eta": "剩餘時間",
-      "currentFile": "當前檔案",
-      "currentFiles": "當前檔案",
-      "details": {
-        "source": "源路徑",
-        "destination": "目標路徑",
-        "startTime": "開始時間",
-        "uploadedFiles": "已上傳檔案",
-        "deletedFiles": "已刪除檔案",
-        "movedFiles": "已移動檔案",
-        "copiedFiles": "已複製檔案",
-        "syncedFiles": "已同步檔案",
-        "processedFiles": "已處理檔案"
+      "clearFinished": "清除已完成",
+      "openDestination": "開啟目標位置",
+      "undo": "復原",
+      "timeLeft": "剩餘 {{time}}",
+      "failedOf": {
+        "other": "{{total}} 個中 {{count}} 個失敗"
+      },
+      "itemsCount": {
+        "other": "{{count}} 個項目"
+      },
+      "resumeUpload": "繼續上傳",
+      "resumeWithFiles": "選擇相同的檔案以繼續",
+      "resumeWithFolder": "選擇相同的資料夾以繼續",
+      "uploadPausedConnection": "已暫停：與伺服器的連線已中斷",
+      "uploadPausedReselect": {
+        "other": "已暫停：請重新選擇 {{count}} 個檔案以繼續"
       },
       "running": "執行中",
       "filesCount": {
@@ -1907,7 +1959,8 @@
         "upload": "上傳",
         "archivecreate": "封存",
         "archiveextract": "解壓縮封存",
-        "index": "目錄清單"
+        "index": "目錄清單",
+        "download": "下載"
       }
     },
     "fileViewer": {
@@ -1950,8 +2003,7 @@
       "zoomIn": "放大",
       "zoomOut": "縮小",
       "resetZoom": "重設縮放",
-      "hexPreview": "十六進位預覽",
-      "playVideo": "在影片播放器中播放"
+      "hexPreview": "十六進位預覽"
     }
   },
   "dashboard": {
@@ -2006,6 +2058,11 @@
       "delete": "刪除",
       "deleteDesc": "永久刪除符合過濾條件的檔案",
       "copyurl": "複製 URL",
+      "upload": "上傳",
+      "rename": "重新命名",
+      "cleanup": "清理",
+      "rmdirs": "刪除空目錄",
+      "archiveextract": "解壓縮封存",
       "copyUrlDesc": "為檔案生成公開下載 URL",
       "archivecreate": "封存",
       "archivecreateDesc": "將資料夾/檔案壓縮到封存檔案（Zip、Tar 等）中",
@@ -2040,28 +2097,19 @@
       "remoteSettings": "遠端設定",
       "indexSettings": "目錄清單設定",
       "index": "目錄清單",
-      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站"
+      "indexDesc": "在資料夾中寫入可瀏覽的清單，用於靜態網站",
+      "download": "下載"
     },
     "generalDetail": {
       "automations": "自動化",
-      "goToAutomation": "前往自動化 {{index}}",
-      "schedule": "計劃",
-      "cronExpression": "Cron 運算式：",
       "nextRunLabel": "下次執行：",
-      "lastRunLabel": "上次執行：",
       "statistics": "統計",
       "successful": "成功",
       "failedCount": "失敗",
       "stoppedCount": "已停止",
       "totalRuns": "總執行次數",
       "paths": "路徑",
-      "sourceLabel": "源路徑：",
-      "destinationLabel": "目標路徑：",
-      "lastError": "上次錯誤",
-      "currentlyRunning": "正在執行",
       "jobIdLabel": "任務 ID：",
-      "previousAutomationTooltip": "上一個自動化",
-      "nextAutomationTooltip": "下一個自動化",
       "remoteConfiguration": "遠端連線設定",
       "editConfiguration": "編輯設定",
       "remoteActionQuickSelection": "遠端操作快捷選擇"
@@ -2233,6 +2281,7 @@
       "skipVersion": "跳過此版本",
       "upToDate": "已是最新",
       "latestVersionMsg": "當前已是最新版本",
+      "statusUnknown": "更新狀態未知",
       "checkUpdates": "檢查更新",
       "checking": "檢查中...",
       "updateSettings": "更新設定",
@@ -2249,11 +2298,9 @@
       "whatsNewRclone": "Rclone 更新內容",
       "updateRclone": "下載 Rclone 更新",
       "rcloneUpToDate": "Rclone 已是最新",
-      "checkRcloneUpdates": "檢查 Rclone 更新",
       "rcloneUpdateSettings": "Rclone 更新設定",
       "skippedRcloneUpdates": "已跳過的 Rclone 更新",
       "devTeam": "開發團隊",
-      "leadDeveloper": "主開發者",
       "contributors": "貢獻者",
       "acknowledgments": "致謝",
       "ackText": "本應用基於現代 Web 技術構建，並依賴優秀的 Rclone 專案進行雲端儲存管理。",
@@ -2264,6 +2311,7 @@
       "updateSettingFailed": "更新設定失敗",
       "channelStable": "穩定版",
       "channelBeta": "測試版",
+      "channelDev": "開發版",
       "channelStableDesc": "推薦大多數使用者使用",
       "channelBetaDesc": "最新功能",
       "downloadPage": "下載頁面",
@@ -2335,6 +2383,7 @@
     },
     "preferences": {
       "title": "偏好設定",
+      "fileBrowserTitle": "檔案瀏覽器偏好設定",
       "searchResults": "搜尋結果",
       "searchPlaceholder": "搜尋設定...",
       "resetAll": "重設所有設定",
@@ -2363,6 +2412,7 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
+        "nautilus": "檔案瀏覽器",
         "developer": "開發者",
         "vault": "保存庫"
       },
@@ -2863,6 +2913,423 @@
         "newLine": "換行",
         "clear": "清除"
       }
+    },
+    "wizard": {
+      "title": "你想做什麼？",
+      "stepOf": "第 {{current}} 步，共 {{total}} 步",
+      "loadFailed": "無法載入你的雲端儲存空間。",
+      "noRemotes": "請先新增一個雲端儲存空間，再回到這裡。",
+      "remoteLabel": "哪個雲端？",
+      "recommended": "推薦",
+      "applyFailed": "無法完成設定。請檢查資料夾後再試一次。",
+      "hello": {
+        "created": "{{remote}} 已就緒！你想用它做什麼？",
+        "default": "你想用雲端做什麼？",
+        "subtitle": "用你自己的話選擇想做的事。其餘由我們設定，在你確認之前不會開始任何動作。",
+        "dontShow": "新增雲端後不再自動開啟",
+        "dontShowHint": "好的。你可以隨時透過頂部的 ⚙ 按鈕重新開啟。"
+      },
+      "places": {
+        "thisDevice": "此裝置",
+        "server": "伺服器",
+        "filesApp": "「檔案」應用程式",
+        "tv": "電視或播放器",
+        "device": "手機或電腦",
+        "browser": "網頁瀏覽器",
+        "homeNetwork": "你的家庭網路",
+        "automaticDrive": "一個可用的磁碟機代號"
+      },
+      "goals": {
+        "access": {
+          "title": "把雲端當作此裝置上的資料夾使用",
+          "description": "就像網路磁碟機：檔案顯示在資料夾中，開啟時才下載。",
+          "descriptionApp": "就像 Windows 上的 {{app}} 應用程式：檔案顯示在資料夾中，開啟時才下載。",
+          "titlePhone": "在手機的「檔案」應用程式中查看雲端",
+          "descriptionPhone": "雲端會出現在其他儲存空間旁邊，檔案在開啟時才下載。"
+        },
+        "backup": {
+          "title": "把檔案備份到雲端",
+          "description": "在雲端保留一個資料夾的副本，以防此裝置出問題。"
+        },
+        "devices": {
+          "title": "在此裝置上保留一份與雲端相同的副本",
+          "description": "沒有網路也能用，還能在多台裝置間保持一致：變更會雙向同步。非常適合 Obsidian 或 Logseq 筆記。"
+        },
+        "download": {
+          "title": "把雲端檔案下載到此裝置",
+          "description": "下載一個資料夾或全部內容，一次性或保持最新。"
+        },
+        "migrate": {
+          "title": "搬到另一個雲端",
+          "description": "把這個雲端的所有內容複製到另一個雲端，例如從 Google Drive 到 OneDrive。"
+        },
+        "share": {
+          "title": "在電視或手機上開啟我的檔案",
+          "description": "讓家用網路中的電視、手機或電腦存取你的雲端。"
+        },
+        "explore": {
+          "title": "只是看看或檢查一下",
+          "description": "瀏覽你的檔案，或檢查某個資料夾是否與雲端一致。"
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "如果你在這裡刪除了檔案，它的備份應該怎麼處理？"
+        },
+        "keepOld": {
+          "title": "檔案要保留在舊的雲端嗎？"
+        },
+        "device": {
+          "title": "你會用什麼開啟這些檔案？"
+        },
+        "explore": {
+          "title": "你想做什麼？"
+        }
+      },
+      "about": {
+        "title": "有什麼差別？",
+        "deleted": {
+          "same": "兩種方式都會把新增和修改過的檔案複製到雲端，也都不會更動你的資料夾。",
+          "differ": "「保留在雲端」：在這裡刪除檔案後，雲端仍會保留。「雲端也刪除」：雲端始終與你的資料夾保持一模一樣，所以在這裡刪除的檔案，雲端裡也會一併刪除。"
+        },
+        "keepOld": {
+          "same": "兩種方式都會把所有檔案複製到新的雲端。",
+          "differ": "「是的，保留在那裡」：舊的雲端維持原樣。「不，搬過去」：每個檔案安全抵達新的雲端後，就會從舊的雲端移除。"
+        },
+        "device": {
+          "same": "無論選哪種，你的雲端都會向家用網路裡的其他裝置開放。只有這個應用程式開著時才有效。",
+          "differ": "網路資料夾可以像一般資料夾一樣在 Finder、檔案總管或檔案應用程式中開啟，還可以允許變更。網頁瀏覽器只能瀏覽和下載檔案。電視或播放器會自動發現它，只能播放。"
+        },
+        "explore": {
+          "same": "兩種方式都不會改動任何東西。",
+          "differ": "「瀏覽我的檔案」：在此應用程式中開啟你的雲端，瀏覽其中的檔案。「將資料夾與雲端比較」：顯示此裝置上的資料夾與雲端之間哪些檔案不一樣。「將一個雲端與另一個比較」：顯示兩個雲端之間哪些檔案不一樣。"
+        },
+        "where": {
+          "stream": "這個資料夾就像一扇門：檔案留在雲端，在這裡顯示，開啟時才下載。請選一個空資料夾。你放進去的內容也會儲存到雲端。",
+          "twoWay": "你可以選擇已經在用的資料夾。第一次會與雲端比較並合併，不會刪除任何內容。之後，一邊的變更（包括刪除檔案）也會出現在另一邊。",
+          "mirror": "雲端資料夾會變成與你的資料夾一模一樣的副本。其中有、但你的資料夾裡沒有的檔案會被刪除。最穩妥的做法是選擇一個新的或空的雲端資料夾。",
+          "streamWindows": "雲端會以磁碟機的形式顯示在檔案總管中，就像隨身碟一樣。檔案仍保留在雲端，開啟時才會下載。你也可以改選一個資料夾。放進去的內容也會一併儲存到雲端。"
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "保留在雲端",
+            "description": "就像一份安全副本：即使你在這裡刪除了檔案，雲端仍然保留著。"
+          },
+          "mirror": {
+            "title": "雲端也刪除",
+            "description": "就像一面鏡子：雲端永遠與你的資料夾完全一樣，包括已刪除的檔案。"
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "是的，保留在那裡",
+            "description": "就像複製一份：舊的雲端維持原樣，你隨時可以回去。"
+          },
+          "move": {
+            "title": "不，搬過去",
+            "description": "就像搬家：每個檔案安全抵達新的雲端之後，才會離開舊的雲端。"
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "網路資料夾",
+            "description": "就像共用資料夾：可以在 Finder、檔案總管或檔案應用程式中開啟，用你設定的使用者名稱和密碼連線。裝置能否變更檔案由你決定。"
+          },
+          "browser": {
+            "title": "網頁瀏覽器",
+            "description": "就像一個網頁：有位址和密碼的手機或電腦可以瀏覽並下載檔案。無法變更任何內容。"
+          },
+          "tv": {
+            "title": "電視或媒體播放器",
+            "description": "就像媒體伺服器：智慧電視、遊戲機和播放器會自動找到它。它們可以觀看和收聽，但無法變更任何內容。"
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "瀏覽我的檔案",
+            "description": "就像開啟一個資料夾：在此應用程式內瀏覽你的雲端。不會下載或變更任何內容。"
+          },
+          "compare": {
+            "title": "將資料夾與雲端比較",
+            "description": "就像比較兩個資料夾：看看本機資料夾與雲端之間有哪些檔案不同。不會變更任何內容。"
+          },
+          "compareClouds": {
+            "title": "將一個雲端與另一個比較",
+            "description": "就像比較兩個資料夾：看看你的兩個雲端之間有哪些檔案不同。不會變更任何內容。"
+          }
+        }
+      },
+      "where": {
+        "heading": "在哪裡？",
+        "target": "檔案要放到哪裡？",
+        "targetCompare": "要與哪個雲端比較？",
+        "noOtherRemote": "請先新增新的雲端，再回到這裡。",
+        "shareLogin": "其他裝置的登入資訊",
+        "shareHint": "手機或電腦連線時會要求輸入這些資訊。",
+        "shareUser": "使用者名稱",
+        "sharePassword": "密碼",
+        "local": {
+          "stream": "雲端會顯示在這個資料夾中",
+          "twoWay": "檔案會存放在這個資料夾中",
+          "download": "檔案會下載到這裡",
+          "upload": "要備份哪個資料夾？",
+          "compare": "要檢查哪個資料夾？",
+          "devices": "哪個資料夾需要保持一致？",
+          "streamWindows": "雲端會顯示為磁碟機或資料夾"
+        },
+        "cloud": {
+          "stream": "雲端的哪一部分？",
+          "twoWay": "與這個資料夾保持一致",
+          "download": "要下載哪個資料夾？",
+          "upload": "備份存放在這裡",
+          "cloudToCloud": "要複製什麼？",
+          "share": "要分享什麼？",
+          "compare": "與這個資料夾比較",
+          "cloudCompare": "要檢查哪個資料夾？"
+        },
+        "localPlaceholder": "選擇或輸入資料夾",
+        "cloudPlaceholder": "留空表示整個雲端儲存空間",
+        "shareConnection": "裝置如何連線",
+        "sharePort": "連接埠",
+        "sharePortHint": "位址中冒號後面的數字。除非已被佔用，否則保持 8080。",
+        "portInvalid": "請選擇 1024 到 65535 之間的連接埠。",
+        "shareReadOnly": "裝置只能檢視，不能變更檔案",
+        "shareReadOnlyHint": "如果手機或電腦也需要上傳、重新命名或刪除，請關閉此項。",
+        "shareName": "在電視上的名稱",
+        "shareNameHint": "這是你在電視或播放器的媒體伺服器清單中看到的名稱。",
+        "shareNameLabel": "名稱",
+        "portBusy": "連接埠 {{port}} 已被其他程式佔用，請選擇其他連接埠。",
+        "portUseFree": "使用連接埠 {{port}}"
+      },
+      "review": {
+        "heading": "將會這樣進行",
+        "advanced": "在完整編輯器中開啟",
+        "start": "設定並開始",
+        "firstRun": "第一次執行會比較兩邊並合併。可能需要一些時間，不會刪除任何檔案。",
+        "startOnLogin": "電腦啟動時也啟動此應用程式",
+        "mountPlugin": {
+          "title": "還需要一樣東西",
+          "description": "要把雲端顯示為資料夾，需要一個尚未安裝的小型系統元件（FUSE 或 WinFsp）。",
+          "install": "安裝"
+        },
+        "summary": {
+          "stream": "{{cloud}} 會顯示在 {{local}} 中。",
+          "streamSaf": "{{cloud}} 會顯示在「檔案」應用程式中。",
+          "twoWay": "{{local}} 與 {{cloud}} 會保持一致。",
+          "upload_copy": "{{local}} 會備份到 {{cloud}}。",
+          "upload_sync": "{{cloud}} 會成為 {{local}} 的完整副本。",
+          "download": "{{cloud}} 會下載到 {{local}}。",
+          "cloudToCloud_copy": "{{cloud}} 會複製到 {{target}}。",
+          "cloudToCloud_move": "{{cloud}} 會搬移到 {{target}}。",
+          "share_dlna": "{{cloud}} 會分享給你網路中的電視和播放器。",
+          "share_webdav": "{{cloud}} 會以密碼保護的方式在你的網路中分享。",
+          "share_http": "{{cloud}} 會以帶密碼的網頁形式在你的網路中分享。",
+          "compare": "{{local}} 會與 {{cloud}} 進行比較。",
+          "cloudCompare": "{{cloud}} 會與 {{target}} 進行比較。",
+          "streamDrive": "{{cloud}} 會顯示為 {{local}} 磁碟機。",
+          "streamAutoDrive": "{{cloud}} 會顯示為一個新的磁碟機。磁碟機代號由 Windows 在連線時選擇。"
+        },
+        "flow": {
+          "stream": "使用時才開啟",
+          "upload": "傳送到雲端",
+          "download": "來自雲端",
+          "twoWay": "兩邊保持一致",
+          "cloudToCloud": "傳送到另一個雲端",
+          "share": "在你的網路中分享",
+          "compare": "只比較，不會變更任何內容"
+        },
+        "schedule": {
+          "watch": "檔案變更時會自動執行。",
+          "startup": "每次應用程式啟動時會自動執行。",
+          "startupMount": "每次應用程式啟動時會自動連線。",
+          "cron": "排程：{{when}}",
+          "manual": "只在你啟動時執行。"
+        },
+        "detailsTitle": "貼心提醒",
+        "destination": {
+          "quickRun": "快速執行",
+          "profile": "主選單中的設定檔",
+          "hintQuickRun": "顯示在 Flow › 快速執行 中。",
+          "hintProfile": "顯示在主選單中「{{remote}}」的頁面上，可在那裡啟動和停止。"
+        },
+        "wholeCloud": "整個雲端",
+        "duplicate": "你已經有一個做同樣事情的設定：「{{name}}」。",
+        "duplicateShow": "開啟"
+      },
+      "effects": {
+        "streamOpen": "開啟檔案時會從雲端下載。",
+        "streamSave": "儲存檔案時會上傳到雲端。",
+        "streamDelete": "在此資料夾中刪除的檔案也會從雲端刪除。",
+        "uploadNew": "新增和修改的檔案會上傳。",
+        "keepDelete": "你在這裡刪除的檔案會保留在雲端。",
+        "uploadCloudChange": "備份絕不會變更你資料夾中的內容。",
+        "mirrorDelete": "你在這裡刪除的檔案也會從雲端刪除。",
+        "mirrorExtra": "只存在於雲端資料夾中的檔案會被刪除。",
+        "downloadNew": "雲端新增和修改的檔案會下載。",
+        "downloadKeep": "在雲端刪除的檔案會保留在此裝置上。",
+        "downloadLocalChange": "雲端的內容絕不會被變更。",
+        "twoWayChange": "任一邊的變更都會複製到另一邊。",
+        "twoWayDelete": "一邊刪除的檔案，另一邊也會刪除。",
+        "twoWayConflict": "如果同一檔案在兩邊都有變更，兩個版本都會保留。",
+        "migrateCopy": "每個檔案都會複製到新的雲端。",
+        "migrateKeep": "舊的雲端維持不變。",
+        "migrateMove": "檔案複製完成後會從舊的雲端刪除。",
+        "shareTv": "你網路中的電視和播放器會自動找到它。",
+        "shareReadOnly": "它們可以觀看和收聽，但無法變更任何內容。",
+        "shareBrowse": "裝置可以瀏覽並下載檔案，但無法變更任何內容。",
+        "shareStops": "關閉應用程式後分享會停止。",
+        "sharePassword": "只有知道你密碼的裝置才能連線。",
+        "shareWrite": "已連線的裝置可以修改和刪除檔案。",
+        "compareNothing": "不會變更任何檔案。",
+        "compareList": "你會得到不同檔案的清單。",
+        "browseNothing": "不會變更任何內容。"
+      },
+      "advice": {
+        "tooBigForDisk": "這些內容有 {{size}}，但此裝置只剩 {{free}}。放不下。",
+        "tightOnDisk": "這些內容有 {{size}}，此裝置剩餘 {{free}}。放得下，但磁碟會幾乎滿載。",
+        "fitsOnDisk": "這些內容有 {{size}}，此裝置剩餘 {{free}}。完全放得下。",
+        "cloudTooFull": "該資料夾有 {{size}}，但雲端只剩 {{free}}。放不下。",
+        "streamSavesSpace": "你的雲端有 {{cloud}}，此裝置剩餘 {{free}}，所以這是正確的選擇：只有你開啟的檔案才佔用空間。"
+      },
+      "preview": {
+        "title": "先看看會發生什麼",
+        "description": "試執行會比較兩邊，並列出它將複製、取代或刪除的每個檔案。不會變更任何檔案。",
+        "run": "查看會有哪些變更",
+        "running": "正在比較檔案…",
+        "checked": {
+          "other": "已檢查 {{count}} 個檔案"
+        },
+        "transfers": {
+          "other": "將複製 {{count}} 個檔案"
+        },
+        "deletes": {
+          "other": "將刪除 {{count}} 個檔案"
+        },
+        "errors": {
+          "other": "{{count}} 個檔案無法讀取"
+        },
+        "noDeletes": "不會刪除任何檔案",
+        "nothing": "一切都已是最新，不會有任何變更。",
+        "failed": "試執行未完成。你仍可以繼續設定，或變更資料夾。",
+        "runName": "{{name}}（試執行）",
+        "groups": {
+          "delete": "將被刪除",
+          "add": "新檔案",
+          "replace": "將被取代",
+          "copy": "將被複製",
+          "error": "有問題",
+          "untouched": "保持原樣"
+        },
+        "groupCount": "{{label}}：{{count}}",
+        "unchanged": {
+          "other": "{{count}} 個檔案兩邊已經相同"
+        },
+        "deleteWarning": "開始之前請先查看此清單：這些檔案將從目的地刪除。",
+        "again": "重新試執行",
+        "slowNote": "依檔案數量而定，這可能需要一些時間。並沒有卡住，請稍候。",
+        "elapsed": "已執行 {{time}}",
+        "andMore": {
+          "other": "…以及另外 {{count}} 個檔案"
+        }
+      },
+      "working": {
+        "saving": "正在設定…",
+        "firstRun": "正在進行第一次同步…",
+        "canClose": "你可以關閉此視窗；它會在背景繼續執行。",
+        "slowNote": "第一次同步可能需要較長時間，取決於檔案數量。並沒有卡住。"
+      },
+      "done": {
+        "title": "全部完成！",
+        "stream": "你的雲端現在位於 {{path}}。",
+        "streamSaf": "你的雲端現在在「檔案」應用程式中。",
+        "twoWayReady": "第一次同步已完成。從現在起兩邊將始終保持一致。",
+        "twoWayFailed": "已設定完成，但首次同步沒有完成。",
+        "started": "已經開始。你可以在應用程式中查看進度。",
+        "checkStarted": "檢查已開始。完成後，你可以看到哪些檔案不一樣。",
+        "findIt": "之後可以在 Flow › 快速執行 中找到「{{name}}」。",
+        "openFolder": "開啟資料夾",
+        "openCloud": "在檔案瀏覽器中顯示",
+        "openRun": "顯示進度與結果",
+        "openRunHint": "查看進展如何，以及涉及哪些檔案。",
+        "another": "設定其他內容",
+        "shareWebdav": "分享已開啟。請在手機或電腦上連線到以下任一位址：",
+        "shareHttp": "分享已開啟。請在手機或電腦的瀏覽器中開啟以下任一位址：",
+        "shareAddress": "位址",
+        "shareOtherAddresses": "也可以使用",
+        "shareUser": "使用者名稱",
+        "sharePassword": "密碼",
+        "sharePasswordHint": "您設定的密碼",
+        "shareDlna": "分享已開啟。請在電視或播放器的媒體清單中尋找「{{name}}」。",
+        "noAddress": "分享已開啟。請連線到此裝置的網路位址，連接埠 {{port}}。",
+        "findItProfile": "之後可在主選單中「{{remote}}」的頁面找到，設定檔名稱為「{{name}}」。",
+        "whereQuickRun": "在快速執行中顯示",
+        "whereProfile": "在主選單中顯示",
+        "failureReason": "出錯原因：{{reason}}",
+        "streamDrive": "你的雲端現在是 {{path}} 磁碟機。",
+        "streamAutoDrive": "你的雲端現在是檔案總管中的一個新磁碟機。",
+        "openFilesApp": "開啟「檔案」應用程式"
+      },
+      "runNames": {
+        "access": "{{remote}} 資料夾",
+        "backup": "{{remote}} 備份",
+        "devices": "{{remote}} 同步",
+        "download": "{{remote}} 下載",
+        "migrate": "{{remote}} 搬移",
+        "share": "{{remote}} 分享",
+        "explore": "{{remote}} 檢查"
+      },
+      "when": {
+        "heading": "何時執行？",
+        "subtitle": "選擇任意幾項並組合使用。一項都不選，則只在你啟動時執行。",
+        "watch": {
+          "title": "每當檔案發生變更時",
+          "description": "監看該資料夾，變更會在幾秒內上傳，就像手機的照片自動上傳。"
+        },
+        "cron": {
+          "title": "依排程",
+          "description": "每天、每小時、平日，或你選擇的任意時間。"
+        },
+        "startup": {
+          "title": "應用程式啟動時",
+          "description": "每次開啟應用程式時自動執行。",
+          "descriptionMount": "每次開啟應用程式時雲端會自動連線。"
+        },
+        "cloudHint": "監看只能發現此裝置上的變更。再加上排程，這樣雲端的變更也能同步過來。",
+        "invalidCron": "此排程尚未完成。請從上方選擇一個時間。"
+      },
+      "details": {
+        "cache": "你開啟的檔案最多會在此裝置上保留 {{age}}，最多佔用 {{size}} 磁碟。",
+        "writeBack": "你所做的變更會在 {{time}} 後傳送到雲端。",
+        "minFree": "當磁碟剩餘空間少於 {{size}} 時，快取會停止成長。",
+        "address": "位址：",
+        "addressUnknown": "使用此裝置的位址加連接埠：",
+        "addressViaBackend": "這是應用程式連線到那台電腦所用的位址。位於其他網路的手機可能無法連上。",
+        "port": "連接埠：",
+        "user": "使用者名稱：",
+        "tvName": "在電視上顯示為："
+      },
+      "settings": {
+        "title": "精靈設定",
+        "subtitle": "這些選擇會在下次繼續使用。",
+        "afterRemote": "新增雲端後顯示此精靈",
+        "destinationTitle": "將精靈設定的內容儲存為",
+        "auto": "自動",
+        "hintAuto": "跟隨啟動檢視：應用程式從主選單啟動時儲存為設定檔，否則儲存為 快速執行。",
+        "done": "完成"
+      },
+      "undo": {
+        "action": "移除此設定",
+        "hint": "它會停止執行並從應用程式中消失。你的檔案不會受到影響。",
+        "confirm": "「{{name}}」會停止執行並從應用程式中消失。你的檔案不會受到影響。",
+        "working": "正在移除…",
+        "failed": "無法移除。你仍可在它所在的位置移除。",
+        "removedTitle": "已移除",
+        "removed": "你的檔案沒有任何變更。",
+        "title": "要移除此設定嗎？",
+        "remove": "移除"
+      }
     }
   },
   "nautilus": {
@@ -3009,9 +3476,7 @@
         "statsUnchanged": "{{count}} 個未變更",
         "statsConflicts": {
           "other": "{{count}} 個衝突"
-        },
-        "findPlaceholder": "要尋找的文字",
-        "replacePlaceholder": "取代文字"
+        }
       },
       "index": {
         "title": "產生目錄清單",
@@ -3124,7 +3589,11 @@
       "viewOptions": "檢視選項",
       "showingItems": "顯示第 {{count}} 個，共 {{total}} 個",
       "decreaseIconSize": "縮小圖示大小",
-      "increaseIconSize": "放大圖示大小"
+      "increaseIconSize": "放大圖示大小",
+      "tabCount": {
+        "other": "{{count}} 個分頁"
+      },
+      "showTabs": "顯示已開啟的分頁"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3132,6 +3601,17 @@
       },
       "uploadFailed": {
         "other": "上傳 {{count}} 個檔案失敗。"
+      },
+      "uploadInterrupted": "與伺服器的連線已中斷。請在「操作」中繼續上傳。",
+      "uploadFilesNotInUpload": "所選檔案中沒有此上傳仍需要的檔案。",
+      "uploadFilesStillMissing": {
+        "other": "此上傳仍缺少 {{count}} 個檔案。請在「操作」中選擇這些檔案以完成上傳。"
+      },
+      "copyingPickedFiles": {
+        "other": "正在為上傳準備 {{count}} 個所選項目…"
+      },
+      "pickedFilesNotCopied": {
+        "other": "無法讀取 {{count}} 個所選項目，這些項目不會被上傳。"
       },
       "trashEmptied": "清理操作完成",
       "rmdirsStarted": "正在刪除 \"{{name}}\" 中的空資料夾...",
@@ -3169,6 +3649,81 @@
       "cancelLoading": "取消載入",
       "star": "加入星號",
       "unstar": "移除星號"
+    },
+    "transferOptions": {
+      "title": "傳輸選項",
+      "defaultTitle": "預設傳輸選項",
+      "summary": {
+        "upload": {
+          "other": "將上傳 {{count}} 項到 {{destination}}。"
+        },
+        "copy": {
+          "other": "將複製 {{count}} 項到 {{destination}}。"
+        },
+        "move": {
+          "other": "將移動 {{count}} 項到 {{destination}}。"
+        }
+      },
+      "engine": {
+        "local": "在 {{name}} 上執行，即此應用程式執行的 rclone。",
+        "remote": "在 {{name}} 上執行，即另一台電腦上的 rclone。下方的選項就是該 rclone 提供的選項。"
+      },
+      "defaultIntro": "檔案瀏覽器中的複製、移動和上傳都以這些選項開始。",
+      "remoteNote": "這些選項僅在本次傳輸期間套用於 {{name}}，其已儲存的設定不會改變。",
+      "streamNote": "檔案會逐一傳送到另一台電腦上的 rclone，該 rclone 不會對這些檔案使用複製、篩選器或後端選項。只有目標本身的選項會生效。",
+      "nothingToSet": "此上傳沒有可設定的選項。",
+      "useAsDefault": "預設使用這些選項",
+      "dontAskAgain": "不再詢問（檔案瀏覽器偏好設定）",
+      "start": "開始"
+    },
+    "conflicts": {
+      "exists": "「{{name}}」已存在",
+      "fileExists": "{{destination}} 中已有同名檔案。",
+      "folderExists": "{{destination}} 中已有同名資料夾。",
+      "mergeExplain": "合併會把傳入的檔案加入該資料夾。",
+      "thereNow": "現有",
+      "incoming": "傳入",
+      "replace": "取代",
+      "merge": "合併",
+      "skip": "略過",
+      "keepBoth": "保留兩者",
+      "replaceOrMerge": "取代或合併",
+      "forAll": "全部：",
+      "keptAs": "另存為「{{name}}」",
+      "skipped": "已略過",
+      "replaces": "取代那裡的檔案",
+      "merges": {
+        "newer": "合併，每個檔案保留較新的",
+        "keep": "合併，只加入缺少的檔案",
+        "replace": "合併，同名檔案會被取代"
+      },
+      "title": {
+        "other": "{{total}} 項中有 {{count}} 項已存在於 {{destination}}"
+      },
+      "others": {
+        "other": "其餘 {{count}} 項沒有衝突。"
+      },
+      "start": {
+        "copy": {
+          "other": "複製 {{count}} 項"
+        },
+        "move": {
+          "other": "移動 {{count}} 項"
+        },
+        "upload": {
+          "other": "上傳 {{count}} 項"
+        }
+      },
+      "skipAll": "全部略過",
+      "replaceWarning": "被取代的檔案無法找回，且此操作無法復原。",
+      "mergeWarning": "合併資料夾無法復原。",
+      "sameNames": "同名檔案：",
+      "sameNamesAll": "合併的資料夾中的同名檔案：",
+      "existingFiles": {
+        "newer": "保留較新的",
+        "keep": "保留已有的",
+        "replace": "以傳入的取代"
+      }
     }
   },
   "home": {
@@ -3215,9 +3770,6 @@
       "generic": "發生意外錯誤。請檢查日誌取得更多詳細資訊。",
       "openFailed": "開啟 {{name}} 失敗"
     }
-  },
-  "transfer": {
-    "error": "傳輸錯誤"
   },
   "generalOverview": {
     "panels": {
@@ -3283,7 +3835,6 @@
       "progress": "進度：",
       "of": "/",
       "eta": "預計剩餘時間：",
-      "elapsed": "已用時間:",
       "speed": "傳輸速度：",
       "transfers": "傳輸：",
       "checks": "校驗：",
@@ -3295,6 +3846,7 @@
       "serverMoves": "服務端移動：",
       "lastError": "最後錯誤：",
       "runningJobs": "執行中的任務",
+      "recentJobs": "最近的任務",
       "starting": "正在啟動...",
       "noRunning": "當前沒有正在執行的活動任務。"
     },
@@ -3317,6 +3869,13 @@
       },
       "noActive": "暫無運作中的掛載",
       "noMounted": "沒有已掛載的遠端。掛載遠端後，即可把它的檔案當作電腦上的資料夾使用。"
+    },
+    "originFilter": {
+      "hidden": {
+        "other": "另有 {{count}} 項已隱藏"
+      },
+      "empty": "沒有符合此過濾條件的項目，其餘項目已隱藏。",
+      "showAll": "顯示全部"
     }
   },
   "appOverview": {
@@ -3371,7 +3930,6 @@
       "missingMountPoint": "unmount 節點設定中缺少「mountPoint」，且目標節點未提供掛載點",
       "missingStopServeTarget": "stop_serve 節點設定中同時缺少「targetNodeId」/「serverId」和「remoteName」",
       "rcCommandFailed": "RC 命令「{{command}}」失敗：{{error}}",
-      "invalidJobId": "批次提交傳回了無效的工作 ID：{{error}}",
       "unsupportedNodeType": "此平台或版本不支援工作流程節點類型「{{type}}」",
       "nodeCrashed": "節點「{{node}}」已當機：{{reason}}",
       "notificationFailed": "通知錯誤（{{kind}}）：{{error}}",
@@ -3434,17 +3992,18 @@
       "profileNotMounted": "設定檔案 '{{profile}}' 未在 {{remote}} 上掛載"
     },
     "operations": {
-      "configIncomplete": "設定檔案 '{{profile}}' 設定不完整",
       "singleSourceOnly": "{{operation}} 僅支援單一來源路徑",
       "directoriesOnly": "{{operation}} 僅支援目錄，不支援檔案：{{source}}",
       "sourcePathInvalid": "無法解析來源路徑：{{path}}",
       "destinationPathInvalid": "無法解析目的路徑：{{path}}",
       "filePathsInvalid": "無法將來源 '{{source}}' 或目的地 '{{destination}}' 解析為檔案路徑。請使用 'remote:path/to/file' 格式或本機路徑。",
       "unsupportedOperation": "操作 {{operation}} 無法作為傳輸執行",
-      "destinationMissing": "未指定目的地"
+      "destinationMissing": "未指定目的地",
+      "sourceOverlapsDestination": "來源 {{source}} 與目的地 {{destination}} 重疊：其中一個位於另一個之內。請選擇不與任何來源重疊的目的地。",
+      "overlappingRemotes": "來源與目的地重疊：其中一個位於另一個之內。請選擇來源之外的目的地，或使用過濾規則將其排除。",
+      "backupDirOverlaps": "「備份目錄」不能位於來源或目的地之內，也不能包含它們。"
     },
     "serve": {
-      "parseFailed": "解析響應失敗：{{error}}",
       "remoteEmpty": "遠端連線名稱不能為空",
       "addressAlreadyInUse": "所選連線埠或地址已被其他程式佔用。請更換連線埠。",
       "privilegedPort": "1024 以下的連線埠需要管理員許可權。請選擇 1024 或更高的連線埠。",
@@ -3465,13 +4024,19 @@
       "diskFull": "目標磁碟空間不足。",
       "fileLocked": "檔案當前已被鎖定或被其他處理程式佔用。",
       "readOnly": "目標檔案系統為只讀或受防寫。",
-      "ioError": "IO 錯誤：{{error}}"
+      "ioError": "IO 錯誤：{{error}}",
+      "intoItself": "無法將資料夾「{{name}}」複製或移動到其自身之中。",
+      "noItems": "未選擇任何項目。"
     },
     "upload": {
       "legacyBatch": "此上傳由過期的頁面發起。請重新載入應用程式後再試一次。",
       "noFiles": "上傳中沒有檔案。",
       "invalidPath": "上傳包含無效的檔案或資料夾路徑。",
-      "invalidModifiedTime": "上傳包含無效的修改時間。"
+      "invalidModifiedTime": "上傳包含無效的修改時間。",
+      "sessionGone": "伺服器上已沒有此上傳，因為它已被取消或閒置過久。請重新開始上傳。",
+      "invalidChunk": "上傳傳送了不屬於其任何檔案的資料。",
+      "incomplete": "上傳在所有檔案到達之前就已結束。",
+      "filesFailed": "無法上傳的檔案：{{count}}"
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",
@@ -3490,11 +4055,7 @@
       "notFound": "在 {{path}} 未找到 Rclone 可執行檔案",
       "spawnFailed": "啟動 rclone 處理程式失敗: {{error}}",
       "invalidPath": "指定了無效的 rclone 路徑",
-      "killFailed": "終止 rclone 處理程式失敗: {{error}}",
-      "portCleanupFailed": "清理 rclone 連線埠失敗: {{error}}",
       "configValidationFailed": "Rclone 設定驗證失敗: {{error}}",
-      "lockFailed": "取得 rclone 設定鎖失敗: {{error}}",
-      "cacheRefreshFailed": "重新整理 rclone 快取失敗: {{error}}",
       "invalidFlags": "檢測到無效的 rclone 旗標: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支援遠端更新",
       "backupFailed": "備份當前 rclone 二進位制檔案失敗：{{error}}",
@@ -3551,7 +4112,8 @@
       "profileNotRunning": "在 {{remote}} 上找不到設定檔案 '{{profile}}' 正在執行的 {{jobType}} 任務",
       "stopped": "工作已停止",
       "failed": "工作失敗",
-      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。"
+      "lost": "Rclone 已不再識別此工作。工作在完成後已過期，或引擎已重新啟動，因此無法取得其結果。",
+      "notRetryable": "無法重試此任務：只有在應用程式開啟後啟動、且失敗或已停止的任務才能重試。"
     },
     "cache": {
       "fetchConfigFailed": "取得遠端連線設定失敗",
@@ -3589,7 +4151,8 @@
       "authExpired": "遠端驗證已過期或無效。請在設定中重新授權。",
       "quotaExceeded": "遠端連線 API 速率限制或配額已超限。請稍後重試。",
       "networkError": "無法連線到遠端伺服器。請檢查網路連線及遠端地址。",
-      "notFound": "在遠端上未找到目標目錄或檔案。"
+      "notFound": "在遠端上未找到目標目錄或檔案。",
+      "notInConfig": "遠端「{{remote}}」不在 Rclone 設定中。它已在應用程式之外被刪除或重新命名，或正在使用另一個設定檔。"
     },
     "updater": {
       "noPending": "暫無待處理更新",
@@ -3599,34 +4162,21 @@
       "updateUnavailable": "更新檔案不再可用：{{error}}",
       "relaunchFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
-      "rollback": {
-        "exited": "更新後的應用程式在確認啟動前結束（代碼 {{code}}）。",
-        "couldNotStart": "無法啟動更新後的應用程式：{{error}}",
-        "interrupted": "更新後應用程式的啟動被關機中斷。",
-        "notConfirmed": "更新後的應用程式未能及時確認啟動。",
-        "installFailed": "無法安裝更新：{{error}}"
-      },
-      "rolledBack": "更新 {{version}} 已還原：{{reason}}",
       "ioError": "IO 錯誤：{{error}}",
-      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "externallyManaged": "此安裝由其套件管理程式或部署系統負責更新。",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "此安裝不支援自動安裝。",
+      "notBuilt": "此版本未包含適用於此安裝的自動更新。請手動安裝。",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "安裝此套件需要管理員密碼提示工具（pkexec、zenity 或 kdialog），但找不到任何一個。",
+      "noPrivilegePrompt": "這裡無法要求管理員密碼（需要搭配 polkit 代理程式的 pkexec，或搭配 zenity 或 kdialog 的 sudo）。請透過「在 GitHub 檢視」下載套件，然後在終端機中安裝：{{command}}",
       "verificationFailed": "無法驗證更新：其簽章、總和檢查碼或中繼資料不符。",
       "insecureDownload": "更新下載未透過 HTTPS 提供。",
       "downloadTooLarge": "更新下載的大小超出預期。",
       "missingAsset": "此版本沒有名為 {{name}} 的更新檔案。",
-      "unexpectedAsset": "此版本列出了非預期或重複的更新檔案。",
       "argumentsTooLong": "啟動參數過長，無法在更新後保留。",
-      "startupPending": "上一次更新仍在確認啟動。請幾秒後再試一次。",
-      "versionMustIncrease": "後續更新必須是較新的版本。",
       "invalidBundle": "可攜版應用程式不是完整的 macOS 應用程式套件。",
-      "missingBackup": "目前版本的備份遺失。",
       "invalidStagingDirectory": "更新暫存資料夾無效。",
-      "helperFailed": "無法啟動更新協助程式（{{error}}），且重新啟動應用程式失敗：{{restart}}",
-      "processUnavailable": "無法監控已更新應用程式的處理程序。",
       "ownedByAnotherUser": "應用程式檔案屬於其他使用者。"
     },
     "settings": {
@@ -3685,7 +4235,8 @@
     },
     "job": {
       "stopped": "任務已停止",
-      "deleted": "任務已刪除"
+      "deleted": "任務已刪除",
+      "retried": "任務 {{id}} 已重新執行"
     },
     "security": {
       "passwordRemoved": "密碼已移除",
@@ -3788,11 +4339,8 @@
     "serveCount": "服務 [{{active}}/{{total}}]",
     "quickRunsCount": "快速執行 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 個任務",
     "tooltipTasks": "{{count}} 個任務",
-    "tooltipMount": "1 個掛載",
     "tooltipMounts": "{{count}} 個掛載",
-    "tooltipServe": "1 個服務",
     "tooltipServes": "{{count}} 個服務",
     "workflowsCount": "工作流程 [{{active}}/{{total}}]",
     "indexCount": "目錄清單 [{{active}}/{{total}}]"
@@ -3801,7 +4349,11 @@
     "reason": "正在執行活動操作：{{details}}",
     "mounts": "{{count}} 個掛載",
     "jobs": "{{count}} 個任務",
-    "serves": "{{count}} 個服務"
+    "serves": "{{count}} 個服務",
+    "progress": "{{done}} / {{total}}",
+    "speed": "{{speed}}/秒",
+    "timeLeft": "剩餘 {{time}}",
+    "checked": "已檢查 {{count}} 個"
   },
   "notification": {
     "title": {
@@ -3892,6 +4444,26 @@
       "powerInhibited": "正在執行的操作正在阻止系統休眠。",
       "unmountFailed": "從 {{backend}} 卸除 {{remote}} 失敗：{{error}}",
       "serveStopFailed": "停止 {{backend}} 上 {{remote}} 的 {{protocol}} 服務失敗：{{error}}"
+    },
+    "jobTypes": {
+      "sync": "同步",
+      "copy": "複製",
+      "move": "移動",
+      "bisync": "雙向同步",
+      "check": "檢查",
+      "mount": "掛載",
+      "copyurl": "複製 URL",
+      "mkdir": "建立資料夾",
+      "cleanup": "清理",
+      "delete": "刪除",
+      "rename": "重新命名",
+      "rmdirs": "刪除空目錄",
+      "index": "目錄清單",
+      "upload": "上傳",
+      "download": "下載",
+      "archivecreate": "封存",
+      "archiveextract": "解壓縮封存",
+      "cryptcheck": "加密檢查"
     }
   },
   "repairSheet": {
@@ -4114,6 +4686,11 @@
     "tabs": {
       "quickRun": "快速執行",
       "workflow": "工作流"
+    },
+    "addMenu": {
+      "remote": "建立遠端",
+      "quickRun": "建立快速執行",
+      "workflow": "建立工作流"
     },
     "workflow": {
       "untitled": "未命名工作流",
@@ -4419,8 +4996,6 @@
         "appStartDesc": "RClone Manager 啟動時自動觸發",
         "cleanup": "清理垃圾桶",
         "cleanupDesc": "清空遠端垃圾桶或資源回收筒",
-        "cryptcheck": "加密完整性檢查",
-        "cryptcheckDesc": "驗證加密遠端連線的完整性",
         "execScript": "執行指令碼",
         "execScriptDesc": "執行本機 Shell 命令或指令碼",
         "quickRun": "快捷執行",

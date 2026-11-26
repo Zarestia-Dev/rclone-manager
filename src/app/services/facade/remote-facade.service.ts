@@ -104,7 +104,8 @@ export class RemoteFacadeService {
 
   private readonly remoteNames = signal<string[]>([], { equal: deepEqual });
   private readonly activeNames = computed(() => new Set(this.remoteNames()));
-  private readonly remoteSettings = computed<Record<string, RemoteSettings>>(() =>
+  /** The settings of every remote as the UI holds them; the facade refreshes them on change events. */
+  readonly remoteSettings = computed<Record<string, RemoteSettings>>(() =>
     Object.fromEntries(
       this.remoteNames().map(name => [name, this.remoteStates.get(name)?.settings() ?? {}])
     )
@@ -507,14 +508,6 @@ export class RemoteFacadeService {
       );
       return false;
     }
-  }
-
-  /** The same for the whole of a remote. */
-  generateRemoteIndex(
-    remote: { name: string; isLocal?: boolean },
-    origin: Origin = 'dashboard'
-  ): Promise<boolean> {
-    return this.generateIndex(this.rootOf(remote), '', origin);
   }
 
   /** Asks for confirmation, then deletes the saved settings (profiles, automations) of a remote. */

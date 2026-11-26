@@ -1,10 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { type MountPathCollision } from '@app/types';
-import { checkMountPathCollision } from '../../shared/utils/path.utils';
+import { type MountPathCollision, type QuickRun } from '@app/types';
+import {
+  checkMountPathCollision,
+  normalizeMountFolder,
+  usedMountFolders,
+} from '../../shared/utils/path.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { AppSettingsService } from '../settings/app-settings.service';
+import { RemoteFacadeService } from '../facade/remote-facade.service';
+import { QuickRunService } from '../flow/quick-run.service';
 import { FileSystemService } from './file-system.service';
 import { MountManagementService } from './mount-management.service';
 import { WindowsMountTargetService } from './windows-mount-target.service';
@@ -19,13 +24,15 @@ describe('WindowsMountTargetService', () => {
   const getSettings = vi.fn();
   const getMounts = vi.fn();
   let cachedMounts: object[] = [];
+  let quickRuns: QuickRun[] = [];
   const refreshMounts = vi.fn();
   let service: WindowsMountTargetService;
 
   beforeEach(() => {
     physicalFree.mockReset().mockResolvedValue(['Y:', 'W:', 'V:', 'U:']);
-    getSettings.mockReset().mockResolvedValue(settings);
+    getSettings.mockReset().mockReturnValue(settings);
     refreshMounts.mockReset().mockResolvedValue(undefined);
+    quickRuns = [];
     cachedMounts = [
       { mount_point: 'X:', fs: 'office:share', starter: { kind: 'profile', name: 'Main' } },
       { mount_point: 'U:', fs: 'office:', starter: { kind: 'profile', name: 'Other' } },
@@ -49,20 +56,39 @@ describe('WindowsMountTargetService', () => {
             forceCheckMountedRemotes: refreshMounts,
           },
         },
-        { provide: AppSettingsService, useValue: { getRemoteSettings: getSettings } },
+        { provide: RemoteFacadeService, useValue: { remoteSettings: getSettings } },
+        { provide: QuickRunService, useValue: { quickRuns: (): QuickRun[] => quickRuns } },
         {
           provide: PathService,
           useValue: {
             getRemoteNameFromFs: (fs: string): string => fs.split(':')[0],
+            normalizeMountFolder: (value: string): string => normalizeMountFolder(value, 'windows'),
+            usedMountFolders: (
+              remote: string,
+              config: Record<string, unknown>,
+              name: string,
+              _operation?: string,
+              quick?: { runs: QuickRun[]; exceptId?: string | null }
+            ): Set<string> =>
+              usedMountFolders(remote, config, () => true, name, {
+                pathStyle: 'windows',
+                currentOperation: 'mount',
+                quickRuns: quick?.runs,
+                currentQuickRunId: quick?.exceptId,
+              }),
             checkMountPathCollision: (
               letter: string,
               remote: string,
               config: Record<string, unknown>,
-              name: string
+              name: string,
+              _operation?: string,
+              quick?: { runs: QuickRun[]; exceptId?: string | null }
             ): MountPathCollision[] =>
               checkMountPathCollision(letter, remote, config, () => true, name, {
                 pathStyle: 'windows',
                 currentOperation: 'mount',
+                quickRuns: quick?.runs,
+                currentQuickRunId: quick?.exceptId,
               }),
           },
         },
@@ -87,6 +113,41 @@ describe('WindowsMountTargetService', () => {
       status('V:'),
       status('U:'),
     ]).toEqual(['occupied', 'current', 'reserved', 'free', 'reserved', 'occupied']);
+  });
+
+  it('reserves the letter of a Quick Run that mounts there', async () => {
+    quickRuns = [
+      {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'office',
+        config: { app: {}, rclone: { mountPoint: 'W:' } },
+      },
+    ];
+    const options = await service.getDriveOptions('office', 'Main');
+    expect(options.find(o => o.letter === 'W:')?.status).toBe('reserved');
+    expect(options.find(o => o.letter === 'V:')?.status).toBe('free');
+  });
+
+  it('does not reserve the letter for the Quick Run that is being edited', async () => {
+    quickRuns = [
+      {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'office',
+        config: { app: {}, rclone: { mountPoint: 'W:' } },
+      },
+    ];
+    const options = await service.getDriveOptions(
+      'office',
+      undefined,
+      undefined,
+      undefined,
+      'qr-1'
+    );
+    expect(options.find(o => o.letter === 'W:')?.status).toBe('free');
   });
 
   it('previews the automatic Z-to-D assignment as rclone makes it: free letters only, fixed profiles do not matter', async () => {
@@ -140,5 +201,41 @@ describe('WindowsMountTargetService', () => {
     await service.getDriveOptions('office', 'Main', undefined, 'X:');
     await service.getDriveOptions('office', 'Main', undefined, 'W:');
     expect(refreshMounts).not.toHaveBeenCalled();
+  });
+
+  describe('the default letter', () => {
+    it('is the highest free letter that no saved profile keeps', async () => {
+      // Z is not free, Y is kept by a saved profile, X is mounted by another profile: W is next.
+      expect(await service.defaultDriveLetter('office')).toBe('W:');
+    });
+
+    it('moves on when the letter is taken by a Quick Run too', async () => {
+      quickRuns = [
+        {
+          id: 'qr',
+          name: 'n',
+          remoteName: 'office',
+          operationType: 'mount',
+          config: { app: {}, rclone: { fs: 'office:', mountPoint: 'W:' } },
+        } as unknown as QuickRun,
+      ];
+      expect(await service.defaultDriveLetter('office')).toBe('V:');
+    });
+
+    it('is null when no letter is left, so the caller falls back to a folder', async () => {
+      physicalFree.mockResolvedValue([]);
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+    });
+
+    it('is null where letters cannot be chosen', async () => {
+      vi.spyOn(TestBed.inject(FileSystemService), 'canSelectDriveLetter').mockReturnValue(false);
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+      expect(physicalFree).not.toHaveBeenCalled();
+    });
+
+    it('is null when the letters cannot be read', async () => {
+      physicalFree.mockRejectedValue(new Error('offline'));
+      expect(await service.defaultDriveLetter('office')).toBeNull();
+    });
   });
 });

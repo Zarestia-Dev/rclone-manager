@@ -24,7 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +33,8 @@ import { NumberInputComponent } from '../../../../shared/components/number-input
 
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import type { TransferOptionValues } from 'src/app/shared/modals/transfer-options-modal/transfer-options-modal.component';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
@@ -44,6 +46,10 @@ import {
   PendingChangeDisplay,
   ConfigValue,
 } from '@app/types';
+
+/** A setting whose choices are the user's templates, not options of the schema. */
+/** Categories whose preferences open from their feature, in a window of their own. */
+const OWN_WINDOW_CATEGORIES = new Set(['nautilus']);
 
 import { PillDirective } from '../../../../shared/directives/pill.directive';
 interface OptionViewModel {
@@ -100,12 +106,18 @@ interface SettingViewModel {
 export class PreferencesModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly modalService = inject(ModalService);
   private readonly localStorageService = inject(LocalStorageService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
   private readonly configSearch = inject(ConfigSearchService);
+  /** A category with a window of its own (the file browser's), and that window's title key. */
+  private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as {
+    category?: string;
+    title?: string;
+  } | null;
 
   settingsForm: FormGroup = this.fb.group({});
 
@@ -128,12 +140,20 @@ export class PreferencesModalComponent {
    */
   private readonly formStateVersion = signal(0);
 
-  // Tabs are static; if they become dynamic, derive from a service instead.
+  // Tabs are static; if they become dynamic, derive from a service instead. A tab with a window
+  // of its own (opened from its feature) is shown only there.
   readonly tabs: SettingTab[] = [
     { label: 'modals.preferences.tabs.general', icon: 'wrench', key: 'general' },
     { label: 'modals.preferences.tabs.core', icon: 'core', key: 'core' },
+    { label: 'modals.preferences.tabs.nautilus', icon: 'folder-open', key: 'nautilus' },
     { label: 'modals.preferences.tabs.developer', icon: 'experiment', key: 'developer' },
-  ];
+  ].filter(tab =>
+    this.dialogData?.category
+      ? tab.key === this.dialogData.category
+      : !OWN_WINDOW_CATEGORIES.has(tab.key)
+  );
+  /** One category has no tabs to choose from; the header names it instead. */
+  readonly title = this.dialogData?.title ?? 'modals.preferences.title';
 
   // ── Computed Signals ──────────────────────────────────────────────────────
 
@@ -191,6 +211,15 @@ export class PreferencesModalComponent {
   });
 
   readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
+
+  /** The options every file browser transfer starts from; they are kept as the dialog saves. */
+  async openDefaultTransferOptions(): Promise<void> {
+    const values =
+      (await this.appSettingsService.getSettingValue<TransferOptionValues>(
+        'nautilus.transfer_options'
+      )) ?? {};
+    this.modalService.openTransferOptions({ mode: 'default', values });
+  }
   readonly hasSearchResults = computed(() => !!this.searchQuery().trim());
   readonly hasPendingRestartChanges = computed(() => this.pendingRestartChanges().size > 0);
   readonly pendingChangesCount = computed(() => this.pendingRestartChanges().size);
@@ -252,6 +281,8 @@ export class PreferencesModalComponent {
   ): Record<string, SettingMetadata> {
     const enriched: Record<string, SettingMetadata> = {};
     for (const [fullKey, meta] of Object.entries(options)) {
+      // Data a feature keeps among its settings (the file browser's starred items) is no preference.
+      if (meta.metadata?.hidden) continue;
       const [, key] = fullKey.split('.');
       let value_type = meta.value_type || this.inferValueType(meta, key);
       // A 'string' field with options is semantically a 'select' — normalize it

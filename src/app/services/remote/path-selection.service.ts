@@ -1,7 +1,7 @@
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Injectable, inject, signal, WritableSignal, DestroyRef } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
+import { NAMES_ONLY, RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
@@ -229,7 +229,7 @@ export class PathSelectionService {
       const response = await this.remoteOps.getRemotePaths(
         normalizedRemote,
         subPath,
-        {},
+        NAMES_ONLY,
         'filemanager'
       );
 

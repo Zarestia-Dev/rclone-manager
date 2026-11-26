@@ -14,8 +14,10 @@ import {
   NON_JOB_OPS,
   getStarterOrigin,
   Starter,
+  canRetryJob,
 } from '@app/types';
 import { jobReportOf } from 'src/app/shared/utils/job-report.util';
+import { normalizeJobStats } from 'src/app/shared/utils/job-query.util';
 import { FormatFileSizePipe, FormatTimePipe, FormatDatePipe } from '@app/pipes';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
@@ -97,31 +99,7 @@ export class JobDetailModalComponent {
         remote_name: this.initialData.remote_name ?? '',
         group: this.initialData.group ?? '',
         backend_name: this.initialData.backend_name ?? 'Local',
-        stats: this.initialData.stats ?? {
-          bytes: 0,
-          totalBytes: 0,
-          speed: 0,
-          eta: 0,
-          totalTransfers: 0,
-          transfers: 0,
-          errors: 0,
-          checks: 0,
-          totalChecks: 0,
-          deletedDirs: 0,
-          deletes: 0,
-          renames: 0,
-          serverSideCopies: 0,
-          serverSideMoves: 0,
-          elapsedTime: 0,
-          lastError: '',
-          fatalError: false,
-          retryError: false,
-          serverSideCopyBytes: 0,
-          serverSideMoveBytes: 0,
-          transferTime: 0,
-          transferring: [],
-          listed: 0,
-        },
+        stats: normalizeJobStats(this.initialData.stats),
       } as JobInfo)
     );
   });
@@ -145,9 +123,12 @@ export class JobDetailModalComponent {
     };
   });
 
+  /** The job's stats with its file rows, which the job list leaves out of a finished job. */
+  private readonly stats = this.jobService.detailedStats(this.jobData);
+
   readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => {
     const job = this.jobData();
-    const stats = job.stats;
+    const stats = this.stats();
 
     return {
       activeTransfers: stats?.transferring ?? [],
@@ -161,6 +142,7 @@ export class JobDetailModalComponent {
   });
 
   readonly jobStatus = computed(() => this.jobData().status.toLowerCase());
+  readonly canRetry = computed(() => canRetryJob(this.jobData()));
   readonly isMount = computed(() => this.jobData().job_type === 'mount');
   readonly showStatistics = computed(
     () => !(NON_JOB_OPS as readonly string[]).includes(this.jobData().job_type)
@@ -255,6 +237,16 @@ export class JobDetailModalComponent {
       await this.jobService.resetGroupStats(group);
     } catch (error) {
       console.error('Failed to reset job stats:', error);
+    }
+  }
+
+  /** Runs the job again; the new run shows in the job lists, so this one closes. */
+  async onRetry(): Promise<void> {
+    try {
+      await this.jobService.retryJob(this.jobData().jobid);
+      this.close();
+    } catch (error) {
+      console.error('Failed to retry job:', error);
     }
   }
 

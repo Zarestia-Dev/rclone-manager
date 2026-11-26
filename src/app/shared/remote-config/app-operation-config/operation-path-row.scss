@@ -78,15 +78,3 @@
     padding-right: var(--space-xxs);
   }
 }
-
-.mount-path-row {
-  .path-type-selector {
-    flex: 0 1 clamp(11.25rem, 34%, 12rem);
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .path-input-field {
-    min-width: 0;
-  }
-}

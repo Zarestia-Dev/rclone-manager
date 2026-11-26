@@ -1,0 +1,383 @@
+// What the steps of the wizard have in common. A step includes this file in its `styleUrls`.
+// The only entrance animation is the step's own: the end state is the element's own style, so
+// press transforms still apply once it has settled.
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  animation: wizard-rise 0.3s ease-out backwards;
+}
+
+.wizard-heading,
+.wizard-hello h2 {
+  margin: 0;
+  font-weight: 500;
+}
+
+.wizard-heading {
+  font-size: var(--font-size-xl);
+}
+
+.wizard-hello {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--bg-elevated-1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+
+  h2 {
+    font-size: var(--font-size-2xl);
+  }
+
+  p {
+    margin: var(--space-xs) 0 0;
+    color: var(--dim-color);
+  }
+
+  .hello-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    background: var(--card-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+
+    mat-icon {
+      width: 36px;
+      height: 36px;
+      color: var(--accent-color);
+    }
+  }
+}
+
+.hint {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  &[data-tone] {
+    color: var(--tone);
+  }
+}
+
+// The one line under the heading: readable at the size of the text around it, only quieter.
+.done-note {
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-base);
+}
+
+.section-label {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  font-weight: 500;
+}
+
+// A long wait: the note says it is not stuck.
+.slow-note {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  text-align: start;
+
+  mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+  }
+}
+
+// A card that groups a few related rows.
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  box-shadow: var(--box-shadow);
+}
+
+// A line with a tile in the colour of what it means: green is safe, blue is news, red is a loss.
+.effect-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+
+    mat-icon {
+      flex: none;
+      box-sizing: content-box;
+      width: 20px;
+      height: 20px;
+      padding: var(--space-xs);
+      color: var(--tone);
+      background: rgba(var(--tone-rgb), 0.12);
+      border-radius: var(--radius-sm);
+    }
+
+    // Colour alone is not a warning: what can lose files is also set heavier.
+    &[data-tone="warn"] span {
+      font-weight: 500;
+    }
+  }
+}
+
+.delay-row {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: space-between;
+
+  .delay-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    min-width: 0;
+  }
+
+  .delay-title {
+    font-weight: 500;
+  }
+
+  .delay-hint {
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
+
+  app-number-input {
+    flex: none;
+  }
+}
+
+// ── Choices ─────────────────────────────────────────────────────────────────
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-md);
+
+  &.single {
+    grid-template-columns: 1fr;
+  }
+
+  // The next steps of the done screen: a row each, and as wide as a paragraph reads well.
+  &.compact {
+    width: 100%;
+    max-width: 520px;
+
+    .choice-card {
+      min-height: 72px;
+    }
+
+    .choice-tile {
+      width: 40px;
+      height: 40px;
+
+      mat-icon {
+        width: 22px;
+        height: 22px;
+      }
+    }
+  }
+}
+
+.choice-card {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  min-height: 88px;
+  padding: var(--space-md);
+  text-align: start;
+  color: var(--window-fg-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:focus-visible,
+  &.recommended {
+    background: rgba(var(--tone-rgb), 0.06);
+    border-color: var(--tone);
+  }
+
+  // A finger leaves no pointer behind: the hover look would stay on the card that was tapped.
+  @media (hover: hover) {
+    &:hover {
+      background: rgba(var(--tone-rgb), 0.06);
+      border-color: var(--tone);
+
+      .choice-chevron {
+        color: var(--tone);
+        transform: translateX(3px);
+      }
+
+      .choice-tile {
+        transform: scale(1.08) rotate(-3deg);
+      }
+    }
+  }
+
+  &:active {
+    transform: scale(0.985);
+  }
+
+  .choice-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--tone);
+    background: rgba(var(--tone-rgb), 0.15);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-standard);
+
+    mat-icon {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  .choice-chevron {
+    flex: none;
+    margin-inline-start: auto;
+    color: var(--dim-color);
+    transition: var(--transition-fast);
+  }
+
+  // The goal people ask for most: the cloud as a folder, like the app they know from Windows.
+  &.featured {
+    grid-column: 1 / -1;
+    min-height: 112px;
+    background: linear-gradient(135deg, rgba(var(--tone-rgb), 0.12), var(--card-bg-color) 70%);
+    border-color: rgba(var(--tone-rgb), 0.45);
+
+    .choice-tile {
+      width: 64px;
+      height: 64px;
+
+      mat-icon {
+        width: 34px;
+        height: 34px;
+      }
+    }
+
+    .choice-title {
+      font-size: var(--font-size-lg);
+    }
+  }
+}
+
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.choice-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  font-weight: 500;
+}
+
+.choice-description {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+}
+
+// ── Motion ──────────────────────────────────────────────────────────────────
+
+@keyframes wizard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+// ── Phones ──────────────────────────────────────────────────────────────────
+// 450px is where the dialog turns into a bottom sheet (`custom-theme.scss`).
+
+@media (max-width: 450px) {
+  .wizard-hello {
+    padding: var(--space-sm);
+
+    h2 {
+      font-size: var(--font-size-xl);
+    }
+
+    .hello-tile {
+      width: 48px;
+      height: 48px;
+
+      mat-icon {
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+
+  .detail-card {
+    padding: var(--space-sm);
+  }
+
+  .choice-card {
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+
+    &.featured .choice-tile {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  .delay-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step {
+    animation: none;
+  }
+
+  .choice-card,
+  .choice-card .choice-tile,
+  .choice-card .choice-chevron {
+    transition: none;
+  }
+}

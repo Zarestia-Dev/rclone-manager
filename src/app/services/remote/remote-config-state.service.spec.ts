@@ -288,6 +288,69 @@ describe('RemoteConfigStateService', () => {
     });
   });
 
+  describe('a profile made elsewhere and not saved yet', () => {
+    const stored = {
+      mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint: '/mnt/a' } } },
+    };
+    const pending = {
+      type: 'mount',
+      name: 'Docs',
+      settings: {
+        mountConfigs: {
+          Default: stored.mountConfigs.Default,
+          Docs: { app: { vfsProfile: 'Docs' }, rclone: { fs: 'drive:Docs', mountPoint: '/mnt/b' } },
+        },
+        vfsConfigs: { Docs: { vfs_cache_mode: 'full' } },
+      },
+    };
+
+    it('opens as a new profile, selected, with the profiles it refers to', () => {
+      (service as unknown as { initialConfig: unknown }).initialConfig = structuredClone(stored);
+      setDialogData({ name: 'drive', remoteType: 'drive' });
+      service.initProfiles({
+        remoteType: 'drive',
+        editTarget: 'mount',
+        targetProfile: 'Docs',
+        initialProfile: pending,
+      });
+
+      expect(service.selectedProfileName()['mount']).toBe('Docs');
+      expect(Object.keys(service.profiles()['mount'])).toEqual(['Default', 'Docs']);
+      expect(service.profiles()['vfs']).toEqual({ Docs: { vfs_cache_mode: 'full' } });
+    });
+
+    it('is saved only when the dialog saves, and leaves the stored profiles as they were', async () => {
+      (service as unknown as { initialConfig: unknown }).initialConfig = structuredClone(stored);
+      setDialogData({ name: 'drive', remoteType: 'drive' });
+      service.initProfiles({
+        remoteType: 'drive',
+        editTarget: 'mount',
+        targetProfile: 'Docs',
+        initialProfile: pending,
+      });
+      const save = TestBed.inject(AppSettingsService).saveRemoteSettings as ReturnType<
+        typeof vi.fn
+      >;
+      expect(save).not.toHaveBeenCalled();
+
+      await service.selectProfile('mount', 'Docs');
+      expect(await service.saveRemoteProfiles('drive', 'mount')).toBe(true);
+      const [, written] = save.mock.calls[0];
+      expect(Object.keys(written['mountConfigs'])).toContain('Docs');
+      expect(written['vfsConfigs']).toEqual({ Docs: { vfs_cache_mode: 'full' } });
+    });
+
+    it('is ignored when it names an operation without profiles', () => {
+      (service as unknown as { initialConfig: unknown }).initialConfig = structuredClone(stored);
+      setDialogData({ name: 'drive', remoteType: 'drive' });
+      service.initProfiles({
+        remoteType: 'drive',
+        initialProfile: { type: 'nothing', name: 'x', settings: { nothingConfigs: { x: {} } } },
+      });
+      expect(Object.keys(service.profiles()['mount'])).toEqual(['Default']);
+    });
+  });
+
   describe('displayed Default profiles', () => {
     beforeEach(() => {
       service.initProfiles({ remoteType: 'drive' });

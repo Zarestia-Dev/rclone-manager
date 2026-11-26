@@ -205,7 +205,13 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   /**
-   * Get remote settings
+   * Reads the settings of every remote from the backend, each time.
+   *
+   * Do not call this to look something up: `RemoteFacadeService` already holds these settings,
+   * loads them again when they change, and offers them as signals (`remoteSettings()` for all
+   * remotes, `getRemoteSettings(name)` for one). Reading them there costs no round trip. The
+   * facade loads them from here, and so does a flow that saves and then reads again: the facade's
+   * copy may not have caught up with the save yet.
    */
   async getRemoteSettings(): Promise<Record<string, Record<string, unknown>>> {
     return this.invokeCommand('get_settings');

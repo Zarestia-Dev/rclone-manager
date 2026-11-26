@@ -19,6 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { MascotComponent } from '../shared/components/mascot/mascot.component';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import {
@@ -40,6 +41,7 @@ import { AppOverviewComponent } from '../features/components/dashboard/app-overv
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
@@ -64,6 +66,7 @@ import { quoteToken } from '../shared/utils/rc/rc-console.util';
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
+    MascotComponent,
     TranslatePipe,
   ],
   templateUrl: './home.component.html',
@@ -78,9 +81,13 @@ export class HomeComponent {
   private readonly backendService = inject(BackendService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly appSettings = inject(AppSettingsService);
 
   readonly activeBackend = this.backendService.activeBackend;
   readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
+  readonly showMascot = computed(
+    () => this.appSettings.options()?.['wizard.show_mascot']?.value === true
+  );
   readonly currentTab = this.uiStateService.currentTab;
   readonly remotes = this.remoteFacadeService.orderedRemotes;
   readonly jobs = this.remoteFacadeService.jobs;
@@ -249,10 +256,6 @@ export class HomeComponent {
 
   async emptyTrash(remote: Remote): Promise<void> {
     await this.remoteFacadeService.emptyTrash(remote, 'dashboard');
-  }
-
-  async generateIndex(remote: Remote): Promise<void> {
-    await this.remoteFacadeService.generateRemoteIndex(remote);
   }
 
   // --- Settings ---

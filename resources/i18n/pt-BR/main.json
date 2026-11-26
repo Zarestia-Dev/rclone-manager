@@ -48,16 +48,14 @@
     "unknown": "Desconhecido",
     "notAvailable": "N/D",
     "unlimited": "Ilimitado",
-    "limitedTo": "Limitado a {{rate}}",
-    "none": "Nenhum",
-    "add": "Adicionar",
-    "select": "Selecionar"
+    "limitedTo": "Limitado a {{rate}}"
   },
   "remoteConfig": {
     "pathStatus": {
       "clean": "Limpo & Vazio",
       "nonEmpty": "O diretório tem arquivos",
-      "colliding": "Em uso por {{details}}",
+      "collidingProfile": "Em uso pelo perfil “{{name}}” de {{remote}}",
+      "collidingQuickRun": "Em uso pela execução rápida “{{name}}”",
       "willCreate": "Diretório será criada após a criação do remoto.",
       "checking": "Verificando o caminho...",
       "notDirectory": "O caminho aponta para um arquivo. Selecione uma pasta.",
@@ -72,10 +70,8 @@
     "sizeSuffix": "Tamanho de dados inválido. Utilize: 100ki, 16mi, 1gi ou \"off\"",
     "tristate": "O valor deve ser verdadeiro, falso ou indefinido",
     "time": "Formato de data/hora inválido. Utilize o formato ISO 8601: YYYY-MM-DDTHH:mm:ssZ",
-    "spaceSepList": "A lista não pode conter apenas espaços em branco",
     "bwTimetable": "Formato de banda larga inválido",
     "fileMode": "Deve ser formato octal (3-4 dígitos, cada um de 0 a 7). Exemplo: 755",
-    "enum": "Deve ser uma das opções: {{values}}",
     "urlArray": "Todos os URLs devem ser válidos e começar com http:// ou https://",
     "bandwidth": "Formato de largura de banda inválido. Utilize: 10M, 1G, 100K ou combinações",
     "passwordMismatch": "As senhas não correspondem",
@@ -84,10 +80,6 @@
       "invalidStart": "O nome remoto não pode começar com traço ou espaço",
       "invalidEnd": "Nome remoto não pode terminar com espaço",
       "nameTaken": "Este nome remoto já está em uso"
-    },
-    "password": {
-      "minLength": "A senha deve ter pelo menos 3 caracteres",
-      "invalidChars": "A senha não pode conter aspas"
     }
   },
   "mount": {
@@ -114,7 +106,6 @@
     "copyurlActive": "Copiar URL Ativo",
     "archivecreateActive": "Arquivo Ativo",
     "archivecreating": "Arquivamento",
-    "syncSummary": "Sincronizando ({{count}})",
     "toggleSync": "Alternar Sincronização como Ação Rápida",
     "toggleCopy": "Copiar como Ação Rápida",
     "toggleMove": "Alternar Deslocamento como Ação Rápida",
@@ -134,7 +125,6 @@
     "serving": "Servindo",
     "servingWithProfile": "Servindo {{profile}}: {{type}} em {{addr}}",
     "servingMultiple": "Serviços ({{count}}): {{profiles}}",
-    "serveSummary": "Servindo ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Alternar Servir como Ação Rápida",
     "successStart": "Iniciou com sucesso o serviço para {{remote}} ({{profile}}) em {{addr}}.",
@@ -161,24 +151,60 @@
       "stop": "Parar a execução atual"
     },
     "nextRun": {
-      "disabled": "A automação foi desabilitada",
       "stopping": "Desabilitar após execução atual",
       "notScheduled": "Não agendado"
     },
-    "lastRun": {
-      "never": "Nunca"
-    },
     "monitoring": {
-      "realtime": "Monitoramento em Tempo Real",
-      "debounce": "Atraso de estabilização",
       "watcherActive": "Monitoramento Ativo",
       "watchedFolder": "Pasta monitorada",
-      "seconds": "segundos",
-      "realtimeSchedule": "Monitor de Arquivos em Tempo Real",
-      "changedOnlyShort": "Apenas subdiretórios",
-      "changedOnlyActive": "Apenas subdiretórios",
-      "syncScope": "Escopo de sincronização",
-      "realtimeChangedOnly": "Monitoramento em Tempo Real (Apenas subdiretórios)"
+      "changedOnlyShort": "Apenas subdiretórios"
+    },
+    "startup": {
+      "badge": "Na inicialização",
+      "startsIn": {
+        "one": "Inicia em {{count}} segundo",
+        "other": "Inicia em {{count}} segundos"
+      },
+      "delay": {
+        "one": "Após {{count}} segundo",
+        "other": "Após {{count}} segundos"
+      },
+      "immediately": "Assim que o aplicativo inicia"
+    },
+    "card": {
+      "waiting": "Aguardando",
+      "started": "Iniciado {{time}}",
+      "lastTry": "Última tentativa {{time}}",
+      "nextRun": "Próxima execução {{time}}",
+      "lastRun": "Última execução {{time}}",
+      "neverRun": "Nunca executado",
+      "notStarted": "Ainda não iniciado",
+      "watching": {
+        "one": "Monitorando · {{count}} s",
+        "other": "Monitorando · {{count}} s"
+      },
+      "startupAfter": {
+        "one": "Na inicialização · após {{count}} s",
+        "other": "Na inicialização · após {{count}} s"
+      },
+      "lastFailed": "A última execução falhou",
+      "whenItRuns": "Quando é executado",
+      "onChange": "Quando os arquivos mudam",
+      "waitsAfterChange": {
+        "one": "Aguarda {{count}} segundo após a última alteração",
+        "other": "Aguarda {{count}} segundos após a última alteração"
+      },
+      "folders": {
+        "one": "{{count}} pasta",
+        "other": "{{count}} pastas"
+      },
+      "onAppStart": "Quando o aplicativo inicia",
+      "lastStart": "Última inicialização",
+      "servingAt": "Servindo em {{address}}",
+      "notServing": "Não está em execução",
+      "source": "Origem",
+      "sources": "Origens",
+      "destination": "Destino"
     }
   },
   "actions": {
@@ -253,7 +279,8 @@
       },
       "actions": {
         "stop": "Parar a Tarefa",
-        "delete": "Excluir a Tarefa"
+        "delete": "Excluir a Tarefa",
+        "retry": "Repetir a Tarefa"
       },
       "empty": "Nenhum tarefa encontrado"
     },
@@ -277,11 +304,8 @@
     "cancelled": "Download da atualização do Rclone cancelado.",
     "cancelFailed": "Falha ao cancelar o download de atualização do Rclone.",
     "failed": "Atualização falhou: {{error}}}",
-    "channelChanged": "Canal de atualização do Rclone alterado para {{channel}}",
     "skipped": "Versão do Rclone {{version}} ignorada",
-    "restored": "Versão do Rclone {{version}} restaurada",
-    "autoCheckEnabled": "Atualização automática de Rclone habilitada",
-    "autoCheckDisabled": "Atualização automática do Rclone desabilitada"
+    "restored": "Versão do Rclone {{version}} restaurada"
   },
   "alerts": {
     "title": "Alertas e Notificações",
@@ -634,13 +658,52 @@
       }
     },
     "nautilus": {
-      "starred": {
-        "label": "Itens Destacados",
-        "description": "Lista de arquivos e pastas destacados no navegador de arquivos."
+      "layout": {
+        "label": "Layout",
+        "description": "Como o Gerenciador de Arquivos mostra os arquivos: como ícones em uma grade ou como linhas em uma lista. O botão de layout do Gerenciador de Arquivos também o altera.",
+        "options": {
+          "grid": "Grade",
+          "list": "Lista"
+        }
       },
-      "bookmarks": {
-        "label": "Marcadores de página",
-        "description": "Lista de localizações marcadas para acesso rápido."
+      "sort": {
+        "label": "Ordenar",
+        "description": "A ordem dos arquivos no Gerenciador de Arquivos. Ordenar, em Opções de visualização, também a altera."
+      },
+      "show_hidden": {
+        "label": "Mostrar Arquivos Ocultos",
+        "description": "Mostra arquivos e pastas cujo nome começa com um ponto."
+      },
+      "upload_request_mib": {
+        "label": "Tamanho máximo da requisição de envio (MiB)",
+        "description": "Os envios feitos pela interface web são mandados em requisições que não passam deste tamanho. Ajuste-o ao limite de requisição do proxy reverso que fica na frente do servidor (o nginx aceita 1 MiB, a menos que client_max_body_size seja aumentado). Se um proxy recusar uma requisição, requisições menores são tentadas automaticamente. Um valor maior pode acelerar o envio de um único arquivo grande por uma conexão rápida com alta latência."
+      },
+      "parallel_uploads": {
+        "label": "Arquivos enviados ao mesmo tempo",
+        "description": "Quantos arquivos a interface web manda ao servidor ao mesmo tempo. Em uma conexão lenta, menos arquivos funcionam melhor."
+      },
+      "ask_transfer_options": {
+        "label": "Perguntar pelas opções em cada transferência",
+        "description": "Antes de um envio, ou de uma cópia ou movimentação para outro remoto, mostra as opções de transferência. As opções padrão já vêm preenchidas e um modelo pode ser importado."
+      }
+    },
+    "wizard": {
+      "show_mascot": {
+        "label": "Mostrar a mascote",
+        "description": "Mostra a Tia, a pequena mascote, no canto da janela principal. Desativada por padrão."
+      },
+      "after_remote": {
+        "label": "Mostrar o assistente de configuração após adicionar uma nuvem",
+        "description": "Abre o assistente “O que você quer fazer?” quando você termina de adicionar uma nuvem nova."
+      },
+      "destination": {
+        "label": "Onde o assistente guarda o que configura",
+        "description": "Automático segue a visualização de inicialização padrão: o menu principal guarda um perfil na página da nuvem; as outras visualizações guardam uma Quick Run.",
+        "options": {
+          "auto": "Automático",
+          "quick_run": "Quick Run (Flow)",
+          "profile": "Perfil da nuvem (menu principal)"
+        }
       }
     }
   },
@@ -745,7 +808,8 @@
       "shortcuts": "Atalhos do teclado",
       "about": "O RClone Manager",
       "quickRemote": "Remoto Rápido",
-      "detailedRemote": "Remoto Detalhado"
+      "detailedRemote": "Remoto Detalhado",
+      "wizard": "Assistente"
     }
   },
   "onboarding": {
@@ -852,8 +916,7 @@
       "destination": "Destino",
       "openViewer": "Abrir no visualizador",
       "openViewerTooltip": "Abrir pré-visualização completa de mídia",
-      "inferredFromUrl": "Inferido a partir da URL",
-      "imageAlt": "Pré-visualização"
+      "inferredFromUrl": "Inferido a partir da URL"
     },
     "installationOptions": {
       "tabs": {
@@ -919,14 +982,7 @@
       },
       "table": {
         "size": "Tamanho",
-        "transferred": "transferido",
-        "file": "Arquivo",
-        "direction": "Direção",
-        "took": "Duração",
-        "when": "Quando",
-        "progress": "Progresso",
-        "speed": "Velocidade",
-        "eta": "Tempo restante"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Falhou",
@@ -1293,8 +1349,7 @@
         "one": "{{count}} opção desconhecida: {{keys}}. Isso pode ser ignorado pelo rclone.",
         "other": "{{count}} opções desconhecidas: {{keys}}. Isso pode ser ignorado pelo rclone."
       },
-      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso.",
-      "fieldsOverview": "Visão geral dos campos de configuração"
+      "invalidArrayPath": "A propriedade '{{key}}' não suporta múltiplos caminhos. Por favor forneça um único caminho de string em vez disso."
     },
     "passwordManager": {
       "placeholder": "Insira sua senha de configuração do rclone",
@@ -1378,8 +1433,7 @@
       "appliedToast": {
         "one": "{{count}} opção importada com sucesso",
         "other": "{{count}} opções importadas com sucesso"
-      },
-      "profileNamePlaceholder": "p. ex. daily-backup"
+      }
     },
     "obscure": {
       "title": "Senha Obscura",
@@ -1521,8 +1575,8 @@
       "mountDiskName": "Nome do disco (opcional)",
       "mountNetworkName": "Nome de rede (opcional)",
       "mountAutomaticName": "Nome automático",
-      "mountLocalDriveHint": "Disco local é a opção habitual. Tente uma unidade de rede se um programa apresentar problemas.",
-      "mountNetworkDriveHint": "O Windows mostra o disco como unidade de rede. O armazenamento continua o mesmo.",
+      "mountLocalDriveHint": "O Windows o trata como um disco fixo e pode criar visualizações dos seus arquivos. Escolha esta opção se um programa não funcionar com uma unidade de rede.",
+      "mountNetworkDriveHint": "O Windows o trata como uma unidade de rede. O Explorador de Arquivos mostra ícones em vez de visualizações, o que combina com o armazenamento em nuvem.",
       "mountDriveTarget": "Unidade",
       "mountFolderPathRequired": "Digite o caminho completo de uma nova subpasta.",
       "mountFolderQuotesRemoved": "As aspas foram removidas do caminho.",
@@ -1530,19 +1584,25 @@
       "mountLocalDrive": "Disco local",
       "mountNetworkDrive": "Unidade de rede",
       "mountDriveOccupied": "Em uso",
+      "mountDriveOccupiedHint": "{{letter}} está em uso agora. A montagem só funcionará se ela estiver livre de novo até lá.",
+      "mountNoFreeLetter": "Nenhuma letra de unidade está livre agora. Escolha “Pasta” para montar sem letra.",
       "mountDriveCurrent": "Atual",
       "mountDriveChecking": "Verificando as letras de unidade…",
       "mountUseParent": "Usar como pasta pai",
-      "mountDriveSuggestion": "Unidade sugerida: {{letter}} · Escolha uma letra na lista para usá-la sempre.",
       "mountAutomaticDriveHint": "Uma letra de unidade livre é escolhida ao montar.",
       "mountDriveReserved": "Reservada por outro perfil",
       "mountDriveLetter": "Letra da unidade",
+      "mountExplorerPreview": "Aparece no Explorador de Arquivos como",
       "mountParentFolder": "Escolher pasta pai",
       "mountFolderHint": "A montagem em uma pasta usa um disco local. Escolha a pasta pai e um nome de pasta que ainda não exista.",
       "mountDriveLettersUnavailable": "Não foi possível verificar as letras de unidade. Tente novamente.",
       "mountFolderLocalDrive": "Escolha uma pasta em uma unidade local.",
       "mountFolderAlreadyExists": "A pasta de montagem já existe. Use um novo nome.",
       "multiSourceOneWayInfo": "Múltiplos caminhos de origem detectados. O verificação uma-por-uma foi ativada automaticamente para garantir que o RClone verifique cada fonte contra a destino.",
+      "multiSourceSyncInfo": "As origens são sincronizadas como uma única pasta: o destino mantém todos os arquivos que estão em pelo menos uma delas. Se o mesmo caminho estiver em mais de uma origem, é usado o arquivo da primeira origem da lista; com “Lista Rápida” ativada, isso não é garantido. A cópia do lado do servidor não é usada, mesmo quando uma origem e o destino estão no mesmo remoto.",
+      "multiSourceCopyInfo": "As origens são copiadas uma após a outra, começando pela última da lista. Se o mesmo caminho estiver em mais de uma origem, fica no destino o arquivo da primeira origem da lista. Se uma origem falhar, as que ainda aguardam não são copiadas.",
+      "multiSourceMoveInfo": "As origens são movidas uma após a outra, começando pela última da lista. Se o mesmo caminho estiver em mais de uma origem, fica no destino o arquivo da primeira origem da lista e as outras versões são excluídas; defina “Diretório de Cópias de Segurança” para mantê-las. Se uma origem falhar, as que ainda aguardam não são movidas.",
+      "multiSourceSyncChangedOnlyNote": "Com mais de uma origem, cada alteração sincroniza todas as origens por completo: “Sincronizar apenas subdiretórios modificados” não se aplica.",
       "enableAutoStart": "Ativar o Auto-{{type}} na Inicialização",
       "autoStartDelay": "Atraso na inicialização",
       "autoStartDelayHint": "Tempo de espera após abrir o aplicativo antes de iniciar. Útil quando a rede, a VPN ou outras montagens ainda não estão prontas.",
@@ -1775,9 +1835,7 @@
       "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
-    "restored": "Atualização {{version}} restaurada",
-    "restoreFailed": "Falha ao restaurar atualização",
-    "channelChanged": "O canal de atualização foi alterado para {{channel}}."
+    "restored": "Atualização {{version}} restaurada"
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Não foi possível resolver o endereço remoto para esse item",
@@ -1885,22 +1943,25 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Remover",
-      "progress": "Progresso",
-      "files": "Arquivos",
-      "speed": "Velocidade",
-      "eta": "Tempo Restante",
-      "currentFile": "Arquivo Atual",
-      "currentFiles": "Arquivos Atuais",
-      "details": {
-        "source": "Origem",
-        "destination": "Destino",
-        "startTime": "Hora de Início",
-        "uploadedFiles": "Arquivos carregados",
-        "deletedFiles": "Arquivos excluídos",
-        "movedFiles": "Arquivos movidos",
-        "copiedFiles": "Arquivos copiados",
-        "syncedFiles": "Arquivos sincronizados",
-        "processedFiles": "Arquivos processados"
+      "clearFinished": "Limpar concluídas",
+      "openDestination": "Abrir destino",
+      "undo": "Desfazer",
+      "timeLeft": "faltam {{time}}",
+      "failedOf": {
+        "one": "{{count}} de {{total}} falhou",
+        "other": "{{count}} de {{total}} falharam"
+      },
+      "itemsCount": {
+        "one": "{{count}} item",
+        "other": "{{count}} itens"
+      },
+      "resumeUpload": "Continuar o envio",
+      "resumeWithFiles": "Selecione os mesmos arquivos para continuar",
+      "resumeWithFolder": "Selecione a mesma pasta para continuar",
+      "uploadPausedConnection": "Pausado: a conexão com o servidor foi perdida",
+      "uploadPausedReselect": {
+        "one": "Pausado: selecione {{count}} arquivo novamente para continuar",
+        "other": "Pausado: selecione {{count}} arquivos novamente para continuar"
       },
       "running": "Em execução",
       "filesCount": {
@@ -1921,7 +1982,8 @@
         "upload": "Enviar",
         "archivecreate": "Compactar",
         "archiveextract": "Extrair arquivo",
-        "index": "Listagens de diretório"
+        "index": "Listagens de diretório",
+        "download": "Baixar"
       }
     },
     "fileViewer": {
@@ -1965,8 +2027,7 @@
       "zoomIn": "Aumentar zoom",
       "zoomOut": "Diminuir zoom",
       "resetZoom": "Redefinir zoom",
-      "hexPreview": "Pré-visualização hexadecimal",
-      "playVideo": "Reproduzir no reprodutor de vídeo"
+      "hexPreview": "Pré-visualização hexadecimal"
     }
   },
   "dashboard": {
@@ -2022,6 +2083,11 @@
       "delete": "Excluir",
       "deleteDesc": "Excluir permanentemente arquivos que correspondem aos filtros",
       "copyurl": "Copiar URL",
+      "upload": "Enviar",
+      "rename": "Renomear",
+      "cleanup": "Limpar",
+      "rmdirs": "Remover diretórios vazios",
+      "archiveextract": "Extrair arquivo",
       "copyUrlDesc": "Gerar URLs de download públicas para arquivos",
       "archivecreate": "Arquivo",
       "archivecreateDesc": "Compactar pastas/arquivos em um arquivo de arquivamento (Zip, Tar, etc.)",
@@ -2056,28 +2122,19 @@
       "remoteSettings": "Configurações do remoto",
       "indexSettings": "Configurações de Listagens de Diretório",
       "index": "Listagens de diretório",
-      "indexDesc": "Grava listagens navegáveis nas pastas para sites estáticos"
+      "indexDesc": "Grava listagens navegáveis nas pastas para sites estáticos",
+      "download": "Baixar"
     },
     "generalDetail": {
       "automations": "Automações",
-      "goToAutomation": "Vá para automação {{index}}",
-      "schedule": "Agenda",
-      "cronExpression": "Expressão Cron:",
       "nextRunLabel": "Próxima Execução:",
-      "lastRunLabel": "Última Execução:",
       "statistics": "Estatísticas",
       "successful": "Bem-sucedido",
       "failedCount": "Falhou",
       "stoppedCount": "Parou",
       "totalRuns": "Total de Execuções",
       "paths": "Caminhos",
-      "sourceLabel": "Origem:",
-      "destinationLabel": "Destino:",
-      "lastError": "Último Erro",
-      "currentlyRunning": "Em Execução",
       "jobIdLabel": "Número da tarefa:",
-      "previousAutomationTooltip": "Automação anterior",
-      "nextAutomationTooltip": "Próxima automação",
       "remoteConfiguration": "Configuração do Remoto",
       "editConfiguration": "Editar Configuração",
       "remoteActionQuickSelection": "Seleção de ação remota rápida"
@@ -2208,6 +2265,7 @@
       "skipVersion": "Ignorar Versão",
       "upToDate": "Atualizado",
       "latestVersionMsg": "Você está executando a versão mais atualizada",
+      "statusUnknown": "Status da atualização desconhecido",
       "checkUpdates": "Verificar por Atualizações",
       "checking": "Verificando...",
       "updateSettings": "Atualizar Configurações",
@@ -2224,11 +2282,9 @@
       "whatsNewRclone": "O que há de novo no Rclone",
       "updateRclone": "Baixar atualização do Rclone",
       "rcloneUpToDate": "Rclone está atualizado",
-      "checkRcloneUpdates": "Verificar por Atualizações do Rclone",
       "rcloneUpdateSettings": "Configurações de Atualização do Rclone",
       "skippedRcloneUpdates": "Atualizações do Rclone Ignoradas",
       "devTeam": "Equipe de Desenvolvimento",
-      "leadDeveloper": "Desenvolvedor Sênior ou Líder de Desenvolvimento",
       "contributors": "Colaboradores",
       "acknowledgments": "Reconhecidos",
       "ackText": "Essa aplicação é desenvolvida com tecnologias web modernas e depende do excelente projeto Rclone para o gerenciamento de armazenamento em nuvem.",
@@ -2239,6 +2295,7 @@
       "updateSettingFailed": "Não foi possível atualizar as configurações",
       "channelStable": "Estável",
       "channelBeta": "Beta",
+      "channelDev": "Desenvolvimento",
       "channelStableDesc": "Recomendado para a maioria dos usuários",
       "channelBetaDesc": "Últimas novidades",
       "downloadPage": "Página de Download",
@@ -2310,6 +2367,7 @@
     },
     "preferences": {
       "title": "Preferências",
+      "fileBrowserTitle": "Preferências do Gerenciador de Arquivos",
       "searchResults": "Resultados da Busca",
       "searchPlaceholder": "Configurações de busca...",
       "resetAll": "Redefinir Todas as Configurações",
@@ -2338,6 +2396,7 @@
       "tabs": {
         "general": "Geral",
         "core": "Núcleo",
+        "nautilus": "Gerenciador de Arquivos",
         "developer": "Desenvolvedor",
         "vault": "Cofre"
       },
@@ -2847,6 +2906,429 @@
         "newLine": "nova linha",
         "clear": "limpar"
       }
+    },
+    "wizard": {
+      "title": "O que você quer fazer?",
+      "stepOf": "Etapa {{current}} de {{total}}",
+      "loadFailed": "Não foi possível carregar seus armazenamentos na nuvem.",
+      "noRemotes": "Adicione primeiro um armazenamento na nuvem e depois volte aqui.",
+      "remoteLabel": "Qual nuvem?",
+      "recommended": "Recomendado",
+      "applyFailed": "Não foi possível configurar. Verifique as pastas e tente de novo.",
+      "hello": {
+        "created": "{{remote}} está pronto! O que você quer fazer com ele?",
+        "default": "O que você quer fazer com sua nuvem?",
+        "subtitle": "Escolha o que você quer com suas próprias palavras. Nós configuramos o resto, e nada começa sem a sua confirmação.",
+        "dontShow": "Não abrir depois de adicionar uma nuvem",
+        "dontShowHint": "Certo. Você pode ativar de novo no botão ⚙ no alto."
+      },
+      "places": {
+        "thisDevice": "Este dispositivo",
+        "server": "O servidor",
+        "filesApp": "App Arquivos",
+        "tv": "TV ou player",
+        "device": "Celular ou computador",
+        "browser": "Navegador web",
+        "homeNetwork": "Sua rede doméstica",
+        "automaticDrive": "Uma letra de unidade livre"
+      },
+      "goals": {
+        "access": {
+          "title": "Usar minha nuvem como uma pasta neste dispositivo",
+          "description": "Como uma unidade de rede: seus arquivos aparecem em uma pasta e são baixados quando você os abre.",
+          "descriptionApp": "Como o app do {{app}} no Windows: seus arquivos aparecem em uma pasta e são baixados quando você os abre.",
+          "titlePhone": "Ver minha nuvem no app Arquivos do celular",
+          "descriptionPhone": "Sua nuvem aparece ao lado dos outros armazenamentos, e os arquivos são baixados quando você os abre."
+        },
+        "backup": {
+          "title": "Fazer backup dos meus arquivos na nuvem",
+          "description": "Guarde uma cópia de uma pasta na nuvem, caso algo aconteça com este dispositivo."
+        },
+        "devices": {
+          "title": "Manter uma cópia neste dispositivo, igual à nuvem",
+          "description": "Funciona sem internet e em vários dispositivos: as mudanças vão nos dois sentidos. Ótimo para notas do Obsidian ou do Logseq."
+        },
+        "download": {
+          "title": "Trazer meus arquivos da nuvem para este dispositivo",
+          "description": "Baixe uma pasta ou tudo, uma vez ou sempre atualizado."
+        },
+        "migrate": {
+          "title": "Mudar para outra nuvem",
+          "description": "Copie tudo desta nuvem para outra, por exemplo do Google Drive para o OneDrive."
+        },
+        "share": {
+          "title": "Abrir meus arquivos na TV ou no celular",
+          "description": "Disponibilize sua nuvem para uma TV, celular ou computador da sua rede doméstica."
+        },
+        "explore": {
+          "title": "Só dar uma olhada ou verificar algo",
+          "description": "Navegue pelos seus arquivos ou verifique se uma pasta bate com a nuvem."
+        }
+      },
+      "questions": {
+        "deleted": {
+          "title": "Se você apagar um arquivo aqui, o que deve acontecer com o backup dele?"
+        },
+        "keepOld": {
+          "title": "Os arquivos devem ficar na nuvem antiga?"
+        },
+        "device": {
+          "title": "Com o que você vai abrir os arquivos?"
+        },
+        "explore": {
+          "title": "O que você gostaria de fazer?"
+        }
+      },
+      "about": {
+        "title": "Qual é a diferença?",
+        "deleted": {
+          "same": "Nos dois casos, os arquivos novos e alterados são copiados para a nuvem, e sua pasta nunca é alterada.",
+          "differ": "“Manter na nuvem”: se você apagar um arquivo aqui, a nuvem continua com ele. “Apagar lá também”: a nuvem fica sempre igual à sua pasta, então um arquivo apagado aqui some da nuvem também."
+        },
+        "keepOld": {
+          "same": "Nos dois casos, tudo é copiado para a nuvem nova.",
+          "differ": "“Sim, manter lá”: a nuvem antiga fica exatamente como está. “Não, mover”: cada arquivo sai da nuvem antiga depois de chegar com segurança à nova."
+        },
+        "device": {
+          "same": "Em qualquer opção, sua nuvem fica disponível para outros dispositivos da sua rede doméstica. Só funciona enquanto este app está aberto.",
+          "differ": "Uma pasta de rede abre como qualquer outra pasta no Finder, no Explorador de Arquivos ou em um app de arquivos, e pode permitir alterações. Um navegador web só consegue ver os arquivos e baixá-los. Uma TV ou um player encontra por conta própria e só pode reproduzir."
+        },
+        "explore": {
+          "same": "Nos dois casos, nada muda.",
+          "differ": "“Ver meus arquivos”: sua nuvem abre neste app para você olhar. “Comparar uma pasta com a nuvem”: mostra quais arquivos são diferentes entre uma pasta deste dispositivo e a nuvem. “Comparar uma nuvem com outra”: mostra quais arquivos são diferentes entre duas nuvens."
+        },
+        "where": {
+          "stream": "Esta pasta é como uma porta: seus arquivos ficam na nuvem, aparecem aqui e são baixados quando você os abre. Escolha uma pasta vazia. Tudo o que você colocar nela também é salvo na nuvem.",
+          "twoWay": "Você pode escolher uma pasta que já usa. Na primeira vez, ela é comparada com a nuvem e as duas são unidas, sem apagar nada. Depois, uma mudança em um lado, inclusive apagar um arquivo, aparece no outro.",
+          "mirror": "A pasta da nuvem ficará como uma cópia exata da sua. Os arquivos que estiverem nela e não estiverem na sua pasta serão apagados. O mais seguro é escolher uma pasta da nuvem nova ou vazia.",
+          "streamWindows": "A nuvem aparece no Explorador de Arquivos como uma unidade, como um pen drive. Seus arquivos continuam na nuvem e são baixados quando você os abre. Você também pode escolher uma pasta no lugar. Tudo o que você colocar nela também é salvo na nuvem."
+        }
+      },
+      "options": {
+        "deleted": {
+          "keep": {
+            "title": "Manter na nuvem",
+            "description": "Como uma cópia de segurança: mesmo que você apague um arquivo aqui, a nuvem continua com ele."
+          },
+          "mirror": {
+            "title": "Apagar lá também",
+            "description": "Como um espelho: a nuvem sempre fica igual à sua pasta, inclusive com os arquivos apagados."
+          }
+        },
+        "keepOld": {
+          "keep": {
+            "title": "Sim, manter lá",
+            "description": "Como tirar uma cópia: a nuvem antiga fica exatamente como está, então você sempre pode voltar."
+          },
+          "move": {
+            "title": "Não, mover",
+            "description": "Como uma mudança de casa: cada arquivo sai da nuvem antiga quando chega bem na nova."
+          }
+        },
+        "device": {
+          "folder": {
+            "title": "Uma pasta de rede",
+            "description": "Como uma pasta compartilhada: abre no Finder, no Explorador de Arquivos ou em um app de arquivos, com o usuário e a senha que você escolher. Você decide se os dispositivos podem alterar arquivos."
+          },
+          "browser": {
+            "title": "Um navegador web",
+            "description": "Como uma página web: um celular ou computador com o endereço e a senha pode ver os arquivos e baixá-los. Nada pode ser alterado."
+          },
+          "tv": {
+            "title": "Uma TV ou media player",
+            "description": "Como um servidor de mídia: smart TVs, consoles e players encontram sozinhos. Podem assistir e ouvir, mas não alterar nada."
+          }
+        },
+        "explore": {
+          "browse": {
+            "title": "Ver meus arquivos",
+            "description": "Como abrir uma pasta: navegue pela sua nuvem dentro deste app. Nada é baixado nem alterado."
+          },
+          "compare": {
+            "title": "Comparar uma pasta com a nuvem",
+            "description": "Como comparar duas pastas: veja quais arquivos diferem entre uma pasta daqui e a nuvem. Nada muda."
+          },
+          "compareClouds": {
+            "title": "Comparar uma nuvem com outra",
+            "description": "Como comparar duas pastas: veja quais arquivos diferem entre duas das suas nuvens. Nada muda."
+          }
+        }
+      },
+      "where": {
+        "heading": "Onde?",
+        "target": "Para onde vão os arquivos?",
+        "targetCompare": "Com qual nuvem comparar?",
+        "noOtherRemote": "Adicione primeiro a sua nuvem nova e depois volte aqui.",
+        "shareLogin": "Login para o outro dispositivo",
+        "shareHint": "O celular ou computador pede isso ao se conectar.",
+        "shareUser": "Usuário",
+        "sharePassword": "Senha",
+        "local": {
+          "stream": "a nuvem aparece nesta pasta",
+          "twoWay": "seus arquivos ficam nesta pasta",
+          "download": "os arquivos são baixados aqui",
+          "upload": "qual pasta fazer backup?",
+          "compare": "qual pasta verificar?",
+          "devices": "qual pasta deve ficar igual?",
+          "streamWindows": "a nuvem aparece como uma unidade ou uma pasta"
+        },
+        "cloud": {
+          "stream": "qual parte da nuvem?",
+          "twoWay": "mantida igual a esta pasta",
+          "download": "qual pasta baixar?",
+          "upload": "o backup vai para cá",
+          "cloudToCloud": "o que copiar?",
+          "share": "o que compartilhar?",
+          "compare": "comparada com esta pasta",
+          "cloudCompare": "qual pasta verificar?"
+        },
+        "localPlaceholder": "Escolha ou digite uma pasta",
+        "cloudPlaceholder": "Deixe vazio para a nuvem inteira",
+        "shareConnection": "Como os dispositivos se conectam",
+        "sharePort": "Porta",
+        "sharePortHint": "O número depois dos dois-pontos no endereço. Mantenha 8080, a menos que outra coisa já use.",
+        "portInvalid": "Escolha uma porta entre 1024 e 65535.",
+        "shareReadOnly": "Os dispositivos só podem olhar, não alterar arquivos",
+        "shareReadOnlyHint": "Desative se celulares ou computadores também devem poder enviar, renomear ou apagar.",
+        "shareName": "Nome na TV",
+        "shareNameHint": "É o que você verá na lista de servidores de mídia da TV ou do player.",
+        "shareNameLabel": "Nome",
+        "portBusy": "A porta {{port}} já está em uso por outro programa. Escolha outra.",
+        "portUseFree": "Usar a porta {{port}}"
+      },
+      "review": {
+        "heading": "Veja o que vai acontecer",
+        "advanced": "Abrir no editor completo",
+        "start": "Configurar e iniciar",
+        "firstRun": "A primeira execução compara os dois lados e os une. Pode demorar um pouco, e nada é apagado.",
+        "startOnLogin": "Abrir também este app quando o computador ligar",
+        "mountPlugin": {
+          "title": "Falta mais uma coisa",
+          "description": "Mostrar a nuvem como pasta precisa de um pequeno componente do sistema (FUSE ou WinFsp) que ainda não está instalado.",
+          "install": "Instalar"
+        },
+        "summary": {
+          "stream": "{{cloud}} aparece em {{local}}.",
+          "streamSaf": "{{cloud}} aparece no app Arquivos.",
+          "twoWay": "{{local}} e {{cloud}} ficam iguais.",
+          "upload_copy": "{{local}} recebe backup em {{cloud}}.",
+          "upload_sync": "{{cloud}} vira uma cópia exata de {{local}}.",
+          "download": "{{cloud}} é baixado para {{local}}.",
+          "cloudToCloud_copy": "{{cloud}} é copiado para {{target}}.",
+          "cloudToCloud_move": "{{cloud}} é movido para {{target}}.",
+          "share_dlna": "{{cloud}} é compartilhado com as TVs e players da sua rede.",
+          "share_webdav": "{{cloud}} é compartilhado na sua rede com senha.",
+          "share_http": "{{cloud}} é compartilhado na sua rede como uma página web, com senha.",
+          "compare": "{{local}} é comparado com {{cloud}}.",
+          "cloudCompare": "{{cloud}} é comparado com {{target}}.",
+          "streamDrive": "{{cloud}} aparece como a unidade {{local}}.",
+          "streamAutoDrive": "{{cloud}} aparece como uma unidade nova. O Windows escolhe a letra ao conectar."
+        },
+        "flow": {
+          "stream": "Abre conforme você usa",
+          "upload": "Vai para a nuvem",
+          "download": "Vem da nuvem",
+          "twoWay": "Igual dos dois lados",
+          "cloudToCloud": "Vai para a outra nuvem",
+          "share": "Compartilhado na sua rede",
+          "compare": "Só compara, nada muda"
+        },
+        "schedule": {
+          "watch": "Roda sozinho sempre que um arquivo muda.",
+          "startup": "Roda sozinho sempre que o app abre.",
+          "startupMount": "Conecta sozinho sempre que o app abre.",
+          "cron": "Horário: {{when}}",
+          "manual": "Só roda quando você inicia."
+        },
+        "detailsTitle": "Bom saber",
+        "destination": {
+          "quickRun": "Execução Rápida",
+          "profile": "Perfil no menu principal",
+          "hintQuickRun": "Aparece em Flow › Execuções Rápidas.",
+          "hintProfile": "Aparece na página de “{{remote}}” no menu principal, onde você pode iniciá-lo e pará-lo."
+        },
+        "wholeCloud": "A nuvem toda",
+        "duplicate": "Você já tem uma configuração que faz isto: “{{name}}”.",
+        "duplicateShow": "Abrir"
+      },
+      "effects": {
+        "streamOpen": "Abrir um arquivo o baixa da nuvem.",
+        "streamSave": "Salvar um arquivo o envia para a nuvem.",
+        "streamDelete": "Apagar um arquivo nesta pasta o apaga da nuvem também.",
+        "uploadNew": "Arquivos novos e alterados são enviados.",
+        "keepDelete": "Arquivos que você apaga aqui ficam na nuvem.",
+        "uploadCloudChange": "O backup nunca altera nada na sua pasta.",
+        "mirrorDelete": "Arquivos que você apaga aqui são apagados da nuvem também.",
+        "mirrorExtra": "Arquivos que existem só na pasta da nuvem são apagados.",
+        "downloadNew": "Arquivos novos e alterados da nuvem são baixados.",
+        "downloadKeep": "Arquivos apagados na nuvem ficam neste dispositivo.",
+        "downloadLocalChange": "Nada na nuvem é alterado.",
+        "twoWayChange": "Uma mudança em qualquer lado é copiada para o outro.",
+        "twoWayDelete": "Um arquivo apagado de um lado é apagado do outro.",
+        "twoWayConflict": "Se um arquivo mudar dos dois lados, as duas versões são mantidas.",
+        "migrateCopy": "Cada arquivo é copiado para a nuvem nova.",
+        "migrateKeep": "A nuvem antiga fica como está.",
+        "migrateMove": "Os arquivos são removidos da nuvem antiga depois de copiados.",
+        "shareTv": "As TVs e players da sua rede encontram sozinhos.",
+        "shareReadOnly": "Eles podem assistir e ouvir, mas não alterar nada.",
+        "shareBrowse": "Os dispositivos podem ver os arquivos e baixá-los, mas não alterar nada.",
+        "shareStops": "O compartilhamento para quando o app é fechado.",
+        "sharePassword": "Só dispositivos com a sua senha podem se conectar.",
+        "shareWrite": "Dispositivos conectados podem alterar e apagar arquivos.",
+        "compareNothing": "Nenhum arquivo é alterado.",
+        "compareList": "Você recebe uma lista dos arquivos diferentes.",
+        "browseNothing": "Nada muda."
+      },
+      "advice": {
+        "tooBigForDisk": "Isso tem {{size}}, mas este dispositivo só tem {{free}} livres. Não cabe.",
+        "tightOnDisk": "Isso tem {{size}} e este dispositivo tem {{free}} livres. Cabe, mas o disco vai ficar quase cheio.",
+        "fitsOnDisk": "Isso tem {{size}} e este dispositivo tem {{free}} livres. Cabe com folga.",
+        "cloudTooFull": "A pasta tem {{size}}, mas a nuvem só tem {{free}} livres. Não cabe.",
+        "streamSavesSpace": "Sua nuvem tem {{cloud}} e este dispositivo tem {{free}} livres, então esta é a escolha certa: só os arquivos que você abre ocupam espaço."
+      },
+      "preview": {
+        "title": "Veja antes o que vai acontecer",
+        "description": "Um teste compara os dois lados e lista cada arquivo que copiaria, substituiria ou apagaria. Nenhum arquivo é alterado.",
+        "run": "Mostrar o que vai mudar",
+        "running": "Comparando arquivos…",
+        "checked": {
+          "one": "{{count}} arquivo verificado até agora",
+          "other": "{{count}} arquivos verificados até agora"
+        },
+        "transfers": {
+          "one": "{{count}} arquivo será copiado",
+          "other": "{{count}} arquivos serão copiados"
+        },
+        "deletes": {
+          "one": "{{count}} arquivo será apagado",
+          "other": "{{count}} arquivos serão apagados"
+        },
+        "errors": {
+          "one": "{{count}} arquivo não pôde ser lido",
+          "other": "{{count}} arquivos não puderam ser lidos"
+        },
+        "noDeletes": "Nenhum arquivo será apagado",
+        "nothing": "Tudo já está atualizado; nada mudaria.",
+        "failed": "O teste não terminou. Você ainda pode configurar ou mudar as pastas.",
+        "runName": "{{name}} (teste)",
+        "groups": {
+          "delete": "Serão apagados",
+          "add": "Arquivos novos",
+          "replace": "Serão substituídos",
+          "copy": "Serão copiados",
+          "error": "Problemas",
+          "untouched": "Ficam como estão"
+        },
+        "groupCount": "{{label}}: {{count}}",
+        "unchanged": {
+          "one": "{{count}} arquivo já é igual nos dois lados",
+          "other": "{{count}} arquivos já são iguais nos dois lados"
+        },
+        "deleteWarning": "Veja esta lista antes de começar: estes arquivos serão removidos do destino.",
+        "again": "Repetir o teste",
+        "slowNote": "Isso pode demorar um pouco, dependendo de quantos arquivos há. Não travou, aguarde.",
+        "elapsed": "Rodando há {{time}}",
+        "andMore": {
+          "one": "…e mais {{count}} arquivo",
+          "other": "…e mais {{count}} arquivos"
+        }
+      },
+      "working": {
+        "saving": "Configurando…",
+        "firstRun": "Fazendo a primeira sincronização…",
+        "canClose": "Você pode fechar esta janela; continua rodando em segundo plano.",
+        "slowNote": "A primeira sincronização pode demorar bastante, dependendo de quantos arquivos há. Ela não travou."
+      },
+      "done": {
+        "title": "Tudo pronto!",
+        "stream": "Sua nuvem agora está em {{path}}.",
+        "streamSaf": "Sua nuvem agora está no app Arquivos.",
+        "twoWayReady": "A primeira sincronização terminou. De agora em diante, os dois lados ficam iguais.",
+        "twoWayFailed": "Está configurado, mas a primeira sincronização não terminou.",
+        "started": "Começou. Você pode acompanhar o progresso no app.",
+        "checkStarted": "A verificação começou. Quando terminar, você poderá ver quais arquivos diferem.",
+        "findIt": "Depois você encontra em Flow › Execuções Rápidas como “{{name}}”.",
+        "openFolder": "Abrir a pasta",
+        "openCloud": "Mostrar no navegador de arquivos",
+        "openRun": "Mostrar progresso e resultado",
+        "openRunHint": "Veja como foi e quais arquivos participaram.",
+        "another": "Configurar outra coisa",
+        "shareWebdav": "O compartilhamento está ativo. No celular ou computador, conecte-se a um destes endereços:",
+        "shareHttp": "O compartilhamento está ativo. No celular ou computador, abra um destes endereços em um navegador:",
+        "shareAddress": "Endereço",
+        "shareOtherAddresses": "Também funcionam",
+        "shareUser": "Nome de usuário",
+        "sharePassword": "Senha",
+        "sharePasswordHint": "A que você escolheu",
+        "shareDlna": "O compartilhamento está ativo. Procure “{{name}}” na lista de mídia da sua TV ou player.",
+        "noAddress": "O compartilhamento está ativo. Conecte-se ao endereço de rede deste dispositivo, porta {{port}}.",
+        "findItProfile": "Depois você o encontra na página de “{{remote}}” no menu principal, como o perfil “{{name}}”.",
+        "whereQuickRun": "Mostrar em Execuções Rápidas",
+        "whereProfile": "Mostrar no menu principal",
+        "failureReason": "O que deu errado: {{reason}}",
+        "streamDrive": "Sua nuvem agora é a unidade {{path}}.",
+        "streamAutoDrive": "Sua nuvem agora é uma unidade nova no Explorador de Arquivos.",
+        "openFilesApp": "Abrir o app Arquivos"
+      },
+      "runNames": {
+        "access": "Pasta {{remote}}",
+        "backup": "Backup {{remote}}",
+        "devices": "Sincronização {{remote}}",
+        "download": "Download {{remote}}",
+        "migrate": "Migração {{remote}}",
+        "share": "Compartilhamento {{remote}}",
+        "explore": "Verificação {{remote}}"
+      },
+      "when": {
+        "heading": "Quando deve rodar?",
+        "subtitle": "Escolha as que quiser e combine. Sem escolher nenhuma, só roda quando você iniciar.",
+        "watch": {
+          "title": "Sempre que um arquivo mudar",
+          "description": "A pasta é monitorada e as mudanças sobem em segundos, como o envio automático de fotos do celular."
+        },
+        "cron": {
+          "title": "Em um horário",
+          "description": "Todo dia, toda hora, em dias úteis ou no horário que você escolher."
+        },
+        "startup": {
+          "title": "Quando o app abrir",
+          "description": "Roda sozinho toda vez que o app abre.",
+          "descriptionMount": "Sua nuvem conecta sozinha toda vez que o app abre."
+        },
+        "cloudHint": "O monitoramento só vê mudanças neste dispositivo. Adicione também um horário para receber as mudanças feitas na nuvem.",
+        "invalidCron": "Este horário ainda não está completo. Escolha uma das opções acima."
+      },
+      "details": {
+        "cache": "Os arquivos que você abre ficam neste dispositivo por até {{age}}, usando no máximo {{size}} de disco.",
+        "writeBack": "As mudanças que você faz são enviadas para a nuvem após {{time}}.",
+        "minFree": "O cache para de crescer quando restam menos de {{size}} livres no disco.",
+        "address": "Endereço:",
+        "addressUnknown": "Use o endereço deste dispositivo com a porta:",
+        "addressViaBackend": "É o endereço que o aplicativo usa para se conectar a esse computador. Um celular em outra rede pode não conseguir alcançá-lo.",
+        "port": "Porta:",
+        "user": "Usuário:",
+        "tvName": "Aparece na TV como:"
+      },
+      "settings": {
+        "title": "Configurações do assistente",
+        "subtitle": "Essas escolhas são lembradas na próxima vez.",
+        "afterRemote": "Mostrar este assistente depois de adicionar uma nuvem",
+        "destinationTitle": "Guardar o que o assistente configura como",
+        "auto": "Automático",
+        "hintAuto": "Segue a visualização de inicialização: um perfil se o aplicativo abre no menu principal, uma Execução Rápida caso contrário.",
+        "done": "Concluído"
+      },
+      "undo": {
+        "action": "Remover esta configuração",
+        "hint": "Ela para de funcionar e some do aplicativo. Seus arquivos não são tocados.",
+        "confirm": "“{{name}}” para de funcionar e some do aplicativo. Seus arquivos não são tocados.",
+        "working": "Removendo…",
+        "failed": "Não foi possível remover. Você ainda pode removê-la pelo lugar onde ela aparece.",
+        "removedTitle": "Removida",
+        "removed": "Seus arquivos não foram alterados.",
+        "title": "Remover esta configuração?",
+        "remove": "Remover"
+      }
     }
   },
   "nautilus": {
@@ -2998,9 +3480,7 @@
         "statsConflicts": {
           "one": "{{count}} conflito",
           "other": "{{count}} conflitos"
-        },
-        "findPlaceholder": "texto a localizar",
-        "replacePlaceholder": "texto de substituição"
+        }
       },
       "index": {
         "title": "Gerar listagens de diretório",
@@ -3119,7 +3599,12 @@
       "viewOptions": "Opções de visualização",
       "showingItems": "Mostrando {{count}} de {{total}}",
       "decreaseIconSize": "Diminuir tamanho do ícone",
-      "increaseIconSize": "Aumentar tamanho do ícone"
+      "increaseIconSize": "Aumentar tamanho do ícone",
+      "tabCount": {
+        "one": "{{count}} aba",
+        "other": "{{count}} abas"
+      },
+      "showTabs": "Mostrar Abas Abertas"
     },
     "notifications": {
       "uploadSuccess": {
@@ -3129,6 +3614,20 @@
       "uploadFailed": {
         "one": "Falha de upload de {{count}} arquivo.",
         "other": "Falha de upload de {{count}} arquivos."
+      },
+      "uploadInterrupted": "A conexão com o servidor foi perdida. Continue o envio em Operações.",
+      "uploadFilesNotInUpload": "Nenhum dos arquivos selecionados está entre os que este envio ainda precisa.",
+      "uploadFilesStillMissing": {
+        "one": "Ainda falta {{count}} arquivo deste envio. Selecione-o em Operações para concluir o envio.",
+        "other": "Ainda faltam {{count}} arquivos deste envio. Selecione-os em Operações para concluir o envio."
+      },
+      "copyingPickedFiles": {
+        "one": "Preparando {{count}} item selecionado para o envio…",
+        "other": "Preparando {{count}} itens selecionados para o envio…"
+      },
+      "pickedFilesNotCopied": {
+        "one": "Não foi possível ler {{count}} item selecionado; ele não será enviado.",
+        "other": "Não foi possível ler {{count}} itens selecionados; eles não serão enviados."
       },
       "trashEmptied": "Operação de limpeza concluída",
       "rmdirsStarted": "Removendo diretórios vazios em \"{{name}}\"...",
@@ -3170,6 +3669,89 @@
       "cancelLoading": "Cancelar carregamento",
       "star": "Adicionar aos favoritos",
       "unstar": "Remover dos favoritos"
+    },
+    "transferOptions": {
+      "title": "Opções de transferência",
+      "defaultTitle": "Opções de transferência padrão",
+      "summary": {
+        "upload": {
+          "one": "{{count}} item será enviado para {{destination}}.",
+          "other": "{{count}} itens serão enviados para {{destination}}."
+        },
+        "copy": {
+          "one": "{{count}} item será copiado para {{destination}}.",
+          "other": "{{count}} itens serão copiados para {{destination}}."
+        },
+        "move": {
+          "one": "{{count}} item será movido para {{destination}}.",
+          "other": "{{count}} itens serão movidos para {{destination}}."
+        }
+      },
+      "engine": {
+        "local": "É executado em {{name}}, o rclone que este aplicativo executa.",
+        "remote": "É executado em {{name}}, um rclone em outro computador. As opções abaixo são as que esse rclone oferece."
+      },
+      "defaultIntro": "Cópias, movimentações e envios no Gerenciador de Arquivos começam com estas opções.",
+      "remoteNote": "Estas opções se aplicam a {{name}} somente durante esta transferência. As configurações salvas dele não mudam.",
+      "streamNote": "Os arquivos vão um a um para o rclone do outro computador, que não usa com eles opções de cópia, de Filtro nem de Backend. Só as opções do próprio destino se aplicam.",
+      "nothingToSet": "Este envio não tem opções para definir.",
+      "useAsDefault": "Usar estas opções por padrão",
+      "dontAskAgain": "Não perguntar novamente (Preferências do Gerenciador de Arquivos)",
+      "start": "Iniciar"
+    },
+    "conflicts": {
+      "exists": "“{{name}}” já existe",
+      "fileExists": "Já existe um arquivo com este nome em {{destination}}.",
+      "folderExists": "Já existe uma pasta com este nome em {{destination}}.",
+      "mergeExplain": "Mesclar adiciona os arquivos recebidos a ela.",
+      "thereNow": "Lá agora",
+      "incoming": "Recebido",
+      "replace": "Substituir",
+      "merge": "Mesclar",
+      "skip": "Pular",
+      "keepBoth": "Manter ambos",
+      "replaceOrMerge": "Substituir ou mesclar",
+      "forAll": "Para todos:",
+      "keptAs": "Mantido como “{{name}}”",
+      "skipped": "Pulado",
+      "replaces": "Substitui o arquivo de lá",
+      "merges": {
+        "newer": "Mesclado, mantendo o mais recente de cada arquivo",
+        "keep": "Mesclado, adicionando só os que faltam",
+        "replace": "Mesclado, substituindo os arquivos com o mesmo nome"
+      },
+      "title": {
+        "one": "{{count}} de {{total}} itens já existe em {{destination}}",
+        "other": "{{count}} de {{total}} itens já existem em {{destination}}"
+      },
+      "others": {
+        "one": "Mais {{count}} item não tem conflito.",
+        "other": "Mais {{count}} itens não têm conflito."
+      },
+      "start": {
+        "copy": {
+          "one": "Copiar {{count}} item",
+          "other": "Copiar {{count}} itens"
+        },
+        "move": {
+          "one": "Mover {{count}} item",
+          "other": "Mover {{count}} itens"
+        },
+        "upload": {
+          "one": "Enviar {{count}} item",
+          "other": "Enviar {{count}} itens"
+        }
+      },
+      "skipAll": "Pular todos",
+      "replaceWarning": "Arquivos substituídos não podem ser recuperados, e isso não pode ser desfeito.",
+      "mergeWarning": "A mesclagem de pastas não pode ser desfeita.",
+      "sameNames": "Arquivos com o mesmo nome:",
+      "sameNamesAll": "Arquivos com o mesmo nome nas pastas mescladas:",
+      "existingFiles": {
+        "newer": "Manter o mais recente",
+        "keep": "Manter o que já está lá",
+        "replace": "Substituir pelo recebido"
+      }
     }
   },
   "home": {
@@ -3216,9 +3798,6 @@
       "generic": "Um erro inesperado ocorreu. Por favor, verifique os logs para mais detalhes.",
       "openFailed": "Não foi possível abrir {{name}}"
     }
-  },
-  "transfer": {
-    "error": "Erro de transferência"
   },
   "generalOverview": {
     "panels": {
@@ -3285,7 +3864,6 @@
       "progress": "Progresso:",
       "of": "de",
       "eta": "Tempo restante:",
-      "elapsed": "Decorrido:",
       "speed": "Velocidade de Transferência:",
       "transfers": "Transferências:",
       "checks": "Verificações:",
@@ -3297,6 +3875,7 @@
       "serverMoves": "Mover do Servidor:",
       "lastError": "Último Erro:",
       "runningJobs": "Tarefas em Execução",
+      "recentJobs": "Tarefas Recentes",
       "starting": "Começando...",
       "noRunning": "Nenhuma tarefa ativa está sendo executada atualmente."
     },
@@ -3321,6 +3900,14 @@
       },
       "noActive": "Nenhuma montagem ativa",
       "noMounted": "Nenhum remoto está montado. Monte um remoto para usar os arquivos dele como uma pasta no seu computador."
+    },
+    "originFilter": {
+      "hidden": {
+        "one": "{{count}} outro escondido",
+        "other": "{{count}} outros escondidos"
+      },
+      "empty": "Nada corresponde a este filtro. O restante está escondido.",
+      "showAll": "Mostrar tudo"
     }
   },
   "appOverview": {
@@ -3375,7 +3962,6 @@
       "missingMountPoint": "Falta 'mountPoint' na configuração do nó unmount e o nó de destino não produziu um ponto de montagem",
       "missingStopServeTarget": "Faltam 'targetNodeId'/'serverId' e 'remoteName' na configuração do nó stop_serve",
       "rcCommandFailed": "O comando RC '{{command}}' falhou: {{error}}",
-      "invalidJobId": "ID de tarefa inválido retornado pelo envio em lote: {{error}}",
       "unsupportedNodeType": "Tipo de nó de fluxo de trabalho '{{type}}' não compatível com esta plataforma ou versão",
       "nodeCrashed": "O nó '{{node}}' falhou inesperadamente: {{reason}}",
       "notificationFailed": "Erro de notificação ({{kind}}): {{error}}",
@@ -3438,17 +4024,18 @@
       "profileNotMounted": "O perfil '{{profile}}' não está montado em {{remote}}"
     },
     "operations": {
-      "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'",
       "singleSourceOnly": "{{operation}} aceita apenas um caminho de origem",
       "directoriesOnly": "{{operation}} aceita apenas diretórios, não arquivos: {{source}}",
       "sourcePathInvalid": "Não foi possível ler o caminho de origem: {{path}}",
       "destinationPathInvalid": "Não foi possível ler o caminho de destino: {{path}}",
       "filePathsInvalid": "Não foi possível ler a origem '{{source}}' ou o destino '{{destination}}' como caminho de arquivo. Use o formato 'remote:caminho/do/arquivo' ou um caminho local.",
       "unsupportedOperation": "A operação {{operation}} não pode ser executada como transferência",
-      "destinationMissing": "Nenhum destino especificado"
+      "destinationMissing": "Nenhum destino especificado",
+      "sourceOverlapsDestination": "A origem {{source}} e o destino {{destination}} se sobrepõem: um está dentro do outro. Escolha um destino que não se sobreponha a nenhuma origem.",
+      "overlappingRemotes": "A origem e o destino se sobrepõem: um está dentro do outro. Escolha um destino fora da origem ou exclua-o com uma regra de filtro.",
+      "backupDirOverlaps": "“Diretório de Cópias de Segurança” não pode ficar dentro da origem nem do destino, nem contê-los."
     },
     "serve": {
-      "parseFailed": "Falha ao processar resposta: {{error}}",
       "remoteEmpty": "O nome remoto não pode estar vazio",
       "addressAlreadyInUse": "A porta ou endereço selecionado já está em uso por outro aplicativo. Escolha uma porta diferente.",
       "privilegedPort": "Portas abaixo de 1024 requerem privilégios de administrador. Escolha uma porta 1024 ou superior.",
@@ -3469,13 +4056,19 @@
       "diskFull": "O disco ou unidade de destino está cheio. Espaço em disco insuficiente.",
       "fileLocked": "O arquivo está bloqueado ou em uso por outro processo.",
       "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação.",
-      "ioError": "Erro de E/S: {{error}}"
+      "ioError": "Erro de E/S: {{error}}",
+      "intoItself": "A pasta “{{name}}” não pode ser copiada nem movida para dentro de si mesma.",
+      "noItems": "Nenhum item selecionado."
     },
     "upload": {
       "legacyBatch": "Este envio foi iniciado por uma página desatualizada. Recarregue o aplicativo e tente novamente.",
       "noFiles": "O envio não contém arquivos.",
       "invalidPath": "O envio contém um caminho de arquivo ou pasta inválido.",
-      "invalidModifiedTime": "O envio contém uma data de modificação inválida."
+      "invalidModifiedTime": "O envio contém uma data de modificação inválida.",
+      "sessionGone": "O servidor não tem mais este envio, porque ele foi cancelado ou ficou inativo por tempo demais. Inicie-o novamente.",
+      "invalidChunk": "O envio mandou dados que não pertencem a nenhum de seus arquivos.",
+      "incomplete": "O envio foi concluído antes de todos os seus arquivos chegarem.",
+      "filesFailed": "Arquivos que não puderam ser enviados: {{count}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
@@ -3492,11 +4085,7 @@
       "notFound": "Erro do Rclone: binário não encontrado em {{path}}",
       "spawnFailed": "Falha ao iniciar o processo do Rclone: {{error}}",
       "invalidPath": "Caminho inválido de Rclone especificado",
-      "killFailed": "Falha ao encerrar o processo rclone: {{error}}",
-      "portCleanupFailed": "Falha ao limpar os porta rclone: {{error}}",
       "configValidationFailed": "Validação da configuração do Rclone falhou: {{error}}",
-      "lockFailed": "Falha ao adquirir o bloqueio de configuração do Rclone: {{error}}",
-      "cacheRefreshFailed": "Falha ao atualizar o cache do Rclone: {{error}}",
       "invalidFlags": "Flags inválidas do rclone detectadas: {{error}}",
       "updateRemoteUnsupported": "Atualização remota não é suportada para essa versão do Rclone",
       "backupFailed": "Falha ao fazer o backup da binário atual do Rclone: {{error}}",
@@ -3555,7 +4144,8 @@
       "profileNotRunning": "Nenhuma tarefa {{jobType}} ativa encontrada para o perfil '{{profile}}' em {{remote}}",
       "stopped": "Tarefa interrompida",
       "failed": "A tarefa falhou",
-      "lost": "O Rclone não reconhece mais esta tarefa. Ela expirou após terminar ou o motor foi reiniciado, então o resultado não está disponível."
+      "lost": "O Rclone não reconhece mais esta tarefa. Ela expirou após terminar ou o motor foi reiniciado, então o resultado não está disponível.",
+      "notRetryable": "Esta tarefa não pode ser repetida: só é possível repetir uma tarefa que falhou ou foi parada e que foi iniciada depois que o app foi aberto."
     },
     "cache": {
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
@@ -3593,7 +4183,8 @@
       "authExpired": "A autenticação do remoto expirou ou é inválida. Reautentique o remoto nas configurações.",
       "quotaExceeded": "Limite de requisições de API ou cota de armazenamento remoto excedida. Tente novamente mais tarde.",
       "networkError": "Não foi possível conectar ao servidor remoto. Verifique sua conexão e o endereço remoto.",
-      "notFound": "Diretório ou arquivo de destino não encontrado no remoto."
+      "notFound": "Diretório ou arquivo de destino não encontrado no remoto.",
+      "notInConfig": "O remoto “{{remote}}” não está na configuração do Rclone. Ele foi excluído ou renomeado fora do aplicativo, ou outro arquivo de configuração está em uso."
     },
     "updater": {
       "noPending": "Não há atualizações pendentes",
@@ -3603,34 +4194,21 @@
       "updateUnavailable": "O artefato de atualização não está mais disponível: {{error}}",
       "relaunchFailed": "Reinício falhou: {{error}}",
       "notWritable": "O caminho de atualização não é gravável",
-      "rollback": {
-        "exited": "O aplicativo atualizado foi encerrado antes de confirmar a inicialização (código {{code}}).",
-        "couldNotStart": "Não foi possível iniciar o aplicativo atualizado: {{error}}",
-        "interrupted": "A inicialização do aplicativo atualizado foi interrompida por um desligamento.",
-        "notConfirmed": "O aplicativo atualizado não confirmou a inicialização a tempo.",
-        "installFailed": "Não foi possível instalar a atualização: {{error}}"
-      },
-      "rolledBack": "A atualização {{version}} foi revertida: {{reason}}",
       "ioError": "Erro de E/S: {{error}}",
-      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "externallyManaged": "Esta instalação é atualizada pelo gerenciador de pacotes ou pelo sistema de implantação.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
-      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "unsupportedInstallation": "A instalação automática não é suportada nesta instalação.",
+      "notBuilt": "Esta versão não inclui uma atualização automática para esta instalação. Instale-a manualmente.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
-      "noPrivilegePrompt": "A instalação deste pacote precisa de uma solicitação de senha de administrador (pkexec, zenity ou kdialog), mas nenhuma foi encontrada.",
+      "noPrivilegePrompt": "Não há como pedir a senha de administrador aqui (pkexec com um agente do polkit, ou sudo com zenity ou kdialog). Baixe o pacote em “Ver no GitHub” e instale-o em um terminal: {{command}}",
       "verificationFailed": "Não foi possível verificar a atualização: a assinatura, a soma de verificação ou os metadados não correspondem.",
       "insecureDownload": "O download da atualização não foi fornecido via HTTPS.",
       "downloadTooLarge": "O download da atualização é maior do que o esperado.",
       "missingAsset": "A versão não tem nenhum arquivo de atualização chamado {{name}}.",
-      "unexpectedAsset": "A versão lista um arquivo de atualização inesperado ou duplicado.",
       "argumentsTooLong": "Os argumentos de inicialização são longos demais para serem mantidos durante uma atualização.",
-      "startupPending": "A atualização anterior ainda está confirmando que iniciou. Tente novamente em alguns segundos.",
-      "versionMustIncrease": "Uma atualização seguinte deve ter uma versão mais recente.",
       "invalidBundle": "O aplicativo portátil não é um pacote de aplicativo macOS completo.",
-      "missingBackup": "O backup da versão atual está ausente.",
       "invalidStagingDirectory": "A pasta de preparação da atualização é inválida.",
-      "helperFailed": "O assistente de atualização não pôde ser iniciado ({{error}}) e a reinicialização do aplicativo falhou: {{restart}}",
-      "processUnavailable": "Não foi possível supervisionar o processo do aplicativo atualizado.",
       "ownedByAnotherUser": "O arquivo do aplicativo pertence a outro usuário."
     },
     "settings": {
@@ -3689,8 +4267,9 @@
       "remoteRestartRequired": "O Rclone foi atualizado no servidor remoto. Por favor, reinicie manualmente o serviço de Rclone remoto para aplicar a nova versão."
     },
     "job": {
-      "stopped": "O tarefa foi concluído com sucesso",
-      "deleted": "O tarefa foi excluído com sucesso"
+      "stopped": "A tarefa foi parada com sucesso",
+      "deleted": "A tarefa foi excluída com sucesso",
+      "retried": "A tarefa {{id}} está sendo executada novamente"
     },
     "security": {
       "passwordRemoved": "Senha removida com sucesso",
@@ -3793,11 +4372,8 @@
     "serveCount": "Servir [{{active}}/{{total}}]",
     "quickRunsCount": "Execuções Rápidas [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Tarefa",
     "tooltipTasks": "Tarefas: {{count}}",
-    "tooltipMount": "1 Montagem",
     "tooltipMounts": "Montagens: {{count}}",
-    "tooltipServe": "1 Serviço",
     "tooltipServes": "Serviços: {{count}}",
     "workflowsCount": "Fluxos de Trabalho [{{active}}/{{total}}]",
     "indexCount": "Listagens de diretório [{{active}}/{{total}}]"
@@ -3806,17 +4382,21 @@
     "reason": "Operações ativas em andamento: {{details}}",
     "mounts": "Pontos de montagem: {{count}}",
     "jobs": "Tarefas: {{count}}",
-    "serves": "Servidores: {{count}}"
+    "serves": "Servidores: {{count}}",
+    "progress": "{{done}} de {{total}}",
+    "speed": "{{speed}}/s",
+    "timeLeft": "{{time}} restantes",
+    "checked": "Verificados: {{count}}"
   },
   "notification": {
     "title": {
       "mountSucceeded": "Montado com Sucesso",
       "mountFailed": "Erro de Montagem",
       "unmountSucceeded": "Desconectado",
-      "jobStarted": "Processo de {{type}} Iniciado",
-      "jobCompleted": "{{type}} Concluído",
-      "jobFailed": "{{type}} Falhou",
-      "jobStopped": "{{type}} Parado",
+      "jobStarted": "Operação iniciada: {{type}}",
+      "jobCompleted": "Operação concluída: {{type}}",
+      "jobFailed": "Operação com falha: {{type}}",
+      "jobStopped": "Operação interrompida: {{type}}",
       "serveStarted": "Servidor Online",
       "serveFailed": "Erro do Servidor",
       "serveStopped": "Servidor Parou",
@@ -3857,10 +4437,10 @@
       "mountSucceeded": "Montado com sucesso {{remote}} de {{backend}} em {{mountPoint}}.",
       "mountFailed": "Falha ao montar {{remote}} em {{backend}}: {{error}}",
       "unmountSucceeded": "{{remote}} desconectado do {{backend}}.",
-      "jobStarted": "Iniciado {{type}} para {{remote}} em {{backend}}.",
-      "jobCompleted": "Concluído com sucesso {{type}} para {{remote}} em {{backend}}.",
-      "jobFailed": "Falha de {{type}} para {{remote}} em {{backend}}: {{error}}",
-      "jobStopped": "Parado {{type}} para {{remote}} em {{backend}}.",
+      "jobStarted": "A operação “{{type}}” para {{remote}} em {{backend}} foi iniciada.",
+      "jobCompleted": "A operação “{{type}}” para {{remote}} em {{backend}} foi concluída com sucesso.",
+      "jobFailed": "A operação “{{type}}” para {{remote}} em {{backend}} falhou: {{error}}",
+      "jobStopped": "A operação “{{type}}” para {{remote}} em {{backend}} foi interrompida.",
       "serveStarted": "Iniciou o servidor para {{remote}} em {{backend}}.",
       "serveFailed": "Falha ao iniciar o servidor para {{remote}} no {{backend}}: {{error}}",
       "serveStopped": "Serviço parado para {{remote}} no {{backend}}.",
@@ -3897,6 +4477,26 @@
       "workflowStopped": "O fluxo '{{name}}' foi interrompido.",
       "unmountFailed": "Falha ao desmontar {{remote}} no {{backend}}: {{error}}",
       "serveStopFailed": "Falha ao parar o servidor {{protocol}} para {{remote}} no {{backend}}: {{error}}"
+    },
+    "jobTypes": {
+      "sync": "Sincronização",
+      "copy": "Cópia",
+      "move": "Movimentação",
+      "bisync": "BiSync",
+      "check": "Verificação",
+      "mount": "Montagem",
+      "copyurl": "Cópia de URL",
+      "mkdir": "Criação de pasta",
+      "cleanup": "Limpeza",
+      "delete": "Exclusão",
+      "rename": "Renomeação",
+      "rmdirs": "Remoção de diretórios vazios",
+      "index": "Listagens de diretório",
+      "upload": "Envio",
+      "download": "Download",
+      "archivecreate": "Arquivamento",
+      "archiveextract": "Extração de arquivo",
+      "cryptcheck": "Verificação criptográfica"
     }
   },
   "repairSheet": {
@@ -4119,6 +4719,11 @@
     "tabs": {
       "quickRun": "Execução Rápida",
       "workflow": "Fluxo de Trabalho"
+    },
+    "addMenu": {
+      "remote": "Criar Remote",
+      "quickRun": "Criar Execução Rápida",
+      "workflow": "Criar Fluxo de Trabalho"
     },
     "workflow": {
       "untitled": "Fluxo sem título",
@@ -4418,8 +5023,6 @@
         "appStartDesc": "Acionado automaticamente quando o RClone Manager inicia",
         "cleanup": "Esvaziar lixeira",
         "cleanupDesc": "Esvazia a lixeira do armazenamento remoto",
-        "cryptcheck": "Verificação de criptografia",
-        "cryptcheckDesc": "Verifica a integridade do remoto criptografado",
         "execScript": "Executar script",
         "execScriptDesc": "Executa um comando de terminal ou script local",
         "quickRun": "Execução rápida",

@@ -1,6 +1,8 @@
 use crate::{services, utils};
 
 pub fn run() {
+    // Read before a package update can replace the file.
+    let _ = super::lifecycle::executable();
     let cli_args =
         <crate::cli::CliArgs as clap::Parser>::try_parse().unwrap_or_else(|error| error.exit());
     if let Err(error) = cli_args.validate() {
@@ -8,10 +10,15 @@ pub fn run() {
         std::process::exit(1);
     }
     let app = rclone_manager_core::context::AppHandle::new(
-        std::sync::Arc::new(ServerHost),
+        std::sync::Arc::new(ServerHost::default()),
         crate::PRODUCT,
     );
     app.manage(cli_args.general.clone());
+    #[cfg(not(target_os = "macos"))]
+    super::tray::init(&app, &cli_args.headless);
+    // Before setup, which writes this server's entry when start at login is on.
+    #[cfg(not(target_os = "macos"))]
+    super::autostart::remove_legacy_entry();
     if let Err(error) = rclone_manager_core::app::setup_context(&app, None) {
         eprintln!("Failed to initialize application: {error}");
         std::process::exit(1);
@@ -22,6 +29,12 @@ pub fn run() {
         app.state::<std::sync::Arc<services::bridge::EventBridge>>()
             .inner(),
     );
+    super::instance::serve(&app);
+    #[cfg(not(target_os = "macos"))]
+    utils::spawn(rclone_manager_core::utils::app::send_to::adopt_entries(
+        app.clone(),
+        super::LEGACY_NAME,
+    ));
     rclone_manager_core::app::send_to::start(&app, cli_args.general);
     let code = utils::block_on(wait_for_shutdown(&app, shutdown_signal()));
     utils::block_on(async {
@@ -35,6 +48,11 @@ pub fn run() {
             }
         }
     });
+    // Windows keeps an icon that is never removed until the mouse passes over it.
+    #[cfg(not(target_os = "macos"))]
+    rclone_manager_core::services::tray::native::remove_before_exit(&app);
+    #[cfg(not(unix))]
+    super::instance::release(&app);
     #[cfg(not(unix))]
     if let Err(error) = super::lifecycle::spawn_pending_restart() {
         log::error!("Restart failed: {error}");
@@ -43,7 +61,13 @@ pub fn run() {
     std::process::exit(code);
 }
 
-struct ServerHost;
+#[derive(Default)]
+struct ServerHost {
+    /// Whether the panel the tray icon sits on is dark, read once at startup for
+    /// the "system" icon theme. Unread systems count as light.
+    #[cfg(not(target_os = "macos"))]
+    panel_dark: std::sync::OnceLock<bool>,
+}
 #[async_trait::async_trait]
 impl rclone_manager_core::context::Host for ServerHost {
     fn update_method(&self) -> services::updates::policy::UpdateMethod {
@@ -57,6 +81,44 @@ impl rclone_manager_core::context::Host for ServerHost {
     }
     fn restart(&self, app: &rclone_manager_core::context::AppHandle) -> Result<(), String> {
         super::lifecycle::restart(app)
+    }
+    fn prepare(
+        &self,
+        app: &rclone_manager_core::context::AppHandle,
+        paths: &services::paths::AppPaths,
+    ) -> Result<(), String> {
+        super::instance::claim(app, paths)
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn set_autostart(&self, enabled: bool) {
+        super::autostart::set(enabled);
+    }
+    /// Rewrites the entry, which may still hold the path and `--tray` argument of
+    /// the Tauri app.
+    #[cfg(not(target_os = "macos"))]
+    fn sync_autostart(&self) {
+        super::autostart::set(true);
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn run_on_main_thread(&self, task: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+        super::tray::run(task)
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn init_theme(&self) {
+        let dark = rclone_manager_core::utils::app::system_theme::detect_panel();
+        let _ = self.panel_dark.set(dark.unwrap_or(false));
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn is_system_dark(&self) -> bool {
+        self.panel_dark.get().copied().unwrap_or(false)
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn open_view(&self, view: services::tray::actions::TrayView<'_>) {
+        super::tray::open_view(view);
+    }
+    #[cfg(not(target_os = "macos"))]
+    fn open_folder(&self, path: &std::path::Path) -> Result<(), String> {
+        open::that_detached(path).map_err(|error| error.to_string())
     }
 }
 
@@ -119,7 +181,7 @@ mod tests {
         ])
         .unwrap();
         let app = rclone_manager_core::context::AppHandle::new(
-            std::sync::Arc::new(ServerHost),
+            std::sync::Arc::new(ServerHost::default()),
             crate::PRODUCT,
         );
         app.manage(args.general);

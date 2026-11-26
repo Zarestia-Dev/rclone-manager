@@ -50,7 +50,15 @@ export class AutomationService extends TauriBaseService {
   private async loadAutomations(): Promise<void> {
     try {
       const automations = await this.invokeCommand<Automation[]>('get_automations');
-      this._automations.set(automations);
+      // The backend keeps no order: sort once so lists and selections do not move on a refresh.
+      this._automations.set(
+        automations.sort(
+          (a, b) =>
+            a.remoteName.localeCompare(b.remoteName) ||
+            a.profileName.localeCompare(b.profileName) ||
+            a.id.localeCompare(b.id)
+        )
+      );
     } catch (error) {
       console.error('Failed to refresh automations:', error);
     }

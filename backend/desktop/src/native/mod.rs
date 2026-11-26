@@ -7,24 +7,18 @@ pub use runtime::run;
 
 #[cfg(all(
     feature = "desktop",
-    not(feature = "web-server"),
     any(target_os = "linux", windows, target_os = "macos")
 ))]
 mod accent;
-#[cfg(not(feature = "web-server"))]
 mod ipc;
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 mod portal;
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod protocol;
-#[cfg(any(not(feature = "web-server"), feature = "tray"))]
 pub(crate) mod theme;
-#[cfg(all(not(feature = "web-server"), desktop))]
+#[cfg(desktop)]
 mod window;
 
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod events;
-#[cfg(not(feature = "web-server"))]
 pub(crate) mod files;
 
 #[cfg(target_os = "android")]

@@ -462,6 +462,7 @@ describe('NavigationHistoryService', () => {
           provide: UiStateService,
           useValue: {
             selectedMainView: view,
+            defaultView: signal<MainView>('main_menu'),
             activeWorkspace: active,
             setMainView: view.set,
             selectedRemote: remote,
@@ -578,6 +579,7 @@ describe('Workspace restoration on startup', () => {
           provide: UiStateService,
           useValue: {
             selectedMainView: view,
+            defaultView: signal<MainView>(base),
             activeWorkspace: active,
             setMainView: view.set,
             selectedRemote: remote,

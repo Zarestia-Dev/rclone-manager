@@ -1,14 +1,5 @@
 import { AppNavigationService } from './services/ui/app-navigation.service';
-import {
-  afterNextRender,
-  ChangeDetectionStrategy,
-  Component,
-  effect,
-  inject,
-  Injector,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, OnInit, signal } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -86,8 +77,6 @@ export class AppComponent implements OnInit {
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly appUpdaterService = inject(AppUpdaterService);
-  private readonly injector = inject(Injector);
-  private startupConfirmationScheduled = false;
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly androidShareService = inject(AndroidShareService);
   private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
@@ -148,9 +137,6 @@ export class AppComponent implements OnInit {
           this.initializing.set(false);
         }
         hadAccess = false;
-        if (this.vaultService.isStatusKnown() && this.vaultService.isVaultLocked()) {
-          this.confirmStartupAfterRender();
-        }
         this.snackBar.dismiss();
         this.dialogs.closeAll();
         return;
@@ -186,7 +172,6 @@ export class AppComponent implements OnInit {
         return;
       }
       if (this.vaultService.isVaultLocked()) {
-        this.confirmStartupAfterRender();
         return;
       }
       await this.appSettingsService.loadSettings();
@@ -223,7 +208,6 @@ export class AppComponent implements OnInit {
         this.navigation.initialize(standalone);
       }
       this.appInitialized = true;
-      this.confirmStartupAfterRender();
     } catch (error) {
       if (revision === this.initializationRevision) {
         this.initializationFailed.set(true);
@@ -235,14 +219,6 @@ export class AppComponent implements OnInit {
         this.appInitializing = false;
       }
     }
-  }
-
-  private confirmStartupAfterRender(): void {
-    if (this.startupConfirmationScheduled) return;
-    this.startupConfirmationScheduled = true;
-    afterNextRender(() => void this.appUpdaterService.confirmStartup(), {
-      injector: this.injector,
-    });
   }
 
   private setupDefaultViewListener(): void {

@@ -121,7 +121,6 @@ impl MountParams {
         builder
             .insert("fs", self.source.as_str())
             .insert("mountPoint", self.mount_point.as_str())
-            .insert("_async", true)
             .with_vfs_options(self.vfs_options.as_ref())
             .with_filter_options(self.filter_options.as_ref())
             .with_backend_options(self.backend_options.as_ref());
@@ -804,7 +803,6 @@ Connection: close
         let body = params.to_rclone_body().unwrap();
         assert_eq!(body["fs"], params.source);
         assert_eq!(body["mountPoint"], params.mount_point);
-        assert_eq!(body["_async"], true);
     }
 
     #[test]
@@ -928,7 +926,6 @@ Connection: close
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("fs").unwrap(), "pCloud:backups");
-        assert_eq!(obj.get("_async").unwrap(), &json!(true));
 
         // Flat lowercase keys placed directly at top-level body (normalized)
         assert_eq!(obj.get("vfs_cache_mode").unwrap(), "writes");

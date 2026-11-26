@@ -125,31 +125,21 @@ export function buildRemoteProfileStatus({
 function buildOperationState(jobs: JobInfo[], profiles: ConfiguredProfiles): RemoteOperationState {
   const configured = profiles.knownNames;
   const activeProfiles = new Map<string, JobInfo>();
-  const lastRunProfiles = new Map<string, JobInfo>();
-  let latest: JobInfo | undefined;
-  let running: JobInfo | undefined;
+  let active = false;
   for (const job of jobs) {
-    if (!latest || compareJobsNewestFirst(job, latest) < 0) latest = job;
-    const isRunning = job.status === JOB_STATUS.Running;
-    if (isRunning && (!running || compareJobsNewestFirst(job, running) < 0)) running = job;
+    if (job.status !== JOB_STATUS.Running) continue;
+    active = true;
     const profile = profileOf(job)?.trim();
     if (!profile || !configured.has(profile)) continue;
-    const previous = lastRunProfiles.get(profile);
-    if (!previous || compareJobsNewestFirst(job, previous) < 0) lastRunProfiles.set(profile, job);
-    const active = activeProfiles.get(profile);
-    if (isRunning && (!active || compareJobsNewestFirst(job, active) < 0))
-      activeProfiles.set(profile, job);
+    const current = activeProfiles.get(profile);
+    if (!current || compareJobsNewestFirst(job, current) < 0) activeProfiles.set(profile, job);
   }
   return {
-    active: !!running,
-    jobId: running?.jobid ?? latest?.jobid,
+    active,
     configuredProfiles: profiles.names,
     profileBrowsePaths: profiles.browsePaths,
     activeProfiles: Object.fromEntries(
       [...activeProfiles].map(([profile, job]) => [profile, job.jobid])
-    ),
-    lastRunProfiles: Object.fromEntries(
-      [...lastRunProfiles].map(([profile, job]) => [profile, job.jobid])
     ),
   };
 }

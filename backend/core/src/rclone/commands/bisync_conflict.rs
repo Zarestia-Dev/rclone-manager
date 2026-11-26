@@ -8,10 +8,10 @@
 use std::collections::HashSet;
 
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::context::AppHandle;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
+use crate::rclone::commands::job::{JobMetadata, run_job};
 use crate::rclone::endpoints::operations;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
@@ -110,29 +110,6 @@ fn fs_of<'a>(path1: &'a str, path2: &'a str, side: Side) -> &'a str {
     }
 }
 
-async fn run(
-    app: &AppHandle,
-    endpoint: &str,
-    mut payload: Value,
-    metadata: JobMetadata,
-) -> Result<Value, String> {
-    if let Some(object) = payload.as_object_mut() {
-        object.insert("_async".to_string(), json!(true));
-    }
-    let submission = submit_job_with_options(
-        app.clone(),
-        endpoint,
-        payload,
-        metadata,
-        SubmitJobOptions {
-            wait_for_completion: true,
-            backend: None,
-        },
-    )
-    .await?;
-    Ok(submission.output.unwrap_or_else(|| json!({})))
-}
-
 /// Keeps the version of `keep` of the conflict on both paths. `path1` and `path2` are the paths
 /// the bisync job ran on.
 pub async fn resolve_bisync_conflict(
@@ -149,8 +126,8 @@ pub async fn resolve_bisync_conflict(
     for side in [Side::Path1, Side::Path2] {
         let fs = fs_of(&path1, &path2, side);
         for name in [&conflict.path1_now, &conflict.path2_now] {
-            let stat = run(
-                &app,
+            let stat = run_job(
+                app.clone(),
                 operations::STAT,
                 json!({"fs": fs, "remote": name, "opt": {"filesOnly": true}}),
                 JobMetadata::for_query(
@@ -160,6 +137,7 @@ pub async fn resolve_bisync_conflict(
                     origin.clone(),
                     group.clone(),
                 ),
+                None,
             )
             .await?;
             if stat.get("item").is_some_and(|item| !item.is_null()) {
@@ -217,7 +195,7 @@ pub async fn resolve_bisync_conflict(
             origin.clone(),
             group.clone(),
         );
-        run(&app, endpoint, payload, metadata)
+        run_job(app.clone(), endpoint, payload, metadata, None)
             .await
             .map_err(|error| {
                 crate::localized_error!(

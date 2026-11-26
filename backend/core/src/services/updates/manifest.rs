@@ -1,10 +1,15 @@
 //! Signed catalog metadata and artifact authentication, independent of transport.
-use crate::utils::archive::{read_zip_member, safe_member_path};
+//!
+//! `scripts/create-update-manifest.cjs` checks what it signs. Here the signature,
+//! the payload checksum and the version, kind and target asked for are checked;
+//! fields this version does not know are ignored, and only this installation's
+//! entry is read, so nothing a later release adds stops an installed version from
+//! updating.
+use crate::utils::archive::read_zip_member;
 use base64::Engine;
 use sha2::{Digest, Sha256};
 
 pub(super) const PUBLIC_KEY: &str = include_str!("../../../../../resources/updater.pub");
-pub(super) const MAX_ARTIFACT_SIZE: u64 = 512 * 1024 * 1024;
 pub(super) const MAX_MANIFEST_SIZE: u64 = 64 * 1024;
 pub(super) const CATALOG_NAME: &str = "updater.json";
 
@@ -15,6 +20,30 @@ pub enum ArtifactKind {
     Portable,
     Server,
     Android,
+    /// A Linux AppImage, published as the release's own `.AppImage` file.
+    Appimage,
+    /// The server packages, installed by their installer.
+    Deb,
+    Rpm,
+    /// The server's Arch Linux package.
+    Pacman,
+    Nsis,
+    Msi,
+}
+
+impl ArtifactKind {
+    /// The extension the kind's installer needs its file to have.
+    pub(super) fn extension(self) -> &'static str {
+        match self {
+            Self::Android => "apk",
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+            Self::Pacman => "pkg.tar.zst",
+            Self::Nsis => "exe",
+            Self::Msi => "msi",
+            Self::Portable | Self::Server | Self::Appimage => "payload",
+        }
+    }
 }
 
 impl std::fmt::Display for ArtifactKind {
@@ -23,20 +52,27 @@ impl std::fmt::Display for ArtifactKind {
             Self::Portable => "portable",
             Self::Server => "server",
             Self::Android => "android",
+            Self::Appimage => "appimage",
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+            Self::Pacman => "pacman",
+            Self::Nsis => "nsis",
+            Self::Msi => "msi",
         })
     }
 }
 
 #[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 struct Catalog {
     schema_version: u32,
     version: String,
-    entries: std::collections::HashMap<String, SignedManifest>,
+    /// Read only for this installation's entry, so another entry's shape never
+    /// matters here.
+    entries: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 struct SignedManifest {
     manifest: String,
     signature: String,
@@ -48,30 +84,38 @@ pub(super) fn select_manifest(
     kind: ArtifactKind,
     target: &str,
     key: &str,
-) -> Result<Option<(Manifest, Vec<u8>, String)>, String> {
-    let catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
+) -> Result<Option<Manifest>, String> {
+    let mut catalog: Catalog = serde_json::from_slice(bytes).map_err(verification_failed)?;
     if catalog.schema_version != 1 || catalog.version != version {
         return Err(verification_failed(
             "Custom update catalog schema or version does not match",
         ));
     }
-    let Some(entry) = catalog.entries.get(&format!("{kind}-{target}")) else {
+    let Some(entry) = catalog.entries.remove(&format!("{kind}-{target}")) else {
         return Ok(None);
     };
+    let entry: SignedManifest = serde_json::from_value(entry).map_err(verification_failed)?;
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&entry.manifest)
         .map_err(verification_failed)?;
     let manifest = Manifest::from_signed(&bytes, &entry.signature, key)?;
     manifest.validate(version, kind, target)?;
-    Ok(Some((manifest, bytes, entry.signature.clone())))
+    Ok(Some(manifest))
 }
 
+/// Versions up to 0.3.7-beta.1 reject a catalog, an entry or a manifest with a
+/// field they do not know, and never update again. The catalog keeps exactly
+/// `schemaVersion`, `version` and `entries`, every entry exactly `manifest` and
+/// `signature`, and the manifests of the kinds they read (portable, server,
+/// android, appimage, deb, rpm, nsis, msi) these fields. Only a new kind's
+/// manifest may differ: those versions never decode it.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct Manifest {
     pub version: String,
     pub kind: ArtifactKind,
     pub target: String,
+    /// The release file, downloaded from the release by this name.
     pub asset: String,
     pub size: u64,
     pub sha256: String,
@@ -81,7 +125,7 @@ pub(super) struct Manifest {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct ArchiveInfo {
     pub binary_path: String,
     pub size: u64,
@@ -90,24 +134,6 @@ pub(super) struct ArchiveInfo {
 }
 
 impl ArchiveInfo {
-    fn validate(&self, manifest: &Manifest) -> Result<(), String> {
-        if manifest.kind == ArtifactKind::Android
-            || !manifest.asset.ends_with(".zip")
-            || !["windows-", "linux-", "macos-"]
-                .iter()
-                .any(|prefix| manifest.target.starts_with(prefix))
-            || !valid_artifact(self.size, &self.sha256, &self.signature)
-            || !safe_member_path(&self.binary_path)
-            || self.binary_path.ends_with('/')
-            || (manifest.kind == ArtifactKind::Portable
-                && manifest.target.starts_with("macos-")
-                && manifest.bundle_root().is_none())
-        {
-            return Err(verification_failed("Invalid update ZIP metadata"));
-        }
-        Ok(())
-    }
-
     pub(super) fn verify(&self, bytes: &[u8], key: &str) -> Result<(), String> {
         if bytes.len() as u64 != self.size || sha256(bytes) != self.sha256 {
             return Err(verification_failed(
@@ -192,41 +218,16 @@ impl Manifest {
             self.verify_payload_with_key(bytes, key)
         }
     }
-    /// Android version codes cannot decrease, so only that kind refuses a channel switch.
-    pub(super) fn version_allowed(&self, current: &str) -> bool {
-        if self.kind == ArtifactKind::Android {
-            super::is_version_newer(current, &self.version)
-        } else {
-            super::is_update_candidate(current, &self.version)
-        }
-    }
-
     pub(super) fn validate(
         &self,
         version: &str,
         kind: ArtifactKind,
         target: &str,
     ) -> Result<(), String> {
-        if self.version != version
-            || self.kind != kind
-            || self.target != target
-            || !self.version_allowed(env!("CARGO_PKG_VERSION"))
-        {
+        if self.version != version || self.kind != kind || self.target != target {
             return Err(verification_failed(
                 "Update product, version or architecture does not match",
             ));
-        }
-        if !valid_asset_name(&self.asset)
-            || !valid_artifact(self.size, &self.sha256, &self.signature)
-        {
-            return Err(verification_failed("Invalid update artifact metadata"));
-        }
-        match &self.archive {
-            Some(archive) => archive.validate(self)?,
-            None if self.kind == ArtifactKind::Server => {
-                return Err(verification_failed("Server updates must be ZIP archives"));
-            }
-            None => {}
         }
         Ok(())
     }
@@ -248,30 +249,11 @@ pub(super) fn verification_failed(detail: impl std::fmt::Display) -> String {
     crate::localized_error!("backendErrors.updater.verificationFailed")
 }
 
-fn valid_artifact(size: u64, hash: &str, signature: &str) -> bool {
-    size > 0
-        && size <= MAX_ARTIFACT_SIZE
-        && hash.len() == 64
-        && hash
-            .bytes()
-            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
-        && !signature.trim().is_empty()
-}
-
 fn sha256(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
-}
-
-pub(super) fn valid_asset_name(name: &str) -> bool {
-    !name.is_empty()
-        && name.len() <= 160
-        && !name.starts_with('.')
-        && name
-            .bytes()
-            .all(|c| c.is_ascii_alphanumeric() || b"._-".contains(&c))
 }
 
 pub(super) fn target() -> String {
@@ -310,7 +292,6 @@ pub(super) fn test_portable_manifest(target: &str) -> Manifest {
     )
     .unwrap()
     .unwrap()
-    .0
 }
 
 #[cfg(test)]
@@ -337,23 +318,30 @@ mod tests {
     }
 
     #[test]
-    fn metadata_rejects_unknown_fields_and_empty_signatures() {
+    fn fields_added_by_later_releases_are_ignored() {
         let mut value = serde_json::to_value(test_portable_manifest("linux-x86_64")).unwrap();
-        value["unexpected"] = serde_json::json!(true);
-        assert!(serde_json::from_value::<Manifest>(value.clone()).is_err());
-        value.as_object_mut().unwrap().remove("unexpected");
-        value["archive"]["unexpected"] = serde_json::json!(true);
-        assert!(serde_json::from_value::<Manifest>(value.clone()).is_err());
-        value["archive"]
-            .as_object_mut()
-            .unwrap()
-            .remove("unexpected");
-        value["signature"] = serde_json::json!("");
+        value["added"] = serde_json::json!(true);
+        value["archive"]["added"] = serde_json::json!(true);
         let manifest: Manifest = serde_json::from_value(value).unwrap();
+        manifest
+            .validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
+            .unwrap();
+
+        let mut catalog = catalog_fixture();
+        catalog["added"] = serde_json::json!(true);
+        catalog["entries"]["portable-linux-x86_64"]["added"] = serde_json::json!(true);
+        // An entry of a kind this version does not know, in a shape of its own.
+        catalog["entries"]["future-linux-x86_64"] = serde_json::json!({ "parts": [1, 2] });
         assert!(
-            manifest
-                .validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
-                .is_err()
+            select_manifest(
+                &serde_json::to_vec(&catalog).unwrap(),
+                "99.0.0",
+                ArtifactKind::Portable,
+                "linux-x86_64",
+                include_str!("fixtures/public.key")
+            )
+            .unwrap()
+            .is_some()
         );
     }
     #[test]
@@ -413,7 +401,6 @@ mod tests {
         )
         .unwrap()
         .unwrap()
-        .0
     }
 
     #[test]
@@ -454,59 +441,50 @@ mod tests {
     }
 
     #[test]
-    fn server_updates_must_be_zip_archives() {
-        let manifest = server_manifest("linux-x86_64");
-        manifest
-            .validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
-            .unwrap();
-        let mut raw = manifest.clone();
-        raw.archive = None;
+    fn appimages_install_the_signed_release_bundle_itself() {
+        let key = include_str!("fixtures/appimage-public.key");
+        let manifest = select_manifest(
+            include_bytes!("fixtures/appimage-catalog.json"),
+            "99.0.0",
+            ArtifactKind::Appimage,
+            "linux-x86_64",
+            key,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(manifest.asset, "RClone.Manager_99.0.0_amd64.AppImage");
+        let payload = include_bytes!("fixtures/payload.txt");
+        assert_eq!(
+            manifest.prepare_download(payload.to_vec(), key).unwrap(),
+            payload
+        );
+        manifest.verify_install_payload(payload, key).unwrap();
+        assert!(manifest.verify_install_payload(b"tampered", key).is_err());
         assert!(
-            raw.validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
+            manifest
+                .verify_install_payload(payload, PUBLIC_KEY)
                 .is_err()
         );
-        let mut renamed = manifest;
-        renamed.asset = "server-linux-x86_64-99.0.0".into();
-        assert!(
-            renamed
-                .validate("99.0.0", ArtifactKind::Server, "linux-x86_64")
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn archive_metadata_rejects_paths_wrong_products_and_missing_authentication() {
-        let manifest = test_portable_manifest("linux-x86_64");
-        let archive = manifest.archive.as_ref().unwrap();
-        for path in ["", "../binary", "/absolute", "C:/binary", "a\\b", "a//b"] {
-            let mut invalid = archive.clone();
-            invalid.binary_path = path.into();
-            assert!(invalid.validate(&manifest).is_err());
-        }
-        for size in [0, MAX_ARTIFACT_SIZE + 1] {
-            let mut invalid = archive.clone();
-            invalid.size = size;
-            assert!(invalid.validate(&manifest).is_err());
-        }
-        let mut invalid = archive.clone();
-        invalid.signature.clear();
-        assert!(invalid.validate(&manifest).is_err());
-        let mut invalid = manifest.clone();
-        invalid.kind = ArtifactKind::Android;
-        assert!(archive.validate(&invalid).is_err());
-        let mut invalid = manifest.clone();
-        invalid.asset = "portable.tar.gz".into();
-        assert!(archive.validate(&invalid).is_err());
-        let mut invalid = manifest;
-        invalid.target = "macos-aarch64".into();
-        assert!(
-            invalid
-                .archive
-                .as_ref()
+        // The catalog entry is bound to its kind and architecture.
+        for (kind, target) in [
+            (ArtifactKind::Portable, "linux-x86_64"),
+            (ArtifactKind::Appimage, "linux-aarch64"),
+        ] {
+            assert!(
+                select_manifest(
+                    include_bytes!("fixtures/appimage-catalog.json"),
+                    "99.0.0",
+                    kind,
+                    target,
+                    key
+                )
                 .unwrap()
-                .validate(&invalid)
-                .is_err()
-        );
+                .is_none()
+            );
+        }
+        manifest
+            .validate("99.0.0", ArtifactKind::Appimage, "linux-x86_64")
+            .unwrap();
     }
 
     fn catalog_fixture() -> serde_json::Value {
@@ -523,9 +501,9 @@ mod tests {
     }
 
     #[test]
-    fn catalog_preserves_exact_signed_bytes_for_the_existing_install_helper() {
+    fn catalog_entries_are_bound_to_their_kind_target_version_and_key() {
         let catalog = serde_json::to_vec(&catalog_fixture()).unwrap();
-        let (manifest, bytes, signature) = select_manifest(
+        let manifest = select_manifest(
             &catalog,
             "99.0.0",
             ArtifactKind::Portable,
@@ -534,8 +512,6 @@ mod tests {
         )
         .unwrap()
         .unwrap();
-        assert_eq!(bytes, include_bytes!("fixtures/manifest.json"));
-        assert_eq!(signature, include_str!("fixtures/manifest.json.sig").trim());
         manifest
             .verify_payload_with_key(
                 include_bytes!("fixtures/payload.txt"),
@@ -668,21 +644,7 @@ mod tests {
         }
     }
     #[test]
-    fn only_android_refuses_to_leave_a_prerelease_for_an_older_stable_version() {
-        let mut m = manifest();
-        m.version = "0.3.3".into();
-        for kind in [ArtifactKind::Portable, ArtifactKind::Server] {
-            m.kind = kind;
-            assert!(m.version_allowed("0.3.4-beta.1"));
-            assert!(!m.version_allowed("0.3.4"));
-        }
-        m.kind = ArtifactKind::Android;
-        assert!(!m.version_allowed("0.3.4-beta.1"));
-        assert!(m.version_allowed("0.3.2"));
-    }
-
-    #[test]
-    fn metadata_is_bound_to_product_version_architecture_and_size() {
+    fn metadata_is_bound_to_product_version_and_architecture() {
         let m = manifest();
         assert!(
             m.validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
@@ -695,28 +657,9 @@ mod tests {
         ] {
             assert!(m.validate(v, k, t).is_err());
         }
-        for size in [0, MAX_ARTIFACT_SIZE + 1] {
-            assert!(
-                Manifest { size, ..manifest() }
-                    .validate("99.0.0", ArtifactKind::Portable, "linux-x86_64")
-                    .is_err()
-            );
-        }
     }
     #[test]
-    fn unsafe_names_unsigned_and_tampered_payloads_are_rejected() {
-        for name in [
-            "",
-            "../binary",
-            "a/b",
-            "C:\\app.exe",
-            ".hidden",
-            "a b",
-            "ü.exe",
-        ] {
-            assert!(!valid_asset_name(name));
-        }
-        assert!(valid_asset_name("portable-windows-aarch64.exe"));
+    fn unsigned_and_tampered_payloads_are_rejected() {
         assert!(
             manifest()
                 .verify_payload_with_key(b"abc", PUBLIC_KEY)

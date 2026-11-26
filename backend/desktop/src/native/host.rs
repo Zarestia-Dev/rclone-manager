@@ -35,23 +35,10 @@ impl Host for NativeHost {
         resolve_paths(&self.0)
     }
     fn restart(&self, _app: &CoreHandle) -> Result<(), String> {
+        // Tauri's restart exits without `RunEvent::Exit`; the tray is not Tauri's.
+        #[cfg(feature = "tray")]
+        crate::services::tray::native::remove_before_exit(_app);
         self.0.restart()
-    }
-    #[cfg(all(unix, feature = "portable"))]
-    fn restart_updated_binary(
-        &self,
-        executable: &std::path::Path,
-        previous: &std::path::Path,
-        arguments: &[std::ffi::OsString],
-        working_directory: &std::path::Path,
-    ) -> Result<(), String> {
-        self.0.cleanup_before_exit();
-        crate::services::updates::binary::restart(
-            executable,
-            previous,
-            arguments,
-            working_directory,
-        )
     }
     fn exit(&self, code: i32) {
         self.0.exit(code);
@@ -71,27 +58,31 @@ impl Host for NativeHost {
     ) -> Result<(), String> {
         #[cfg(feature = "tray")]
         {
-            _app.manage(crate::desktop::tray::TrayMenuState::default());
+            use tauri::Manager;
+            let state = crate::services::tray::TrayMenuState::default();
+            // `--tray` shows the tray even when the setting is off.
+            let forced = self.0.state::<crate::cli::CliArgs>().start_in_tray();
+            state
+                .requested_visible
+                .store(forced, std::sync::atomic::Ordering::SeqCst);
+            _app.manage(state);
         }
         super::setup::prepare(&self.0, paths).map_err(|e| e.to_string())
     }
     fn init_theme(&self) {
-        #[cfg(any(not(feature = "web-server"), feature = "tray"))]
         super::theme::init_system_theme();
     }
     fn monitor_theme(&self) {
-        #[cfg(any(not(feature = "web-server"), feature = "tray"))]
         super::theme::monitor_theme_changes();
     }
     fn cleanup(&self) {
-        #[cfg(not(feature = "web-server"))]
         super::files::cleanup_temp_views(&self.0);
     }
     fn confirm_exit(
         &self,
         _summary: crate::services::lifecycle::exit::ActiveOperationsSummary,
     ) -> ExitDecision {
-        #[cfg(all(desktop, not(feature = "web-server")))]
+        #[cfg(desktop)]
         {
             use crate::context::BackendContext;
             use tauri::{Emitter, Manager};
@@ -121,36 +112,47 @@ impl Host for NativeHost {
             }
             ExitDecision::Deferred
         }
-        #[cfg(any(mobile, feature = "web-server"))]
+        #[cfg(mobile)]
         ExitDecision::Proceed
     }
     #[cfg(feature = "tray")]
-    async fn setup_tray(&self) -> Result<(), String> {
-        use crate::context::BackendContext;
-        use tauri::Manager;
-        let args = self.0.state::<crate::cli::CliArgs>();
-        let manager = self
-            .0
-            .backend_state::<crate::services::settings::AppSettingsManager>();
-        let settings = manager.get_all().map_err(|e| e.to_string())?;
-        if !settings.general.tray_enabled && !args.start_in_tray() {
-            return Ok(());
+    fn run_on_main_thread(&self, task: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+        self.0.run_on_main_thread(task).map_err(|e| e.to_string())
+    }
+    #[cfg(feature = "tray")]
+    fn open_view(&self, view: crate::services::tray::actions::TrayView<'_>) {
+        use crate::services::tray::actions::TrayView;
+        match view {
+            TrayView::Main => crate::desktop::window::present_main_window(&self.0),
+            TrayView::FileBrowser(remote) => {
+                log::info!("Tray: opening in-app browser for {remote:?}");
+                let (app, options) = (
+                    self.0.clone(),
+                    crate::desktop::window::nautilus_window(remote),
+                );
+                crate::utils::spawn(async move {
+                    crate::desktop::window::new_window(app, options).await;
+                });
+            }
         }
+    }
+    #[cfg(feature = "tray")]
+    fn open_folder(&self, path: &std::path::Path) -> Result<(), String> {
+        use tauri_plugin_opener::OpenerExt;
         self.0
-            .backend_state::<crate::desktop::tray::TrayMenuState>()
-            .requested_visible
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-        crate::desktop::tray::setup::setup_tray(self.0.clone())
-            .await
+            .opener()
+            .open_path(path.to_string_lossy(), None::<&str>)
             .map_err(|e| e.to_string())
     }
+    /// The Windows taskbar follows the Windows mode, not the app mode the window
+    /// uses, so the tray reads it there (one registry read per rebuild).
     #[cfg(feature = "tray")]
-    fn update_tray(&self) {
-        crate::desktop::tray::events::trigger_tray_update(self.0.clone());
-    }
-    #[cfg(feature = "tray")]
-    fn set_tray_visible(&self, enabled: bool) {
-        crate::desktop::tray::events::handle_tray_visibility_change(&self.0, enabled);
+    fn is_system_dark(&self) -> bool {
+        #[cfg(windows)]
+        if let Some(dark) = crate::utils::app::system_theme::detect_panel() {
+            return dark;
+        }
+        super::theme::is_system_dark()
     }
     #[cfg(any(autostart_plugin, autostart_portal))]
     fn set_autostart(&self, enabled: bool) {
@@ -172,7 +174,7 @@ impl Host for NativeHost {
         &self,
         release: &crate::utils::github_client::Release,
         expected_version: &str,
-    ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
+    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
         super::updater::check_native_updater(&self.0, release, expected_version).await
     }
 }

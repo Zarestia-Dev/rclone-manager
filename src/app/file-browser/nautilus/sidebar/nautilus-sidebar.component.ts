@@ -20,7 +20,6 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE, fileBrowserItemKey } from '@app/types';
-import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import {
   ItemOrderVisibilityModalComponent,
@@ -57,7 +56,6 @@ function sortAndFilterRoots(
     MatToolbarModule,
     MatDividerModule,
     CdkMenuModule,
-    OperationsPanelComponent,
   ],
   templateUrl: './nautilus-sidebar.component.html',
   styleUrl: './nautilus-sidebar.component.scss',
@@ -96,6 +94,7 @@ export class NautilusSidebarComponent {
   readonly starredSelected = output<void>();
   readonly toggleSearch = output<void>();
   readonly requestShortcuts = output<void>();
+  readonly requestPreferences = output<void>();
   readonly sidenavAction = output<'close' | 'toggle'>();
 
   readonly requestAbout = output<ExplorerRoot>();
@@ -255,7 +254,6 @@ export class NautilusSidebarComponent {
     return {
       id: root.name,
       label: root.label || root.name,
-      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
       icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
       isVisible,
     };

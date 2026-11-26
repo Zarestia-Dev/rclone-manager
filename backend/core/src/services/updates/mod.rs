@@ -1,25 +1,20 @@
 #[cfg(all(feature = "updater", target_os = "android"))]
 mod android;
-mod availability;
 #[cfg(feature = "updater")]
 pub mod binary;
 #[cfg(feature = "updater")]
 mod download;
 #[cfg(feature = "updater")]
-pub mod health;
-#[cfg(feature = "updater")]
 pub mod install;
 #[cfg(feature = "updater")]
 mod manifest;
 #[cfg(feature = "updater")]
+mod package;
+#[cfg(feature = "updater")]
 pub use manifest::ArtifactKind;
 pub mod policy;
 #[cfg(feature = "updater")]
-mod process_tree;
-#[cfg(feature = "updater")]
 mod signed;
-#[cfg(feature = "updater")]
-mod supervisor;
 
 use crate::context::AppHandle;
 use crate::services::settings::AppSettingsManager;
@@ -60,14 +55,31 @@ impl Drop for CheckingGuard<'_> {
 use crate::utils::version::{clean_app_version, is_update_candidate, is_version_newer};
 
 /// Installers that replace the running build may move a pre-release to a stable
-/// release with a lower version number. Packages (including DEB/RPM installed by
-/// Tauri) only move forward: `rpm -U` refuses downgrades, package managers decide
-/// for themselves, and Android version codes cannot decrease.
-fn is_offered(installation: &policy::UpdatePolicy, current: &str, release: &str) -> bool {
+/// release with a lower version number, so that leaving the beta channel does not
+/// wait for the next stable version. On the beta channel that would be a
+/// downgrade: its newest release is older than this build only when this build's
+/// own release is missing (a local build, or a release that was withdrawn).
+/// Packages (including DEB/RPM installed by Tauri) only move forward: `rpm -U` and
+/// an MSI refuse downgrades, pacman would downgrade without asking, package
+/// managers decide for themselves, and Android version codes cannot decrease.
+fn is_offered(
+    installation: &policy::UpdatePolicy,
+    channel: &str,
+    current: &str,
+    release: &str,
+) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
-        (_, InstallationKind::Deb | InstallationKind::Rpm) => is_version_newer(current, release),
-        (UpdateMethod::Tauri | UpdateMethod::Binary, _) => is_update_candidate(current, release),
+        (
+            _,
+            InstallationKind::Deb
+            | InstallationKind::Rpm
+            | InstallationKind::Pacman
+            | InstallationKind::Msi,
+        ) => is_version_newer(current, release),
+        (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
+            is_update_candidate(current, release)
+        }
         _ => is_version_newer(current, release),
     }
 }
@@ -121,9 +133,9 @@ async fn check_releases(
 ) -> Result<Option<UpdateInfo>> {
     info!("Checking for app updates on channel: {channel}");
     log::debug!(
-        "Update context: current={}, product={}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
+        "Update context: current={}, product={:?}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
         env!("CARGO_PKG_VERSION"),
-        app.product().release_prefix,
+        app.product().release_prefixes,
         installation.installation,
         installation.method,
         std::env::consts::OS,
@@ -134,14 +146,7 @@ async fn check_releases(
 
     let releases = github_client::get_releases(OWNER, REPO).await?;
     log::debug!("Received {} releases", releases.len());
-    let release = select_release(
-        &releases,
-        channel,
-        app.product().release_prefix,
-        &installation,
-    )
-    .await?;
-    let Some(release) = release else {
+    let Some(release) = latest_release(&releases, channel, app.product().release_prefixes) else {
         info!("No suitable release found for channel: {channel}");
         forget_update(updater_state);
         return Ok(None);
@@ -175,7 +180,12 @@ async fn update_for_release(
     let current_version_str = env!("CARGO_PKG_VERSION").to_string();
     let release_version_str = clean_app_version(&release.tag_name);
 
-    if !is_offered(&installation, &current_version_str, release_version_str) {
+    if !is_offered(
+        &installation,
+        channel,
+        &current_version_str,
+        release_version_str,
+    ) {
         info!("App is up to date (current: {current_version_str}, latest: {release_version_str})");
         return Ok(None);
     }
@@ -194,20 +204,18 @@ async fn update_for_release(
         channel: Some(channel.to_string()),
     };
 
-    // No installer of ours applies: announce what the owning package source offers.
+    // No installer of ours applies: announce it, the owning package source installs it.
     let externally_managed = installation.method == policy::UpdateMethod::Unavailable;
-    if externally_managed && !external_update_published(app, release, &installation).await? {
-        return Ok(None);
-    }
     #[cfg(not(feature = "updater"))]
     if !externally_managed {
         return Ok(None);
     }
 
     #[cfg(feature = "updater")]
-    let pending_action = if externally_managed {
-        None
+    let (pending_action, installation) = if externally_managed {
+        (None, installation)
     } else {
+        use crate::utils::types::updater::ReleaseArtifact;
         let result = match installation.method {
             policy::UpdateMethod::Tauri => {
                 app.host()
@@ -217,13 +225,28 @@ async fn update_for_release(
             policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
                 signed::check(app, release, &installation).await
             }
-            policy::UpdateMethod::Unavailable => Ok(None),
+            policy::UpdateMethod::Unavailable => Ok(ReleaseArtifact::Unpublished),
         };
         match result {
-            Ok(Some(action)) => installation.can_install.then_some(action),
-            Ok(None) => {
+            Ok(ReleaseArtifact::Found(action)) => {
+                (installation.can_install.then_some(action), installation)
+            }
+            // A build that is no longer made must not hear "up to date" forever.
+            Ok(ReleaseArtifact::NotBuilt) => {
                 info!(
-                    "No compatible update artifact in {}; suppressing update announcement",
+                    "{} has no update for this installation; announcing it as a manual update",
+                    release.tag_name
+                );
+                let installation = policy::UpdatePolicy {
+                    can_install: false,
+                    reason: Some(crate::localized_error!("backendErrors.updater.notBuilt")),
+                    ..installation
+                };
+                (None, installation)
+            }
+            Ok(ReleaseArtifact::Unpublished) => {
+                info!(
+                    "No update manifest in {}; suppressing update announcement",
                     release.tag_name
                 );
                 return Ok(None);
@@ -293,106 +316,46 @@ async fn update_for_release(
     Ok(Some(update_info))
 }
 
-/// Whether the source that updates an external installation already has `release`:
-/// other packages are matched to the release's assets.
-async fn external_update_published(
-    app: &AppHandle,
-    release: &github_client::Release,
-    installation: &policy::UpdatePolicy,
-) -> Result<bool> {
-    let (os, arch) = (std::env::consts::OS, std::env::consts::ARCH);
-    // `select_release` already chose the release the AUR publishes.
-    if aur_package(installation).is_some() {
-        return Ok(true);
-    }
-    let asset = availability::external_asset(
-        release,
-        installation.installation,
-        app.product().display_name,
-        os,
-        arch,
-    );
-    match asset {
-        Some(asset) => {
-            log::debug!("External update announcement matched upstream asset: {asset}");
-            Ok(true)
-        }
-        None => {
-            info!(
-                "No matching upstream package in {} for {:?} on {os}-{arch}",
-                release.tag_name, installation.installation
-            );
-            Ok(false)
-        }
-    }
-}
-
-/// Announce updates the supervisor rolled back and stop offering those versions,
-/// so a release that cannot start here does not loop through download and rollback.
-#[cfg(feature = "updater")]
-pub fn report_failed_updates(app: &AppHandle) {
-    let failures = binary::take_failed_updates();
-    let reported = !failures.is_empty();
-    for failure in failures {
-        log::warn!(
-            "Update {} was rolled back: {}",
-            failure.version,
-            failure.reason
-        );
-        // Kept for viewers without OS notifications, such as the headless web UI.
-        if let Some(state) = app.try_state::<AppUpdaterState>() {
-            state
-                .data
-                .lock()
-                .rolled_back
-                .push(crate::utils::types::updater::RolledBackUpdate {
-                    version: failure.version.clone(),
-                    reason: failure.reason.clone(),
-                });
-        }
-        notify(
-            app,
-            NotificationEvent::AppUpdate(UpdateStage::Failed {
-                error: crate::localized_error!(
-                    "backendErrors.updater.rolledBack",
-                    "version" => failure.version,
-                    "reason" => failure.reason
-                ),
-            }),
-        );
-        let Some(manager) = app.try_state::<AppSettingsManager>() else {
-            continue;
-        };
-        let mut skipped = manager
-            .get_all()
-            .map(|c| c.runtime.app_skipped_updates)
-            .unwrap_or_default();
-        if !skipped.contains(&failure.version) {
-            skipped.push(failure.version);
-            if let Err(error) = manager.save_setting(
-                "runtime",
-                "app_skipped_updates",
-                &serde_json::json!(skipped),
-            ) {
-                log::warn!("Could not remember the failed update: {error}");
-            }
-        }
-    }
-    if reported {
-        emit_state_changed();
-    }
-}
-
 pub async fn get_app_update_info(app: AppHandle) -> Result<UpdaterSnapshot> {
     Ok(app.state::<AppUpdaterState>().data.lock().snapshot())
+}
+
+/// The release this build came from, for its release notes.
+pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
+    let version = env!("CARGO_PKG_VERSION");
+    // The tag prefix of this build's release is not known: 0.3.7 is `headless-v`,
+    // the releases after it `server-v`.
+    let mut release = None;
+    for prefix in app.product().release_prefixes {
+        let tag = format!("{prefix}{version}");
+        release = Some(github_client::get_release_by_tag(OWNER, REPO, &tag).await);
+        if matches!(release, Some(Ok(_))) {
+            break;
+        }
+    }
+    let release = release.expect("a product has a release prefix")?;
+    Ok(UpdateMetadata {
+        version: version.to_string(),
+        current_version: version.to_string(),
+        prerelease: is_prerelease(&release),
+        release_notes: release.body,
+        release_date: release.published_at,
+        release_url: Some(release.html_url),
+        release_tag: Some(release.tag_name),
+        ..Default::default()
+    })
 }
 
 fn is_release_for_channel(
     release: &github_client::Release,
     channel: &str,
-    release_prefix: &str,
+    release_prefixes: &[&str],
 ) -> bool {
-    if release_prefix.is_empty() || !release.tag_name.to_lowercase().starts_with(release_prefix) {
+    let tag = release.tag_name.to_lowercase();
+    if !release_prefixes
+        .iter()
+        .any(|prefix| tag.starts_with(prefix))
+    {
         return false;
     }
     channel == "beta" || !is_prerelease(release)
@@ -409,55 +372,15 @@ fn is_prerelease(release: &github_client::Release) -> bool {
         .is_some()
 }
 
-/// The pacman package that owns an AUR installation.
-fn aur_package(installation: &policy::UpdatePolicy) -> Option<&str> {
-    (installation.installation == policy::InstallationKind::Pacman)
-        .then_some(installation.package.as_deref())
-        .flatten()
-}
-
-/// The release to offer. The AUR publishes stable releases on its own schedule, so
-/// an AUR installation is offered the release the AUR has, whatever the channel.
-/// A `-git` package builds the default branch, which no release describes.
-async fn select_release<'a>(
-    releases: &'a [github_client::Release],
-    channel: &str,
-    release_prefix: &str,
-    installation: &policy::UpdatePolicy,
-) -> Result<Option<&'a github_client::Release>> {
-    let Some(package) = aur_package(installation) else {
-        return Ok(latest_release(releases, channel, release_prefix));
-    };
-    if package.ends_with("-git") {
-        return Ok(None);
-    }
-    let published = availability::aur_version(package)
-        .await
-        .map_err(crate::utils::types::updater::UpdaterError::UpdateUnavailable)?;
-    info!("AUR package {package} publishes {published:?}");
-    Ok(published.and_then(|version| release_with_version(releases, release_prefix, &version)))
-}
-
-fn release_with_version<'a>(
-    releases: &'a [github_client::Release],
-    release_prefix: &str,
-    version: &str,
-) -> Option<&'a github_client::Release> {
-    let tag = format!("{release_prefix}{version}").to_lowercase();
-    releases
-        .iter()
-        .find(|release| !release.draft && release.tag_name.to_lowercase() == tag)
-}
-
 fn latest_release<'a>(
     releases: &'a [github_client::Release],
     channel: &str,
-    release_prefix: &str,
+    release_prefixes: &[&str],
 ) -> Option<&'a github_client::Release> {
     releases
         .iter()
         .filter(|release| {
-            !release.draft && is_release_for_channel(release, channel, release_prefix)
+            !release.draft && is_release_for_channel(release, channel, release_prefixes)
         })
         .reduce(|latest, candidate| {
             if is_version_newer(&latest.tag_name, &candidate.tag_name) {
@@ -479,7 +402,20 @@ mod tests {
         };
         use policy::UpdateMethod;
         let offered = |kind, method, current, release| {
-            is_offered(&policy::test_policy(kind, method, None), current, release)
+            is_offered(
+                &policy::test_policy(kind, method, None),
+                "stable",
+                current,
+                release,
+            )
+        };
+        let offered_on_beta = |kind, method, current, release| {
+            is_offered(
+                &policy::test_policy(kind, method, None),
+                "beta",
+                current,
+                release,
+            )
         };
         for (kind, method) in [
             (Native, UpdateMethod::Tauri),
@@ -490,6 +426,16 @@ mod tests {
             assert!(offered(kind, method, "0.3.4-beta.1", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4-beta.2", "0.3.4-beta.1"));
+            // The beta channel never goes back to an older stable release, as when
+            // this build's own release is missing; newer releases are still offered.
+            assert!(!offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.6"));
+            assert!(offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.7"));
+            assert!(offered_on_beta(
+                kind,
+                method,
+                "0.3.7-beta.1",
+                "0.3.7-beta.2"
+            ));
         }
         // Packages only move forward, even when Tauri installs them: `rpm -U`
         // refuses downgrades. Android version codes cannot decrease.
@@ -497,6 +443,7 @@ mod tests {
             (Deb, UpdateMethod::Tauri),
             (Rpm, UpdateMethod::Tauri),
             (Pacman, UpdateMethod::Unavailable),
+            (Pacman, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
         ] {
             assert!(!offered(kind, method, "0.3.4-beta.1", "0.3.3"));
@@ -516,9 +463,9 @@ mod tests {
             release("v0.3.4-beta.1", true),
             release("headless-v0.3.3", false),
         ];
-        let stable = latest_release(&releases, "stable", "v").unwrap();
+        let stable = latest_release(&releases, "stable", &["v"]).unwrap();
         assert_eq!(stable.tag_name, "v0.3.3");
-        let beta = latest_release(&releases, "beta", "v").unwrap();
+        let beta = latest_release(&releases, "beta", &["v"]).unwrap();
         assert_eq!(beta.tag_name, "v0.3.4-beta.1");
     }
 
@@ -598,49 +545,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn externally_managed_installations_do_not_announce_unrelated_packages() {
-        let app = AppHandle::default();
+    async fn external_installations_announce_releases_without_an_in_app_installer() {
         for installation in [
             policy::InstallationKind::Flatpak,
             policy::InstallationKind::Pacman,
             policy::InstallationKind::Container,
             policy::InstallationKind::Deb,
             policy::InstallationKind::Rpm,
-        ] {
-            let state = AppUpdaterState::default();
-            let mut release = candidate();
-            release.assets.push(github_client::Asset {
-                name: "android-aarch64-99.0.0.apk".into(),
-                ..Default::default()
-            });
-            let policy = policy::test_policy(
-                installation,
-                policy::UpdateMethod::Unavailable,
-                Some("Externally managed"),
-            );
-            assert!(
-                update_for_release(&app, "stable", &release, policy, &state)
-                    .await
-                    .unwrap()
-                    .is_none()
-            );
-            assert_eq!(state.data.lock().state, UpdateState::Idle);
-            assert!(state.data.lock().last_metadata.is_none());
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    #[tokio::test]
-    async fn matching_external_packages_announce_without_an_in_app_installer() {
-        let arch = match std::env::consts::ARCH {
-            "x86_64" => "amd64",
-            "aarch64" => "arm64",
-            _ => return,
-        };
-        for installation in [
-            policy::InstallationKind::Flatpak,
-            policy::InstallationKind::Pacman,
-            policy::InstallationKind::Deb,
         ] {
             struct NoHost;
             #[async_trait::async_trait]
@@ -655,27 +566,14 @@ mod tests {
                     Err("Not needed".into())
                 }
             }
-            // Bundles name packages after the Tauri product name.
-            let app = AppHandle::new(
-                std::sync::Arc::new(NoHost),
-                crate::context::ProductInfo {
-                    display_name: "RClone Manager",
-                    release_prefix: "v",
-                    ..Default::default()
-                },
-            );
+            let app = AppHandle::new(std::sync::Arc::new(NoHost), Default::default());
             let state = AppUpdaterState::default();
-            let mut release = candidate();
-            release.assets.push(github_client::Asset {
-                name: format!("RClone.Manager_99.0.0_{arch}.deb"),
-                ..Default::default()
-            });
             let policy = policy::test_policy(
                 installation,
                 policy::UpdateMethod::Unavailable,
                 Some("Externally managed"),
             );
-            let info = update_for_release(&app, "stable", &release, policy, &state)
+            let info = update_for_release(&app, "stable", &candidate(), policy, &state)
                 .await
                 .unwrap()
                 .unwrap();
@@ -688,7 +586,7 @@ mod tests {
     mod native_discovery {
         use super::*;
         use crate::utils::types::updater::{
-            AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate,
+            AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact,
         };
         use std::sync::Arc;
 
@@ -696,6 +594,7 @@ mod tests {
         enum Check {
             Found,
             Missing,
+            NotBuilt,
             Failed,
         }
         struct TestHost(Check);
@@ -727,11 +626,12 @@ mod tests {
                 &self,
                 _: &github_client::Release,
                 _: &str,
-            ) -> std::result::Result<Option<PendingAppUpdate>, String> {
+            ) -> std::result::Result<ReleaseArtifact, String> {
                 match self.0 {
-                    Check::Missing => Ok(None),
+                    Check::Missing => Ok(ReleaseArtifact::Unpublished),
+                    Check::NotBuilt => Ok(ReleaseArtifact::NotBuilt),
                     Check::Failed => Err("Invalid manifest signature".into()),
-                    Check::Found => Ok(Some(Arc::new(TestUpdate))),
+                    Check::Found => Ok(ReleaseArtifact::Found(Arc::new(TestUpdate))),
                 }
             }
         }
@@ -753,7 +653,7 @@ mod tests {
                 match check {
                     Check::Missing => assert!(result.unwrap().is_none()),
                     Check::Failed => assert!(result.is_err()),
-                    Check::Found => unreachable!(),
+                    Check::Found | Check::NotBuilt => unreachable!(),
                 }
                 let data = state.data.lock();
                 assert_eq!(data.state, UpdateState::Idle);
@@ -792,6 +692,34 @@ mod tests {
         }
 
         #[tokio::test]
+        async fn a_release_without_this_installation_is_announced_as_a_manual_update() {
+            let app = AppHandle::new(Arc::new(TestHost(Check::NotBuilt)), Default::default());
+            let state = AppUpdaterState::default();
+            let policy = policy::test_policy(
+                policy::InstallationKind::Native,
+                policy::UpdateMethod::Tauri,
+                None,
+            );
+            let info = update_for_release(&app, "beta", &candidate(), policy, &state)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(info.metadata.update_available);
+            let installation = info.installation.unwrap();
+            assert!(!installation.can_install);
+            assert!(
+                installation
+                    .reason
+                    .unwrap()
+                    .contains("backendErrors.updater.notBuilt")
+            );
+            let data = state.data.lock();
+            assert_eq!(data.state, UpdateState::Available);
+            assert!(data.pending_action.is_none());
+            assert!(!data.policy.as_ref().unwrap().can_install);
+        }
+
+        #[tokio::test]
         async fn valid_artifacts_are_discovered_even_when_installation_is_disabled() {
             for can_install in [true, false] {
                 let app = AppHandle::new(Arc::new(TestHost(Check::Found)), Default::default());
@@ -811,64 +739,6 @@ mod tests {
                 assert_eq!(state.data.lock().pending_action.is_some(), can_install);
             }
         }
-    }
-
-    #[test]
-    fn aur_installations_follow_the_release_the_aur_publishes() {
-        let releases: Vec<_> = ["v0.3.6-beta.1", "v0.3.5", "v0.3.4", "headless-v0.3.5"]
-            .into_iter()
-            .map(|tag| github_client::Release {
-                tag_name: tag.into(),
-                prerelease: tag.contains("beta"),
-                ..Default::default()
-            })
-            .collect();
-        // The beta channel's newest release is a beta the AUR never publishes.
-        assert_eq!(
-            latest_release(&releases, "beta", "v").unwrap().tag_name,
-            "v0.3.6-beta.1"
-        );
-        assert_eq!(
-            release_with_version(&releases, "v", "0.3.5")
-                .unwrap()
-                .tag_name,
-            "v0.3.5"
-        );
-        assert_eq!(
-            release_with_version(&releases, "headless-v", "0.3.5")
-                .unwrap()
-                .tag_name,
-            "headless-v0.3.5"
-        );
-        assert!(release_with_version(&releases, "v", "0.3.7").is_none());
-
-        let mut aur = policy::test_policy(
-            policy::InstallationKind::Pacman,
-            policy::UpdateMethod::Unavailable,
-            Some("Externally managed"),
-        );
-        assert!(aur_package(&aur).is_none());
-        aur.package = Some("rclone-manager".into());
-        assert_eq!(aur_package(&aur), Some("rclone-manager"));
-        aur.installation = policy::InstallationKind::Deb;
-        assert!(aur_package(&aur).is_none());
-    }
-
-    #[tokio::test]
-    async fn git_packages_are_never_offered_a_release() {
-        let mut aur = policy::test_policy(
-            policy::InstallationKind::Pacman,
-            policy::UpdateMethod::Unavailable,
-            Some("Externally managed"),
-        );
-        aur.package = Some("rclone-manager-git".into());
-        let releases = [candidate()];
-        assert!(
-            select_release(&releases, "stable", "v", &aur)
-                .await
-                .unwrap()
-                .is_none()
-        );
     }
 
     #[test]
@@ -892,28 +762,66 @@ mod tests {
         releases.push(draft);
         for _ in 0..releases.len() {
             assert_eq!(
-                latest_release(&releases, "stable", "v").unwrap().tag_name,
+                latest_release(&releases, "stable", &["v"])
+                    .unwrap()
+                    .tag_name,
                 "v1.10.0"
             );
             assert_eq!(
-                latest_release(&releases, "beta", "v").unwrap().tag_name,
+                latest_release(&releases, "beta", &["v"]).unwrap().tag_name,
                 "v1.11.0-beta.1"
             );
             assert_eq!(
-                latest_release(&releases, "stable", "headless-v")
+                latest_release(&releases, "stable", &["headless-v"])
                     .unwrap()
                     .tag_name,
                 "headless-v9.0.0"
             );
             releases.rotate_left(1);
         }
-        assert!(latest_release(&[], "stable", "v").is_none());
-        assert!(latest_release(&releases, "stable", "other-v").is_none());
+        assert!(latest_release(&[], "stable", &["v"]).is_none());
+        assert!(latest_release(&releases, "stable", &["other-v"]).is_none());
+    }
+
+    #[test]
+    fn a_product_with_two_tag_prefixes_follows_the_newest_release_of_either() {
+        let releases: Vec<_> = [
+            "v9.0.0",
+            "headless-v0.3.7",
+            "server-v0.3.8",
+            "server-v0.3.9-beta.1",
+        ]
+        .into_iter()
+        .map(|tag| github_client::Release {
+            tag_name: tag.into(),
+            ..Default::default()
+        })
+        .collect();
+        let prefixes = ["headless-v", "server-v"];
+        assert_eq!(
+            latest_release(&releases, "stable", &prefixes)
+                .unwrap()
+                .tag_name,
+            "server-v0.3.8"
+        );
+        assert_eq!(
+            latest_release(&releases, "beta", &prefixes)
+                .unwrap()
+                .tag_name,
+            "server-v0.3.9-beta.1"
+        );
+        assert_eq!(
+            latest_release(&releases, "stable", &["headless-v"])
+                .unwrap()
+                .tag_name,
+            "headless-v0.3.7"
+        );
     }
 
     #[test]
     fn release_stream_follows_host_not_compiled_features() {
         for release_prefix in ["v", "headless-v"] {
+            let release_prefixes = [release_prefix];
             for tag in [
                 "v1.2.0",
                 "headless-v1.2.0",
@@ -924,26 +832,30 @@ mod tests {
                     tag_name: tag.into(),
                     ..Default::default()
                 };
-                assert!(!is_release_for_channel(&release, "beta", ""));
-                assert!(!is_release_for_channel(&release, "beta", "other-v"));
+                assert!(!is_release_for_channel(&release, "beta", &[]));
+                assert!(!is_release_for_channel(&release, "beta", &["other-v"]));
                 let same_product = tag.starts_with(release_prefix);
                 assert_eq!(
-                    is_release_for_channel(&release, "stable", release_prefix),
+                    is_release_for_channel(&release, "stable", &release_prefixes),
                     same_product && !tag.contains("beta")
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "beta", release_prefix),
+                    is_release_for_channel(&release, "beta", &release_prefixes),
                     same_product
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "unknown", release_prefix),
+                    is_release_for_channel(&release, "unknown", &release_prefixes),
                     same_product && !tag.contains("beta")
                 );
                 let flagged = github_client::Release {
                     prerelease: true,
                     ..release
                 };
-                assert!(!is_release_for_channel(&flagged, "stable", release_prefix));
+                assert!(!is_release_for_channel(
+                    &flagged,
+                    "stable",
+                    &release_prefixes
+                ));
             }
         }
     }

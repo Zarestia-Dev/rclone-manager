@@ -1,27 +1,35 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 import { PathStyle } from '@app/types';
 import * as pathUtils from '../../../shared/utils/path.utils';
 
-import { PathInspectionService } from './path-inspection.service';
+import {
+  inspectAfterPause,
+  PATH_INSPECTION_UNAVAILABLE,
+  PathInspectionService,
+} from './path-inspection.service';
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
+import { RemoteFacadeService } from '../../facade/remote-facade.service';
+import {
+  NAMES_ONLY,
+  RemoteFileOperationsService,
+} from '../../remote/remote-file-operations.service';
 import { PathService } from './path.service';
 import { NotificationService } from '../../ui/notification.service';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
 import { MountManagementService } from '../../operations/mount-management.service';
+import { QuickRunService } from '../../flow/quick-run.service';
 
 describe('PathInspectionService', () => {
   let service: PathInspectionService;
   let mockApiClient: { invoke: ReturnType<typeof vi.fn> };
   let mountedRemotes: WritableSignal<unknown[]>;
-  let mockAppSettings: {
-    getSettingValue: ReturnType<typeof vi.fn>;
-    getRemoteSettings: ReturnType<typeof vi.fn>;
-  };
+  let quickRuns: WritableSignal<unknown[]>;
+  let mockAppSettings: { getSettingValue: ReturnType<typeof vi.fn> };
+  let remoteSettings: ReturnType<typeof vi.fn>;
   let mockRemoteFileOps: {
     getStat: ReturnType<typeof vi.fn>;
     getSize: ReturnType<typeof vi.fn>;
@@ -43,10 +51,9 @@ describe('PathInspectionService', () => {
   beforeEach(() => {
     mockApiClient = { invoke: vi.fn() };
     mountedRemotes = signal<unknown[]>([]);
-    mockAppSettings = {
-      getSettingValue: vi.fn().mockResolvedValue(null),
-      getRemoteSettings: vi.fn().mockResolvedValue({}),
-    };
+    quickRuns = signal<unknown[]>([]);
+    mockAppSettings = { getSettingValue: vi.fn().mockResolvedValue(null) };
+    remoteSettings = vi.fn().mockReturnValue({});
     mockRemoteFileOps = {
       getStat: vi.fn().mockResolvedValue({ item: null }),
       getSize: vi.fn().mockResolvedValue({ count: 0 }),
@@ -73,9 +80,11 @@ describe('PathInspectionService', () => {
         { provide: BackendTranslationService, useValue: {} },
         { provide: ApiClientService, useValue: mockApiClient },
         { provide: AppSettingsService, useValue: mockAppSettings },
+        { provide: RemoteFacadeService, useValue: { remoteSettings } },
         { provide: RemoteFileOperationsService, useValue: mockRemoteFileOps },
         { provide: PathService, useValue: mockPathService },
         { provide: MountManagementService, useValue: { mountedRemotes } },
+        { provide: QuickRunService, useValue: { quickRuns } },
       ],
     });
 
@@ -97,7 +106,7 @@ describe('PathInspectionService', () => {
     it('does not attempt to reserve a fixed path for an automatic Windows drive', async () => {
       mockPathService.enginePathStyle.mockReturnValue('windows');
       expect(await service.inspect('*', 'example', 'Default', 'mount')).toBeNull();
-      expect(mockAppSettings.getRemoteSettings).not.toHaveBeenCalled();
+      expect(remoteSettings).not.toHaveBeenCalled();
       expect(mockRemoteFileOps.getStat).not.toHaveBeenCalled();
     });
 
@@ -154,22 +163,57 @@ describe('PathInspectionService', () => {
         'drive',
         {},
         'Shared',
-        'mount'
+        'mount',
+        { runs: [], exceptId: undefined }
       );
     });
-    it('should return colliding if mount collision is detected', async () => {
+    it('hands the Quick Runs to the collision check, and the one being edited as the exception', async () => {
+      const run = {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'drive',
+        config: { app: {}, rclone: { mountPoint: '/mnt/drive' } },
+      };
+      quickRuns.set([run]);
+
+      await service.inspect('/mnt/drive', 'drive');
+      expect(mockPathService.checkMountPathCollision).toHaveBeenLastCalledWith(
+        '/mnt/drive',
+        'drive',
+        {},
+        undefined,
+        undefined,
+        { runs: [run], exceptId: undefined }
+      );
+
+      await service.inspect('/mnt/drive', 'drive', undefined, 'mount', 'qr-1');
+      expect(mockPathService.checkMountPathCollision).toHaveBeenLastCalledWith(
+        '/mnt/drive',
+        'drive',
+        {},
+        undefined,
+        'mount',
+        { runs: [run], exceptId: 'qr-1' }
+      );
+    });
+
+    it.each([
+      ['profile', 'remoteConfig.pathStatus.collidingProfile'],
+      ['quick_run', 'remoteConfig.pathStatus.collidingQuickRun'],
+    ])('names the %s that uses the folder', async (kind, labelKey) => {
       mockPathService.checkMountPathCollision.mockReturnValue([
-        { remoteName: 'otherRemote', opType: 'mount' },
+        { kind, name: 'Photos', remoteName: 'otherRemote', opType: 'mount', path: '/x' },
       ]);
 
       const status = await service.inspect('/home/user/colliding', 'remote1');
 
       expect(status).toEqual({
         state: 'colliding',
-        details: 'otherRemote (mount)',
         icon: 'warning',
         badgeClass: 'colliding',
-        labelKey: 'remoteConfig.pathStatus.colliding',
+        labelKey,
+        labelParams: { name: 'Photos', remote: 'otherRemote' },
       });
       expect(mockRemoteFileOps.getStat).not.toHaveBeenCalled();
     });
@@ -203,7 +247,7 @@ describe('PathInspectionService', () => {
       expect(mockRemoteFileOps.getRemotePaths).toHaveBeenCalledExactlyOnceWith(
         '/',
         'home/user/path',
-        { recurse: false }
+        { ...NAMES_ONLY, recurse: false }
       );
       expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
     });
@@ -285,7 +329,7 @@ describe('PathInspectionService', () => {
 
     it('should resolve default bisync path with stored setting and mount point', async () => {
       mockAppSettings.getSettingValue.mockResolvedValue('{home}/Sync/{remote}');
-      mockApiClient.invoke.mockResolvedValue([{ mount_point: '/Users/test' }]);
+      mockApiClient.invoke.mockResolvedValue([{ name: '/Users/test' }]);
 
       const result = await service.resolveDefaultPath('remote:path', 'bisync');
 
@@ -302,6 +346,55 @@ describe('PathInspectionService', () => {
       const result = await service.resolveDefaultPath('drive', 'mount');
 
       expect(result).toBe('/home/user/rclone-manager/drive-2');
+    });
+
+    it('skips a folder that a saved profile already uses', async () => {
+      mockApiClient.invoke.mockResolvedValue([{ name: '/home/user' }]);
+      remoteSettings.mockReturnValue({ drive: { mountConfigs: {} } });
+      mockPathService.checkMountPathCollision.mockImplementation((candidate: string) =>
+        candidate.endsWith('/drive') ? [{ remoteName: 'drive', opType: 'mount' }] : []
+      );
+
+      const result = await service.resolveDefaultPath('drive', 'mount');
+
+      expect(result).toBe('/home/user/rclone-manager/drive-2');
+      expect(mockPathService.checkMountPathCollision).toHaveBeenCalledWith(
+        '/home/user/rclone-manager/drive',
+        'drive',
+        { drive: { mountConfigs: {} } },
+        undefined,
+        'mount',
+        { runs: [] }
+      );
+    });
+
+    it('skips a folder that a Quick Run already mounts', async () => {
+      mockApiClient.invoke.mockResolvedValue([{ name: '/home/user' }]);
+      const run = {
+        id: 'qr-1',
+        name: 'Drive',
+        operationType: 'mount',
+        remoteName: 'drive',
+        config: { app: {}, rclone: { mountPoint: '/home/user/rclone-manager/drive' } },
+      };
+      quickRuns.set([run]);
+      mockPathService.checkMountPathCollision.mockImplementation(
+        (
+          candidate: string,
+          _remote: string,
+          _settings: unknown,
+          _profile: unknown,
+          _op: unknown,
+          quick: { runs: (typeof run)[] }
+        ) =>
+          quick.runs.some(r => r.config.rclone.mountPoint === candidate)
+            ? [{ kind: 'quick_run', name: 'Drive', remoteName: 'drive', opType: 'mount', path: '' }]
+            : []
+      );
+
+      expect(await service.resolveDefaultPath('drive', 'mount')).toBe(
+        '/home/user/rclone-manager/drive-2'
+      );
     });
 
     it('skips an occupied file without trying to list it as a directory', async () => {
@@ -500,7 +593,11 @@ describe('PathInspectionService', () => {
       expect(await service.inspect('\\\\server\\share\\Arşiv', 'drive')).toMatchObject({
         state: 'willCreate',
       });
-      expect(mockRemoteFileOps.getStat).toHaveBeenCalledExactlyOnceWith('//server/share', 'Arşiv');
+      expect(mockRemoteFileOps.getStat).toHaveBeenCalledExactlyOnceWith(
+        '//server/share',
+        'Arşiv',
+        NAMES_ONLY
+      );
     });
 
     it('keeps profile fallback precedence, directory order, and backend ownership', async () => {
@@ -638,5 +735,59 @@ describe('PathInspectionService', () => {
         expect(mockRemoteFileOps.makeDirectory.mock.calls[0][1]).toBe('first');
       }
     );
+  });
+});
+
+describe('inspectAfterPause', () => {
+  const answer = { state: 'clean', icon: 'check', badgeClass: 'clean', labelKey: 'x' } as const;
+  const request = { path: '/a', remoteName: 'r', profileName: 'p', operation: 'mount' } as const;
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('waits for a pause, reports checking and then the answer', async () => {
+    const inspect = vi.fn().mockResolvedValue(answer);
+    const report = vi.fn();
+    inspectAfterPause({ inspect }, request, report);
+
+    expect(inspect).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(report.mock.calls[0][0].state).toBe('checking');
+    expect(inspect).toHaveBeenCalledWith('/a', 'r', 'p', 'mount', undefined);
+    expect(report).toHaveBeenLastCalledWith(answer);
+  });
+
+  it('reports the unavailable status when the check fails', async () => {
+    const inspect = vi.fn().mockRejectedValue(new Error('no rclone'));
+    const report = vi.fn();
+    inspectAfterPause({ inspect }, request, report);
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(report).toHaveBeenLastCalledWith(PATH_INSPECTION_UNAVAILABLE);
+  });
+
+  it('does nothing once cancelled before the pause ends', async () => {
+    const inspect = vi.fn().mockResolvedValue(answer);
+    const report = vi.fn();
+    const cancel = inspectAfterPause({ inspect }, request, report);
+    cancel();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(inspect).not.toHaveBeenCalled();
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('drops the answer when cancelled while the check runs', async () => {
+    let resolve: (status: unknown) => void = () => undefined;
+    const inspect = vi.fn().mockReturnValue(new Promise(r => (resolve = r)));
+    const report = vi.fn();
+    const cancel = inspectAfterPause({ inspect }, request, report);
+    await vi.advanceTimersByTimeAsync(300);
+    cancel();
+    resolve(answer);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(report).toHaveBeenCalledTimes(1);
   });
 });

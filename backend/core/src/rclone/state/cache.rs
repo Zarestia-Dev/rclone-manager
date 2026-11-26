@@ -24,7 +24,7 @@ impl RemoteCache {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            remotes: RwLock::new(Vec::new()),
+            remotes: RwLock::new(None),
             configs: RwLock::new(json!({})),
             mounted: RwLock::new(Vec::new()),
             serves: RwLock::new(Vec::new()),
@@ -131,7 +131,7 @@ impl RemoteCache {
                 let mut remotes_lock = self.remotes.write().await;
 
                 *configs_lock = configs;
-                *remotes_lock = remote_names;
+                *remotes_lock = Some(remote_names);
 
                 drop(remotes_lock);
                 drop(configs_lock);
@@ -237,6 +237,11 @@ impl RemoteCache {
     }
 
     pub async fn get_remotes(&self) -> Vec<String> {
+        self.remotes.read().await.clone().unwrap_or_default()
+    }
+
+    /// The backend's remote names, or none when they could not be read yet.
+    pub async fn known_remotes(&self) -> Option<Vec<String>> {
         self.remotes.read().await.clone()
     }
 

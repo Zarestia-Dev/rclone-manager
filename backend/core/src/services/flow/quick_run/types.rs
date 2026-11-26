@@ -19,6 +19,19 @@ pub struct QuickRun {
 }
 
 impl QuickRun {
+    /// Renames a dry run saved under an older name (`dryRun`, `DryRun`) to `dry_run`, in its
+    /// own options and its backend options.
+    #[must_use]
+    pub fn with_current_dry_run(mut self) -> Self {
+        if let Some(rclone) = self.config.get_mut("rclone").and_then(Value::as_object_mut) {
+            crate::rclone::commands::sync::normalize_dry_run(rclone);
+            if let Some(backend) = rclone.get_mut("backend").and_then(Value::as_object_mut) {
+                crate::rclone::commands::sync::normalize_dry_run(backend);
+            }
+        }
+        self
+    }
+
     /// The app-level settings (scheduling, watching, tray); all of them are optional.
     fn app(&self) -> Option<&Value> {
         self.config.get("app")

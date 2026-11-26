@@ -7,7 +7,7 @@
 //!   application schemes (`rclone://` and `local-asset://`), media playback of audio and video files
 //!   fails with `MediaError { code: 4 }` (`MEDIA_ERR_SRC_NOT_SUPPORTED`).
 //!   Static assets, text, and images (such as `audio-cover://`) load normally through WebKit's network stack (`libsoup`).
-//!   On mobile (Android Chromium) and headless web-server modes, media playback functions properly.
+//!   On mobile (Android Chromium), media playback functions properly.
 //!   See tracking issue: <https://github.com/tauri-apps/tauri/issues/3725>.
 
 use crate::context::BackendContext;

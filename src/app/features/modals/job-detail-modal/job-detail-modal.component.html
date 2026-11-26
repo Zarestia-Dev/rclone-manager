@@ -199,3 +199,12 @@
     </div>
   }
 </main>
+
+@if (canRetry()) {
+  <footer>
+    <button matButton="filled" (click)="onRetry()">
+      <mat-icon svgIcon="rotate-right"></mat-icon>
+      {{ 'detailShared.jobs.actions.retry' | translate }}
+    </button>
+  </footer>
+}

@@ -91,3 +91,36 @@ describe('UiStateService layout editing', () => {
     expect(service.isEditingLayout()).toBe(false);
   });
 });
+
+describe('UiStateService profile request', () => {
+  it('holds one request until it is taken', () => {
+    vi.stubGlobal('__TAURI_INTERNALS__', undefined);
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: NavigationHistoryService, useValue: { openLayer: vi.fn(() => vi.fn()) } },
+        { provide: WindowService, useValue: { isMaximized: signal(false) } },
+        {
+          provide: LocalStorageService,
+          useValue: { get: vi.fn((_key: string, fallback: unknown) => fallback), set: vi.fn() },
+        },
+        {
+          provide: AppSettingsService,
+          useValue: { options: signal({}), isTrayAvailable: signal(false) },
+        },
+      ],
+    });
+    const service = TestBed.inject(UiStateService);
+    expect(service.profileRequest()).toBeNull();
+    service.requestProfile({ remoteName: 'drive', operationType: 'mount', profile: 'Daily' });
+    expect(service.profileRequest()).toEqual({
+      remoteName: 'drive',
+      operationType: 'mount',
+      profile: 'Daily',
+    });
+    service.requestProfile({ remoteName: 'box', operationType: 'sync', profile: 'Main' });
+    expect(service.profileRequest()?.remoteName).toBe('box');
+    service.clearProfileRequest();
+    expect(service.profileRequest()).toBeNull();
+    vi.unstubAllGlobals();
+  });
+});

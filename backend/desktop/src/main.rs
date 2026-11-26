@@ -3,10 +3,8 @@
     windows_subsystem = "windows"
 )]
 fn main() {
-    #[cfg(feature = "portable")]
-    rclone_manager_core::services::updates::binary::run_helper_if_requested(
-        rclone_manager_core::services::updates::ArtifactKind::Portable,
-    );
+    #[cfg(feature = "updater")]
+    rclone_manager_core::services::updates::binary::on_startup();
     rclone_manager_lib::prepare_environment();
     let runtime = rclone_manager_core::utils::init_runtime();
     let _guard = runtime.enter();

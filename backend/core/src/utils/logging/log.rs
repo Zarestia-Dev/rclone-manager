@@ -19,6 +19,11 @@ static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
 
 impl log::Log for DynamicLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
+        // zbus (the tray and theme D-Bus calls) records every call, with its whole
+        // message, at info level.
+        if metadata.target().starts_with("zbus") && metadata.level() > log::Level::Warn {
+            return false;
+        }
         metadata.level() <= current_log_level()
     }
 
@@ -112,17 +117,6 @@ pub fn update_log_level(log_level: &str) {
     log::set_max_level(level);
 }
 
-/// Update helpers start before runtime setup and only need console/file logging.
-#[cfg(feature = "updater")]
-pub(crate) fn init_helper_logging(directory: Option<&std::path::Path>) -> Result<(), String> {
-    log::set_logger(&DynamicLogger).map_err(|error| error.to_string())?;
-    update_log_level("info");
-    if let Some(directory) = directory {
-        super::file_writer::init_file_writer(directory).map_err(|error| error.to_string())?;
-    }
-    Ok(())
-}
-
 pub fn log_operation(
     level: LogLevel,
     remote_name: Option<String>,
@@ -147,5 +141,27 @@ pub fn log_operation(
         }
     } else {
         eprintln!("Log sender not initialized. Log entry dropped.");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::{Level, Log, Metadata};
+
+    #[test]
+    fn zbus_records_below_warn_are_dropped() {
+        for target in ["zbus", "zbus::object_server", "zbus::connection"] {
+            for level in [Level::Info, Level::Debug, Level::Trace] {
+                let metadata = Metadata::builder().target(target).level(level).build();
+                assert!(!DynamicLogger.enabled(&metadata), "{target} {level}");
+            }
+        }
+        // Only the prefix decides, so a crate merely named alike keeps its records.
+        let own = Metadata::builder()
+            .target("rclone_manager_core::zbus_helper")
+            .level(Level::Error)
+            .build();
+        assert!(DynamicLogger.enabled(&own));
     }
 }

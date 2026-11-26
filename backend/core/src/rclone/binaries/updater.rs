@@ -197,6 +197,7 @@ async fn perform_check_rclone_update(
 
     let metadata = UpdateMetadata {
         current_version: current_version.clone(),
+        prerelease: latest_version.contains("-beta"),
         version: latest_version,
         update_available,
         channel: Some(channel.to_string()),
@@ -748,8 +749,7 @@ async fn check_rclone_selfupdate(
     let transport = app_handle.state::<RcloneState>().transport.clone();
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
-    let payload =
-        backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
+    let payload = backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], os);
 
     let response = transport
         .rpc(core::COMMAND, Some(&payload))
@@ -768,10 +768,21 @@ async fn check_rclone_selfupdate(
         _ => info.stable,
     };
 
-    let update_available =
-        !info.current.is_empty() && clean_version(&info.current) != clean_version(&target_version);
+    let update_available = rclone_update_available(channel, &info.current, &target_version);
 
     Ok((update_available, target_version))
+}
+
+/// The rule of the app's own updates (`services::updates::is_offered`): the beta
+/// channel only moves forward, and the stable channel also takes a beta or
+/// development build back to the latest stable release.
+fn rclone_update_available(channel: &UpdateChannel, current: &str, target: &str) -> bool {
+    use crate::utils::version::{is_update_candidate, is_version_newer};
+    !current.is_empty()
+        && match channel {
+            UpdateChannel::Beta => is_version_newer(current, target),
+            UpdateChannel::Stable => is_update_candidate(current, target),
+        }
 }
 
 /// Release notes, date and page of a found update.
@@ -796,6 +807,26 @@ async fn fetch_rclone_release_info(version: &str, channel: &UpdateChannel) -> Re
         *cache = Some((key, info.clone()));
     }
     info
+}
+
+/// The notes of the installed rclone release. Beta and development builds have
+/// none: they are never published as GitHub releases.
+pub async fn get_rclone_release_notes(version: String) -> Result<UpdateMetadata> {
+    let tag = format!("v{}", clean_version(&version));
+    let release = github_client::get_release_by_tag("rclone", "rclone", &tag).await?;
+    let notes = fetch_stable_changelog(&version, &release.html_url)
+        .await
+        .ok()
+        .or(release.body);
+    Ok(UpdateMetadata {
+        current_version: version.clone(),
+        version,
+        release_notes: notes,
+        release_date: release.published_at,
+        release_url: Some(release.html_url),
+        release_tag: Some(release.tag_name),
+        ..Default::default()
+    })
 }
 
 async fn lookup_rclone_release_info(version: &str, channel: &UpdateChannel) -> ReleaseInfo {
@@ -886,7 +917,7 @@ async fn perform_rclone_selfupdate(
     info!("Executing rclone selfupdate via RC ({channel} channel)");
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
-    let payload = backend.build_core_command_payload("selfupdate", args, false, os);
+    let payload = backend.build_core_command_payload("selfupdate", args, os);
 
     let response = tokio::select! {
         () = cancel_token.cancelled() => {
@@ -1073,6 +1104,41 @@ mod tests {
     #[test]
     fn test_clean_version_no_prefix() {
         assert_eq!(clean_version("1.71.1"), "1.71.1");
+    }
+
+    #[test]
+    fn rclone_updates_follow_the_channel_like_app_updates() {
+        let beta = UpdateChannel::Beta;
+        let stable = UpdateChannel::Stable;
+        // Newer releases on either channel.
+        assert!(rclone_update_available(&stable, "v1.71.0", "v1.72.0"));
+        assert!(rclone_update_available(
+            &beta,
+            "v1.72.0-beta.9100.aaaaaaa",
+            "v1.72.0-beta.9155.2bc155a96"
+        ));
+        // Leaving beta for stable goes back to the latest stable release.
+        assert!(rclone_update_available(
+            &stable,
+            "v1.73.0-beta.9200.bbbbbbb",
+            "v1.72.0"
+        ));
+        // The beta channel never goes back, also when it lists no beta and the
+        // stable release stands in for it.
+        assert!(!rclone_update_available(
+            &beta,
+            "v1.72.0-beta.9200.bbbbbbb",
+            "v1.72.0-beta.9155.2bc155a96"
+        ));
+        assert!(!rclone_update_available(
+            &beta,
+            "v1.73.0-beta.9200.bbbbbbb",
+            "v1.72.0"
+        ));
+        // The same version, an older stable one, or an unknown current version.
+        assert!(!rclone_update_available(&stable, "v1.72.0", "v1.72.0"));
+        assert!(!rclone_update_available(&stable, "v1.73.0", "v1.72.0"));
+        assert!(!rclone_update_available(&stable, "", "v1.72.0"));
     }
 
     #[test]

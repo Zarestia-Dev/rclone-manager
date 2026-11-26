@@ -51,6 +51,11 @@ export function getExecutionOrigin(item: ExecutionScope): Origin {
   return getStarterOrigin(item) ?? item.origin ?? 'dashboard';
 }
 
+/** The origin to name next to work; none when its Quick Run or workflow starter pill names it. */
+export function shownOrigin(item: ExecutionScope): (typeof ORIGIN_META)[Origin] | null {
+  return getStarterOrigin(item) ? null : ORIGIN_META[getExecutionOrigin(item)];
+}
+
 /** Dashboard profiles exclude executions owned by Quick Run or a workflow. */
 export function isProfileScoped(item: ExecutionScope): boolean {
   const origin = getExecutionOrigin(item);

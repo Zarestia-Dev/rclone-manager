@@ -2,12 +2,6 @@ import type { Origin } from './origin';
 import type { PrimaryActionType } from './operations';
 
 /**
- * Type of automation. Derived from `PrimaryActionType` by excluding the
- * non-automatable operations (`mount` and `serve`).
- */
-export type AutomationType = Exclude<PrimaryActionType, 'mount' | 'serve'>;
-
-/**
  * Status of an automation
  */
 export type AutomationStatus = 'enabled' | 'disabled' | 'running' | 'failed' | 'stopping';
@@ -31,8 +25,11 @@ export interface Automation {
   /** Unique identifier for the automation */
   id: string;
 
-  /** Type of rclone operation; null for a workflow, which is no single operation. */
-  automationType: AutomationType | null;
+  /**
+   * Type of rclone operation; null for a workflow, which is no single operation. A mount or a
+   * serve is an automation only when it starts with the app.
+   */
+  automationType: PrimaryActionType | null;
 
   /** Remote name this automation is associated with; empty for a workflow. */
   remoteName: string;
@@ -84,6 +81,15 @@ export interface Automation {
 
   /** Only synchronize directories containing changed files when triggered by file watcher */
   watchChangedOnly: boolean;
+
+  /** Runs once when the app starts. */
+  autoStart: boolean;
+
+  /** Seconds to wait after the app has started before the automation runs. */
+  autoStartDelay: number;
+
+  /** When the start with the app is due, while it waits for its delay. */
+  autoStartAt: string | null;
 }
 
 /**

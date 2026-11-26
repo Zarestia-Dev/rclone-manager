@@ -12,7 +12,7 @@ backend/
 ├── Cargo.toml, Cargo.lock
 ├── core/                  Shared application, independent of Tauri and Axum
 │   ├── src/app/           Bootstrap, command catalog and JSON dispatch
-│   ├── src/services/      Settings, security, automation, workflows and lifecycle
+│   ├── src/services/      Settings, security, automation, workflows, lifecycle and tray
 │   ├── src/rclone/        Engine, transports, operations, binaries and caches
 │   ├── src/context/       Shared state ownership and host contract
 │   ├── src/utils/         Shared types, helpers and OS utilities
@@ -21,20 +21,20 @@ backend/
 ├── server/                Tokio/Axum executable and reusable HTTP host
 │   ├── README.md          Server deployment guide
 │   ├── linux/             Standalone systemd service template
-│   ├── src/headless/      Process startup, signals, paths and restart
+│   ├── package/           Server DEB, RPM and MSI (nfpm) and Windows setup (NSIS)
+│   ├── src/headless/      Process startup, signals, paths, restart, tray and Send To
 │   └── src/web/           Routes, authentication, SSE and HTTP handlers
 └── desktop/               Tauri application, including mobile and packaging
-    ├── src/app.rs         Native composition; optionally starts the HTTP host
+    ├── src/app.rs         Native composition
     ├── src/context.rs     Access to shared state from Tauri handles
     ├── src/native/        IPC, plugins, webview, notifications and updater adapter
-    ├── src/desktop/       Windows, tray, autostart and portable paths
+    ├── src/desktop/       Windows, autostart and portable paths
     ├── gen/android/      Android application
-    └── tauri.conf*.json   Native resources and packaging configuration
+    └── tauri.conf.json    Native resources and packaging configuration
 ```
 
-Dependency direction: `desktop → core`, `server → core`. The optional desktop
-`web-server` feature also enables `desktop → server` to compose HTTP with a native
-tray. Core never imports either executable or their frameworks.
+Dependency direction: `desktop → core`, `server → core`. Core never imports either
+executable or their frameworks.
 
 ## Adding features
 
@@ -66,8 +66,7 @@ tray. Core never imports either executable or their frameworks.
 npm run tauri dev
 npm run dev:portable
 npm run dev:android
-npm run dev:headless       # Native tray + HTTP server
-npm run dev:server         # Pure Tokio server, no Tauri/GTK/WebKit
+npm run dev:server         # Tokio server with its tray, no Tauri/GTK/WebKit
 npm run build:server
 cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings
@@ -98,9 +97,9 @@ required startup dependencies and `try_state` for optional capabilities. Prefer
 explicit service arguments for new domain helpers rather than passing the entire
 context when only one service is needed.
 
-`Host` defaults describe optional native capabilities: standalone servers do not
-have a tray, theme monitor, or native updater. Required paths and restart behavior
-must be implemented. Avoid adding a new trait per method; split capabilities only
+`Host` defaults describe optional native capabilities: a standalone server has no
+theme monitor or native updater, and no tray on macOS. Required paths and restart
+behavior must be implemented. Avoid adding a new trait per method; split capabilities only
 when an actual independent implementation needs them.
 
 The `services` directory owns settings, automation, workflows, security and
@@ -156,14 +155,15 @@ shortcut names, debug labels and release tag families remain unchanged.
 
 Core's CLI module contains only shared path and Send To arguments. The server
 owns `HttpArgs` (host, port, authentication and TLS). Desktop owns its CLI parser
-and `--tray`, and includes `HttpArgs` only in its tray/server build. No options
-need to be hidden or rejected after parsing to compensate for unified features.
+and `--tray`. No options need to be hidden or rejected after parsing to
+compensate for unified features.
 The server starts from `HttpArgs`, not an entire executable's CLI structure.
 
-Core has no `web-server` feature. Desktop retains that feature because it selects
-its native tray/server composition and optional server dependency. Native tray
-startup policy belongs to the native host; shared initialization invokes the
-optional host capability without reading native CLI flags.
+The tray lives in `core/src/services/tray`: core decides what it shows, when it
+refreshes and what its entries do, and draws it with `tray-icon` (GTK through the
+`tray-gtk` feature on the desktop, D-Bus through `tray-dbus` on the server). A host
+has a tray by managing `TrayMenuState` before startup and running the calls on its
+UI thread (`Host::run_on_main_thread`).
 
 `AppPaths::setup` resolves host paths during startup, creates directories, and
 registers the successful result before native preparation. Later readers use that
@@ -184,5 +184,5 @@ its command adapter, and never shared with another application context.
 application IDs and tests of Tauri configuration belong to the desktop crate.
 
 HTTP listener and browser-origin formatting belongs to `server/src/web/address.rs`.
-The native tray asks `HttpArgs` for its browser URL so IPv6 brackets, TLS, and
+The server tray asks `HttpArgs` for its browser URL so IPv6 brackets, TLS, and
 wildcard-to-loopback conversion follow the same server-owned rules.

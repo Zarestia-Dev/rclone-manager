@@ -34,9 +34,6 @@ describe('job queries', () => {
     expect(isNewerJobStats(current, { ...event, statsRevision: 4 })).toBe(false);
     expect(isNewerJobStats(current, { ...event, statsRevision: 3 })).toBe(false);
     expect(isNewerJobStats(current, { ...event, executeId: 'previous-execution' })).toBe(false);
-    const legacy = { jobId: 1, backendName: 'Local', stats: { ...DEFAULT_JOB_STATS } };
-    expect(isNewerJobStats(job(1), legacy)).toBe(true);
-    expect(isNewerJobStats(current, legacy)).toBe(false);
   });
 
   it('orders by start time before IDs and handles invalid timestamps', () => {

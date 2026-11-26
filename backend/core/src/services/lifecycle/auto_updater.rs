@@ -69,9 +69,6 @@ async fn run_update_checks(app: &AppHandle) -> bool {
         }
     };
 
-    #[cfg(feature = "updater")]
-    crate::services::updates::report_failed_updates(app);
-
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
         info!("Checking for app updates (channel: {channel})...");

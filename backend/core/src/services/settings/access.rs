@@ -192,12 +192,9 @@ pub fn can_deliver_event(
             })
 }
 
-/// A closed interface only accepts status, password entry and the updater receipt.
+/// A closed interface only accepts status and password entry.
 pub fn allowed_when_locked(command: &str) -> bool {
-    matches!(
-        command,
-        "get_vault_info" | "unlock_vault" | "confirm_app_update_startup"
-    )
+    matches!(command, "get_vault_info" | "unlock_vault")
 }
 
 #[cfg(test)]
@@ -526,6 +523,28 @@ pub(crate) mod tests {
             None
         ));
         assert!(PUBLIC_EVENTS.contains(&VAULT_STATE_CHANGED));
+    }
+
+    #[tokio::test]
+    async fn a_locked_interface_still_learns_that_the_app_is_closing() {
+        use crate::{
+            services::bridge::EventBridge,
+            utils::types::events::{APP_EVENT, APP_SHUTTING_DOWN, SSE_FORWARD_EVENTS},
+        };
+        let directory = tempfile::tempdir().unwrap();
+        let (_app, access) = app(directory.path());
+        let bridge = EventBridge::new(10, None);
+        bridge.set_frontend_access(access.clone());
+        let mut frontend = bridge.subscribe_frontend();
+        access.lock();
+        bridge.emit(APP_EVENT, serde_json::json!({"status": "update_found"}));
+        bridge.emit(APP_SHUTTING_DOWN, ());
+        assert_eq!(
+            frontend.recv().await.unwrap().event.event,
+            APP_SHUTTING_DOWN
+        );
+        assert!(frontend.try_recv().is_err());
+        assert!(SSE_FORWARD_EVENTS.contains(&APP_SHUTTING_DOWN));
     }
 
     #[tokio::test]

@@ -1,5 +1,10 @@
 name: "Release Server"
 
+# The headless-v<version> release is the server: ZIPs for servers, and the same
+# executable as the DEB, RPM, Arch package, Windows setup and MSI for desktops. One signed catalog
+# updates all of them; latest.json moves installs of the RClone Manager Headless app
+# (0.3.6 and older) to the package of their format. The tag keeps the headless name,
+# which those installs and the server's updater look for.
 on:
   workflow_dispatch:
 
@@ -7,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  build-server:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -16,18 +21,26 @@ jobs:
             os: "linux"
             arch: "x86_64"
             rust_target: "x86_64-unknown-linux-gnu"
+            package_arch: "amd64"
+            nfpm_arch: "amd64"
           - platform: "ubuntu-22.04-arm"
             os: "linux"
             arch: "aarch64"
             rust_target: "aarch64-unknown-linux-gnu"
+            package_arch: "arm64"
+            nfpm_arch: "arm64"
           - platform: "windows-latest"
             os: "windows"
             arch: "x86_64"
             rust_target: "x86_64-pc-windows-msvc"
+            package_arch: "x64"
+            nfpm_arch: "amd64"
           - platform: "windows-11-arm"
             os: "windows"
             arch: "aarch64"
             rust_target: "aarch64-pc-windows-msvc"
+            package_arch: "arm64"
+            nfpm_arch: "arm64"
           - platform: "macos-15-intel"
             os: "macos"
             arch: "x86_64"
@@ -38,7 +51,14 @@ jobs:
             rust_target: "aarch64-apple-darwin"
 
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 60
+    timeout-minutes: 90
+    env:
+      TARGET: ${{ matrix.rust_target }}
+      UPDATE_OS: ${{ matrix.os }}
+      UPDATE_ARCH: ${{ matrix.arch }}
+      PACKAGE_ARCH: ${{ matrix.package_arch }}
+      # nfpm.yaml reads its architecture from ARCH.
+      ARCH: ${{ matrix.nfpm_arch }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -72,89 +92,134 @@ jobs:
 
       - name: Get Version
         id: get_version
-        run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
-
-      - name: Name server archive
-        shell: bash
-        env:
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
-        run: echo "ARCHIVE=updater-assets/server-${{ matrix.os }}-${{ matrix.arch }}-$VERSION.zip" >> "$GITHUB_ENV"
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
 
       - name: Build browser UI
         run: npm run build
 
       - name: Build standalone server
-        run: cargo build --locked --release --manifest-path backend/Cargo.toml -p rclone-manager-server --target ${{ matrix.rust_target }}
+        run: cargo build --locked --release --manifest-path backend/Cargo.toml -p rclone-manager-server --target "$TARGET"
+        shell: bash
 
-      - name: Prepare Package (Linux/macOS)
-        if: matrix.os != 'windows'
+      - name: Package and sign server archive
         shell: bash
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-          OS: ${{ matrix.os }}
-          TARGET: ${{ matrix.rust_target }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          DIR_NAME="rclone-manager-server"
-          mkdir -p "$DIR_NAME" updater-assets
-
-          cp "backend/target/$TARGET/release/rclone-manager-server" "$DIR_NAME/"
-          chmod +x "$DIR_NAME/rclone-manager-server"
-          cp LICENSE "$DIR_NAME/"
-          sed "s/\${VERSION}/$VERSION/g" backend/server/package/README.txt > "$DIR_NAME/README.txt"
-          if [ "$OS" = linux ]; then
-            cp backend/server/linux/rclone-manager-server.service "$DIR_NAME/"
+          binary=rclone-manager-server
+          if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
+          archive="updater-assets/server-$UPDATE_OS-$UPDATE_ARCH-$VERSION.zip"
+          mkdir -p rclone-manager-server updater-assets
+          cp "backend/target/$TARGET/release/$binary" LICENSE rclone-manager-server/
+          sed "s/\${VERSION}/$VERSION/g" backend/server/package/README.txt > rclone-manager-server/README.txt
+          if [ "$UPDATE_OS" = linux ]; then
+            cp backend/server/linux/rclone-manager-server.service rclone-manager-server/
           fi
+          if [ "$UPDATE_OS" = windows ]; then
+            pwsh -Command "Compress-Archive -Path rclone-manager-server -DestinationPath $archive"
+          else
+            zip -qr "$archive" rclone-manager-server
+          fi
+          node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$VERSION" "backend/target/$TARGET/release/$binary" updater-assets "$archive" "rclone-manager-server/$binary"
 
-          zip -qr "$ARCHIVE" "$DIR_NAME"
+      - name: Install nfpm
+        if: matrix.os != 'macos'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NFPM: "2.49.0"
+        run: |
+          case "$UPDATE_OS-$UPDATE_ARCH" in
+            linux-x86_64) asset=Linux_x86_64.tar.gz ;;
+            linux-aarch64) asset=Linux_arm64.tar.gz ;;
+            windows-x86_64) asset=Windows_x86_64.zip ;;
+            windows-aarch64) asset=Windows_arm64.zip ;;
+          esac
+          dir="$RUNNER_TEMP/nfpm"
+          gh release download "v$NFPM" -R goreleaser/nfpm -p "nfpm_${NFPM}_$asset" -p checksums.txt -D "$dir"
+          (cd "$dir" && sha256sum --check --ignore-missing checksums.txt)
+          case "$asset" in
+            *.zip) unzip -o "$dir/nfpm_${NFPM}_$asset" -d "$dir" ;;
+            *) tar -xzf "$dir/nfpm_${NFPM}_$asset" -C "$dir" nfpm ;;
+          esac
+          echo "$dir" >> "$GITHUB_PATH"
 
-      - name: Prepare Package (Windows)
+      - name: Package and sign DEB, RPM and Arch package
+        if: matrix.os == 'linux'
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          mkdir -p backend/target/package packages
+          cp "backend/target/$TARGET/release/rclone-manager-server" backend/target/package/
+          # The Arch package's unit, without the manual /opt install notes.
+          sed -e '1,/^$/d' -e 's|/opt/rclone-manager/rclone-manager-server|/usr/bin/rclone-manager-server|' \
+            backend/server/linux/rclone-manager-server.service > backend/target/package/rclone-manager-server.service
+          grep -q '^ExecStart=/usr/bin/rclone-manager-server' backend/target/package/rclone-manager-server.service
+          deb="packages/RClone.Manager.Server_${VERSION}_$PACKAGE_ARCH.deb"
+          rpm="packages/RClone.Manager.Server-$VERSION-1.$UPDATE_ARCH.rpm"
+          pacman="packages/RClone.Manager.Server-$VERSION-1-$UPDATE_ARCH.pkg.tar.zst"
+          nfpm package -f backend/server/package/nfpm.yaml -p deb --target "$deb"
+          nfpm package -f backend/server/package/nfpm.yaml -p rpm --target "$rpm"
+          VERSION="${VERSION//-/}" nfpm package -f backend/server/package/nfpm.yaml -p archlinux --target "$pacman"
+          node scripts/create-update-manifest.cjs deb linux "$UPDATE_ARCH" "$VERSION" "$deb" updater-assets
+          node scripts/create-update-manifest.cjs rpm linux "$UPDATE_ARCH" "$VERSION" "$rpm" updater-assets
+          node scripts/create-update-manifest.cjs pacman linux "$UPDATE_ARCH" "$VERSION" "$pacman" updater-assets
+          # RClone Manager Headless 0.3.6 cannot install its DEB or RPM itself and
+          # announces only a release holding these files under its own name. The same
+          # packages, outside the catalog. Only the 0.3.7 releases carry them; remove
+          # this step with the rest of the Headless scaffolding (backend/TODO.md).
+          case "$VERSION" in
+            0.3.7*)
+              cp "$deb" "updater-assets/RClone.Manager.Headless_${VERSION}_$PACKAGE_ARCH.deb"
+              cp "$rpm" "updater-assets/RClone.Manager.Headless-$VERSION-1.$UPDATE_ARCH.rpm"
+              ;;
+          esac
+
+      - name: Build and sign Windows setup and MSI
         if: matrix.os == 'windows'
         shell: pwsh
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-          TARGET: ${{ matrix.rust_target }}
-        run: |
-          $dirName = "rclone-manager-server"
-          New-Item -ItemType Directory -Force -Path $dirName, updater-assets | Out-Null
-
-          Copy-Item "backend/target/$env:TARGET/release/rclone-manager-server.exe" "$dirName/"
-          Copy-Item LICENSE "$dirName/"
-          (Get-Content backend/server/package/README.txt).Replace('${VERSION}', $env:VERSION) | Set-Content "$dirName/README.txt"
-
-          Compress-Archive -Path $dirName -DestinationPath $env:ARCHIVE
-
-      - name: Sign server archive and executable
-        shell: bash
-        env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          UPDATE_OS: ${{ matrix.os }}
-          UPDATE_ARCH: ${{ matrix.arch }}
-          UPDATE_TARGET: ${{ matrix.rust_target }}
-          UPDATE_VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          binary=rclone-manager-server
-          if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
-          node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" updater-assets "$ARCHIVE" "rclone-manager-server/$binary"
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) { choco install nsis -y --no-progress }
+          New-Item -ItemType Directory -Force -Path packages, backend\target\package | Out-Null
+          $binary = "$PWD\backend\target\$env:TARGET\release\rclone-manager-server.exe"
+          Copy-Item $binary backend\target\package\
+          $setup = "$PWD\packages\RClone.Manager.Server_${env:VERSION}_${env:PACKAGE_ARCH}-setup.exe"
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /V2 "/DVERSION=$env:VERSION" "/DBINARY=$binary" "/DOUTFILE=$setup" backend\server\package\installer.nsi
+          $msi = "$PWD\packages\RClone.Manager.Server_${env:VERSION}_${env:PACKAGE_ARCH}_en-US.msi"
+          nfpm package -f backend/server/package/nfpm.yaml -p msi --target $msi
+          node scripts/create-update-manifest.cjs nsis windows $env:UPDATE_ARCH $env:VERSION $setup updater-assets
+          node scripts/create-update-manifest.cjs msi windows $env:UPDATE_ARCH $env:VERSION $msi updater-assets
 
-      - name: Collect server release artifacts
+      - name: Collect release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: server-${{ matrix.os }}-${{ matrix.arch }}
           path: updater-assets/*
           if-no-files-found: error
 
-  upload-server:
-    needs: build-server
+  upload:
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
-    # Shares the headless-v<version> release with Release Headless.
     concurrency:
-      group: release-headless
+      group: release-server
       cancel-in-progress: false
       queue: max
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -168,27 +233,27 @@ jobs:
           path: artifacts
       - name: Get Version
         id: get_version
-        run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
       - name: Check release before uploading packages
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: node scripts/publish-custom-updater.cjs --check "headless-v$VERSION" "$VERSION"
-      - name: Upload server packages
+      - name: Upload packages
         uses: softprops/action-gh-release@v3
         with:
           tag_name: headless-v${{ steps.get_version.outputs.VERSION }}
           target_commitish: ${{ github.sha }}
-          name: "RClone Manager Headless v${{ steps.get_version.outputs.VERSION }}"
+          name: "RClone Manager Server v${{ steps.get_version.outputs.VERSION }}"
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
-          files: artifacts/**/*.zip
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.pkg.tar.zst
+            artifacts/**/*-setup.exe
+            artifacts/**/*.msi
+      - name: Publish update catalog and latest.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish custom update catalog
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: node scripts/publish-custom-updater.cjs "headless-v$VERSION" "$VERSION" artifacts

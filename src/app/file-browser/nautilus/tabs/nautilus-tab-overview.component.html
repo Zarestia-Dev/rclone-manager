@@ -1,0 +1,60 @@
+<header>
+  <span class="overview-title">{{
+    'nautilus.view.tabCount' | translate: { count: tabs().length }
+  }}</span>
+  <button
+    class="action-button"
+    (click)="closeOverview.emit()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</header>
+
+<div class="overview-grid">
+  @for (tab of tabs(); track tab.id; let i = $index) {
+    <div
+      class="tab-card"
+      role="button"
+      tabindex="0"
+      [class.active]="i === activeTabIndex()"
+      [attr.aria-current]="i === activeTabIndex() ? 'page' : null"
+      (click)="switchTab.emit(i)"
+      (keydown.enter)="switchTab.emit(i)"
+      (keydown.space)="$event.preventDefault(); switchTab.emit(i)"
+    >
+      <div class="card-preview">
+        @for (item of tab.files; track item.entry.Path) {
+          <div class="preview-row">
+            <mat-icon
+              [attr.data-tone]="item.entry.IsDir ? 'accent' : null"
+              [svgIcon]="iconService.getIconForEntry(item.entry)"
+            ></mat-icon>
+            <span class="truncate">{{ item.entry.Name }}</span>
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <mat-icon svgIcon="folder"></mat-icon>
+          </div>
+        }
+        <button
+          class="action-button close-card"
+          (click)="$event.stopPropagation(); closeTab.emit(i)"
+          [attr.title]="'nautilus.contextMenu.closeTab' | translate"
+          [attr.aria-label]="'nautilus.contextMenu.closeTab' | translate"
+        >
+          <mat-icon svgIcon="close"></mat-icon>
+        </button>
+      </div>
+      <span class="card-title truncate">{{ tab.title }}</span>
+    </div>
+  }
+</div>
+
+<footer>
+  <button matButton="filled" (click)="newTab.emit()">
+    <mat-icon svgIcon="plus"></mat-icon>
+    {{ 'nautilus.contextMenu.newTab' | translate }}
+  </button>
+</footer>

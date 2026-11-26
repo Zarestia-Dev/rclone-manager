@@ -39,6 +39,9 @@ export class SystemHealthService {
   readonly passwordUnlocked = signal(false);
   readonly skipMountPluginCheck = signal(false);
 
+  /** The one answer to "is the mount plugin missing": unknown (`null`) is not missing. */
+  readonly mountPluginMissing = computed(() => this.mountPluginInstalled() === false);
+
   readonly isCheckingRclone = signal(false);
   readonly isCheckingMountPlugin = signal(false);
   readonly isCheckingEncryption = signal(false);
@@ -60,6 +63,7 @@ export class SystemHealthService {
 
   constructor() {
     this.setupRcloneEngineListeners();
+    this.setupMountPluginListener();
     this.setupSettingsListener();
   }
 
@@ -93,14 +97,11 @@ export class SystemHealthService {
       this.skipMountPluginCheck() ||
       (await this.appSettingsService.getSettingValue<boolean>('core.skip_mount_plugin_check')) ===
         true;
-    if (skip) {
-      return;
-    }
     try {
+      // Skipping only silences the repair sheet; the state is still read for the banners.
       const ok = await this.checkMountPlugin();
-      if (ok === false && !this.skipMountPluginCheck()) {
+      if (ok === false && !skip && !this.skipMountPluginCheck()) {
         await this.showRepairSheet({ type: RepairSheetType.MOUNT_PLUGIN });
-        this.setupMountPluginListener();
       }
     } catch (error) {
       console.error('Error checking mount plugin status:', error);
@@ -123,10 +124,6 @@ export class SystemHealthService {
   }
 
   async checkMountPlugin(): Promise<boolean> {
-    if (this.skipMountPluginCheck()) {
-      this.mountPluginInstalled.set(true);
-      return true;
-    }
     this.isCheckingMountPlugin.set(true);
     try {
       const installed = await this.installationService.isMountPluginInstalled();
@@ -178,10 +175,6 @@ export class SystemHealthService {
 
   markRcloneInstalled(): void {
     this.rcloneInstalled.set(true);
-  }
-
-  markMountPluginInstalled(): void {
-    this.mountPluginInstalled.set(true);
   }
 
   reset(): void {
@@ -266,6 +259,11 @@ export class SystemHealthService {
     });
   }
 
+  /**
+   * Whoever installs the plugin (the repair sheet from a banner, the wizard, onboarding, another
+   * window), the backend announces it. Listening for the whole session, not only after the start-up
+   * prompt, is what makes every banner that reads `mountPluginMissing` go away.
+   */
   private setupMountPluginListener(): void {
     this.eventListenersService
       .listenToMountPluginInstalled()
@@ -274,17 +272,10 @@ export class SystemHealthService {
   }
 
   private async recheckMountPluginStatus(): Promise<void> {
-    try {
-      const ok = await this.installationService.isMountPluginInstalled();
-      if (ok) {
-        this.markMountPluginInstalled();
-        this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
-      } else {
-        console.warn('Mount plugin install event received but plugin still not detected');
-      }
-    } catch (error) {
-      console.error('Error re-checking mount plugin:', error);
+    if (await this.checkMountPlugin()) {
       this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+    } else {
+      console.warn('Mount plugin install event received but plugin still not detected');
     }
   }
 

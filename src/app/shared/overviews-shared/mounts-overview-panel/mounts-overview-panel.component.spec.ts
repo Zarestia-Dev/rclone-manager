@@ -7,11 +7,18 @@ import { MountedRemote } from '@app/types';
 import { MountManagementService } from 'src/app/services/operations/mount-management.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { OriginFilterService } from 'src/app/services/ui/state/origin-filter.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 describe('MountsOverviewPanelComponent', () => {
   let component: MountsOverviewPanelComponent;
   let fixture: ComponentFixture<MountsOverviewPanelComponent>;
+
+  // The chips choose the filter, and only while they are shown.
+  const chooseFilter = (filter: string): void => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    TestBed.inject(OriginFilterService).set('mounts', filter);
+  };
   const mountedRemotes = signal<MountedRemote[]>([]);
   const unmountRemote = vi.fn().mockResolvedValue(undefined);
   const navigateToOwner = vi.fn();
@@ -41,6 +48,7 @@ describe('MountsOverviewPanelComponent', () => {
   ];
 
   beforeEach(async () => {
+    localStorage.removeItem('rcman.overview.originFilters');
     mountedRemotes.set(mounts);
     unmountRemote.mockClear();
     navigateToOwner.mockClear();
@@ -76,15 +84,46 @@ describe('MountsOverviewPanelComponent', () => {
     ['startup', ['/mnt/box']],
     ['filemanager', []],
   ])('filters by the %s origin', (filter, expected) => {
-    component.selectedOriginFilter.set(filter);
+    chooseFilter(filter);
     expect(component.allMounts().map(m => m.mount_point)).toEqual(expected);
   });
 
-  it('starts on the default origin filter', () => {
-    fixture.componentRef.setInput('defaultOriginFilter', 'quickrun');
-    expect(component.selectedOriginFilter()).toBe('quickrun');
-    fixture.componentRef.setInput('defaultOriginFilter', 'all');
+  it('starts on every origin', () => {
     expect(component.selectedOriginFilter()).toBe('all');
+  });
+
+  it('counts the mounts a chip leaves out', () => {
+    expect(component.hiddenCount()).toBe(0);
+    chooseFilter('quickrun');
+    expect(component.hiddenCount()).toBe(3);
+  });
+
+  it('remembers the chip that is picked', () => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    fixture.detectChanges();
+    const chips = fixture.nativeElement.querySelectorAll('app-origin-filter-bar button');
+    (chips[2] as HTMLButtonElement).click();
+    expect(TestBed.inject(OriginFilterService).get('mounts')).toBe('quickrun');
+    expect(component.selectedOriginFilter()).toBe('quickrun');
+  });
+
+  it('takes the remembered chip only while the chips are shown', () => {
+    TestBed.inject(OriginFilterService).set('mounts', 'quickrun');
+    expect(component.selectedOriginFilter()).toBe('all');
+    fixture.componentRef.setInput('showFilterChips', true);
+    expect(component.selectedOriginFilter()).toBe('quickrun');
+  });
+
+  it('counts everything in the header when a chip hides all of it, and says so', () => {
+    chooseFilter('update');
+    fixture.detectChanges();
+    expect(component.totalCount()).toBeGreaterThan(0);
+    expect(component.hiddenCount()).toBe(component.totalCount());
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('mat-panel-description')?.textContent).not.toContain('noActive');
+    expect(el.querySelector('.empty-state')?.textContent).toContain(
+      'generalOverview.originFilter.empty'
+    );
   });
 
   it('follows the mounts as they appear and disappear', () => {

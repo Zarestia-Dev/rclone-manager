@@ -1,5 +1,5 @@
 # =============================================================================
-# RClone Manager Headless — Multi-stage Docker Build
+# RClone Manager Server — Multi-stage Docker Build
 # =============================================================================
 #
 # Usage:
@@ -9,7 +9,7 @@
 # Environment variables:
 #   PUID / PGID           — Set container user/group ID (default: 1000)
 #   PGIDS                 — Supplementary group IDs, comma-separated (e.g. 1000,3000)
-#   RCLONE_MANAGER_HOST   — Bind address (default: 0.0.0.0)
+#   RCLONE_MANAGER_HOST   — Bind address (default in this image: 0.0.0.0)
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
 #   RCLONE_MANAGER_PASS   — Basic auth password
@@ -50,7 +50,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy project source and build headless binary
+# Copy project source and build the server binary
 COPY . .
 RUN npm run build && cargo build --manifest-path backend/Cargo.toml \
     --release -p rclone-manager-server
@@ -62,7 +62,7 @@ FROM debian:bookworm-slim
 
 LABEL maintainer="Zarestia-Dev" \
       org.opencontainers.image.title="RClone Manager" \
-      org.opencontainers.image.description="Web-based rclone management interface (headless)" \
+      org.opencontainers.image.description="Web-based rclone management interface (server)" \
       org.opencontainers.image.source="https://github.com/Zarestia-Dev/rclone-manager"
 
 # Install runtime dependencies
@@ -133,6 +133,7 @@ ENV HOME=/home/rclone-manager \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/config/rclone.conf \
     RCLONE_MANAGER_INSTALLATION_TYPE=docker \
+    RCLONE_MANAGER_HOST=0.0.0.0 \
     RCLONE_MANAGER_DATA_DIR=/data \
     RCLONE_MANAGER_LOG_DIR=/data/logs \
     RCLONE_MANAGER_CACHE_DIR=/data/cache

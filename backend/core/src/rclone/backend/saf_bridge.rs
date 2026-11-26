@@ -92,11 +92,11 @@ pub fn request_quit() {
 }
 
 pub fn notify_roots_changed() {
-    with_bridge(|env, cls| {
-        use jni::{jni_sig, jni_str};
-        env.call_static_method(cls, jni_str!("notifyRootsChanged"), jni_sig!("()V"), &[])
-            .map(|_| ())
-    });
+    call_void(
+        jni::jni_str!("notifyRootsChanged"),
+        &jni::jni_sig!("()V"),
+        &[],
+    );
 }
 
 pub fn update_mounted_remotes(remotes: &[crate::utils::types::remotes::MountedRemote]) {
@@ -112,6 +112,25 @@ pub fn update_mounted_remotes(remotes: &[crate::utils::types::remotes::MountedRe
         )
         .map(|_| ())
     });
+}
+
+/// The mounts last sent to the documents provider, which it keeps across process restarts.
+pub fn stored_mounted_remotes() -> Vec<crate::utils::types::remotes::MountedRemote> {
+    with_bridge(|env, cls| {
+        use jni::{jni_sig, jni_str, objects::JString};
+        let value = env
+            .call_static_method(
+                cls,
+                jni_str!("storedMountedRemotes"),
+                jni_sig!("()Ljava/lang/String;"),
+                &[],
+            )?
+            .l()?;
+        let json: String = env.cast_local::<JString>(value)?.mutf8_chars(env)?.into();
+        Ok(json)
+    })
+    .and_then(|json| serde_json::from_str(&json).ok())
+    .unwrap_or_default()
 }
 
 pub fn open_saf_remote(remote_name: &str) -> bool {
@@ -208,34 +227,85 @@ pub fn show_notification(title: &str, body: &str) -> bool {
 }
 
 /// Tells the foreground service what is running so it can start, stop and refresh its
-/// notification, and stores the start-on-boot choice for the boot receiver, which runs before
-/// any native code can read the settings. `text` is the already translated summary.
+/// notification. `text` is the already translated summary and `progress` the translated line
+/// under it while jobs run; `percent` is -1 while rclone does not know how much the jobs
+/// transfer.
 pub fn sync_keep_alive(
     keep_alive: bool,
-    start_on_boot: bool,
     jobs: usize,
     mounts: usize,
     serves: usize,
     text: &str,
+    progress: &str,
+    percent: i32,
 ) {
     with_bridge(|env, cls| {
         use jni::{jni_sig, jni_str, objects::JValue};
         let text = env.new_string(text)?;
+        let progress = env.new_string(progress)?;
         env.call_static_method(
             cls,
             jni_str!("syncKeepAlive"),
-            jni_sig!("(ZZIIILjava/lang/String;)V"),
+            jni_sig!("(ZIIILjava/lang/String;Ljava/lang/String;I)V"),
             &[
                 JValue::Bool(keep_alive),
-                JValue::Bool(start_on_boot),
                 JValue::Int(jobs as i32),
                 JValue::Int(mounts as i32),
                 JValue::Int(serves as i32),
                 (&text).into(),
+                (&progress).into(),
+                JValue::Int(percent),
             ],
         )
         .map(|_| ())
     });
+}
+
+/// Calls a static `void` method of the bridge with primitive arguments.
+fn call_void(
+    name: &jni::strings::JNIStr,
+    sig: &jni::signature::MethodSignature<'_, '_>,
+    args: &[jni::objects::JValue],
+) {
+    with_bridge(|env, cls| env.call_static_method(cls, name, sig, args).map(|_| ()));
+}
+
+/// The next scheduled run in epoch milliseconds, or 0 for none; Android sets an alarm for it.
+pub fn set_schedule_wakeup(at_millis: i64) {
+    call_void(
+        jni::jni_str!("setScheduleWakeup"),
+        &jni::jni_sig!("(J)V"),
+        &[jni::objects::JValue::Long(at_millis)],
+    );
+}
+
+/// Whether the vault has been locked since the backend started, so nothing runs until it is
+/// unlocked in the app; the keep-alive notification says so.
+pub fn set_vault_locked(locked: bool) {
+    call_void(
+        jni::jni_str!("setVaultLocked"),
+        &jni::jni_sig!("(Z)V"),
+        &[jni::objects::JValue::Bool(locked)],
+    );
+}
+
+/// Stores the start-on-boot choice for the boot receiver, which runs before any native code can
+/// read the settings.
+pub fn set_start_on_boot(start_on_boot: bool) {
+    call_void(
+        jni::jni_str!("setStartOnBoot"),
+        &jni::jni_sig!("(Z)V"),
+        &[jni::objects::JValue::Bool(start_on_boot)],
+    );
+}
+
+/// Whether a folder watcher has changes waiting for their run; the device stays awake meanwhile.
+pub fn set_watch_pending(pending: bool) {
+    call_void(
+        jni::jni_str!("setWatchPending"),
+        &jni::jni_sig!("(Z)V"),
+        &[jni::objects::JValue::Bool(pending)],
+    );
 }
 
 mod jni_impl {

@@ -74,10 +74,26 @@ function releaseMetadata(configFile) {
   return { VERSION: version, PRERELEASE: String(parseVersion(version).prerelease !== null) };
 }
 
+// The tag and the update catalogs take tauri.conf.json's version; the installed
+// build reports Cargo's. A release whose versions differ would offer itself again
+// after it was installed.
+function checkVersions(version, root) {
+  const cargo = /^\[workspace\.package\][^[]*?^version\s*=\s*"([^"]+)"/m.exec(
+    fs.readFileSync(path.join(root, 'backend/Cargo.toml'), 'utf8')
+  )?.[1];
+  const npm = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+  if (cargo !== version || npm !== version)
+    throw new Error(
+      `Versions differ: tauri.conf.json ${version}, backend/Cargo.toml ${cargo}, package.json ${npm}`
+    );
+}
+
 if (require.main === module) {
   try {
     if (process.argv.length !== 3) throw new Error('Usage: release-version <tauri-config.json>');
-    const output = Object.entries(releaseMetadata(process.argv[2]))
+    const metadata = releaseMetadata(process.argv[2]);
+    checkVersions(metadata.VERSION, process.cwd());
+    const output = Object.entries(metadata)
       .map(([key, value]) => `${key}=${value}\n`)
       .join('');
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
@@ -88,4 +104,10 @@ if (require.main === module) {
   }
 }
 
-module.exports = { parseVersion, androidVersionCode, androidBuildArgs, releaseMetadata };
+module.exports = {
+  parseVersion,
+  androidVersionCode,
+  androidBuildArgs,
+  releaseMetadata,
+  checkVersions,
+};

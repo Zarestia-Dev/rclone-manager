@@ -52,7 +52,6 @@ fn core_has_no_transport_or_host_dependencies() {
             "crate::desktop::",
             "../desktop/",
             "../server/",
-            "feature = \"web-server\"",
         ],
     );
 }

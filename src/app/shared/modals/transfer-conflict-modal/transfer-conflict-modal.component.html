@@ -1,0 +1,234 @@
+@if (single) {
+  @let conflict = conflicts[0];
+  @let replaceable = canReplace(conflict);
+  <div class="conflict-question">
+    <div class="question-icon" [attr.data-tone]="conflict.existing.isDir ? 'accent' : 'warn'">
+      <mat-icon
+        [svgIcon]="conflict.existing.isDir ? 'folder' : 'file'"
+        aria-hidden="true"
+      ></mat-icon>
+    </div>
+    <h2>{{ 'nautilus.conflicts.exists' | translate: { name: conflict.incoming.name } }}</h2>
+    <p>
+      {{
+        (conflict.existing.isDir
+          ? 'nautilus.conflicts.folderExists'
+          : 'nautilus.conflicts.fileExists'
+        ) | translate: { destination: data.destination }
+      }}
+      @if (replaceable && conflict.incoming.isDir) {
+        {{ 'nautilus.conflicts.mergeExplain' | translate }}
+      }
+    </p>
+    @if (canCompare(conflict)) {
+      <dl class="compare">
+        <dt>{{ 'nautilus.conflicts.thereNow' | translate }}</dt>
+        <dd>
+          {{ conflict.existing.size | formatFileSize }} ·
+          {{ conflict.existing.modTime! | formatRelativeDate }}
+        </dd>
+        <dt>{{ 'nautilus.conflicts.incoming' | translate }}</dt>
+        <dd>
+          {{ conflict.incoming.size | formatFileSize }} ·
+          {{ conflict.incoming.modTime! | formatRelativeDate }}
+        </dd>
+      </dl>
+    }
+    @if (replaceable && conflict.incoming.isDir) {
+      <ng-container
+        *ngTemplateOutlet="sameNames; context: { label: 'nautilus.conflicts.sameNames' }"
+      />
+    }
+    @if (warning(); as warning) {
+      <app-alert-banner severity="warning" [description]="warning | translate" />
+    }
+  </div>
+  <footer>
+    <button matButton type="button" class="cancel" (click)="cancel()">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button matButton="tonal" type="button" (click)="answer('skip')">
+      {{ 'nautilus.conflicts.skip' | translate }}
+    </button>
+    <button
+      [matButton]="replaceable ? 'tonal' : 'filled'"
+      [attr.data-tone]="replaceable ? null : 'primary'"
+      type="button"
+      (click)="answer('keepBoth')"
+    >
+      {{ 'nautilus.conflicts.keepBoth' | translate }}
+    </button>
+    @if (replaceable) {
+      <button
+        matButton="filled"
+        [attr.data-tone]="conflict.incoming.isDir ? 'primary' : 'warn'"
+        type="button"
+        (click)="answer('replace')"
+      >
+        {{
+          (conflict.incoming.isDir ? 'nautilus.conflicts.merge' : 'nautilus.conflicts.replace')
+            | translate
+        }}
+      </button>
+    }
+  </footer>
+} @else {
+  <div class="conflict-list">
+    <h2>
+      {{
+        'nautilus.conflicts.title'
+          | translate: { count: conflicts.length, total: data.total, destination: data.destination }
+      }}
+    </h2>
+    <div class="for-all" role="group" [attr.aria-label]="'nautilus.conflicts.forAll' | translate">
+      <span>{{ 'nautilus.conflicts.forAll' | translate }}</span>
+      <button
+        type="button"
+        appPill
+        size="xs"
+        tone="accent"
+        [selected]="forAll() === 'replace'"
+        (click)="setAll('replace')"
+      >
+        {{
+          (anyFolders ? 'nautilus.conflicts.replaceOrMerge' : 'nautilus.conflicts.replace')
+            | translate
+        }}
+      </button>
+      <button
+        type="button"
+        appPill
+        size="xs"
+        tone="accent"
+        [selected]="forAll() === 'skip'"
+        (click)="setAll('skip')"
+      >
+        {{ 'nautilus.conflicts.skip' | translate }}
+      </button>
+      <button
+        type="button"
+        appPill
+        size="xs"
+        tone="accent"
+        [selected]="forAll() === 'keepBoth'"
+        (click)="setAll('keepBoth')"
+      >
+        {{ 'nautilus.conflicts.keepBoth' | translate }}
+      </button>
+    </div>
+
+    <ul class="items">
+      @for (conflict of conflicts; track conflict.incoming.name; let i = $index) {
+        @let action = actions()[i];
+        <li>
+          <mat-icon [svgIcon]="conflict.incoming.isDir ? 'folder' : 'file'" aria-hidden="true" />
+          <span class="name truncate" [title]="conflict.incoming.name">
+            {{ conflict.incoming.name }}
+          </span>
+          <span class="choices" role="group" [attr.aria-label]="conflict.incoming.name">
+            @if (canReplace(conflict)) {
+              <button
+                type="button"
+                appPill
+                size="xs"
+                tone="accent"
+                [selected]="action === 'replace'"
+                (click)="setAction(i, 'replace')"
+              >
+                {{
+                  (conflict.incoming.isDir
+                    ? 'nautilus.conflicts.merge'
+                    : 'nautilus.conflicts.replace'
+                  ) | translate
+                }}
+              </button>
+            }
+            <button
+              type="button"
+              appPill
+              size="xs"
+              tone="accent"
+              [selected]="action === 'skip'"
+              (click)="setAction(i, 'skip')"
+            >
+              {{ 'nautilus.conflicts.skip' | translate }}
+            </button>
+            <button
+              type="button"
+              appPill
+              size="xs"
+              tone="accent"
+              [selected]="action === 'keepBoth'"
+              (click)="setAction(i, 'keepBoth')"
+            >
+              {{ 'nautilus.conflicts.keepBoth' | translate }}
+            </button>
+          </span>
+          <span class="outcome truncate">
+            @switch (action) {
+              @case ('keepBoth') {
+                {{ 'nautilus.conflicts.keptAs' | translate: { name: copyNames[i] } }}
+              }
+              @case ('skip') {
+                {{ 'nautilus.conflicts.skipped' | translate }}
+              }
+              @default {
+                @if (!conflict.incoming.isDir) {
+                  {{ 'nautilus.conflicts.replaces' | translate }}
+                  @if (canCompare(conflict)) {
+                    · {{ conflict.existing.size | formatFileSize }} →
+                    {{ conflict.incoming.size | formatFileSize }}
+                  }
+                } @else {
+                  {{ 'nautilus.conflicts.merges.' + existingFiles() | translate }}
+                }
+              }
+            }
+          </span>
+        </li>
+      }
+    </ul>
+
+    @if (merges()) {
+      <ng-container
+        *ngTemplateOutlet="sameNames; context: { label: 'nautilus.conflicts.sameNamesAll' }"
+      />
+    }
+    @if (data.total > conflicts.length) {
+      <p>{{ 'nautilus.conflicts.others' | translate: { count: data.total - conflicts.length } }}</p>
+    }
+    @if (warning(); as warning) {
+      <app-alert-banner severity="warning" [description]="warning | translate" />
+    }
+  </div>
+  <footer>
+    <button matButton type="button" class="cancel" (click)="cancel()">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button matButton="filled" data-tone="primary" type="button" (click)="confirm()">
+      @if (sending() > 0) {
+        {{ 'nautilus.conflicts.start.' + data.operation | translate: { count: sending() } }}
+      } @else {
+        {{ 'nautilus.conflicts.skipAll' | translate }}
+      }
+    </button>
+  </footer>
+}
+
+<!-- What a merge does with the files of the same name: one choice for every merged folder. -->
+<ng-template #sameNames let-label="label">
+  <div class="same-names">
+    <span id="same-names-label">{{ label | translate }}</span>
+    <mat-radio-group
+      aria-labelledby="same-names-label"
+      [value]="existingFiles()"
+      (change)="existingFiles.set($event.value)"
+    >
+      @for (choice of existingFileChoices; track choice) {
+        <mat-radio-button [value]="choice">
+          {{ 'nautilus.conflicts.existingFiles.' + choice | translate }}
+        </mat-radio-button>
+      }
+    </mat-radio-group>
+  </div>
+</ng-template>

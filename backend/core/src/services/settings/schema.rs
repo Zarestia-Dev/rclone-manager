@@ -352,6 +352,44 @@ impl Default for DeveloperSettings {
     }
 }
 
+/// The "What do you want to do?" setup guide
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[schema(category = "wizard")]
+pub struct WizardSettings {
+    #[setting(
+        label = "settings.wizard.after_remote.label",
+        description = "settings.wizard.after_remote.description"
+    )]
+    pub after_remote: bool,
+
+    #[setting(
+        label = "settings.wizard.destination.label",
+        description = "settings.wizard.destination.description",
+        options(
+            ("auto", "settings.wizard.destination.options.auto"),
+            ("quick_run", "settings.wizard.destination.options.quick_run"),
+            ("profile", "settings.wizard.destination.options.profile")
+        )
+    )]
+    pub destination: String,
+
+    #[setting(
+        label = "settings.wizard.show_mascot.label",
+        description = "settings.wizard.show_mascot.description"
+    )]
+    pub show_mascot: bool,
+}
+
+impl Default for WizardSettings {
+    fn default() -> Self {
+        Self {
+            after_remote: true,
+            destination: "auto".to_string(),
+            show_mascot: false,
+        }
+    }
+}
+
 /// Runtime settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "runtime")]
@@ -454,21 +492,116 @@ impl Default for RuntimeSettings {
     }
 }
 
-/// Nautilus (file browser) specific preferences
-#[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]
+/// The file browser's settings. Its preferences are shown on the preferences
+/// window's File Browser tab; the data it keeps (starred items, bookmarks and what
+/// the toolbar and sidebar change) is marked `hidden` and stays off that tab.
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "nautilus")]
 pub struct NautilusSettings {
     #[setting(
-        label = "settings.nautilus.starred.label",
-        description = "settings.nautilus.starred.description"
+        label = "settings.nautilus.layout.label",
+        description = "settings.nautilus.layout.description",
+        options(
+            ("grid", "settings.nautilus.layout.options.grid"),
+            ("list", "settings.nautilus.layout.options.list")
+        )
     )]
-    pub starred: Vec<Value>,
+    pub layout: String,
+
+    /// A column and a direction, named and labelled as in the file browser's sort menu.
+    #[setting(
+        label = "settings.nautilus.sort.label",
+        description = "settings.nautilus.sort.description",
+        options(
+            ("name-asc", "nautilus.sort.az"),
+            ("name-desc", "nautilus.sort.za"),
+            ("modified-desc", "nautilus.sort.lastModified"),
+            ("modified-asc", "nautilus.sort.firstModified"),
+            ("size-desc", "nautilus.sort.sizeLargest"),
+            ("size-asc", "nautilus.sort.sizeSmallest")
+        )
+    )]
+    pub sort: String,
 
     #[setting(
-        label = "settings.nautilus.bookmarks.label",
-        description = "settings.nautilus.bookmarks.description"
+        label = "settings.nautilus.show_hidden.label",
+        description = "settings.nautilus.show_hidden.description"
     )]
+    pub show_hidden: bool,
+
+    #[setting(
+        label = "settings.nautilus.ask_transfer_options.label",
+        description = "settings.nautilus.ask_transfer_options.description"
+    )]
+    pub ask_transfer_options: bool,
+
+    /// Uploads from the web interface are sent in requests no larger than this,
+    /// so they pass a proxy that limits a request's body (nginx: 1 MiB by default).
+    /// The server writes a chunk to disk as it arrives, so the size costs it no
+    /// memory; larger chunks help a single large file over a fast, distant link.
+    #[setting(
+        label = "settings.nautilus.upload_request_mib.label",
+        description = "settings.nautilus.upload_request_mib.description",
+        min = 1,
+        step = 1
+    )]
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    pub upload_request_mib: u32,
+
+    #[setting(
+        label = "settings.nautilus.parallel_uploads.label",
+        description = "settings.nautilus.parallel_uploads.description",
+        min = 1,
+        step = 1
+    )]
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    pub parallel_uploads: u32,
+
+    /// The options every copy, move and upload of the file browser runs with unless its
+    /// dialog sets others: `copy`, `move`, `filter` and `backend`, each a map of options.
+    #[setting(hidden = true)]
+    pub transfer_options: Value,
+
+    #[setting(hidden = true)]
+    pub starred: Vec<Value>,
+
+    #[setting(hidden = true)]
     pub bookmarks: Vec<Value>,
+
+    /// Pixels, one of the sizes the toolbar offers for each layout.
+    #[setting(hidden = true)]
+    pub grid_icon_size: u32,
+
+    #[setting(hidden = true)]
+    pub list_icon_size: u32,
+
+    #[setting(hidden = true)]
+    pub sidebar_drive_order: Vec<String>,
+
+    #[setting(hidden = true)]
+    pub sidebar_hidden_drives: Vec<String>,
+}
+
+impl Default for NautilusSettings {
+    fn default() -> Self {
+        Self {
+            layout: "grid".to_string(),
+            sort: "name-asc".to_string(),
+            show_hidden: false,
+            ask_transfer_options: false,
+            #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+            upload_request_mib: 8,
+            #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+            parallel_uploads: 3,
+            transfer_options: Value::Object(Default::default()),
+            starred: Vec::new(),
+            bookmarks: Vec::new(),
+            grid_icon_size: 96,
+            list_icon_size: 24,
+            sidebar_drive_order: Vec::new(),
+            sidebar_hidden_drives: Vec::new(),
+        }
+    }
 }
 
 // Main AppSettings - Uses nested struct flattening
@@ -479,6 +612,7 @@ pub struct AppSettings {
     pub general: GeneralSettings,
     pub core: CoreSettings,
     pub developer: DeveloperSettings,
+    pub wizard: WizardSettings,
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
 }
@@ -576,6 +710,112 @@ mod feature_tests {
             .unwrap();
         assert_eq!(manager.get::<u32>("general.ui_scale").unwrap(), 100);
         assert!(!manager.get::<bool>("general.restrict").unwrap());
+    }
+
+    // The setup guide reads these three values, so the options and the defaults are fixed.
+    #[test]
+    fn wizard_settings_offer_what_the_guide_reads_and_default_on_older_files() {
+        use super::WizardSettings;
+        let metadata = WizardSettings::get_metadata();
+        let options: Vec<&str> = metadata["wizard.destination"]
+            .constraints
+            .options
+            .as_ref()
+            .expect("destination is a select setting")
+            .iter()
+            .map(|option| option.value.as_str().unwrap())
+            .collect();
+        assert_eq!(options, ["auto", "quick_run", "profile"]);
+
+        // A settings file saved before the category existed.
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"general": {"language": "en-US", "restrict": false}}"#,
+        )
+        .unwrap();
+        let manager = rcman::SettingsManager::builder("wizard", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<super::AppSettings>()
+            .build()
+            .unwrap();
+        assert!(manager.get::<bool>("wizard.after_remote").unwrap());
+        assert_eq!(manager.get::<String>("wizard.destination").unwrap(), "auto");
+        assert!(!manager.get::<bool>("wizard.show_mascot").unwrap());
+    }
+
+    #[test]
+    fn file_browser_view_settings_default_on_older_files_and_data_stays_hidden() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join("settings.json"),
+            r#"{"nautilus": {"starred": [], "bookmarks": []}}"#,
+        )
+        .unwrap();
+        let manager = rcman::SettingsManager::builder("file-browser-view", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<super::AppSettings>()
+            .build()
+            .unwrap();
+        assert_eq!(manager.get::<String>("nautilus.layout").unwrap(), "grid");
+        assert_eq!(manager.get::<String>("nautilus.sort").unwrap(), "name-asc");
+        assert!(!manager.get::<bool>("nautilus.show_hidden").unwrap());
+        assert_eq!(manager.get::<u32>("nautilus.grid_icon_size").unwrap(), 96);
+        assert_eq!(manager.get::<u32>("nautilus.list_icon_size").unwrap(), 24);
+        assert!(
+            manager
+                .get::<Vec<String>>("nautilus.sidebar_hidden_drives")
+                .unwrap()
+                .is_empty()
+        );
+        let metadata = super::NautilusSettings::get_metadata();
+        let options = metadata["nautilus.sort"].constraints.options.as_ref();
+        assert_eq!(options.map(Vec::len), Some(6));
+        // The preferences window shows every setting of the category that is not hidden,
+        // so each of those needs a label, and the data the file browser keeps stays off it.
+        for (key, setting) in &metadata {
+            let hidden = setting.metadata.get("hidden") == Some(&serde_json::Value::Bool(true));
+            assert_ne!(hidden, setting.metadata.contains_key("label"), "{key}");
+        }
+        for key in [
+            "starred",
+            "bookmarks",
+            "grid_icon_size",
+            "sidebar_drive_order",
+        ] {
+            assert!(
+                metadata[&format!("nautilus.{key}")]
+                    .metadata
+                    .contains_key("hidden")
+            );
+        }
+    }
+
+    // The web interface sizes its upload requests from these.
+    #[cfg(not(any(feature = "desktop", feature = "mobile")))]
+    #[test]
+    fn upload_settings_stay_within_what_the_server_takes_and_default_on_older_files() {
+        let metadata = super::NautilusSettings::get_metadata();
+        // Only values that cannot work are refused; how much is too much is the user's call.
+        for (key, default) in [
+            ("nautilus.upload_request_mib", 8),
+            ("nautilus.parallel_uploads", 3),
+        ] {
+            let number = &metadata[key].constraints.number;
+            assert_eq!((number.min, number.max), (Some(1.0), None), "{key}");
+            let directory = tempfile::tempdir().unwrap();
+            std::fs::write(
+                directory.path().join("settings.json"),
+                r#"{"general": {"language": "en-US", "restrict": false}}"#,
+            )
+            .unwrap();
+            let manager = rcman::SettingsManager::builder("file-browser", "1.0.0")
+                .with_config_dir(directory.path())
+                .with_schema::<super::AppSettings>()
+                .build()
+                .unwrap();
+            assert_eq!(manager.get::<u32>(key).unwrap(), default, "{key}");
+        }
     }
 
     #[test]

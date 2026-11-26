@@ -222,8 +222,10 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
 
     #[cfg(target_os = "windows")]
     {
+        // MSIRESTARTMANAGERCONTROL=Disable: without it Windows Restart Manager closes every
+        // process holding WinFsp files, which includes this app and its rclone engine.
         let ps_command = format!(
-            "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs -Wait -WindowStyle Hidden",
+            "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart REBOOT=ReallySuppress MSIRESTARTMANAGERCONTROL=Disable' -Verb RunAs -Wait -WindowStyle Hidden",
             path_str.replace("'", "''")
         );
         let args = [

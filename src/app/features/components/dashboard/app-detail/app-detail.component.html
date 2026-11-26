@@ -81,17 +81,16 @@
       [dismissTooltip]="'banners.mountPlugin.dismissTooltip' | translate"
       (dismiss)="dismissMountPluginWarning()"
     >
-      <div class="actions">
-        <button
-          matButton="filled"
-          data-tone="accent"
-          (click)="onInstallMountPlugin()"
-          [attr.title]="'banners.mountPlugin.install' | translate"
-        >
-          <mat-icon svgIcon="wrench"></mat-icon>
-          <span>{{ 'banners.mountPlugin.install' | translate }}</span>
-        </button>
-      </div>
+      <button
+        bannerAction
+        matButton="filled"
+        data-tone="accent"
+        (click)="onInstallMountPlugin()"
+        [attr.title]="'banners.mountPlugin.install' | translate"
+      >
+        <mat-icon svgIcon="wrench"></mat-icon>
+        <span>{{ 'banners.mountPlugin.install' | translate }}</span>
+      </button>
     </app-alert-banner>
   }
 
@@ -248,7 +247,7 @@
               <button
                 type="button"
                 appPill
-                [tone]="automationStateTone() ?? operationColor()"
+                [tone]="automationStateTone() ?? 'purple'"
                 [class.disabled-automation]="isAutomationDisabled()"
                 [disabled]="isAutomationStopping() || isTogglingAutomation()"
                 (click)="onToggleAutomation($event)"
@@ -292,7 +291,7 @@
               <button
                 type="button"
                 appPill
-                [tone]="automationStateTone() ?? operationColor()"
+                [tone]="automationStateTone() ?? 'accent'"
                 [class.disabled-automation]="isAutomationDisabled()"
                 [disabled]="isAutomationStopping() || isTogglingAutomation()"
                 (click)="onToggleAutomation($event)"
@@ -317,27 +316,35 @@
                   [class.spin]="isTogglingAutomation()"
                 ></mat-icon>
                 <span>
-                  {{ 'automation.monitoring.realtimeSchedule' | translate }}
+                  {{ 'automation.card.watching' | translate: { count: watcher.watchDelay } }}
                   @if (isAutomationStopping()) {
                     · {{ 'automation.nextRun.stopping' | translate }}
                   } @else if (isAutomationDisabled()) {
                     · {{ 'automation.status.disabled' | translate }}
-                  } @else {
-                    ({{ watcher.watchDelay }}{{ 'automation.monitoring.seconds' | translate }}
-                    @if (watcher.watchChangedOnly) {
-                      · {{ 'automation.monitoring.changedOnlyShort' | translate }}
-                    }
-                    )
+                  } @else if (watcher.watchChangedOnly) {
+                    · {{ 'automation.monitoring.changedOnlyShort' | translate }}
                   }
                 </span>
               </button>
             }
 
             @if (isAutoStartEnabled()) {
-              <div appPill tone="yellow" [title]="'flow.quickRun.badges.autostart' | translate">
+              @let delay = currentAppConfig()?.autoStartDelay ?? 0;
+              <span appPill tone="yellow">
                 <mat-icon svgIcon="bolt"></mat-icon>
-                <span>{{ 'flow.quickRun.badges.autostart' | translate }}</span>
-              </div>
+                <span>{{
+                  delay > 0
+                    ? ('automation.card.startupAfter' | translate: { count: delay })
+                    : ('automation.startup.badge' | translate)
+                }}</span>
+              </span>
+            }
+
+            @if (automationError(); as error) {
+              <span appPill tone="warn" [title]="error">
+                <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                <span>{{ 'automation.status.failed' | translate }}</span>
+              </span>
             }
           </div>
         }

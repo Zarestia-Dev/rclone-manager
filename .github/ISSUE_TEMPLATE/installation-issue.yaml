@@ -71,7 +71,7 @@ body:
       options:
         - Desktop (GUI application window)
         - Android (Mobile APK)
-        - Headless (Web server / NAS)
+        - Server (Web server / NAS)
         - Portable (Standalone binary)
     validations:
       required: true

@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
-import { ExplorerRoot, JobChangeEvent } from '@app/types';
+import { DEFAULT_JOB_STATS, ExplorerRoot, JobChangeEvent, JobInfo, JobStatus } from '@app/types';
 import { NautilusTabService } from './nautilus-tab.service';
 import { NautilusService } from './nautilus.service';
 import { LocalStorageService } from './state/local-storage.service';
@@ -79,8 +79,36 @@ describe('Nautilus operation refresh', () => {
     service = TestBed.inject(NautilusTabService);
   });
 
-  function finish(changes: Partial<JobChangeEvent> = {}): void {
-    events.next({ jobId: '42', status: 'Completed', remote: 'source', ...changes });
+  interface Finished {
+    status?: JobStatus;
+    type?: JobInfo['job_type'];
+    remote?: string;
+    sources?: string[];
+    source?: string;
+    destination?: string;
+    ended?: boolean;
+  }
+
+  /** Announces the end of a job (or, with `ended: false`, another change of it). */
+  function finish({
+    status = 'Completed',
+    remote = 'source',
+    ended = true,
+    type = 'copy',
+    ...paths
+  }: Finished = {}): void {
+    const job = {
+      jobid: 42,
+      execute_id: 'run-42',
+      job_type: type,
+      source: paths.sources ?? paths.source ?? [],
+      destination: paths.destination ?? '',
+      start_time: '2026-11-25T10:00:00Z',
+      status,
+      remote_name: remote,
+      stats: { ...DEFAULT_JOB_STATS },
+    } satisfies JobInfo;
+    events.next({ jobId: 42, backendName: 'Local', job, ended });
   }
 
   it('refreshes a cross-remote destination even when no source tab is open', () => {
@@ -140,8 +168,30 @@ describe('Nautilus operation refresh', () => {
 
   it('does not refresh a listing merely because the operation has started', () => {
     service.createTab(source, 'folder');
-    finish({ status: 'Running', sources: ['source:folder/file'] });
+    finish({ status: 'Running', ended: false, sources: ['source:folder/file'] });
     expect(service.refreshTrigger()).toBe(0);
+  });
+
+  it('refreshes nothing for a later update or the removal of a job that already ended', () => {
+    service.createTab(source, 'folder');
+    finish({ ended: false, sources: ['source:folder/file'] });
+    events.next({ jobId: 42, backendName: 'Local', job: null });
+    expect(service.refreshTrigger()).toBe(0);
+  });
+
+  it('refreshes nothing for a check, and only the saving folder for a download', () => {
+    service.createTab(source, 'folder');
+    service.createTab(local, '/tmp/saved');
+    finish({ type: 'check', sources: ['source:folder'], destination: 'source:folder' });
+    // An opened file is saved nowhere a tab shows.
+    finish({ type: 'download', sources: ['source:folder/a.pdf'] });
+    expect(service.tabs().map(tab => tab.left.refreshTrigger())).toEqual([0, 0]);
+    finish({
+      type: 'download',
+      sources: ['source:folder/a.pdf'],
+      destination: '/tmp/saved/a.pdf',
+    });
+    expect(service.tabs().map(tab => tab.left.refreshTrigger())).toEqual([0, 1]);
   });
 
   it('resolves absolute local paths independently of the job remote', () => {
@@ -157,7 +207,7 @@ describe('Nautilus operation refresh', () => {
     expect(service.refreshTrigger()).toBe(1);
   });
 
-  it('supports old single-source events and relative mutation paths', () => {
+  it('supports a single source and relative mutation paths', () => {
     service.createTab(source, 'folder');
     finish({ source: 'folder/new-dir' });
     expect(service.refreshTrigger()).toBe(1);

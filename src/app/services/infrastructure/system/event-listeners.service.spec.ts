@@ -8,6 +8,7 @@ import { SseClientService } from '../platform/sse-client.service';
 import {
   AppEventPayload,
   APP_EVENT,
+  APP_SHUTTING_DOWN,
   EngineStatus,
   RCLONE_ENGINE_STATUS_CHANGED,
   SettingsChangeEvent,
@@ -113,6 +114,16 @@ describe('EventListenersService', () => {
     const payload: AppEventPayload = { status: 'language_changed', language: 'tr-TR' };
     sseEventSubject.next({ event: APP_EVENT, payload });
     expect(received).toEqual([payload]);
+    subscription.unsubscribe();
+  });
+
+  it('reports shutdown from its own event, not from the application event stream', () => {
+    const shutdowns = vi.fn();
+    const subscription = service.listenToAppShuttingDown().subscribe(shutdowns);
+    sseEventSubject.next({ event: APP_EVENT, payload: { status: 'shutting_down' } });
+    expect(shutdowns).not.toHaveBeenCalled();
+    sseEventSubject.next({ event: APP_SHUTTING_DOWN, payload: null });
+    expect(shutdowns).toHaveBeenCalledOnce();
     subscription.unsubscribe();
   });
 

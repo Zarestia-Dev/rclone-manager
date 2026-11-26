@@ -21,6 +21,9 @@ Thank you to everyone who has contributed to **RClone Manager**!
 | **maksam07**                   | `maksam07@gmail.com`                                 | [@maksam07](https://github.com/maksam07)               |
 | **DraftingDreamer**            | `264591489+DraftingDreamer@users.noreply.github.com` | [@DraftingDreamer](https://github.com/DraftingDreamer) |
 | **nvdx**                       | `n.vandamme@firis-system.lu`                         | [@nvandamme](https://github.com/nvandamme)             |
+| **powerAn**                    | `25736019+powerAn2020@users.noreply.github.com`      | [@powerAn2020](https://github.com/powerAn2020)         |
+| **VAIO73**                     | `50487331+Vaso73@users.noreply.github.com`           | [@Vaso73](https://github.com/Vaso73)                   |
+| **Renato Pires**               | `contact@raydev.ca`                                  | [@repires](https://github.com/repires)                 |
 
 ## Translators
 

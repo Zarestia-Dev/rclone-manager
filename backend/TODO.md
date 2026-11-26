@@ -1,8 +1,55 @@
+# After 0.3.7: from Headless to Server
+
+0.3.7 is the release that moves RClone Manager Headless (0.3.6 and older) to
+RClone Manager Server. Once it is published, the transition scaffolding goes and
+the server's releases get their own tag.
+
+**Before 0.3.7 ships**
+
+- [x] Let the server also recognise `server-v` tags (`release_prefixes` in
+  `server/src/lib.rs`, matched in `core/src/services/updates/mod.rs`). Without it a
+  0.3.7 server would never see a `server-v` release. The 0.3.7 release itself stays
+  `headless-v`: the Headless app 0.3.6 and the 0.3.7 betas only look for that.
+
+**After 0.3.7 is published**
+
+- [ ] Tag the server's releases `server-v<version>` instead of `headless-v<version>`
+  (`release_prefixes` in the server already lists `server-v` first), changing together: `release-server.yml` (`tag_name`, the three `RELEASE_TAG`s,
+  the `--check` and publish arguments), `validateTag` in
+  `scripts/publish-custom-updater.cjs`, `RELEASE_URL` in
+  `scripts/create-update-manifest.cjs`, the prefix in `publish-to-aur.sh` and the
+  source URLs in `PKGBUILD-server`, the website's `isHeadlessRelease`
+  (`release.utils.ts`, it looks for "headless" in the tag), the tests and fixtures
+  that use `headless-v`, AGENTS.md Rule 17 and the docs.
+- [ ] Drop `"headless-v"` from the server's `release_prefixes` (leaves `["server-v"]`) in
+  the first `server-v` release: builds after 0.3.7 only need to find `server-v`, and
+  the release-notes lookup then needs no fallback. 0.3.7 itself keeps both, so it sees
+  `server-v` releases.
+- [ ] Keep the 0.3.7 `headless-v` release published: it is the last one the Headless
+  app 0.3.6 looks for, and its `latest.json` moves those installs to the server.
+  Delete the older `headless-v` releases that are no longer needed.
+- [ ] Stop writing `latest.json` into server releases (`tauriUpdateJson` in
+  `publish-custom-updater.cjs`, its tests, UPDATER.md and AGENTS.md Rule 17): only
+  the Headless app reads it, and only from `headless-v` releases.
+- [ ] Remove the 0.3.7-only Headless-named DEB and RPM copies: the `case "$VERSION"`
+  block at the end of "Package and sign DEB, RPM and Arch package" in
+  `release-server.yml` (it already skips every version but 0.3.7*), the skip
+  rule in the website's `downloads.utils.ts` and its spec, and the AGENTS.md
+  Rule 17 bullet.
+
+**Stays after the cleanup** (installed versions or existing installs depend on it):
+the data folder `com.rclone.manager.headless`, the product's `mode`,
+`integration_key` and `flatpak_id`, the `/usr/bin/rclone-manager-headless[-bin]`
+launcher links, the start-at-login and Send To migration (`LEGACY_NAME`), the MSI
+UpgradeCode, the packages' conflicts/replaces of the Headless package, the
+manifest's `asset` field (versions before `url` download by it) and the legacy
+supervisor receipt in `binary.rs` (versions before 0.3.7-beta.3).
+
 # Server platform support
 
-The independent `release-server.yml` workflow builds `rclone-manager-server` archives for Linux,
-Windows, and macOS on x86_64 and aarch64. Native tray packages keep the
-`rclone-manager-headless` name. Confirm the six server builds and their runtime
+`release-server.yml` builds `rclone-manager-server` archives for Linux, Windows,
+and macOS on x86_64 and aarch64, and the same server as DEB, RPM, Arch, Windows
+setup and MSI packages for Linux and Windows. Confirm the builds and their runtime
 dependencies on CI before publishing the draft release.
 
 Only add targets supported by both Rclone and this application's dependencies.
@@ -55,3 +102,27 @@ server target and is disabled in the inspected Rclone release matrix.
   ([wry#1865](https://github.com/tauri-apps/wry/pull/1865)) in `RustWebViewClient.kt`.
 - [x] Verified local/remote audio and video playback and seeking on Android
   after the removal (2026-10-25).
+
+# Multi-source sync: offer separate destination folders
+
+A sync of several sources into one destination now runs as one `union` (correct, but no
+server-side copy, and a changed-only watcher syncs every source; see CHANGELOG). Often the
+user did not mean to merge the sources at all and wants `Backup/A`, `Backup/B`.
+
+- [ ] In the profile editor (`app-operation-config`), when the operation is Sync, there are
+  two or more sources and one destination, show an `app-alert-banner` (info) that says the
+  sources are merged into one folder, with a button "Put each source in its own folder".
+  Copy and Move get the same offer: they now run one after another for the same reason.
+- [ ] Decide how the profile stores it. Today a profile has `srcFs` (several) and one
+  `dstFs`, and `submit_transfer_batch` pairs every source with that destination. Either a
+  flag that makes the backend use `<dest>/<source folder name>`, or one destination per
+  source in the config. The flag keeps old profiles and the wizard unchanged.
+- [ ] Names that clash: `drive:photos` and `box:photos` both end in `photos`, and a remote
+  root (`drive:`) has no folder name (use the remote name). Refuse or suffix, and show the
+  resulting paths before saving.
+- [ ] Say what happens to files already in the destination: a sync into `Backup/A` leaves
+  what the merged sync put in `Backup` itself where it is (nothing is deleted, but it stays
+  there as a second copy).
+- [ ] Optional "Why?" link in the banner opening a `MatBottomSheet` with a short animation of
+  the user's own source and destination names: two syncs taking each other's files for
+  leftovers versus one merged view. It plays once, with a replay button, and no idle loop.

@@ -1,8 +1,17 @@
 use rclone_manager_core::context::AppHandle;
 
+/// Read at startup: once a package update replaces the file, Linux names the
+/// running executable as deleted.
+static EXECUTABLE: std::sync::LazyLock<std::io::Result<std::path::PathBuf>> =
+    std::sync::LazyLock::new(std::env::current_exe);
+
+/// The executable this process was started from.
+pub(super) fn executable() -> Result<&'static std::path::Path, String> {
+    EXECUTABLE.as_deref().map_err(|error| error.to_string())
+}
+
 fn relaunch_command() -> Result<std::process::Command, String> {
-    let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-    let mut command = std::process::Command::new(executable);
+    let mut command = std::process::Command::new(executable()?);
     command.args(std::env::args_os().skip(1));
     Ok(command)
 }

@@ -140,6 +140,12 @@ export class FlowContainerComponent {
     this.closeSidebarIfOver();
   }
 
+  /** The "What do you want to do?" wizard, the same entry as the main menu's add button. */
+  openWizard(): void {
+    this.modalService.openWizard();
+    this.closeSidebarIfOver();
+  }
+
   /** Open the quick-run editor in "create" mode. */
   newQuickRun(): void {
     this.setSubMode('quick_run');

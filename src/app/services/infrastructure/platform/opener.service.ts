@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { openUrl, openPath } from '@tauri-apps/plugin-opener';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { TauriBaseService } from './tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
@@ -23,21 +23,6 @@ export class OpenerService extends TauriBaseService {
     }
 
     window.open(url, '_blank', 'noopener,noreferrer');
-  }
-
-  /**
-   * Opens a file or folder in the OS default file manager or default application.
-   */
-  async openPath(path: string): Promise<void> {
-    if (!path) return;
-
-    if (this.isTauri) {
-      try {
-        await openPath(path);
-      } catch (err) {
-        console.error('Failed to open path via plugin-opener:', err);
-      }
-    }
   }
 
   /**

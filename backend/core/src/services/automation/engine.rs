@@ -3,6 +3,8 @@
 use crate::context::{AppHandle, State};
 use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::commands::job_parser::JobOutcome;
+use crate::rclone::commands::mount::mount_remote_profile;
+use crate::rclone::commands::serve::start_serve_profile;
 use crate::rclone::commands::sync::start_resolved_profile_batch;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::services::settings::AppSettingsManager;
@@ -21,6 +23,29 @@ fn scheduler_not_initialized() -> String {
     crate::localized_error!("backendErrors.automation.schedulerNotInitialized")
 }
 
+type InstalledJobs = std::collections::HashMap<String, (Uuid, String)>;
+
+/// The earliest next run of the installed cron expressions.
+#[cfg(any(target_os = "android", test))]
+fn next_wakeup(installed: &InstalledJobs) -> Option<chrono::DateTime<Utc>> {
+    installed
+        .values()
+        .filter_map(|(_, expression)| get_next_run(expression).ok())
+        .min()
+}
+
+/// Android suspends the CPU without a wake lock, and with it the scheduler's clock checks; an
+/// alarm at the next run wakes the device for it.
+#[cfg(target_os = "android")]
+fn arm_wakeup(installed: &InstalledJobs) {
+    crate::rclone::backend::saf_bridge::set_schedule_wakeup(
+        next_wakeup(installed).map_or(0, |at| at.timestamp_millis()),
+    );
+}
+
+#[cfg(not(target_os = "android"))]
+fn arm_wakeup(_installed: &InstalledJobs) {}
+
 struct SchedulerRuntime {
     scheduler: JobScheduler,
     app: AppHandle,
@@ -29,7 +54,7 @@ struct SchedulerRuntime {
 
 pub struct AutomationScheduler {
     scheduler: RwLock<Option<SchedulerRuntime>>,
-    installed: tokio::sync::Mutex<std::collections::HashMap<String, (Uuid, String)>>,
+    installed: tokio::sync::Mutex<InstalledJobs>,
 }
 
 impl AutomationScheduler {
@@ -92,6 +117,7 @@ impl AutomationScheduler {
 
         *guard = None;
         installed.clear();
+        arm_wakeup(&installed);
         info!("Cron scheduler stopped");
         Ok(())
     }
@@ -141,6 +167,8 @@ impl AutomationScheduler {
                     info!(
                         "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
+                    // This tick is due, so the alarm moves to the next one.
+                    arm_wakeup(&*app_handle.state::<AutomationScheduler>().installed.lock().await);
 
                     match execute_automation(&automation_id, &app_handle, None).await {
                         Err(e) => error!("Automation execution failed {automation_id}: {e}"),
@@ -189,6 +217,7 @@ impl AutomationScheduler {
         };
         self.remove_job(job).await?;
         installed.remove(automation_id);
+        arm_wakeup(&installed);
         Ok(())
     }
 
@@ -246,6 +275,7 @@ impl AutomationScheduler {
                 installed.remove(&automation.id);
             }
         }
+        arm_wakeup(&installed);
         Ok(())
     }
 
@@ -361,6 +391,7 @@ pub async fn execute_automation(
             automation_id,
             &backend.name,
             watch.as_ref().map(|trigger| &trigger.args),
+            true,
         )
         .await?
     else {
@@ -502,6 +533,25 @@ async fn run_profile(
     let transfer_type = automation
         .automation_type
         .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
+    // A mount or a serve starts with the app and runs on when started again by hand.
+    if !transfer_type.is_transfer() {
+        drop(selection.take());
+        let params = ProfileParams {
+            remote_name: automation.remote_name.clone(),
+            profile_name: automation.profile_name.clone(),
+            backend_name: Some(automation.backend_name.clone()),
+            source: Some(Origin::Automation),
+            no_cache: None,
+            scoped_targets: None,
+            execute_id: None,
+        };
+        if transfer_type == OperationType::Mount {
+            mount_remote_profile(app.clone(), params).await?;
+        } else {
+            start_serve_profile(app.clone(), params).await?;
+        }
+        return Ok(AutomationExecutionOutcome::Success);
+    }
     let scoped_targets = match watch {
         Some(trigger)
             if automation.watch_changed_only && transfer_type != OperationType::Bisync =>
@@ -553,7 +603,7 @@ async fn run_profile(
     drop(selection.take());
     start_resolved_profile_batch(app.clone(), resolved?, transfer_type, params)
         .await
-        .map(AutomationExecutionOutcome::Running)
+        .map(|job_id| AutomationExecutionOutcome::Running(job_id.to_string()))
 }
 
 /// Records how a started execution ended, unless a newer execution replaced it.
@@ -575,7 +625,7 @@ async fn finish_execution(
                     automation.current_job_id.get_or_insert_with(|| job.clone());
                 }
                 Ok(AutomationExecutionOutcome::Success) => automation.mark_success(),
-                Err(error) => automation.mark_failure(error.clone()),
+                Err(error) => automation.mark_ended_with(error.clone()),
             }
             automation.next_run = next_run;
         })
@@ -584,15 +634,15 @@ async fn finish_execution(
 }
 
 /// A job an automation started has ended: records the outcome, sets the next cron run and
-/// announces the result.
+/// announces the result when it announced the start. Returns whether it announced it.
 pub(crate) async fn finish_job_execution(
     app: &AppHandle,
     backend_name: &str,
     execute_id: Option<&str>,
     outcome: &JobOutcome,
-) {
+) -> bool {
     let Some(execute_id) = execute_id else {
-        return;
+        return false;
     };
     let Some(automation) = app
         .state::<AutomationsCache>()
@@ -608,11 +658,11 @@ pub(crate) async fn finish_job_execution(
         })
         .await
     else {
-        return;
+        return false;
     };
-    // A workflow reports its own result.
-    let Some(automation_type) = automation.automation_type else {
-        return;
+    // A workflow reports its own result; the work a start with the app ran reports its own.
+    let Some(automation_type) = automation.automation_type.filter(|_| automation.announced) else {
+        return false;
     };
     let event = if outcome.success {
         AutomationStage::Completed {
@@ -641,6 +691,7 @@ pub(crate) async fn finish_job_execution(
         }
     };
     notify(app, NotificationEvent::Automation(event));
+    true
 }
 
 /// Moves the shown next run past a cron tick that started nothing.
@@ -670,6 +721,22 @@ mod tests {
     use super::*;
     async fn scheduled(scheduler: &AutomationScheduler, id: &str) -> Option<String> {
         scheduler.scheduled_job(id).await.map(|job| job.to_string())
+    }
+
+    #[test]
+    fn next_wakeup_is_the_earliest_valid_installed_run() {
+        let mut installed = InstalledJobs::new();
+        assert_eq!(next_wakeup(&installed), None);
+
+        installed.insert("broken".into(), (Uuid::new_v4(), "not a cron".into()));
+        assert_eq!(next_wakeup(&installed), None);
+
+        installed.insert("daily".into(), (Uuid::new_v4(), "0 3 * * *".into()));
+        installed.insert("minutely".into(), (Uuid::new_v4(), "* * * * *".into()));
+        let now = Utc::now();
+        let next = next_wakeup(&installed).expect("a valid expression has a next run");
+        assert!(next > now);
+        assert!(next - now <= chrono::Duration::seconds(60));
     }
 
     #[tokio::test]

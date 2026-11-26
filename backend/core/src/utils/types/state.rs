@@ -63,7 +63,8 @@ impl RcloneState {
     }
 }
 
-async fn sleep_unless_cancelled(
+/// Sleeps for `delay`. Returns `false` when `token` is cancelled first.
+pub(crate) async fn sleep_unless_cancelled(
     token: &tokio_util::sync::CancellationToken,
     delay: std::time::Duration,
 ) -> bool {

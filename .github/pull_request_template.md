@@ -36,7 +36,7 @@ Closes #
 
 - [ ] Desktop (Linux / macOS / Windows)
 - [ ] Portable mode
-- [ ] Headless / Web Server mode
+- [ ] Server / web UI mode
 - [ ] Mobile (Android)
 
 #### Checklist

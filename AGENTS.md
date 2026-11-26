@@ -57,6 +57,11 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
    - **Language-Agnostic Backend Errors**: Rust code must **never** pre-translate error messages. Always use `localized_error!("backendErrors.<category>.<key>", ...)` or `localized_success!("backendSuccess.<category>.<key>", ...)`, producing structured `{ key, params }` JSON or raw keys for `BackendTranslationService` on the frontend.
    - **Every user-visible string is a key**: this includes command results (`UpdateResult.message`), notification parameters and the failure text the update helper leaves behind. Do not return hard-coded English from Rust, and add each new key to **every** language directory under `resources/i18n/` (`npm run audit:i18n` must report no missing keys).
    - **Plurals**: Never build a plural with a `{{s}}` suffix parameter, `(s)` or a `count === 1 ? 'a' : 'b'` choice of two keys. A string that counts things is a plural object, `{ "one": "{{count}} file", "other": "{{count}} files" }`, with the forms of each language (`Intl.PluralRules`: Slovak also needs `few`, Russian and Ukrainian `few` and `many`, Japanese and Chinese only `other`) and every placeholder of the English text in every form. The number is always the `count` parameter: `'key' | translate: { count: n }` and `translate.instant('key', { count: n })` pick the form (`PluralCompiler` in `src/app/services/i18n/plural.ts`, registered in `app.config.ts`). Do not pass the number under another name. Texts the Rust backend translates itself (`tray`, `powerInhibitor`, `notification`, `backendErrors`) have no plural support: write them as `Label: {{count}}`, and so for a string that takes a type or a list instead of a number. `npm run audit:i18n` reports a language that lacks a form or drops a placeholder, a plural group without `{{count}}` in its English text, and a plural group inside a section Rust translates.
+   - **Native-speaker review of every new or changed string (CRITICAL)**: `npm run audit:i18n` only checks keys, plural forms and placeholders; it cannot tell whether a sentence reads well. Whenever you add or change a translation key, read the text of **every language** again as a native speaker would, and fix it before handing over:
+     - **Use the words the app already uses.** A name the user will look for in the UI (a tab, a menu entry, a button, a path such as `Flow › Quick Runs`) must be exactly what that language's own `main.json` shows for it (for example `flow.tabs.quickRun`), never the English product name left in place and never a new word of your own. Search the language's file for the term before you write it.
+     - Read for repeated words, wrong case, gender, tense or politeness level, literal translations of English idioms (`by` that means an agent, `in` that means a medium), unnatural pronouns in languages that drop them, and the quotation marks of that language.
+     - Check that every language ends up saying the same thing as the English text, including the limits ("only while the app is open", "nothing is deleted").
+     - In the hand-off, say which languages were reviewed this way. A model's review is a second reading, not a replacement for a human native speaker; flag any wording you are unsure about.
 
 7. **Platform & Tauri Target Abstraction (CRITICAL)**
    - **TauriBaseService & `this.isTauri`**:
@@ -100,6 +105,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
       - **Pills / Badges / Chips**: Always use the `appPill` directive (`PillDirective`, `src/app/shared/directives/pill.directive.ts`), which owns the `.app-pill` class. `<span appPill tone="accent" size="xs">`, `<span appPill="solid" tone="primary">` (emphasis: `tonal` default, `solid`, `outline`), `<button appPill tone="accent" [selected]="on()">`. `size` is `xs` (20px), `sm` (24px) or `md` (28px, the default); do not restyle a pill's height, padding or font size in component SCSS. `tone` is a typed `PillTone` (`primary | accent | orange | yellow | purple | warn | dim`; omit for neutral). A `<button>`, `<a>` or `role="button"` pill is interactive and a `<span>` never is; `[selected]` sets `aria-pressed`. Keep tones as `PillTone` values in TypeScript (`toPillTone()` narrows a colour name), never as class-name strings. **DO NOT** add `p-*`, `interactive`, `is-selected` or `pill-sm` classes, or custom `.filter-chip`, `.badge`, `.status-tag`, `.job-id-pill`, `.stat-pill` or `.chip` classes. Pills that perform an action (run, insert, allow) are `matButton`, not pills. Code that builds a pill without Angular sets the `app-pill` class plus the same `data-tone`, `data-variant`, `data-size` and `data-selected` attributes.
       - **Action / Icon Buttons**: Always use `.action-button` (standard 32x32px icon button). **DO NOT** create custom `.action-btn`, `.icon-btn`, `.tool-btn`, `.chip-delete-btn`, `.action-mini-btn`, or `.custom-icon-button` classes.
       - **Material Icons**: Before using a `mat-icon` with `svgIcon`, inspect `src/app/services/ui/constants/icon-registry.ts` and reuse an existing registered icon whenever possible. Every static or dynamically returned icon name must match a registered key; do not invent names that only compile but fail at runtime. If a genuinely new icon is needed, add its SVG asset and register it in the shared icon registry in the same change.
+      - **Open-Path Buttons**: A button that opens a path shows the plain `folder` icon for a local path and `folder-open` for a remote folder: `this.pathService.isLocalPath(path) ? 'folder' : 'folder-open'` (see `remote-card` and `quick-run-card`). Do not add a second, leading icon for the same path.
       - **Text Truncation (Ellipsis)**: Always use the single canonical `.truncate` class. **DO NOT** re-declare `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` in component SCSS files.
       - **Counter Badges**: A count is a pill: `<span appPill size="xs" tone="dim">{{ n }}</span>` (`tone="primary"` / `"accent"` when active, `appPill="solid"` for a notification bubble). **DO NOT** create custom `.count-badge`, `.cat-count-badge`, `.log-count-badge` or `.config-count-badge` classes. Push it to the end of a flex row with the global `.ml-auto`.
       - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, `.empty`, `.popup-empty`, `.no-results`, `.empty-list`, or component-specific empty-state clones. This covers every "nothing to show" message, however small: a sidebar filter with no match, an empty history popup or a list with no rows all use `.empty-state` (an icon is optional; a lone `span` is fine). Before writing any class whose name contains `empty`, `no-` or `none`, check `src/custom-theme.scss`.
@@ -144,7 +150,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
     - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
     - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
-    - Whether an installed build may be replaced by a release is decided by `is_update_candidate`, not `is_version_newer` alone: a pre-release build can move to any stable release, so leaving the beta channel never waits for the next stable version. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions, including DEB and RPM installs that Tauri updates (`rpm -U` refuses downgrades).
+    - Whether an installed build may be replaced by a release is decided by `is_offered` (`services/updates/mod.rs`), not `is_version_newer` alone: on the stable channel a pre-release build can move to any stable release (`is_update_candidate`), so leaving the beta channel never waits for the next stable version. On the beta channel only a newer release is offered; an older stable one there would be a downgrade. Android is the exception (version codes cannot decrease), and package-managed installs only announce newer versions, including DEB and RPM installs that Tauri updates (`rpm -U` refuses downgrades).
 
 16. **Default Profile Name (CRITICAL)**
     - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
@@ -152,8 +158,12 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
 
 17. **Updater & Release Contracts (CRITICAL)**
-    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater (including the DEB/RPM/server-ZIP matching in `backend/core/src/services/updates/availability.rs`, which derives the `RClone.Manager[.Headless]` prefix from the Tauri product name) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
-    - Validation rules exist in both `scripts/create-update-manifest.cjs` and `backend/core/src/services/updates/manifest.rs`; keep them identical and covered by the shared fixtures under `services/updates/fixtures/`.
+    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`, the Tauri AppImage name that `appimage-linux-<arch>` catalog entries point to, and the server packages `RClone.Manager.Server_<version>_<amd64|arm64>.deb`, `RClone.Manager.Server-<version>-1.<x86_64|aarch64>.rpm`, `RClone.Manager.Server-<version>-1-<x86_64|aarch64>.pkg.tar.zst`, `RClone.Manager.Server_<version>_<x64|arm64>-setup.exe` and `RClone.Manager.Server_<version>_<x64|arm64>_en-US.msi`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater, the AUR `PKGBUILD-server` (which repackages the Arch package) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
+    - For the 0.3.7 releases only, `release-server.yml` also uploads the DEB and RPM as `RClone.Manager.Headless_<version>_<amd64|arm64>.deb` and `RClone.Manager.Headless-<version>-1.<x86_64|aarch64>.rpm`: the Headless app 0.3.6 cannot install its DEB or RPM itself and announces only a release holding files under its own name. They are not in the catalog; remove the step after 0.3.7, and the website skips them.
+    - Installed versions find their update through names they cannot change: the repository (`OWNER`/`REPO`), the tag prefixes `v` and `headless-v`, the catalog name `updater.json`, `schemaVersion: 1`, the entry key `<kind>-<target>` and the kind and target names (`linux-x86_64`, from Rust's `consts::OS`/`ARCH`). Never rename them; add a field or a kind instead. Dropping a kind's entry, or not publishing it in a release, silently leaves those installations where they are. The client downloads the release file named by the manifest's `asset`; `publish-custom-updater.cjs` fails when it is not a file of the release, so publish a release only after all its workflows succeeded.
+    - Versions up to 0.3.7-beta.1 (0.3.6 and older included) reject any field they do not know in the catalog, an entry or a manifest, and then never update again. Keep the catalog to `schemaVersion`, `version` and `entries`, every entry to `manifest` and `signature`, and the manifests of the kinds those versions read (portable, server, android, appimage, deb, rpm, nsis, msi) to their current fields. Only a new kind's manifest may carry a new field.
+    - `scripts/create-update-manifest.cjs` checks the release files before it signs them. The Rust updater (`backend/core/src/services/updates/manifest.rs`) only checks the signature, the checksum and that the signed version, kind and target are the ones it asked for, and from 0.3.7-beta.2 on it ignores fields it does not know and reads only its own entry: a field a later release adds must never stop an installed version from updating. Do not add checks to the updater for something the release workflows always produce (a file name, a format, a platform's package); installed versions cannot be fixed when such a check goes wrong.
+    - The server replaced the RClone Manager Headless app (Tauri, 0.3.6 and older). `scripts/publish-custom-updater.cjs` writes the `headless-v` release's `latest.json` from the DEB, RPM, setup and MSI entries of the catalog, so those installs move to the server package of their own format; keep that file in every release. The `rclone-manager-server` DEB and RPM replace `r-clone-manager-headless` (conflicts, replaces and obsoletes in `backend/server/package/nfpm.yaml`), the MSI keeps the old app's UpgradeCode, and the setup removes the old installation (`installer.nsi`). The old app's names stay where installs look for them: the `headless-v` tag, the data folder `com.rclone.manager.headless`, the product's `mode`, `integration_key` and `flatpak_id`, and the `/usr/bin/rclone-manager-headless[-bin]` launcher links. On start the server moves the old app's start-at-login and Send To entries (`LEGACY_NAME`).
     - Never write command-line arguments, passwords or tokens to disk. The update helper receives the launch arguments through its environment.
     - Server updates are ZIP archives only; `tar.gz` is not used for releases.
 
@@ -162,6 +172,14 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - After `npm run sync:endpoints`, read its "RC console lists to review" output and update these lists for every call it names: a new call is read-only, dangerous or neither, and its required parameters are read from rclone's Go source (the handler returns an error when a key is missing), never guessed from the help text.
     - Whenever you edit one of these lists, or add a call that takes other calls (like `job/batch`), check it against rclone and keep a call out of `READ_ONLY_COMMANDS` if it can write. A call may not be in both lists. Update `rc-console.util.spec.ts` and `rc-schema.util.spec.ts` to match.
     - `scripts/update-endpoints.cjs` reads these two files with patterns (`new Set([...])` and `'path': ['a', 'b'],` lines); keep that shape, or update the script and `scripts/update-endpoints.test.cjs` together.
+
+19. **No Pass-Through Layers or Speculative Abstraction (CRITICAL)**
+    - A function, method, type alias or module earns its place only when it does at least one of these: hides a platform or target difference, is used from two or more places, or gives a name to a rule its body does not make obvious. Anything else is inlined or removed.
+    - **DO NOT** write a function whose body only calls another function (`pub fn detect() -> Option<bool> { detect_platform_theme() }`), a `use … as …` alias that only renames, a wrapper that hands its arguments on unchanged, or a helper with one caller that names nothing. Each layer is one more place to read, and one more item that a feature or target combination can leave unused (see Rule 12).
+    - A trait method the trait requires (for example a `Host` method) is not a pass-through, but its body belongs in the impl: do not add a second function and a `static` behind it that exist only for that method.
+    - Before writing a helper or a type, search the codebase and the existing dependencies for one (`tokio_util::sync::CancellationToken` instead of a hand-written cancellation token, `crate::utils::spawn`, `generatePrefixedId`).
+    - Do not build for needs that do not exist yet: no configurable lists, generic parameters, builder types or one-variant enums for a single current use.
+    - Do not add a dependency or a dependency feature only for a test that CI never runs.
 
 ---
 
@@ -223,7 +241,7 @@ for features in desktop desktop,tray portable; do
   cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features "$features" --no-default-features -- -D warnings
 done
 
-# 2. Clippy check - Web Server target
+# 2. Clippy check - Web Server target (with its tray, except on macOS)
 mkdir -p dist/rclone-manager/browser
 cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings
 
@@ -234,7 +252,7 @@ cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features mob
 cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
 # The tray tests need the tray feature and the Tauri mock runtime; graphics tests mutate the
 # environment, so run these single-threaded.
 for features in desktop desktop,tray,tauri-test; do
@@ -243,6 +261,17 @@ done
 
 # 6. Updater unit tests (they spawn processes and use file locks, so CI runs them single-threaded)
 cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
+```
+
+Code behind `cfg(target_os = "android")` (or left out of it) compiles only for an Android target, which the commands above do not build. CI's **Android target** job checks it with the NDK; after touching such code, run the same with a local NDK (`rustup target add x86_64-linux-android`), and skip it when no NDK is installed:
+
+```bash
+NDK_BIN="$ANDROID_HOME/ndk/<version>/toolchains/llvm/prebuilt/linux-x86_64/bin"
+export LIBRCLONE_SKIP_LINK_CHECK=1 PATH="$NDK_BIN:$PATH" \
+  CC_x86_64_linux_android=x86_64-linux-android26-clang AR_x86_64_linux_android=llvm-ar \
+  CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=x86_64-linux-android26-clang
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-core --target x86_64-linux-android --features mobile -- -D warnings
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --target x86_64-linux-android --no-default-features --features mobile -- -D warnings
 ```
 
 ### 3. Packaging & Linux Metadata Validation
@@ -264,7 +293,7 @@ npm run tauri dev
 
 # Feature-specific dev modes
 npm run dev:portable
-npm run dev:headless
+npm run dev:server
 ```
 
 ---

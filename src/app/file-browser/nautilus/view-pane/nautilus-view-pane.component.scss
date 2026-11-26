@@ -177,12 +177,16 @@ tr.folder-drag-over {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  container-type: inline-size;
 }
 
 .nautilus-table {
   border-spacing: 0 var(--space-xs);
   border-inline: var(--space-md) solid transparent;
   width: 100%;
+  // The columns keep their widths and a long name is cut, instead of the name widening the
+  // table and pushing the other columns out of the pane.
+  table-layout: fixed;
 
   .mat-column-name {
     width: auto;
@@ -229,12 +233,15 @@ tr.folder-drag-over {
       outline-offset: -2px;
     }
 
+    // Corner by corner, so a cell that is both first and last keeps all four.
     td:first-child {
-      border-radius: var(--border-radius) 0 0 var(--border-radius);
+      border-top-left-radius: var(--radius-xs);
+      border-bottom-left-radius: var(--radius-xs);
     }
 
     td:last-child {
-      border-radius: 0 var(--border-radius) var(--border-radius) 0;
+      border-top-right-radius: var(--radius-xs);
+      border-bottom-right-radius: var(--radius-xs);
     }
   }
 
@@ -275,6 +282,38 @@ tr.folder-drag-over {
       align-items: center;
       gap: var(--space-sm);
       width: 100%;
+    }
+
+    .name-text {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .name-caption {
+      display: none;
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+    }
+  }
+
+  // A pane too narrow for the size and date columns shows them under the name.
+  @container (max-width: 480px) {
+    .mat-column-size,
+    .mat-column-modified {
+      display: none;
+    }
+
+    td.mat-mdc-cell .name-caption {
+      display: block;
+    }
+
+    // The hidden columns are still the row's last cells; without the star column the name
+    // ends the row.
+    tr.mat-mdc-row:has(td.mat-column-modified:last-child) td.mat-column-name {
+      border-top-right-radius: var(--radius-xs);
+      border-bottom-right-radius: var(--radius-xs);
     }
   }
 

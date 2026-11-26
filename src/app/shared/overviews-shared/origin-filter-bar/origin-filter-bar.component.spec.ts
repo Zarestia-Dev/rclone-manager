@@ -39,4 +39,16 @@ describe('OriginFilterBarComponent', () => {
     fixture.detectChanges();
     expect(component.selected()).toBe('dashboard');
   });
+
+  it('offers the hidden items only when the chip leaves some out', () => {
+    const hiddenPill = (): HTMLButtonElement | null =>
+      fixture.nativeElement.querySelector('button.ml-auto');
+    expect(hiddenPill()).toBeNull();
+
+    fixture.componentRef.setInput('hiddenCount', 2);
+    fixture.detectChanges();
+    component.selected.set('quickrun');
+    hiddenPill()?.click();
+    expect(component.selected()).toBe('all');
+  });
 });

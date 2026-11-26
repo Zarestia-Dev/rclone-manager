@@ -143,8 +143,15 @@ impl BackendManager {
         HashMap<String, crate::utils::types::remotes::RemoteSettings>,
     ) {
         let state = self.state.read().await;
-        let settings = crate::utils::types::remotes::RemoteSettings::load_all(manager);
-        (state.active().clone(), settings)
+        let backend = state.active().clone();
+        let mut settings = crate::utils::types::remotes::RemoteSettings::load_all(manager);
+        // Settings outlive a remote deleted or renamed outside the app (rclone config, another
+        // config file): only the backend's own remotes get automations and starts. Before the
+        // remotes were read nothing is left out.
+        if let Some(remotes) = self.remote_cache_for(&backend.name).known_remotes().await {
+            settings.retain(|name, _| remotes.contains(name));
+        }
+        (backend, settings)
     }
 
     /// Capture the selected backend's cache. Existing users retain this cache
@@ -780,8 +787,8 @@ mod tests {
         let a = manager.job_cache_for("A");
         let b = manager.job_cache_for("B");
         let metadata = JobMetadata::new("drive", JobType::Sync, vec!["src".into()], "dst");
-        a.create_job(7, metadata.clone(), "A".into()).await;
-        b.create_job(7, metadata, "B".into()).await;
+        a.create_job(7, metadata.clone(), "A".into(), None).await;
+        b.create_job(7, metadata, "B".into(), None).await;
 
         manager.save_options("A").await;
         manager.restore_options("B").await;
@@ -1157,6 +1164,35 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn settings_of_a_remote_the_backend_lacks_get_no_automations() {
+        let (_directory, settings) = settings_with_profiles(false);
+        let manager = BackendManager::new();
+        let remotes = settings.sub_settings("remotes").unwrap();
+        for name in ["Google Drive", "drive"] {
+            remotes
+                .set(name, &serde_json::json!({ "primaryActions": ["mount"] }))
+                .unwrap();
+        }
+        let names = |configs: HashMap<String, _>| {
+            let mut names: Vec<String> = configs.into_keys().collect();
+            names.sort();
+            names
+        };
+
+        // Before the backend's remotes were read, nothing is left out.
+        let (_, configs) = manager.active_remote_configs(&settings).await;
+        assert_eq!(names(configs), ["Google Drive", "drive"]);
+
+        *manager
+            .remote_cache_for(LOCAL_BACKEND_NAME)
+            .remotes
+            .write()
+            .await = Some(vec!["Google Drive".into()]);
+        let (_, configs) = manager.active_remote_configs(&settings).await;
+        assert_eq!(names(configs), ["Google Drive"]);
+    }
+
+    #[tokio::test]
     async fn mount_and_serve_results_stay_with_their_backend_after_switching() {
         use crate::utils::types::remotes::{MountedRemote, ServeInstance};
         let (_directory, settings) = settings_with_profiles(true);
@@ -1249,6 +1285,7 @@ mod tests {
                     7,
                     JobMetadata::new("drive", JobType::Copy, vec!["src".into()], "dst"),
                     name.into(),
+                    None,
                 )
                 .await;
         }

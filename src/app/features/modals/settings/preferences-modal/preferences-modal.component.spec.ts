@@ -1,26 +1,40 @@
 import { TestBed } from '@angular/core/testing';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreferencesModalComponent } from './preferences-modal.component';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 
 describe('PreferencesModalComponent search', () => {
   let component: PreferencesModalComponent;
+  const openTransferOptions = vi.fn();
+  const getSettingValue = vi.fn();
+  const dialogData: { category?: string; title?: string } = {};
+  /** The file browser's preferences, as its menu opens them. */
+  const openFileBrowserPreferences = (): void => {
+    dialogData.category = 'nautilus';
+    dialogData.title = 'modals.preferences.fileBrowserTitle';
+    component = TestBed.createComponent(PreferencesModalComponent).componentInstance;
+  };
 
   beforeEach(() => {
+    delete dialogData.category;
+    delete dialogData.title;
     TestBed.configureTestingModule({
       imports: [PreferencesModalComponent],
       providers: [
         provideTranslateService({ lang: 'tr' }),
         { provide: MatDialogRef, useValue: {} },
+        { provide: MAT_DIALOG_DATA, useValue: dialogData },
         { provide: FileSystemService, useValue: {} },
         { provide: LocalStorageService, useValue: {} },
         { provide: ValidatorRegistryService, useValue: {} },
+        { provide: ModalService, useValue: { openTransferOptions } },
         {
           provide: AppSettingsService,
           useValue: {
@@ -35,7 +49,18 @@ describe('PreferencesModalComponent search', () => {
                 },
               },
               'unknown.hidden': { default: false, metadata: { label: 'settings.backgroundLabel' } },
+              'nautilus.starred': {
+                default: [],
+                value: [],
+                metadata: { hidden: true },
+              },
+              'nautilus.ask_transfer_options': {
+                default: false,
+                value: true,
+                metadata: { label: 'settings.askLabel' },
+              },
             }),
+            getSettingValue,
           },
         },
       ],
@@ -57,6 +82,40 @@ describe('PreferencesModalComponent search', () => {
   ])('finds translated settings and technical keys using %s', query => {
     component.onSearchTextChange(query);
     expect(component.searchResults()).toEqual([{ category: 'general', key: 'background_enabled' }]);
+  });
+
+  it("keeps the file browser's preferences out of the app's and opens them alone", () => {
+    expect(component.tabs.map(tab => tab.key)).toEqual(['general', 'core', 'developer']);
+    expect(component.title).toBe('modals.preferences.title');
+    component.onSearchTextChange('ask_transfer');
+    expect(component.searchResults()).toEqual([]);
+
+    openFileBrowserPreferences();
+    expect(component.tabs.map(tab => tab.key)).toEqual(['nautilus']);
+    expect(component.title).toBe('modals.preferences.fileBrowserTitle');
+    component.onSearchTextChange('ask_transfer');
+    expect(component.searchResults()).toEqual([
+      { category: 'nautilus', key: 'ask_transfer_options' },
+    ]);
+  });
+
+  it('leaves the data a feature keeps off its tab and out of the search', () => {
+    openFileBrowserPreferences();
+    expect(component.selectedTabKeys()).toEqual(['ask_transfer_options']);
+    component.onSearchTextChange('starred');
+    expect(component.searchResults()).toEqual([]);
+  });
+
+  it('edits the options every file browser transfer starts from', async () => {
+    const defaults = { copy: { check_first: true } };
+    getSettingValue.mockResolvedValueOnce(defaults);
+    openFileBrowserPreferences();
+    await component.openDefaultTransferOptions();
+    expect(getSettingValue).toHaveBeenCalledExactlyOnceWith('nautilus.transfer_options');
+    expect(openTransferOptions).toHaveBeenCalledExactlyOnceWith({
+      mode: 'default',
+      values: defaults,
+    });
   });
 
   it('treats whitespace as an empty search and requires all words', () => {

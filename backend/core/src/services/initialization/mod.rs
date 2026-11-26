@@ -45,8 +45,6 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
                 .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
                 .language(),
         );
-        #[cfg(feature = "updater")]
-        crate::services::updates::health::core_ready(&app_handle);
         return Ok(());
     }
 
@@ -58,6 +56,38 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         );
     }
     result
+}
+
+/// The stored mounts the restarted backend lists again. A workflow's mount is left to the
+/// workflow: its node takes an existing mount as already done, so a restored entry would keep
+/// the documents provider's default VFS options instead of the node's.
+#[cfg(any(target_os = "android", test))]
+fn restorable_mounts(
+    stored: Vec<crate::utils::types::remotes::MountedRemote>,
+) -> Vec<crate::utils::types::remotes::MountedRemote> {
+    use crate::utils::types::starter::Starter;
+    stored
+        .into_iter()
+        .filter(|mount| !matches!(mount.starter, Some(Starter::Workflow(_))))
+        .collect()
+}
+
+/// The documents provider keeps its mounts when the system kills the process, and other apps
+/// can still open them; the restarted backend lists them again instead of an empty set, which
+/// it would also send to the provider on the next mount change.
+#[cfg(target_os = "android")]
+async fn restore_saf_mounts(app: &AppHandle) {
+    let cache = app
+        .state::<BackendManager>()
+        .remote_cache_for(crate::utils::constants::LOCAL_BACKEND_NAME);
+    if !cache.get_mounted_remotes().await.is_empty() {
+        return;
+    }
+    let stored = restorable_mounts(crate::rclone::backend::saf_bridge::stored_mounted_remotes());
+    if !stored.is_empty() {
+        info!("Restoring {} documents provider mount(s)", stored.len());
+        cache.update_mounts_if_changed(stored).await;
+    }
 }
 
 async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
@@ -74,10 +104,6 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
         return Err(e);
     }
 
-    // Required local startup succeeded. Remote availability is not an update failure.
-    #[cfg(feature = "updater")]
-    crate::services::updates::health::core_ready(&app_handle);
-
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
@@ -85,6 +111,9 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
     // runtime settings; only what it does not cover is loaded here.
     info!("Phase 3: Loading alert rules...");
     load_alert_state(&app_handle).await;
+
+    #[cfg(target_os = "android")]
+    restore_saf_mounts(&app_handle).await;
 
     info!("Phase 4: Starting services...");
 
@@ -107,7 +136,7 @@ async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
 
     #[cfg(feature = "tray")]
     {
-        if let Err(e) = app_handle.host().setup_tray().await {
+        if let Err(e) = crate::services::tray::native::start(&app_handle).await {
             error!("Failed to setup tray: {e}");
         }
     }
@@ -343,6 +372,27 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workflow_mounts_are_left_to_their_workflow() {
+        use crate::utils::types::remotes::MountedRemote;
+        use crate::utils::types::starter::{Starter, WorkflowRun};
+
+        let manual = MountedRemote::new("drive:", "saf://drive");
+        let mut profile = MountedRemote::new("photos:", "saf://photos");
+        profile.starter = Some(Starter::profile("Default"));
+        let mut workflow = MountedRemote::new("backup:", "saf://backup");
+        workflow.starter = Some(Starter::Workflow(WorkflowRun::new(
+            "wf",
+            "Nightly",
+            "mount-1",
+            Vec::new(),
+        )));
+
+        let restored = restorable_mounts(vec![manual.clone(), profile.clone(), workflow]);
+        assert_eq!(restored, vec![manual, profile]);
+        assert!(restorable_mounts(Vec::new()).is_empty());
+    }
 
     #[cfg(not(feature = "librclone"))]
     #[test]

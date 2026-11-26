@@ -3,6 +3,7 @@ import { FormControl } from '@angular/forms';
 import { createMinimalEntry, Entry } from '@app/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PathSelectionService } from './path-selection.service';
+import { NAMES_ONLY } from './remote-file-operations.service';
 import { RemoteFileOperationsService } from './remote-file-operations.service';
 import { RemoteManagementService } from './remote-management.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -48,24 +49,24 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('dest-0', 'C:\\', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:\\');
-    expect(getPaths).toHaveBeenLastCalledWith('C:\\', '', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('C:\\', '', NAMES_ONLY, 'filemanager');
 
     service.selectEntry('dest-0', 'Users', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:\\Users');
-    expect(getPaths).toHaveBeenLastCalledWith('C:\\', 'Users', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('C:\\', 'Users', NAMES_ONLY, 'filemanager');
 
     service.selectEntry('dest-0', 'hakan', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:\\Users\\hakan');
-    expect(getPaths).toHaveBeenLastCalledWith('C:\\', 'Users/hakan', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('C:\\', 'Users/hakan', NAMES_ONLY, 'filemanager');
 
     service.navigateUp('dest-0', control);
     await vi.advanceTimersByTimeAsync(0);
     service.navigateUp('dest-0', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:\\');
-    expect(getPaths).toHaveBeenLastCalledWith('C:/', '', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('C:/', '', NAMES_ONLY, 'filemanager');
     service.navigateUp('dest-0', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('');
@@ -83,7 +84,7 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('source-0', 'Arşiv 2026', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('Arşiv 2026');
-    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'Arşiv 2026', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'Arşiv 2026', NAMES_ONLY, 'filemanager');
   });
 
   it('preserves a Windows network share through selection and parent navigation', async () => {
@@ -96,7 +97,12 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('dest-0', 'Arşiv', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('\\\\server\\share\\Arşiv');
-    expect(getPaths).toHaveBeenLastCalledWith('\\\\server\\share\\Arşiv', '', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith(
+      '\\\\server\\share\\Arşiv',
+      '',
+      NAMES_ONLY,
+      'filemanager'
+    );
     service.navigateUp('dest-0', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('\\\\server\\share');
@@ -115,7 +121,7 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('dest-0', 'home', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('/home');
-    expect(getPaths).toHaveBeenLastCalledWith('/', 'home', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('/', 'home', NAMES_ONLY, 'filemanager');
   });
 
   it('keeps drive-relative Windows input relative to the drive working directory', async () => {
@@ -125,11 +131,11 @@ describe('PathSelectionService input lifecycle', () => {
     service.registerField('dest-0', '');
     service.triggerLoad('dest-0', '', control.value ?? '');
     await vi.advanceTimersByTimeAsync(0);
-    expect(getPaths).toHaveBeenLastCalledWith('D:', 'folder', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('D:', 'folder', NAMES_ONLY, 'filemanager');
     service.selectEntry('dest-0', 'child', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('D:folder\\child');
-    expect(getPaths).toHaveBeenLastCalledWith('D:', 'folder/child', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('D:', 'folder/child', NAMES_ONLY, 'filemanager');
   });
 
   it('preserves POSIX backslashes when listing, selecting, and navigating up', async () => {
@@ -138,11 +144,11 @@ describe('PathSelectionService input lifecycle', () => {
     service.registerField('dest-0', '');
     service.triggerLoad('dest-0', '', control.value ?? '');
     await vi.advanceTimersByTimeAsync(0);
-    expect(getPaths).toHaveBeenLastCalledWith('/', 'home/a\\b', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('/', 'home/a\\b', NAMES_ONLY, 'filemanager');
     service.selectEntry('dest-0', 'c\\d', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('/home/a\\b/c\\d');
-    expect(getPaths).toHaveBeenLastCalledWith('/', 'home/a\\b/c\\d', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('/', 'home/a\\b/c\\d', NAMES_ONLY, 'filemanager');
     service.navigateUp('dest-0', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('/home/a\\b');
@@ -159,7 +165,7 @@ describe('PathSelectionService input lifecycle', () => {
       service.selectEntry('source-0', 'a\\b', control);
       await vi.advanceTimersByTimeAsync(0);
       expect(control.value).toBe('photos/a\\b');
-      expect(getPaths).toHaveBeenLastCalledWith('drive:', 'photos/a\\b', {}, 'filemanager');
+      expect(getPaths).toHaveBeenLastCalledWith('drive:', 'photos/a\\b', NAMES_ONLY, 'filemanager');
       service.navigateUp('source-0', control);
       await vi.advanceTimersByTimeAsync(0);
       expect(control.value).toBe('photos');
@@ -177,7 +183,7 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('source-0', 'C:\\', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:\\');
-    expect(getPaths).toHaveBeenLastCalledWith('C:\\', '', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('C:\\', '', NAMES_ONLY, 'filemanager');
 
     service.triggerLoad('source-0', 'backup', 'photos');
     await vi.advanceTimersByTimeAsync(0);
@@ -185,7 +191,7 @@ describe('PathSelectionService input lifecycle', () => {
     service.selectEntry('source-0', 'child', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('photos/child');
-    expect(getPaths).toHaveBeenLastCalledWith('backup:', 'photos/child', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('backup:', 'photos/child', NAMES_ONLY, 'filemanager');
   });
 
   it('keeps remote parent navigation POSIX on a Windows engine', async () => {
@@ -196,7 +202,7 @@ describe('PathSelectionService input lifecycle', () => {
     service.navigateUp('source-0', control);
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('C:');
-    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'C:', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'C:', NAMES_ONLY, 'filemanager');
   });
 
   it('selects a file at a remote root without issuing a directory listing for the file', async () => {
@@ -216,14 +222,19 @@ describe('PathSelectionService input lifecycle', () => {
     service.updateInput('source-0', 'photos');
     expect(getPaths).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(250);
-    expect(getPaths).toHaveBeenCalledExactlyOnceWith('drive:', 'photos', {}, 'filemanager');
+    expect(getPaths).toHaveBeenCalledExactlyOnceWith('drive:', 'photos', NAMES_ONLY, 'filemanager');
   });
 
   it('loads immediately when a menu opens and cancels pending typing work', async () => {
     service.updateInput('source-0', 'old');
     service.triggerLoad('source-0', 'drive', 'current');
     await vi.advanceTimersByTimeAsync(250);
-    expect(getPaths).toHaveBeenCalledExactlyOnceWith('drive:', 'current', {}, 'filemanager');
+    expect(getPaths).toHaveBeenCalledExactlyOnceWith(
+      'drive:',
+      'current',
+      NAMES_ONLY,
+      'filemanager'
+    );
   });
 
   it('ignores an old response as soon as newer input arrives', async () => {
@@ -274,7 +285,7 @@ describe('PathSelectionService input lifecycle', () => {
     finish({ list: [{ Name: 'stale' } as Entry] });
     await vi.advanceTimersByTimeAsync(0);
     expect(getPaths).toHaveBeenCalledTimes(2);
-    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'latest', {}, 'filemanager');
+    expect(getPaths).toHaveBeenLastCalledWith('drive:', 'latest', NAMES_ONLY, 'filemanager');
     expect(state().options).toEqual([]);
   });
 

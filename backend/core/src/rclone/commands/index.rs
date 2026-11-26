@@ -109,7 +109,6 @@ fn index_payload(remote: &str, path: &str, options: &Value) -> Value {
     let fs = build_full_path(remote, path);
     let mut builder = RclonePayloadBuilder::from_rclone_config(options);
     builder.insert("fs", json!(fs));
-    builder.insert("_async", json!(true));
     move_index_options(builder.as_map_mut(), &fs);
     builder.build()
 }
@@ -126,19 +125,9 @@ pub async fn generate_index(
 
     let payload = index_payload(&remote, &path, &options);
     let metadata = JobMetadata::for_mutation(remote, vec![path], "", JobType::Index, origin, group);
-    crate::rclone::commands::job::submit_job_with_options(
-        app,
-        operations::INDEX,
-        payload,
-        metadata,
-        crate::rclone::commands::job::SubmitJobOptions {
-            wait_for_completion: true,
-            ..Default::default()
-        },
-    )
-    .await?;
-
-    Ok(())
+    crate::rclone::commands::job::run_job(app, operations::INDEX, payload, metadata, None)
+        .await
+        .map(|_| ())
 }
 
 #[cfg(test)]
@@ -246,7 +235,6 @@ mod tests {
             payload["opt"],
             json!({ "output": ["index.html=html"], "maxDepth": 3 })
         );
-        assert_eq!(payload["_async"], true);
         assert_eq!(payload["_config"], json!({ "UseServerModTime": true }));
         assert!(payload.get("UseServerModTime").is_none());
     }

@@ -4,8 +4,10 @@ import {
   getStarterOrigin,
   isProfileScoped,
   matchesOriginFilter,
+  shownOrigin,
   ExecutionScope,
   Origin,
+  ORIGIN_META,
 } from './origin';
 
 describe('getExecutionOrigin', () => {
@@ -128,5 +130,32 @@ describe('matchesOriginFilter', () => {
   it('matches any other chip by the origin itself', () => {
     expect(matchesOriginFilter({ origin: 'filemanager' }, 'filemanager')).toBe(true);
     expect(matchesOriginFilter({ origin: 'filemanager' }, 'startup')).toBe(false);
+  });
+});
+
+describe('shownOrigin', () => {
+  it.each<[ExecutionScope, Origin]>([
+    [{}, 'dashboard'],
+    [{ origin: 'filemanager' }, 'filemanager'],
+    [{ origin: 'automation', starter: { kind: 'profile', name: 'daily' } }, 'automation'],
+  ])('names the origin of work no Quick Run or workflow started: %j', (item, origin) => {
+    expect(shownOrigin(item)).toBe(ORIGIN_META[origin]);
+  });
+
+  it('names nothing when the starter pill already says the Quick Run or workflow', () => {
+    expect(
+      shownOrigin({ origin: 'filemanager', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } })
+    ).toBeNull();
+    expect(
+      shownOrigin({
+        starter: {
+          kind: 'workflow',
+          workflowId: 'wf',
+          workflowName: 'Workflow',
+          nodeId: 'node',
+          ancestors: [],
+        },
+      })
+    ).toBeNull();
   });
 });

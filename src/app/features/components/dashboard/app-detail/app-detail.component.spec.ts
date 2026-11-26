@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
-import { signal } from '@angular/core';
+import { computed, Signal, signal } from '@angular/core';
 import { of } from 'rxjs';
 
 import { JobInfo } from '@app/types';
@@ -15,6 +15,7 @@ import { AppSettingsService } from 'src/app/services/settings/app-settings.servi
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { ProfileRequest, UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
@@ -54,12 +55,19 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   successCount: 0,
   failureCount: 0,
   stoppedCount: 0,
+  autoStart: false,
+  autoStartDelay: 0,
+  autoStartAt: null,
   ...overrides,
 });
 
 describe('AppDetailComponent', () => {
   let fixture: ComponentFixture<AppDetailComponent>;
   let component: AppDetailComponent;
+  let uiStateMock: {
+    profileRequest: ReturnType<typeof signal<ProfileRequest | null>>;
+    clearProfileRequest: ReturnType<typeof vi.fn>;
+  };
 
   let remoteFacadeMock: {
     selectedRemote: ReturnType<typeof signal<Remote | null>>;
@@ -79,6 +87,7 @@ describe('AppDetailComponent', () => {
     jobs: ReturnType<typeof signal<unknown[]>>;
     getLatestJobForQuickRun: ReturnType<typeof vi.fn>;
     getLatestJobForRemote: ReturnType<typeof vi.fn>;
+    detailedStats: (job: () => JobInfo | null) => Signal<JobInfo['stats'] | null>;
   };
 
   let quickRunServiceMock: {
@@ -105,6 +114,7 @@ describe('AppDetailComponent', () => {
   let systemHealthMock: {
     skipMountPluginCheck: ReturnType<typeof signal<boolean>>;
     mountPluginInstalled: ReturnType<typeof signal<boolean | null>>;
+    mountPluginMissing: Signal<boolean>;
     showRepairSheet: ReturnType<typeof vi.fn>;
   };
 
@@ -132,6 +142,8 @@ describe('AppDetailComponent', () => {
       jobs: signal([]),
       getLatestJobForQuickRun: vi.fn().mockReturnValue(null),
       getLatestJobForRemote: vi.fn().mockReturnValue(null),
+      detailedStats: (job: () => JobInfo | null): Signal<JobInfo['stats'] | null> =>
+        computed(() => job()?.stats ?? null),
     };
 
     quickRunServiceMock = {
@@ -154,9 +166,17 @@ describe('AppDetailComponent', () => {
       selectSetting: vi.fn().mockReturnValue(of({ value: false })),
     };
 
+    uiStateMock = {
+      profileRequest: signal<ProfileRequest | null>(null),
+      clearProfileRequest: vi.fn(),
+    };
+    uiStateMock.clearProfileRequest.mockImplementation(() => uiStateMock.profileRequest.set(null));
+
+    const mountPluginInstalled = signal<boolean | null>(true);
     systemHealthMock = {
       skipMountPluginCheck: signal(false),
-      mountPluginInstalled: signal<boolean | null>(true),
+      mountPluginInstalled,
+      mountPluginMissing: computed(() => mountPluginInstalled() === false),
       showRepairSheet: vi.fn(),
     };
 
@@ -173,6 +193,7 @@ describe('AppDetailComponent', () => {
         { provide: BackendService, useValue: { activeBackend } },
         { provide: AppSettingsService, useValue: appSettingsServiceMock },
         { provide: SystemHealthService, useValue: systemHealthMock },
+        { provide: UiStateService, useValue: uiStateMock },
         { provide: ModalService, useValue: { openRemoteConfig: vi.fn(), openJobDetail: vi.fn() } },
         {
           provide: LocalStorageService,
@@ -320,6 +341,52 @@ describe('AppDetailComponent', () => {
     );
   });
 
+  describe('a profile another part of the app asks for', () => {
+    const request = (extra: Partial<ProfileRequest> = {}): ProfileRequest => ({
+      remoteName: 'test-remote',
+      operationType: 'mount',
+      profile: 'Second',
+      ...extra,
+    });
+
+    it('opens that profile and takes the request', () => {
+      fixture.componentRef.setInput('remoteSettings', {
+        mountConfigs: { First: { app: {}, rclone: {} }, Second: { app: {}, rclone: {} } },
+      });
+      expect(component.selectedProfile()).toBe('First');
+      uiStateMock.profileRequest.set(request());
+      fixture.detectChanges();
+      expect(component.selectedProfile()).toBe('Second');
+      expect(uiStateMock.clearProfileRequest).toHaveBeenCalled();
+    });
+
+    it('switches to the operation of the profile on the operations tab', () => {
+      fixture.componentRef.setInput('mainOperationType', 'operations');
+      fixture.componentRef.setInput('remoteSettings', {
+        syncConfigs: { Main: { app: {}, rclone: {} } },
+        bisyncConfigs: { Daily: { app: {}, rclone: {} }, Notes: { app: {}, rclone: {} } },
+      });
+      uiStateMock.profileRequest.set(request({ operationType: 'bisync', profile: 'Notes' }));
+      fixture.detectChanges();
+      expect(component.selectedSyncOperation()).toBe('bisync');
+      expect(component.selectedProfile()).toBe('Notes');
+    });
+
+    it('leaves a request for another remote alone', () => {
+      uiStateMock.profileRequest.set(request({ remoteName: 'other' }));
+      fixture.detectChanges();
+      expect(uiStateMock.clearProfileRequest).not.toHaveBeenCalled();
+      expect(uiStateMock.profileRequest()).not.toBeNull();
+    });
+
+    it('does not pick a profile of an operation the tab is not showing', () => {
+      uiStateMock.profileRequest.set(request({ operationType: 'serve', profile: 'Share' }));
+      fixture.detectChanges();
+      expect(component.selectedProfile()).not.toBe('Share');
+      expect(uiStateMock.clearProfileRequest).toHaveBeenCalled();
+    });
+  });
+
   it('should not show banner when operation is not mount', () => {
     fixture.componentRef.setInput('mainOperationType', 'sync');
     systemHealthMock.skipMountPluginCheck.set(true);
@@ -343,9 +410,28 @@ describe('AppDetailComponent', () => {
     expect(component.showMountPluginWarning()).toBe(true);
   });
 
-  it('should show banner when on mount and skipMountPluginCheck is true and mount_warn defaults to true', () => {
+  it('should hide the banner as soon as the plugin gets installed', () => {
+    fixture.componentRef.setInput('mainOperationType', 'mount');
+    systemHealthMock.mountPluginInstalled.set(false);
+    expect(component.showMountPluginWarning()).toBe(true);
+
+    systemHealthMock.mountPluginInstalled.set(true);
+
+    expect(component.showMountPluginWarning()).toBe(false);
+  });
+
+  it('should not show banner when skipMountPluginCheck is true but the plugin is installed', () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(true);
+
+    expect(component.showMountPluginWarning()).toBe(false);
+  });
+
+  it('should show banner when on mount, plugin is missing and mount_warn defaults to true', () => {
+    fixture.componentRef.setInput('mainOperationType', 'mount');
+    systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
   });
@@ -359,6 +445,7 @@ describe('AppDetailComponent', () => {
       remoteName: 'my-remote',
     });
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
   });
@@ -366,6 +453,7 @@ describe('AppDetailComponent', () => {
   it('should not show banner when mount_warn setting is false', () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
     appSettingsServiceMock.options.set({
       'runtime.mount_warn': { value: false } as SettingMetadata,
     });
@@ -376,6 +464,7 @@ describe('AppDetailComponent', () => {
   it('should not show banner when dismissed in current session and save setting to false', async () => {
     fixture.componentRef.setInput('mainOperationType', 'mount');
     systemHealthMock.skipMountPluginCheck.set(true);
+    systemHealthMock.mountPluginInstalled.set(false);
 
     expect(component.showMountPluginWarning()).toBe(true);
 
@@ -410,6 +499,19 @@ describe('AppDetailComponent', () => {
     fixture.componentRef.setInput('remoteSettings', {
       syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', dstFs: '/tmp' } } },
       backendConfigs: { Default: { dry_run: true, transfers: 8 } },
+    });
+    expect(component.isDryRun()).toBe(true);
+    await component.toggleDryRun();
+    expect(remoteFacadeMock.updateRemoteSettings).toHaveBeenCalledWith('test-remote', {
+      backendConfigs: { Default: { dry_run: false, transfers: 8 } },
+    });
+  });
+
+  it('reads a dry run saved under an older name and saves it as dry_run alone', async () => {
+    fixture.componentRef.setInput('mainOperationType', 'sync');
+    fixture.componentRef.setInput('remoteSettings', {
+      syncConfigs: { Default: { app: {}, rclone: { srcFs: 'test-remote:', dstFs: '/tmp' } } },
+      backendConfigs: { Default: { DryRun: true, transfers: 8 } },
     });
     expect(component.isDryRun()).toBe(true);
     await component.toggleDryRun();
@@ -632,6 +734,17 @@ describe('AppDetailComponent', () => {
       expect(component.isAutoStartEnabled()).toBe(true);
       expect(component.selectedCronSchedule()).toBeNull();
       expect(component.selectedWatcher()).toBeNull();
+    });
+
+    it('tells why the last run of the automation failed, and nothing while it did not', () => {
+      automationServiceMock.automations.set([
+        automation({ status: 'failed', lastError: 'mount point is busy' }),
+      ]);
+      expect(component.automationError()).toBe('mount point is busy');
+      automationServiceMock.automations.set([
+        automation({ status: 'enabled', lastError: 'mount point is busy' }),
+      ]);
+      expect(component.automationError()).toBeNull();
     });
   });
 });

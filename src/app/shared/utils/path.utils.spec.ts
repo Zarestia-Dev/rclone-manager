@@ -26,7 +26,7 @@ import {
   splitSegments,
   checkMountPathCollision,
 } from './path.utils';
-import { ExplorerRoot, PathGroup } from '@app/types';
+import { ExplorerRoot, PathGroup, QuickRun } from '@app/types';
 
 describe('path.utils', () => {
   describe('normalizePath', () => {
@@ -501,10 +501,22 @@ describe('path.utils', () => {
         },
       };
       expect(checkMountPathCollision('/mnt/archive', 'other', settings, isLocalMock)).toEqual([
-        { remoteName: 'drive', profileName: 'mount', opType: 'mount', path: '/mnt/archive' },
+        {
+          kind: 'profile',
+          remoteName: 'drive',
+          name: 'mount',
+          opType: 'mount',
+          path: '/mnt/archive',
+        },
       ]);
       expect(checkMountPathCollision('/home/user/sync', 'other', settings, isLocalMock)).toEqual([
-        { remoteName: 'drive', profileName: 'sync', opType: 'bisync', path: '/home/user/sync' },
+        {
+          kind: 'profile',
+          remoteName: 'drive',
+          name: 'sync',
+          opType: 'bisync',
+          path: '/home/user/sync',
+        },
       ]);
       expect(
         checkMountPathCollision('/mnt/archive', 'drive', settings, isLocalMock, 'mount')
@@ -544,7 +556,7 @@ describe('path.utils', () => {
           currentOperation: 'mount',
         })
       ).toEqual([
-        { remoteName: 'drive', profileName: 'Shared', opType: 'bisync', path: '/shared' },
+        { kind: 'profile', remoteName: 'drive', name: 'Shared', opType: 'bisync', path: '/shared' },
       ]);
     });
 
@@ -563,7 +575,8 @@ describe('path.utils', () => {
       expect(res.length).toBe(1);
       expect(res[0]).toEqual({
         remoteName: 'remote1',
-        profileName: 'default',
+        kind: 'profile',
+        name: 'default',
         opType: 'mount',
         path: '/mnt/media',
       });
@@ -743,5 +756,185 @@ describe('Windows mount targets', () => {
     expect(windowsMountFolderTarget('D:\\test', '', 'AUX', '\\\\cloud\\share')).toBe(
       'D:\\test\\rclone-mount'
     );
+  });
+});
+
+describe('usedMountFolders', () => {
+  const { usedMountFolders, checkMountPathCollision, normalizeMountFolder } = pathUtils;
+  const settings = {
+    drive: {
+      mountConfigs: {
+        Default: { rclone: { mountPoint: 'Y:' } },
+        Docs: { rclone: { mountPoint: 'D:\\Mounts\\Docs' } },
+        Editing: { rclone: { mountPoint: 'X:' } },
+      },
+      bisyncConfigs: { Sync: { rclone: { path1: 'E:/Sync/', path2: 'drive:folder' } } },
+    },
+    box: { mountConfigs: { Default: { rclone: { mountPoint: 'w:\\' } } } },
+  };
+  const isLocal = (path: string): boolean => !path.startsWith('drive:');
+  const options = { pathStyle: 'windows' as const, currentOperation: 'mount' as const };
+
+  it('holds every folder the saved profiles keep, in the form folders are compared in', () => {
+    const used = usedMountFolders('drive', settings, isLocal, 'Editing', options);
+    expect([...used].sort()).toEqual(['d:/mounts/docs', 'e:/sync', 'w:', 'y:']);
+  });
+
+  it('leaves out the profile that is being edited and Quick Runs that are being edited', () => {
+    const quickRuns = [
+      {
+        id: 'a',
+        operationType: 'mount',
+        remoteName: 'drive',
+        name: 'A',
+        config: { dest: 'V:', mountPoint: 'V:' },
+      },
+      {
+        id: 'b',
+        operationType: 'mount',
+        remoteName: 'drive',
+        name: 'B',
+        config: { mountPoint: 'U:' },
+      },
+    ] as never;
+    const used = usedMountFolders('drive', settings, isLocal, 'Editing', {
+      ...options,
+      quickRuns,
+      currentQuickRunId: 'a',
+    });
+    expect(used.has('x:')).toBe(false);
+    expect(used.has('u:')).toBe(true);
+    expect(used.has('v:')).toBe(false);
+  });
+
+  it('answers as one collision check for each letter does', () => {
+    const used = usedMountFolders('drive', settings, isLocal, 'Editing', options);
+    const letters = Array.from({ length: 26 }, (_, index) => `${String.fromCharCode(65 + index)}:`);
+    const disagreeing = letters.filter(
+      letter =>
+        used.has(normalizeMountFolder(letter, 'windows')) !==
+        checkMountPathCollision(letter, 'drive', settings, isLocal, 'Editing', options).length > 0
+    );
+    expect(disagreeing).toEqual([]);
+    expect(letters.filter(letter => used.has(normalizeMountFolder(letter, 'windows')))).toEqual([
+      'W:',
+      'Y:',
+    ]);
+  });
+});
+
+describe('splitTypedPath', () => {
+  const { splitTypedPath } = pathUtils;
+
+  it('lists the folder before the last separator and keeps what follows as the typed name', () => {
+    expect(splitTypedPath('home/me/Do')).toEqual({ parent: 'home/me/', leaf: 'Do' });
+    expect(splitTypedPath('/home/me/')).toEqual({ parent: '/home/me/', leaf: '' });
+    expect(splitTypedPath('/Do')).toEqual({ parent: '/', leaf: 'Do' });
+    expect(splitTypedPath('Do')).toEqual({ parent: '', leaf: 'Do' });
+    expect(splitTypedPath('')).toEqual({ parent: '', leaf: '' });
+  });
+
+  it('reads both separators on Windows and lists a bare drive whole', () => {
+    expect(splitTypedPath('C:\\Users\\ha', 'windows')).toEqual({
+      parent: 'C:\\Users\\',
+      leaf: 'ha',
+    });
+    expect(splitTypedPath('C:/Users/ha', 'windows')).toEqual({ parent: 'C:\\Users\\', leaf: 'ha' });
+    expect(splitTypedPath('c:', 'windows')).toEqual({ parent: 'c:\\', leaf: '' });
+    expect(splitTypedPath('C:\\', 'windows')).toEqual({ parent: 'C:\\', leaf: '' });
+    expect(splitTypedPath('\\\\server\\sh', 'windows')).toEqual({
+      parent: '\\\\server\\',
+      leaf: 'sh',
+    });
+  });
+
+  it('keeps a backslash in a POSIX name', () => {
+    expect(splitTypedPath('home/a\\b')).toEqual({ parent: 'home/', leaf: 'a\\b' });
+  });
+});
+
+describe('windowsDriveLabel', () => {
+  const { windowsDriveLabel } = pathUtils;
+
+  it('names a local disk after its disk name, or the remote when there is none', () => {
+    expect(windowsDriveLabel('Z:', 'Test', false, 'Drive')).toBe('Test (Z:)');
+    expect(windowsDriveLabel('Z:', '  ', false, 'Drive')).toBe('Drive (Z:)');
+  });
+
+  it('leaves the letter out until it is known', () => {
+    expect(windowsDriveLabel(undefined, 'Test', false, 'Drive')).toBe('Test');
+  });
+
+  it('shows a network drive as share and server', () => {
+    expect(windowsDriveLabel('Z:', '\\\\cloud\\remote', true, 'Drive')).toBe(
+      'remote (\\\\cloud) (Z:)'
+    );
+    expect(windowsDriveLabel('Z:', 'Test', true, 'Drive')).toBe('Test (\\\\server) (Z:)');
+    expect(windowsDriveLabel('Z:', '', true, 'Drive')).toBe('share (\\\\server) (Z:)');
+    expect(windowsDriveLabel(undefined, '\\\\cloud\\a\\b', true, 'Drive')).toBe('a\\b (\\\\cloud)');
+  });
+});
+
+describe('Quick Runs and profiles as owners of a folder', () => {
+  const quickRun = (
+    id: string,
+    operationType: QuickRun['operationType'],
+    remoteName: string,
+    rclone: Record<string, unknown>
+  ): QuickRun =>
+    ({ id, name: `Run ${id}`, operationType, remoteName, config: { app: {}, rclone } }) as QuickRun;
+  const isLocal = (p: string): boolean => !p.startsWith('drive:');
+  const check = (
+    path: string,
+    quickRuns: QuickRun[],
+    options: { currentQuickRunId?: string | null } = {}
+  ): ReturnType<typeof checkMountPathCollision> =>
+    checkMountPathCollision(path, 'x', null, isLocal, undefined, { quickRuns, ...options });
+
+  it('names the Quick Run that mounts a folder or keeps it in step', () => {
+    const quickRuns = [
+      quickRun('a', 'mount', 'drive', { fs: 'drive:', mountPoint: '/mnt/drive' }),
+      quickRun('b', 'bisync', 'box', { path1: '/home/me/Notes', path2: 'box:Notes' }),
+    ];
+    expect(check('/mnt/drive', quickRuns)).toEqual([
+      {
+        kind: 'quick_run',
+        remoteName: 'drive',
+        name: 'Run a',
+        opType: 'mount',
+        path: '/mnt/drive',
+      },
+    ]);
+    expect(check('/home/me/Notes/', quickRuns)).toEqual([
+      {
+        kind: 'quick_run',
+        remoteName: 'box',
+        name: 'Run b',
+        opType: 'bisync',
+        path: '/home/me/Notes',
+      },
+    ]);
+    expect(check('/mnt/other', quickRuns)).toEqual([]);
+  });
+
+  it('leaves out the Quick Run that is being edited', () => {
+    const quickRuns = [quickRun('a', 'mount', 'drive', { mountPoint: '/mnt/drive' })];
+    expect(check('/mnt/drive', quickRuns, { currentQuickRunId: 'a' })).toEqual([]);
+    expect(check('/mnt/drive', quickRuns, { currentQuickRunId: 'other' }).length).toBe(1);
+  });
+
+  it('ignores Quick Runs that use no folder of their own and reports profiles before them', () => {
+    const settings = { drive: { mountConfigs: { Folder: { rclone: { mountPoint: '/mnt/a' } } } } };
+    const quickRuns = [
+      quickRun('c', 'copy', 'drive', { srcFs: '/mnt/a', dstFs: 'drive:' }),
+      quickRun('d', 'mount', 'drive', { mountPoint: '/mnt/a' }),
+    ];
+    const found = checkMountPathCollision('/mnt/a', 'x', settings, isLocal, undefined, {
+      quickRuns,
+    });
+    expect(found.map(c => [c.kind, c.name])).toEqual([
+      ['profile', 'Folder'],
+      ['quick_run', 'Run d'],
+    ]);
   });
 });

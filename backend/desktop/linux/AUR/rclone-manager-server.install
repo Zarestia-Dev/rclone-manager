@@ -1,0 +1,21 @@
+# Stops and disables the systemd service before pacman removes its unit (pre_remove
+# runs only on removal, never on an upgrade).
+# post_remove removes the file manager and start-at-login entries the app created for
+# each user, under its name and the RClone Manager Headless name it replaced (as the
+# DEB and RPM do). The service user and /var/lib/rclone-manager stay: they hold the
+# user's settings.
+pre_remove() {
+  systemctl disable --now rclone-manager-server.service || true
+}
+
+post_remove() {
+  for home in /root /home/*; do
+    for product in "RClone Manager Server" "RClone Manager Headless"; do
+      rm -f "$home/.local/share/nautilus/scripts/"*" ($product)" \
+        "$home/.local/share/nautilus-python/extensions/"*" ($product).py" \
+        "$home/.local/share/kio/servicemenus/"*" ($product).desktop" \
+        "$home/.local/share/nemo/actions/"*" ($product).nemo_action" \
+        "$home/.config/autostart/$product.desktop"
+    done
+  done
+}

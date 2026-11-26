@@ -1,4 +1,4 @@
-//! Native Tauri application and optional server-tray composition.
+//! Native Tauri application.
 pub(crate) use rclone_manager_core::{rclone, services, utils};
 mod app;
 mod cli;
@@ -12,7 +12,7 @@ pub use native::run;
 /// exists, because it changes the environment.
 pub fn prepare_environment() {
     // WebKitGTK rendering workarounds (NVIDIA only) apply before any webview is created;
-    // skipped in headless web-server and mobile builds.
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    // skipped on mobile.
+    #[cfg(all(desktop, target_os = "linux"))]
     desktop::graphics::apply_linux_graphics_quirks();
 }

@@ -1,0 +1,76 @@
+// One card per way to start it; the card that is on opens its own settings under it.
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.schedule-group {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: var(--transition-standard);
+
+  &.selected {
+    border-color: var(--accent-color);
+    background: var(--bg-elevated-1);
+
+    .schedule-card {
+      border-color: transparent;
+      background: transparent;
+    }
+  }
+
+  .schedule-editor {
+    padding: 0 var(--space-md) var(--space-md);
+  }
+}
+
+.schedule-card {
+  width: 100%;
+
+  &.selected {
+    background: rgba(var(--tone-rgb), 0.06);
+    border-color: var(--tone);
+  }
+
+  .schedule-check {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin-inline-start: auto;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--tone-on);
+      opacity: 0;
+      transform: scale(0.4);
+      transition: var(--transition-standard);
+    }
+  }
+
+  &.selected .schedule-check {
+    background: var(--tone);
+    border-color: var(--tone);
+
+    mat-icon {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-group,
+  .schedule-card .schedule-check,
+  .schedule-card .schedule-check mat-icon {
+    transition: none;
+  }
+}
