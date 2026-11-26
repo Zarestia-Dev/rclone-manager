@@ -102,3 +102,27 @@ server target and is disabled in the inspected Rclone release matrix.
   ([wry#1865](https://github.com/tauri-apps/wry/pull/1865)) in `RustWebViewClient.kt`.
 - [x] Verified local/remote audio and video playback and seeking on Android
   after the removal (2026-10-25).
+
+# Multi-source sync: offer separate destination folders
+
+A sync of several sources into one destination now runs as one `union` (correct, but no
+server-side copy, and a changed-only watcher syncs every source; see CHANGELOG). Often the
+user did not mean to merge the sources at all and wants `Backup/A`, `Backup/B`.
+
+- [ ] In the profile editor (`app-operation-config`), when the operation is Sync, there are
+  two or more sources and one destination, show an `app-alert-banner` (info) that says the
+  sources are merged into one folder, with a button "Put each source in its own folder".
+  Copy and Move get the same offer: they now run one after another for the same reason.
+- [ ] Decide how the profile stores it. Today a profile has `srcFs` (several) and one
+  `dstFs`, and `submit_transfer_batch` pairs every source with that destination. Either a
+  flag that makes the backend use `<dest>/<source folder name>`, or one destination per
+  source in the config. The flag keeps old profiles and the wizard unchanged.
+- [ ] Names that clash: `drive:photos` and `box:photos` both end in `photos`, and a remote
+  root (`drive:`) has no folder name (use the remote name). Refuse or suffix, and show the
+  resulting paths before saving.
+- [ ] Say what happens to files already in the destination: a sync into `Backup/A` leaves
+  what the merged sync put in `Backup` itself where it is (nothing is deleted, but it stays
+  there as a second copy).
+- [ ] Optional "Why?" link in the banner opening a `MatBottomSheet` with a short animation of
+  the user's own source and destination names: two syncs taking each other's files for
+  leftovers versus one merged view. It plays once, with a replay button, and no idle loop.
