@@ -8,7 +8,7 @@
   >
     <span>{{ 'common.all' | translate }}</span>
   </button>
-  @for (chip of chips; track chip.origin) {
+  @for (chip of chips(); track chip.origin) {
     <button
       type="button"
       appPill

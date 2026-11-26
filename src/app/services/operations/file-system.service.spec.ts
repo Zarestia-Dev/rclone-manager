@@ -7,7 +7,7 @@ import { NotificationService } from '../ui/notification.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { FilePickerResult } from '@app/types';
+import { FilePickerResult, LocalDrive } from '@app/types';
 
 describe('FileSystemService', () => {
   let service: FileSystemService;
@@ -71,6 +71,58 @@ describe('FileSystemService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  describe('drive letters', () => {
+    const drive = (name: string): LocalDrive => ({
+      id: name,
+      name,
+      label: '',
+      total_space: 0,
+      file_system: '',
+    });
+
+    it.each([
+      ['the desktop app with its own engine', true, true, ''],
+      ['the web UI of a Windows server', false, true, ''],
+      ['the web UI opened on a phone', false, true, 'Mozilla/5.0 (Linux; Android 14; Pixel 8)'],
+      ['a remote engine on Windows', true, false, ''],
+    ])('are offered in %s', (_, tauri, local, agent) => {
+      Object.defineProperty(service, 'isTauri', { value: tauri, configurable: true });
+      if (agent) vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(agent);
+      backendServiceMock.isLocalBackend.mockReturnValue(local);
+      backendServiceMock.isWindows.mockReturnValue(true);
+
+      expect(service.canSelectDriveLetter()).toBe(true);
+    });
+
+    it('leave out the drives the engine lists, in any spelling, and its folders', async () => {
+      backendServiceMock.isWindows.mockReturnValue(true);
+      apiClientMock.invoke.mockResolvedValueOnce([
+        drive('C:\\Users\\me'),
+        drive('C:\\'),
+        drive('u:'),
+        drive('Z:/'),
+        drive('C:\\Users\\me\\Downloads'),
+      ]);
+
+      const free = await service.getAvailableDriveLetters();
+
+      expect(apiClientMock.invoke).toHaveBeenCalledWith('get_local_drives', undefined);
+      expect(free).toHaveLength(23);
+      expect(free.slice(0, 3)).toEqual(['Y:', 'X:', 'W:']);
+      expect(free).not.toContain('C:');
+      expect(free).not.toContain('U:');
+      expect(free.at(-1)).toBe('A:');
+    });
+
+    it('are not offered for an engine on Linux', async () => {
+      backendServiceMock.isWindows.mockReturnValue(false);
+
+      expect(service.canSelectDriveLetter()).toBe(false);
+      expect(await service.getAvailableDriveLetters()).toEqual([]);
+      expect(apiClientMock.invoke).not.toHaveBeenCalled();
+    });
   });
 
   describe('upload pickers', () => {

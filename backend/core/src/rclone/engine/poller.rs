@@ -271,24 +271,20 @@ async fn perform_batch_poll(
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
     let cache = backend_manager.remote_cache_for(&backend.name);
 
-    #[cfg(not(target_os = "android"))]
-    let batch_payload = json!({
-        "inputs": [
-            { "_path": core::STATS },
-            { "_path": core::MEMSTATS },
-            { "_path": crate::rclone::endpoints::mount::LISTMOUNTS },
-            { "_path": serve::LIST },
-        ]
-    });
-
-    #[cfg(target_os = "android")]
-    let batch_payload = json!({
-        "inputs": [
-            { "_path": core::STATS },
-            { "_path": core::MEMSTATS },
-            { "_path": serve::LIST },
-        ]
-    });
+    // The mounts of the phone's own engine are the documents provider's, which the app keeps
+    // itself: rclone lists none of them, and its empty list would remove them from the cache.
+    // A remote engine's mounts are rclone's, on Android too.
+    let lists_mounts = !(cfg!(target_os = "android") && backend.is_local);
+    let mut inputs = vec![
+        json!({ "_path": core::STATS }),
+        json!({ "_path": core::MEMSTATS }),
+        json!({ "_path": serve::LIST }),
+    ];
+    if lists_mounts {
+        inputs.push(json!({ "_path": crate::rclone::endpoints::mount::LISTMOUNTS }));
+    }
+    let min_results = inputs.len();
+    let batch_payload = json!({ "inputs": inputs });
 
     let response = transport.rpc(job::BATCH, Some(&batch_payload)).await?;
 
@@ -301,11 +297,6 @@ async fn perform_batch_poll(
     let results = response["results"].as_array().ok_or_else(|| {
         BackendError::Other("Invalid batch response: missing results array".to_string())
     })?;
-
-    #[cfg(not(target_os = "android"))]
-    let min_results = 4;
-    #[cfg(target_os = "android")]
-    let min_results = 3;
 
     if results.len() < min_results {
         return Err(BackendError::Other(
@@ -320,21 +311,12 @@ async fn perform_batch_poll(
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 
-    #[cfg(not(target_os = "android"))]
-    let mount_result = get_batch_result(&results[2], "mounts");
-    #[cfg(not(target_os = "android"))]
-    let serve_result = get_batch_result(&results[3], "serves");
-
-    #[cfg(target_os = "android")]
-    let serve_result = get_batch_result(&results[2], "serves");
-
-    #[cfg(not(target_os = "android"))]
-    if let Some(mount_result) = mount_result {
-        update_mount_cache(&cache, mount_result).await;
+    if let Some(serve_result) = get_batch_result(&results[2], "serves") {
+        update_serve_cache(app, backend, &cache, serve_result).await;
     }
 
-    if let Some(serve_result) = serve_result {
-        update_serve_cache(&cache, serve_result).await;
+    if lists_mounts && let Some(mount_result) = get_batch_result(&results[3], "mounts") {
+        update_mount_cache(app, backend, &cache, mount_result).await;
     }
 
     let runtime = backend_manager.get_runtime_info(&backend.name).await;
@@ -353,8 +335,9 @@ async fn perform_batch_poll(
     })
 }
 
-#[cfg(not(target_os = "android"))]
 async fn update_mount_cache(
+    app: &AppHandle,
+    backend: &Backend,
     cache: &crate::utils::types::remotes::RemoteCache,
     result: &serde_json::Value,
 ) {
@@ -366,15 +349,17 @@ async fn update_mount_cache(
                 .collect()
         });
 
-    cache.update_mounts_if_changed(mounts).await;
+    cache.update_mounts_from_engine(app, backend, mounts).await;
 }
 
 async fn update_serve_cache(
+    app: &AppHandle,
+    backend: &Backend,
     cache: &crate::utils::types::remotes::RemoteCache,
     result: &serde_json::Value,
 ) {
     let serves = parse_serves_response(result);
-    cache.update_serves_if_changed(serves).await;
+    cache.update_serves_from_engine(app, backend, serves).await;
 }
 
 #[cfg(test)]

@@ -65,7 +65,9 @@ pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
     #[cfg(target_os = "android")]
     let mount_types = {
         let mut mount_types = mount_types;
-        if !mount_types.contains(&"saf".to_string()) {
+        if !mount_types.contains(&"saf".to_string())
+            && app.state::<BackendManager>().is_active_local().await
+        {
             mount_types.insert(0, "saf".to_string());
         }
         mount_types

@@ -5,7 +5,8 @@ import { NAMES_ONLY, RemoteFileOperationsService } from '../remote/remote-file-o
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
-import { Entry } from '@app/types';
+import { Entry, ExplorerRoot } from '@app/types';
+import { MountManagementService } from '../operations/mount-management.service';
 
 export interface PathSelectionState {
   id: string;
@@ -21,6 +22,7 @@ export class PathSelectionService {
   private readonly pathService = inject(PathService);
   private readonly backendService = inject(BackendService);
   private readonly remoteManagement = inject(RemoteManagementService);
+  private readonly mountManagement = inject(MountManagementService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
   private readonly abortControllers = new Map<string, AbortController>();
@@ -191,12 +193,22 @@ export class PathSelectionService {
         const drives = await this.remoteManagement.getLocalDrives();
         if (controller.signal.aborted) return;
 
-        const options: Entry[] = drives.map(drive => ({
-          Name: drive.name,
-          Path: drive.name,
+        const roots: ExplorerRoot[] = drives.map(drive => ({
+          name: drive.name,
+          label: drive.label || drive.name,
+          type: 'hard-drive',
+          isLocal: true,
+        }));
+        const localRoots = pathUtils.withMountedWindowsDrives(
+          roots,
+          this.mountManagement.mountedRemotes()
+        );
+        const options: Entry[] = localRoots.map(root => ({
+          Name: root.name,
+          Path: root.name,
           IsDir: true,
           Size: -1,
-          ID: drive.id || drive.name,
+          ID: drives.find(drive => drive.name === root.name)?.id || root.name,
           MimeType: 'inode/directory',
           ModTime: '',
         }));

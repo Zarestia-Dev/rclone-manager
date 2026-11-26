@@ -3,7 +3,12 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { MountedRemote, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import {
+  MountedRemote,
+  availableOverviewOrigins,
+  matchesOriginFilter,
+  PANEL_TONE,
+} from '@app/types';
 import { MountCardComponent } from '../../components/mount-card/mount-card.component';
 import { MountManagementService } from '../../../services/operations/mount-management.service';
 import { NavigationDispatcherService } from '../../../services/ui/navigation-dispatcher.service';
@@ -42,9 +47,13 @@ export class MountsOverviewPanelComponent {
 
   protected readonly originFilters = inject(OriginFilterService);
 
+  readonly availableOrigins = computed(() =>
+    availableOverviewOrigins(this.mountService.mountedRemotes())
+  );
+
   /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
   readonly selectedOriginFilter = computed(() =>
-    this.showFilterChips() ? this.originFilters.get('mounts') : 'all'
+    this.showFilterChips() ? this.originFilters.get('mounts', this.availableOrigins()) : 'all'
   );
 
   readonly allMounts = computed(() => {

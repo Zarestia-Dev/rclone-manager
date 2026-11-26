@@ -97,6 +97,21 @@ describe('AutomationsOverviewPanelComponent', () => {
     expect(component.allAutomations().length).toBe(1);
     expect(component.allAutomations()[0].id).toBe('auto-3');
   });
+
+  it('only offers filters represented by automations', () => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    fixture.detectChanges();
+    expect(component.availableOrigins()).toEqual(['workflow', 'quickrun', 'dashboard']);
+
+    const automations = TestBed.inject(AutomationService).automations as WritableSignal<
+      Automation[]
+    >;
+    automations.set([mockAutomations[0]]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-origin-filter-bar')).toBeNull();
+    expect(component.selectedOriginFilter()).toBe('all');
+  });
+
   it('counts as active only what runs or will run by itself', () => {
     const automations = TestBed.inject(AutomationService).automations as WritableSignal<
       Automation[]

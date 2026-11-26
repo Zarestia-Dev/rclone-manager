@@ -446,9 +446,10 @@ export class NautilusComponent implements OnInit {
       if (!this.navigationReady()) return;
       const selectedMap = this.nautilusService.selectedNautilusRemote();
       if (selectedMap) {
+        const remote = this.nautilusService.lookupRemoteByName(selectedMap);
+        if (!remote) return;
         untracked(() => {
-          const remote = this.allRemotesLookup().find(r => r.name === selectedMap);
-          if (remote && this.tabSvc.tabs().length > 0) {
+          if (this.tabSvc.tabs().length > 0) {
             this.selectRemote(remote);
             this.nautilusService.selectedNautilusRemote.set(null);
           }

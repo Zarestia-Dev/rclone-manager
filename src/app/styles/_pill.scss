@@ -19,6 +19,8 @@
     --pill-fill-selected: 30%;
     --pill-fg: var(--pill-color);
     --pill-edge: transparent;
+    // An outer shadow, for a pill drawn over other content (a count on a button).
+    --pill-shadow: 0 0 transparent;
 
     display: inline-flex;
     align-items: center;
@@ -33,9 +35,14 @@
     transition: var(--transition-fast);
     line-height: 1.2;
     min-height: 28px;
-    // A long label never runs out of its container: the text ends in an ellipsis instead.
-    max-width: 100%;
     box-sizing: border-box;
+
+    // A long label never runs out of its container: its text parts (spans) end in an ellipsis
+    // instead. A pill of bare text cannot shorten its text and keeps its own width, as a count
+    // on a button must: the percentage would be taken of the button's label around the icon.
+    &:has(> span) {
+      max-width: 100%;
+    }
 
     // Sizes: md (the default) is 28px, sm 24px, xs 20px.
     &[data-size="sm"],
@@ -104,7 +111,9 @@
     &[data-variant] {
       background: color-mix(in srgb, rgb(var(--pill-rgb)) var(--pill-fill), transparent);
       color: var(--pill-fg);
-      box-shadow: inset 0 0 0 1px var(--pill-edge);
+      box-shadow:
+        inset 0 0 0 1px var(--pill-edge),
+        var(--pill-shadow);
     }
 
     // --- Role: interactive pills --------------------------------------------------------------

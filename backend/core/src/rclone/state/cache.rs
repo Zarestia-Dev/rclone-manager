@@ -1,6 +1,6 @@
 use crate::context::AppHandle;
 use log::{error, info};
-use serde_json::json;
+use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -11,11 +11,14 @@ use crate::{
             list_serves_for_backend,
         },
     },
-    services::settings::AppSettingsManager,
+    services::{flow::quick_run::commands::get_all_quick_runs, settings::AppSettingsManager},
     utils::json_helpers::{extract_remote_name_from_fs, normalize_remote_name},
     utils::types::{
         events::{MOUNT_STATE_CHANGED, REMOTE_CACHE_CHANGED, SERVE_STATE_CHANGED},
-        remotes::{MountedRemote, RemoteCache, ServeInstance},
+        remotes::{
+            MountedRemote, OperationType, RemoteCache, RemoteSettings, ServeInstance, dest_path,
+            source_paths,
+        },
         starter::{self, Starter},
     },
 };
@@ -47,7 +50,7 @@ impl RemoteCache {
                     .iter()
                     .find(|e| normalize_mount_path(&e.mount_point) == norm)
                 {
-                    m.starter = e.starter.clone();
+                    m.starter = e.starter.clone().or(m.starter);
                     m.execute_id = e.execute_id.clone();
                     m.origin = e.origin.clone();
                     m.mount_type = e.mount_type.clone();
@@ -66,7 +69,7 @@ impl RemoteCache {
             .into_iter()
             .map(|mut s| {
                 if let Some(e) = existing.iter().find(|e| e.id == s.id) {
-                    s.starter = e.starter.clone();
+                    s.starter = e.starter.clone().or(s.starter);
                     s.execute_id = e.execute_id.clone();
                     s.origin = e.origin.clone();
                 }
@@ -151,15 +154,69 @@ impl RemoteCache {
         }
     }
 
+    /// Update the mounts from the backend's rclone. A mount new to the cache that the app did not
+    /// start gets the saved profile or Quick Run it matches (see [`guess_mount_starter`]); the
+    /// settings are read only then, not on every poll.
+    pub async fn update_mounts_from_engine(
+        &self,
+        app: &AppHandle,
+        backend: &Backend,
+        mut mounts: Vec<MountedRemote>,
+    ) -> bool {
+        let unknown: Vec<usize> = {
+            let known = self.mounted.read().await;
+            (0..mounts.len())
+                .filter(|&i| {
+                    let point = normalize_mount_path(&mounts[i].mount_point);
+                    mounts[i].starter.is_none()
+                        && !known
+                            .iter()
+                            .any(|m| normalize_mount_path(&m.mount_point) == point)
+                })
+                .collect()
+        };
+        if !unknown.is_empty() && is_active(app, backend).await {
+            let saved = saved_starters(app, OperationType::Mount);
+            for i in unknown {
+                mounts[i].starter = guess_mount_starter(&saved, &mounts[i]);
+            }
+        }
+        self.update_mounts_if_changed(mounts).await
+    }
+
+    /// Update the serves from the backend's rclone, as [`Self::update_mounts_from_engine`] does.
+    pub async fn update_serves_from_engine(
+        &self,
+        app: &AppHandle,
+        backend: &Backend,
+        mut serves: Vec<ServeInstance>,
+    ) -> bool {
+        let unknown: Vec<usize> = {
+            let known = self.serves.read().await;
+            (0..serves.len())
+                .filter(|&i| {
+                    serves[i].starter.is_none() && !known.iter().any(|s| s.id == serves[i].id)
+                })
+                .collect()
+        };
+        if !unknown.is_empty() && is_active(app, backend).await {
+            let saved = saved_starters(app, OperationType::Serve);
+            for i in unknown {
+                serves[i].starter = guess_serve_starter(&saved, &serves[i]);
+            }
+        }
+        self.update_serves_if_changed(serves).await
+    }
+
     /// Refresh mounted remotes from rclone API and update cache.
     pub async fn refresh_mounted_remotes(
         &self,
         app: AppHandle,
         backend: &Backend,
     ) -> Result<(), String> {
-        match get_mounted_remotes_for_backend(app, backend).await {
+        match get_mounted_remotes_for_backend(app.clone(), backend).await {
             Ok(remotes) => {
-                self.update_mounts_if_changed(remotes).await;
+                self.update_mounts_from_engine(&app, backend, remotes).await;
                 Ok(())
             }
             Err(e) => {
@@ -173,9 +230,9 @@ impl RemoteCache {
 
     /// Refresh serves from rclone API and update cache.
     pub async fn refresh_serves(&self, app: AppHandle, backend: &Backend) -> Result<(), String> {
-        match list_serves_for_backend(app, backend).await {
+        match list_serves_for_backend(app.clone(), backend).await {
             Ok(serves) => {
-                self.update_serves_if_changed(serves).await;
+                self.update_serves_from_engine(&app, backend, serves).await;
                 Ok(())
             }
             Err(e) => {
@@ -490,6 +547,88 @@ pub fn normalize_mount_path(path: &str) -> String {
     }
 }
 
+/// Saved profiles and Quick Runs only belong to the selected backend: its settings are the ones
+/// loaded.
+async fn is_active(app: &AppHandle, backend: &Backend) -> bool {
+    app.state::<BackendManager>().get_active_name().await == backend.name
+}
+
+/// The saved profiles and Quick Runs of `operation`, each with its rclone options: the profiles
+/// by remote and name, then the Quick Runs by name, so the same one is guessed every time.
+fn saved_starters(app: &AppHandle, operation: OperationType) -> Vec<(Starter, Value)> {
+    let manager = app.state::<AppSettingsManager>();
+    let mut remotes: Vec<_> = RemoteSettings::load_all(&manager).into_iter().collect();
+    remotes.sort_by(|(a, _), (b, _)| a.cmp(b));
+    let mut saved = Vec::new();
+    for (_, remote) in remotes {
+        let profiles = match operation {
+            OperationType::Mount => remote.mount_configs,
+            _ => remote.serve_configs,
+        };
+        let mut profiles: Vec<_> = profiles.into_iter().flatten().collect();
+        profiles.sort_by(|(a, _), (b, _)| a.cmp(b));
+        for (name, profile) in profiles {
+            saved.push((Starter::profile(name), profile.rclone));
+        }
+    }
+    let quick_runs = get_all_quick_runs(&manager).unwrap_or_default();
+    for run in quick_runs
+        .into_iter()
+        .filter(|run| run.operation_type == operation)
+    {
+        let rclone = run.config.get("rclone").cloned().unwrap_or_default();
+        saved.push((Starter::quick_run(run.id, run.name, None), rclone));
+    }
+    saved
+}
+
+/// The first saved entry whose options match. Two that match start the same mount or serve,
+/// of which only one can run.
+fn first_match(saved: &[(Starter, Value)], matches: impl Fn(&Value) -> bool) -> Option<Starter> {
+    saved
+        .iter()
+        .find(|(_, rclone)| matches(rclone))
+        .map(|(starter, _)| starter.clone())
+}
+
+fn same_source(rclone: &Value, fs: &str) -> bool {
+    source_paths(rclone)
+        .first()
+        .is_some_and(|source| source.trim_end_matches('/') == fs.trim_end_matches('/'))
+}
+
+/// What started a mount the app does not remember starting: one from before the app connected
+/// to this rclone, or from outside the app. rclone only tells its source and mount point, so it
+/// is the saved profile or Quick Run with the same two.
+fn guess_mount_starter(saved: &[(Starter, Value)], mount: &MountedRemote) -> Option<Starter> {
+    let mount_point = normalize_mount_path(&mount.mount_point);
+    first_match(saved, |rclone| {
+        same_source(rclone, &mount.fs)
+            && dest_path(rclone).is_some_and(|dest| normalize_mount_path(&dest) == mount_point)
+    })
+}
+
+/// What started a serve the app does not remember starting, as for a mount: rclone keeps the
+/// options a serve was started with, of which the source, the type and the address tell a saved
+/// serve from another of the same remote.
+fn guess_serve_starter(saved: &[(Starter, Value)], serve: &ServeInstance) -> Option<Starter> {
+    // One address is sent as a string, several as a list.
+    fn addresses(value: Option<&Value>) -> Vec<&str> {
+        match value {
+            Some(Value::String(address)) => vec![address.as_str()],
+            Some(Value::Array(list)) => list.iter().filter_map(Value::as_str).collect(),
+            _ => vec![],
+        }
+    }
+    let params = &serve.params;
+    let fs = params.get("fs").and_then(Value::as_str)?;
+    first_match(saved, |rclone| {
+        same_source(rclone, fs)
+            && rclone.get("type") == params.get("type")
+            && addresses(rclone.get("addr")) == addresses(params.get("addr"))
+    })
+}
+
 impl Default for RemoteCache {
     fn default() -> Self {
         Self::new()
@@ -760,5 +899,115 @@ mod tests {
         // Same serves: should return false (no change)
         let changed_same = cache.update_serves_if_changed(serves1).await;
         assert!(!changed_same);
+    }
+
+    #[test]
+    fn a_mount_gets_the_saved_entry_with_its_source_and_mount_point() {
+        let saved = [
+            (
+                Starter::profile("Photos"),
+                json!({"fs": "dropbox:photos", "mountPoint": "U:"}),
+            ),
+            (
+                Starter::profile("Default"),
+                json!({"fs": "dropbox:", "mountPoint": "U:/"}),
+            ),
+            (
+                Starter::quick_run("qr-1", "Same", None),
+                json!({"fs": "dropbox:/", "mountPoint": "U:\\"}),
+            ),
+        ];
+        // The first of the two that match, whatever separator the paths end in.
+        assert_eq!(
+            guess_mount_starter(&saved, &MountedRemote::new("dropbox:", "U:")),
+            Some(Starter::profile("Default"))
+        );
+        assert_eq!(
+            guess_mount_starter(&saved, &MountedRemote::new("dropbox:photos", "U:")),
+            Some(Starter::profile("Photos"))
+        );
+        for (fs, point) in [
+            ("dropbox:", "V:"),
+            ("drive:", "U:"),
+            ("dropbox:other", "U:"),
+        ] {
+            assert_eq!(
+                guess_mount_starter(&saved, &MountedRemote::new(fs, point)),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn a_serve_gets_the_saved_entry_with_its_source_type_and_address() {
+        let saved = [
+            (
+                Starter::profile("Web"),
+                json!({"fs": "drive:", "type": "http", "addr": ["localhost:8080"]}),
+            ),
+            (
+                Starter::profile("Dav"),
+                json!({"fs": "drive:", "type": "webdav", "addr": "localhost:8080"}),
+            ),
+            (
+                Starter::profile("Default address"),
+                json!({"fs": "drive:", "type": "ftp"}),
+            ),
+        ];
+        let serve = |params: Value| ServeInstance::new("id", "[::]:8080", params);
+        assert_eq!(
+            guess_serve_starter(
+                &saved,
+                &serve(json!({"fs": "drive:", "type": "http", "addr": "localhost:8080"}))
+            ),
+            Some(Starter::profile("Web"))
+        );
+        assert_eq!(
+            guess_serve_starter(
+                &saved,
+                &serve(json!({"fs": "drive:", "type": "webdav", "addr": ["localhost:8080"]}))
+            ),
+            Some(Starter::profile("Dav"))
+        );
+        assert_eq!(
+            guess_serve_starter(&saved, &serve(json!({"fs": "drive:", "type": "ftp"}))),
+            Some(Starter::profile("Default address"))
+        );
+        for params in [
+            json!({"fs": "drive:", "type": "http", "addr": "localhost:9090"}),
+            json!({"fs": "drive:", "type": "ftp", "addr": "localhost:2121"}),
+            json!({"fs": "box:", "type": "http", "addr": "localhost:8080"}),
+            json!({"type": "http"}),
+        ] {
+            assert_eq!(guess_serve_starter(&saved, &serve(params)), None);
+        }
+    }
+
+    #[test]
+    fn what_the_app_started_wins_over_a_guess() {
+        let started = profiled_mount("drive:", "/mnt/drive", "Started");
+        let guessed = profiled_mount("drive:", "/mnt/drive/", "Guessed");
+        let merged = RemoteCache::merge_mount_profiles(vec![guessed.clone()], &[started]);
+        assert_eq!(merged[0].starter, Some(Starter::profile("Started")));
+        // An entry the app knows nothing about keeps the guess.
+        let unknown = MountedRemote::new("drive:", "/mnt/drive");
+        let merged = RemoteCache::merge_mount_profiles(vec![guessed], &[unknown]);
+        assert_eq!(merged[0].starter, Some(Starter::profile("Guessed")));
+    }
+
+    #[tokio::test]
+    async fn only_mounts_new_to_the_cache_are_guessed() {
+        // `AppHandle::default()` has no settings, so a guess would fail; a known entry never
+        // reaches it, and an inactive backend is not guessed for.
+        let cache = RemoteCache::new();
+        let app = AppHandle::default();
+        let backend = Backend::new_remote("Other", "127.0.0.1", 0);
+        cache
+            .update_mounts_if_changed(vec![MountedRemote::new("drive:", "/mnt")])
+            .await;
+        cache
+            .update_mounts_from_engine(&app, &backend, vec![MountedRemote::new("drive:", "/mnt/")])
+            .await;
+        assert_eq!(cache.get_mounted_remotes().await[0].starter, None);
     }
 }

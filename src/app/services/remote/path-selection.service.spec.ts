@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 import { createMinimalEntry, Entry } from '@app/types';
@@ -8,23 +9,27 @@ import { RemoteFileOperationsService } from './remote-file-operations.service';
 import { RemoteManagementService } from './remote-management.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
+import { MountManagementService } from '../operations/mount-management.service';
 
 describe('PathSelectionService input lifecycle', () => {
   const getPaths = vi.fn();
   const getLocalDrives = vi.fn();
   const isWindows = vi.fn();
+  const mountedRemotes = signal<{ fs: string; mount_point: string }[]>([]);
   let service: PathSelectionService;
   beforeEach(() => {
     vi.useFakeTimers();
     getPaths.mockReset().mockResolvedValue({ list: [] });
     getLocalDrives.mockReset().mockResolvedValue([{ name: 'C:\\' }, { name: 'D:\\' }]);
     isWindows.mockReset().mockReturnValue(false);
+    mountedRemotes.set([]);
     TestBed.configureTestingModule({
       providers: [
         PathSelectionService,
         { provide: RemoteFileOperationsService, useValue: { getRemotePaths: getPaths } },
         { provide: RemoteManagementService, useValue: { getLocalDrives } },
         { provide: BackendService, useValue: { isWindows } },
+        { provide: MountManagementService, useValue: { mountedRemotes } },
         PathService,
       ],
     });
@@ -71,6 +76,17 @@ describe('PathSelectionService input lifecycle', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(control.value).toBe('');
     expect(getLocalDrives).toHaveBeenCalledTimes(2);
+  });
+
+  it('includes mounted Windows roots missing from the backend drive list', async () => {
+    isWindows.mockReturnValue(true);
+    mountedRemotes.set([{ fs: 'backup:', mount_point: 'z:' }]);
+    const state = service.registerField('dest-0', '');
+
+    service.triggerLoad('dest-0', '', '');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(state().options.map(option => option.Path)).toEqual(['C:\\', 'D:\\', 'Z:\\']);
   });
 
   it.each([false, true])('keeps remote selections relative on Windows=%s', async windows => {

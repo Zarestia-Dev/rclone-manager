@@ -92,6 +92,27 @@ describe('MountsOverviewPanelComponent', () => {
     expect(component.selectedOriginFilter()).toBe('all');
   });
 
+  it('only offers filters represented by mounts and hides a redundant filter row', () => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    fixture.detectChanges();
+    expect(
+      Array.from<HTMLElement>(
+        fixture.nativeElement.querySelectorAll('app-origin-filter-bar button')
+      ).map(button => button.textContent?.trim())
+    ).toEqual([
+      'common.all',
+      'alerts.origins.workflow',
+      'alerts.origins.quickrun',
+      'alerts.origins.dashboard',
+    ]);
+
+    mountedRemotes.set([mounts[0]]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-origin-filter-bar')).toBeNull();
+    expect(component.selectedOriginFilter()).toBe('all');
+    expect(component.allMounts()).toEqual([mounts[0]]);
+  });
+
   it('counts the mounts a chip leaves out', () => {
     expect(component.hiddenCount()).toBe(0);
     chooseFilter('quickrun');
@@ -103,7 +124,9 @@ describe('MountsOverviewPanelComponent', () => {
     fixture.detectChanges();
     const chips = fixture.nativeElement.querySelectorAll('app-origin-filter-bar button');
     (chips[2] as HTMLButtonElement).click();
-    expect(TestBed.inject(OriginFilterService).get('mounts')).toBe('quickrun');
+    expect(TestBed.inject(OriginFilterService).get('mounts', component.availableOrigins())).toBe(
+      'quickrun'
+    );
     expect(component.selectedOriginFilter()).toBe('quickrun');
   });
 

@@ -15,24 +15,32 @@ describe('OriginFilterService', () => {
   it('starts every panel on "all"', () => {
     const service = create();
     for (const panel of ['mounts', 'serves', 'jobs', 'automations'] as const) {
-      expect(service.get(panel)).toBe('all');
+      expect(service.get(panel, [])).toBe('all');
     }
   });
 
   it("keeps a panel's choice apart from the others", () => {
     const service = create();
     service.set('mounts', 'quickrun');
-    expect(service.get('mounts')).toBe('quickrun');
-    expect(service.get('serves')).toBe('all');
+    expect(service.get('mounts', ['quickrun'])).toBe('quickrun');
+    expect(service.get('serves', [])).toBe('all');
   });
 
   it('remembers the choices after a restart', () => {
     create().set('jobs', 'workflow');
-    expect(create().get('jobs')).toBe('workflow');
+    expect(create().get('jobs', ['workflow'])).toBe('workflow');
   });
 
   it('falls back to "all" when the stored value is unreadable', () => {
     localStorage.setItem(STORAGE_KEY, '{broken');
-    expect(create().get('mounts')).toBe('all');
+    expect(create().get('mounts', [])).toBe('all');
+  });
+
+  it('shows all items when a remembered overview origin is no longer available', () => {
+    const service = create();
+    service.set('mounts', 'quickrun');
+
+    expect(service.get('mounts', ['workflow'])).toBe('all');
+    expect(service.get('mounts', ['quickrun'])).toBe('quickrun');
   });
 });

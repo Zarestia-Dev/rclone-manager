@@ -133,7 +133,13 @@
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <app-origin-filter-bar [(selected)]="automationOriginFilter"></app-origin-filter-bar>
+        @if (automationOrigins().length > 1) {
+          <app-origin-filter-bar
+            [selected]="selectedAutomationOrigin()"
+            [origins]="automationOrigins()"
+            (selectedChange)="automationOriginFilter.set($event)"
+          ></app-origin-filter-bar>
+        }
 
         <!-- One panel open at a time; the first one opens with the page. -->
         @if (remoteAutomations().length) {

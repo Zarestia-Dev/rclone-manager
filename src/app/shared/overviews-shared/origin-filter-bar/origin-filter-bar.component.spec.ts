@@ -24,6 +24,8 @@ describe('OriginFilterBarComponent', () => {
   });
 
   it('should update selected filter on click', () => {
+    fixture.componentRef.setInput('origins', ['workflow', 'quickrun', 'dashboard']);
+    fixture.detectChanges();
     const buttons = fixture.nativeElement.querySelectorAll('button[appPill]');
     expect(buttons.length).toBe(4);
 
@@ -38,6 +40,20 @@ describe('OriginFilterBarComponent', () => {
     (buttons[3] as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(component.selected()).toBe('dashboard');
+  });
+
+  it('shows only the available origin options', () => {
+    fixture.componentRef.setInput('origins', ['quickrun']);
+    fixture.detectChanges();
+
+    const buttons = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('button[appPill]')
+    );
+    expect(buttons.length).toBe(2);
+    expect(buttons.map(button => button.textContent?.trim())).toEqual([
+      'common.all',
+      'alerts.origins.quickrun',
+    ]);
   });
 
   it('offers the hidden items only when the chip leaves some out', () => {

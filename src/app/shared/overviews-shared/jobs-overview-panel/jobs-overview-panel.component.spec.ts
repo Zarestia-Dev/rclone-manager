@@ -167,6 +167,17 @@ describe('JobsOverviewPanelComponent', () => {
     expect(component.runningJobs()[0].origin).toBe('dashboard');
   });
 
+  it('only offers filters represented by jobs', () => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    fixture.detectChanges();
+    expect(component.availableOrigins()).toEqual(['workflow', 'quickrun', 'dashboard']);
+
+    jobs.set([mockJobs[0]]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-origin-filter-bar')).toBeNull();
+    expect(component.selectedOriginFilter()).toBe('all');
+  });
+
   it.each<[ExecutionScope, string[]]>([
     [{ origin: undefined }, ['dashboard']],
     [{ origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'qr' } }, ['quickrun']],
@@ -202,10 +213,9 @@ describe('JobsOverviewPanelComponent', () => {
   ])('uses execution ownership for filtering: %j', (scope, shownUnder) => {
     const job: JobInfo = { ...mockJobs[0], ...scope };
     jobs.set([job]);
-    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
-      chooseFilter(filter);
-      expect(component.runningJobs()).toEqual(shownUnder.includes(filter) ? [job] : []);
-    }
+    expect(component.availableOrigins()).toEqual(
+      ['workflow', 'quickrun', 'dashboard'].filter(origin => shownUnder.includes(origin))
+    );
   });
 
   it('lists the running jobs in the job rows, which stop the clicked one and open its detail', async () => {

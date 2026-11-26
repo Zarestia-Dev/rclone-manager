@@ -4,6 +4,7 @@ import {
   getStarterOrigin,
   isProfileScoped,
   matchesOriginFilter,
+  availableOverviewOrigins,
   shownOrigin,
   ExecutionScope,
   Origin,
@@ -130,6 +131,31 @@ describe('matchesOriginFilter', () => {
   it('matches any other chip by the origin itself', () => {
     expect(matchesOriginFilter({ origin: 'filemanager' }, 'filemanager')).toBe(true);
     expect(matchesOriginFilter({ origin: 'filemanager' }, 'startup')).toBe(false);
+  });
+});
+
+describe('availableOverviewOrigins', () => {
+  it('returns no filters for an empty list', () => {
+    expect(availableOverviewOrigins([])).toEqual([]);
+  });
+
+  it('returns only represented overview origins in display order', () => {
+    expect(
+      availableOverviewOrigins([
+        { origin: 'workflow' },
+        { origin: 'automation' },
+        { origin: 'quickrun' },
+      ])
+    ).toEqual(['workflow', 'quickrun', 'dashboard']);
+  });
+
+  it('classifies profile-owned work as dashboard and starters by execution ownership', () => {
+    expect(
+      availableOverviewOrigins([
+        { origin: 'startup' },
+        { origin: 'dashboard', starter: { kind: 'quick_run', id: 'qr', name: 'Backup' } },
+      ])
+    ).toEqual(['quickrun', 'dashboard']);
   });
 });
 

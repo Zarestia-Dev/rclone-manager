@@ -22,6 +22,8 @@ import { EventListenersService } from 'src/app/services/infrastructure/system/ev
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { buildNautilusPath } from 'src/app/shared/utils/nautilus-url.utils';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { withMountedWindowsDrives } from 'src/app/shared/utils/path.utils';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
 import {
   FileBrowserItem,
@@ -60,6 +62,7 @@ export class NautilusService extends TauriBaseService {
   private readonly covering = inject(CoveringOverlayService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
+  private readonly mountManagement = inject(MountManagementService);
   private readonly pathService = inject(PathService);
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
@@ -92,12 +95,17 @@ export class NautilusService extends TauriBaseService {
   readonly isBrowserOverlayOpen = this._isBrowserOverlayOpen.asReadonly();
 
   private readonly _localDrives = signal<ExplorerRoot[]>([]);
-  readonly localDrives = this._localDrives.asReadonly();
+  readonly localDrives = computed(() => {
+    const drives = this._localDrives();
+    return this.pathService.enginePathStyle() === 'windows'
+      ? withMountedWindowsDrives(drives, this.mountManagement.mountedRemotes())
+      : drives;
+  });
 
   private readonly _cloudRemotes = signal<ExplorerRoot[]>([]);
   readonly cloudRemotes = this._cloudRemotes.asReadonly();
 
-  readonly allRemotesLookup = computed(() => [...this._localDrives(), ...this._cloudRemotes()]);
+  readonly allRemotesLookup = computed(() => [...this.localDrives(), ...this._cloudRemotes()]);
 
   readonly starredKeys = computed(() => {
     const set = new Set<string>();

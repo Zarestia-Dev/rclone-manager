@@ -35,8 +35,8 @@ export class WindowsMountTargetService {
 
   /**
    * The letter a new mount gets by default: the highest free one that no saved profile or Quick
-   * Run keeps, which is also where `*` would start. Null when letters cannot be chosen here (not
-   * Windows, a remote rclone, a phone) or none is left, and the caller falls back to a folder.
+   * Run keeps, which is also where `*` would start. Null when the engine is not on Windows or
+   * none is left, and the caller falls back to a folder.
    */
   async defaultDriveLetter(remote: string, quickRunId?: string | null): Promise<string | null> {
     if (!this.files.canSelectDriveLetter()) return null;

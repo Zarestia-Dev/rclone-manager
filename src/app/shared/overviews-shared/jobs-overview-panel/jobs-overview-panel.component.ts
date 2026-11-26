@@ -12,7 +12,13 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-import { JobStatItem, JOB_STATUS, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import {
+  JobStatItem,
+  JOB_STATUS,
+  availableOverviewOrigins,
+  matchesOriginFilter,
+  PANEL_TONE,
+} from '@app/types';
 import {
   FormatEtaPipe,
   FormatFileSizePipe,
@@ -69,9 +75,13 @@ export class JobsOverviewPanelComponent {
 
   protected readonly originFilters = inject(OriginFilterService);
 
+  readonly availableOrigins = computed(() =>
+    availableOverviewOrigins(this.jobService.jobs().filter(j => !j.parent_job_id))
+  );
+
   /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
   readonly selectedOriginFilter = computed(() =>
-    this.showFilterChips() ? this.originFilters.get('jobs') : 'all'
+    this.showFilterChips() ? this.originFilters.get('jobs', this.availableOrigins()) : 'all'
   );
 
   readonly jobStats = this.rcloneStatusService.jobStats;

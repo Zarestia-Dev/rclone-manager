@@ -148,6 +148,8 @@ describe('path.utils', () => {
       expect(normalizeRemoteName('gdrive:')).toBe('gdrive');
       expect(normalizeRemoteName('s3{uuid}:')).toBe('s3');
       expect(normalizeRemoteName('C:', 'windows')).toBe('C:');
+      expect(normalizeRemoteName('Z:\\', 'windows')).toBe('Z:');
+      expect(normalizeRemoteName('z:/', 'windows')).toBe('Z:');
       expect(normalizeRemoteName('')).toBe('');
     });
 
@@ -403,6 +405,20 @@ describe('path.utils', () => {
           path: '',
         });
       }
+    });
+
+    it('matches a mounted Windows drive by letter without appending drive-relative notation', () => {
+      const mountedDrive: ExplorerRoot = {
+        name: 'U:\\',
+        label: 'U:',
+        isLocal: true,
+        type: 'local',
+      };
+
+      expect(parseLocation('u:', [mountedDrive], 'windows')).toEqual({
+        remote: mountedDrive,
+        path: '',
+      });
     });
 
     it('prefers mounted POSIX roots and preserves colons within local filenames', () => {
@@ -671,7 +687,7 @@ describe('parsePathType', () => {
 });
 
 describe('Windows mount targets', () => {
-  const { mountDriveLetter, windowsMountFolderTarget } = pathUtils;
+  const { mountDriveLetter, windowsMountFolderTarget, withMountedWindowsDrives } = pathUtils;
 
   it('recognizes a drive letter with optional trailing root separator and case', () => {
     expect(mountDriveLetter(' x:\\ ')).toBe('X:');
@@ -679,6 +695,29 @@ describe('Windows mount targets', () => {
     expect(mountDriveLetter('D:\\Mounts')).toBeUndefined();
     expect(mountDriveLetter('*')).toBeUndefined();
     expect(mountDriveLetter(null)).toBeUndefined();
+  });
+
+  it('adds mounted drive roots missing from the disk list without duplicates', () => {
+    const diskRoots: ExplorerRoot[] = [
+      { name: 'C:\\', label: 'C:', type: 'hard-drive', isLocal: true },
+    ];
+    const mounts = [
+      { fs: 'drive:', mount_point: 'z:' },
+      { fs: 'other:', mount_point: 'C:/' },
+      { fs: 'posix:', mount_point: '/mnt/drive' },
+    ];
+
+    expect(withMountedWindowsDrives(diskRoots, mounts)).toEqual([
+      ...diskRoots,
+      {
+        name: 'Z:\\',
+        label: 'Z:',
+        type: 'hard-drive',
+        isLocal: true,
+        totalSpace: 0,
+        fileSystem: '',
+      },
+    ]);
   });
 
   it('classifies drive roots, drive paths and drive folders', () => {

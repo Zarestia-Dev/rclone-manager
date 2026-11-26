@@ -2,6 +2,7 @@ import { TitleCasePipe } from '@angular/common';
 import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { provideTranslateService, TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionState, DEFAULT_JOB_STATS, JobInfo, Remote } from '@app/types';
@@ -14,6 +15,7 @@ import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.s
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PillDirective } from 'src/app/shared/directives/pill.directive';
+import { OriginFilterBarComponent } from 'src/app/shared/overviews-shared/origin-filter-bar/origin-filter-bar.component';
 
 describe('GeneralDetailComponent controls', () => {
   let fixture: ComponentFixture<GeneralDetailComponent>;
@@ -68,7 +70,13 @@ describe('GeneralDetailComponent controls', () => {
     }).overrideComponent(GeneralDetailComponent, {
       // Render this component's real template without descending into its panels.
       set: {
-        imports: [TranslatePipe, TitleCasePipe, PillDirective],
+        imports: [
+          TranslatePipe,
+          TitleCasePipe,
+          PillDirective,
+          OriginFilterBarComponent,
+          MatIconTestingModule,
+        ],
         schemas: [CUSTOM_ELEMENTS_SCHEMA],
       },
     });
@@ -149,6 +157,16 @@ describe('GeneralDetailComponent controls', () => {
     expect(cards.length).toBe(2);
     expect(cards.every(card => card.getAttribute('variant') === 'detailed')).toBe(true);
     expect(cards.map(card => card.expanded)).toEqual([true, false]);
+  });
+
+  it('hides the origin filter when this remote has only one automation origin', () => {
+    expect(fixture.componentInstance.automationOrigins()).toEqual(['dashboard']);
+    expect(
+      fixture.nativeElement.querySelector('.automations-card app-origin-filter-bar')
+    ).toBeNull();
+
+    fixture.componentInstance.automationOriginFilter.set('workflow');
+    expect(fixture.componentInstance.remoteAutomations()).toEqual(automations());
   });
 
   it('lists every job that reads or writes this remote, however the job names it', () => {
@@ -245,11 +263,21 @@ describe('GeneralDetailComponent controls', () => {
       ]);
     });
 
-    it('narrows the card with the origin chips', async (): Promise<void> => {
+    it('shows only available origins and narrows the card with the origin chips', async (): Promise<void> => {
       listWorkflowsUsingRemote.mockResolvedValue([{ id: 'wf-drive', name: 'Nightly' }]);
       await refreshWorkflows();
       const component = fixture.componentInstance;
       const ids = (): string[] => component.remoteAutomations().map(a => a.id);
+
+      expect(component.automationOrigins()).toEqual(['workflow', 'dashboard']);
+      const filterButtons = Array.from<HTMLButtonElement>(
+        fixture.nativeElement.querySelectorAll('.automations-card app-origin-filter-bar button')
+      );
+      expect(filterButtons.map(button => button.textContent?.trim())).toEqual([
+        'common.all',
+        'alerts.origins.workflow',
+        'alerts.origins.dashboard',
+      ]);
 
       component.automationOriginFilter.set('workflow');
       fixture.detectChanges();
@@ -258,12 +286,10 @@ describe('GeneralDetailComponent controls', () => {
       component.automationOriginFilter.set('dashboard');
       expect(ids()).toEqual(['first', 'second']);
 
-      // A chip with no match keeps the card and its chips, so the user can pick another one.
       component.automationOriginFilter.set('quickrun');
       fixture.detectChanges();
-      expect(ids()).toEqual([]);
-      expect(component.hasAutomations()).toBe(true);
-      expect(fixture.nativeElement.querySelector('.automations-card .empty-state')).not.toBeNull();
+      expect(component.selectedAutomationOrigin()).toBe('all');
+      expect(ids()).toEqual(['first', 'second', 'wf-drive']);
     });
   });
 });

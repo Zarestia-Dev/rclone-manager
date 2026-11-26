@@ -7,6 +7,7 @@ import {
   REMOTE_CONFIG_KEYS,
   DefaultPathOp,
   QuickRun,
+  MountedRemote,
 } from '@app/types';
 
 /**
@@ -126,6 +127,31 @@ export function mountDriveLetter(path: unknown): string | undefined {
   return isWindowsDriveRoot(target) ? target.slice(0, 2).toUpperCase() : undefined;
 }
 
+/** Adds mounted Windows drive roots missing from the engine's disk list. */
+export function withMountedWindowsDrives(
+  drives: readonly ExplorerRoot[],
+  mounts: readonly MountedRemote[]
+): ExplorerRoot[] {
+  const result = [...drives];
+  const known = new Set(
+    drives.map(drive => mountDriveLetter(drive.name)).filter((letter): letter is string => !!letter)
+  );
+  for (const mount of mounts) {
+    const letter = mountDriveLetter(mount.mount_point);
+    if (!letter || known.has(letter)) continue;
+    known.add(letter);
+    result.push({
+      name: `${letter}\\`,
+      label: letter,
+      type: 'hard-drive',
+      isLocal: true,
+      totalSpace: 0,
+      fileSystem: '',
+    });
+  }
+  return result;
+}
+
 /**
  * How File Explorer names a mounted drive: `Name (Z:)`. A network drive shows its share and its
  * server, `share (\\server) (Z:)`; a name that is no UNC path is the share, after rclone's default
@@ -220,8 +246,9 @@ export function getPathSegments(path: string): PathSegment[] {
  */
 export function normalizeRemoteName(remoteName?: string, pathStyle: PathStyle = 'posix'): string {
   if (!remoteName) return '';
-  if (pathStyle === 'windows' && /^[a-zA-Z]:$/.test(remoteName)) {
-    return remoteName;
+  if (pathStyle === 'windows') {
+    const driveRoot = remoteName.match(/^([a-zA-Z]:)[\\/]*$/);
+    if (driveRoot) return driveRoot[1].toUpperCase();
   }
   return remoteName
     .trim()

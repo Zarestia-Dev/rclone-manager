@@ -147,26 +147,6 @@ async fn ensure_empty_folder(folder: &str) -> Result<(), String> {
 }
 
 #[tauri::command]
-#[cfg(all(desktop, target_os = "windows"))]
-pub fn get_available_drive_letters() -> Result<Vec<String>, String> {
-    // SAFETY: GetLogicalDrives takes no arguments and returns a bit mask.
-    let occupied = unsafe { windows_sys::Win32::Storage::FileSystem::GetLogicalDrives() };
-    if occupied == 0 {
-        return Err(io_error(std::io::Error::last_os_error()));
-    }
-    Ok(available_drive_letters(occupied))
-}
-
-#[cfg(any(all(desktop, target_os = "windows"), test))]
-fn available_drive_letters(occupied: u32) -> Vec<String> {
-    (0..26)
-        .rev()
-        .filter(|index| occupied & (1 << index) == 0)
-        .map(|index| format!("{}:", char::from(b'A' + index)))
-        .collect()
-}
-
-#[tauri::command]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
     let app = window.app_handle().clone();
     let revision = access::revision(app.backend());
@@ -541,16 +521,6 @@ async fn open_destination(destination: &str) -> Result<StagedFile, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn available_drive_letters_excludes_occupied_letters() {
-        let occupied = (1 << 2) | (1 << 23);
-        let available = available_drive_letters(occupied);
-        assert_eq!(available.len(), 24);
-        assert_eq!(&available[..3], &["Z:", "Y:", "W:"]);
-        assert!(!available.iter().any(|letter| letter == "C:"));
-        assert!(available_drive_letters((1 << 26) - 1).is_empty());
-    }
 
     #[tokio::test]
     async fn mount_folders_must_be_empty_or_missing() {

@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { Origin, OVERVIEW_FILTER_ORIGINS } from '@app/types';
 import { LocalStorageService } from './local-storage.service';
 
 const STORAGE_KEY = 'overview.originFilters';
@@ -16,8 +17,10 @@ export class OriginFilterService {
     this.localStorage.get<Partial<Record<OverviewPanel, string>>>(STORAGE_KEY, {})
   );
 
-  get(panel: OverviewPanel): string {
-    return this.filters()[panel] ?? 'all';
+  get(panel: OverviewPanel, availableOrigins: readonly Origin[]): string {
+    const filter = this.filters()[panel] ?? 'all';
+    const origin = OVERVIEW_FILTER_ORIGINS.find(candidate => candidate === filter);
+    return origin && !availableOrigins.includes(origin) ? 'all' : filter;
   }
 
   set(panel: OverviewPanel, filter: string): void {

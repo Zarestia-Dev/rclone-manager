@@ -11,7 +11,12 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ServeListItem, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import {
+  ServeListItem,
+  availableOverviewOrigins,
+  matchesOriginFilter,
+  PANEL_TONE,
+} from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
 import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { OriginFilterService } from '../../../services/ui/state/origin-filter.service';
@@ -47,9 +52,13 @@ export class ServesOverviewPanelComponent {
 
   protected readonly originFilters = inject(OriginFilterService);
 
+  readonly availableOrigins = computed(() =>
+    availableOverviewOrigins(this.serveService.runningServes())
+  );
+
   /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
   readonly selectedOriginFilter = computed(() =>
-    this.showFilterChips() ? this.originFilters.get('serves') : 'all'
+    this.showFilterChips() ? this.originFilters.get('serves', this.availableOrigins()) : 'all'
   );
 
   readonly allServes = computed(() => {

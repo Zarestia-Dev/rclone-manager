@@ -1,12 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { NautilusService } from '../ui/nautilus.service';
-import { FilePickerConfig, FilePickerResult } from '@app/types';
+import { FilePickerConfig, FilePickerResult, LocalDrive } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { generatePrefixedId } from 'src/app/shared/utils';
+import { mountDriveLetter } from '../../shared/utils/path.utils';
 
 interface AndroidUploadPicker {
   pickUploadFiles?: (folder: boolean) => boolean;
@@ -31,19 +32,26 @@ export class FileSystemService extends TauriBaseService {
   private backendService = inject(BackendService);
   private pathService = inject(PathService);
 
+  /**
+   * A mount gets a letter of the machine the active engine runs on, local or remote, whichever
+   * device the app or its web UI is opened on.
+   */
   canSelectDriveLetter(): boolean {
-    return (
-      this.isTauri &&
-      !isMobile() &&
-      this.backendService.isLocalBackend() &&
-      this.backendService.isWindows()
-    );
+    return this.backendService.isWindows();
   }
 
-  getAvailableDriveLetters(): Promise<string[]> {
-    return this.canSelectDriveLetter()
-      ? this.invokeCommand<string[]>('get_available_drive_letters')
-      : Promise.resolve([]);
+  /**
+   * The letters the engine's machine has not taken, Z: down to A:, from its rclone `core/disks`.
+   * A drive Windows reports as not ready (an empty card reader, a disconnected network drive) is
+   * not listed there, and a mount on its letter fails with rclone's error.
+   */
+  async getAvailableDriveLetters(): Promise<string[]> {
+    if (!this.canSelectDriveLetter()) return [];
+    const drives = await this.invokeCommand<LocalDrive[]>('get_local_drives');
+    const taken = new Set(drives.map(drive => mountDriveLetter(drive.name)));
+    return Array.from({ length: 26 }, (_, index) => `${String.fromCharCode(90 - index)}:`).filter(
+      letter => !taken.has(letter)
+    );
   }
 
   /**

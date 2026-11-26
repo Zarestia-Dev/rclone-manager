@@ -32,6 +32,7 @@ import {
   OPERATION_META,
   OpenInFilesEvent,
   isOperationActionInProgress,
+  availableOverviewOrigins,
   matchesOriginFilter,
 } from '@app/types';
 import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
@@ -181,10 +182,21 @@ export class GeneralDetailComponent {
     );
   });
 
+  readonly automationOrigins = computed(() =>
+    availableOverviewOrigins(
+      this.scopedAutomations().map(automation => ({ origin: automation.args?.source }))
+    )
+  );
+
   readonly automationOriginFilter = signal('all');
 
-  readonly remoteAutomations = computed(() => {
+  readonly selectedAutomationOrigin = computed(() => {
     const filter = this.automationOriginFilter();
+    return this.automationOrigins().some(origin => origin === filter) ? filter : 'all';
+  });
+
+  readonly remoteAutomations = computed(() => {
+    const filter = this.selectedAutomationOrigin();
     return this.scopedAutomations().filter(automation =>
       matchesOriginFilter({ origin: automation.args?.source }, filter)
     );

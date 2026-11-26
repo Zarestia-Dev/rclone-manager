@@ -18,11 +18,16 @@
   }
 }
 
-// Position of the `appPill` count on the corner of an action button.
+// Position of the `appPill` count on the corner of an action button. A soft shadow sets it apart
+// from a button of its own colour (`.app-pill` outweighs the pill's own default).
 @mixin count-badge {
   position: absolute;
   top: var(--space-xxs);
   right: calc(var(--space-md) * -1);
   pointer-events: none;
   z-index: 2;
+
+  &.app-pill {
+    --pill-shadow: 0 1px 2px var(--mat-sys-shadow);
+  }
 }

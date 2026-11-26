@@ -277,9 +277,8 @@ export class NautilusTabService {
       } else {
         const requestedName = this.nautilusService.selectedNautilusRemote();
         if (requestedName) {
-          initialRemote =
-            this.nautilusService.allRemotesLookup().find(r => r.name === requestedName) ?? null;
-          this.nautilusService.selectedNautilusRemote.set(null);
+          initialRemote = this.nautilusService.lookupRemoteByName(requestedName);
+          if (initialRemote) this.nautilusService.selectedNautilusRemote.set(null);
         }
       }
     }

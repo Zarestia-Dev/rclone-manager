@@ -115,6 +115,17 @@ describe('ServesOverviewPanelComponent', () => {
     expect(component.allServes()[0].id).toBe('serve-3');
   });
 
+  it('only offers filters represented by serves', () => {
+    fixture.componentRef.setInput('showFilterChips', true);
+    fixture.detectChanges();
+    expect(component.availableOrigins()).toEqual(['workflow', 'quickrun', 'dashboard']);
+
+    runningServes.set([mockServes[0]]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-origin-filter-bar')).toBeNull();
+    expect(component.selectedOriginFilter()).toBe('all');
+  });
+
   it('keeps Quick Run and Flow serves even when remote profile state excludes them', () => {
     const profileStatus = buildRemoteProfileStatus({
       profiles: readRemoteProfiles({}),
@@ -161,10 +172,9 @@ describe('ServesOverviewPanelComponent', () => {
   ])('uses execution ownership for filtering: %j', (scope, shownUnder) => {
     const serve: ServeListItem = { ...mockServes[2], ...scope };
     runningServes.set([serve]);
-    for (const filter of ['dashboard', 'quickrun', 'workflow', 'filemanager', 'startup']) {
-      chooseFilter(filter);
-      expect(component.allServes()).toEqual(shownUnder.includes(filter) ? [serve] : []);
-    }
+    expect(component.availableOrigins()).toEqual(
+      ['workflow', 'quickrun', 'dashboard'].filter(origin => shownUnder.includes(origin))
+    );
   });
 
   it('reacts to serves from remotes outside the current catalogue', () => {

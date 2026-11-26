@@ -29,9 +29,10 @@
     </mat-panel-description>
   </mat-expansion-panel-header>
 
-  @if (showFilterChips()) {
+  @if (showFilterChips() && availableOrigins().length > 1) {
     <app-origin-filter-bar
       [selected]="selectedOriginFilter()"
+      [origins]="availableOrigins()"
       (selectedChange)="originFilters.set('automations', $event)"
       [hiddenCount]="hiddenCount()"
     ></app-origin-filter-bar>

@@ -17,7 +17,7 @@ import { EventListenersService } from '../infrastructure/system/event-listeners.
 import { FileViewerService } from './file-viewer.service';
 
 const remote: ExplorerRoot = { name: 'drive', label: 'Drive', isLocal: false, type: 'drive' };
-const localDrive: ExplorerRoot = { name: 'C:\\', label: 'C:', isLocal: true, type: 'local' };
+const localDrive: ExplorerRoot = { name: 'C:', label: 'C:', isLocal: true, type: 'local' };
 const otherDrive: ExplorerRoot = { name: 'D:\\', label: 'D:', isLocal: true, type: 'local' };
 const posixRoot: ExplorerRoot = { name: '/', label: '/', isLocal: true, type: 'local' };
 
@@ -82,8 +82,16 @@ describe('NautilusTabService navigation', () => {
           provide: NautilusService,
           useValue: {
             allRemotesLookup: signal([remote, localDrive, otherDrive, posixRoot]),
-            lookupRemoteByName: (name: string): ExplorerRoot | null =>
-              [remote, localDrive, otherDrive, posixRoot].find(root => root.name === name) ?? null,
+            lookupRemoteByName: (name: string): ExplorerRoot | null => {
+              const pathService = TestBed.inject(PathService);
+              return (
+                [remote, localDrive, otherDrive, posixRoot].find(
+                  root =>
+                    pathService.normalizeRemoteName(root.name) ===
+                    pathService.normalizeRemoteName(name)
+                ) ?? null
+              );
+            },
             loadRemoteData: vi.fn().mockResolvedValue(undefined),
             filePickerState: pickerState,
             localDrives: signal([localDrive, otherDrive]),
@@ -122,6 +130,27 @@ describe('NautilusTabService navigation', () => {
     expect(service.activeRemote()).toEqual(otherDrive);
     expect(service.activePath()).toBe('Arşiv 2026');
     expect(getStat).toHaveBeenCalledWith('D:\\', 'Arşiv 2026');
+  });
+
+  it('opens a selected Windows drive root when the request includes its trailing slash', async () => {
+    isWindows.mockReturnValue(true);
+    const nautilus = TestBed.inject(NautilusService);
+    nautilus.selectedNautilusRemote.set('C:\\');
+
+    await service.setupInitialTab([localDrive, otherDrive], []);
+
+    expect(service.activeRemote()).toEqual(localDrive);
+    expect(service.activePath()).toBe('');
+  });
+
+  it('keeps an unresolved drive selection until its mount root is loaded', async () => {
+    isWindows.mockReturnValue(true);
+    const nautilus = TestBed.inject(NautilusService);
+    nautilus.selectedNautilusRemote.set('Z:\\');
+
+    await service.setupInitialTab([localDrive, otherDrive], []);
+
+    expect(nautilus.selectedNautilusRemote()).toBe('Z:\\');
   });
 
   it.each([

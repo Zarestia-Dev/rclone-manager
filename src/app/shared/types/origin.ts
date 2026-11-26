@@ -14,6 +14,12 @@ export const ORIGINS = [
 
 export type Origin = (typeof ORIGINS)[number];
 
+export const OVERVIEW_FILTER_ORIGINS = [
+  'workflow',
+  'quickrun',
+  'dashboard',
+] as const satisfies readonly Origin[];
+
 /** How an origin is shown: its name (a translation key), its icon and its colour role. */
 export const ORIGIN_META: Readonly<
   Record<Origin, { labelKey: string; icon: string; tone: PillTone }>
@@ -71,4 +77,11 @@ export function matchesOriginFilter(item: ExecutionScope, filter: string): boole
   if (filter === 'all') return true;
   if (filter === 'dashboard') return isProfileScoped(item);
   return getExecutionOrigin(item) === filter;
+}
+
+/** Overview panels offer only origin filters that match at least one of their items. */
+export function availableOverviewOrigins(items: readonly ExecutionScope[]): Origin[] {
+  return OVERVIEW_FILTER_ORIGINS.filter(origin =>
+    items.some(item => matchesOriginFilter(item, origin))
+  );
 }

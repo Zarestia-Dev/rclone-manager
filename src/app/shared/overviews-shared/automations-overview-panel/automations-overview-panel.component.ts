@@ -11,7 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { Automation, matchesOriginFilter, PANEL_TONE } from '@app/types';
+import { Automation, availableOverviewOrigins, matchesOriginFilter, PANEL_TONE } from '@app/types';
 import { AutomationCardComponent } from '../../detail-shared/automation-card/automation-card.component';
 import { AutomationService } from '../../../services/operations/automation.service';
 import { OriginFilterService } from '../../../services/ui/state/origin-filter.service';
@@ -46,9 +46,17 @@ export class AutomationsOverviewPanelComponent {
 
   protected readonly originFilters = inject(OriginFilterService);
 
+  readonly availableOrigins = computed(() =>
+    availableOverviewOrigins(
+      this.automationService.automations().map(automation => ({
+        origin: automation.args?.source,
+      }))
+    )
+  );
+
   /** Chips off (the app overview): everything shows, whatever the panel was left on elsewhere. */
   readonly selectedOriginFilter = computed(() =>
-    this.showFilterChips() ? this.originFilters.get('automations') : 'all'
+    this.showFilterChips() ? this.originFilters.get('automations', this.availableOrigins()) : 'all'
   );
 
   readonly allAutomations = computed(() => {

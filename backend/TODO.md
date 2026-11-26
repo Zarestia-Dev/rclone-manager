@@ -126,3 +126,56 @@ user did not mean to merge the sources at all and wants `Backup/A`, `Backup/B`.
 - [ ] Optional "Why?" link in the banner opening a `MatBottomSheet` with a short animation of
   the user's own source and destination names: two syncs taking each other's files for
   leftovers versus one merged view. It plays once, with a replay button, and no idle loop.
+
+# Recognise mounts, serves and jobs the app did not start in this session
+
+Mounts and serves already running when the app connects to an rclone (after a restart, the
+server, another computer) are linked to their saved profile or Quick Run by their source and
+target (`guess_mount_starter` / `guess_serve_starter` in `rclone/state/cache.rs`). Jobs (sync,
+copy, move, bisync, check, ...) are not: rclone's `job/status` keeps only `id`, `executeId`,
+`group`, the times, `error`, `success` and `output` (`fs/rc/jobs/job.go`), never the call or
+its parameters. The only thing of ours it keeps is the `_group` the app sends.
+
+**Remember what the app started, per rclone process (exact, before any guess)**
+
+`job/list` returns rclone's `executeId`, a UUID made once per rclone process
+(`fs/rc/jobs/job.go:133`, returned at `:416`). The same value after a reconnect means the same
+rclone process, so the serve ids, mount points and job ids the app saw are still the same
+objects; a new value means rclone restarted and none of them exist any more.
+
+- [ ] Keep a small record per backend, next to its other data: rclone's `executeId` and, for
+  what the app started, the serve id (`serve/start` returns it; rclone makes it
+  `<type>-<8 hex>` itself and refuses any extra parameter, `cmd/serve/rc.go:144,173`, so no
+  marker of ours can travel with the serve), the mount point with its `MountedOn`, and the job
+  id, each with its starter (profile, Quick Run or workflow node), `origin` and app
+  `execute_id`. Written when a mount, serve or job starts and when it ends; never options,
+  passwords or tokens.
+- [ ] On connecting, read `job/list` first. Same `executeId`: link every listed serve, mount
+  (same point and same `MountedOn`) and job to its record exactly. Another `executeId`: drop
+  the record and fall back to the guesses (mounts and serves by their source and target,
+  jobs by their group below). Entries rclone no longer lists are removed.
+- [ ] Android's documents provider mounts keep their own store (`saf_bridge`); check whether
+  they can share this record instead of a second one.
+
+**Guess the rest from the group**
+
+- [ ] Read the jobs rclone still runs when a backend is connected (`job/list`, then
+  `job/status` for each) and add the ones the job cache does not know, with what their group
+  tells. A job without our group (`job/<id>`, started by another client) is listed as an
+  external job with its id and times only.
+- [ ] Today the group is `<type>/<remote>[/<profile>]_<32 hex>` (`JobMetadata::group_name` and
+  `prepare_execution` in `rclone/commands/job.rs`). It cannot be read back reliably: a remote
+  or profile name may contain `/` or `_`, a Quick Run's job carries no Quick Run at all
+  (`sync/drive_<hex>`), and a workflow may pass a shared group.
+- [ ] Design one group format for every job the app starts, changed everywhere at once,
+  that names the starter unambiguously, for example
+  `rcm/<type>/<starter>/<execute id>` with each part percent-encoded and `<starter>` one of
+  `p:<remote>:<profile>`, `q:<quick run id>` or `w:<workflow id>:<node id>`. Profiles have no
+  id, so a renamed profile is not found again; decide whether profiles get stable ids or the
+  rename also renames the running group (rclone cannot rename a stats group).
+- [ ] Check what reads groups before changing them: `stop_jobs_by_group`, the stats per group
+  (`core/stats` with `group`), `rclone/state/job.rs`, the frontend job lists, and log lines
+  users may search for. Old-format groups of jobs still running during an update must keep
+  working until they finish.
+- [ ] Merge like the mount guess: what the app started in this session always wins over what
+  the group tells, and the settings are read only for jobs new to the cache.

@@ -32,9 +32,10 @@
   } @else {
     @let stats = jobStats();
     <div class="job-grid">
-      @if (showFilterChips()) {
+      @if (showFilterChips() && availableOrigins().length > 1) {
         <app-origin-filter-bar
           [selected]="selectedOriginFilter()"
+          [origins]="availableOrigins()"
           (selectedChange)="originFilters.set('jobs', $event)"
           [hiddenCount]="hiddenCount()"
         ></app-origin-filter-bar>
