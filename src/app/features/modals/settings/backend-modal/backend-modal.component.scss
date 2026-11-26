@@ -24,7 +24,7 @@
     font-size: var(--font-size-xs);
     border-radius: var(--radius-xs);
     background: rgba(var(--primary-color-rgb), 0.1);
-    color: var(--primary-color);
+    color: var(--primary-color-text);
   }
 }
 
@@ -196,12 +196,12 @@
 
     &.active {
       background: var(--primary-color);
-      color: white;
+      color: var(--primary-fg-color);
     }
 
     &.connecting {
       background: rgba(var(--primary-color-rgb), 0.2);
-      color: var(--primary-color);
+      color: var(--primary-color-text);
     }
   }
 }

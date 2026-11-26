@@ -503,6 +503,8 @@ $dark-theme: (
   --primary-color: var(--gnome-green-4);
   // Text and icons on a primary fill (dark on the green, white on most system accents).
   --primary-fg-color: var(--warning-fg-color);
+  // Label of a text or outlined button; a tone scope sets it to that tone's text colour.
+  --button-text-color: var(--primary-color-text);
   --accent-color: var(--gnome-blue-3);
   --warn-color: var(--gnome-red-3);
   --orange: var(--gnome-orange-3);
@@ -748,6 +750,7 @@ html[data-system-accent] {
     --tone-rgb: var(--#{$color}-rgb);
     --tone-on: var(--#{$on});
     --tone-text: var(--#{$color}-text);
+    --button-text-color: var(--tone-text);
     --mat-sys-primary: var(--tone);
   }
 }
@@ -800,6 +803,10 @@ body {
       tonal-container-shape: var(--button-border-radius),
       text-container-shape: var(--button-border-radius),
       protected-container-shape: var(--button-border-radius),
+      // Text and outlined buttons put their label straight on the background, so they use the
+      // tone's text colour, not its fill (white on green was 2.1:1).
+      outlined-label-text-color: var(--button-text-color),
+      text-label-text-color: var(--button-text-color),
     )
   );
 
@@ -1318,7 +1325,6 @@ mat-accordion:not(.dull) {
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--dim-color);
-    opacity: 0.8;
   }
 
   &.has-caret {
@@ -1416,7 +1422,6 @@ mat-accordion:not(.dull) {
 
   p {
     font-size: var(--font-size-sm);
-    opacity: 0.8;
     margin-block: var(--space-xxs);
   }
 }

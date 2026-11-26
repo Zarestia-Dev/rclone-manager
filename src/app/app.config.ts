@@ -14,6 +14,7 @@ import {
 } from '@ngx-translate/core';
 import { MultiFileLoader } from './services/i18n/multi-file-loader';
 import { LocaleService } from './services/i18n/locale.service';
+import { DialogLabelsService } from './services/ui/dialog-labels.service';
 import { PluralCompiler } from './services/i18n/plural';
 
 /**
@@ -31,6 +32,7 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideAppInitializer(() => {
       inject(LocaleService);
+      inject(DialogLabelsService);
     }),
     { provide: MAT_DIALOG_DEFAULT_OPTIONS, useValue: DIALOG_DEFAULT_OPTIONS },
     provideHttpClient(),

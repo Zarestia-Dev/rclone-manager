@@ -726,6 +726,8 @@ export class ModalService extends TauriBaseService {
       {
         ...STANDARD_MODAL_SIZE,
         disableClose: true,
+        // The header shows the tabs instead of a title on wide windows.
+        ariaLabel: this.translate.instant(title),
         data: category ? { category, title } : undefined,
       },
       { title: this.translate.instant(title), width: 680, height: 600, suffix: category }
