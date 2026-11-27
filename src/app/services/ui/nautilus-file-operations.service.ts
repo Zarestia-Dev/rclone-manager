@@ -15,7 +15,7 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { ExplorerRoot, FileBrowserItem, FsTransferItem, UploadTargets } from '@app/types';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { findCopyName } from 'src/app/services/remote/utils/unique-name.util';
 import type { TransferOptionValues } from 'src/app/shared/modals/transfer-options-modal/transfer-options-modal.component';
 import type {
@@ -153,7 +153,7 @@ export class NautilusFileOperationsService {
     dstPath: string,
     preparsedText?: string
   ): Promise<boolean> {
-    if (!dstRemote || isHeadlessMode()) return false;
+    if (!dstRemote || isServerMode()) return false;
     const text = preparsedText ?? (await this._readSystemClipboardText());
     const paths = this.parseClipboardPaths(text);
     if (paths.length > 0) {
@@ -163,7 +163,7 @@ export class NautilusFileOperationsService {
   }
 
   async checkSystemClipboard(): Promise<boolean> {
-    if (isHeadlessMode()) return false;
+    if (isServerMode()) return false;
     const text = await this._readSystemClipboardText();
     const hasPaths = this.parseClipboardPaths(text).length > 0;
     this.systemClipboardHasPaths.set(hasPaths);

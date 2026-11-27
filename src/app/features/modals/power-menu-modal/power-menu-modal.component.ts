@@ -6,7 +6,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
-  isHeadlessMode,
+  isServerMode,
   isMobile,
   isIOS,
 } from '../../../services/infrastructure/platform/api-client.service';
@@ -64,8 +64,8 @@ export class PowerMenuModalComponent {
     () => this.activeJobsCount() > 0 || this.activeMountsCount() > 0 || this.activeServesCount() > 0
   );
 
-  readonly isNativeMobile = signal(!isHeadlessMode() && isMobile());
-  readonly isIOS = signal(!isHeadlessMode() && isIOS());
+  readonly isNativeMobile = signal(!isServerMode() && isMobile());
+  readonly isIOS = signal(!isServerMode() && isIOS());
 
   readonly powerActions = computed((): PowerActionItem[] => {
     const isMobileNative = this.isNativeMobile();

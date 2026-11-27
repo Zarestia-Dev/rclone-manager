@@ -88,7 +88,7 @@
               "extractLicenses": false,
               "sourceMap": true
             },
-            "headless": {
+            "server": {
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
@@ -111,8 +111,8 @@
               "buildTarget": "rclone-manager:build:development",
               "proxyConfig": "proxy.conf.json"
             },
-            "headless": {
-              "buildTarget": "rclone-manager:build:headless",
+            "server": {
+              "buildTarget": "rclone-manager:build:server",
               "proxyConfig": "proxy.conf.json",
               "host": "127.0.0.1"
             }

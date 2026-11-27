@@ -57,7 +57,7 @@ docker run -d \
 
 Open `http://localhost:8080` on the Docker host. For access from another computer,
 use `-p 8080:8080` and configure authentication and HTTPS as described in the
-[configuration guide](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless).
+[configuration guide](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-server).
 
 Keep both volumes when replacing the container:
 
@@ -205,9 +205,9 @@ package, Windows setup and MSI are made from `backend/server/package/` by
 
 ## Downloads and updates
 
-- [GitHub releases](https://github.com/Zarestia-Dev/rclone-manager/releases): check the headless release description and its package requirements.
+- [GitHub releases](https://github.com/Zarestia-Dev/rclone-manager/releases): check the server release description and its package requirements.
 - [Container registry](https://github.com/Zarestia-Dev/rclone-manager/pkgs/container/rclone-manager): Docker images.
-- [Installation guide](https://hakanismail.info/zarestia/rclone-manager/docs/installation-headless): deployment and service setup.
+- [Installation guide](https://hakanismail.info/zarestia/rclone-manager/docs/installation-server): deployment and service setup.
 
 For Docker Compose deployments:
 

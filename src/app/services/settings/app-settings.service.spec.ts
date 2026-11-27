@@ -148,9 +148,9 @@ describe('AppSettingsService', () => {
       expect(service.isTrayAvailable()).toBe(false);
     });
 
-    it('returns false in headless/web mode', async () => {
+    it('returns false in server/web mode', async () => {
       delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
-      const headlessService = createService();
+      const serverService = createService();
 
       apiClientMock.invoke.mockResolvedValueOnce({
         options: {
@@ -161,7 +161,7 @@ describe('AppSettingsService', () => {
         },
       });
 
-      await headlessService.loadSettings();
+      await serverService.loadSettings();
     });
 
     it('returns false on mobile platform even if general.tray_enabled is true', async () => {

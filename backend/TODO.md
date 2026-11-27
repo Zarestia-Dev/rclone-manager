@@ -30,8 +30,8 @@ the server's releases get their own tag.
   server release the downloads page shows.
 
 **Stays after the cleanup** (installed versions or existing installs depend on it):
-the data folder `com.rclone.manager.headless`, the product's `mode`,
-`integration_key` and `flatpak_id`, the `/usr/bin/rclone-manager-headless[-bin]`
+the data folder `com.rclone.manager.headless`, the product's
+`integration_key`, the `/usr/bin/rclone-manager-headless[-bin]`
 launcher links, the start-at-login and Send To migration (`LEGACY_NAME`), the MSI
 UpgradeCode, the packages' conflicts/replaces of the Headless package, the
 manifest's `asset` field (versions before `url` download by it) and the legacy

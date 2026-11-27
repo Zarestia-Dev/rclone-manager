@@ -10,7 +10,7 @@ import {
   FlowSubMode,
   PrimaryActionType,
 } from '@app/types';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
@@ -224,7 +224,7 @@ export class UiStateService {
   }
 
   private initializePlatform(): string {
-    if (isHeadlessMode()) {
+    if (isServerMode()) {
       return 'web';
     }
     try {

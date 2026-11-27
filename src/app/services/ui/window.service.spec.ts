@@ -201,7 +201,7 @@ describe('WindowService', () => {
     });
 
     it('does not zoom outside the desktop app', () => {
-      // The default service runs without Tauri, like the headless web UI.
+      // The default service runs without Tauri, like the server's web UI.
       scaleSettingSubject.next({ value: 80 });
       expect(setZoom).not.toHaveBeenCalled();
     });

@@ -31,7 +31,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import {
   fileBrowserItemKey,
   Entry,
@@ -893,7 +893,7 @@ export class NautilusComponent implements OnInit {
    * Web:     triggers the hidden <input type="file"> (HTTP streaming path).
    */
   async uploadFiles(): Promise<void> {
-    if (isHeadlessMode()) {
+    if (isServerMode()) {
       this.fileUploadInput()?.nativeElement.click();
       return;
     }
@@ -910,7 +910,7 @@ export class NautilusComponent implements OnInit {
    * Web:     triggers the hidden <input webkitdirectory> (HTTP streaming path).
    */
   async uploadFolder(): Promise<void> {
-    if (isHeadlessMode()) {
+    if (isServerMode()) {
       this.folderUploadInput()?.nativeElement.click();
       return;
     }
@@ -946,12 +946,12 @@ export class NautilusComponent implements OnInit {
     this.androidShare.cancelPendingShare();
   }
 
-  /** Handler for the hidden file <input> — headless mode only. */
+  /** Handler for the hidden file <input> — server mode only. */
   async onWebUploadFiles(event: Event): Promise<void> {
     await this._handleWebUpload(event);
   }
 
-  /** Handler for the hidden folder <input> — headless mode only. */
+  /** Handler for the hidden folder <input> — server mode only. */
   async onWebUploadFolder(event: Event): Promise<void> {
     await this._handleWebUpload(event);
   }

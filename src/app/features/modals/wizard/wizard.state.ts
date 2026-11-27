@@ -156,11 +156,11 @@ export class WizardState {
    * The words for the machine that holds the local folder: a server is named, anything else is
    * "this device", because it may be a Mac, a PC, a phone or a tablet.
    */
-  readonly localPlace = computed(() => (this.env()?.isServer ? 'server' : 'thisDevice'));
+  readonly localPlace = computed(() => (this.env()?.isRemoteHost ? 'server' : 'thisDevice'));
   /** The picture of that machine: a phone is not a monitor, and not the mobile data switch. */
   readonly localPlaceIcon = computed(() => {
     const env = this.env();
-    return env?.isServer ? 'server' : env?.isAndroid ? 'smartphone' : 'desktop';
+    return env?.isRemoteHost ? 'server' : env?.isAndroid ? 'smartphone' : 'desktop';
   });
 
   /** Who connects to a share, for the review's picture: icon and `modals.wizard.places.<key>`. */
@@ -1194,7 +1194,7 @@ export class WizardState {
   readonly openablePath = computed(() => {
     const p = this.plan();
     const env = this.env();
-    if (!p || env?.isServer) return null;
+    if (!p || env?.isRemoteHost) return null;
     // A mount in the Files app has no folder of its own: the app opens its documents root.
     if (p.flow === 'stream' && this.usesSaf()) return `saf://${this.remoteName()}`;
     if (env?.isAndroid) return null;

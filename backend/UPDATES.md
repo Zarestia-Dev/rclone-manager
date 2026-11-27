@@ -185,7 +185,7 @@ installation. Tauri's native installers retain their platform authorization flow
 DEB, RPM and Arch package updates need a session that can show the password prompt: Tauri's
 (pkexec, zenity or kdialog) for the desktop app; for the server pkexec's polkit
 agent or, where no agent runs, `sudo -A` with a zenity or kdialog dialog. A
-headless service without one reports the failure and keeps the
+server service without one reports the failure and keeps the
 verified download for a retry.
 
 No update is rolled back: a release that does not start is replaced by hand

@@ -6,7 +6,7 @@
 #   Open http://localhost:8080
 #
 # For advanced configuration (auth, TLS, host networking):
-#   https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless
+#   https://hakanismail.info/zarestia/rclone-manager/docs/configuration-server
 # =============================================================================
 
 services:

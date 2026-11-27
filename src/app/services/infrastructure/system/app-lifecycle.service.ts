@@ -2,7 +2,7 @@ import { DestroyRef, effect, inject, Injectable, signal, untracked } from '@angu
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ApiClientService, isHeadlessMode } from '../platform/api-client.service';
+import { ApiClientService, isServerMode } from '../platform/api-client.service';
 import { EventListenersService } from './event-listeners.service';
 import { NotificationService } from '../../ui/notification.service';
 import { NautilusService } from '../../ui/nautilus.service';
@@ -180,7 +180,7 @@ export class AppLifecycleService {
 
   private isStandaloneWindow(): boolean {
     return (
-      (!isHeadlessMode() && getCurrentWindow().label !== 'main') ||
+      (!isServerMode() && getCurrentWindow().label !== 'main') ||
       new URLSearchParams(window.location.search).has('standalone') ||
       this.nautilusService.isStandaloneWindow() ||
       this.flowOverlayService.isStandaloneWindow() ||

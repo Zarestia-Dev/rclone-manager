@@ -162,11 +162,11 @@ mod tests {
     }
     #[test]
     #[cfg(all(target_os = "windows", feature = "desktop"))]
-    fn headless_host_has_no_native_window() {
+    fn server_host_has_no_native_window() {
         assert_eq!(AppHandle::default().host().main_window_hwnd(), None);
     }
     #[test]
-    fn headless_host_does_not_request_native_exit_confirmation() {
+    fn server_host_does_not_request_native_exit_confirmation() {
         let app = AppHandle::default();
         assert_eq!(
             app.host()

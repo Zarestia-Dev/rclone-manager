@@ -402,7 +402,7 @@
 
             @if (!isNativeMobile) {
               <div class="debug-actions-section">
-                @if (!isHeadless) {
+                @if (!isServer) {
                   <button matButton="elevated" data-tone="primary" (click)="openDevTools()">
                     <mat-icon svgIcon="terminal"> </mat-icon>
                     <span>{{ 'modals.about.openDevTools' | translate }}</span>

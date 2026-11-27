@@ -56,7 +56,7 @@ export class FileSystemService extends TauriBaseService {
 
   /**
    * Returns true if the internal Nautilus browser should be used instead of native system dialogs.
-   * This is true in headless mode or when a remote rclone backend is active.
+   * This is true in server mode or when a remote rclone backend is active.
    */
   private isInternalBrowserPreferred(): boolean {
     return !this.isTauri || this.backendService.activeBackend() !== 'Local' || isMobile();
@@ -68,7 +68,7 @@ export class FileSystemService extends TauriBaseService {
    * @param initialPath - Optional initial path to open the picker to
    */
   async selectFolder(requireEmpty?: boolean, initialPath?: string): Promise<string> {
-    // If internal browser is preferred (headless or remote backend), use Nautilus
+    // If internal browser is preferred (the server or a remote backend), use Nautilus
     if (this.isInternalBrowserPreferred()) {
       const config: FilePickerConfig = {
         mode: 'local',
@@ -122,7 +122,7 @@ export class FileSystemService extends TauriBaseService {
    * @param initialPath - Optional initial path to open the picker to
    */
   async selectFile(initialPath?: string): Promise<string> {
-    // If internal browser is preferred (headless or remote backend), use Nautilus
+    // If internal browser is preferred (the server or a remote backend), use Nautilus
     if (this.isInternalBrowserPreferred()) {
       const config: FilePickerConfig = {
         mode: 'local',
@@ -160,7 +160,7 @@ export class FileSystemService extends TauriBaseService {
    * Select multiple local files for uploading.
    * An upload sends files from this device, so the desktop always uses its native dialog, also
    * with a remote engine (whose own disk is the file browser's Local root), and Android its own
-   * picker, which needs no storage permission and reaches every provider. Headless uses Nautilus
+   * picker, which needs no storage permission and reaches every provider. The server uses Nautilus
    * in local-only mode. Pass the paths to `releaseUploadPaths` when their upload ended.
    */
   async selectFilesForUpload(): Promise<string[]> {
@@ -244,7 +244,7 @@ export class FileSystemService extends TauriBaseService {
 
   /**
    * Open a path in the system file manager, or in our file browser when the path is not on this
-   * computer (headless, remote engine).
+   * computer (the server, a remote engine).
    */
   async openInFiles(path: string): Promise<void> {
     if (!path) return;

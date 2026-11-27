@@ -15,7 +15,7 @@ pub fn run() {
     );
     app.manage(cli_args.general.clone());
     #[cfg(not(target_os = "macos"))]
-    super::tray::init(&app, &cli_args.headless);
+    super::tray::init(&app, &cli_args.server);
     // Before setup, which writes this server's entry when start at login is on.
     #[cfg(not(target_os = "macos"))]
     super::autostart::remove_legacy_entry();
@@ -25,7 +25,7 @@ pub fn run() {
     }
     let mut server = crate::start(
         &app,
-        &cli_args.headless,
+        &cli_args.server,
         app.state::<std::sync::Arc<services::bridge::EventBridge>>()
             .inner(),
     );
@@ -165,7 +165,7 @@ mod tests {
     use rclone_manager_core::services::paths::AppPaths;
 
     #[test]
-    fn headless_paths_respect_cli_overrides_and_create_directories() {
+    fn server_paths_respect_cli_overrides_and_create_directories() {
         let temp = tempfile::tempdir().unwrap();
         let data = temp.path().join("data with spaces");
         let cache = temp.path().join("cache");

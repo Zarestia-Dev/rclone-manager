@@ -19,7 +19,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { AlertAction, AlertActionKind, ScriptAction, KindOption } from '@app/types';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 export type HeaderFormGroup = FormGroup<{
@@ -69,7 +69,7 @@ export class AlertActionEditorComponent {
   templateKeys = signal<string[]>([]);
 
   readonly kinds: KindOption[] = [
-    ...(isHeadlessMode()
+    ...(isServerMode()
       ? []
       : [{ value: 'os_toast' as AlertActionKind, label: 'alerts.action.os_toast' }]),
     { value: 'webhook', label: 'alerts.action.webhook' },
