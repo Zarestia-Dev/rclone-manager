@@ -62,10 +62,7 @@ import { PillDirective } from '../../directives/pill.directive';
   templateUrl: './remote-card.component.html',
   styleUrls: ['./remote-card.component.scss', '../../../styles/_shared-card.scss'],
   host: {
-    role: 'button',
-    '[attr.tabindex]': 'isEditingLayout() ? -1 : 0',
     '(click)': 'onRemoteClick()',
-    '(keydown)': 'onRemoteKeyDown($event)',
     '[class.is-editing]': 'isEditingLayout()',
     '[class.is-hidden-layout]': 'isHidden() && isEditingLayout()',
     '[class.is-active]': 'isActive()',
@@ -283,15 +280,6 @@ export class RemoteCardComponent {
 
   onRemoteClick(): void {
     this.remoteClick.emit(this.remote());
-  }
-
-  onRemoteKeyDown(event: KeyboardEvent): void {
-    if (event.target !== event.currentTarget) return;
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.onRemoteClick();
-    }
   }
 
   onToggleHidden(event: Event): void {

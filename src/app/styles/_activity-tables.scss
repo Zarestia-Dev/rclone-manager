@@ -50,13 +50,14 @@
     border-bottom: 1px solid var(--border-color);
     transition: var(--transition-fast);
 
-    &[role="button"],
+    &:has(> .card-primary-action),
     &.interactive {
       cursor: pointer;
     }
 
     &:hover,
-    &:focus-visible {
+    &:focus-visible,
+    &:has(> .card-primary-action:focus-visible) {
       background: var(--hover-bg-color);
     }
 

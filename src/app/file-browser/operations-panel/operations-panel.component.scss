@@ -129,11 +129,11 @@
     border-bottom: none;
   }
 
-  &[role="button"] {
+  &:has(> .card-primary-action) {
     cursor: pointer;
 
     &:hover,
-    &:focus-visible {
+    &:has(> .card-primary-action:focus-visible) {
       background: var(--hover-bg-color);
     }
   }

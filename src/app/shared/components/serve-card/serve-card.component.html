@@ -1,11 +1,10 @@
-<mat-card
-  class="serve-card"
-  role="button"
-  tabindex="0"
-  (click)="onCardClick()"
-  (keydown.enter)="onKeyActivate($event)"
-  (keydown.space)="onKeyActivate($event)"
->
+<mat-card class="serve-card" (click)="onCardClick()">
+  <!-- The card's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+  <button
+    type="button"
+    class="card-primary-action"
+    [attr.aria-label]="remoteName() + ' · ' + (serve().params.type | uppercase)"
+  ></button>
   <!-- Card Body -->
   <div class="serve-body">
     <!-- Protocol icon + info -->

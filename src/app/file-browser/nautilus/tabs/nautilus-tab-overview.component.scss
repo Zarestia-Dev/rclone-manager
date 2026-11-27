@@ -59,7 +59,7 @@ header {
   }
 
   &.active .card-preview,
-  &:focus-visible .card-preview {
+  &:has(> .card-primary-action:focus-visible) .card-preview {
     border-color: var(--accent-color);
   }
 

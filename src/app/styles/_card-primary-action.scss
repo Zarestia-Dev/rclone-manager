@@ -1,0 +1,34 @@
+// A card or row that opens something on click and also holds buttons of its own. A button can't
+// contain other buttons (screen readers flatten them into its name, and can't reach them), so the
+// card itself is not a button. Its main action is a transparent button, the card's first child,
+// stretched over it and named after it:
+//
+//   <mat-card (click)="open()">
+//     <button type="button" class="card-primary-action" [attr.aria-label]="name"></button>
+//     ...the card's content and buttons...
+//   </mat-card>
+//
+// The button lets the pointer through, so a click anywhere still lands on the card or on the
+// buttons inside it, as before. With the keyboard, Tab reaches the main action and then the
+// card's own buttons; Enter or Space clicks the main action, which bubbles to the card's handler.
+// Its focus ring (custom-theme.scss) outlines the whole card. A card that draws its own focus
+// state styles :has(> .card-primary-action:focus-visible) instead.
+:root {
+  .card-primary-action {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: inherit;
+    background: transparent;
+    pointer-events: none;
+  }
+}
+
+// The card needs a containing block for the button. :where() keeps this at zero specificity, so
+// a card with its own positioning keeps it.
+:where(:has(> .card-primary-action)) {
+  position: relative;
+}

@@ -1,3 +1,30 @@
+<ng-template #quickAction>
+  <div class="quick-action-wrapper" [class.hidden]="isExpanded()" [inert]="isExpanded()">
+    <button
+      matIconButton
+      class="quick-action"
+      [attr.data-tone]="buttonTone()"
+      (click)="handleQuickAction($event)"
+      [disabled]="config().isLoading"
+      [attr.title]="
+        (config().isActive && config().operationType === 'mount'
+          ? 'actions.unmount'
+          : config().isActive
+            ? 'actions.stop'
+            : 'actions.start'
+        ) | translate
+      "
+    >
+      @if (config().isLoading) {
+        <mat-icon svgIcon="spinner"></mat-icon>
+      } @else {
+        <mat-icon
+          [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+        ></mat-icon>
+      }
+    </button>
+  </div>
+</ng-template>
 <mat-expansion-panel
   class="operation-panel"
   (opened)="isExpanded.set(true)"
@@ -28,33 +55,20 @@
     </mat-panel-title>
 
     <mat-panel-description>
-      <div class="quick-action-wrapper" [class.hidden]="isExpanded()" [inert]="isExpanded()">
-        <button
-          matIconButton
-          class="quick-action"
-          [attr.data-tone]="buttonTone()"
-          (click)="handleQuickAction($event)"
-          [disabled]="config().isLoading"
-          [attr.title]="
-            (config().isActive && config().operationType === 'mount'
-              ? 'actions.unmount'
-              : config().isActive
-                ? 'actions.stop'
-                : 'actions.start'
-            ) | translate
-          "
-        >
-          @if (config().isLoading) {
-            <mat-icon svgIcon="spinner"></mat-icon>
-          } @else {
-            <mat-icon
-              [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
-            ></mat-icon>
-          }
-        </button>
-      </div>
+      <span
+        class="header-controls-slot"
+        data-header-controls-slot="quickAction"
+        aria-hidden="true"
+        inert
+      >
+        <ng-container [ngTemplateOutlet]="quickAction" />
+      </span>
     </mat-panel-description>
   </mat-expansion-panel-header>
+  <!-- Over the header, not in it (see HeaderControlsDirective). -->
+  <span appHeaderControls="quickAction" ngProjectAs="mat-expansion-panel-header">
+    <ng-container [ngTemplateOutlet]="quickAction" />
+  </span>
 
   <div class="panel-content">
     <app-path-display

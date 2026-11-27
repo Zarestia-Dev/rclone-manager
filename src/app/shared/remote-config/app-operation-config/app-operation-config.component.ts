@@ -1,3 +1,4 @@
+import { HeaderControlsDirective } from '../../directives/header-controls.directive';
 import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
@@ -71,6 +72,8 @@ interface PathItem {
 @Component({
   selector: 'app-operation-config',
   imports: [
+    NgTemplateOutlet,
+    HeaderControlsDirective,
     ReactiveFormsModule,
     NgTemplateOutlet,
     MatFormFieldModule,

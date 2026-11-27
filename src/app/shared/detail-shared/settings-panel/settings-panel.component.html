@@ -1,5 +1,18 @@
 @let cfg = config();
 
+<ng-template #editAction>
+  <div class="quick-action-wrapper" [class.hidden]="isExpanded()" [inert]="isExpanded()">
+    <button
+      type="button"
+      matIconButton
+      style="color: var(--mat-sys-primary)"
+      [attr.title]="editButtonLabel() | translate"
+      (click)="onEditSettings(); $event.stopPropagation()"
+    >
+      <mat-icon svgIcon="pen"></mat-icon>
+    </button>
+  </div>
+</ng-template>
 <mat-expansion-panel
   [expanded]="isExpanded()"
   (opened)="isExpanded.set(true)"
@@ -20,19 +33,20 @@
           'detailShared.settings.notConfigured' | translate
         }}</span>
       }
-      <div class="quick-action-wrapper" [class.hidden]="isExpanded()" [inert]="isExpanded()">
-        <button
-          type="button"
-          matIconButton
-          style="color: var(--mat-sys-primary)"
-          [attr.title]="editButtonLabel() | translate"
-          (click)="onEditSettings(); $event.stopPropagation()"
-        >
-          <mat-icon svgIcon="pen"></mat-icon>
-        </button>
-      </div>
+      <span
+        class="header-controls-slot"
+        data-header-controls-slot="editAction"
+        aria-hidden="true"
+        inert
+      >
+        <ng-container [ngTemplateOutlet]="editAction" />
+      </span>
     </mat-panel-description>
   </mat-expansion-panel-header>
+  <!-- Over the header, not in it (see HeaderControlsDirective). -->
+  <span appHeaderControls="editAction" ngProjectAs="mat-expansion-panel-header">
+    <ng-container [ngTemplateOutlet]="editAction" />
+  </span>
 
   @if (hasMeaningfulSettings()) {
     <div class="groups-container">
