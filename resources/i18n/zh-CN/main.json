@@ -3552,7 +3552,10 @@
       "tabCount": {
         "other": "{{count}} 个标签页"
       },
-      "showTabs": "显示已打开的标签页"
+      "showTabs": "显示已打开的标签页",
+      "openTabsCount": {
+        "other": "{{count}} 个打开的标签页"
+      }
     },
     "notifications": {
       "uploadSuccess": {

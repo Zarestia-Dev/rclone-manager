@@ -74,14 +74,21 @@ describe('NautilusTabOverviewComponent', () => {
     expect(closed).toHaveBeenCalledExactlyOnceWith(1);
   });
 
+  it('titles the overview with a heading and adds no page landmarks', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('h2.overview-title')).not.toBeNull();
+    // Inside the file browser a header or footer would be a banner or contentinfo landmark.
+    expect(element.querySelector('header, footer')).toBeNull();
+  });
+
   it('asks for a new tab and for the overview to close', () => {
     const created = vi.fn();
     const dismissed = vi.fn();
     fixture.componentInstance.newTab.subscribe(created);
     fixture.componentInstance.closeOverview.subscribe(dismissed);
 
-    element.querySelector<HTMLButtonElement>('footer button')?.click();
-    element.querySelector<HTMLButtonElement>('header button')?.click();
+    element.querySelector<HTMLButtonElement>('.overview-footer button')?.click();
+    element.querySelector<HTMLButtonElement>('.overview-header button')?.click();
     element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(created).toHaveBeenCalledOnce();

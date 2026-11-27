@@ -3604,7 +3604,12 @@
         "one": "{{count}} onglet",
         "other": "{{count}} onglets"
       },
-      "showTabs": "Afficher les onglets ouverts"
+      "showTabs": "Afficher les onglets ouverts",
+      "openTabsCount": {
+        "one": "{{count}} onglet ouvert",
+        "many": "{{count}} onglets ouverts",
+        "other": "{{count}} onglets ouverts"
+      }
     },
     "notifications": {
       "uploadSuccess": {

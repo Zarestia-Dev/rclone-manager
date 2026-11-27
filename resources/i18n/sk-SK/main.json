@@ -3697,7 +3697,13 @@
         "few": "{{count}} karty",
         "other": "{{count}} kariet"
       },
-      "showTabs": "Zobraziť otvorené karty"
+      "showTabs": "Zobraziť otvorené karty",
+      "openTabsCount": {
+        "one": "{{count}} otvorená karta",
+        "few": "{{count}} otvorené karty",
+        "many": "{{count}} otvorenej karty",
+        "other": "{{count}} otvorených kariet"
+      }
     },
     "notifications": {
       "uploadSuccess": {

@@ -59,7 +59,7 @@
             [type]="isPasswordField() ? 'password' : inputType || 'text'"
             [step]="inputStep || null"
             [formControl]="$any(control())"
-            [attr.aria-label]="opt.Name"
+            [attr.aria-label]="fieldLabel(opt)"
             [placeholder]="opt.DefaultStr || ''"
             [attr.autocomplete]="isSensitiveField() ? 'off' : null"
             (paste)="preventClipboardOnSensitive($event)"
@@ -116,7 +116,7 @@
         <mat-form-field class="input-field">
           <mat-select
             [formControl]="$any(control())"
-            [attr.aria-label]="opt.Name"
+            [aria-label]="fieldLabel(opt)"
             (selectionChange)="commitValue()"
             panelClass="settings-select-panel"
           >
@@ -150,7 +150,7 @@
           <mat-select
             multiple
             [formControl]="$any(control())"
-            [attr.aria-label]="opt.Name"
+            [aria-label]="fieldLabel(opt)"
             (selectionChange)="commitValue()"
             panelClass="settings-select-panel"
           >
@@ -197,7 +197,7 @@
             [type]="isSensitiveField() ? 'password' : 'text'"
             [formControl]="$any(control())"
             [matAutocomplete]="auto"
-            [attr.aria-label]="opt.Name"
+            [attr.aria-label]="fieldLabel(opt)"
             [placeholder]="opt.DefaultStr || ''"
             (blur)="commitValue()"
           />
@@ -253,7 +253,7 @@
                 [formControl]="$any(itemControl)"
                 [attr.aria-label]="
                   'shared.settingControl.aria.item'
-                    | translate: { name: opt.Name, index: $index + 1 }
+                    | translate: { name: fieldLabel(opt), index: $index + 1 }
                 "
                 [attr.autocomplete]="isSensitiveField() ? 'off' : null"
                 (paste)="preventClipboardOnSensitive($event)"
@@ -267,7 +267,7 @@
                 (click)="removeArrayItem($index)"
                 [disabled]="isDisabled()"
                 [attr.aria-label]="
-                  'shared.settingControl.aria.removeItem' | translate: { name: opt.Name }
+                  'shared.settingControl.aria.removeItem' | translate: { name: fieldLabel(opt) }
                 "
               >
                 <mat-icon svgIcon="trash" />
@@ -307,7 +307,7 @@
         <div class="setting-control">
           <mat-slide-toggle
             [formControl]="$any(control())"
-            [attr.aria-label]="mergedOption()?.Name"
+            [attr.aria-label]="fieldLabel(mergedOption())"
             (change)="commitValue()"
           >
             {{
@@ -329,7 +329,8 @@
                 [matDatepicker]="picker"
                 [formControl]="$any(dateControl())"
                 [attr.aria-label]="
-                  'shared.settingControl.aria.date' | translate: { name: mergedOption()?.Name }
+                  'shared.settingControl.aria.date'
+                    | translate: { name: fieldLabel(mergedOption()) }
                 "
                 (dateChange)="commitValue()"
               />
@@ -343,7 +344,8 @@
                 [matTimepicker]="timePicker"
                 [formControl]="$any(timeControl())"
                 [attr.aria-label]="
-                  'shared.settingControl.aria.time' | translate: { name: mergedOption()?.Name }
+                  'shared.settingControl.aria.time'
+                    | translate: { name: fieldLabel(mergedOption()) }
                 "
                 (blur)="commitValue()"
               />
@@ -360,7 +362,7 @@
             <mat-form-field class="input-field">
               <mat-select
                 [formControl]="$any(control())"
-                [attr.aria-label]="mergedOption()?.Name"
+                [aria-label]="fieldLabel(mergedOption())"
                 (selectionChange)="commitValue()"
               >
                 <mat-option [value]="null">{{

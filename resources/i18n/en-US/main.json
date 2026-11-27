@@ -3645,7 +3645,11 @@
         "one": "{{count}} Tab",
         "other": "{{count}} Tabs"
       },
-      "showTabs": "Show Open Tabs"
+      "showTabs": "Show Open Tabs",
+      "openTabsCount": {
+        "one": "{{count}} open tab",
+        "other": "{{count}} open tabs"
+      }
     },
     "notifications": {
       "uploadSuccess": {

@@ -8,7 +8,7 @@
   background-color: var(--window-bg-color);
 }
 
-header {
+.overview-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -16,6 +16,8 @@ header {
 
   .overview-title {
     grid-column: 2;
+    margin: 0;
+    font-size: inherit;
     font-weight: 600;
   }
 
@@ -93,7 +95,7 @@ header {
   }
 }
 
-footer {
+.overview-footer {
   display: flex;
   justify-content: center;
   padding: var(--space-md);

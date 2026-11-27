@@ -11,7 +11,9 @@ export type AlertSeverity = 'info' | 'warning' | 'error' | 'success' | 'dim';
   styleUrl: './alert-banner.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    role: 'alert',
+    // Only an error interrupts a screen reader; the rest is announced when it appears or changes,
+    // without cutting off what is being read, and a banner already on screen isn't announced.
+    '[attr.role]': "severity() === 'error' ? 'alert' : 'status'",
     '[class]': 'severity()',
   },
 })

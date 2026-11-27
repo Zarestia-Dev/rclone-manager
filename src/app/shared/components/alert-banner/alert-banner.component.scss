@@ -3,8 +3,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md);
-  box-shadow: var(--box-shadow);
+  // With the 32px icon tile, a one-line banner is as tall as before (56px).
+  padding: var(--space-sm) var(--space-md);
+  background: var(--window-bg-color);
+  box-shadow: 0 0 0 1px var(--banner-ring, rgba(var(--banner-rgb), 0.3));
   border-radius: var(--card-border-radius);
   animation: fadeInUp var(--transition-cubic) both;
 
@@ -12,7 +14,7 @@
   .alert-body {
     display: flex;
     flex: 1;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
     align-items: center;
     min-width: 0;
   }
@@ -22,9 +24,21 @@
     min-width: 0;
   }
 
+  // The icon sits on a tile tinted in the tone, as on the cards' icon containers.
   .alert-icon {
     flex: none;
-    align-self: baseline;
+    align-self: flex-start;
+    box-sizing: content-box;
+    width: 20px;
+    height: 20px;
+    padding: 6px;
+    border-radius: var(--radius-xs);
+    background: rgba(var(--banner-rgb), var(--active-opacity));
+    color: var(--banner-color);
+  }
+
+  .alert-content a {
+    color: var(--banner-text);
   }
 
   // Buttons marked `bannerAction` sit at the end of the row, centred on it, not under the text.
@@ -70,7 +84,6 @@
     line-height: 1.5;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    opacity: 0.9;
 
     &:not(:last-child) {
       margin-bottom: var(--space-xs);
@@ -99,72 +112,40 @@
   }
 
   // ------------------ Severities ------------------
-
-  &.warning {
-    background: rgba(var(--orange-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--orange);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
+  // The banner looks like the app's active cards (_shared-card.scss): the window background, a
+  // ring in the severity's colour and the icon on a tile tinted in it. Text keeps the window's
+  // colours; only links take the severity's text colour, which keeps 4.5:1 on the window
+  // background (custom-theme.scss). The colours are the banner's own variables, not a data-tone
+  // scope, so buttons and fields inside it keep theirs.
+  &.info {
+    --banner-rgb: var(--accent-color-rgb);
+    --banner-color: var(--accent-color);
+    --banner-text: var(--accent-color-text);
   }
 
-  &.info {
-    background: rgba(var(--accent-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--accent-color);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
+  &.warning {
+    --banner-rgb: var(--orange-rgb);
+    --banner-color: var(--orange);
+    --banner-text: var(--orange-text);
   }
 
   &.error {
-    background: rgba(var(--warn-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--warn-color);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
+    --banner-rgb: var(--warn-color-rgb);
+    --banner-color: var(--warn-color);
+    --banner-text: var(--warn-color-text);
   }
 
   &.success {
-    background: rgba(var(--primary-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--primary-color);
-    }
-    .alert-content a {
-      color: var(--primary-color);
-    }
+    --banner-rgb: var(--primary-color-rgb);
+    --banner-color: var(--primary-color);
+    --banner-text: var(--primary-color-text);
   }
 
   &.dim {
-    background: var(--bg-elevated-2);
-    box-shadow: none;
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--dim-color);
-    }
-
-    p,
-    ::ng-deep p {
-      color: var(--dim-color);
-    }
-
-    .alert-content a {
-      color: var(--dim-color);
-    }
+    --banner-rgb: var(--dim-color-rgb);
+    --banner-color: var(--dim-color);
+    --banner-text: var(--window-fg-color);
+    --banner-ring: var(--card-shade-color);
   }
 
   @media (max-width: 600px) {

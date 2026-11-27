@@ -3645,7 +3645,11 @@
         "one": "{{count}} Sekme",
         "other": "{{count}} Sekme"
       },
-      "showTabs": "Açık Sekmeleri Göster"
+      "showTabs": "Açık Sekmeleri Göster",
+      "openTabsCount": {
+        "one": "{{count}} açık sekme",
+        "other": "{{count}} açık sekme"
+      }
     },
     "notifications": {
       "uploadSuccess": {

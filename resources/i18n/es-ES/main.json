@@ -3604,7 +3604,12 @@
         "one": "{{count}} pestaña",
         "other": "{{count}} pestañas"
       },
-      "showTabs": "Mostrar pestañas abiertas"
+      "showTabs": "Mostrar pestañas abiertas",
+      "openTabsCount": {
+        "one": "{{count}} pestaña abierta",
+        "many": "{{count}} pestañas abiertas",
+        "other": "{{count}} pestañas abiertas"
+      }
     },
     "notifications": {
       "uploadSuccess": {

@@ -3604,7 +3604,12 @@
         "one": "{{count}} aba",
         "other": "{{count}} abas"
       },
-      "showTabs": "Mostrar Abas Abertas"
+      "showTabs": "Mostrar Abas Abertas",
+      "openTabsCount": {
+        "one": "{{count}} aba aberta",
+        "many": "{{count}} abas abertas",
+        "other": "{{count}} abas abertas"
+      }
     },
     "notifications": {
       "uploadSuccess": {

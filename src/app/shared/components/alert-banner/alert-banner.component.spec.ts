@@ -41,6 +41,27 @@ describe('AlertBannerComponent', () => {
     expect(component.resolvedIcon()).toBe('circle-info');
   });
 
+  it('interrupts screen readers only for errors', () => {
+    const host = fixture.nativeElement as HTMLElement;
+    for (const severity of ['info', 'warning', 'success', 'dim'] as const) {
+      componentRef.setInput('severity', severity);
+      fixture.detectChanges();
+      expect(host.getAttribute('role')).toBe('status');
+    }
+    componentRef.setInput('severity', 'error');
+    fixture.detectChanges();
+    expect(host.getAttribute('role')).toBe('alert');
+  });
+
+  it('keeps its severity as a class, which picks its colours', () => {
+    componentRef.setInput('severity', 'success');
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.classList.contains('success')).toBe(true);
+    // No tone scope: buttons and fields inside a banner keep their own colours.
+    expect(host.hasAttribute('data-tone')).toBe(false);
+  });
+
   it('should prioritize custom icon over severity icon', () => {
     componentRef.setInput('severity', 'warning');
     componentRef.setInput('icon', 'hard-drive');

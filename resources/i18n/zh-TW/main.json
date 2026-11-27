@@ -3593,7 +3593,10 @@
       "tabCount": {
         "other": "{{count}} 個分頁"
       },
-      "showTabs": "顯示已開啟的分頁"
+      "showTabs": "顯示已開啟的分頁",
+      "openTabsCount": {
+        "other": "{{count}} 個開啟的分頁"
+      }
     },
     "notifications": {
       "uploadSuccess": {

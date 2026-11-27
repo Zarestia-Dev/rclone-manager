@@ -1,3 +1,4 @@
+import { translateRcloneOption } from 'src/app/services/i18n/rclone-option-translation';
 import * as validationUtils from 'src/app/shared/validators';
 import {
   Component,
@@ -213,6 +214,21 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
   readonly encodingFlags = ENCODING_FLAGS;
 
   // Computed
+  /**
+   * The option's title as its row shows it, which names its field for screen readers and speech
+   * input. Its raw name (vfs_cache_mode) is not what anyone sees.
+   */
+  protected fieldLabel(opt: RcConfigOption | null | undefined): string {
+    if (!opt) return '';
+    return translateRcloneOption(
+      opt.TranslationKey || opt.Name,
+      'title',
+      opt.FieldName || opt.Name,
+      key => this.translate.instant(key),
+      this.provider()
+    );
+  }
+
   readonly mergedOption = computed(
     () => {
       const opt = this.option();

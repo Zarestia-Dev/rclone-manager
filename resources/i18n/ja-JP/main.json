@@ -3552,7 +3552,10 @@
       "tabCount": {
         "other": "{{count}} 個のタブ"
       },
-      "showTabs": "開いているタブを表示"
+      "showTabs": "開いているタブを表示",
+      "openTabsCount": {
+        "other": "{{count}} 個の開いているタブ"
+      }
     },
     "notifications": {
       "uploadSuccess": {
