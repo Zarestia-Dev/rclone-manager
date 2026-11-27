@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- **Server Releases Are Tagged `server-v`**: Server releases on GitHub are now tagged `server-v<version>` instead of `headless-v<version>`. The server finds them by itself from 0.3.7 on, and the AUR `rclone-manager-server` package follows them. Scripts that download a server release by its tag need the new name. Installations of the RClone Manager Headless app (0.3.6 and older) still move to the server through the `headless-v0.3.7` release.
 ## [0.3.7] - 2026-11-27
 
 ### Warning

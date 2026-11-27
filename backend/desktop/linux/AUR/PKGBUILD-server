@@ -23,8 +23,8 @@ install=rclone-manager-server.install
 # The release's Arch package (backend/server/package/nfpm.yaml): the server, the
 # systemd unit, its user and state folder, and the path the RClone Manager Headless
 # app ran from. makepkg unpacks it; its metadata files are left behind.
-source_x86_64=("${url}/releases/download/headless-v${releasetag}/${appname}-${pkgver}-1-x86_64.pkg.tar.zst")
-source_aarch64=("${url}/releases/download/headless-v${releasetag}/${appname}-${pkgver}-1-aarch64.pkg.tar.zst")
+source_x86_64=("${url}/releases/download/server-v${releasetag}/${appname}-${pkgver}-1-x86_64.pkg.tar.zst")
+source_aarch64=("${url}/releases/download/server-v${releasetag}/${appname}-${pkgver}-1-aarch64.pkg.tar.zst")
 sha256sums_x86_64=('SKIP')
 sha256sums_aarch64=('SKIP')
 

@@ -1,7 +1,7 @@
 name: "Publish to AUR"
 
 on:
-  # Run by hand after the v<version> and headless-v<version> releases are published and tested.
+  # Run by hand after the v<version> and server-v<version> releases are published and tested.
   # The script skips a release whose assets are not all uploaded yet, so a later run picks it up.
   workflow_dispatch:
     inputs:

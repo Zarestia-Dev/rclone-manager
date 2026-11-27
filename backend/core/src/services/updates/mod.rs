@@ -131,7 +131,7 @@ async fn check_releases(
     log::debug!(
         "Update context: current={}, product={:?}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
         env!("CARGO_PKG_VERSION"),
-        app.product().release_prefixes,
+        app.product().release_prefix,
         installation.installation,
         installation.method,
         std::env::consts::OS,
@@ -142,7 +142,7 @@ async fn check_releases(
 
     let releases = github_client::get_releases(OWNER, REPO).await?;
     log::debug!("Received {} releases", releases.len());
-    let Some(release) = latest_release(&releases, channel, app.product().release_prefixes) else {
+    let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
         forget_update(updater_state);
         return Ok(None);
@@ -319,17 +319,8 @@ pub async fn get_app_update_info(app: AppHandle) -> Result<UpdaterSnapshot> {
 /// The release this build came from, for its release notes.
 pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
     let version = env!("CARGO_PKG_VERSION");
-    // The tag prefix of this build's release is not known: 0.3.7 is `headless-v`,
-    // the releases after it `server-v`.
-    let mut release = None;
-    for prefix in app.product().release_prefixes {
-        let tag = format!("{prefix}{version}");
-        release = Some(github_client::get_release_by_tag(OWNER, REPO, &tag).await);
-        if matches!(release, Some(Ok(_))) {
-            break;
-        }
-    }
-    let release = release.expect("a product has a release prefix")?;
+    let tag = format!("{}{version}", app.product().release_prefix);
+    let release = github_client::get_release_by_tag(OWNER, REPO, &tag).await?;
     Ok(UpdateMetadata {
         version: version.to_string(),
         current_version: version.to_string(),
@@ -345,13 +336,9 @@ pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
 fn is_release_for_channel(
     release: &github_client::Release,
     channel: &str,
-    release_prefixes: &[&str],
+    release_prefix: &str,
 ) -> bool {
-    let tag = release.tag_name.to_lowercase();
-    if !release_prefixes
-        .iter()
-        .any(|prefix| tag.starts_with(prefix))
-    {
+    if !release.tag_name.to_lowercase().starts_with(release_prefix) {
         return false;
     }
     channel == "beta" || !is_prerelease(release)
@@ -371,12 +358,12 @@ fn is_prerelease(release: &github_client::Release) -> bool {
 fn latest_release<'a>(
     releases: &'a [github_client::Release],
     channel: &str,
-    release_prefixes: &[&str],
+    release_prefix: &str,
 ) -> Option<&'a github_client::Release> {
     releases
         .iter()
         .filter(|release| {
-            !release.draft && is_release_for_channel(release, channel, release_prefixes)
+            !release.draft && is_release_for_channel(release, channel, release_prefix)
         })
         .reduce(|latest, candidate| {
             if is_version_newer(&latest.tag_name, &candidate.tag_name) {
@@ -464,9 +451,9 @@ mod tests {
             release("v0.3.4-beta.1", true),
             release("headless-v0.3.3", false),
         ];
-        let stable = latest_release(&releases, "stable", &["v"]).unwrap();
+        let stable = latest_release(&releases, "stable", "v").unwrap();
         assert_eq!(stable.tag_name, "v0.3.3");
-        let beta = latest_release(&releases, "beta", &["v"]).unwrap();
+        let beta = latest_release(&releases, "beta", "v").unwrap();
         assert_eq!(beta.tag_name, "v0.3.4-beta.1");
     }
 
@@ -749,7 +736,7 @@ mod tests {
             "v1.3.0",
             "v1.10.0",
             "v1.11.0-beta.1",
-            "headless-v9.0.0",
+            "server-v9.0.0",
         ]
         .into_iter()
         .map(|tag| github_client::Release {
@@ -763,100 +750,58 @@ mod tests {
         releases.push(draft);
         for _ in 0..releases.len() {
             assert_eq!(
-                latest_release(&releases, "stable", &["v"])
-                    .unwrap()
-                    .tag_name,
+                latest_release(&releases, "stable", "v").unwrap().tag_name,
                 "v1.10.0"
             );
             assert_eq!(
-                latest_release(&releases, "beta", &["v"]).unwrap().tag_name,
+                latest_release(&releases, "beta", "v").unwrap().tag_name,
                 "v1.11.0-beta.1"
             );
             assert_eq!(
-                latest_release(&releases, "stable", &["headless-v"])
+                latest_release(&releases, "stable", "server-v")
                     .unwrap()
                     .tag_name,
-                "headless-v9.0.0"
+                "server-v9.0.0"
             );
             releases.rotate_left(1);
         }
-        assert!(latest_release(&[], "stable", &["v"]).is_none());
-        assert!(latest_release(&releases, "stable", &["other-v"]).is_none());
-    }
-
-    #[test]
-    fn a_product_with_two_tag_prefixes_follows_the_newest_release_of_either() {
-        let releases: Vec<_> = [
-            "v9.0.0",
-            "headless-v0.3.7",
-            "server-v0.3.8",
-            "server-v0.3.9-beta.1",
-        ]
-        .into_iter()
-        .map(|tag| github_client::Release {
-            tag_name: tag.into(),
-            ..Default::default()
-        })
-        .collect();
-        let prefixes = ["headless-v", "server-v"];
-        assert_eq!(
-            latest_release(&releases, "stable", &prefixes)
-                .unwrap()
-                .tag_name,
-            "server-v0.3.8"
-        );
-        assert_eq!(
-            latest_release(&releases, "beta", &prefixes)
-                .unwrap()
-                .tag_name,
-            "server-v0.3.9-beta.1"
-        );
-        assert_eq!(
-            latest_release(&releases, "stable", &["headless-v"])
-                .unwrap()
-                .tag_name,
-            "headless-v0.3.7"
-        );
+        assert!(latest_release(&[], "stable", "v").is_none());
+        assert!(latest_release(&releases, "stable", "other-v").is_none());
     }
 
     #[test]
     fn release_stream_follows_host_not_compiled_features() {
-        for release_prefix in ["v", "headless-v"] {
-            let release_prefixes = [release_prefix];
+        for release_prefix in ["v", "server-v"] {
             for tag in [
                 "v1.2.0",
+                "server-v1.2.0",
                 "headless-v1.2.0",
                 "v1.3.0-beta.1",
-                "headless-v1.3.0-beta.1",
+                "server-v1.3.0-beta.1",
             ] {
                 let release = github_client::Release {
                     tag_name: tag.into(),
                     ..Default::default()
                 };
-                assert!(!is_release_for_channel(&release, "beta", &[]));
-                assert!(!is_release_for_channel(&release, "beta", &["other-v"]));
+                assert!(!is_release_for_channel(&release, "beta", "other-v"));
                 let same_product = tag.starts_with(release_prefix);
                 assert_eq!(
-                    is_release_for_channel(&release, "stable", &release_prefixes),
+                    is_release_for_channel(&release, "stable", release_prefix),
                     same_product && !tag.contains("beta")
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "beta", &release_prefixes),
+                    is_release_for_channel(&release, "beta", release_prefix),
                     same_product
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "unknown", &release_prefixes),
+                    is_release_for_channel(&release, "unknown", release_prefix),
                     same_product && !tag.contains("beta")
                 );
                 let flagged = github_client::Release {
                     prerelease: true,
                     ..release
                 };
-                assert!(!is_release_for_channel(
-                    &flagged,
-                    "stable",
-                    &release_prefixes
-                ));
+                assert!(!is_release_for_channel(&flagged, "stable", release_prefix));
             }
         }
     }

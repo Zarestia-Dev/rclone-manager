@@ -66,7 +66,7 @@ in the catalog rather than published as sidecars. See
 
 Kinds are `portable`, `server`, and `android`. Architecture names are `x86_64`,
 `aarch64`, `armv7`, and `i686`. OS names match Rust (`linux`, `windows`, `macos`,
-`android`). Server files belong to `headless-v...` releases; portable and APK
+`android`). Server files belong to `server-v...` releases (`headless-v...` up to 0.3.7); portable and APK
 files belong to `v...` releases. The native Tauri `latest.json` remains separate.
 
 The signed manifest binds version, product, target, asset name, byte size,
