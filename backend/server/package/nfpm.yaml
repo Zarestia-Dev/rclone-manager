@@ -110,6 +110,9 @@ msi:
   upgrade:
     # An MSI version has no pre-release part: 1.2.3-beta.1 and 1.2.3 are both 1.2.3.
     allow_same_version: true
+    # The stable channel takes a beta back to an older stable release. The MSI that
+    # is installed decides, so this has to be in the stable release's MSI.
+    allow_downgrades: true
   shortcuts:
     - name: RClone Manager Server
       target: /Program Files/RClone Manager Server/rclone-manager-server.exe
