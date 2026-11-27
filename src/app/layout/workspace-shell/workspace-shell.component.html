@@ -1,3 +1,13 @@
+<!-- The view tabs come after the content in the DOM (they are a bottom bar on narrow windows), so
+     keyboard users get a way to reach them first. Hidden until it has keyboard focus. -->
+<button
+  type="button"
+  class="skip-to-navigation"
+  data-tauri-drag-region="false"
+  (click)="skipToNavigation()"
+>
+  {{ 'titlebar.skipToNavigation' | translate }}
+</button>
 <ng-content select="app-titlebar"></ng-content>
 <ng-content select="app-banner"></ng-content>
 <main class="workspace-content">

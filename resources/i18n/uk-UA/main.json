@@ -788,6 +788,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Меню додавання сховища",
+    "skipToNavigation": "Перейти до навігації",
     "home": "Головна",
     "internetStatus": "Стан інтернет-зʼєднання",
     "appMenu": "Меню застосунку",

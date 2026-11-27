@@ -767,6 +767,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "リモート追加メニュー",
+    "skipToNavigation": "ナビゲーションへスキップ",
     "home": "ホーム",
     "internetStatus": "インターネット接続状態",
     "appMenu": "アプリケーションメニュー",

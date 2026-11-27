@@ -767,6 +767,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "新增遠端連線選單",
+    "skipToNavigation": "跳至導覽",
     "home": "首頁",
     "internetStatus": "網際網路連線狀態",
     "appMenu": "應用程式選單",

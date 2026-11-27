@@ -781,6 +781,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Ponuka pridania vzdialeného úložiska",
+    "skipToNavigation": "Preskočiť na navigáciu",
     "home": "Domov",
     "internetStatus": "Stav pripojenia k internetu",
     "appMenu": "Ponuka aplikácie",

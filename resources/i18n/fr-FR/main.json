@@ -774,6 +774,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Menu Ajouter un dépôt distant",
+    "skipToNavigation": "Aller à la navigation",
     "home": "Accueil",
     "internetStatus": "État de la connexion Internet",
     "appMenu": "Menu de l’application",
