@@ -16,7 +16,7 @@
     --pill-fill: 15%;
     --pill-fill-hover: 22%;
     --pill-fill-active: 28%;
-    --pill-fill-selected: 30%;
+    --pill-fill-selected: 25%;
     --pill-fg: var(--pill-color);
     --pill-edge: transparent;
     // An outer shadow, for a pill drawn over other content (a count on a button).
@@ -163,6 +163,13 @@
             transparent
           );
           box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
+
+          // The tone text keeps 4.5:1 on a plain background, not on its own tint. A selected
+          // tint is the strongest, so its text moves a little towards the window text colour:
+          // darker in light mode, lighter in dark mode, with the same hue.
+          &:not([data-variant="solid"]) {
+            color: color-mix(in srgb, var(--pill-fg) 85%, var(--window-fg-color));
+          }
         }
       }
     }
