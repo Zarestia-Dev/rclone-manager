@@ -158,10 +158,10 @@ describe('PathService', () => {
   // ── Remote name normalization (pathStyle parameterized) ───────────────────
 
   describe('normalizeRemoteName (pathStyle parameterized)', () => {
-    it('Windows: preserves single-letter drive roots (C:, D:)', () => {
+    it('Windows: keeps single-letter drive roots (C:, D:), in upper case', () => {
       expect(service.normalizeRemoteName('C:', 'windows')).toBe('C:');
       expect(service.normalizeRemoteName('D:', 'windows')).toBe('D:');
-      expect(service.normalizeRemoteName('z:', 'windows')).toBe('z:');
+      expect(service.normalizeRemoteName('z:', 'windows')).toBe('Z:');
     });
 
     it('POSIX: strips trailing colon even for single-letter names (no drive-letter concept)', () => {
