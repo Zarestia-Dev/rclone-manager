@@ -56,12 +56,14 @@ use crate::utils::version::{clean_app_version, is_update_candidate, is_version_n
 
 /// Installers that replace the running build may move a pre-release to a stable
 /// release with a lower version number, so that leaving the beta channel does not
-/// wait for the next stable version. On the beta channel that would be a
-/// downgrade: its newest release is older than this build only when this build's
-/// own release is missing (a local build, or a release that was withdrawn).
-/// Packages (including DEB/RPM installed by Tauri) only move forward: `rpm -U` and
-/// an MSI refuse downgrades, pacman would downgrade without asking, package
-/// managers decide for themselves, and Android version codes cannot decrease.
+/// wait for the next stable version. That includes the packages the core installs
+/// (`dpkg -i`, `pacman -U` and `rpm -U --oldpackage` accept an older package, and
+/// the MSI allows downgrades) and the DEB Tauri installs with `dpkg -i`. On the
+/// beta channel that would be a downgrade: its newest release is older than this
+/// build only when this build's own release is missing (a local build, or a
+/// release that was withdrawn). Only forward: the RPM Tauri installs (its `rpm -U`
+/// refuses an older package), packages another source manages, and Android,
+/// whose version codes cannot decrease.
 fn is_offered(
     installation: &policy::UpdatePolicy,
     channel: &str,
@@ -70,13 +72,7 @@ fn is_offered(
 ) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
-        (
-            _,
-            InstallationKind::Deb
-            | InstallationKind::Rpm
-            | InstallationKind::Pacman
-            | InstallationKind::Msi,
-        ) => is_version_newer(current, release),
+        (UpdateMethod::Tauri, InstallationKind::Rpm) => is_version_newer(current, release),
         (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
             is_update_candidate(current, release)
         }
@@ -398,7 +394,7 @@ mod tests {
     #[test]
     fn leaving_beta_does_not_wait_for_the_next_stable_version() {
         use policy::InstallationKind::{
-            Android, Appimage, Deb, Native, Pacman, Portable, Rpm, Server,
+            Android, Appimage, Deb, Msi, Native, Nsis, Pacman, Portable, Rpm, Server,
         };
         use policy::UpdateMethod;
         let offered = |kind, method, current, release| {
@@ -422,6 +418,12 @@ mod tests {
             (Appimage, UpdateMethod::Tauri),
             (Portable, UpdateMethod::Binary),
             (Server, UpdateMethod::Binary),
+            (Deb, UpdateMethod::Tauri),
+            (Deb, UpdateMethod::Binary),
+            (Rpm, UpdateMethod::Binary),
+            (Pacman, UpdateMethod::Binary),
+            (Nsis, UpdateMethod::Binary),
+            (Msi, UpdateMethod::Binary),
         ] {
             assert!(offered(kind, method, "0.3.4-beta.1", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4", "0.3.3"));
@@ -437,13 +439,12 @@ mod tests {
                 "0.3.7-beta.2"
             ));
         }
-        // Packages only move forward, even when Tauri installs them: `rpm -U`
-        // refuses downgrades. Android version codes cannot decrease.
+        // Only forward: Tauri's `rpm -U` refuses an older package, another source
+        // manages its own packages, and Android version codes cannot decrease.
         for (kind, method) in [
-            (Deb, UpdateMethod::Tauri),
             (Rpm, UpdateMethod::Tauri),
+            (Deb, UpdateMethod::Unavailable),
             (Pacman, UpdateMethod::Unavailable),
-            (Pacman, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
         ] {
             assert!(!offered(kind, method, "0.3.4-beta.1", "0.3.3"));
