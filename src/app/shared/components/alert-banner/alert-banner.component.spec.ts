@@ -53,13 +53,21 @@ describe('AlertBannerComponent', () => {
     expect(host.getAttribute('role')).toBe('alert');
   });
 
-  it('keeps its severity as a class, which picks its colours', () => {
-    componentRef.setInput('severity', 'success');
-    fixture.detectChanges();
+  it('takes its colours from the tone scope of its severity', () => {
     const host = fixture.nativeElement as HTMLElement;
-    expect(host.classList.contains('success')).toBe(true);
-    // No tone scope: buttons and fields inside a banner keep their own colours.
-    expect(host.hasAttribute('data-tone')).toBe(false);
+    const tones = {
+      info: 'accent',
+      warning: 'orange',
+      error: 'warn',
+      success: 'primary',
+      dim: 'dim',
+    };
+    for (const [severity, tone] of Object.entries(tones)) {
+      componentRef.setInput('severity', severity);
+      fixture.detectChanges();
+      expect(host.getAttribute('data-tone')).toBe(tone);
+      expect(host.classList.contains(severity)).toBe(true);
+    }
   });
 
   it('should prioritize custom icon over severity icon', () => {

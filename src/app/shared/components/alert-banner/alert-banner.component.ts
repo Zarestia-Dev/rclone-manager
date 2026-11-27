@@ -1,8 +1,18 @@
+import { PillTone } from '../../types/pill';
 import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'success' | 'dim';
+
+/** The colour role (tone scope, custom-theme.scss) of each severity. */
+const SEVERITY_TONE: Record<AlertSeverity, PillTone> = {
+  info: 'accent',
+  warning: 'orange',
+  error: 'warn',
+  success: 'primary',
+  dim: 'dim',
+};
 
 @Component({
   selector: 'app-alert-banner',
@@ -15,6 +25,7 @@ export type AlertSeverity = 'info' | 'warning' | 'error' | 'success' | 'dim';
     // without cutting off what is being read, and a banner already on screen isn't announced.
     '[attr.role]': "severity() === 'error' ? 'alert' : 'status'",
     '[class]': 'severity()',
+    '[attr.data-tone]': 'tone()',
   },
 })
 export class AlertBannerComponent {
@@ -27,6 +38,8 @@ export class AlertBannerComponent {
   readonly dismissable = input<boolean>(false);
   readonly dismissTooltip = input<string>('');
   readonly dismiss = output<void>();
+
+  readonly tone = computed(() => SEVERITY_TONE[this.severity()]);
 
   readonly resolvedIcon = computed(() => {
     const customIcon = this.icon();

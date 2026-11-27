@@ -5,8 +5,15 @@
   gap: var(--space-sm);
   // With the 32px icon tile, a one-line banner is as tall as before (56px).
   padding: var(--space-sm) var(--space-md);
-  background: var(--window-bg-color);
-  box-shadow: 0 0 0 1px var(--banner-ring, rgba(var(--banner-rgb), 0.3));
+  // The severity is the banner's tone scope (data-tone, set from it): a light tint of its colour
+  // over the window, a ring that still shows in dark mode, and the icon on a tinted tile. Text
+  // keeps the window's colours; only links take the tone, in its text colour.
+  background: color-mix(
+    in srgb,
+    rgb(var(--tone-rgb)) calc(var(--active-opacity) * 100%),
+    var(--window-bg-color)
+  );
+  box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.5);
   border-radius: var(--card-border-radius);
   animation: fadeInUp var(--transition-cubic) both;
 
@@ -28,17 +35,18 @@
   .alert-icon {
     flex: none;
     align-self: flex-start;
-    box-sizing: content-box;
-    width: 20px;
-    height: 20px;
-    padding: 6px;
+    // A 32px tile around a 20px icon, as on the cards' icon tiles.
+    box-sizing: border-box;
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
+    padding: calc((var(--icon-size-lg) - var(--space-lg)) / 2);
     border-radius: var(--radius-xs);
-    background: rgba(var(--banner-rgb), var(--active-opacity));
-    color: var(--banner-color);
+    background: rgba(var(--tone-rgb), var(--active-opacity));
+    color: var(--tone);
   }
 
   .alert-content a {
-    color: var(--banner-text);
+    color: var(--tone-text);
   }
 
   // Buttons marked `bannerAction` sit at the end of the row, centred on it, not under the text.
@@ -111,43 +119,6 @@
     }
   }
 
-  // ------------------ Severities ------------------
-  // The banner looks like the app's active cards (_shared-card.scss): the window background, a
-  // ring in the severity's colour and the icon on a tile tinted in it. Text keeps the window's
-  // colours; only links take the severity's text colour, which keeps 4.5:1 on the window
-  // background (custom-theme.scss). The colours are the banner's own variables, not a data-tone
-  // scope, so buttons and fields inside it keep theirs.
-  &.info {
-    --banner-rgb: var(--accent-color-rgb);
-    --banner-color: var(--accent-color);
-    --banner-text: var(--accent-color-text);
-  }
-
-  &.warning {
-    --banner-rgb: var(--orange-rgb);
-    --banner-color: var(--orange);
-    --banner-text: var(--orange-text);
-  }
-
-  &.error {
-    --banner-rgb: var(--warn-color-rgb);
-    --banner-color: var(--warn-color);
-    --banner-text: var(--warn-color-text);
-  }
-
-  &.success {
-    --banner-rgb: var(--primary-color-rgb);
-    --banner-color: var(--primary-color);
-    --banner-text: var(--primary-color-text);
-  }
-
-  &.dim {
-    --banner-rgb: var(--dim-color-rgb);
-    --banner-color: var(--dim-color);
-    --banner-text: var(--window-fg-color);
-    --banner-ring: var(--card-shade-color);
-  }
-
   @media (max-width: 600px) {
     flex-wrap: wrap;
     padding: var(--space-sm);
@@ -170,12 +141,6 @@
     .dismiss-button {
       position: static;
       align-self: flex-start;
-    }
-
-    .alert-icon {
-      width: 20px;
-      height: 20px;
-      font-size: 20px;
     }
 
     .alert-content a mat-icon {
