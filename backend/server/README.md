@@ -17,7 +17,7 @@ system tray whenever a desktop session is there to show it; macOS builds have no
 tray. The server replaces the RClone Manager Headless app (0.3.6 and older); see
 [Moving from RClone Manager Headless](#moving-from-rclone-manager-headless).
 
-`release-server.yml` builds everything in the `headless-v<version>` release:
+`release-server.yml` builds everything in the `server-v<version>` release (`headless-v<version>` up to 0.3.7):
 
 - **Server:** `server-<os>-<arch>-<version>.zip`. It contains the
   `rclone-manager-server` executable (`.exe` on Windows), `LICENSE`, a short

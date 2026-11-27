@@ -54,7 +54,7 @@ Portable and Android upload jobs share the `publish-custom-updater-main` concurr
 group to serialize the catalog's read/merge/upload operation. Their builds run outside
 the lock; Android transfers its APKs and signed catalog together as a workflow artifact.
 Server builds also run outside the lock, and their upload job prepares the shared
-draft and publishes the catalog and `latest.json` under the `release-server` group. Both groups use `queue: max` so additional pending publishers
+draft and publishes the catalog under the `release-server` group. Both groups use `queue: max` so additional pending publishers
 do not replace earlier queued jobs. Any additional writer must join the relevant
 group. These jobs do not publish the local signature sidecars or individual per-target
 JSON files.

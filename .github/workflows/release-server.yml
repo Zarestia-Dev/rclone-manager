@@ -1,10 +1,9 @@
 name: "Release Server"
 
-# The headless-v<version> release is the server: ZIPs for servers, and the same
+# The server-v<version> release is the server: ZIPs for servers, and the same
 # executable as the DEB, RPM, Arch package, Windows setup and MSI for desktops. One signed catalog
-# updates all of them; latest.json moves installs of the RClone Manager Headless app
-# (0.3.6 and older) to the package of their format. The tag keeps the headless name,
-# which those installs and the server's updater look for.
+# updates all of them. Installs of the RClone Manager Headless app (0.3.6 and older)
+# move to the server through the headless-v0.3.7 release, which stays published.
 on:
   workflow_dispatch:
 
@@ -168,16 +167,6 @@ jobs:
           node scripts/create-update-manifest.cjs deb linux "$UPDATE_ARCH" "$VERSION" "$deb" updater-assets
           node scripts/create-update-manifest.cjs rpm linux "$UPDATE_ARCH" "$VERSION" "$rpm" updater-assets
           node scripts/create-update-manifest.cjs pacman linux "$UPDATE_ARCH" "$VERSION" "$pacman" updater-assets
-          # RClone Manager Headless 0.3.6 cannot install its DEB or RPM itself and
-          # announces only a release holding these files under its own name. The same
-          # packages, outside the catalog. Only the 0.3.7 releases carry them; remove
-          # this step with the rest of the Headless scaffolding (backend/TODO.md).
-          case "$VERSION" in
-            0.3.7*)
-              cp "$deb" "updater-assets/RClone.Manager.Headless_${VERSION}_$PACKAGE_ARCH.deb"
-              cp "$rpm" "updater-assets/RClone.Manager.Headless-$VERSION-1.$UPDATE_ARCH.rpm"
-              ;;
-          esac
 
       - name: Build and sign Windows setup and MSI
         if: matrix.os == 'windows'
@@ -237,11 +226,11 @@ jobs:
       - name: Check release before uploading packages
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-        run: node scripts/publish-custom-updater.cjs --check "headless-v$VERSION" "$VERSION"
+        run: node scripts/publish-custom-updater.cjs --check "server-v$VERSION" "$VERSION"
       - name: Upload packages
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: headless-v${{ steps.get_version.outputs.VERSION }}
+          tag_name: server-v${{ steps.get_version.outputs.VERSION }}
           target_commitish: ${{ github.sha }}
           name: "RClone Manager Server v${{ steps.get_version.outputs.VERSION }}"
           draft: true
@@ -253,7 +242,7 @@ jobs:
             artifacts/**/*.pkg.tar.zst
             artifacts/**/*-setup.exe
             artifacts/**/*.msi
-      - name: Publish update catalog and latest.json
+      - name: Publish update catalog
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-        run: node scripts/publish-custom-updater.cjs "headless-v$VERSION" "$VERSION" artifacts
+        run: node scripts/publish-custom-updater.cjs "server-v$VERSION" "$VERSION" artifacts
