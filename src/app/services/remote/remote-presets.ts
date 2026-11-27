@@ -30,7 +30,8 @@ const BASE_PRESET: PresetValues = {
     vfs_read_chunk_size: '16M',
     vfs_read_chunk_streams: 8,
     vfs_read_ahead: '128M',
-    vfs_refresh: true,
+    // No vfs_refresh: it walks the whole remote at mount time and every lookup
+    // on the mount waits behind that walk, which freezes file managers (#379).
   },
   mount: {
     attr_timeout: '10s',
