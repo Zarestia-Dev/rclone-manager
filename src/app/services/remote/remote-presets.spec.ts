@@ -76,6 +76,17 @@ describe('RemotePresetsService', () => {
       expect(presets.backend?.['log_level']).toBe('INFO');
     });
 
+    // #379: --vfs-refresh lists the whole remote at mount time, and file-manager
+    // lookups on the mount queue behind that walk until it finishes.
+    it('should not enable vfs_refresh for any remote type or platform', () => {
+      for (const os of ['linux', 'windows', 'darwin', 'android']) {
+        mockBackendService.backends.set([{ name: 'Local', isLocal: true, os }]);
+        for (const type of ['drive', 'onedrive', 's3', 'webdav', 'sftp']) {
+          expect(service.resolvePresets(type).vfs?.['vfs_refresh']).toBeUndefined();
+        }
+      }
+    });
+
     it('should merge family-specific presets', () => {
       const presets = service.resolvePresets('s3');
       expect(presets.backend?.['disable_http2']).toBe(true);
