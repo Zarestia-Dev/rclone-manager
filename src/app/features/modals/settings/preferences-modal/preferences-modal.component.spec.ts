@@ -84,6 +84,41 @@ describe('PreferencesModalComponent search', () => {
     expect(component.searchResults()).toEqual([{ category: 'general', key: 'background_enabled' }]);
   });
 
+  it('moves between the tabs with the arrow keys, Home and End', () => {
+    // Only the selected tab is in the Tab order, so the keys are the only way to the others.
+    const list = document.createElement('div');
+    const buttons = component.tabs.map(() => {
+      const button = document.createElement('button');
+      button.setAttribute('role', 'tab');
+      button.addEventListener('keydown', event =>
+        (component as unknown as { onTabKey(e: KeyboardEvent): void }).onTabKey(event)
+      );
+      list.appendChild(button);
+      return button;
+    });
+    document.body.appendChild(list);
+    const press = (key: string): void => {
+      (document.activeElement as HTMLElement).dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      );
+    };
+
+    buttons[0].focus();
+    press('ArrowRight');
+    expect(component.selectedTabIndex()).toBe(1);
+    expect(document.activeElement).toBe(buttons[1]);
+    press('End');
+    expect(component.selectedTabIndex()).toBe(buttons.length - 1);
+    press('ArrowRight');
+    expect(component.selectedTabIndex()).toBe(0);
+    press('ArrowLeft');
+    expect(component.selectedTabIndex()).toBe(buttons.length - 1);
+    press('Home');
+    expect(component.selectedTabIndex()).toBe(0);
+    expect(document.activeElement).toBe(buttons[0]);
+    list.remove();
+  });
+
   it("keeps the file browser's preferences out of the app's and opens them alone", () => {
     expect(component.tabs.map(tab => tab.key)).toEqual(['general', 'core', 'developer']);
     expect(component.title).toBe('modals.preferences.title');

@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 
@@ -43,6 +43,7 @@ describe('OnboardingComponent', () => {
     listenToBackendSwitched: ReturnType<typeof vi.fn>;
     listenToVaultState: ReturnType<typeof vi.fn>;
     listenToServerConnection: ReturnType<typeof vi.fn>;
+    listenToMountCacheUpdated: ReturnType<typeof vi.fn>;
   };
 
   let rclonePasswordServiceMock: {
@@ -112,6 +113,8 @@ describe('OnboardingComponent', () => {
         .fn()
         .mockReturnValue(of({ isLocked: false, isEnabled: false, event: 'unlocked' })),
       listenToServerConnection: vi.fn().mockReturnValue(of(undefined)),
+      // PathSelectionService now reads mounted drives through MountManagementService.
+      listenToMountCacheUpdated: vi.fn().mockReturnValue(NEVER),
     };
 
     rclonePasswordServiceMock = {
