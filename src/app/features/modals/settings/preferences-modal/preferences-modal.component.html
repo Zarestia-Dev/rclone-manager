@@ -19,6 +19,7 @@
       @for (tab of tabs; track tab.key; let i = $index) {
         <button
           (click)="selectTab(i)"
+          (keydown)="onTabKey($event)"
           [class.selected]="selectedTabIndex() === i"
           [attr.aria-selected]="selectedTabIndex() === i"
           [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
@@ -204,6 +205,7 @@
     @for (tab of tabs; track tab.key; let i = $index) {
       <button
         (click)="selectTab(i)"
+        (keydown)="onTabKey($event)"
         [class.selected]="selectedTabIndex() === i"
         [attr.aria-selected]="selectedTabIndex() === i"
         [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
