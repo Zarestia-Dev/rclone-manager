@@ -692,6 +692,28 @@ export class PreferencesModalComponent {
     this.selectedTabIndex.set(index);
   }
 
+  /**
+   * Arrow keys, Home and End move between the tabs, as in any tab list. Only the selected tab
+   * is in the Tab order, so without this the other tabs cannot be reached by keyboard.
+   */
+  protected onTabKey(event: KeyboardEvent): void {
+    const count = this.tabs.length;
+    const index = this.selectedTabIndex();
+    const next = {
+      ArrowRight: (index + 1) % count,
+      ArrowLeft: (index - 1 + count) % count,
+      Home: 0,
+      End: count - 1,
+    }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    this.selectTab(next);
+    const buttons = (
+      event.currentTarget as HTMLElement
+    ).parentElement?.querySelectorAll<HTMLElement>('[role="tab"]');
+    buttons?.[next]?.focus();
+  }
+
   onPathInput(category: string, key: string): void {
     this.getFormControl(category, key).updateValueAndValidity();
   }

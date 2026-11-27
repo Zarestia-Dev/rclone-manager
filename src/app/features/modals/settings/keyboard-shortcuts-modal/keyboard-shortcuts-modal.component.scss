@@ -3,7 +3,6 @@
 
   .mat-mdc-row {
     transition: var(--transition-fast);
-    position: relative;
 
     &:hover {
       background: var(--hover-bg-color);
@@ -14,6 +13,8 @@
     }
 
     &.shortcut-hit {
+      // Positioned only while it glows: positioned rows paint over the list's keyboard focus ring.
+      position: relative;
       animation: cloudGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1);
       border-radius: var(--radius-sm);
       z-index: 2;
