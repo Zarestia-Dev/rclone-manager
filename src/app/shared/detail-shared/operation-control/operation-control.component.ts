@@ -1,3 +1,5 @@
+import { NgTemplateOutlet } from '@angular/common';
+import { HeaderControlsDirective } from '../../directives/header-controls.directive';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -35,6 +37,8 @@ import { PillDirective } from '../../directives/pill.directive';
   selector: 'app-operation-control',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
+    HeaderControlsDirective,
     MatCardModule,
     MatIconModule,
     MatButtonModule,

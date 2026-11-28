@@ -123,13 +123,6 @@ export class JobsPanelComponent {
     }
   }
 
-  /** Enter or Space on the row itself opens the job; the stop button inside keeps its own keys. */
-  onRowKey(event: Event, job: JobInfo): void {
-    if (event.target !== event.currentTarget) return;
-    event.preventDefault();
-    this.showJobDetails(job);
-  }
-
   showJobDetails(job: JobInfo): void {
     this.modalService.openJobDetail(job);
   }

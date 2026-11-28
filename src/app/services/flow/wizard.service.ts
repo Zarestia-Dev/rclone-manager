@@ -63,8 +63,8 @@ export interface WizardEnvironment {
   /** Home folder of the machine rclone runs on, when rclone reports one. */
   readonly home?: string;
   readonly homeFree?: number;
-  /** The files live on another machine: a headless server or a remote rclone backend. */
-  readonly isServer: boolean;
+  /** The files live on another machine: the server web UI or a remote rclone backend. */
+  readonly isRemoteHost: boolean;
   readonly isAndroid: boolean;
   /** A mount can go to a drive letter (Windows with a local rclone). */
   readonly canUseDriveLetter: boolean;
@@ -169,7 +169,7 @@ export class WizardService extends TauriBaseService {
       home,
       // The drive list leaves the space of a folder that is not a mount point at 0; rclone knows.
       homeFree: home ? await this.localFree(home) : undefined,
-      isServer: !this.isTauri || !this.backend.isLocalBackend(),
+      isRemoteHost: !this.isTauri || !this.backend.isLocalBackend(),
       isAndroid: android,
       canUseDriveLetter: this.fileSystem.canSelectDriveLetter(),
       canStartOnLogin: startOnLogin !== undefined,

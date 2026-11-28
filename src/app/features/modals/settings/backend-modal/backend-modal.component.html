@@ -248,10 +248,13 @@
                     {{ 'modals.backend.enableAuth' | translate }}
                   </mat-panel-title>
                   <mat-panel-description>
+                    <!-- Opening the panel turns authentication on and closing it turns it off, so
+                         the header is the control (a button can't contain another one) and the
+                         switch only shows the state; clicks on it open or close the panel. -->
                     <mat-slide-toggle
                       [checked]="backendForm.get('has_auth')?.value"
-                      (change)="setAuthStatus($event.checked)"
-                      (click)="$event.stopPropagation()"
+                      aria-hidden="true"
+                      inert
                     ></mat-slide-toggle>
                   </mat-panel-description>
                 </mat-expansion-panel-header>

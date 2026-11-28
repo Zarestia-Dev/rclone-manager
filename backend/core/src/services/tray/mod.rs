@@ -70,7 +70,7 @@ impl TrayMenuState {
 
 /// Whether the interface the tray opens is the web UI in a browser.
 pub(crate) fn web_ui(app: &AppHandle) -> bool {
-    app.product().mode == "headless"
+    app.product().mode == "server"
 }
 
 fn locked_tray_visuals(app: &AppHandle, state: &TrayMenuState) -> TrayVisuals {

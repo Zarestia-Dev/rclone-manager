@@ -1,3 +1,5 @@
+import { NgTemplateOutlet } from '@angular/common';
+import { HeaderControlsDirective } from '../../directives/header-controls.directive';
 import {
   Component,
   input,
@@ -52,6 +54,8 @@ const SECONDS = { minute: 60, hour: 3600, day: 86400 } as const;
   selector: 'app-automation-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
+    HeaderControlsDirective,
     MatCardModule,
     MatExpansionModule,
     MatIconModule,
@@ -342,14 +346,6 @@ export class AutomationCardComponent {
   onOpenInFiles(path: string, event: Event): void {
     event.stopPropagation();
     this.openInFiles.emit(path);
-  }
-
-  /** Enter or Space on the card itself acts as a click; the buttons inside keep their own. */
-  onKeyActivate(event: Event): void {
-    const card = event.currentTarget as HTMLElement;
-    if (event.target !== card) return;
-    event.preventDefault();
-    card.click();
   }
 
   /** "in 10 hours", "3 minutes ago", in the app's language. */

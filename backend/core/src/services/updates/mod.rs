@@ -56,12 +56,14 @@ use crate::utils::version::{clean_app_version, is_update_candidate, is_version_n
 
 /// Installers that replace the running build may move a pre-release to a stable
 /// release with a lower version number, so that leaving the beta channel does not
-/// wait for the next stable version. On the beta channel that would be a
-/// downgrade: its newest release is older than this build only when this build's
-/// own release is missing (a local build, or a release that was withdrawn).
-/// Packages (including DEB/RPM installed by Tauri) only move forward: `rpm -U` and
-/// an MSI refuse downgrades, pacman would downgrade without asking, package
-/// managers decide for themselves, and Android version codes cannot decrease.
+/// wait for the next stable version. That includes the packages the core installs
+/// (`dpkg -i`, `pacman -U` and `rpm -U --oldpackage` accept an older package, and
+/// the MSI allows downgrades) and the DEB Tauri installs with `dpkg -i`. On the
+/// beta channel that would be a downgrade: its newest release is older than this
+/// build only when this build's own release is missing (a local build, or a
+/// release that was withdrawn). Only forward: the RPM Tauri installs (its `rpm -U`
+/// refuses an older package), packages another source manages, and Android,
+/// whose version codes cannot decrease.
 fn is_offered(
     installation: &policy::UpdatePolicy,
     channel: &str,
@@ -70,13 +72,7 @@ fn is_offered(
 ) -> bool {
     use policy::{InstallationKind, UpdateMethod};
     match (installation.method, installation.installation) {
-        (
-            _,
-            InstallationKind::Deb
-            | InstallationKind::Rpm
-            | InstallationKind::Pacman
-            | InstallationKind::Msi,
-        ) => is_version_newer(current, release),
+        (UpdateMethod::Tauri, InstallationKind::Rpm) => is_version_newer(current, release),
         (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
             is_update_candidate(current, release)
         }
@@ -135,7 +131,7 @@ async fn check_releases(
     log::debug!(
         "Update context: current={}, product={:?}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
         env!("CARGO_PKG_VERSION"),
-        app.product().release_prefixes,
+        app.product().release_prefix,
         installation.installation,
         installation.method,
         std::env::consts::OS,
@@ -146,7 +142,7 @@ async fn check_releases(
 
     let releases = github_client::get_releases(OWNER, REPO).await?;
     log::debug!("Received {} releases", releases.len());
-    let Some(release) = latest_release(&releases, channel, app.product().release_prefixes) else {
+    let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
         forget_update(updater_state);
         return Ok(None);
@@ -323,17 +319,8 @@ pub async fn get_app_update_info(app: AppHandle) -> Result<UpdaterSnapshot> {
 /// The release this build came from, for its release notes.
 pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
     let version = env!("CARGO_PKG_VERSION");
-    // The tag prefix of this build's release is not known: 0.3.7 is `headless-v`,
-    // the releases after it `server-v`.
-    let mut release = None;
-    for prefix in app.product().release_prefixes {
-        let tag = format!("{prefix}{version}");
-        release = Some(github_client::get_release_by_tag(OWNER, REPO, &tag).await);
-        if matches!(release, Some(Ok(_))) {
-            break;
-        }
-    }
-    let release = release.expect("a product has a release prefix")?;
+    let tag = format!("{}{version}", app.product().release_prefix);
+    let release = github_client::get_release_by_tag(OWNER, REPO, &tag).await?;
     Ok(UpdateMetadata {
         version: version.to_string(),
         current_version: version.to_string(),
@@ -349,13 +336,9 @@ pub async fn get_app_release_notes(app: AppHandle) -> Result<UpdateMetadata> {
 fn is_release_for_channel(
     release: &github_client::Release,
     channel: &str,
-    release_prefixes: &[&str],
+    release_prefix: &str,
 ) -> bool {
-    let tag = release.tag_name.to_lowercase();
-    if !release_prefixes
-        .iter()
-        .any(|prefix| tag.starts_with(prefix))
-    {
+    if !release.tag_name.to_lowercase().starts_with(release_prefix) {
         return false;
     }
     channel == "beta" || !is_prerelease(release)
@@ -375,12 +358,12 @@ fn is_prerelease(release: &github_client::Release) -> bool {
 fn latest_release<'a>(
     releases: &'a [github_client::Release],
     channel: &str,
-    release_prefixes: &[&str],
+    release_prefix: &str,
 ) -> Option<&'a github_client::Release> {
     releases
         .iter()
         .filter(|release| {
-            !release.draft && is_release_for_channel(release, channel, release_prefixes)
+            !release.draft && is_release_for_channel(release, channel, release_prefix)
         })
         .reduce(|latest, candidate| {
             if is_version_newer(&latest.tag_name, &candidate.tag_name) {
@@ -398,7 +381,7 @@ mod tests {
     #[test]
     fn leaving_beta_does_not_wait_for_the_next_stable_version() {
         use policy::InstallationKind::{
-            Android, Appimage, Deb, Native, Pacman, Portable, Rpm, Server,
+            Android, Appimage, Deb, Msi, Native, Nsis, Pacman, Portable, Rpm, Server,
         };
         use policy::UpdateMethod;
         let offered = |kind, method, current, release| {
@@ -422,6 +405,12 @@ mod tests {
             (Appimage, UpdateMethod::Tauri),
             (Portable, UpdateMethod::Binary),
             (Server, UpdateMethod::Binary),
+            (Deb, UpdateMethod::Tauri),
+            (Deb, UpdateMethod::Binary),
+            (Rpm, UpdateMethod::Binary),
+            (Pacman, UpdateMethod::Binary),
+            (Nsis, UpdateMethod::Binary),
+            (Msi, UpdateMethod::Binary),
         ] {
             assert!(offered(kind, method, "0.3.4-beta.1", "0.3.3"));
             assert!(!offered(kind, method, "0.3.4", "0.3.3"));
@@ -437,13 +426,12 @@ mod tests {
                 "0.3.7-beta.2"
             ));
         }
-        // Packages only move forward, even when Tauri installs them: `rpm -U`
-        // refuses downgrades. Android version codes cannot decrease.
+        // Only forward: Tauri's `rpm -U` refuses an older package, another source
+        // manages its own packages, and Android version codes cannot decrease.
         for (kind, method) in [
-            (Deb, UpdateMethod::Tauri),
             (Rpm, UpdateMethod::Tauri),
+            (Deb, UpdateMethod::Unavailable),
             (Pacman, UpdateMethod::Unavailable),
-            (Pacman, UpdateMethod::Binary),
             (Android, UpdateMethod::Android),
         ] {
             assert!(!offered(kind, method, "0.3.4-beta.1", "0.3.3"));
@@ -463,9 +451,9 @@ mod tests {
             release("v0.3.4-beta.1", true),
             release("headless-v0.3.3", false),
         ];
-        let stable = latest_release(&releases, "stable", &["v"]).unwrap();
+        let stable = latest_release(&releases, "stable", "v").unwrap();
         assert_eq!(stable.tag_name, "v0.3.3");
-        let beta = latest_release(&releases, "beta", &["v"]).unwrap();
+        let beta = latest_release(&releases, "beta", "v").unwrap();
         assert_eq!(beta.tag_name, "v0.3.4-beta.1");
     }
 
@@ -748,7 +736,7 @@ mod tests {
             "v1.3.0",
             "v1.10.0",
             "v1.11.0-beta.1",
-            "headless-v9.0.0",
+            "server-v9.0.0",
         ]
         .into_iter()
         .map(|tag| github_client::Release {
@@ -762,100 +750,58 @@ mod tests {
         releases.push(draft);
         for _ in 0..releases.len() {
             assert_eq!(
-                latest_release(&releases, "stable", &["v"])
-                    .unwrap()
-                    .tag_name,
+                latest_release(&releases, "stable", "v").unwrap().tag_name,
                 "v1.10.0"
             );
             assert_eq!(
-                latest_release(&releases, "beta", &["v"]).unwrap().tag_name,
+                latest_release(&releases, "beta", "v").unwrap().tag_name,
                 "v1.11.0-beta.1"
             );
             assert_eq!(
-                latest_release(&releases, "stable", &["headless-v"])
+                latest_release(&releases, "stable", "server-v")
                     .unwrap()
                     .tag_name,
-                "headless-v9.0.0"
+                "server-v9.0.0"
             );
             releases.rotate_left(1);
         }
-        assert!(latest_release(&[], "stable", &["v"]).is_none());
-        assert!(latest_release(&releases, "stable", &["other-v"]).is_none());
-    }
-
-    #[test]
-    fn a_product_with_two_tag_prefixes_follows_the_newest_release_of_either() {
-        let releases: Vec<_> = [
-            "v9.0.0",
-            "headless-v0.3.7",
-            "server-v0.3.8",
-            "server-v0.3.9-beta.1",
-        ]
-        .into_iter()
-        .map(|tag| github_client::Release {
-            tag_name: tag.into(),
-            ..Default::default()
-        })
-        .collect();
-        let prefixes = ["headless-v", "server-v"];
-        assert_eq!(
-            latest_release(&releases, "stable", &prefixes)
-                .unwrap()
-                .tag_name,
-            "server-v0.3.8"
-        );
-        assert_eq!(
-            latest_release(&releases, "beta", &prefixes)
-                .unwrap()
-                .tag_name,
-            "server-v0.3.9-beta.1"
-        );
-        assert_eq!(
-            latest_release(&releases, "stable", &["headless-v"])
-                .unwrap()
-                .tag_name,
-            "headless-v0.3.7"
-        );
+        assert!(latest_release(&[], "stable", "v").is_none());
+        assert!(latest_release(&releases, "stable", "other-v").is_none());
     }
 
     #[test]
     fn release_stream_follows_host_not_compiled_features() {
-        for release_prefix in ["v", "headless-v"] {
-            let release_prefixes = [release_prefix];
+        for release_prefix in ["v", "server-v"] {
             for tag in [
                 "v1.2.0",
+                "server-v1.2.0",
                 "headless-v1.2.0",
                 "v1.3.0-beta.1",
-                "headless-v1.3.0-beta.1",
+                "server-v1.3.0-beta.1",
             ] {
                 let release = github_client::Release {
                     tag_name: tag.into(),
                     ..Default::default()
                 };
-                assert!(!is_release_for_channel(&release, "beta", &[]));
-                assert!(!is_release_for_channel(&release, "beta", &["other-v"]));
+                assert!(!is_release_for_channel(&release, "beta", "other-v"));
                 let same_product = tag.starts_with(release_prefix);
                 assert_eq!(
-                    is_release_for_channel(&release, "stable", &release_prefixes),
+                    is_release_for_channel(&release, "stable", release_prefix),
                     same_product && !tag.contains("beta")
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "beta", &release_prefixes),
+                    is_release_for_channel(&release, "beta", release_prefix),
                     same_product
                 );
                 assert_eq!(
-                    is_release_for_channel(&release, "unknown", &release_prefixes),
+                    is_release_for_channel(&release, "unknown", release_prefix),
                     same_product && !tag.contains("beta")
                 );
                 let flagged = github_client::Release {
                     prerelease: true,
                     ..release
                 };
-                assert!(!is_release_for_channel(
-                    &flagged,
-                    "stable",
-                    &release_prefixes
-                ));
+                assert!(!is_release_for_channel(&flagged, "stable", release_prefix));
             }
         }
     }

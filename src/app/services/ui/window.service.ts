@@ -97,7 +97,7 @@ export class WindowService extends TauriBaseService {
   /**
    * Zooms this window's webview to the Interface scale setting. Desktops with fractional
    * scaling (KDE under Wayland, for example) can render the WebKitGTK interface too large;
-   * the browser in headless mode has its own zoom.
+   * the browser in the server's web UI has its own zoom.
    */
   private followInterfaceScale(): void {
     this.appSettingsService

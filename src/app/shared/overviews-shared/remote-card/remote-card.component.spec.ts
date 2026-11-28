@@ -350,17 +350,20 @@ describe('RemoteCardComponent', () => {
     });
   });
 
-  it('handles Enter keydown on the card container', () => {
+  it('opens from a main action button of its own, not from a card that is a button', () => {
+    // The card holds buttons, so it isn't one: its main action is a button beside them, stretched
+    // over the card, which a real Enter or Space clicks.
     const emitSpy = vi.fn();
     component.remoteClick.subscribe(emitSpy);
+    const host: HTMLElement = fixture.nativeElement;
+    const main = host.firstElementChild as HTMLButtonElement;
 
-    const target = fixture.nativeElement;
-    const event = new KeyboardEvent('keydown', { key: 'Enter' });
-    Object.defineProperty(event, 'target', { value: target });
-    Object.defineProperty(event, 'currentTarget', { value: target });
+    expect(host.getAttribute('role')).toBeNull();
+    expect(host.hasAttribute('tabindex')).toBe(false);
+    expect(main.matches('button.card-primary-action')).toBe(true);
+    expect(main.getAttribute('aria-label')).toBe(component.remote().name);
 
-    component.onRemoteKeyDown(event);
-
+    main.click();
     expect(emitSpy).toHaveBeenCalledWith(component.remote());
   });
 

@@ -1,6 +1,6 @@
 //! Debug commands for troubleshooting and developer tools
 //!
-//! These commands are available via both desktop and headless modes.
+//! These commands are available via both desktop and server modes.
 
 use crate::context::AppHandle;
 use serde::Serialize;

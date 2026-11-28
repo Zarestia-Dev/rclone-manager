@@ -2,6 +2,20 @@
   @if (showAutomations()) {
     <mat-accordion class="automation-accordion" multi="true">
       @if (showAutoStart()) {
+        <ng-template #autoStartToggle>
+          <mat-slide-toggle formControlName="autoStart" (click)="$event.stopPropagation()">
+            {{
+              'wizards.appOperation.enableAutoStart'
+                | translate
+                  : {
+                      type:
+                        ('modals.remoteConfig.steps.' +
+                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                        | translate),
+                    }
+            }}
+          </mat-slide-toggle>
+        </ng-template>
         <mat-expansion-panel
           [expanded]="autoStartPanelExpanded()"
           (opened)="autoStartPanelExpanded.set(true)"
@@ -9,18 +23,14 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-slide-toggle formControlName="autoStart" (click)="$event.stopPropagation()">
-                {{
-                  'wizards.appOperation.enableAutoStart'
-                    | translate
-                      : {
-                          type:
-                            ('modals.remoteConfig.steps.' +
-                              (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                            | translate),
-                        }
-                }}
-              </mat-slide-toggle>
+              <span
+                class="header-controls-slot"
+                data-header-controls-slot="autoStartToggle"
+                aria-hidden="true"
+                inert
+              >
+                <ng-container [ngTemplateOutlet]="autoStartToggle" />
+              </span>
             </mat-panel-title>
             @if (isAutoStartEnabled()) {
               <mat-panel-description>
@@ -39,6 +49,10 @@
               </mat-panel-description>
             }
           </mat-expansion-panel-header>
+          <!-- Over the header, not in it (see HeaderControlsDirective). -->
+          <span appHeaderControls="autoStartToggle" ngProjectAs="mat-expansion-panel-header">
+            <ng-container [ngTemplateOutlet]="autoStartToggle" />
+          </span>
 
           <div class="watch-options-container">
             <div class="watch-option-row">
@@ -63,6 +77,29 @@
         </mat-expansion-panel>
       }
       @if (!isMount() && !isServe() && showCronSection()) {
+        <ng-template #cronToggle>
+          <mat-slide-toggle formControlName="cronEnabled" (click)="$event.stopPropagation()">
+            {{
+              'wizards.appOperation.enableScheduled'
+                | translate
+                  : {
+                      type:
+                        ('modals.remoteConfig.steps.' +
+                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                        | translate),
+                    }
+            }}
+          </mat-slide-toggle>
+        </ng-template>
+        <ng-template #clearScheduleButton>
+          <button
+            class="action-button"
+            (click)="clearSchedule(); $event.stopPropagation()"
+            type="button"
+          >
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+          </button>
+        </ng-template>
         <mat-expansion-panel
           [expanded]="cronPanelExpanded()"
           (opened)="cronPanelExpanded.set(true)"
@@ -71,18 +108,14 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-slide-toggle formControlName="cronEnabled" (click)="$event.stopPropagation()">
-                {{
-                  'wizards.appOperation.enableScheduled'
-                    | translate
-                      : {
-                          type:
-                            ('modals.remoteConfig.steps.' +
-                              (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                            | translate),
-                        }
-                }}
-              </mat-slide-toggle>
+              <span
+                class="header-controls-slot"
+                data-header-controls-slot="cronToggle"
+                aria-hidden="true"
+                inert
+              >
+                <ng-container [ngTemplateOutlet]="cronToggle" />
+              </span>
             </mat-panel-title>
 
             <mat-panel-description>
@@ -90,13 +123,14 @@
                 <div class="schedule-summary">
                   <span class="human-cron">{{ cronHumanDescription() }}</span>
                   <code appPill tone="primary">{{ cronExpression() }}</code>
-                  <button
-                    class="action-button"
-                    (click)="clearSchedule(); $event.stopPropagation()"
-                    type="button"
+                  <span
+                    class="header-controls-slot"
+                    data-header-controls-slot="clearScheduleButton"
+                    aria-hidden="true"
+                    inert
                   >
-                    <mat-icon svgIcon="circle-xmark"></mat-icon>
-                  </button>
+                    <ng-container [ngTemplateOutlet]="clearScheduleButton" />
+                  </span>
                 </div>
               } @else {
                 <span class="description">{{
@@ -105,6 +139,16 @@
               }
             </mat-panel-description>
           </mat-expansion-panel-header>
+          <!-- Over the header, not in it (see HeaderControlsDirective). -->
+          <span appHeaderControls="cronToggle" ngProjectAs="mat-expansion-panel-header">
+            <ng-container [ngTemplateOutlet]="cronToggle" />
+          </span>
+          @if (cronExpression()) {
+            <!-- Over the header, not in it (see HeaderControlsDirective). -->
+            <span appHeaderControls="clearScheduleButton" ngProjectAs="mat-expansion-panel-header">
+              <ng-container [ngTemplateOutlet]="clearScheduleButton" />
+            </span>
+          }
 
           <p
             class="helper-text"
@@ -120,6 +164,11 @@
       }
 
       @if (showWatchSection()) {
+        <ng-template #watchToggle>
+          <mat-slide-toggle formControlName="watchEnabled" (click)="$event.stopPropagation()">
+            {{ 'wizards.appOperation.enableWatch' | translate }}
+          </mat-slide-toggle>
+        </ng-template>
         <mat-expansion-panel
           [expanded]="watchPanelExpanded()"
           (opened)="watchPanelExpanded.set(true)"
@@ -138,9 +187,14 @@
             "
           >
             <mat-panel-title>
-              <mat-slide-toggle formControlName="watchEnabled" (click)="$event.stopPropagation()">
-                {{ 'wizards.appOperation.enableWatch' | translate }}
-              </mat-slide-toggle>
+              <span
+                class="header-controls-slot"
+                data-header-controls-slot="watchToggle"
+                aria-hidden="true"
+                inert
+              >
+                <ng-container [ngTemplateOutlet]="watchToggle" />
+              </span>
             </mat-panel-title>
             <mat-panel-description>
               @if (isWatchEnabled() && isWatchPossible()) {
@@ -158,6 +212,10 @@
               }
             </mat-panel-description>
           </mat-expansion-panel-header>
+          <!-- Over the header, not in it (see HeaderControlsDirective). -->
+          <span appHeaderControls="watchToggle" ngProjectAs="mat-expansion-panel-header">
+            <ng-container [ngTemplateOutlet]="watchToggle" />
+          </span>
 
           @if (isWatchPossible()) {
             <div class="watch-options-container">

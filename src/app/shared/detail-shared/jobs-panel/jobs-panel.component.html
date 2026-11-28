@@ -13,14 +13,16 @@
 
   <mat-card-content class="card-list-container">
     @for (job of enrichedJobs(); track job.execute_id || job.jobid) {
-      <div
-        class="card-row-item"
-        role="button"
-        tabindex="0"
-        (click)="showJobDetails(job)"
-        (keydown.enter)="onRowKey($event, job)"
-        (keydown.space)="onRowKey($event, job)"
-      >
+      <!-- The click is for the pointer; keyboard and screen reader users get the main action
+           button inside (see _card-primary-action.scss). -->
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+      <div class="card-row-item" (click)="showJobDetails(job)">
+        <!-- The row's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+        <button
+          type="button"
+          class="card-primary-action"
+          [attr.aria-label]="job.typeLabel + ' #' + job.jobid"
+        ></button>
         <div class="card-header">
           <div class="card-info-left">
             <mat-icon
@@ -80,7 +82,6 @@
               matRipple
               [matRippleCentered]="true"
               [matRippleUnbounded]="false"
-              tabindex="-1"
             >
               <mat-icon
                 [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"

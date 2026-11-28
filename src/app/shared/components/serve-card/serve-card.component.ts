@@ -80,12 +80,4 @@ export class ServeCardComponent {
   onCardClick(): void {
     this.cardClick.emit(this.serve());
   }
-
-  /** Enter or Space on the card itself acts as a click; the buttons inside keep their own. */
-  onKeyActivate(event: Event): void {
-    const card = event.currentTarget as HTMLElement;
-    if (event.target !== card) return;
-    event.preventDefault();
-    card.click();
-  }
 }

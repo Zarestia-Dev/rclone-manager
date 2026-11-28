@@ -60,14 +60,14 @@ describe('NautilusTabOverviewComponent', () => {
     expect(cards().map(card => card.classList.contains('active'))).toEqual([false, true]);
   });
 
-  it('switches to a tab on tap or Enter, and closes one without switching', () => {
+  it('switches to a tab on tap or its main action, and closes one without switching', () => {
     const switched = vi.fn();
     const closed = vi.fn();
     fixture.componentInstance.switchTab.subscribe(switched);
     fixture.componentInstance.closeTab.subscribe(closed);
 
     cards()[0].click();
-    cards()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    cards()[1].querySelector<HTMLButtonElement>('.card-primary-action')?.click();
     cards()[1].querySelector<HTMLButtonElement>('.close-card')?.click();
 
     expect(switched.mock.calls).toEqual([[0], [1]]);

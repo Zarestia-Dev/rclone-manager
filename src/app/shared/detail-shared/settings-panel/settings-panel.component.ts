@@ -1,3 +1,5 @@
+import { NgTemplateOutlet } from '@angular/common';
+import { HeaderControlsDirective } from '../../directives/header-controls.directive';
 import {
   Component,
   input,
@@ -21,7 +23,15 @@ import { PillDirective } from '../../directives/pill.directive';
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, MatExpansionModule, TranslatePipe, PillDirective],
+  imports: [
+    NgTemplateOutlet,
+    HeaderControlsDirective,
+    MatIconModule,
+    MatButtonModule,
+    MatExpansionModule,
+    TranslatePipe,
+    PillDirective,
+  ],
   styleUrls: ['./settings-panel.component.scss', '../../../styles/_panel-actions.scss'],
   templateUrl: './settings-panel.component.html',
 })

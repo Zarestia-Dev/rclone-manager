@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createManifest, mergeCatalogs, MANIFEST_NAME } = require('./create-update-manifest.cjs');
-const { checkRelease, publishCatalog, tauriUpdateJson } = require('./publish-custom-updater.cjs');
+const { createManifest, MANIFEST_NAME } = require('./create-update-manifest.cjs');
+const { checkRelease, publishCatalog } = require('./publish-custom-updater.cjs');
 
 test('preflight permits new and draft releases and rejects published releases before uploads', () => {
-  for (const tag of ['v1.2.3', 'headless-v1.2.3']) {
+  for (const tag of ['v1.2.3', 'server-v1.2.3']) {
     for (const releases of [[], [{ tag_name: tag, draft: true }]]) {
       const calls = [];
       checkRelease(tag, '1.2.3', args => {
@@ -107,36 +107,6 @@ function catalog(kind, target = 'linux-x86_64', asset = `${kind}-${target}-1.2.3
   };
 }
 
-test('sends Tauri headless installs to the packages with the catalog signatures', () => {
-  const merged = mergeCatalogs('1.2.3', [
-    catalog('server'),
-    catalog('deb', 'linux-x86_64', 'RClone.Manager.Server_1.2.3_amd64.deb'),
-    catalog('nsis', 'windows-aarch64', 'RClone.Manager.Server_1.2.3_arm64-setup.exe'),
-    catalog('msi', 'windows-aarch64', 'RClone.Manager.Server_1.2.3_arm64_en-US.msi'),
-  ]);
-  const json = tauriUpdateJson(merged, 'headless-v1.2.3', 'owner/repo');
-  const download = 'https://github.com/owner/repo/releases/download/headless-v1.2.3/';
-  assert.equal(json.version, '1.2.3');
-  assert.ok(!Number.isNaN(Date.parse(json.pub_date)));
-  assert.deepEqual(json.platforms, {
-    'linux-x86_64-deb': {
-      signature: 'deb-payload-signature',
-      url: `${download}RClone.Manager.Server_1.2.3_amd64.deb`,
-    },
-    'windows-aarch64-nsis': {
-      signature: 'nsis-payload-signature',
-      url: `${download}RClone.Manager.Server_1.2.3_arm64-setup.exe`,
-    },
-    'windows-aarch64-msi': {
-      signature: 'msi-payload-signature',
-      url: `${download}RClone.Manager.Server_1.2.3_arm64_en-US.msi`,
-    },
-  });
-  // Desktop and server releases keep their own updater files.
-  assert.equal(tauriUpdateJson(catalog('server'), 'headless-v1.2.3', undefined), null);
-  assert.throws(() => tauriUpdateJson(merged, 'headless-v1.2.3', undefined), /repository/);
-});
-
 test('refuses a catalog that names a file the release does not have', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-merge-test-'));
   try {
@@ -204,12 +174,12 @@ test('creates the first catalog, rejects empty inputs and propagates download fa
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rcman-merge-test-'));
   try {
     assert.throws(
-      () => publishCatalog('headless-v1.2.3', '1.2.3', directory),
+      () => publishCatalog('server-v1.2.3', '1.2.3', directory),
       /No custom update catalogs/
     );
     fs.writeFileSync(path.join(directory, MANIFEST_NAME), JSON.stringify(catalog('server')));
     let uploaded = false;
-    publishCatalog('headless-v1.2.3', '1.2.3', directory, args => {
+    publishCatalog('server-v1.2.3', '1.2.3', directory, args => {
       if (args[1] === 'view')
         return JSON.stringify({ isDraft: true, assets: [{ name: 'server-linux-x86_64-1.2.3' }] });
       assert.equal(args[1], 'upload');

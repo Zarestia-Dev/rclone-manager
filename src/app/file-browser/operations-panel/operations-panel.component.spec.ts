@@ -303,8 +303,9 @@ describe('OperationsPanelComponent', () => {
     expect(opened).toEqual(['drive:Archive']);
     expect(openJobDetail).not.toHaveBeenCalled();
 
-    const row = openList().querySelector('.ops-row[role="button"]') as HTMLElement;
-    row.click();
+    const row = openList().querySelector('.ops-row') as HTMLElement;
+    expect(row.getAttribute('role')).toBeNull();
+    (row.querySelector(':scope > .card-primary-action') as HTMLButtonElement).click();
     expect(openJobDetail).toHaveBeenCalledExactlyOnceWith(jobs()[0]);
   });
 

@@ -28,10 +28,7 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
-import {
-  isAndroid,
-  isHeadlessMode,
-} from '../../services/infrastructure/platform/api-client.service';
+import { isAndroid, isServerMode } from '../../services/infrastructure/platform/api-client.service';
 import { AndroidKeepAliveService } from '../../services/infrastructure/platform/android-keep-alive.service';
 import { AndroidStorageAccessService } from '../../services/infrastructure/platform/android-storage-access.service';
 import { isInputFocused, isKeyboardEventInScope } from '../../shared/utils/keyboard-utils';
@@ -139,7 +136,7 @@ export class OnboardingComponent {
   readonly selectedMainUi = signal<MainView>('main_menu');
 
   // The Android permission step only exists in the native app on Android.
-  private readonly showAndroidAccess = !isHeadlessMode() && isAndroid();
+  private readonly showAndroidAccess = !isServerMode() && isAndroid();
 
   // ─── Static configuration ───────────────────────────────────────────────────
   readonly defaultImage = DEFAULT_ONBOARDING_IMAGE;

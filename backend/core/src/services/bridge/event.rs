@@ -1,7 +1,7 @@
 //! Event Bridge
 //!
-//! Provides a unified event distribution system across desktop and headless (web-server) targets.
-//! Bypasses Tauri's internal event loop in headless mode, streaming directly to Axum SSE clients
+//! Provides a unified event distribution system across desktop and server (web) targets.
+//! Bypasses Tauri's internal event loop in server mode, streaming directly to Axum SSE clients
 //! via Tokio broadcast channels, while preserving Tauri webview IPC parity on desktop.
 
 use std::sync::Arc;
@@ -92,7 +92,7 @@ impl EventBridge {
 
     /// Emits an event across the bridge.
     ///
-    /// - In headless/web-server mode: broadcasts directly to the Tokio channel (and Axum SSE).
+    /// - In server mode: broadcasts directly to the Tokio channel (and Axum SSE).
     /// - In desktop mode: broadcasts to the Tokio channel AND Tauri's webview IPC.
     pub fn emit<S: Serialize>(&self, event: &str, payload: S) {
         let value = match serde_json::to_value(&payload) {

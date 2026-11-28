@@ -4,11 +4,11 @@
 # Packages (PKGBUILD templates live next to this script):
 #   rclone-manager           PKGBUILD           desktop .deb from the v<version> release
 #   rclone-manager-git       PKGBUILD-git       built from source, follows the stable version
-#   rclone-manager-server    PKGBUILD-server    server Arch package from the headless-v<version> release
+#   rclone-manager-server    PKGBUILD-server    server Arch package from the server-v<version> release
 #
 # rclone-manager-server replaced rclone-manager-headless, the RClone Manager Headless
-# app (0.3.6 and older). Releases up to headless-v0.3.6 have no RClone.Manager.Server
-# Arch package, so the package waits for the first release that has one.
+# app (0.3.6 and older). Its last release under that name, headless-v0.3.7, was the
+# first with an RClone.Manager.Server Arch package; the releases after it are server-v.
 #
 # For every package it finds the newest stable GitHub release, takes the asset sha256 sums
 # from the release, rewrites a copy of the template, regenerates .SRCINFO and pushes to the AUR
@@ -134,7 +134,7 @@ fetch_releases() {
     }
 }
 
-# Newest published, non-pre-release version for a tag prefix ('v' or 'headless-v'). Prints "<tag> <version>".
+# Newest published, non-pre-release version for a tag prefix ('v' or 'server-v'). Prints "<tag> <version>".
 latest_release() {
     jq -r --arg p "$1" '
         [.[] | select(.draft == false and .prerelease == false)
@@ -321,7 +321,7 @@ main() {
             rclone-manager-git)
                 stage_git_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-git" || rc=$? ;;
             rclone-manager-server)
-                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-server" "headless-v" \
+                stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-server" "server-v" \
                     'RClone.Manager.Server-%s-1-x86_64.pkg.tar.zst' 'RClone.Manager.Server-%s-1-aarch64.pkg.tar.zst' || rc=$? ;;
         esac
         [ "$rc" = 2 ] && continue   # release not ready, retry on the next run

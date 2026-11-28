@@ -257,7 +257,7 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<boolean>(SYSTEM_THEME_CHANGED);
   }
 
-  /** Linux desktop only; headless has no window buttons and never receives it. */
+  /** Linux desktop only; the server has no window buttons and never receives it. */
   listenToWindowButtonLayoutChanged(): Observable<string | null> {
     return this.listenToEvent<string | null>(WINDOW_BUTTON_LAYOUT_CHANGED);
   }

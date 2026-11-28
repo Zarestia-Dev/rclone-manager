@@ -398,12 +398,14 @@ fn can_install_as_root() -> bool {
 /// The tool that installs a Linux package as root, its arguments as the user would
 /// type them, and the package's extension. rpm 6 (Fedora 45 and later) refuses a
 /// package without a signature its keyring knows: the RPM is unsigned, the signed
-/// catalog verifies it, and rpm still checks its digests.
+/// catalog verifies it, and rpm still checks its digests. `--oldpackage` lets the
+/// stable channel take a beta back to an older stable release (`is_offered`);
+/// dpkg and pacman accept an older package without being asked.
 pub(super) fn linux_installer(
     kind: InstallationKind,
 ) -> (&'static str, &'static [&'static str], &'static str) {
     match kind {
-        InstallationKind::Rpm => ("rpm", &["-U", "--nosignature"], "rpm"),
+        InstallationKind::Rpm => ("rpm", &["-U", "--nosignature", "--oldpackage"], "rpm"),
         InstallationKind::Pacman => ("pacman", &["-U", "--noconfirm"], "pkg.tar.zst"),
         _ => ("dpkg", &["-i"], "deb"),
     }
@@ -749,7 +751,10 @@ mod tests {
     fn without_a_password_prompt_the_user_gets_the_install_command() {
         for (kind, command) in [
             (Deb, "sudo dpkg -i RClone.Manager*.deb"),
-            (Rpm, "sudo rpm -U --nosignature RClone.Manager*.rpm"),
+            (
+                Rpm,
+                "sudo rpm -U --nosignature --oldpackage RClone.Manager*.rpm",
+            ),
             (
                 Pacman,
                 "sudo pacman -U --noconfirm RClone.Manager*.pkg.tar.zst",

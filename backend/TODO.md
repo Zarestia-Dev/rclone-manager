@@ -13,33 +13,25 @@ the server's releases get their own tag.
 
 **After 0.3.7 is published**
 
-- [ ] Tag the server's releases `server-v<version>` instead of `headless-v<version>`
-  (`release_prefixes` in the server already lists `server-v` first), changing together: `release-server.yml` (`tag_name`, the three `RELEASE_TAG`s,
-  the `--check` and publish arguments), `validateTag` in
-  `scripts/publish-custom-updater.cjs`, `RELEASE_URL` in
-  `scripts/create-update-manifest.cjs`, the prefix in `publish-to-aur.sh` and the
-  source URLs in `PKGBUILD-server`, the website's `isHeadlessRelease`
-  (`release.utils.ts`, it looks for "headless" in the tag), the tests and fixtures
-  that use `headless-v`, AGENTS.md Rule 17 and the docs.
-- [ ] Drop `"headless-v"` from the server's `release_prefixes` (leaves `["server-v"]`) in
-  the first `server-v` release: builds after 0.3.7 only need to find `server-v`, and
-  the release-notes lookup then needs no fallback. 0.3.7 itself keeps both, so it sees
+- [x] Tag the server's releases `server-v<version>` (`release-server.yml`,
+  `validateTag`, `publish-to-aur.sh`, `PKGBUILD-server`, the website's
+  `isHeadlessRelease` and docs, AGENTS.md Rule 17). Deploy the website change before
+  the first `server-v` release is published, or the desktop page lists it.
+- [x] The server's `release_prefix` is `server-v` only; 0.3.7 accepts both and finds
   `server-v` releases.
-- [ ] Keep the 0.3.7 `headless-v` release published: it is the last one the Headless
-  app 0.3.6 looks for, and its `latest.json` moves those installs to the server.
-  Delete the older `headless-v` releases that are no longer needed.
-- [ ] Stop writing `latest.json` into server releases (`tauriUpdateJson` in
-  `publish-custom-updater.cjs`, its tests, UPDATER.md and AGENTS.md Rule 17): only
-  the Headless app reads it, and only from `headless-v` releases.
-- [ ] Remove the 0.3.7-only Headless-named DEB and RPM copies: the `case "$VERSION"`
-  block at the end of "Package and sign DEB, RPM and Arch package" in
-  `release-server.yml` (it already skips every version but 0.3.7*), the skip
-  rule in the website's `downloads.utils.ts` and its spec, and the AGENTS.md
-  Rule 17 bullet.
+- [x] Server releases no longer get a `latest.json` (`tauriUpdateJson` removed).
+- [x] The 0.3.7-only Headless-named DEB and RPM copies are no longer built.
+- [ ] Keep the `headless-v0.3.7` release published: it is the last one the Headless
+  app 0.3.6 and the 0.3.7 betas look for, and its `latest.json` moves those installs
+  to the server. Delete the older `headless-v` releases that are no longer needed.
+- [ ] Once the first `server-v` release is published, drop the skip rule for the
+  Headless-named 0.3.7 copies in the website's `downloads.utils.ts` and its spec,
+  and its mention in AGENTS.md Rule 17: until then `headless-v0.3.7` is the newest
+  server release the downloads page shows.
 
 **Stays after the cleanup** (installed versions or existing installs depend on it):
-the data folder `com.rclone.manager.headless`, the product's `mode`,
-`integration_key` and `flatpak_id`, the `/usr/bin/rclone-manager-headless[-bin]`
+the data folder `com.rclone.manager.headless`, the product's
+`integration_key`, the `/usr/bin/rclone-manager-headless[-bin]`
 launcher links, the start-at-login and Send To migration (`LEGACY_NAME`), the MSI
 UpgradeCode, the packages' conflicts/replaces of the Headless package, the
 manifest's `asset` field (versions before `url` download by it) and the legacy

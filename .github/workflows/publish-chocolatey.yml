@@ -25,7 +25,10 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
+          # /releases/latest can return the server release (headless-v*), so pick the newest stable desktop tag (v<number>)
+          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases?per_page=30"
+          $release = $releases | Where-Object { -not $_.draft -and -not $_.prerelease -and $_.tag_name -match '^v\d' } | Select-Object -First 1
+          if (-not $release) { throw "No stable desktop release (tag v<number>) found" }
           $ver = $release.tag_name.TrimStart('v')
           Write-Host "Version: $ver"
           echo "VERSION=$ver" >> $env:GITHUB_OUTPUT

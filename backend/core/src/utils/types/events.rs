@@ -84,7 +84,7 @@ pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 
 /// Emitted on Linux desktops when the title bar button layout changes, with the new layout
-/// string or null. Desktop only: headless has no window buttons, so it is not in
+/// string or null. Desktop only: the server has no window buttons, so it is not in
 /// `SSE_FORWARD_EVENTS`. In `PUBLIC_EVENTS`.
 /// - Emitted by: `native::window` (XDG settings portal watcher, started by `get_window_button_layout`)
 /// - Handled by: `WindowService`
@@ -209,7 +209,7 @@ pub const PUBLIC_EVENTS: &[&str] = &[
     APP_SHUTTING_DOWN,
 ];
 
-/// List of all events that should be forwarded to SSE clients in headless mode
+/// List of all events that should be forwarded to SSE clients in server mode
 pub const SSE_FORWARD_EVENTS: &[&str] = &[
     RCLONE_ENGINE_STATUS_CHANGED,
     RCLONE_PASSWORD_STORED,
