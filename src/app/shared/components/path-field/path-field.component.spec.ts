@@ -190,6 +190,21 @@ describe('PathFieldComponent', () => {
     });
   });
 
+  it('is a combobox while it suggests paths, and a plain text field otherwise', () => {
+    const input = (): HTMLInputElement => fixture.nativeElement.querySelector('input[matInput]');
+    create(group('local', '/tmp'));
+    // The menu trigger would make it a button.
+    expect(input().getAttribute('role')).toBe('combobox');
+    expect(input().getAttribute('aria-autocomplete')).toBe('list');
+
+    create(group('local', '/tmp'), { suggest: false });
+    expect(input().hasAttribute('role')).toBe(false);
+    expect(input().hasAttribute('aria-autocomplete')).toBe(false);
+
+    create(group('local', '/tmp'), { pickerDisabled: true });
+    expect(input().hasAttribute('role')).toBe(false);
+  });
+
   describe('suggestions', () => {
     it('registers the field for its remote and unregisters it when destroyed', () => {
       create(group());

@@ -98,6 +98,38 @@ describe('SettingControlComponent', () => {
     expect(component.controlType()).toBe('select');
   });
 
+  it('names its fields after the title its row shows, not the raw option name', () => {
+    const title = (): string =>
+      (fixture.nativeElement.querySelector('.setting-title span') as HTMLElement).textContent
+        ?.replace('*', '')
+        .trim() ?? '';
+
+    componentRef.setInput('option', {
+      Name: 'vfs_cache_mode',
+      FieldName: 'VfsCacheMode',
+      Help: '',
+      Type: 'string',
+      DefaultStr: 'off',
+      Examples: [{ Value: 'off', Help: 'Disable cache' }],
+    } satisfies RcConfigOption);
+    fixture.detectChanges();
+    // mat-select takes its name from its aria-label input; a plain attribute would be replaced.
+    const select = fixture.nativeElement.querySelector('mat-select') as HTMLElement;
+    expect(select.getAttribute('aria-label')).toBe(title());
+    expect(select.getAttribute('aria-label')).not.toBe('vfs_cache_mode');
+
+    componentRef.setInput('option', {
+      Name: 'attr_timeout',
+      FieldName: 'AttrTimeout',
+      Help: '',
+      Type: 'string',
+      DefaultStr: '1s',
+    } satisfies RcConfigOption);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.getAttribute('aria-label')).toBe(title());
+  });
+
   it('edits log format Bits as a list when rclone supplies no examples', () => {
     componentRef.setInput('option', {
       Name: 'log_format',

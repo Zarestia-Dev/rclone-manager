@@ -3,8 +3,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md);
-  box-shadow: var(--box-shadow);
+  // With the 32px icon tile, a one-line banner is as tall as before (56px).
+  padding: var(--space-sm) var(--space-md);
+  // The severity is the banner's tone scope (data-tone, set from it): a light tint of its colour
+  // over the window, a ring that still shows in dark mode, and the icon on a tinted tile. Text
+  // keeps the window's colours; only links take the tone, in its text colour.
+  background: color-mix(
+    in srgb,
+    rgb(var(--tone-rgb)) calc(var(--active-opacity) * 100%),
+    var(--window-bg-color)
+  );
+  box-shadow: 0 0 0 1px rgba(var(--tone-rgb), 0.5);
   border-radius: var(--card-border-radius);
   animation: fadeInUp var(--transition-cubic) both;
 
@@ -12,7 +21,7 @@
   .alert-body {
     display: flex;
     flex: 1;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
     align-items: center;
     min-width: 0;
   }
@@ -22,9 +31,22 @@
     min-width: 0;
   }
 
+  // The icon sits on a tile tinted in the tone, as on the cards' icon containers.
   .alert-icon {
     flex: none;
-    align-self: baseline;
+    align-self: flex-start;
+    // A 32px tile around a 20px icon, as on the cards' icon tiles.
+    box-sizing: border-box;
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
+    padding: calc((var(--icon-size-lg) - var(--space-lg)) / 2);
+    border-radius: var(--radius-xs);
+    background: rgba(var(--tone-rgb), var(--active-opacity));
+    color: var(--tone);
+  }
+
+  .alert-content a {
+    color: var(--tone-text);
   }
 
   // Buttons marked `bannerAction` sit at the end of the row, centred on it, not under the text.
@@ -70,7 +92,6 @@
     line-height: 1.5;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    opacity: 0.9;
 
     &:not(:last-child) {
       margin-bottom: var(--space-xs);
@@ -98,75 +119,6 @@
     }
   }
 
-  // ------------------ Severities ------------------
-
-  &.warning {
-    background: rgba(var(--orange-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--orange);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
-  }
-
-  &.info {
-    background: rgba(var(--accent-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--accent-color);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
-  }
-
-  &.error {
-    background: rgba(var(--warn-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--warn-color);
-    }
-    .alert-content a {
-      color: var(--accent-color);
-    }
-  }
-
-  &.success {
-    background: rgba(var(--primary-color-rgb), 0.1);
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--primary-color);
-    }
-    .alert-content a {
-      color: var(--primary-color);
-    }
-  }
-
-  &.dim {
-    background: var(--bg-elevated-2);
-    box-shadow: none;
-
-    .alert-icon,
-    .alert-content strong {
-      color: var(--dim-color);
-    }
-
-    p,
-    ::ng-deep p {
-      color: var(--dim-color);
-    }
-
-    .alert-content a {
-      color: var(--dim-color);
-    }
-  }
-
   @media (max-width: 600px) {
     flex-wrap: wrap;
     padding: var(--space-sm);
@@ -189,12 +141,6 @@
     .dismiss-button {
       position: static;
       align-self: flex-start;
-    }
-
-    .alert-icon {
-      width: 20px;
-      height: 20px;
-      font-size: 20px;
     }
 
     .alert-content a mat-icon {

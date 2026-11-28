@@ -18,6 +18,13 @@
   outline: 2px solid rgba(var(--accent-color-rgb), 0.4);
 }
 
+// The field sits on a grey surface, darker than the window the tone text colours are made for
+// (custom-theme.scss), so its pills' text moves a little towards the window text colour: same
+// hue, 4.5:1 on that surface. As a selected pill does (_pill.scss).
+.path-row-wrapper .app-pill[data-tone]:not([data-variant="solid"]) {
+  color: color-mix(in srgb, var(--pill-fg) 85%, var(--window-fg-color));
+}
+
 .path-status {
   border-radius: 0;
 

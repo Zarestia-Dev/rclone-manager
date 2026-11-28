@@ -33,6 +33,8 @@
     </div>
 
     <mat-form-field class="path-input-field">
+      <!-- The menu trigger would make the field a button: it is a text field, and a combobox while
+           it suggests paths. -->
       <input
         matInput
         formControlName="path"
@@ -40,6 +42,8 @@
         (input)="onInput($event)"
         [cdkMenuTriggerFor]="pickerDisabled() || !suggest() ? null : suggestionsMenu"
         (cdkMenuOpened)="onMenuOpened()"
+        [attr.role]="pickerDisabled() || !suggest() ? null : 'combobox'"
+        [attr.aria-autocomplete]="pickerDisabled() || !suggest() ? null : 'list'"
       />
     </mat-form-field>
 

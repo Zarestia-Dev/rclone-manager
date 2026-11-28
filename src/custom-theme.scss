@@ -809,6 +809,9 @@ body {
       // tone's text colour, not its fill (white on green was 2.1:1).
       outlined-label-text-color: var(--button-text-color),
       text-label-text-color: var(--button-text-color),
+      // A filled button without a tone is filled with the primary colour: its label is the
+      // primary's own text colour, as on a primary-toned button (white on green was 2.29:1).
+      filled-label-text-color: var(--primary-fg-color),
     )
   );
 

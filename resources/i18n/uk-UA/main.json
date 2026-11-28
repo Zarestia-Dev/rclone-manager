@@ -3711,7 +3711,13 @@
         "many": "{{count}} вкладок",
         "other": "{{count}} вкладки"
       },
-      "showTabs": "Показати відкриті вкладки"
+      "showTabs": "Показати відкриті вкладки",
+      "openTabsCount": {
+        "one": "{{count}} відкрита вкладка",
+        "few": "{{count}} відкриті вкладки",
+        "many": "{{count}} відкритих вкладок",
+        "other": "{{count}} відкритої вкладки"
+      }
     },
     "notifications": {
       "uploadSuccess": {

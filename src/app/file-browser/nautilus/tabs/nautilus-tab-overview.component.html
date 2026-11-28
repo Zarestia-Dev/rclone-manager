@@ -1,7 +1,8 @@
-<header>
-  <span class="overview-title">{{
-    'nautilus.view.tabCount' | translate: { count: tabs().length }
-  }}</span>
+<!-- Plain blocks, not header and footer elements: in the file browser those would be page landmarks. -->
+<div class="overview-header">
+  <h2 class="overview-title">
+    {{ 'nautilus.view.tabCount' | translate: { count: tabs().length } }}
+  </h2>
   <button
     class="action-button"
     (click)="closeOverview.emit()"
@@ -10,7 +11,7 @@
   >
     <mat-icon svgIcon="close"></mat-icon>
   </button>
-</header>
+</div>
 
 <div class="overview-grid">
   @for (tab of tabs(); track tab.id; let i = $index) {
@@ -53,9 +54,9 @@
   }
 </div>
 
-<footer>
+<div class="overview-footer">
   <button matButton="filled" (click)="newTab.emit()">
     <mat-icon svgIcon="plus"></mat-icon>
     {{ 'nautilus.contextMenu.newTab' | translate }}
   </button>
-</footer>
+</div>

@@ -41,6 +41,35 @@ describe('AlertBannerComponent', () => {
     expect(component.resolvedIcon()).toBe('circle-info');
   });
 
+  it('interrupts screen readers only for errors', () => {
+    const host = fixture.nativeElement as HTMLElement;
+    for (const severity of ['info', 'warning', 'success', 'dim'] as const) {
+      componentRef.setInput('severity', severity);
+      fixture.detectChanges();
+      expect(host.getAttribute('role')).toBe('status');
+    }
+    componentRef.setInput('severity', 'error');
+    fixture.detectChanges();
+    expect(host.getAttribute('role')).toBe('alert');
+  });
+
+  it('takes its colours from the tone scope of its severity', () => {
+    const host = fixture.nativeElement as HTMLElement;
+    const tones = {
+      info: 'accent',
+      warning: 'orange',
+      error: 'warn',
+      success: 'primary',
+      dim: 'dim',
+    };
+    for (const [severity, tone] of Object.entries(tones)) {
+      componentRef.setInput('severity', severity);
+      fixture.detectChanges();
+      expect(host.getAttribute('data-tone')).toBe(tone);
+      expect(host.classList.contains(severity)).toBe(true);
+    }
+  });
+
   it('should prioritize custom icon over severity icon', () => {
     componentRef.setInput('severity', 'warning');
     componentRef.setInput('icon', 'hard-drive');

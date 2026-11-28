@@ -1,4 +1,5 @@
-<div class="nautilus-layout">
+<!-- The whole sidebar, its header included, is the file browser's navigation. -->
+<div class="nautilus-layout" role="navigation" [attr.aria-label]="title() | translate">
   <mat-toolbar data-tauri-drag-region>
     <div class="header-start">
       <button
@@ -32,7 +33,7 @@
   </mat-toolbar>
 
   <div class="nautilus-scroll-content">
-    <nav class="sidebar-nav">
+    <div class="sidebar-nav">
       <!-- Starred -->
       <button
         class="sidebar-item"
@@ -132,7 +133,7 @@
           ></ng-container>
         }
       }
-    </nav>
+    </div>
   </div>
 </div>
 
