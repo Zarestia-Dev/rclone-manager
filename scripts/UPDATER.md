@@ -5,8 +5,10 @@ updater is gone. `latest.json` and the `.sig` files that `tauri-action@v1` write
 (`createUpdaterArtifacts: true`, `uploadUpdaterSignatures: false`) are still published
 only for the desktop versions that shipped Tauri's plugin (0.3.7 and older): they
 update once through Tauri to the first release that has the core updater. Delete
-`createUpdaterArtifacts` and the `latest.json` handling after the release that
-follows it.
+`createUpdaterArtifacts`, `plugins.updater` in `tauri.conf.json` (the CLI needs it,
+with its `pubkey`, for those artifacts, and only warns when the signing key does not
+match it) and the
+`latest.json` handling after the release that follows it.
 
 Tauri never writes `updater.json`. Each release has its own catalog:
 

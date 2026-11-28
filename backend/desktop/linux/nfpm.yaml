@@ -15,10 +15,12 @@ vendor: Zarestia Dev
 homepage: https://github.com/Zarestia-Dev/rclone-manager
 license: GPL-3.0-or-later
 description: User-friendly GUI for Rclone
+# A glob, not `type: tree`: nfpm 2.49 writes the walked directories of a tree with
+# Go's directory bit in their mode (goreleaser/nfpm#1170), and pacman then warns about
+# every shared directory on each install and in `pacman -Qkk`.
 contents:
-  - src: backend/target/package-desktop/usr
+  - src: backend/target/package-desktop/usr/**/*
     dst: /usr
-    type: tree
 overrides:
   archlinux:
     # The AUR PKGBUILD lists the same dependencies (makepkg builds its own metadata);

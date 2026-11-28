@@ -141,6 +141,9 @@
           "appLink": false
         }
       ]
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEzQkE2OTczRUM3RDkzNkYKUldSdmszM3NjMm02bzBTOXhXU0JBZS9TMGdtN1RoanUrZUpiVndsMHJhM0pHRXpiWWpQNkRiYlQK"
     }
   }
 }
