@@ -11,7 +11,10 @@ import { WorkspaceShellComponent } from './workspace-shell.component';
     <app-workspace-shell>
       <app-titlebar>Header</app-titlebar>
       <app-banner>Banner</app-banner>
-      <app-tabs>Navigation</app-tabs>
+      <app-tabs>
+        <button type="button" class="tab-btn">General</button>
+        <button type="button" class="tab-btn selected">Mount</button>
+      </app-tabs>
       <div class="workspace-scroll-region">Content</div>
     </app-workspace-shell>
   `,
@@ -42,7 +45,10 @@ describe('WorkspaceShellComponent', () => {
       providers: [provideTranslateService()],
     });
     const translate = TestBed.inject(TranslateService);
-    translate.setTranslation('en', { overviews: { headers: { general: 'RClone Manager' } } });
+    translate.setTranslation('en', {
+      overviews: { headers: { general: 'RClone Manager' } },
+      titlebar: { skipToNavigation: 'Skip to navigation' },
+    });
     translate.use('en');
     fixture = TestBed.createComponent(TestHostComponent);
     fixture.detectChanges();
@@ -97,6 +103,23 @@ describe('WorkspaceShellComponent', () => {
     expect(heading?.classList.contains('cdk-visually-hidden')).toBe(true);
     // The titlebar and the navigation stay outside the main landmark.
     expect(main?.querySelector('app-titlebar, app-tabs')).toBeNull();
+  });
+
+  it('offers keyboard users a skip to the view tabs before the content', () => {
+    const shell: HTMLElement = fixture.nativeElement.querySelector('app-workspace-shell');
+    const skip = shell.firstElementChild as HTMLButtonElement;
+    expect(skip.matches('button.skip-to-navigation')).toBe(true);
+    expect(skip.textContent?.trim()).toBe('Skip to navigation');
+
+    skip.click();
+    expect(document.activeElement?.textContent).toBe('Mount');
+  });
+
+  it('skips to the first view tab when none is selected', () => {
+    const shell: HTMLElement = fixture.nativeElement.querySelector('app-workspace-shell');
+    shell.querySelector('.selected')?.classList.remove('selected');
+    (shell.querySelector('.skip-to-navigation') as HTMLButtonElement).click();
+    expect(document.activeElement?.textContent).toBe('General');
   });
 
   it('disconnects the observer when the workspace is destroyed', () => {

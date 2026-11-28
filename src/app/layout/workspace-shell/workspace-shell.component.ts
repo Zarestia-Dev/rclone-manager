@@ -39,4 +39,13 @@ export class WorkspaceShellComponent {
       this.destroyRef.onDestroy(() => observer.disconnect());
     });
   }
+
+  /** Moves focus to the selected view tab, or the first one when none is selected. */
+  skipToNavigation(): void {
+    const navigation = this.navigation().nativeElement;
+    const target =
+      navigation.querySelector<HTMLElement>('button.selected:not(:disabled)') ??
+      navigation.querySelector<HTMLElement>('button:not(:disabled)');
+    target?.focus();
+  }
 }

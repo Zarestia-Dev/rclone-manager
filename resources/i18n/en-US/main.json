@@ -774,6 +774,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Add remote menu",
+    "skipToNavigation": "Skip to navigation",
     "home": "Home",
     "internetStatus": "Internet connection status",
     "appMenu": "Application menu",

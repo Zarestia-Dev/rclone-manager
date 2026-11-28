@@ -767,6 +767,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "添加远程存储菜单",
+    "skipToNavigation": "跳转到导航",
     "home": "主页",
     "internetStatus": "网络连接状态",
     "appMenu": "应用菜单",

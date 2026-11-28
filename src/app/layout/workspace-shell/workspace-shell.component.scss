@@ -23,6 +23,32 @@
     flex-shrink: 0;
   }
 
+  // Out of sight until it has keyboard focus, then drawn over the top left of the title bar.
+  > .skip-to-navigation {
+    position: absolute;
+    top: var(--space-xs);
+    left: var(--space-xs);
+    z-index: 1000;
+    padding: var(--space-xs) var(--space-md);
+    border: none;
+    border-radius: var(--radius-xs);
+    background: var(--popover-bg-color);
+    color: var(--window-fg-color);
+    box-shadow: var(--shadow-popover);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:not(:focus) {
+      clip-path: inset(50%);
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+  }
+
   .workspace-content {
     display: flex;
     flex-direction: column;
@@ -99,6 +125,11 @@
       &:has(> .mobile-hidden) {
         display: none;
       }
+    }
+
+    // No bottom bar to skip to.
+    &:has(.workspace-navigation > .mobile-hidden) > .skip-to-navigation {
+      display: none;
     }
 
     .workspace-scroll-region {
