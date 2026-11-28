@@ -613,6 +613,7 @@
       },
       "app_update_channel": {
         "label": "Канал оновлень застосунку",
+        "description": "Канал «Стабільний» пропонує лише стабільні версії. Канал «Бета» пропонує найновішу версію, стабільну або бета-версію.",
         "options": {
           "stable": "Стабільний",
           "beta": "Бета"
@@ -2339,7 +2340,8 @@
       "channelBeta": "Бета",
       "channelDev": "Розробка",
       "channelStableDesc": "Рекомендовано для більшості користувачів",
-      "channelBetaDesc": "Найновіші функції",
+      "channelBetaDesc": "Найновіша версія, стабільна або бета",
+      "channelBetaDescRclone": "Остання бета-збірка з beta.rclone.org",
       "downloadPage": "Сторінка завантаження",
       "managedBuildNotice": "Цю збірку неможливо оновити через вбудований засіб оновлення. Встановлюйте оновлення вручну.",
       "openFlathub": "Відкрити Flathub",
@@ -4244,6 +4246,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Тут немає чим запитати пароль адміністратора (pkexec з агентом polkit або sudo із zenity чи kdialog). Завантажте пакет через «Переглянути на GitHub» і встановіть його в терміналі: {{command}}",
+      "authorizationDenied": "Оновлення не встановлено: не надано дозволу адміністратора.",
       "verificationFailed": "Не вдалося перевірити оновлення: підпис, контрольна сума або метадані не збігаються.",
       "insecureDownload": "Оновлення було завантажено не через HTTPS.",
       "downloadTooLarge": "Розмір завантаження оновлення більший за очікуваний.",
