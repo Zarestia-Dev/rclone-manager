@@ -22,7 +22,7 @@ backend/
 │   ├── README.md          Server deployment guide
 │   ├── linux/             Standalone systemd service template
 │   ├── package/           Server DEB, RPM and MSI (nfpm) and Windows setup (NSIS)
-│   ├── src/headless/      Process startup, signals, paths, restart, tray and Send To
+│   ├── src/service/       Process startup, signals, paths, restart, tray and Send To
 │   └── src/web/           Routes, authentication, SSE and HTTP handlers
 └── desktop/               Tauri application, including mobile and packaging
     ├── src/app.rs         Native composition
@@ -150,7 +150,7 @@ cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager -p rclone-mana
 Each executable supplies immutable `ProductInfo` when constructing the shared
 context: display name, debug mode, release tag prefix and OS integration IDs.
 Shared update filtering and Send To registration consume these values directly;
-`Host` contains OS operations, not a desktop/headless identity query. Existing
+`Host` contains OS operations, not a desktop/server identity query. Existing
 shortcut names, debug labels and release tag families remain unchanged.
 
 Core's CLI module contains only shared path and Send To arguments. The server

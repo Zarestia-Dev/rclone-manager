@@ -134,7 +134,7 @@ describe('RcloneUpdateService state restoration', () => {
     expect(service.hasUpdates()).toBe(false);
   });
 
-  it('resynchronizes when the headless event connection returns', async () => {
+  it('resynchronizes when the server event connection returns', async () => {
     await service.initialize();
     info = { ...available, status: BackendUpdateStatus.ReadyToRestart };
     ready.next();

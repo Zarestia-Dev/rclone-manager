@@ -47,7 +47,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { Entry, FilePickerResult, ArchiveListItem } from '@app/types';
 
 import {
-  isHeadlessMode,
+  isServerMode,
   isMobile,
 } from 'src/app/services/infrastructure/platform/api-client.service';
 import type { DetectedSignature, HexDumpRow } from 'src/app/shared/utils/binary-signature.util';
@@ -149,7 +149,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     return item ? this.iconService.getFileTypeCategory(item) : 'text';
   });
   currentFileType = signal<string>('text');
-  isHeadless = computed(() => isHeadlessMode());
+  isServer = computed(() => isServerMode());
 
   /** Normalized filesystem name for rclone API calls. */
   private get fsName(): string {
@@ -162,12 +162,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     if (this.data.isDirectUrl) {
       return false;
     }
-    return (
-      this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
-    );
+    return this.isServer() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local';
   });
   isNativeOpenVisible = computed(() => {
-    if (this.data.isDirectUrl || this.isHeadless()) {
+    if (this.data.isDirectUrl || this.isServer()) {
       return false;
     }
     return this.currentFileType() !== 'directory' || this.data.isLocal;

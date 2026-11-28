@@ -7,7 +7,7 @@ const { mergeCatalogs, MANIFEST_NAME } = require('./create-update-manifest.cjs')
 const runGh = args => execFileSync('gh', args, { encoding: 'utf8' });
 
 function validateTag(tag, version) {
-  if (![`v${version}`, `headless-v${version}`].includes(tag))
+  if (![`v${version}`, `server-v${version}`].includes(tag))
     throw new Error('Unexpected release tag');
 }
 
@@ -46,23 +46,6 @@ const manifests = catalog =>
     JSON.parse(Buffer.from(entry.manifest, 'base64').toString('utf8'))
   );
 
-// Installs of the RClone Manager Headless app (Tauri, 0.3.6 and older) update from
-// `latest.json`. It sends them to the server package of their own format, with the
-// signatures of the catalog.
-function tauriUpdateJson(catalog, tag, repository) {
-  const platforms = {};
-  // Tauri names the installer formats as the catalog does.
-  for (const manifest of manifests(catalog))
-    if (['deb', 'rpm', 'nsis', 'msi'].includes(manifest.kind))
-      platforms[`${manifest.target}-${manifest.kind}`] = {
-        signature: manifest.signature,
-        url: `https://github.com/${repository}/releases/download/${tag}/${manifest.asset}`,
-      };
-  if (!Object.keys(platforms).length) return null;
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '')) throw new Error('Invalid repository');
-  return { version: catalog.version, pub_date: new Date().toISOString(), platforms };
-}
-
 // Clients download each entry's file from this release by its name: one that is
 // missing would leave every installation that needs it without its update.
 function checkAssets(catalog, tag, assets) {
@@ -91,13 +74,7 @@ function publishCatalog(tag, version, directory, gh = runGh) {
   try {
     const file = path.join(temporary, MANIFEST_NAME);
     fs.writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
-    const files = [file];
-    const tauri = tauriUpdateJson(merged, tag, process.env.GH_REPO);
-    if (tauri) {
-      files.push(path.join(temporary, 'latest.json'));
-      fs.writeFileSync(files[1], `${JSON.stringify(tauri, null, 2)}\n`);
-    }
-    gh(['release', 'upload', tag, ...files, '--clobber']);
+    gh(['release', 'upload', tag, file, '--clobber']);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
@@ -118,4 +95,4 @@ if (require.main === module) {
     process.exitCode = 1;
   }
 }
-module.exports = { checkRelease, publishCatalog, readCatalogs, tauriUpdateJson };
+module.exports = { checkRelease, publishCatalog, readCatalogs };

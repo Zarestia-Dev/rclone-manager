@@ -9,7 +9,7 @@ pub(crate) const PRODUCT: rclone_manager_core::context::ProductInfo =
     rclone_manager_core::context::ProductInfo {
         display_name: "RClone Manager",
         mode: "desktop",
-        release_prefixes: &["v"],
+        release_prefix: "v",
         integration_key: "RCloneManager",
         flatpak_id: APP_ID,
     };

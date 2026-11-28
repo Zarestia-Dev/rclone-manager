@@ -66,7 +66,7 @@ in the catalog rather than published as sidecars. See
 
 Kinds are `portable`, `server`, and `android`. Architecture names are `x86_64`,
 `aarch64`, `armv7`, and `i686`. OS names match Rust (`linux`, `windows`, `macos`,
-`android`). Server files belong to `headless-v...` releases; portable and APK
+`android`). Server files belong to `server-v...` releases (`headless-v...` up to 0.3.7); portable and APK
 files belong to `v...` releases. The native Tauri `latest.json` remains separate.
 
 The signed manifest binds version, product, target, asset name, byte size,
@@ -185,7 +185,7 @@ installation. Tauri's native installers retain their platform authorization flow
 DEB, RPM and Arch package updates need a session that can show the password prompt: Tauri's
 (pkexec, zenity or kdialog) for the desktop app; for the server pkexec's polkit
 agent or, where no agent runs, `sudo -A` with a zenity or kdialog dialog. A
-headless service without one reports the failure and keeps the
+server service without one reports the failure and keeps the
 verified download for a retry.
 
 No update is rolled back: a release that does not start is replaced by hand

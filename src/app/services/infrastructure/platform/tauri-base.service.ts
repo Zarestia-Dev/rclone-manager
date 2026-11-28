@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
-import { ApiClientService, isHeadlessMode } from './api-client.service';
+import { ApiClientService, isServerMode } from './api-client.service';
 import { NotificationService } from '../../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
@@ -13,7 +13,7 @@ export class TauriBaseService {
   protected readonly translate = inject(TranslateService);
   protected readonly backendTranslation = inject(BackendTranslationService);
 
-  protected readonly isTauri = !isHeadlessMode();
+  protected readonly isTauri = !isServerMode();
 
   protected getCurrentTauriWindow(): Window | undefined {
     return this.isTauri ? getCurrentWindow() : undefined;

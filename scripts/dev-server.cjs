@@ -31,7 +31,7 @@ const stop = child => {
 
 const frontend = spawn(
   process.execPath,
-  [require.resolve('@angular/cli/bin/ng.js'), 'serve', '--configuration', 'headless'],
+  [require.resolve('@angular/cli/bin/ng.js'), 'serve', '--configuration', 'server'],
   spawnOptions
 );
 

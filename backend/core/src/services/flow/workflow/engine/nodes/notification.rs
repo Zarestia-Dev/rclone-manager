@@ -133,7 +133,7 @@ pub(crate) async fn execute_notification_node(
         #[cfg(not(feature = "notifications"))]
         let r = {
             log::info!(
-                "Workflow notification (headless): [{}] {}",
+                "Workflow notification (server): [{}] {}",
                 ctx.title,
                 ctx.body
             );

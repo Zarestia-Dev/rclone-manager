@@ -4,11 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { firstValueFrom } from 'rxjs';
 
-export const isHeadlessMode = (): boolean =>
+export const isServerMode = (): boolean =>
   !(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
 export const isMobile = (): boolean => {
-  if (isHeadlessMode()) {
+  if (isServerMode()) {
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   }
   try {
@@ -20,7 +20,7 @@ export const isMobile = (): boolean => {
 };
 
 export const isIOS = (): boolean => {
-  if (isHeadlessMode()) {
+  if (isServerMode()) {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
   }
   try {
@@ -32,7 +32,7 @@ export const isIOS = (): boolean => {
 };
 
 export const isAndroid = (): boolean => {
-  if (isHeadlessMode()) {
+  if (isServerMode()) {
     return /Android/i.test(navigator.userAgent);
   }
   try {
@@ -48,7 +48,7 @@ export class ApiClientService {
   private readonly apiBase = '/api';
 
   async invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-    return isHeadlessMode() ? this.invokeHttp<T>(command, args) : invoke<T>(command, args ?? {});
+    return isServerMode() ? this.invokeHttp<T>(command, args) : invoke<T>(command, args ?? {});
   }
 
   getApiBase(): string {

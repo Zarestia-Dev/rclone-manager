@@ -8,7 +8,7 @@ export class OpenerService extends TauriBaseService {
 
   /**
    * Opens an external web URL using the system's default browser on Desktop (Tauri),
-   * or a new tab/window in Web/Headless mode.
+   * or a new tab/window in Web/Server mode.
    */
   async openUrl(url: string): Promise<void> {
     if (!url) return;

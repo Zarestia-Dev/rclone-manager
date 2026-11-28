@@ -58,7 +58,7 @@
                   <span class="shortcut">Return</span>
                 </button>
 
-                @if (!isHeadless) {
+                @if (!isServer) {
                   <button class="menu-item" cdkMenuItem (click)="actions.openNativeContextItem()">
                     <span class="item-label">{{
                       'fileBrowser.fileViewer.openNative' | translate

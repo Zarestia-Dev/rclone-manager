@@ -18,7 +18,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
-import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
+import { isServerMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
 import { AndroidKeepAliveService } from './services/infrastructure/platform/android-keep-alive.service';
@@ -105,7 +105,7 @@ export class AppComponent implements OnInit {
     inject(WorkflowEventService);
 
     this.loadingService.bindToShutdownEvents();
-    this.connectSseIfHeadless();
+    this.connectSseIfServer();
     this.preloadMainUi();
 
     // Start listening for Android share intents (no-op on desktop/web).
@@ -285,8 +285,8 @@ export class AppComponent implements OnInit {
     });
   }
 
-  private connectSseIfHeadless(): void {
-    if (isHeadlessMode()) {
+  private connectSseIfServer(): void {
+    if (isServerMode()) {
       this.sseClient.connect();
     }
   }
