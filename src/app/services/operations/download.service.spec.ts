@@ -105,7 +105,7 @@ describe('DownloadService', () => {
     });
   });
 
-  describe('download in headless mode', () => {
+  describe('download in server mode', () => {
     beforeEach(() => {
       Object.defineProperty(service, 'isTauri', { value: false, configurable: true });
     });

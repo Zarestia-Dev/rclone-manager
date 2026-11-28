@@ -317,7 +317,7 @@ describe('FileSystemService', () => {
       });
     });
 
-    describe('when in headless/web mode', () => {
+    describe('when in server/web mode', () => {
       beforeEach(() => {
         Object.defineProperty(service, 'isTauri', { value: false, configurable: true });
       });

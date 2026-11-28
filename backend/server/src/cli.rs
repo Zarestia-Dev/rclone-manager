@@ -12,12 +12,12 @@ pub(crate) struct CliArgs {
     #[command(flatten)]
     pub general: GeneralArgs,
     #[command(flatten)]
-    pub headless: HttpArgs,
+    pub server: HttpArgs,
 }
 impl CliArgs {
     pub fn validate(&self) -> Result<(), String> {
         self.general.validate()?;
-        self.headless.validate()
+        self.server.validate()
     }
 }
 
@@ -120,8 +120,8 @@ mod tests {
     #[test]
     fn without_arguments_only_this_computer_can_connect() {
         let args = CliArgs::parse_from(["server"]);
-        assert!(crate::web::address::is_loopback_host(&args.headless.host));
-        assert_eq!(args.headless.auth_credentials(), None);
+        assert!(crate::web::address::is_loopback_host(&args.server.host));
+        assert_eq!(args.server.auth_credentials(), None);
     }
 
     #[test]
@@ -129,19 +129,19 @@ mod tests {
         let mut args = CliArgs::parse_from(["server", "--host", "::", "--port", "8443"]);
         let route = "/nautilus/remote%3A";
         assert_eq!(
-            args.headless.web_ui_url(route),
+            args.server.web_ui_url(route),
             "http://[::1]:8443/nautilus/remote%3A"
         );
-        args.headless.tls_cert = Some("certificate.pem".into());
-        args.headless.tls_key = Some("key.pem".into());
+        args.server.tls_cert = Some("certificate.pem".into());
+        args.server.tls_key = Some("key.pem".into());
         assert_eq!(
-            args.headless.web_ui_url(route),
+            args.server.web_ui_url(route),
             "https://[::1]:8443/nautilus/remote%3A"
         );
     }
 
     #[test]
-    fn test_headless_full_args() {
+    fn test_server_full_args() {
         let args = CliArgs::parse_from([
             "rclone-manager",
             "--host",
@@ -157,17 +157,17 @@ mod tests {
             "--tls-key",
             "/path/to/key",
         ]);
-        assert_eq!(args.headless.host, "127.0.0.1");
-        assert_eq!(args.headless.port, 9090);
-        assert_eq!(args.headless.user, Some("hakan".to_string()));
-        assert_eq!(args.headless.pass, Some("secret".to_string()));
-        assert_eq!(args.headless.tls_cert, Some(PathBuf::from("/path/to/cert")));
-        assert_eq!(args.headless.tls_key, Some(PathBuf::from("/path/to/key")));
+        assert_eq!(args.server.host, "127.0.0.1");
+        assert_eq!(args.server.port, 9090);
+        assert_eq!(args.server.user, Some("hakan".to_string()));
+        assert_eq!(args.server.pass, Some("secret".to_string()));
+        assert_eq!(args.server.tls_cert, Some(PathBuf::from("/path/to/cert")));
+        assert_eq!(args.server.tls_key, Some(PathBuf::from("/path/to/key")));
         assert!(args.validate().is_ok());
     }
 
     #[test]
-    fn test_validate_headless_tls() {
+    fn test_validate_server_tls() {
         let args = CliArgs::parse_from(["rclone-manager", "--tls-cert", "/path/to/cert"]);
         assert!(args.validate().is_err());
 
@@ -199,7 +199,7 @@ mod tests {
             CliArgs::try_parse_from(["server", "--user", "name", "--pass", "secret"]).unwrap();
         assert!(args.validate().is_ok());
         assert_eq!(
-            args.headless.auth_credentials(),
+            args.server.auth_credentials(),
             Some(("name".into(), "secret".into()))
         );
     }
@@ -207,23 +207,23 @@ mod tests {
     #[test]
     fn tls_paths_need_both_files() {
         let mut args = CliArgs::try_parse_from(["server"]).unwrap();
-        assert!(args.headless.tls_paths().is_none());
-        args.headless.tls_cert = Some("certificate.pem".into());
-        assert!(args.headless.tls_paths().is_none());
-        args.headless.tls_key = Some("key.pem".into());
-        assert!(args.headless.tls_paths().is_some());
+        assert!(args.server.tls_paths().is_none());
+        args.server.tls_cert = Some("certificate.pem".into());
+        assert!(args.server.tls_paths().is_none());
+        args.server.tls_key = Some("key.pem".into());
+        assert!(args.server.tls_paths().is_some());
     }
 
     #[test]
     fn empty_credentials_count_as_unset() {
         let mut args = CliArgs::try_parse_from(["server"]).unwrap();
-        args.headless.user = Some(String::new());
-        args.headless.pass = Some(String::new());
+        args.server.user = Some(String::new());
+        args.server.pass = Some(String::new());
         assert!(args.validate().is_ok());
-        assert_eq!(args.headless.auth_credentials(), None);
+        assert_eq!(args.server.auth_credentials(), None);
 
-        args.headless.user = Some("admin".into());
+        args.server.user = Some("admin".into());
         assert!(args.validate().is_err());
-        assert_eq!(args.headless.auth_credentials(), None);
+        assert_eq!(args.server.auth_credentials(), None);
     }
 }

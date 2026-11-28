@@ -2,7 +2,7 @@
 //!
 //! Provides protocol-agnostic URL decoding, path normalization, Range header parsing,
 //! protocol prefix stripping, and error-to-status classification shared across both
-//! desktop Tauri custom protocol handlers and the headless axum web server.
+//! desktop Tauri custom protocol handlers and the server's axum web server.
 
 use http::StatusCode;
 

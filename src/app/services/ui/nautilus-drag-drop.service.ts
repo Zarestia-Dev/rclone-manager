@@ -1,6 +1,6 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey } from '@app/types';
@@ -117,7 +117,7 @@ export class NautilusDragDropService {
   }
 
   async setupDesktopNativeDropListener(): Promise<void> {
-    if (isHeadlessMode()) return;
+    if (isServerMode()) return;
 
     try {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
@@ -392,12 +392,7 @@ export class NautilusDragDropService {
     event.preventDefault();
     const ctx = this._cb.getContext();
 
-    if (
-      isHeadlessMode() &&
-      ctx.activeRemote &&
-      event.dataTransfer &&
-      this._hasExternalFiles(event)
-    ) {
+    if (isServerMode() && ctx.activeRemote && event.dataTransfer && this._hasExternalFiles(event)) {
       const fsEntries = this._snapshotEntries(event.dataTransfer.items);
       void this._processExternalDrop(
         event,
@@ -576,7 +571,7 @@ export class NautilusDragDropService {
   ): Promise<void> {
     event.preventDefault();
 
-    if (target.remote && this._hasExternalFiles(event) && isHeadlessMode()) {
+    if (target.remote && this._hasExternalFiles(event) && isServerMode()) {
       await this._processExternalDrop(event, target, providedFsEntries);
       return;
     }

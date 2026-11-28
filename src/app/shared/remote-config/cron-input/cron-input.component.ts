@@ -36,7 +36,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isServerMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 type PresetKey =
   'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
@@ -158,7 +158,7 @@ export class CronInputComponent {
    * UI is opened through the web server: then only the server's UTC offset is known.
    */
   readonly scheduleTimezone = computed(() => {
-    if (!isHeadlessMode()) return this.deviceTimezone;
+    if (!isServerMode()) return this.deviceTimezone;
     const offset = this.validationResponse()?.utcOffset;
     return offset ? `UTC${offset}` : '';
   });

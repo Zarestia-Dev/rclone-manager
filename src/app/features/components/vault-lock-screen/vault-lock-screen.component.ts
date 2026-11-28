@@ -27,7 +27,7 @@ import {
 import { WindowControlsComponent } from '../../../shared/components/window-controls/window-controls.component';
 import { AppLifecycleService } from '../../../services/infrastructure/system/app-lifecycle.service';
 import {
-  isHeadlessMode,
+  isServerMode,
   isMobile,
 } from '../../../services/infrastructure/platform/api-client.service';
 
@@ -51,7 +51,7 @@ import { BackendTranslationService } from '../../../services/i18n/backend-transl
 })
 export class VaultLockScreenComponent {
   readonly appLifecycle = inject(AppLifecycleService);
-  readonly isDesktop = !isHeadlessMode() && !isMobile();
+  readonly isDesktop = !isServerMode() && !isMobile();
 
   private readonly vaultService = inject(VaultService);
   private readonly translate = inject(TranslateService);

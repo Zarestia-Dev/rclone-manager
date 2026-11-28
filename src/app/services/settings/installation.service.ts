@@ -91,7 +91,7 @@ export class InstallationService extends TauriBaseService {
 
   /**
    * Check if mount plugin is installed.
-   * If the command is not accessible (e.g. Linux, Android, Web/Headless where mount.rs is gated),
+   * If the command is not accessible (e.g. Linux, Android, Web/Server where mount.rs is gated),
    * the plugin is not required and this resolves to true.
    */
   async isMountPluginInstalled(): Promise<boolean> {

@@ -36,7 +36,7 @@ import { UpdateChannel } from 'src/app/services/infrastructure/maintenance/updat
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import {
-  isHeadlessMode,
+  isServerMode,
   isMobile,
 } from 'src/app/services/infrastructure/platform/api-client.service';
 
@@ -121,9 +121,9 @@ export class AboutModalComponent implements OnInit {
   readonly restartingApp = signal(false);
   readonly restartingRcloneEngine = signal(false);
 
-  readonly isHeadless = isHeadlessMode();
+  readonly isServer = isServerMode();
   /** The OS owns a native mobile app's process, so it can neither restart itself nor open DevTools. */
-  readonly isNativeMobile = !this.isHeadless && isMobile();
+  readonly isNativeMobile = !this.isServer && isMobile();
 
   // ---------------------------------------------------------------------------
   // Rclone info

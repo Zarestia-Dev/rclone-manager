@@ -22,7 +22,7 @@ const ENV: WizardEnvironment = {
   ],
   home: '/home/me',
   homeFree: 60,
-  isServer: false,
+  isRemoteHost: false,
   isAndroid: false,
   canUseDriveLetter: false,
   canStartOnLogin: true,
@@ -1376,7 +1376,7 @@ describe('WizardState', () => {
     expect((await create()).localPlaceIcon()).toBe('smartphone');
 
     TestBed.resetTestingModule();
-    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isServer: true });
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isRemoteHost: true });
     expect((await create()).localPlaceIcon()).toBe('server');
   });
 
@@ -1391,7 +1391,7 @@ describe('WizardState', () => {
   });
 
   it('does not offer to open a folder on a server', async () => {
-    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isServer: true });
+    wizard.loadEnvironment.mockResolvedValue({ ...ENV, isRemoteHost: true });
     const component = await create();
     component.chooseGoal('download');
     await settle();

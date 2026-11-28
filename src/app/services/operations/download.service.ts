@@ -24,7 +24,7 @@ export class DownloadService extends TauriBaseService {
     origin: Origin = 'filemanager'
   ): Promise<void> {
     if (!this.isTauri) {
-      // Headless / Web mode download: trigger direct browser download
+      // Server / Web mode download: trigger direct browser download
       try {
         const rawUrl = await this.fileViewerService.generateUrl(
           createMinimalEntry(path, fileName),

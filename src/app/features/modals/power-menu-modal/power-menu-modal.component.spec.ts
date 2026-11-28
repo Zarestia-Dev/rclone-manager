@@ -84,7 +84,7 @@ describe('PowerMenuModalComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render all power actions in desktop/headless mode', () => {
+  it('should render all power actions in desktop/server mode', () => {
     expect(component.powerActions().length).toBe(6);
   });
 

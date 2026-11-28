@@ -137,7 +137,7 @@ pub async fn monitor_network_changes() {
 #[must_use]
 pub fn is_metered() -> bool {
     log::debug!(
-        "is_metered: headless/server mode does not support metered network detection, returning false."
+        "is_metered: server mode does not support metered network detection, returning false."
     );
     false
 }
