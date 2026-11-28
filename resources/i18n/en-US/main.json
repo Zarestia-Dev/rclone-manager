@@ -613,6 +613,7 @@
       },
       "app_update_channel": {
         "label": "App Update Channel",
+        "description": "Stable offers only stable releases. Beta offers the newest release, whether it is stable or a beta.",
         "options": {
           "stable": "Stable",
           "beta": "Beta"
@@ -2339,7 +2340,8 @@
       "channelBeta": "Beta",
       "channelDev": "Dev",
       "channelStableDesc": "Recommended for most users",
-      "channelBetaDesc": "Latest features",
+      "channelBetaDesc": "Newest release, stable or beta",
+      "channelBetaDescRclone": "Latest beta build from beta.rclone.org",
       "downloadPage": "Download Page",
       "managedBuildNotice": "This build cannot be updated by the app updater. Please install updates manually.",
       "openFlathub": "Open Flathub",
@@ -4244,6 +4246,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "No administrator password prompt is available here (pkexec with a polkit agent, or sudo with zenity or kdialog). Download the package with “View on GitHub” and install it in a terminal: {{command}}",
+      "authorizationDenied": "The update was not installed because administrator permission was not given.",
       "verificationFailed": "The update could not be verified: its signature, checksum or metadata does not match.",
       "insecureDownload": "The update download was not served over HTTPS.",
       "downloadTooLarge": "The update download is larger than expected.",
