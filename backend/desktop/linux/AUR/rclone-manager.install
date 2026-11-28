@@ -1,0 +1,10 @@
+# post_remove removes the file manager entries the app created for each user (as the
+# DEB and RPM do). pacman's own hooks refresh the icon and desktop caches.
+post_remove() {
+  for home in /root /home/*; do
+    rm -f "$home/.local/share/nautilus/scripts/"*" (RClone Manager)" \
+      "$home/.local/share/nautilus-python/extensions/"*" (RClone Manager).py" \
+      "$home/.local/share/kio/servicemenus/"*" (RClone Manager).desktop" \
+      "$home/.local/share/nemo/actions/"*" (RClone Manager).nemo_action"
+  done
+}

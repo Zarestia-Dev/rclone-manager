@@ -606,6 +606,7 @@
       },
       "app_update_channel": {
         "label": "アプリの更新チャンネル",
+        "description": "「安定版」は安定版のリリースのみを提供します。「ベータ版」は、安定版かベータ版かを問わず、最新のリリースを提供します。",
         "options": {
           "stable": "安定版 (Stable)",
           "beta": "ベータ版 (Beta)"
@@ -2273,7 +2274,8 @@
       "channelBeta": "ベータ版 (Beta)",
       "channelDev": "開発版",
       "channelStableDesc": "ほとんどのユーザーに推奨",
-      "channelBetaDesc": "最新機能（テスト用）",
+      "channelBetaDesc": "最新のリリース（安定版またはベータ版）",
+      "channelBetaDescRclone": "beta.rclone.org の最新ベータビルド",
       "downloadPage": "ダウンロードページ",
       "managedBuildNotice": "このビルドはアプリの自動更新機能でアップデートできません。手動でインストールしてください。",
       "openFlathub": "Flathub を開く",
@@ -4130,6 +4132,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "ここでは管理者パスワードを求める手段がありません（polkit エージェントと pkexec、または zenity か kdialog と sudo）。「GitHub で表示」からパッケージをダウンロードし、ターミナルでインストールしてください: {{command}}",
+      "authorizationDenied": "管理者の許可が得られなかったため、アップデートはインストールされませんでした。",
       "verificationFailed": "アップデートを検証できませんでした。署名、チェックサム、またはメタデータが一致しません。",
       "insecureDownload": "アップデートのダウンロードが HTTPS で提供されませんでした。",
       "downloadTooLarge": "アップデートのダウンロードが想定より大きいです。",

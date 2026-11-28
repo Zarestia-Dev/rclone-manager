@@ -1,27 +1,18 @@
 //! Installation ownership is independent of the UI/runtime and of file writability.
+use super::manifest::ArtifactKind;
 use crate::context::AppHandle;
 use crate::utils::app::paths::{app_bundle_path, installation_directory};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum UpdateMethod {
-    #[default]
-    Unavailable,
-    Tauri,
-    Binary,
-    Android,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstallationKind {
-    /// The desktop app on Windows and macOS, updated by Tauri. On Linux the
-    /// package format names it instead.
-    Native,
-    /// The server setup, installed for the current user.
+    /// The desktop app on macOS, whose bundle the core replaces. On Linux and
+    /// Windows the package format names it instead.
+    MacApp,
+    /// The setup of the desktop app or the server, installed for the current user.
     Nsis,
-    /// The server MSI, installed for all users.
+    /// The MSI of the desktop app or the server, installed for all users.
     Msi,
     Portable,
     Server,
@@ -35,11 +26,30 @@ pub enum InstallationKind {
     Unknown,
 }
 
+impl InstallationKind {
+    /// The catalog entry that updates this installation; none for the kinds the
+    /// core never installs.
+    pub(super) fn artifact(self) -> Option<ArtifactKind> {
+        match self {
+            Self::Portable => Some(ArtifactKind::Portable),
+            Self::Server => Some(ArtifactKind::Server),
+            Self::Android => Some(ArtifactKind::Android),
+            Self::MacApp => Some(ArtifactKind::App),
+            Self::Appimage => Some(ArtifactKind::Appimage),
+            Self::Deb => Some(ArtifactKind::Deb),
+            Self::Rpm => Some(ArtifactKind::Rpm),
+            Self::Pacman => Some(ArtifactKind::Pacman),
+            Self::Nsis => Some(ArtifactKind::Nsis),
+            Self::Msi => Some(ArtifactKind::Msi),
+            Self::Flatpak | Self::Container | Self::Unknown => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePolicy {
     pub installation: InstallationKind,
-    pub method: UpdateMethod,
     pub can_install: bool,
     pub reason: Option<String>,
     /// The pacman package that owns the executable (an AUR package).
@@ -48,46 +58,19 @@ pub struct UpdatePolicy {
     /// A command that updates an externally managed installation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
+    /// No installer of ours applies: the release is announced, and the source that
+    /// owns the installation installs it. The UI reads `can_install` instead.
+    #[serde(skip)]
+    pub external: bool,
 }
 
 /// Refresh permission checks before every download/apply. No OS password crosses IPC/HTTP.
 pub async fn get_update_policy(app: AppHandle) -> UpdatePolicy {
-    let host = app.host();
-    let method = host.update_method();
-    let build = build_kind(
-        method,
-        host.is_portable_installation(),
-        host.native_bundle(),
-        std::env::var_os("APPIMAGE").is_some(),
-    );
+    let build = app.host().installation_kind();
     let flatpak_id = app.product().flatpak_id;
-    crate::utils::spawn_blocking(move || detect_policy(method, build, flatpak_id))
+    crate::utils::spawn_blocking(move || detect_policy(build, flatpak_id))
         .await
         .unwrap_or_else(|_| external(InstallationKind::Unknown, None, None))
-}
-
-/// The installation this build can replace by itself, from the host alone.
-fn build_kind(
-    method: UpdateMethod,
-    portable: bool,
-    bundle: Option<InstallationKind>,
-    appimage: bool,
-) -> InstallationKind {
-    match method {
-        UpdateMethod::Binary if portable => InstallationKind::Portable,
-        UpdateMethod::Binary => InstallationKind::Server,
-        UpdateMethod::Android => InstallationKind::Android,
-        UpdateMethod::Tauri if !cfg!(target_os = "linux") => InstallationKind::Native,
-        // Linux builds are told apart by the package format Tauri patched into them.
-        UpdateMethod::Tauri => match bundle {
-            Some(kind @ (InstallationKind::Deb | InstallationKind::Rpm)) => kind,
-            // `$APPIMAGE` names the file that gets replaced, and child processes
-            // inherit it: only a build bundled as an AppImage may trust it.
-            Some(InstallationKind::Appimage) if appimage => InstallationKind::Appimage,
-            _ => InstallationKind::Unknown,
-        },
-        UpdateMethod::Unavailable => InstallationKind::Unknown,
-    }
 }
 
 /// Ownership declared by the deployment or found on the system. It decides the
@@ -111,25 +94,29 @@ fn declared_kind(
         .or(owner)
 }
 
-/// The kind and installer for a build. A package format is installed by Tauri
-/// only when its own package manager owns the executable: AUR packages repackage
-/// the upstream DEB, and Tauri would run `dpkg` on them.
+/// The installation kind, and whether the core installs its updates. A package
+/// format is installed only when its own package manager owns the executable.
 fn classify(
-    method: UpdateMethod,
     build: InstallationKind,
     declared: Option<InstallationKind>,
     owner: Option<InstallationKind>,
-) -> (InstallationKind, UpdateMethod) {
+) -> (InstallationKind, bool) {
     // The server packages hold the server build: the one that installed it is the
     // build the core replaces.
-    let build = match owner {
-        Some(
-            package @ (InstallationKind::Deb
-            | InstallationKind::Rpm
-            | InstallationKind::Pacman
-            | InstallationKind::Nsis
-            | InstallationKind::Msi),
-        ) if build == InstallationKind::Server => package,
+    let build = match (build, owner) {
+        (
+            InstallationKind::Server,
+            Some(
+                package @ (InstallationKind::Deb
+                | InstallationKind::Rpm
+                | InstallationKind::Pacman
+                | InstallationKind::Nsis
+                | InstallationKind::Msi),
+            ),
+        ) => package,
+        // The desktop's Arch package (and the AUR package) holds the DEB's files,
+        // so its binary says DEB.
+        (InstallationKind::Deb, Some(InstallationKind::Pacman)) => InstallationKind::Pacman,
         _ => build,
     };
     let kind = declared.unwrap_or(build);
@@ -137,16 +124,9 @@ fn classify(
         build,
         InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
     );
-    if kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build)) {
-        // The core replaces an AppImage itself, like a portable executable.
-        if kind == InstallationKind::Appimage {
-            (kind, UpdateMethod::Binary)
-        } else {
-            (kind, method)
-        }
-    } else {
-        (kind, UpdateMethod::Unavailable)
-    }
+    let installable =
+        kind == build && kind != InstallationKind::Unknown && (!packaged || owner == Some(build));
+    (kind, installable)
 }
 
 fn external(
@@ -156,7 +136,6 @@ fn external(
 ) -> UpdatePolicy {
     UpdatePolicy {
         installation,
-        method: UpdateMethod::Unavailable,
         can_install: false,
         reason: Some(if installation == InstallationKind::Unknown {
             crate::localized_error!("backendErrors.updater.unsupportedInstallation")
@@ -165,10 +144,11 @@ fn external(
         }),
         package,
         command,
+        external: true,
     }
 }
 
-fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str) -> UpdatePolicy {
+fn detect_policy(build: InstallationKind, flatpak_id: &str) -> UpdatePolicy {
     let executable = std::env::current_exe().ok();
     let owner = executable
         .as_deref()
@@ -179,12 +159,12 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
         cfg!(feature = "flatpak") || std::path::Path::new("/.flatpak-info").exists(),
         owner_kind,
     );
-    let (kind, method) = classify(method, build, declared, owner_kind);
+    let (kind, installable) = classify(build, declared, owner_kind);
     // Only an AUR package needs its name; DEB and RPM names are not shown.
     let package = owner
         .filter(|(owner, _)| *owner == InstallationKind::Pacman && kind == InstallationKind::Pacman)
         .map(|(_, name)| name);
-    if method == UpdateMethod::Unavailable {
+    if !installable {
         let helper = ["paru", "yay"]
             .into_iter()
             .find(|helper| which::which(helper).is_ok());
@@ -196,10 +176,6 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
     let reason = if disabled {
         Some(crate::localized_error!(
             "backendErrors.updater.disabledByAdministrator"
-        ))
-    } else if !cfg!(feature = "updater") {
-        Some(crate::localized_error!(
-            "backendErrors.updater.unsupportedInstallation"
         ))
     } else {
         match kind {
@@ -216,29 +192,28 @@ fn detect_policy(method: UpdateMethod, build: InstallationKind, flatpak_id: &str
             {
                 Some(crate::localized_error!("backendErrors.updater.notWritable"))
             }
-            // Tauri also reads the password through zenity or kdialog itself.
             InstallationKind::Deb | InstallationKind::Rpm | InstallationKind::Pacman
-                if !(if method == UpdateMethod::Tauri {
-                    ["pkexec", "zenity", "kdialog"]
-                        .iter()
-                        .any(|tool| which::which(tool).is_ok())
-                } else {
-                    can_install_as_root()
-                }) =>
+                if !can_install_as_root() =>
             {
-                Some(no_privilege_prompt(kind))
+                kind.artifact().map(super::package::no_privilege_prompt)
             }
-            // Native installers and Android own their authorization flows.
+            InstallationKind::Flatpak | InstallationKind::Container | InstallationKind::Unknown => {
+                Some(crate::localized_error!(
+                    "backendErrors.updater.unsupportedInstallation"
+                ))
+            }
+            // The Windows installers, Android and the macOS app (it asks macOS for
+            // administrator rights itself) own their authorization flows.
             _ => None,
         }
     };
     UpdatePolicy {
         installation: kind,
-        method,
         can_install: reason.is_none(),
         reason,
         package: None,
         command: None,
+        external: false,
     }
 }
 
@@ -347,7 +322,7 @@ fn package_owner(
 }
 
 /// `Ok(Some(name))` when `tool` reports an owner, `Ok(None)` when it does not or
-/// is missing, `Err(())` when it did not answer within two seconds.
+/// is missing, `Err(())` when it did not answer within ten seconds.
 #[cfg(target_os = "linux")]
 fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<String>, ()> {
     use std::io::Read;
@@ -373,7 +348,7 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
                 return Ok(Some(owner_name(&output)));
             }
             Ok(Some(_)) => return Ok(None),
-            Ok(None) if started.elapsed() < std::time::Duration::from_secs(2) => {
+            Ok(None) if started.elapsed() < std::time::Duration::from_secs(10) => {
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
             Ok(None) => {
@@ -393,33 +368,6 @@ fn query_owner(tool: &str, flag: &str, path: &std::path::Path) -> Result<Option<
 fn can_install_as_root() -> bool {
     system_program("pkexec").is_some()
         || (system_program("sudo").is_some() && password_dialog().is_some())
-}
-
-/// The tool that installs a Linux package as root, its arguments as the user would
-/// type them, and the package's extension. rpm 6 (Fedora 45 and later) refuses a
-/// package without a signature its keyring knows: the RPM is unsigned, the signed
-/// catalog verifies it, and rpm still checks its digests. `--oldpackage` lets the
-/// stable channel take a beta back to an older stable release (`is_offered`);
-/// dpkg and pacman accept an older package without being asked.
-pub(super) fn linux_installer(
-    kind: InstallationKind,
-) -> (&'static str, &'static [&'static str], &'static str) {
-    match kind {
-        InstallationKind::Rpm => ("rpm", &["-U", "--nosignature", "--oldpackage"], "rpm"),
-        InstallationKind::Pacman => ("pacman", &["-U", "--noconfirm"], "pkg.tar.zst"),
-        _ => ("dpkg", &["-i"], "deb"),
-    }
-}
-
-/// No way to ask for the administrator password here: the command that installs
-/// the package downloaded from the release page instead.
-pub(super) fn no_privilege_prompt(kind: InstallationKind) -> String {
-    let (tool, flags, extension) = linux_installer(kind);
-    let command = format!(
-        "sudo {tool} {} RClone.Manager*.{extension}",
-        flags.join(" ")
-    );
-    crate::localized_error!("backendErrors.updater.noPrivilegePrompt", "command" => command)
 }
 
 /// The dialog `sudo -A` asks for the password with. It runs as the user, so the
@@ -502,16 +450,16 @@ fn package_owner(
 #[cfg(test)]
 pub(crate) fn test_policy(
     installation: InstallationKind,
-    method: UpdateMethod,
+    external: bool,
     reason: Option<&str>,
 ) -> UpdatePolicy {
     UpdatePolicy {
         installation,
-        method,
         can_install: reason.is_none(),
         reason: reason.map(Into::into),
         package: None,
         command: None,
+        external,
     }
 }
 
@@ -548,96 +496,39 @@ mod tests {
     }
 
     #[test]
-    fn hosts_report_the_installation_they_can_replace() {
-        assert_eq!(
-            build_kind(UpdateMethod::Binary, true, None, false),
-            Portable
-        );
-        assert_eq!(build_kind(UpdateMethod::Binary, false, None, false), Server);
-        assert_eq!(
-            build_kind(UpdateMethod::Android, false, None, false),
-            Android
-        );
-        assert_eq!(
-            build_kind(UpdateMethod::Unavailable, false, Some(Deb), false),
-            Unknown
-        );
-        if cfg!(target_os = "linux") {
-            for kind in [Deb, Rpm] {
-                assert_eq!(
-                    build_kind(UpdateMethod::Tauri, false, Some(kind), false),
-                    kind
-                );
-            }
-            assert_eq!(
-                build_kind(UpdateMethod::Tauri, false, Some(Appimage), true),
-                Appimage
-            );
-            // An extracted AppImage or an unbundled build has nothing to replace.
-            assert_eq!(
-                build_kind(UpdateMethod::Tauri, false, Some(Appimage), false),
-                Unknown
-            );
-            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Unknown);
-            // An unbundled build may run with another AppImage's inherited `$APPIMAGE`.
-            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, true), Unknown);
-            for kind in [Deb, Rpm] {
-                assert_eq!(
-                    build_kind(UpdateMethod::Tauri, false, Some(kind), true),
-                    kind
-                );
-            }
-        } else {
-            assert_eq!(build_kind(UpdateMethod::Tauri, false, None, false), Native);
-        }
-    }
-
-    #[test]
-    fn native_packages_update_through_tauri_only_when_their_manager_owns_them() {
+    fn desktop_packages_update_through_the_core_only_when_their_manager_owns_them() {
         for kind in [Deb, Rpm] {
             let owned = Some(kind);
             assert_eq!(
-                classify(
-                    UpdateMethod::Tauri,
-                    kind,
-                    declared_kind(None, false, owned),
-                    owned
-                ),
-                (kind, UpdateMethod::Tauri)
+                classify(kind, declared_kind(None, false, owned), owned),
+                (kind, true)
             );
             // A package format that no package manager owns is not reinstalled.
             assert_eq!(
-                classify(
-                    UpdateMethod::Tauri,
-                    kind,
-                    declared_kind(Some("deb"), false, None),
-                    None
-                ),
-                (Deb, UpdateMethod::Unavailable)
+                classify(kind, declared_kind(Some("deb"), false, None), None),
+                (Deb, false)
             );
         }
-        // AUR packages repackage the DEB, so the binary still says DEB.
+        // The Arch package and the AUR package hold the DEB's files, so the binary
+        // still says DEB; pacman owns it.
         let pacman = Some(Pacman);
         assert_eq!(
-            classify(
-                UpdateMethod::Tauri,
-                Deb,
-                declared_kind(None, false, pacman),
-                pacman
-            ),
-            (Pacman, UpdateMethod::Unavailable)
+            classify(Deb, declared_kind(None, false, pacman), pacman),
+            (Pacman, true)
+        );
+        // An RPM build that pacman owns is not a package this release makes.
+        assert_eq!(
+            classify(Rpm, declared_kind(None, false, pacman), pacman),
+            (Pacman, false)
         );
     }
 
     #[test]
     fn package_ownership_overrides_repackaged_and_portable_builds() {
         for owner in [Pacman, Deb, Rpm] {
-            for build in [Portable, Appimage, Native] {
+            for build in [Portable, Appimage, MacApp] {
                 let declared = declared_kind(None, false, Some(owner));
-                assert_eq!(
-                    classify(UpdateMethod::Binary, build, declared, Some(owner)),
-                    (owner, UpdateMethod::Unavailable)
-                );
+                assert_eq!(classify(build, declared, Some(owner)), (owner, false));
             }
         }
     }
@@ -647,29 +538,20 @@ mod tests {
         // The AUR package holds the same files as the release's Arch package.
         for owner in [Deb, Rpm, Pacman, Nsis, Msi] {
             let declared = declared_kind(None, false, Some(owner));
-            assert_eq!(
-                classify(UpdateMethod::Binary, Server, declared, Some(owner)),
-                (owner, UpdateMethod::Binary)
-            );
+            assert_eq!(classify(Server, declared, Some(owner)), (owner, true));
         }
         // A container or a declaration without an owner is not ours.
         assert_eq!(
             classify(
-                UpdateMethod::Binary,
                 Server,
                 declared_kind(Some("docker"), false, Some(Deb)),
                 Some(Deb)
             ),
-            (Container, UpdateMethod::Unavailable)
+            (Container, false)
         );
         assert_eq!(
-            classify(
-                UpdateMethod::Binary,
-                Server,
-                declared_kind(Some("deb"), false, None),
-                None
-            ),
-            (Deb, UpdateMethod::Unavailable)
+            classify(Server, declared_kind(Some("deb"), false, None), None),
+            (Deb, false)
         );
     }
 
@@ -681,48 +563,42 @@ mod tests {
             ("flatpak", Flatpak),
         ] {
             assert_eq!(
-                classify(
-                    UpdateMethod::Binary,
-                    Portable,
-                    declared_kind(Some(hint), false, None),
-                    None
-                ),
-                (kind, UpdateMethod::Unavailable)
+                classify(Portable, declared_kind(Some(hint), false, None), None),
+                (kind, false)
             );
         }
         for hint in [None, Some(""), Some("native"), Some("unknown")] {
             assert_eq!(
-                classify(
-                    UpdateMethod::Unavailable,
-                    Unknown,
-                    declared_kind(hint, false, None),
-                    None
-                ),
-                (Unknown, UpdateMethod::Unavailable)
+                classify(Unknown, declared_kind(hint, false, None), None),
+                (Unknown, false)
             );
         }
         assert_eq!(
-            classify(
-                UpdateMethod::Binary,
-                Server,
-                declared_kind(None, true, None),
-                None
-            ),
-            (Flatpak, UpdateMethod::Unavailable)
+            classify(Server, declared_kind(None, true, None), None),
+            (Flatpak, false)
         );
-        for (build, method) in [
-            (Portable, UpdateMethod::Binary),
-            (Server, UpdateMethod::Binary),
-            (Android, UpdateMethod::Android),
-            (Native, UpdateMethod::Tauri),
-        ] {
-            assert_eq!(classify(method, build, None, None), (build, method));
+        // The builds the core replaces itself, whatever they were bundled as.
+        for build in [Portable, Server, Android, Appimage, Nsis, Msi, MacApp] {
+            assert_eq!(classify(build, None, None), (build, true));
         }
-        // Tauri bundled the AppImage, but the core replaces it.
-        assert_eq!(
-            classify(UpdateMethod::Tauri, Appimage, None, None),
-            (Appimage, UpdateMethod::Binary)
-        );
+        // Nothing is known about this build, so nothing is installed.
+        assert_eq!(classify(Unknown, None, None), (Unknown, false));
+    }
+
+    #[test]
+    fn every_installation_the_core_updates_has_its_own_catalog_entry() {
+        let artifacts: Vec<_> = [
+            Portable, Server, Android, MacApp, Appimage, Deb, Rpm, Pacman, Nsis, Msi,
+        ]
+        .map(|kind| kind.artifact().unwrap().to_string())
+        .into();
+        let mut unique = artifacts.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), artifacts.len());
+        for kind in [Flatpak, Container, Unknown] {
+            assert!(kind.artifact().is_none());
+        }
     }
 
     #[test]
@@ -744,27 +620,6 @@ mod tests {
         assert!(update_command(Container, None, None, id).is_some());
         for kind in [Deb, Rpm, Unknown, Portable] {
             assert!(update_command(kind, None, Some("paru"), id).is_none());
-        }
-    }
-
-    #[test]
-    fn without_a_password_prompt_the_user_gets_the_install_command() {
-        for (kind, command) in [
-            (Deb, "sudo dpkg -i RClone.Manager*.deb"),
-            (
-                Rpm,
-                "sudo rpm -U --nosignature --oldpackage RClone.Manager*.rpm",
-            ),
-            (
-                Pacman,
-                "sudo pacman -U --noconfirm RClone.Manager*.pkg.tar.zst",
-            ),
-        ] {
-            assert!(
-                no_privilege_prompt(kind).contains(command),
-                "{kind:?}: {}",
-                no_privilege_prompt(kind)
-            );
         }
     }
 

@@ -75,6 +75,8 @@ overrides:
     scripts:
       preremove: backend/server/package/preremove.sh
   archlinux:
+    # The AUR PKGBUILD-server lists the same dependencies (makepkg builds its own
+    # metadata); scripts/aur-depends.test.cjs fails when the two differ.
     depends:
       - glibc
       - gcc-libs

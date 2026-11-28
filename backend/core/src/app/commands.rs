@@ -295,11 +295,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (fetch_update, $crate::services::updates::fetch_update, [channel: String]);
             (get_app_update_info, $crate::services::updates::get_app_update_info, []);
             (get_app_release_notes, $crate::services::updates::get_app_release_notes, []);
-            #[cfg(feature = "updater")]
             (install_update, $crate::services::updates::install::install_update, []);
-            #[cfg(feature = "updater")]
             (cancel_app_update, $crate::services::updates::install::cancel_app_update, []);
-            #[cfg(feature = "updater")]
             (apply_app_update, $crate::services::updates::install::apply_app_update, []);
             (get_debug_info, $crate::services::debug::get_debug_info, [], [sync]);
 

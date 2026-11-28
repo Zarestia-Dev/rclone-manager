@@ -70,8 +70,8 @@ struct ServerHost {
 }
 #[async_trait::async_trait]
 impl rclone_manager_core::context::Host for ServerHost {
-    fn update_method(&self) -> services::updates::policy::UpdateMethod {
-        services::updates::policy::UpdateMethod::Binary
+    fn installation_kind(&self) -> services::updates::policy::InstallationKind {
+        services::updates::policy::InstallationKind::Server
     }
     fn resolve_paths(
         &self,

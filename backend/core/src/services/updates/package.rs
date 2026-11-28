@@ -1,24 +1,48 @@
-//! Installs a server package update (DEB, RPM, Arch package, the Windows setup or
-//! the MSI) with the installer its package format uses, as the user would by hand.
-#[cfg(any(target_os = "linux", windows))]
+//! Installs a package update of the desktop app or the server (DEB, RPM, Arch
+//! package, the Windows setup or the MSI) with the installer its package format
+//! uses, as the user would by hand.
 use super::manifest::ArtifactKind;
-use super::policy::InstallationKind;
 use crate::utils::types::updater::InstallOutcome;
 #[cfg(any(target_os = "linux", windows))]
 use std::path::Path;
 
+/// The tool that installs a Linux package as root and its arguments, as the user
+/// would type them. rpm 6 (Fedora 45 and later) refuses a package without a
+/// signature its keyring knows: the RPM is unsigned, the signed catalog verifies it,
+/// and rpm still checks its digests. `--oldpackage` lets the stable channel take a
+/// beta back to an older stable release (`is_offered`); dpkg and pacman accept an
+/// older package without being asked.
+fn linux_installer(kind: ArtifactKind) -> Option<(&'static str, &'static [&'static str])> {
+    match kind {
+        ArtifactKind::Deb => Some(("dpkg", &["-i"])),
+        ArtifactKind::Rpm => Some(("rpm", &["-U", "--nosignature", "--oldpackage"])),
+        ArtifactKind::Pacman => Some(("pacman", &["-U", "--noconfirm"])),
+        _ => None,
+    }
+}
+
+/// No way to ask for the administrator password here: the command that installs
+/// the package downloaded from the release page instead.
+pub(super) fn no_privilege_prompt(kind: ArtifactKind) -> String {
+    let Some((tool, flags)) = linux_installer(kind) else {
+        return crate::localized_error!("backendErrors.updater.unsupportedInstallation");
+    };
+    let command = format!(
+        "sudo {tool} {} RClone.Manager*.{}",
+        flags.join(" "),
+        kind.extension()
+    );
+    crate::localized_error!("backendErrors.updater.noPrivilegePrompt", "command" => command)
+}
+
 /// Installs `payload`, the package's verified bytes.
-pub(super) fn install(
-    installation: InstallationKind,
-    payload: &[u8],
-) -> Result<InstallOutcome, String> {
-    let kind = super::signed::artifact_kind(installation);
+pub(super) fn install(kind: ArtifactKind, payload: &[u8]) -> Result<InstallOutcome, String> {
     log::info!("Installing {kind} package ({} bytes)", payload.len());
     match kind {
         #[cfg(target_os = "linux")]
         ArtifactKind::Deb | ArtifactKind::Rpm | ArtifactKind::Pacman => {
             let package = write_package(kind, payload).map_err(|e| e.to_string())?;
-            install_as_root(installation, &package)
+            install_as_root(kind, &package)
         }
         #[cfg(windows)]
         ArtifactKind::Nsis | ArtifactKind::Msi => {
@@ -55,13 +79,11 @@ fn write_package(kind: ArtifactKind, payload: &[u8]) -> std::io::Result<tempfile
 /// password never reaches this process. The running build keeps running from the
 /// replaced file until it restarts.
 #[cfg(target_os = "linux")]
-fn install_as_root(
-    installation: InstallationKind,
-    package: &Path,
-) -> Result<InstallOutcome, String> {
+fn install_as_root(kind: ArtifactKind, package: &Path) -> Result<InstallOutcome, String> {
     use super::policy::system_program;
     use std::process::Command;
-    let (tool, flags, _) = super::policy::linux_installer(installation);
+    let (tool, flags) = linux_installer(kind)
+        .ok_or_else(|| crate::localized_error!("backendErrors.updater.unsupportedInstallation"))?;
     let tool = system_program(tool)
         .ok_or_else(|| crate::localized_error!("backendErrors.updater.unsupportedInstallation"))?;
     let run = |mut command: Command| -> Result<(), (Option<i32>, String)> {
@@ -82,10 +104,15 @@ fn install_as_root(
     if let Some(pkexec) = system_program("pkexec") {
         match run(Command::new(pkexec)) {
             Ok(()) => return Ok(InstallOutcome::Restart),
-            // 127: no polkit agent could ask (or authorization failed); 126 means the
-            // user dismissed the dialog, which is no reason to ask again.
+            // 127: no polkit agent could ask (or authorization failed). 126: the user
+            // dismissed the dialog, which is no reason to ask again.
             Err((Some(127), error)) => {
                 log::warn!("pkexec could not authorize the package update: {error}");
+            }
+            Err((Some(126), _)) => {
+                return Err(crate::localized_error!(
+                    "backendErrors.updater.authorizationDenied"
+                ));
             }
             Err((_, error)) => return Err(error),
         }
@@ -105,7 +132,7 @@ fn install_as_root(
             .map(|()| InstallOutcome::Restart)
             .map_err(|(_, error)| error);
     }
-    Err(super::policy::no_privilege_prompt(installation))
+    Err(no_privilege_prompt(kind))
 }
 
 /// An askpass script for sudo: it shows the dialog with sudo's prompt, and the
@@ -161,14 +188,16 @@ fn run_installer(kind: ArtifactKind, installer: &Path) -> Result<InstallOutcome,
         .map(|argument| argument.encode_wide().collect())
         .collect();
     let command_line = quote_command_line(&arguments)?;
-    // /P without /R: the script starts the app itself, with its arguments. The
+    // /P without /R: the script starts the app itself, with its arguments. /UPDATE
+    // keeps the shortcuts and the start-at-login entry that the desktop setup's
+    // old uninstaller would remove; the server's setup ignores it. The
     // system's own msiexec and PowerShell, never a program of the same name in the
     // app's folder, which the setup installs where the user can write.
     let install = match kind {
         ArtifactKind::Msi => {
             "Start-Process \"$env:SystemRoot\\System32\\msiexec.exe\" -Wait -ArgumentList ('/i \"' + $installer + '\" /passive')"
         }
-        _ => "Start-Process $installer -Wait -ArgumentList '/P'",
+        _ => "Start-Process $installer -Wait -ArgumentList '/P /UPDATE'",
     };
     // The variables are read and removed first, so neither the installer nor the
     // restarted app inherits them.
@@ -254,20 +283,48 @@ mod tests {
     #[test]
     fn other_kinds_and_platforms_are_not_packages() {
         let payload = b"payload";
-        for kind in [InstallationKind::Server, InstallationKind::Portable] {
+        for kind in [
+            ArtifactKind::Server,
+            ArtifactKind::Portable,
+            ArtifactKind::App,
+            ArtifactKind::Appimage,
+            ArtifactKind::Android,
+        ] {
+            assert!(!kind.is_package());
             assert!(install(kind, payload).is_err());
         }
         #[cfg(not(windows))]
-        for kind in [InstallationKind::Nsis, InstallationKind::Msi] {
+        for kind in [ArtifactKind::Nsis, ArtifactKind::Msi] {
             assert!(install(kind, payload).is_err());
         }
         #[cfg(not(target_os = "linux"))]
-        for kind in [
-            InstallationKind::Deb,
-            InstallationKind::Rpm,
-            InstallationKind::Pacman,
-        ] {
+        for kind in [ArtifactKind::Deb, ArtifactKind::Rpm, ArtifactKind::Pacman] {
             assert!(install(kind, payload).is_err());
+        }
+    }
+
+    #[test]
+    fn without_a_password_prompt_the_user_gets_the_install_command() {
+        for (kind, command) in [
+            (ArtifactKind::Deb, "sudo dpkg -i RClone.Manager*.deb"),
+            (
+                ArtifactKind::Rpm,
+                "sudo rpm -U --nosignature --oldpackage RClone.Manager*.rpm",
+            ),
+            (
+                ArtifactKind::Pacman,
+                "sudo pacman -U --noconfirm RClone.Manager*.pkg.tar.zst",
+            ),
+        ] {
+            assert!(
+                no_privilege_prompt(kind).contains(command),
+                "{kind}: {}",
+                no_privilege_prompt(kind)
+            );
+        }
+        // Only the Linux packages have a command.
+        for kind in [ArtifactKind::Server, ArtifactKind::Nsis, ArtifactKind::App] {
+            assert!(no_privilege_prompt(kind).contains("unsupportedInstallation"));
         }
     }
 

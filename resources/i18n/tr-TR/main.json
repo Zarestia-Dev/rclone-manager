@@ -611,6 +611,7 @@
       },
       "app_update_channel": {
         "label": "Uygulama Güncelleme Kanalı",
+        "description": "Kararlı seçeneği yalnızca kararlı sürümleri sunar. Beta seçeneği, kararlı ya da beta olsun, en yeni sürümü sunar.",
         "options": {
           "stable": "Kararlı",
           "beta": "Beta"
@@ -2339,7 +2340,8 @@
       "channelBeta": "Beta",
       "channelDev": "Geliştirme",
       "channelStableDesc": "Çoğu kullanıcı için önerilir",
-      "channelBetaDesc": "En yeni özellikler",
+      "channelBetaDesc": "En yeni sürüm, kararlı ya da beta",
+      "channelBetaDescRclone": "beta.rclone.org'daki en yeni beta derlemesi",
       "downloadPage": "İndirme Sayfası",
       "managedBuildNotice": "Bu yapı uygulamanın güncelleme yöneticisi tarafından güncellenemez. Lütfen güncellemeleri manuel olarak yükleyin.",
       "openFlathub": "Flathub'u Aç",
@@ -4244,6 +4246,7 @@
       "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
       "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır.",
       "noPrivilegePrompt": "Burada yönetici parolasını soracak bir araç yok (polkit ajanıyla pkexec ya da zenity veya kdialog ile sudo). Paketi “GitHub'da Göster” ile indirip terminalde kurun: {{command}}",
+      "authorizationDenied": "Yönetici izni verilmediği için güncelleme kurulmadı.",
       "verificationFailed": "Güncelleme doğrulanamadı: imzası, sağlama toplamı veya meta verileri eşleşmiyor.",
       "insecureDownload": "Güncelleme indirmesi HTTPS üzerinden sunulmadı.",
       "downloadTooLarge": "Güncelleme indirmesi beklenenden büyük.",

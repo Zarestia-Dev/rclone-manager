@@ -17,9 +17,11 @@ jobs:
           - platform: "macos-latest"
             args: "--target aarch64-apple-darwin"
             rust_target: "aarch64-apple-darwin"
+            arch: "aarch64"
           - platform: "macos-latest"
             args: "--target x86_64-apple-darwin"
             rust_target: "x86_64-apple-darwin"
+            arch: "x86_64"
           - platform: "ubuntu-22.04"
             args: ""
             arch: "x86_64"
@@ -29,9 +31,11 @@ jobs:
           - platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc"
             rust_target: "x86_64-pc-windows-msvc"
+            arch: "x86_64"
           - platform: "windows-11-arm"
             args: "--target aarch64-pc-windows-msvc"
             rust_target: "aarch64-pc-windows-msvc"
+            arch: "aarch64"
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 120
@@ -136,10 +140,67 @@ jobs:
           done
           exit $status
 
-      # The core updater replaces AppImages from the signed custom catalog. The
-      # AppImage itself is the payload, so its release asset is signed as built.
-      - name: Sign AppImage for the custom updater
+      # The core updater replaces the AppImage, DEB, RPM and Arch package from the
+      # signed custom catalog. Each file is the payload, so its release asset is
+      # signed as built. Tauri has no Arch bundle: it is made from the DEB's files.
+      - name: Install nfpm
         if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NFPM: "2.49.0"
+          UPDATE_ARCH: ${{ matrix.arch }}
+        run: |
+          case "$UPDATE_ARCH" in
+            x86_64) asset=Linux_x86_64.tar.gz ;;
+            aarch64) asset=Linux_arm64.tar.gz ;;
+          esac
+          dir="$RUNNER_TEMP/nfpm"
+          gh release download "v$NFPM" -R goreleaser/nfpm -p "nfpm_${NFPM}_$asset" -p checksums.txt -D "$dir"
+          (cd "$dir" && sha256sum --check --ignore-missing checksums.txt)
+          tar -xzf "$dir/nfpm_${NFPM}_$asset" -C "$dir" nfpm
+          echo "$dir" >> "$GITHUB_PATH"
+
+      - name: Sign Linux packages for the custom updater
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_VERSION: ${{ steps.release_version.outputs.VERSION }}
+        run: |
+          shopt -s globstar nullglob
+          images=(backend/target/**/bundle/appimage/*_"$UPDATE_VERSION"_*.AppImage)
+          debs=(backend/target/**/bundle/deb/*.deb)
+          rpms=(backend/target/**/bundle/rpm/*.rpm)
+          [ ${#images[@]} -eq 1 ] || { echo "::error::Expected one AppImage, found ${#images[@]}"; exit 1; }
+          [ ${#debs[@]} -eq 1 ] || { echo "::error::Expected one DEB, found ${#debs[@]}"; exit 1; }
+          [ ${#rpms[@]} -eq 1 ] || { echo "::error::Expected one RPM, found ${#rpms[@]}"; exit 1; }
+          node scripts/create-update-manifest.cjs appimage linux "$UPDATE_ARCH" "$UPDATE_VERSION" "${images[0]}" updater-catalog
+          node scripts/create-update-manifest.cjs deb linux "$UPDATE_ARCH" "$UPDATE_VERSION" "${debs[0]}" updater-catalog
+          node scripts/create-update-manifest.cjs rpm linux "$UPDATE_ARCH" "$UPDATE_VERSION" "${rpms[0]}" updater-catalog
+          # The Arch package: the DEB's files (the metainfo copy the AUR package also
+          # leaves out), with pacman's own version (no "-").
+          stage=backend/target/package-desktop
+          rm -rf "$stage"
+          dpkg-deb -x "${debs[0]}" "$stage"
+          rm -f "$stage/usr/share/flatpak.metainfo.xml"
+          case "$UPDATE_ARCH" in x86_64) package_arch=amd64 ;; aarch64) package_arch=arm64 ;; esac
+          mkdir -p packages
+          archpkg="packages/RClone.Manager-$UPDATE_VERSION-1-$UPDATE_ARCH.pkg.tar.zst"
+          VERSION="${UPDATE_VERSION//-/}" ARCH="$package_arch" nfpm package -f backend/desktop/linux/nfpm.yaml -p archlinux --target "$archpkg"
+          node scripts/create-update-manifest.cjs pacman linux "$UPDATE_ARCH" "$UPDATE_VERSION" "$archpkg" updater-catalog
+          # tauri-action uploaded the other files; the catalog is published once all
+          # of its files are in the draft release.
+          gh release upload "v$UPDATE_VERSION" "$archpkg"
+
+      # The core updater runs the setup and the MSI. The MSI of a pre-release carries
+      # its release's version, so the files are found by folder, not by version.
+      - name: Sign Windows setup and MSI for the custom updater
+        if: runner.os == 'Windows'
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -148,15 +209,42 @@ jobs:
           UPDATE_VERSION: ${{ steps.release_version.outputs.VERSION }}
         run: |
           shopt -s globstar nullglob
-          images=(backend/target/**/bundle/appimage/*_"$UPDATE_VERSION"_*.AppImage)
-          [ ${#images[@]} -eq 1 ] || { echo "::error::Expected one AppImage, found ${#images[@]}"; exit 1; }
-          node scripts/create-update-manifest.cjs appimage linux "$UPDATE_ARCH" "$UPDATE_VERSION" "${images[0]}" updater-catalog
+          setups=(backend/target/**/bundle/nsis/*-setup.exe)
+          msis=(backend/target/**/bundle/msi/*.msi)
+          [ ${#setups[@]} -eq 1 ] || { echo "::error::Expected one setup, found ${#setups[@]}"; exit 1; }
+          [ ${#msis[@]} -eq 1 ] || { echo "::error::Expected one MSI, found ${#msis[@]}"; exit 1; }
+          node scripts/create-update-manifest.cjs nsis windows "$UPDATE_ARCH" "$UPDATE_VERSION" "${setups[0]}" updater-catalog
+          node scripts/create-update-manifest.cjs msi windows "$UPDATE_ARCH" "$UPDATE_VERSION" "${msis[0]}" updater-catalog
 
-      - name: Collect AppImage update catalog
-        if: startsWith(matrix.platform, 'ubuntu-')
+      # The core updater replaces the whole app bundle, whose signature covers every
+      # file in it, from a ZIP the way it does for a portable build. The ZIP is
+      # uploaded here; the catalog is published once all of its files are in the
+      # draft release.
+      - name: Sign macOS app for the custom updater
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_TARGET: ${{ matrix.rust_target }}
+          UPDATE_VERSION: ${{ steps.release_version.outputs.VERSION }}
+        run: |
+          member='RClone Manager.app/Contents/MacOS/rclone-manager'
+          app="backend/target/$UPDATE_TARGET/release/bundle/macos/RClone Manager.app"
+          [ -d "$app" ] || { echo "::error::No app bundle was built"; exit 1; }
+          mkdir -p updater-catalog
+          archive="updater-catalog/app-macos-$UPDATE_ARCH-$UPDATE_VERSION.zip"
+          ditto -c -k --norsrc --keepParent "$app" "$archive"
+          node scripts/create-update-manifest.cjs app macos "$UPDATE_ARCH" "$UPDATE_VERSION" "$app/Contents/MacOS/rclone-manager" updater-catalog "$archive" "$member"
+          gh release upload "v$UPDATE_VERSION" "$archive"
+
+      - name: Collect update catalog
         uses: actions/upload-artifact@v7
         with:
-          name: appimage-linux-${{ matrix.arch }}
+          name: catalog-${{ runner.os }}-${{ matrix.arch }}
           path: updater-catalog/updater.json
           if-no-files-found: error
 
@@ -180,7 +268,7 @@ jobs:
           node-version: lts/*
       - uses: actions/download-artifact@v8
         with:
-          pattern: appimage-*
+          pattern: catalog-*
           path: artifacts
       - name: Read release version
         id: release_version

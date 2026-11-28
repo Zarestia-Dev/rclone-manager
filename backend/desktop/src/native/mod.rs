@@ -33,8 +33,5 @@ pub(crate) mod paths;
 #[cfg(all(feature = "tauri-plugin-notification", not(target_os = "android")))]
 pub(crate) mod notification;
 
-#[cfg(feature = "updater")]
-pub(crate) mod updater;
-
 #[cfg(not(target_os = "android"))]
 pub(crate) mod host;

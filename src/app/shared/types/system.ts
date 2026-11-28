@@ -93,7 +93,7 @@ export enum BackendUpdateStatus {
 
 export interface UpdatePolicy {
   installation:
-    | 'native'
+    | 'macApp'
     | 'nsis'
     | 'msi'
     | 'portable'
@@ -106,7 +106,6 @@ export interface UpdatePolicy {
     | 'flatpak'
     | 'container'
     | 'unknown';
-  method: 'unavailable' | 'tauri' | 'binary' | 'android';
   canInstall: boolean;
   reason?: string | null;
   /** The AUR package that owns the executable. */

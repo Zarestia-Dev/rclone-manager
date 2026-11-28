@@ -409,7 +409,14 @@ pub struct RuntimeSettings {
     )]
     pub app_skipped_updates: Vec<String>,
 
-    #[setting(label = "settings.runtime.app_update_channel.label", options(("stable", "settings.runtime.app_update_channel.options.stable"), ("beta", "settings.runtime.app_update_channel.options.beta")))]
+    #[setting(
+        label = "settings.runtime.app_update_channel.label",
+        description = "settings.runtime.app_update_channel.description",
+        options(
+            ("stable", "settings.runtime.app_update_channel.options.stable"),
+            ("beta", "settings.runtime.app_update_channel.options.beta")
+        )
+    )]
     pub app_update_channel: String,
 
     #[setting(

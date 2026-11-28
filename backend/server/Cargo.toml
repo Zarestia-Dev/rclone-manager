@@ -12,7 +12,7 @@ path = "src/main.rs"
 tauri-winres = "0.3"
 
 [dependencies]
-rclone-manager-core = { path = "../core", default-features = false, features = ["updater"] }
+rclone-manager-core = { path = "../core", default-features = false }
 axum = "0.8"
 tower-http = { version = "0.7", features = ["cors", "fs", "trace", "compression-gzip"] }
 async-stream = "0.3"
@@ -39,7 +39,7 @@ notify = "8"
 # start at login. Without a desktop to show it, the tray never appears. macOS
 # draws a tray only on the main thread, which the server keeps for its runtime.
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-rclone-manager-core = { path = "../core", default-features = false, features = ["updater", "tray-dbus", "autostart"] }
+rclone-manager-core = { path = "../core", default-features = false, features = ["tray-dbus", "autostart"] }
 open = "5"
 auto-launch = "0.6"
 

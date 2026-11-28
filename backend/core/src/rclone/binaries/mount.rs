@@ -200,10 +200,10 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
 
     #[cfg(target_os = "macos")]
     {
-        let script = format!(
-            "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
-            path_str.replace("'", "'\\''")
-        );
+        let script = crate::utils::process::command::as_administrator(&format!(
+            "installer -pkg {} -target /",
+            crate::utils::process::command::shell_quote(path_str)
+        ));
         let output = crate::utils::process::command::command("osascript")
             .args(["-e", &script])
             .output()

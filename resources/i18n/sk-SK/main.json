@@ -620,6 +620,7 @@
       },
       "app_update_channel": {
         "label": "Kanál aktualizácií aplikácie",
+        "description": "Kanál „Stabilný“ ponúka iba stabilné verzie. Kanál „Beta“ ponúka najnovšiu verziu, stabilnú alebo beta verziu.",
         "options": {
           "stable": "Stabilný",
           "beta": "Beta"
@@ -2364,7 +2365,8 @@
       "channelBeta": "Beta",
       "channelDev": "Vývojová",
       "channelStableDesc": "Odporúča sa pre väčšinu používateľov",
-      "channelBetaDesc": "Najnovšie funkcie",
+      "channelBetaDesc": "Najnovšia verzia, stabilná alebo beta",
+      "channelBetaDescRclone": "Najnovšia beta verzia z beta.rclone.org",
       "downloadPage": "Stránka na stiahnutie",
       "managedBuildNotice": "Túto zostavu nie je možné aktualizovať aktualizátorom aplikácie. Aktualizácie inštalujte ručne.",
       "openFlathub": "Otvoriť Flathub",
@@ -4317,6 +4319,7 @@
       "androidInstallPermission": "V nastaveniach systému Android povoľte tejto aplikácii inštalovať aktualizácie a potom inštaláciu zopakujte.",
       "invalidAndroidPackage": "APK musí byť novšia verzia tejto aplikácie podpísaná tým istým vydavateľom.",
       "noPrivilegePrompt": "Tu sa nedá vyžiadať heslo správcu (pkexec s agentom polkit alebo sudo so zenity či kdialog). Stiahnite balík cez „Zobraziť na GitHube“ a nainštalujte ho v termináli: {{command}}",
+      "authorizationDenied": "Aktualizácia sa nenainštalovala, pretože nebolo udelené povolenie správcu.",
       "verificationFailed": "Aktualizáciu sa nepodarilo overiť: jej podpis, kontrolný súčet alebo metadáta sa nezhodujú.",
       "insecureDownload": "Aktualizácia nebola stiahnutá cez HTTPS.",
       "downloadTooLarge": "Stiahnutá aktualizácia je väčšia, ako sa očakávalo.",

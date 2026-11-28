@@ -3,33 +3,21 @@ use super::download::{cached_payload, fetch, store_payload};
 use super::manifest::{
     ArtifactKind, CATALOG_NAME, MAX_MANIFEST_SIZE, Manifest, PUBLIC_KEY, select_manifest, target,
 };
-use super::policy::{InstallationKind, UpdateMethod, UpdatePolicy};
+use super::policy::UpdatePolicy;
 use crate::context::AppHandle;
 use crate::utils::github_client::Release;
 use crate::utils::types::updater::{AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact};
 use std::sync::Arc;
-
-/// The artifact that updates an installation.
-pub(super) fn artifact_kind(installation: InstallationKind) -> ArtifactKind {
-    match installation {
-        InstallationKind::Portable => ArtifactKind::Portable,
-        InstallationKind::Android => ArtifactKind::Android,
-        InstallationKind::Appimage => ArtifactKind::Appimage,
-        InstallationKind::Deb => ArtifactKind::Deb,
-        InstallationKind::Rpm => ArtifactKind::Rpm,
-        InstallationKind::Pacman => ArtifactKind::Pacman,
-        InstallationKind::Nsis => ArtifactKind::Nsis,
-        InstallationKind::Msi => ArtifactKind::Msi,
-        _ => ArtifactKind::Server,
-    }
-}
 
 pub(crate) async fn check(
     app: &AppHandle,
     release: &Release,
     policy: &UpdatePolicy,
 ) -> Result<ReleaseArtifact, String> {
-    let kind = artifact_kind(policy.installation);
+    let Some(kind) = policy.installation.artifact() else {
+        // Nothing of ours updates it: the release is announced for a manual update.
+        return Ok(ReleaseArtifact::NotBuilt);
+    };
     let target = target();
     log::debug!(
         "Looking for signed update: release={}, kind={kind}, target={target}",
@@ -71,8 +59,6 @@ pub(crate) async fn check(
         manifest,
         download_url,
         cache_directory: paths.cache_dir.join("app-updates"),
-        method: policy.method,
-        installation: policy.installation,
     })))
 }
 
@@ -95,8 +81,6 @@ struct SignedUpdate {
     manifest: Manifest,
     download_url: url::Url,
     cache_directory: std::path::PathBuf,
-    method: UpdateMethod,
-    installation: InstallationKind,
 }
 
 impl SignedUpdate {
@@ -156,7 +140,7 @@ impl AppUpdate for SignedUpdate {
     /// that changed in memory since are never installed.
     fn install(&self, payload: &[u8]) -> Result<InstallOutcome, String> {
         self.manifest.verify_install_payload(payload, PUBLIC_KEY)?;
-        if self.method == UpdateMethod::Android {
+        if self.manifest.kind == ArtifactKind::Android {
             #[cfg(target_os = "android")]
             return super::android::install(&self.cache_path(), payload);
             #[cfg(not(target_os = "android"))]
@@ -164,15 +148,8 @@ impl AppUpdate for SignedUpdate {
                 "backendErrors.updater.unsupportedInstallation"
             ));
         }
-        if matches!(
-            self.manifest.kind,
-            ArtifactKind::Deb
-                | ArtifactKind::Rpm
-                | ArtifactKind::Pacman
-                | ArtifactKind::Nsis
-                | ArtifactKind::Msi
-        ) {
-            return super::package::install(self.installation, payload);
+        if self.manifest.kind.is_package() {
+            return super::package::install(self.manifest.kind, payload);
         }
         super::binary::install(&self.manifest, payload)
     }
@@ -180,6 +157,7 @@ impl AppUpdate for SignedUpdate {
 
 #[cfg(test)]
 mod tests {
+    use super::super::policy::InstallationKind;
     use super::*;
 
     #[tokio::test]
@@ -193,13 +171,38 @@ mod tests {
             InstallationKind::Portable,
             InstallationKind::Server,
             InstallationKind::Android,
+            InstallationKind::MacApp,
             InstallationKind::Appimage,
+            InstallationKind::Deb,
+            InstallationKind::Rpm,
+            InstallationKind::Pacman,
+            InstallationKind::Nsis,
+            InstallationKind::Msi,
         ] {
-            let policy =
-                super::super::policy::test_policy(installation, UpdateMethod::Binary, None);
+            let policy = super::super::policy::test_policy(installation, false, None);
             assert!(matches!(
                 check(&app, &release, &policy).await,
                 Ok(ReleaseArtifact::Unpublished)
+            ));
+        }
+    }
+
+    #[tokio::test]
+    async fn an_installation_the_core_never_updates_is_announced_for_a_manual_update() {
+        let app = AppHandle::default();
+        let release = Release {
+            tag_name: "v99.0.0".into(),
+            ..Default::default()
+        };
+        for installation in [
+            InstallationKind::Flatpak,
+            InstallationKind::Container,
+            InstallationKind::Unknown,
+        ] {
+            let policy = super::super::policy::test_policy(installation, true, None);
+            assert!(matches!(
+                check(&app, &release, &policy).await,
+                Ok(ReleaseArtifact::NotBuilt)
             ));
         }
     }

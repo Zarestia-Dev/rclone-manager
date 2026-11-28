@@ -188,6 +188,8 @@ export class AboutModalComponent implements OnInit {
     value: UpdateChannel;
     label: string;
     description: string;
+    /** Rclone's channels differ from the app's: its Beta is a build, not "newest of both". */
+    rcloneDescription?: string;
     tone: PillTone;
   }[] = [
     {
@@ -200,6 +202,7 @@ export class AboutModalComponent implements OnInit {
       value: 'beta',
       label: 'modals.about.channelBeta',
       description: 'modals.about.channelBetaDesc',
+      rcloneDescription: 'modals.about.channelBetaDescRclone',
       tone: 'orange',
     },
   ];

@@ -8,9 +8,6 @@ pub(super) fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
     #[cfg(feature = "tauri-plugin-single-instance")]
     let builder = register_single_instance(builder);
 
-    #[cfg(feature = "updater")]
-    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-
     #[cfg(feature = "tauri-plugin-deep-link")]
     let builder = builder.plugin(tauri_plugin_deep_link::init());
 

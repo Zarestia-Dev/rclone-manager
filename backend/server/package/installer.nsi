@@ -4,7 +4,8 @@
 ;   makensis /DVERSION=<version> /DBINARY=<rclone-manager-server.exe> /DOUTFILE=<setup.exe> installer.nsi
 ; /P runs it without questions and /R then starts the app. The Tauri updater of the
 ; Headless app passes both, and also /UPDATE and /ARGS, which change nothing. The
-; in-app updater passes only /P and starts the app itself, with its launch arguments.
+; in-app updater passes /P and /UPDATE (the desktop app's setup needs it) and starts
+; the app itself, with its launch arguments.
 Unicode true
 ManifestDPIAware true
 SetCompressor /SOLID lzma

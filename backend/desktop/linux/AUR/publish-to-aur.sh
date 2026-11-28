@@ -2,7 +2,7 @@
 # Fully automated AUR publisher for rclone-manager.
 #
 # Packages (PKGBUILD templates live next to this script):
-#   rclone-manager           PKGBUILD           desktop .deb from the v<version> release
+#   rclone-manager           PKGBUILD           desktop Arch package from the v<version> release
 #   rclone-manager-git       PKGBUILD-git       built from source, follows the stable version
 #   rclone-manager-server    PKGBUILD-server    server Arch package from the server-v<version> release
 #
@@ -317,7 +317,7 @@ main() {
         case "$name" in
             rclone-manager)
                 stage_release_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD" "v" \
-                    'RClone.Manager_%s_amd64.deb' 'RClone.Manager_%s_arm64.deb' || rc=$? ;;
+                    'RClone.Manager-%s-1-x86_64.pkg.tar.zst' 'RClone.Manager-%s-1-aarch64.pkg.tar.zst' || rc=$? ;;
             rclone-manager-git)
                 stage_git_pkgbuild "$name" "$SCRIPT_DIR/PKGBUILD-git" || rc=$? ;;
             rclone-manager-server)

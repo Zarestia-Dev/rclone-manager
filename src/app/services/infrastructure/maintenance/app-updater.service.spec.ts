@@ -51,7 +51,7 @@ describe('AppUpdaterService state restoration', () => {
     found = new Subject();
     progress = new Subject();
     info = { ...available, status: BackendUpdateStatus.Downloading, download };
-    policy = { installation: 'portable', method: 'binary', canInstall: true };
+    policy = { installation: 'portable', canInstall: true };
     invoke.mockReset().mockImplementation(async (command: string) => {
       if (command === 'get_app_update_info') return { update: info, checking: false };
       if (command === 'fetch_update') return info;
@@ -373,7 +373,7 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.installationReason()).toBe('missing artifact');
   });
 
-  it.each(['native', 'android', 'appimage', 'server', 'unknown'] as const)(
+  it.each(['macApp', 'android', 'appimage', 'server', 'unknown'] as const)(
     'keeps the legacy build badge hidden for %s installations',
     async installation => {
       policy = { ...policy, installation };
@@ -385,7 +385,7 @@ describe('AppUpdaterService state restoration', () => {
   it('uses the latest snapshot for installation identity as well as eligibility', async () => {
     info = {
       ...available,
-      installation: { installation: 'pacman', method: 'unavailable', canInstall: false },
+      installation: { installation: 'pacman', canInstall: false },
     };
     await service.initialize();
     expect(service.buildType()).toBe('pacman');
@@ -422,7 +422,6 @@ describe('AppUpdaterService state restoration', () => {
       ...available,
       installation: {
         installation: 'portable',
-        method: 'binary',
         canInstall: false,
         reason: 'missing artifact',
       },

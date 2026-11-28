@@ -47,7 +47,7 @@ jobs:
           retention-days: 1
       - run: npm run test:ci
       - name: Release metadata and update manifest tests
-        run: node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs
+        run: node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs scripts/aur-depends.test.cjs
 
   validate:
     name: Check on ${{ matrix.os }}
@@ -108,7 +108,7 @@ jobs:
       - name: Test code
         if: runner.os == 'Linux'
         run: |
-          cargo clippy --locked -p rclone-manager-core --all-targets --features desktop,tray-gtk,updater,notifications,autostart -- -D warnings
+          cargo clippy --locked -p rclone-manager-core --all-targets --features desktop,tray-gtk,notifications,autostart -- -D warnings
           cargo clippy --locked -p rclone-manager --all-targets --no-default-features --features desktop,tray,tauri-test -- -D warnings
       - name: Core and server unit tests
         if: runner.os == 'Linux'
@@ -116,11 +116,11 @@ jobs:
           cargo test --locked -p rclone-manager-core
           cargo test --locked -p rclone-manager-server --lib
       - name: Updater unit tests
-        run: cargo test --locked -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
+        run: cargo test --locked -p rclone-manager-core --lib services::updates -- --test-threads=1
       - name: Native unit tests
         if: runner.os == 'Linux'
         run: |
-          cargo test --locked -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
+          cargo test --locked -p rclone-manager-core --features desktop,tray-gtk,notifications,autostart --lib
           # Graphics tests mutate process environment variables.
           for features in desktop desktop,tray,tauri-test; do
             cargo test --locked -p rclone-manager --no-default-features --features "$features" --lib -- --test-threads=1

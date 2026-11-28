@@ -3,7 +3,6 @@
     windows_subsystem = "windows"
 )]
 fn main() {
-    #[cfg(feature = "updater")]
     rclone_manager_core::services::updates::binary::on_startup();
     rclone_manager_lib::prepare_environment();
     let runtime = rclone_manager_core::utils::init_runtime();

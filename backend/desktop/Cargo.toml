@@ -66,7 +66,6 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
-tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
 # Application builds. Mobile builds require --no-default-features.
@@ -78,7 +77,6 @@ desktop = [
     "tauri-plugin-autostart",
     "tauri-plugin-single-instance",
     "tauri/devtools",
-    "updater",
     "dep:zbus",
     "dep:windows",
     "dep:block2",
@@ -86,7 +84,7 @@ desktop = [
     "dep:objc2-app-kit",
     "dep:objc2-foundation",
 ]
-mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile", "rclone-manager-core/updater"]
+mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile"]
 
 # Distribution variants retain all default desktop functionality.
 portable = ["desktop", "tray", "rclone-manager-core/portable"]
@@ -99,7 +97,6 @@ tray = [
     "tauri-plugin-autostart",
     "tauri-plugin-single-instance",
 ]
-updater = ["rclone-manager-core/updater", "dep:tauri-plugin-updater"]
 
 # Internal dependency groups. Keep plugin feature names used by Rust cfgs.
 shared-tauri = [

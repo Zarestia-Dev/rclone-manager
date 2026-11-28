@@ -6,9 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Arch Linux Package for the Desktop App**: Each release has an Arch Linux package (`RClone.Manager-<version>-1-<x86_64|aarch64>.pkg.tar.zst`) next to the DEB and RPM, with the same files as the DEB. The app updates it with `pacman -U`, and the AUR package `rclone-manager` now repackages the same file, so an AUR installation updates in the app too.
+
 ### Changed
 
+- **One Updater for Every Installation**: The desktop app now installs its own updates on every system, from the same signed catalog as the portable, server and AppImage builds; Tauri's updater is gone. Versions up to 0.3.7 still update once through Tauri. What changes for you:
+  - **Linux (DEB, RPM, Arch)**: The package is installed as root. The system asks for the password (`pkexec`, or `sudo` with a zenity or kdialog dialog where no polkit agent runs) and the app never sees it. The RPM now goes back from a beta to the latest stable release when you switch channels, like the DEB. Where neither can ask, the app shows the command to install the downloaded package.
+  - **Windows (setup and MSI)**: The installer runs once the app has exited, then the app starts again with the arguments it had. The setup keeps your shortcuts and the start-at-login entry.
+  - **macOS**: The whole app is replaced. If your user cannot write to its folder (for example `/Applications` for a user who is not an administrator), macOS asks for an administrator password in its own dialog; the app never sees it, and the old app is put back if the copy fails.
+  - **Dismissing the password dialog** (Linux and macOS) now says that the update was not installed because administrator permission was not given, instead of showing an empty error.
+- **Update Channel Explained**: The App Update Channel setting and the channel list in the About window now say what each channel offers: Stable only stable releases, Beta the newest release, whether it is stable or a beta. A stable release newer than every beta therefore reaches the Beta channel too. For Rclone, Beta stays the latest beta build from beta.rclone.org, and the list says so.
 - **Server Releases Are Tagged `server-v`**: Server releases on GitHub are now tagged `server-v<version>` instead of `headless-v<version>`. The server finds them by itself from 0.3.7 on, and the AUR `rclone-manager-server` package follows them. Scripts that download a server release by its tag need the new name. Installations of the RClone Manager Headless app (0.3.6 and older) still move to the server through the `headless-v0.3.7` release.
+
 ## [0.3.7] - 2026-11-27
 
 ### Warning

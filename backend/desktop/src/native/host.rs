@@ -3,33 +3,50 @@ use crate::context::AppHandle;
 use crate::desktop::paths::resolve_paths;
 #[cfg(not(feature = "portable"))]
 use crate::native::paths::resolve_paths;
+use crate::services::updates::policy::InstallationKind;
 use rclone_manager_core::context::{AppHandle as CoreHandle, ExitDecision, Host};
+use tauri::utils::config::BundleType;
 pub(crate) struct NativeHost(pub AppHandle);
+
+/// What the build is, from what it can tell about itself. Tauri patches the bundle
+/// it was packaged as into the binary; the other facts are arguments, so that every
+/// case can be tested.
+fn kind_of_build(
+    portable: bool,
+    bundle: Option<BundleType>,
+    appimage_env: bool,
+    in_app_bundle: bool,
+) -> InstallationKind {
+    if portable {
+        return InstallationKind::Portable;
+    }
+    match bundle {
+        Some(BundleType::Deb) => InstallationKind::Deb,
+        Some(BundleType::Rpm) => InstallationKind::Rpm,
+        Some(BundleType::Nsis) => InstallationKind::Nsis,
+        Some(BundleType::Msi) => InstallationKind::Msi,
+        // `$APPIMAGE` names the file that gets replaced, and child processes inherit
+        // it: only a build packaged as an AppImage may trust it.
+        Some(BundleType::AppImage) if appimage_env => InstallationKind::Appimage,
+        // macOS reports an app for every binary: only one inside a bundle can be
+        // replaced, not a build run from `target/`.
+        Some(BundleType::App) if in_app_bundle => InstallationKind::MacApp,
+        _ => InstallationKind::Unknown,
+    }
+}
+
 #[async_trait::async_trait]
 impl Host for NativeHost {
-    fn is_portable_installation(&self) -> bool {
-        cfg!(feature = "portable")
-    }
-    fn update_method(&self) -> crate::services::updates::policy::UpdateMethod {
-        use crate::services::updates::policy::UpdateMethod;
-        if cfg!(feature = "portable") {
-            UpdateMethod::Binary
-        } else if cfg!(feature = "updater") {
-            UpdateMethod::Tauri
-        } else {
-            UpdateMethod::Unavailable
-        }
-    }
-    #[cfg(all(feature = "updater", target_os = "linux"))]
-    fn native_bundle(&self) -> Option<crate::services::updates::policy::InstallationKind> {
-        use crate::services::updates::policy::InstallationKind;
-        use tauri::utils::config::BundleType;
-        match tauri::utils::platform::bundle_type()? {
-            BundleType::Deb => Some(InstallationKind::Deb),
-            BundleType::Rpm => Some(InstallationKind::Rpm),
-            BundleType::AppImage => Some(InstallationKind::Appimage),
-            _ => None,
-        }
+    fn installation_kind(&self) -> InstallationKind {
+        kind_of_build(
+            cfg!(feature = "portable"),
+            tauri::utils::platform::bundle_type(),
+            std::env::var_os("APPIMAGE").is_some(),
+            // Resolved the way the installer resolves it.
+            std::env::current_exe()
+                .and_then(|exe| exe.canonicalize())
+                .is_ok_and(|exe| crate::utils::app::paths::app_bundle_path(&exe).is_some()),
+        )
     }
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<crate::services::paths::AppPaths, String> {
         resolve_paths(&self.0)
@@ -169,12 +186,68 @@ impl Host for NativeHost {
     ) -> Result<(), String> {
         super::notification::dispatch(&self.0, ctx)
     }
-    #[cfg(feature = "updater")]
-    async fn check_update(
-        &self,
-        release: &crate::utils::github_client::Release,
-        expected_version: &str,
-    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
-        super::updater::check_native_updater(&self.0, release, expected_version).await
+}
+
+#[cfg(test)]
+mod kind_tests {
+    use super::*;
+
+    #[test]
+    fn a_build_is_what_it_was_packaged_as() {
+        for (bundle, kind) in [
+            (BundleType::Deb, InstallationKind::Deb),
+            (BundleType::Rpm, InstallationKind::Rpm),
+            (BundleType::Nsis, InstallationKind::Nsis),
+            (BundleType::Msi, InstallationKind::Msi),
+        ] {
+            // `$APPIMAGE` and the app bundle only matter to their own kinds.
+            for (appimage, in_app) in [(false, false), (true, true)] {
+                assert_eq!(
+                    kind_of_build(false, Some(bundle.clone()), appimage, in_app),
+                    kind
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_appimage_needs_the_variable_that_names_its_file() {
+        let appimage = |env| kind_of_build(false, Some(BundleType::AppImage), env, false);
+        assert_eq!(appimage(true), InstallationKind::Appimage);
+        // An extracted AppImage, or a build that inherited another app's variable.
+        assert_eq!(appimage(false), InstallationKind::Unknown);
+    }
+
+    #[test]
+    fn a_mac_app_must_sit_in_a_bundle() {
+        let app = |in_bundle| kind_of_build(false, Some(BundleType::App), false, in_bundle);
+        assert_eq!(app(true), InstallationKind::MacApp);
+        assert_eq!(app(false), InstallationKind::Unknown);
+    }
+
+    #[test]
+    fn a_portable_build_is_portable_whatever_it_says_it_is() {
+        assert_eq!(
+            kind_of_build(true, Some(BundleType::App), false, true),
+            InstallationKind::Portable
+        );
+        assert_eq!(
+            kind_of_build(true, None, false, false),
+            InstallationKind::Portable
+        );
+    }
+
+    #[test]
+    fn an_unpackaged_build_is_unknown() {
+        for appimage in [false, true] {
+            assert_eq!(
+                kind_of_build(false, None, appimage, false),
+                InstallationKind::Unknown
+            );
+        }
+        assert_eq!(
+            kind_of_build(false, Some(BundleType::Dmg), false, true),
+            InstallationKind::Unknown
+        );
     }
 }

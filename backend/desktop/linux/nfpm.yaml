@@ -1,0 +1,43 @@
+# The desktop app's Arch package. Tauri has no pacman bundle, so release-desktop.yml
+# unpacks the DEB it built into backend/target/package-desktop/ and runs, from the
+# repository root:
+#   VERSION=<version> ARCH=<amd64|arm64> nfpm package -f backend/desktop/linux/nfpm.yaml -p archlinux
+# The AUR package rclone-manager repackages it, and the app updates it with
+# `pacman -U`. pacman versions have no "-": the package gets 0.3.7beta.3 for
+# 0.3.7-beta.3 (nfpm 2.49 drops the pre-release of an Arch version without an epoch).
+name: rclone-manager
+arch: ${ARCH}
+version: ${VERSION}
+release: "1"
+section: utils
+maintainer: Zarestia Dev
+vendor: Zarestia Dev
+homepage: https://github.com/Zarestia-Dev/rclone-manager
+license: GPL-3.0-or-later
+description: User-friendly GUI for Rclone
+contents:
+  - src: backend/target/package-desktop/usr
+    dst: /usr
+    type: tree
+overrides:
+  archlinux:
+    # The AUR PKGBUILD lists the same dependencies (makepkg builds its own metadata);
+    # scripts/aur-depends.test.cjs fails when the two differ.
+    depends:
+      - cairo
+      - desktop-file-utils
+      - gdk-pixbuf2
+      - glib2
+      - gtk3
+      - hicolor-icon-theme
+      - pango
+      - webkit2gtk-4.1
+      - libayatana-appindicator
+    recommends:
+      - "rclone: for cloud storage operations"
+      - "fuse3: for mounting remote filesystems"
+    scripts:
+      # pacman runs it after removing the files, never on an upgrade.
+      postremove: backend/desktop/linux/preremove-gui.sh
+archlinux:
+  packager: Zarestia Dev

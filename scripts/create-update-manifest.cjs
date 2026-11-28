@@ -37,7 +37,7 @@ function validateSize(size) {
 }
 
 function validateIdentity({ kind, target, version, asset }) {
-  if (!['portable', 'server', 'android', ...Object.keys(RELEASE_FILES)].includes(kind))
+  if (!['portable', 'server', 'app', 'android', ...Object.keys(RELEASE_FILES)].includes(kind))
     throw new Error('Invalid update kind');
   if (
     typeof target !== 'string' ||
@@ -62,7 +62,7 @@ function validateArtifact({ size, sha256, signature }) {
 
 function validateArchivePath({ kind, target, asset }, binaryPath) {
   if (
-    !['portable', 'server'].includes(kind) ||
+    !['portable', 'server', 'app'].includes(kind) ||
     !/^(windows|linux|macos)-/.test(target) ||
     !asset.endsWith('.zip') ||
     typeof binaryPath !== 'string' ||
@@ -70,7 +70,7 @@ function validateArchivePath({ kind, target, asset }, binaryPath) {
     binaryPath.includes(':') ||
     /[\p{Cc}]/u.test(binaryPath) ||
     binaryPath.split('/').some(part => ['', '.', '..'].includes(part)) ||
-    (kind === 'portable' &&
+    (['portable', 'app'].includes(kind) &&
       target.startsWith('macos-') &&
       !/^[^/]+\.app\/Contents\/MacOS\/rclone-manager$/.test(binaryPath))
   )
@@ -161,7 +161,8 @@ function sign(file) {
 function publish(kind, os, arch, version, input, output, archiveFile, binaryPath) {
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY)
     throw new Error('Production updates require TAURI_SIGNING_PRIVATE_KEY');
-  if (kind === 'server' && !archiveFile) throw new Error('Server updates must be ZIP archives');
+  if (['server', 'app'].includes(kind) && !archiveFile)
+    throw new Error('Server and app updates must be ZIP archives');
   if (RELEASE_FILES[kind] && archiveFile)
     throw new Error('Release file updates must not be archives');
   const target = `${os}-${arch}`;

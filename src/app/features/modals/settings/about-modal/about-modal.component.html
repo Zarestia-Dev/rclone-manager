@@ -975,7 +975,10 @@
         >
           <span class="item-label">
             <span class="item-title">{{ ch.label | translate }}</span>
-            <span class="item-subtitle">{{ ch.description | translate }}</span>
+            <span class="item-subtitle">{{
+              (target === 'rclone' && ch.rcloneDescription ? ch.rcloneDescription : ch.description)
+                | translate
+            }}</span>
           </span>
           <mat-icon
             svgIcon="check-circle"

@@ -158,7 +158,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
 
 17. **Updater & Release Contracts (CRITICAL)**
-    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`, the Tauri AppImage name that `appimage-linux-<arch>` catalog entries point to, and the server packages `RClone.Manager.Server_<version>_<amd64|arm64>.deb`, `RClone.Manager.Server-<version>-1.<x86_64|aarch64>.rpm`, `RClone.Manager.Server-<version>-1-<x86_64|aarch64>.pkg.tar.zst`, `RClone.Manager.Server_<version>_<x64|arm64>-setup.exe` and `RClone.Manager.Server_<version>_<x64|arm64>_en-US.msi`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater, the AUR `PKGBUILD-server` (which repackages the Arch package) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
+    - Release asset names (`server-<os>-<arch>-<version>.zip`, `portable-…`, `android-…`, the Tauri AppImage, DEB, RPM, setup (`-setup.exe`) and MSI names that the `appimage-`, `deb-`, `rpm-linux-<arch>` and `nsis-`, `msi-windows-<arch>` catalog entries of the desktop release point to, the desktop Arch package `RClone.Manager-<version>-1-<x86_64|aarch64>.pkg.tar.zst` (made from the DEB's files by `backend/desktop/linux/nfpm.yaml`), and the server packages `RClone.Manager.Server_<version>_<amd64|arm64>.deb`, `RClone.Manager.Server-<version>-1.<x86_64|aarch64>.rpm`, `RClone.Manager.Server-<version>-1-<x86_64|aarch64>.pkg.tar.zst`, `RClone.Manager.Server_<version>_<x64|arm64>-setup.exe` and `RClone.Manager.Server_<version>_<x64|arm64>_en-US.msi`) are a contract between the release workflows, `scripts/create-update-manifest.cjs`, the Rust updater, the AUR `PKGBUILD` and `PKGBUILD-server` (which repackage the Arch packages) and the website's downloads parser (`rclone-manager-website/src/app/features/downloads/downloads.utils.ts` and its spec). Change them together.
     - The 0.3.7 releases also hold the DEB and RPM as `RClone.Manager.Headless_<version>_<amd64|arm64>.deb` and `RClone.Manager.Headless-<version>-1.<x86_64|aarch64>.rpm`, outside the catalog, for the Headless app 0.3.6. Later releases do not; the website skips those copies.
     - Installed versions find their update through names they cannot change: the repository (`OWNER`/`REPO`), the tag prefixes `v`, `server-v` (the server from 0.3.7 on) and `headless-v` (the Headless app 0.3.6 and the 0.3.7 betas), the catalog name `updater.json`, `schemaVersion: 1`, the entry key `<kind>-<target>` and the kind and target names (`linux-x86_64`, from Rust's `consts::OS`/`ARCH`). Never rename them; add a field or a kind instead. Dropping a kind's entry, or not publishing it in a release, silently leaves those installations where they are. The client downloads the release file named by the manifest's `asset`; `publish-custom-updater.cjs` fails when it is not a file of the release, so publish a release only after all its workflows succeeded.
     - Versions up to 0.3.7-beta.1 (0.3.6 and older included) reject any field they do not know in the catalog, an entry or a manifest, and then never update again. Keep the catalog to `schemaVersion`, `version` and `entries`, every entry to `manifest` and `signature`, and the manifests of the kinds those versions read (portable, server, android, appimage, deb, rpm, nsis, msi) to their current fields. Only a new kind's manifest may carry a new field.
@@ -221,7 +221,7 @@ npm run fix:all
 npm run test:ci
 
 # Release metadata and update manifest tests
-node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs
+node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs scripts/aur-depends.test.cjs
 ```
 
 > **Frontend Build Rule (CRITICAL)**:
@@ -252,7 +252,7 @@ cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features mob
 cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop,tray-gtk,notifications,autostart --lib
 # The tray tests need the tray feature and the Tauri mock runtime; graphics tests mutate the
 # environment, so run these single-threaded.
 for features in desktop desktop,tray,tauri-test; do
@@ -260,7 +260,7 @@ for features in desktop desktop,tray,tauri-test; do
 done
 
 # 6. Updater unit tests (they spawn processes and use file locks, so CI runs them single-threaded)
-cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --lib services::updates -- --test-threads=1
 ```
 
 Code behind `cfg(target_os = "android")` (or left out of it) compiles only for an Android target, which the commands above do not build. CI's **Android target** job checks it with the NDK; after touching such code, run the same with a local NDK (`rustup target add x86_64-linux-android`), and skip it when no NDK is installed:

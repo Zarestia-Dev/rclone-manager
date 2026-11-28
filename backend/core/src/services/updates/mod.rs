@@ -1,19 +1,12 @@
-#[cfg(all(feature = "updater", target_os = "android"))]
+#[cfg(target_os = "android")]
 mod android;
-#[cfg(feature = "updater")]
 pub mod binary;
-#[cfg(feature = "updater")]
 mod download;
-#[cfg(feature = "updater")]
 pub mod install;
-#[cfg(feature = "updater")]
 mod manifest;
-#[cfg(feature = "updater")]
 mod package;
-#[cfg(feature = "updater")]
 pub use manifest::ArtifactKind;
 pub mod policy;
-#[cfg(feature = "updater")]
 mod signed;
 
 use crate::context::AppHandle;
@@ -58,25 +51,23 @@ use crate::utils::version::{clean_app_version, is_update_candidate, is_version_n
 /// release with a lower version number, so that leaving the beta channel does not
 /// wait for the next stable version. That includes the packages the core installs
 /// (`dpkg -i`, `pacman -U` and `rpm -U --oldpackage` accept an older package, and
-/// the MSI allows downgrades) and the DEB Tauri installs with `dpkg -i`. On the
-/// beta channel that would be a downgrade: its newest release is older than this
-/// build only when this build's own release is missing (a local build, or a
-/// release that was withdrawn). Only forward: the RPM Tauri installs (its `rpm -U`
-/// refuses an older package), packages another source manages, and Android,
-/// whose version codes cannot decrease.
+/// the MSI allows downgrades). On the beta channel that would be a downgrade: its
+/// newest release is older than this build only when this build's own release is
+/// missing (a local build, or a release that was withdrawn). Only forward:
+/// packages another source manages, and Android, whose version codes cannot
+/// decrease.
 fn is_offered(
     installation: &policy::UpdatePolicy,
     channel: &str,
     current: &str,
     release: &str,
 ) -> bool {
-    use policy::{InstallationKind, UpdateMethod};
-    match (installation.method, installation.installation) {
-        (UpdateMethod::Tauri, InstallationKind::Rpm) => is_version_newer(current, release),
-        (UpdateMethod::Tauri | UpdateMethod::Binary, _) if channel != "beta" => {
-            is_update_candidate(current, release)
-        }
-        _ => is_version_newer(current, release),
+    let core_installs =
+        !installation.external && installation.installation != policy::InstallationKind::Android;
+    if core_installs && channel != "beta" {
+        is_update_candidate(current, release)
+    } else {
+        is_version_newer(current, release)
     }
 }
 
@@ -90,7 +81,6 @@ async fn fetch_update_inner(
     channel: &str,
     updater_state: &AppUpdaterState,
 ) -> Result<Option<UpdateInfo>> {
-    #[cfg(feature = "updater")]
     let _operation = updater_state.operation.lock().await;
     let installation = policy::get_update_policy(app.clone()).await;
     {
@@ -129,11 +119,11 @@ async fn check_releases(
 ) -> Result<Option<UpdateInfo>> {
     info!("Checking for app updates on channel: {channel}");
     log::debug!(
-        "Update context: current={}, product={:?}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
+        "Update context: current={}, product={:?}, installation={:?}, external={}, target={}-{}, can_install={}, reason={:?}",
         env!("CARGO_PKG_VERSION"),
         app.product().release_prefix,
         installation.installation,
-        installation.method,
+        installation.external,
         std::env::consts::OS,
         std::env::consts::ARCH,
         installation.can_install,
@@ -160,9 +150,46 @@ fn forget_update(updater_state: &AppUpdaterState) {
     let mut data = updater_state.data.lock();
     data.last_metadata = None;
     data.failure_message = None;
-    #[cfg(feature = "updater")]
-    {
-        data.pending_action = None;
+    data.pending_action = None;
+}
+
+/// What a check found for this installation: the update to install, when it may
+/// be installed, and the policy to announce it with. `None` when the release has
+/// no update to announce.
+fn announce(
+    result: std::result::Result<crate::utils::types::updater::ReleaseArtifact, String>,
+    installation: policy::UpdatePolicy,
+    tag: &str,
+) -> Result<
+    Option<(
+        Option<crate::utils::types::updater::PendingAppUpdate>,
+        policy::UpdatePolicy,
+    )>,
+> {
+    use crate::utils::types::updater::ReleaseArtifact;
+    match result {
+        Ok(ReleaseArtifact::Found(action)) => Ok(Some((
+            installation.can_install.then_some(action),
+            installation,
+        ))),
+        // A build that is no longer made must not hear "up to date" forever.
+        Ok(ReleaseArtifact::NotBuilt) => {
+            info!("{tag} has no update for this installation; announcing it as a manual update");
+            let installation = policy::UpdatePolicy {
+                can_install: false,
+                reason: Some(crate::localized_error!("backendErrors.updater.notBuilt")),
+                ..installation
+            };
+            Ok(Some((None, installation)))
+        }
+        Ok(ReleaseArtifact::Unpublished) => {
+            info!("No update manifest in {tag}; suppressing update announcement");
+            Ok(None)
+        }
+        Err(error) => {
+            log::warn!("Could not verify update availability for {tag}: {error}");
+            Err(UpdaterError::UpdateUnavailable(error))
+        }
     }
 }
 
@@ -201,59 +228,14 @@ async fn update_for_release(
     };
 
     // No installer of ours applies: announce it, the owning package source installs it.
-    let externally_managed = installation.method == policy::UpdateMethod::Unavailable;
-    #[cfg(not(feature = "updater"))]
-    if !externally_managed {
-        return Ok(None);
-    }
-
-    #[cfg(feature = "updater")]
+    let externally_managed = installation.external;
     let (pending_action, installation) = if externally_managed {
         (None, installation)
     } else {
-        use crate::utils::types::updater::ReleaseArtifact;
-        let result = match installation.method {
-            policy::UpdateMethod::Tauri => {
-                app.host()
-                    .check_update(release, &update_metadata.version)
-                    .await
-            }
-            policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
-                signed::check(app, release, &installation).await
-            }
-            policy::UpdateMethod::Unavailable => Ok(ReleaseArtifact::Unpublished),
-        };
-        match result {
-            Ok(ReleaseArtifact::Found(action)) => {
-                (installation.can_install.then_some(action), installation)
-            }
-            // A build that is no longer made must not hear "up to date" forever.
-            Ok(ReleaseArtifact::NotBuilt) => {
-                info!(
-                    "{} has no update for this installation; announcing it as a manual update",
-                    release.tag_name
-                );
-                let installation = policy::UpdatePolicy {
-                    can_install: false,
-                    reason: Some(crate::localized_error!("backendErrors.updater.notBuilt")),
-                    ..installation
-                };
-                (None, installation)
-            }
-            Ok(ReleaseArtifact::Unpublished) => {
-                info!(
-                    "No update manifest in {}; suppressing update announcement",
-                    release.tag_name
-                );
-                return Ok(None);
-            }
-            Err(error) => {
-                log::warn!(
-                    "Could not verify update availability for {}: {error}",
-                    release.tag_name
-                );
-                return Err(crate::utils::types::updater::UpdaterError::UpdateUnavailable(error));
-            }
+        let result = signed::check(app, release, &installation).await;
+        match announce(result, installation, &release.tag_name)? {
+            Some(found) => found,
+            None => return Ok(None),
         }
     };
     info!(
@@ -281,10 +263,7 @@ async fn update_for_release(
         }
         data.last_metadata = Some(update_metadata);
         data.policy = Some(installation);
-        #[cfg(feature = "updater")]
-        {
-            data.pending_action = pending_action;
-        }
+        data.pending_action = pending_action;
     }
     crate::services::bridge::emit(
         APP_EVENT,
@@ -381,61 +360,47 @@ mod tests {
     #[test]
     fn leaving_beta_does_not_wait_for_the_next_stable_version() {
         use policy::InstallationKind::{
-            Android, Appimage, Deb, Msi, Native, Nsis, Pacman, Portable, Rpm, Server,
+            Android, Appimage, Deb, MacApp, Msi, Nsis, Pacman, Portable, Rpm, Server,
         };
-        use policy::UpdateMethod;
-        let offered = |kind, method, current, release| {
+        let offered = |kind, external, current, release| {
             is_offered(
-                &policy::test_policy(kind, method, None),
+                &policy::test_policy(kind, external, None),
                 "stable",
                 current,
                 release,
             )
         };
-        let offered_on_beta = |kind, method, current, release| {
+        let offered_on_beta = |kind, external, current, release| {
             is_offered(
-                &policy::test_policy(kind, method, None),
+                &policy::test_policy(kind, external, None),
                 "beta",
                 current,
                 release,
             )
         };
-        for (kind, method) in [
-            (Native, UpdateMethod::Tauri),
-            (Appimage, UpdateMethod::Tauri),
-            (Portable, UpdateMethod::Binary),
-            (Server, UpdateMethod::Binary),
-            (Deb, UpdateMethod::Tauri),
-            (Deb, UpdateMethod::Binary),
-            (Rpm, UpdateMethod::Binary),
-            (Pacman, UpdateMethod::Binary),
-            (Nsis, UpdateMethod::Binary),
-            (Msi, UpdateMethod::Binary),
+        for kind in [
+            MacApp, Appimage, Portable, Server, Deb, Rpm, Pacman, Nsis, Msi,
         ] {
-            assert!(offered(kind, method, "0.3.4-beta.1", "0.3.3"));
-            assert!(!offered(kind, method, "0.3.4", "0.3.3"));
-            assert!(!offered(kind, method, "0.3.4-beta.2", "0.3.4-beta.1"));
+            let external = false;
+            assert!(offered(kind, external, "0.3.4-beta.1", "0.3.3"));
+            assert!(!offered(kind, external, "0.3.4", "0.3.3"));
+            assert!(!offered(kind, external, "0.3.4-beta.2", "0.3.4-beta.1"));
             // The beta channel never goes back to an older stable release, as when
             // this build's own release is missing; newer releases are still offered.
-            assert!(!offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.6"));
-            assert!(offered_on_beta(kind, method, "0.3.7-beta.1", "0.3.7"));
+            assert!(!offered_on_beta(kind, external, "0.3.7-beta.1", "0.3.6"));
+            assert!(offered_on_beta(kind, external, "0.3.7-beta.1", "0.3.7"));
             assert!(offered_on_beta(
                 kind,
-                method,
+                external,
                 "0.3.7-beta.1",
                 "0.3.7-beta.2"
             ));
         }
-        // Only forward: Tauri's `rpm -U` refuses an older package, another source
-        // manages its own packages, and Android version codes cannot decrease.
-        for (kind, method) in [
-            (Rpm, UpdateMethod::Tauri),
-            (Deb, UpdateMethod::Unavailable),
-            (Pacman, UpdateMethod::Unavailable),
-            (Android, UpdateMethod::Android),
-        ] {
-            assert!(!offered(kind, method, "0.3.4-beta.1", "0.3.3"));
-            assert!(offered(kind, method, "0.3.4-beta.1", "0.3.4"));
+        // Only forward: another source manages its own packages, and Android
+        // version codes cannot decrease.
+        for (kind, external) in [(Deb, true), (Pacman, true), (Android, false)] {
+            assert!(!offered(kind, external, "0.3.4-beta.1", "0.3.3"));
+            assert!(offered(kind, external, "0.3.4-beta.1", "0.3.4"));
         }
     }
 
@@ -556,11 +521,7 @@ mod tests {
             }
             let app = AppHandle::new(std::sync::Arc::new(NoHost), Default::default());
             let state = AppUpdaterState::default();
-            let policy = policy::test_policy(
-                installation,
-                policy::UpdateMethod::Unavailable,
-                Some("Externally managed"),
-            );
+            let policy = policy::test_policy(installation, true, Some("Externally managed"));
             let info = update_for_release(&app, "stable", &candidate(), policy, &state)
                 .await
                 .unwrap()
@@ -570,22 +531,13 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "updater")]
-    mod native_discovery {
+    mod discovery {
         use super::*;
         use crate::utils::types::updater::{
             AppUpdate, DownloadProgress, InstallOutcome, ReleaseArtifact,
         };
         use std::sync::Arc;
 
-        #[derive(Clone, Copy)]
-        enum Check {
-            Found,
-            Missing,
-            NotBuilt,
-            Failed,
-        }
-        struct TestHost(Check);
         struct TestUpdate;
         #[async_trait::async_trait]
         impl AppUpdate for TestUpdate {
@@ -599,101 +551,34 @@ mod tests {
                 panic!("Discovery must not install")
             }
         }
-        #[async_trait::async_trait]
-        impl crate::context::Host for TestHost {
-            fn resolve_paths(
-                &self,
-                _: &AppHandle,
-            ) -> std::result::Result<crate::services::paths::AppPaths, String> {
-                Err("Not needed".into())
-            }
-            fn restart(&self, _: &AppHandle) -> std::result::Result<(), String> {
-                panic!("Discovery must not restart")
-            }
-            async fn check_update(
-                &self,
-                _: &github_client::Release,
-                _: &str,
-            ) -> std::result::Result<ReleaseArtifact, String> {
-                match self.0 {
-                    Check::Missing => Ok(ReleaseArtifact::Unpublished),
-                    Check::NotBuilt => Ok(ReleaseArtifact::NotBuilt),
-                    Check::Failed => Err("Invalid manifest signature".into()),
-                    Check::Found => Ok(ReleaseArtifact::Found(Arc::new(TestUpdate))),
-                }
-            }
+
+        fn policy(can_install: bool) -> policy::UpdatePolicy {
+            policy::test_policy(
+                policy::InstallationKind::MacApp,
+                false,
+                (!can_install).then_some("Disabled by administrator"),
+            )
         }
 
-        #[tokio::test]
-        async fn missing_or_invalid_artifacts_never_create_available_metadata() {
-            for check in [Check::Missing, Check::Failed] {
-                let app = AppHandle::new(Arc::new(TestHost(check)), Default::default());
-                let state = AppUpdaterState::default();
-                state.data.lock().state = UpdateState::Checking;
-                let policy = policy::test_policy(
-                    policy::InstallationKind::Native,
-                    policy::UpdateMethod::Tauri,
-                    None,
-                );
-                let checking = CheckingGuard(&state);
-                let result = update_for_release(&app, "beta", &candidate(), policy, &state).await;
-                drop(checking);
-                match check {
-                    Check::Missing => assert!(result.unwrap().is_none()),
-                    Check::Failed => assert!(result.is_err()),
-                    Check::Found | Check::NotBuilt => unreachable!(),
-                }
-                let data = state.data.lock();
-                assert_eq!(data.state, UpdateState::Idle);
-                assert!(data.last_metadata.is_none());
-                assert!(data.pending_action.is_none());
-            }
-        }
-
-        #[tokio::test]
-        async fn a_failed_recheck_does_not_erase_the_update_found_earlier() {
-            let app = AppHandle::new(Arc::new(TestHost(Check::Failed)), Default::default());
-            let state = AppUpdaterState::default();
-            {
-                let mut data = state.data.lock();
-                data.state = UpdateState::Checking;
-                data.last_metadata = Some(UpdateMetadata {
-                    version: "98.0.0".into(),
-                    update_available: true,
-                    ..Default::default()
-                });
-                data.pending_action = Some(Arc::new(TestUpdate));
-            }
-            let policy = policy::test_policy(
-                policy::InstallationKind::Native,
-                policy::UpdateMethod::Tauri,
-                None,
+        #[test]
+        fn missing_or_invalid_artifacts_never_announce_an_update() {
+            let missing = announce(Ok(ReleaseArtifact::Unpublished), policy(true), "v99.0.0");
+            assert!(missing.unwrap().is_none());
+            let failed = announce(
+                Err("Invalid manifest signature".into()),
+                policy(true),
+                "v99.0.0",
             );
-            let checking = CheckingGuard(&state);
-            let result = update_for_release(&app, "beta", &candidate(), policy, &state).await;
-            drop(checking);
-            assert!(result.is_err());
-            let data = state.data.lock();
-            assert_eq!(data.state, UpdateState::Available);
-            assert_eq!(data.info().unwrap().metadata.version, "98.0.0");
-            assert!(data.pending_action.is_some());
+            assert!(failed.is_err());
         }
 
-        #[tokio::test]
-        async fn a_release_without_this_installation_is_announced_as_a_manual_update() {
-            let app = AppHandle::new(Arc::new(TestHost(Check::NotBuilt)), Default::default());
-            let state = AppUpdaterState::default();
-            let policy = policy::test_policy(
-                policy::InstallationKind::Native,
-                policy::UpdateMethod::Tauri,
-                None,
-            );
-            let info = update_for_release(&app, "beta", &candidate(), policy, &state)
-                .await
-                .unwrap()
-                .unwrap();
-            assert!(info.metadata.update_available);
-            let installation = info.installation.unwrap();
+        #[test]
+        fn a_release_without_this_installation_is_announced_as_a_manual_update() {
+            let (action, installation) =
+                announce(Ok(ReleaseArtifact::NotBuilt), policy(true), "v99.0.0")
+                    .unwrap()
+                    .unwrap();
+            assert!(action.is_none());
             assert!(!installation.can_install);
             assert!(
                 installation
@@ -701,30 +586,17 @@ mod tests {
                     .unwrap()
                     .contains("backendErrors.updater.notBuilt")
             );
-            let data = state.data.lock();
-            assert_eq!(data.state, UpdateState::Available);
-            assert!(data.pending_action.is_none());
-            assert!(!data.policy.as_ref().unwrap().can_install);
         }
 
-        #[tokio::test]
-        async fn valid_artifacts_are_discovered_even_when_installation_is_disabled() {
+        #[test]
+        fn valid_artifacts_are_discovered_even_when_installation_is_disabled() {
             for can_install in [true, false] {
-                let app = AppHandle::new(Arc::new(TestHost(Check::Found)), Default::default());
-                let state = AppUpdaterState::default();
-                let policy = policy::test_policy(
-                    policy::InstallationKind::Native,
-                    policy::UpdateMethod::Tauri,
-                    (!can_install).then_some("Disabled by administrator"),
-                );
-                let info = update_for_release(&app, "beta", &candidate(), policy, &state)
-                    .await
+                let found = ReleaseArtifact::Found(Arc::new(TestUpdate));
+                let (action, installation) = announce(Ok(found), policy(can_install), "v99.0.0")
                     .unwrap()
                     .unwrap();
-                assert_eq!(info.status, UpdateState::Available);
-                assert!(info.metadata.update_available);
-                assert_eq!(info.installation.unwrap().can_install, can_install);
-                assert_eq!(state.data.lock().pending_action.is_some(), can_install);
+                assert_eq!(installation.can_install, can_install);
+                assert_eq!(action.is_some(), can_install);
             }
         }
     }

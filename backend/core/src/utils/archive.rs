@@ -18,7 +18,6 @@ pub fn extract_rclone_zip(zip_file: &Path, extract_to: &Path) -> Result<(), Stri
     Ok(())
 }
 
-#[cfg(feature = "updater")]
 pub(crate) fn safe_member_path(path: &str) -> bool {
     !path.is_empty()
         && !path.contains(['\\', ':'])
@@ -30,7 +29,6 @@ pub(crate) fn safe_member_path(path: &str) -> bool {
 }
 
 /// Inspect every member before reading or extracting a portable package.
-#[cfg(feature = "updater")]
 fn inspect_portable_zip<'a>(
     bytes: &'a [u8],
     bundle_root: Option<&str>,
@@ -64,7 +62,6 @@ fn inspect_portable_zip<'a>(
 }
 
 /// Read just the expected executable; settings and other archive entries stay untouched.
-#[cfg(feature = "updater")]
 pub(crate) fn read_zip_member(
     bytes: &[u8],
     member: &str,
@@ -89,7 +86,6 @@ pub(crate) fn read_zip_member(
 }
 
 /// Unpack one already authenticated macOS app into a fresh staging directory.
-#[cfg(feature = "updater")]
 pub(crate) fn extract_zip_bundle(
     bytes: &[u8],
     destination: &Path,
@@ -179,7 +175,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "updater")]
     #[test]
     fn portable_reader_handles_unicode_empty_and_legacy_named_entries() {
         let mut archive = ZipWriter::new(std::io::Cursor::new(Vec::new()));
@@ -216,7 +211,6 @@ mod tests {
         assert_eq!(archive.by_index(0).unwrap().name().unwrap(), "café");
     }
 
-    #[cfg(feature = "updater")]
     #[test]
     fn portable_reader_selects_only_the_binary_and_enforces_size_and_paths() {
         let bytes = include_bytes!("../services/updates/fixtures/portable-linux-x86_64-99.0.0.zip");
@@ -259,7 +253,6 @@ mod tests {
         assert!(read_zip_member(&bytes, "binary", 7, None).is_err());
     }
 
-    #[cfg(feature = "updater")]
     #[test]
     fn bundle_extraction_rejects_an_existing_destination_and_entries_outside_the_app() {
         let bytes =

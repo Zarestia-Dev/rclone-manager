@@ -17,21 +17,33 @@ pub(super) const CATALOG_NAME: &str = "updater.json";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ArtifactKind {
+    /// A portable desktop build, in a ZIP.
     Portable,
+    /// The server executable, in a ZIP.
     Server,
     Android,
+    /// The desktop app's macOS `.app` bundle, in a ZIP like a portable build's.
+    App,
     /// A Linux AppImage, published as the release's own `.AppImage` file.
     Appimage,
-    /// The server packages, installed by their installer.
+    /// The Linux packages and the Windows setup and MSI, of the desktop app and of
+    /// the server alike: each has its own release and so its own catalog.
     Deb,
     Rpm,
-    /// The server's Arch Linux package.
     Pacman,
     Nsis,
     Msi,
 }
 
 impl ArtifactKind {
+    /// Whether the operating system's installer replaces the files, not the core.
+    pub(super) fn is_package(self) -> bool {
+        matches!(
+            self,
+            Self::Deb | Self::Rpm | Self::Pacman | Self::Nsis | Self::Msi
+        )
+    }
+
     /// The extension the kind's installer needs its file to have.
     pub(super) fn extension(self) -> &'static str {
         match self {
@@ -41,7 +53,7 @@ impl ArtifactKind {
             Self::Pacman => "pkg.tar.zst",
             Self::Nsis => "exe",
             Self::Msi => "msi",
-            Self::Portable | Self::Server | Self::Appimage => "payload",
+            Self::Portable | Self::Server | Self::App | Self::Appimage => "payload",
         }
     }
 }
@@ -52,6 +64,7 @@ impl std::fmt::Display for ArtifactKind {
             Self::Portable => "portable",
             Self::Server => "server",
             Self::Android => "android",
+            Self::App => "app",
             Self::Appimage => "appimage",
             Self::Deb => "deb",
             Self::Rpm => "rpm",
@@ -202,7 +215,9 @@ impl Manifest {
     }
 
     pub(super) fn bundle_root(&self) -> Option<&str> {
-        if self.kind != ArtifactKind::Portable || !self.target.starts_with("macos-") {
+        if !matches!(self.kind, ArtifactKind::Portable | ArtifactKind::App)
+            || !self.target.starts_with("macos-")
+        {
             return None;
         }
         let path = &self.archive.as_ref()?.binary_path;

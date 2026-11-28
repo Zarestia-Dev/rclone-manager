@@ -2,7 +2,6 @@ static JAVA_VM: std::sync::OnceLock<jni::JavaVM> = std::sync::OnceLock::new();
 static BRIDGE_CLASS: std::sync::OnceLock<jni::objects::Global<jni::objects::JClass>> =
     std::sync::OnceLock::new();
 
-#[cfg(feature = "updater")]
 pub fn install_update_apk(path: &str) -> Result<i32, String> {
     let vm = JAVA_VM.get().ok_or("Java VM not initialized")?;
     let cls = BRIDGE_CLASS.get().ok_or("Android bridge not initialized")?;

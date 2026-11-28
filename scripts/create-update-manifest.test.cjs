@@ -352,6 +352,36 @@ test('publishes multiple signed targets into one catalog without signature sidec
         'server-windows-x86_64-1.2.3.zip',
       ].sort()
     );
+    // The desktop app's macOS bundle is a ZIP like a portable one, under its own kind
+    // so that both can share one release's catalog.
+    const appOutput = path.join(directory, 'app-output');
+    const appMember = 'RClone Manager.app/Contents/MacOS/rclone-manager';
+    const appArchive = path.join(fixtures, 'portable-macos-aarch64-99.0.0.zip');
+    const app = publish(
+      'app',
+      'macos',
+      'aarch64',
+      '1.2.3',
+      inputFile,
+      appOutput,
+      appArchive,
+      appMember
+    );
+    assert.equal(app.asset, 'app-macos-aarch64-1.2.3.zip');
+    assert.equal(app.archive.binaryPath, appMember);
+    assert.throws(() =>
+      publish(
+        'app',
+        'macos',
+        'aarch64',
+        '1.2.3',
+        inputFile,
+        appOutput,
+        appArchive,
+        'rclone-manager'
+      )
+    );
+    assert.throws(() => publish('app', 'macos', 'aarch64', '1.2.3', inputFile, appOutput));
     // An AppImage keeps the name GitHub gives the Tauri bundle and is never archived.
     const appimageOutput = path.join(directory, 'appimage-output');
     const bundle = path.join(directory, 'RClone Manager_1.2.3_amd64.AppImage');

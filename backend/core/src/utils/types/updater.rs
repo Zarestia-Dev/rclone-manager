@@ -101,11 +101,9 @@ pub enum UpdateState {
 }
 
 /// Progress callback supplied by the shared updater state machine.
-#[cfg(feature = "updater")]
 pub type DownloadProgress = Box<dyn FnMut(usize, Option<u64>) + Send>;
 
 /// Installation capability supplied by a runtime host, independent of its plugin types.
-#[cfg(feature = "updater")]
 #[async_trait::async_trait]
 pub trait AppUpdate: Send + Sync {
     fn version(&self) -> &str;
@@ -114,18 +112,15 @@ pub trait AppUpdate: Send + Sync {
     fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String>;
 }
 
-#[cfg(feature = "updater")]
 pub enum InstallOutcome {
     Restart,
     Exit,
     AwaitingUser,
 }
 
-#[cfg(feature = "updater")]
 pub type PendingAppUpdate = std::sync::Arc<dyn AppUpdate>;
 
 /// What a release offers this installation.
-#[cfg(feature = "updater")]
 pub enum ReleaseArtifact {
     /// A verified update for this installation.
     Found(PendingAppUpdate),
@@ -140,7 +135,6 @@ pub enum ReleaseArtifact {
 /// Tracks the in-flight app self-update download and its staged payload.
 #[derive(Default)]
 pub struct AppUpdaterState {
-    #[cfg(feature = "updater")]
     pub operation: tokio::sync::Mutex<()>,
     pub data: Mutex<AppUpdaterData>,
 }
@@ -152,7 +146,6 @@ pub struct AppUpdaterData {
     pub total_bytes: u64,
     pub failure_message: Option<String>,
     pub policy: Option<crate::services::updates::policy::UpdatePolicy>,
-    #[cfg(feature = "updater")]
     pub pending_action: Option<PendingAppUpdate>,
     pub downloaded_payload: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
@@ -249,7 +242,6 @@ pub struct RcloneUpdaterData {
     pub notice: Option<String>,
 }
 
-#[cfg(feature = "updater")]
 impl AppUpdaterState {
     pub async fn cancel_update(&self) {
         let _operation = self.operation.lock().await;
@@ -291,7 +283,6 @@ impl AppUpdaterData {
     }
 
     /// Drop a staged or interrupted download; the discovered release stays offered.
-    #[cfg(feature = "updater")]
     fn discard_download(&mut self) {
         self.settle();
         self.downloaded_payload = None;
@@ -301,7 +292,6 @@ impl AppUpdaterData {
         self.failure_message = None;
     }
 
-    #[cfg(feature = "updater")]
     pub fn take_staged_update(&mut self) -> Option<(PendingAppUpdate, Vec<u8>)> {
         if self.state != UpdateState::ReadyToRestart || self.pending_action.is_none() {
             return None;
@@ -417,10 +407,8 @@ impl RcloneUpdaterData {
 mod tests {
     use super::*;
 
-    #[cfg(feature = "updater")]
     struct StubUpdate;
 
-    #[cfg(feature = "updater")]
     #[async_trait::async_trait]
     impl AppUpdate for StubUpdate {
         fn version(&self) -> &str {
@@ -444,7 +432,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "updater")]
     #[tokio::test]
     async fn staged_update_uses_a_host_capability_without_native_plugin_state() {
         let update: PendingAppUpdate = std::sync::Arc::new(StubUpdate);
@@ -478,7 +465,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "updater")]
     #[tokio::test]
     async fn cancelling_waits_for_the_worker_to_drop_before_resetting_progress() {
         let state = AppUpdaterState::default();
@@ -505,7 +491,6 @@ mod tests {
         assert!(data.download_handle.is_none());
     }
 
-    #[cfg(feature = "updater")]
     #[tokio::test]
     async fn cancelling_discards_a_staged_payload_but_preserves_the_release_for_retry() {
         let state = AppUpdaterState::default();
@@ -530,7 +515,6 @@ mod tests {
         assert_eq!(data.total_bytes, 0);
     }
 
-    #[cfg(feature = "updater")]
     #[tokio::test]
     async fn cancellation_cannot_discard_an_installation_in_progress() {
         let state = AppUpdaterState::default();
@@ -543,7 +527,6 @@ mod tests {
         assert_eq!(state.data.lock().state, UpdateState::Installing);
     }
 
-    #[cfg(feature = "updater")]
     #[tokio::test]
     async fn discarding_an_orphaned_payload_returns_to_idle() {
         let state = AppUpdaterState::default();
@@ -557,7 +540,6 @@ mod tests {
         assert!(state.data.lock().downloaded_payload.is_none());
     }
 
-    #[cfg(feature = "updater")]
     #[test]
     fn incomplete_staged_updates_do_not_consume_the_payload() {
         let mut data = AppUpdaterData {

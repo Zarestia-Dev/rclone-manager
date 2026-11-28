@@ -31,10 +31,23 @@ fn image_or_executable(
 /// running process keeps its own copy until the restart.
 pub(super) fn install(manifest: &Manifest, payload: &[u8]) -> Result<InstallOutcome, String> {
     let target = installed_executable(manifest.kind).map_err(|e| e.to_string())?;
-    super::policy::writable_binary(&target).map_err(|e| e.to_string())?;
+    let writable = super::policy::writable_binary(&target);
     match manifest.bundle_root() {
-        Some(root) => replace_bundle(&target, payload, root)?,
-        None => replace_file(&target, payload).map_err(|e| e.to_string())?,
+        // The desktop app is installed for all users: where its folder is not the
+        // user's, macOS asks for the administrator password, as it does for any
+        // installer.
+        #[cfg(target_os = "macos")]
+        Some(root) if manifest.kind == ArtifactKind::App && writable.is_err() => {
+            replace_bundle_as_administrator(&target, payload, root)?
+        }
+        Some(root) => {
+            writable.map_err(|e| e.to_string())?;
+            replace_bundle(&target, payload, root)?
+        }
+        None => {
+            writable.map_err(|e| e.to_string())?;
+            replace_file(&target, payload).map_err(|e| e.to_string())?
+        }
     }
     log::info!(
         "Installed update {} at {}",
@@ -74,16 +87,17 @@ fn replace_file(target: &Path, payload: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
-/// A macOS portable build replaces its whole `.app` bundle, whose signature
-/// covers every file in it.
-fn replace_bundle(target: &Path, payload: &[u8], root: &str) -> Result<(), String> {
+/// Unpacks the new `.app` bundle into `directory`. Returns the installed bundle
+/// and the unpacked one.
+fn stage_bundle<'a>(
+    target: &'a Path,
+    payload: &[u8],
+    root: &str,
+    directory: &Path,
+) -> Result<(&'a Path, PathBuf), String> {
     let bundle = app_bundle_path(target)
         .ok_or_else(|| crate::localized_error!("backendErrors.updater.invalidBundle"))?;
-    let directory = tempfile::Builder::new()
-        .prefix(".rcman-update-")
-        .tempdir_in(installation_directory(target).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
-    let candidate = directory.path().join("candidate");
+    let candidate = directory.join("candidate");
     crate::utils::archive::extract_zip_bundle(payload, &candidate, root)?;
     let candidate = candidate.join(root);
     let binary = candidate.join(target.strip_prefix(bundle).map_err(|e| e.to_string())?);
@@ -94,6 +108,17 @@ fn replace_bundle(target: &Path, payload: &[u8], root: &str) -> Result<(), Strin
             .permissions(),
     )
     .map_err(|e| e.to_string())?;
+    Ok((bundle, candidate))
+}
+
+/// A macOS app replaces its whole `.app` bundle, whose signature covers every
+/// file in it.
+fn replace_bundle(target: &Path, payload: &[u8], root: &str) -> Result<(), String> {
+    let directory = tempfile::Builder::new()
+        .prefix(".rcman-update-")
+        .tempdir_in(installation_directory(target).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    let (bundle, candidate) = stage_bundle(target, payload, root, directory.path())?;
     // The old bundle goes with the temporary directory; its running files stay
     // readable until the restart.
     let previous = directory.path().join("previous.app");
@@ -103,6 +128,55 @@ fn replace_bundle(target: &Path, payload: &[u8], root: &str) -> Result<(), Strin
         return Err(error.to_string());
     }
     Ok(())
+}
+
+/// Unpacks the new bundle in the user's temporary folder, where no rights are
+/// needed, and swaps it in as root. The old bundle is put back when the copy fails.
+/// The new bundle keeps the owner the copy gives it, so the next update asks again.
+#[cfg(target_os = "macos")]
+fn replace_bundle_as_administrator(
+    target: &Path,
+    payload: &[u8],
+    root: &str,
+) -> Result<(), String> {
+    let directory = tempfile::Builder::new()
+        .prefix("rcman-update-")
+        .tempdir()
+        .map_err(|e| e.to_string())?;
+    let (bundle, candidate) = stage_bundle(target, payload, root, directory.path())?;
+    let script = bundle_swap_script(bundle, &candidate);
+    let output = std::process::Command::new("osascript")
+        .args([
+            "-e",
+            &crate::utils::process::command::as_administrator(&script),
+        ])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map_err(|e| e.to_string())?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(crate::utils::process::command::osascript_error(
+            &String::from_utf8_lossy(&output.stderr),
+        ))
+    }
+}
+
+/// The shell script that replaces `bundle` with `candidate`: the old bundle stays
+/// aside until the copy has worked and is put back when it has not.
+#[cfg(any(target_os = "macos", test))]
+fn bundle_swap_script(bundle: &Path, candidate: &Path) -> String {
+    use crate::utils::process::command::shell_quote;
+    let bundle = bundle.to_string_lossy();
+    let previous = shell_quote(&format!("{bundle}.rcman-old"));
+    let (bundle, candidate) = (
+        shell_quote(&bundle),
+        shell_quote(&candidate.to_string_lossy()),
+    );
+    format!(
+        "rm -rf {previous} && mv {bundle} {previous} && if ditto {candidate} {bundle}; \
+         then rm -rf {previous}; else rm -rf {bundle}; mv {previous} {bundle}; false; fi"
+    )
 }
 
 #[cfg(windows)]
@@ -164,6 +238,55 @@ fn confirm_legacy_startup(directory: &Path, token: &str) -> std::io::Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Runs the swap with a shell function standing in for macOS's `ditto`.
+    #[cfg(unix)]
+    fn swap(bundle: &Path, candidate: &Path, ditto: &str) -> bool {
+        std::process::Command::new("sh")
+            .arg("-c")
+            .arg(format!(
+                "ditto() {{ {ditto}; }}; {}",
+                bundle_swap_script(bundle, candidate)
+            ))
+            .status()
+            .unwrap()
+            .success()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_swapped_bundle_replaces_the_old_one_and_leaves_nothing_behind() {
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("It's Old.app");
+        let candidate = root.path().join("new dir").join("New.app");
+        std::fs::create_dir_all(&bundle).unwrap();
+        std::fs::create_dir_all(&candidate).unwrap();
+        std::fs::write(bundle.join("old"), b"old").unwrap();
+        std::fs::write(candidate.join("new"), b"new").unwrap();
+        // A copy left by an update that was interrupted earlier.
+        let leftover = root.path().join("It's Old.app.rcman-old");
+        std::fs::create_dir_all(&leftover).unwrap();
+
+        assert!(swap(&bundle, &candidate, r#"cp -R "$1" "$2""#));
+        assert!(bundle.join("new").exists() && !bundle.join("old").exists());
+        assert!(!leftover.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_copy_puts_the_old_bundle_back() {
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("Old.app");
+        std::fs::create_dir_all(&bundle).unwrap();
+        std::fs::write(bundle.join("old"), b"old").unwrap();
+        let candidate = root.path().join("New.app");
+        std::fs::create_dir_all(&candidate).unwrap();
+
+        // The copy leaves a half-written bundle, then fails.
+        assert!(!swap(&bundle, &candidate, r#"mkdir "$2" && false"#));
+        assert!(bundle.join("old").exists());
+        assert!(!root.path().join("Old.app.rcman-old").exists());
+    }
 
     #[test]
     fn replacement_keeps_permissions_and_the_files_beside_it() {

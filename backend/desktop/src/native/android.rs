@@ -21,8 +21,8 @@ struct AndroidHost(AppPaths);
 
 #[async_trait::async_trait]
 impl Host for AndroidHost {
-    fn update_method(&self) -> crate::services::updates::policy::UpdateMethod {
-        crate::services::updates::policy::UpdateMethod::Android
+    fn installation_kind(&self) -> crate::services::updates::policy::InstallationKind {
+        crate::services::updates::policy::InstallationKind::Android
     }
 
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<AppPaths, String> {

@@ -43,7 +43,7 @@ http = "1"
 tokio-util = { workspace = true }
 # Keep per-call recursive reads for librclone cancellation; 0.13 removes this API.
 parking_lot = "0.12"
-minisign-verify = { version = "0.3", optional = true }
+minisign-verify = "0.3"
 # The native tray. Keep both semver-compatible with Tauri's own: Tauri forwards
 # muda menu events only for the copy it depends on. The Linux backend is chosen by
 # `tray-gtk` or `tray-dbus`.
@@ -77,7 +77,6 @@ tray = ["dep:tray-icon", "dep:image"]
 # StatusNotifierItem D-Bus protocol, which needs no GTK.
 tray-gtk = ["tray", "tray-icon/libappindicator"]
 tray-dbus = ["tray", "tray-icon/ksni"]
-updater = ["dep:minisign-verify"]
 notifications = []
 autostart = []
 portable = []

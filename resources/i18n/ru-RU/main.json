@@ -627,6 +627,7 @@
       },
       "app_update_channel": {
         "label": "Канал обновлений приложения",
+        "description": "Канал «Стабильный» предлагает только стабильные версии. Канал «Бета» предлагает самую новую версию, стабильную или бета-версию.",
         "options": {
           "stable": "Стабильный",
           "beta": "Бета"
@@ -2348,7 +2349,8 @@
       "channelBeta": "Бета",
       "channelDev": "Разработка",
       "channelStableDesc": "Рекомендуется большинству пользователей",
-      "channelBetaDesc": "Новейшие функции",
+      "channelBetaDesc": "Самая новая версия, стабильная или бета",
+      "channelBetaDescRclone": "Последняя бета-сборка с beta.rclone.org",
       "downloadPage": "Страница загрузки",
       "managedBuildNotice": "Эта сборка не может обновляться встроенным средством. Устанавливайте обновления вручную.",
       "openFlathub": "Открыть Flathub",
@@ -4349,6 +4351,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Здесь нечем запросить пароль администратора (pkexec с агентом polkit или sudo с zenity или kdialog). Скачайте пакет через «Открыть на GitHub» и установите его в терминале: {{command}}",
+      "authorizationDenied": "Обновление не установлено: не получено разрешение администратора.",
       "verificationFailed": "Не удалось проверить обновление: подпись, контрольная сумма или метаданные не совпадают.",
       "insecureDownload": "Обновление было загружено не по HTTPS.",
       "downloadTooLarge": "Размер загружаемого обновления больше ожидаемого.",

@@ -108,8 +108,9 @@ mod tests {
         let policy = bridge_dispatch(&app, "get_update_policy", json!({}))
             .await
             .unwrap();
+        // A host that does not say what it is gets no installer.
         assert_eq!(policy["canInstall"], false);
-        assert_eq!(policy["method"], "unavailable");
+        assert_eq!(policy["installation"], "unknown");
     }
 
     #[tokio::test]

@@ -13,15 +13,11 @@ pub enum ExitDecision {
 /// OS capabilities supplied by the executable. The shared crate never imports a host.
 #[async_trait::async_trait]
 pub trait Host: Send + Sync {
-    fn update_method(&self) -> crate::services::updates::policy::UpdateMethod {
-        crate::services::updates::policy::UpdateMethod::Unavailable
-    }
-    fn is_portable_installation(&self) -> bool {
-        false
-    }
-    /// The Linux package format a Tauri build was bundled as (DEB, RPM or AppImage).
-    fn native_bundle(&self) -> Option<crate::services::updates::policy::InstallationKind> {
-        None
+    /// What this build is, so that it can replace itself: the server says `Server`,
+    /// the desktop app what it was packaged as. A host that does not say is
+    /// `Unknown`, and no update is installed for it.
+    fn installation_kind(&self) -> crate::services::updates::policy::InstallationKind {
+        crate::services::updates::policy::InstallationKind::Unknown
     }
     fn resolve_paths(&self, app: &AppHandle) -> Result<AppPaths, String>;
     fn restart(&self, app: &AppHandle) -> Result<(), String>;
@@ -74,15 +70,6 @@ pub trait Host: Send + Sync {
         _ctx: &crate::services::alerts::template::TemplateContext,
     ) -> Result<(), String> {
         Err("Native notifications are unavailable".into())
-    }
-    /// The native update for `expected_version` in `release`, if the host has one.
-    #[cfg(feature = "updater")]
-    async fn check_update(
-        &self,
-        _release: &crate::utils::github_client::Release,
-        _expected_version: &str,
-    ) -> Result<crate::utils::types::updater::ReleaseArtifact, String> {
-        Ok(crate::utils::types::updater::ReleaseArtifact::Unpublished)
     }
 }
 

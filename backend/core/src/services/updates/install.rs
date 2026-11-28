@@ -288,8 +288,8 @@ mod tests {
     struct BinaryHost;
     #[async_trait::async_trait]
     impl Host for BinaryHost {
-        fn update_method(&self) -> super::super::policy::UpdateMethod {
-            super::super::policy::UpdateMethod::Binary
+        fn installation_kind(&self) -> super::super::policy::InstallationKind {
+            super::super::policy::InstallationKind::Server
         }
         fn resolve_paths(
             &self,

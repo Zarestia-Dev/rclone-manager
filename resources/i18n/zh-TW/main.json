@@ -606,6 +606,7 @@
       },
       "app_update_channel": {
         "label": "應用程式更新通道",
+        "description": "穩定版僅提供穩定版本。測試版提供最新版本，不論是穩定版或測試版。",
         "options": {
           "stable": "穩定版",
           "beta": "測試版"
@@ -2314,7 +2315,8 @@
       "channelBeta": "測試版",
       "channelDev": "開發版",
       "channelStableDesc": "推薦大多數使用者使用",
-      "channelBetaDesc": "最新功能",
+      "channelBetaDesc": "最新版本，穩定版或測試版",
+      "channelBetaDescRclone": "來自 beta.rclone.org 的最新測試版建置",
       "downloadPage": "下載頁面",
       "managedBuildNotice": "此構建無法透過應用程式更新程式更新。請手動安裝更新。",
       "openFlathub": "開啟 Flathub",
@@ -4171,6 +4173,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "這裡無法要求管理員密碼（需要搭配 polkit 代理程式的 pkexec，或搭配 zenity 或 kdialog 的 sudo）。請透過「在 GitHub 檢視」下載套件，然後在終端機中安裝：{{command}}",
+      "authorizationDenied": "未取得管理員權限，更新未安裝。",
       "verificationFailed": "無法驗證更新：其簽章、總和檢查碼或中繼資料不符。",
       "insecureDownload": "更新下載未透過 HTTPS 提供。",
       "downloadTooLarge": "更新下載的大小超出預期。",

@@ -40,12 +40,12 @@ rust-fmt:
     cargo fmt --manifest-path {{manifest}} --all -- --check
 
 rust-test:
-    cargo test --manifest-path {{manifest}} -p rclone-manager-core --features desktop,tray-gtk,updater,notifications,autostart --lib
+    cargo test --manifest-path {{manifest}} -p rclone-manager-core --features desktop,tray-gtk,notifications,autostart --lib
     for features in desktop desktop,tray,tauri-test; do \
       cargo test --manifest-path {{manifest}} -p rclone-manager --features "$features" --no-default-features --lib -- --test-threads=1; \
     done
-    cargo test --manifest-path {{manifest}} -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
+    cargo test --manifest-path {{manifest}} -p rclone-manager-core --lib services::updates -- --test-threads=1
 
 # Release metadata and update manifest tests.
 scripts:
-    node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs
+    node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs scripts/aur-depends.test.cjs
