@@ -613,6 +613,7 @@
       },
       "app_update_channel": {
         "label": "Canal de mise à jour de l'application",
+        "description": "Stable ne propose que des versions stables. Bêta propose la version la plus récente, qu'elle soit stable ou bêta.",
         "options": {
           "stable": "Stable",
           "beta": "Bêta"
@@ -2339,7 +2340,8 @@
       "channelBeta": "Bêta",
       "channelDev": "Développement",
       "channelStableDesc": "Recommandé pour la majorité des utilisateurs",
-      "channelBetaDesc": "Dernières fonctionnalités",
+      "channelBetaDesc": "La version la plus récente, stable ou bêta",
+      "channelBetaDescRclone": "Dernière version bêta de beta.rclone.org",
       "downloadPage": "Télécharger la page",
       "managedBuildNotice": "Mise à jour automatique impossible pour cette version. Mise à jour manuelle requise.",
       "openFlathub": "Ouvrir Flathub",
@@ -4244,6 +4246,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Aucune demande de mot de passe administrateur n'est disponible ici (pkexec avec un agent polkit, ou sudo avec zenity ou kdialog). Téléchargez le paquet avec « Ouvrir le dépôt GitHub » et installez-le dans un terminal : {{command}}",
+      "authorizationDenied": "La mise à jour n'a pas été installée, car l'autorisation de l'administrateur n'a pas été accordée.",
       "verificationFailed": "La mise à jour n'a pas pu être vérifiée : sa signature, sa somme de contrôle ou ses métadonnées ne correspondent pas.",
       "insecureDownload": "Le téléchargement de la mise à jour n'a pas été fourni via HTTPS.",
       "downloadTooLarge": "Le téléchargement de la mise à jour est plus volumineux que prévu.",
