@@ -41,10 +41,7 @@ import { PillDirective } from '../../../shared/directives/pill.directive';
   host: {
     '[class.is-active]': 'isRunning()',
     '[attr.data-tone]': 'cardTone()',
-    role: 'button',
-    tabindex: '0',
     '(click)': 'onRowClick()',
-    '(keydown)': 'onKeyDown($event)',
   },
 })
 export class QuickRunCardComponent {
@@ -153,15 +150,6 @@ export class QuickRunCardComponent {
 
   onRowClick(): void {
     this.selectRun.emit(this.quickRun().id);
-  }
-
-  /** Enter or Space on the card itself selects it; the buttons inside keep their own keys. */
-  onKeyDown(event: KeyboardEvent): void {
-    if (event.target !== event.currentTarget) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.onRowClick();
-    }
   }
 
   onToggleRun(event: Event): void {

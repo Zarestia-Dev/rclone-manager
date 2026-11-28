@@ -18,6 +18,8 @@
 @use "app/styles/code-editor";
 @use "app/styles/activity-tables";
 @use "app/styles/pill";
+@use "app/styles/card-primary-action";
+@use "app/styles/header-controls";
 
 // .cdk-visually-hidden: text for screen readers only, such as the page headings.
 @include cdk.a11y-visually-hidden();

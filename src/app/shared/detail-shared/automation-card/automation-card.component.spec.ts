@@ -265,17 +265,18 @@ describe('AutomationCardComponent', () => {
     expect(fixture.nativeElement.querySelector('.failure')).toBeNull();
   });
 
-  it('activates the compact card with the keyboard on itself only', () => {
-    const el = render({}, 'compact');
+  it('gives the compact card a main action button beside its own buttons', () => {
+    const el = render({ cronExpression: '0 2 * * *' }, 'compact');
     const matCard = el.querySelector('mat-card') as HTMLElement;
+    const main = matCard.firstElementChild as HTMLButtonElement;
+    expect(matCard.getAttribute('role')).toBeNull();
+    expect(main.matches('button.card-primary-action')).toBe(true);
+    expect(main.getAttribute('aria-label')).toBe('Nightly');
+
+    // A click on the main action reaches the card, and so its host's handler.
     const clicked = vi.fn();
     matCard.addEventListener('click', clicked);
-    matCard.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    expect(clicked).toHaveBeenCalledTimes(1);
-    render({ cronExpression: '0 2 * * *' }, 'compact');
-    (matCard.querySelector('button') as HTMLElement).dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
-    );
+    main.click();
     expect(clicked).toHaveBeenCalledTimes(1);
   });
 
@@ -358,7 +359,7 @@ describe('AutomationCardComponent', () => {
       fixture.detectChanges();
       expect(panel()?.classList).toContain('mat-expanded');
 
-      (el.querySelector('.actions button') as HTMLButtonElement).click();
+      (el.querySelector('.header-controls .actions button') as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(service.runAutomation).toHaveBeenCalledWith('auto-1');
       expect(panel()?.classList).toContain('mat-expanded');

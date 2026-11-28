@@ -179,25 +179,18 @@ describe('QuickRunCardComponent', () => {
     expect(selected).toHaveBeenCalledWith('qr-1');
   });
 
-  describe('keyboard', () => {
-    const press = (target: Element, key: string): void => {
-      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
-    };
-
-    it.each(['Enter', ' '])('selects the quick run with %j on the card', key => {
+  describe('keyboard and screen readers', () => {
+    it('selects the quick run from a main action button beside its own buttons', () => {
       setQuickRun({ remoteName: 'existing-drive' });
       const selected = vi.fn();
       component.selectRun.subscribe(selected);
-      press(el(), key);
+      const main = el().firstElementChild as HTMLButtonElement;
+
+      expect(el().getAttribute('role')).toBeNull();
+      expect(main.matches('button.card-primary-action')).toBe(true);
+      expect(main.getAttribute('aria-label')).toBe(component.quickRun().name);
+      main.click();
       expect(selected).toHaveBeenCalledWith('qr-1');
-    });
-
-    it('leaves the keys of the buttons inside alone', () => {
-      setQuickRun({ remoteName: 'existing-drive' });
-      const selected = vi.fn();
-      component.selectRun.subscribe(selected);
-      press(primaryButton(), 'Enter');
-      expect(selected).not.toHaveBeenCalled();
     });
   });
 

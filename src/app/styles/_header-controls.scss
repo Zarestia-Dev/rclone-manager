@@ -1,0 +1,21 @@
+// Controls drawn over an expansion panel header instead of inside it. See HeaderControlsDirective
+// (src/app/shared/directives/header-controls.directive.ts) for why and how.
+:root {
+  // The invisible copy in the header: it keeps the header's layout and nothing else.
+  .header-controls-slot {
+    visibility: hidden;
+  }
+
+  // The real controls, the header's sibling, moved over the copy by the directive. They come after
+  // the header, so they paint over it without a z-index (one would give their text a layer of its
+  // own, drawn with different antialiasing).
+  .header-controls {
+    position: absolute;
+    box-sizing: border-box;
+  }
+}
+
+// The panel is the controls' containing block. :where() keeps this at zero specificity.
+:where(.mat-expansion-panel:has(> .header-controls)) {
+  position: relative;
+}

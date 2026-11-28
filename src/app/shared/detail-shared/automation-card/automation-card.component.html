@@ -3,14 +3,9 @@
 @let type = typeMeta();
 
 @if (variant() === 'compact') {
-  <mat-card
-    class="automation-card compact"
-    [class.disabled]="auto.status === 'disabled'"
-    role="button"
-    tabindex="0"
-    (keydown.enter)="onKeyActivate($event)"
-    (keydown.space)="onKeyActivate($event)"
-  >
+  <mat-card class="automation-card compact" [class.disabled]="auto.status === 'disabled'">
+    <!-- The card's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+    <button type="button" class="card-primary-action" [attr.aria-label]="auto.profileName"></button>
     <header class="card-head">
       <div class="type-tile" [attr.data-tone]="type.tone">
         <mat-icon [svgIcon]="type.icon"></mat-icon>
@@ -108,6 +103,42 @@
     </footer>
   </mat-card>
 } @else {
+  <ng-template #headerActions>
+    <div class="actions">
+      @if (auto.status === 'running') {
+        <button
+          type="button"
+          class="action-button"
+          (click)="onStop($event)"
+          [attr.title]="'automation.actions.stop' | translate"
+        >
+          <mat-icon svgIcon="stop"></mat-icon>
+        </button>
+      } @else if (!isResource() && !startsIn() && auto.status === 'enabled') {
+        <button
+          type="button"
+          class="action-button"
+          (click)="onRun($event)"
+          [attr.title]="'automation.actions.run' | translate"
+        >
+          <mat-icon svgIcon="play"></mat-icon>
+        </button>
+      }
+      @if (canPause()) {
+        <button
+          type="button"
+          class="action-button"
+          (click)="onToggle($event)"
+          [attr.title]="
+            (auto.status === 'disabled' ? 'automation.toggle.enable' : 'automation.toggle.disable')
+              | translate
+          "
+        >
+          <mat-icon [svgIcon]="auto.status === 'disabled' ? 'play' : 'pause'"></mat-icon>
+        </button>
+      }
+    </div>
+  </ng-template>
   <mat-expansion-panel
     class="automation-card detailed"
     [class.disabled]="auto.status === 'disabled'"
@@ -172,49 +203,21 @@
               >{{ status.key | translate }}</span
             >
           }
-          <!-- The header opens the panel: keys on the buttons must not toggle it. -->
-          <div class="actions">
-            @if (auto.status === 'running') {
-              <button
-                type="button"
-                class="action-button"
-                (keydown)="$event.stopPropagation()"
-                (click)="onStop($event)"
-                [attr.title]="'automation.actions.stop' | translate"
-              >
-                <mat-icon svgIcon="stop"></mat-icon>
-              </button>
-            } @else if (!isResource() && !startsIn() && auto.status === 'enabled') {
-              <button
-                type="button"
-                class="action-button"
-                (keydown)="$event.stopPropagation()"
-                (click)="onRun($event)"
-                [attr.title]="'automation.actions.run' | translate"
-              >
-                <mat-icon svgIcon="play"></mat-icon>
-              </button>
-            }
-            @if (canPause()) {
-              <button
-                type="button"
-                class="action-button"
-                (keydown)="$event.stopPropagation()"
-                (click)="onToggle($event)"
-                [attr.title]="
-                  (auto.status === 'disabled'
-                    ? 'automation.toggle.enable'
-                    : 'automation.toggle.disable'
-                  ) | translate
-                "
-              >
-                <mat-icon [svgIcon]="auto.status === 'disabled' ? 'play' : 'pause'"></mat-icon>
-              </button>
-            }
-          </div>
+          <span
+            class="header-controls-slot"
+            data-header-controls-slot="headerActions"
+            aria-hidden="true"
+            inert
+          >
+            <ng-container [ngTemplateOutlet]="headerActions" />
+          </span>
         </div>
       </div>
     </mat-expansion-panel-header>
+    <!-- Over the header, not in it (see HeaderControlsDirective). -->
+    <span appHeaderControls="headerActions" ngProjectAs="mat-expansion-panel-header">
+      <ng-container [ngTemplateOutlet]="headerActions" />
+    </span>
 
     @if (auto.status === 'failed') {
       <div class="failure" role="alert">
