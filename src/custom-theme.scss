@@ -1737,7 +1737,6 @@ mat-accordion:not(.dull) {
     &.error {
       color: var(--warn-color);
       padding: var(--space-xs);
-      border-bottom: 1px solid rgba(var(--warn-color-rgb), 0.1);
     }
   }
 }

@@ -138,7 +138,7 @@ export class RemoteConfigStepComponent {
     this.iconService.getIconName(this.remoteTypeValue() || 'hard-drive')
   );
   readonly currentProviderIcon = computed(() =>
-    this.iconService.getIconName(this.selectedProvider() || 'hard-drive')
+    this.iconService.getIconName(this.selectedProvider(), this.remoteTypeIcon())
   );
 
   readonly remoteTypesWithIcons = computed(() =>
@@ -177,7 +177,7 @@ export class RemoteConfigStepComponent {
       o => o.Value?.toLowerCase().includes(term) || o.Help?.toLowerCase().includes(term)
     ).map(o => ({
       ...o,
-      icon: this.iconService.getIconName(o.Value || 'hard-drive'),
+      icon: this.iconService.getIconName(o.Value, this.remoteTypeIcon()),
     }));
   });
 

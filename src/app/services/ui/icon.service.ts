@@ -219,9 +219,9 @@ export class IconService {
     return 'text';
   }
 
-  getIconName(name: string | undefined | null): string {
-    if (!name) return this.fallbackIcon;
-    return this.resolveIcon(name) || this.fallbackIcon;
+  getIconName(name: string | undefined | null, fallback = this.fallbackIcon): string {
+    if (!name) return fallback;
+    return this.resolveIcon(name) || fallback;
   }
 
   getIconForFileType(fileType: string): string {
