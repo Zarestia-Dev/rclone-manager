@@ -66,7 +66,9 @@ describe('MountCardComponent', () => {
     component.openMount.subscribe(open);
     component.cardClick.subscribe(click);
 
-    const [openBtn, unmountBtn] = Array.from(el.querySelectorAll<HTMLButtonElement>('button'));
+    const [openBtn, unmountBtn] = Array.from(
+      el.querySelectorAll<HTMLButtonElement>('button:not(.card-primary-action)')
+    );
     openBtn.click();
     unmountBtn.click();
 
@@ -94,25 +96,23 @@ describe('MountCardComponent', () => {
     });
   });
 
-  describe('keyboard', () => {
-    const press = (target: Element, key: string): void => {
-      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
-    };
-
-    it.each(['Enter', ' '])('activates the card with %j', key => {
+  describe('keyboard and screen readers', () => {
+    // The card isn't a button (it holds buttons of its own): its main action is a button beside
+    // them, stretched over the card, which a real Enter or Space clicks.
+    it('gives the card a main action button of its own, named after it', () => {
       const el = render(base);
+      const card = el.querySelector('mat-card') as HTMLElement;
+      const main = card.firstElementChild as HTMLButtonElement;
+      expect(card.getAttribute('role')).toBeNull();
+      expect(card.hasAttribute('tabindex')).toBe(false);
+      expect(main.matches('button.card-primary-action')).toBe(true);
+      expect(main.getAttribute('aria-label')).toBe('drive');
+      expect(card.querySelector('button button, [role="button"] button')).toBeNull();
+
       const click = vi.fn();
       component.cardClick.subscribe(click);
-      press(el.querySelector('mat-card') as Element, key);
+      main.click();
       expect(click).toHaveBeenCalledWith(base);
-    });
-
-    it('leaves the keys of the buttons inside alone', () => {
-      const el = render(base);
-      const click = vi.fn();
-      component.cardClick.subscribe(click);
-      press(el.querySelector('button') as Element, 'Enter');
-      expect(click).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,3 +1,11 @@
+<!-- The card's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+<button
+  type="button"
+  class="card-primary-action"
+  [attr.aria-label]="remote().name"
+  [attr.tabindex]="isEditingLayout() ? -1 : null"
+></button>
+
 @if (isEditingLayout()) {
   <div
     class="card-edit-overlay"

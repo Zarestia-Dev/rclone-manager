@@ -1,17 +1,18 @@
+<!-- The click is for the pointer; keyboard and screen reader users get the main action
+     button inside (see _card-primary-action.scss). -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
 <div
   #card
   class="workflow-node-card"
-  role="button"
-  tabindex="0"
   [class.selected]="isSelected()"
   [attr.data-tone]="nodeTone()"
   [ngClass]="statusClass()"
   (click)="onCardClick($event)"
-  (keydown.enter)="onCardClick($event)"
-  (keydown.space)="onCardClick($event)"
   (dblclick)="onInspect($event)"
   (contextmenu)="$event.preventDefault()"
 >
+  <!-- The node's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+  <button type="button" class="card-primary-action" [attr.aria-label]="displayTitle()"></button>
   <!-- Node Header -->
   <div class="node-header">
     <div class="node-category-wrapper">

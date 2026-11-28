@@ -141,14 +141,20 @@
 
       @for (row of rows(); track row.job.execute_id || row.job.jobid) {
         @let job = row.job;
+        <!-- The click is for the pointer; keyboard and screen reader users get the main action
+             button inside (see _card-primary-action.scss). -->
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
         <div
           class="ops-row"
-          role="button"
-          tabindex="0"
           [attr.title]="'common.viewDetails' | translate"
           (click)="showDetails(job)"
-          (keydown.enter)="$event.target === $event.currentTarget && showDetails(job)"
         >
+          <!-- The row's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+          <button
+            type="button"
+            class="card-primary-action"
+            [attr.aria-label]="row.what + (row.where ? ' → ' + row.where : '')"
+          ></button>
           <div class="ops-row-head">
             <mat-icon [svgIcon]="row.icon" [attr.data-tone]="row.tone"></mat-icon>
             <div class="ops-text">

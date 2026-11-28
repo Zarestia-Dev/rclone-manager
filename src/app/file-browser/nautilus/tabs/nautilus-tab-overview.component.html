@@ -14,16 +14,17 @@
 
 <div class="overview-grid">
   @for (tab of tabs(); track tab.id; let i = $index) {
-    <div
-      class="tab-card"
-      role="button"
-      tabindex="0"
-      [class.active]="i === activeTabIndex()"
-      [attr.aria-current]="i === activeTabIndex() ? 'page' : null"
-      (click)="switchTab.emit(i)"
-      (keydown.enter)="switchTab.emit(i)"
-      (keydown.space)="$event.preventDefault(); switchTab.emit(i)"
-    >
+    <!-- The click is for the pointer; keyboard and screen reader users get the main action
+         button inside (see _card-primary-action.scss). -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+    <div class="tab-card" [class.active]="i === activeTabIndex()" (click)="switchTab.emit(i)">
+      <!-- The card's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+      <button
+        type="button"
+        class="card-primary-action"
+        [attr.aria-label]="tab.title"
+        [attr.aria-current]="i === activeTabIndex() ? 'page' : null"
+      ></button>
       <div class="card-preview">
         @for (item of tab.files; track item.entry.Path) {
           <div class="preview-row">

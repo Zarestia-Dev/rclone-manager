@@ -43,12 +43,4 @@ export class MountCardComponent {
     const time = Date.parse(this.mount().mounted_on ?? '');
     return Number.isNaN(time) ? null : new Date(time).toLocaleString();
   });
-
-  /** Enter or Space on the card itself acts as a click; the buttons inside keep their own. */
-  protected onKeyActivate(event: Event): void {
-    const card = event.currentTarget as HTMLElement;
-    if (event.target !== card) return;
-    event.preventDefault();
-    card.click();
-  }
 }

@@ -64,18 +64,15 @@ describe('JobsPanelComponent job actions', () => {
     expect(pills).toEqual(['Test 1', 'Nightly', undefined]);
   });
 
-  it.each(['Enter', ' '])('opens a job on %j pressed on its row, not on its stop button', key => {
+  it("opens a job from its row's main action, and keeps the stop button reachable", () => {
     const row: HTMLElement = fixture.nativeElement.querySelector('.card-row-item');
-    const press = (target: HTMLElement): KeyboardEvent => {
-      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
-      target.dispatchEvent(event);
-      return event;
-    };
+    const main = row.firstElementChild as HTMLButtonElement;
+    expect(row.getAttribute('role')).toBeNull();
+    expect(main.matches('button.card-primary-action')).toBe(true);
+    // The stop or delete button is a Tab stop of its own, not hidden inside the row.
+    expect(row.querySelector('.action-button')?.hasAttribute('tabindex')).toBe(false);
 
-    expect(press(row.querySelector('.action-button') as HTMLElement).defaultPrevented).toBe(false);
-    expect(openJobDetail).not.toHaveBeenCalled();
-
-    expect(press(row).defaultPrevented).toBe(true);
+    main.click();
     expect(openJobDetail).toHaveBeenCalledTimes(1);
   });
 

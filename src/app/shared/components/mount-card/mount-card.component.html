@@ -1,12 +1,6 @@
-<mat-card
-  class="mount-card"
-  [attr.data-tone]="tone"
-  role="button"
-  tabindex="0"
-  (click)="cardClick.emit(mount())"
-  (keydown.enter)="onKeyActivate($event)"
-  (keydown.space)="onKeyActivate($event)"
->
+<mat-card class="mount-card" [attr.data-tone]="tone" (click)="cardClick.emit(mount())">
+  <!-- The card's main action; its buttons sit beside it (see _card-primary-action.scss). -->
+  <button type="button" class="card-primary-action" [attr.aria-label]="remoteName()"></button>
   <div class="mount-body">
     <div class="mount-icon-wrap">
       <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
