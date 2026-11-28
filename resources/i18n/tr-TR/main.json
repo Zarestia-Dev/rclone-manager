@@ -774,6 +774,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Uzak bağlantı menüsü ekle",
+    "skipToNavigation": "Gezinmeye atla",
     "home": "Ana Sayfa",
     "internetStatus": "İnternet bağlantı durumu",
     "appMenu": "Uygulama menüsü",
