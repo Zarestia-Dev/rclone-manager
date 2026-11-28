@@ -189,8 +189,8 @@ fn run_installer(kind: ArtifactKind, installer: &Path) -> Result<InstallOutcome,
         .collect();
     let command_line = quote_command_line(&arguments)?;
     // /P without /R: the script starts the app itself, with its arguments. /UPDATE
-    // keeps the shortcuts and the start-at-login entry that the desktop setup's
-    // old uninstaller would remove; the server's setup ignores it. The
+    // stops the desktop setup from recreating a Start menu shortcut that the user
+    // deleted; the server's setup ignores it. The
     // system's own msiexec and PowerShell, never a program of the same name in the
     // app's folder, which the setup installs where the user can write.
     let install = match kind {
@@ -200,13 +200,14 @@ fn run_installer(kind: ArtifactKind, installer: &Path) -> Result<InstallOutcome,
         _ => "Start-Process $installer -Wait -ArgumentList '/P /UPDATE'",
     };
     // The variables are read and removed first, so neither the installer nor the
-    // restarted app inherits them.
+    // restarted app inherits them. An installer that cannot start (its file is gone,
+    // access is denied) must not keep the app from coming back, so its error is caught.
     let script = format!(
         "$installer = $env:{INSTALLER_ENV}; $exe = $env:{EXECUTABLE_ENV}; \
          $arguments = $env:{LAUNCH_ARGS_ENV}; \
          Remove-Item Env:{INSTALLER_ENV}, Env:{EXECUTABLE_ENV}, Env:{LAUNCH_ARGS_ENV} -ErrorAction SilentlyContinue; \
          Wait-Process -Id {} -ErrorAction SilentlyContinue; \
-         {install}; \
+         try {{ {install} }} catch {{ }}; \
          Remove-Item -LiteralPath $installer -ErrorAction SilentlyContinue; \
          if ($arguments) {{ Start-Process $exe -ArgumentList $arguments }} else {{ Start-Process $exe }}",
         std::process::id()

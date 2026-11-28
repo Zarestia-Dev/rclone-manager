@@ -265,6 +265,10 @@ fn start_watch_session(
         })
         .cloned()
         .collect();
+    #[cfg(windows)]
+    for parent in parents_to_watch(&paths) {
+        let _ = watcher.watch(parent, RecursiveMode::NonRecursive);
+    }
     let pending_roots: PendingRoots = Arc::new(parking_lot::Mutex::new(pending));
     let task = crate::utils::spawn(watch_loop(
         app,
@@ -280,6 +284,24 @@ fn start_watch_session(
         task,
         pending_roots,
     })
+}
+
+/// Windows reports the removal of a watched directory only to a watcher of its parent,
+/// so the parents are watched too. A parent that a root already covers is left alone:
+/// watching it again without recursion would replace that root's recursive watch.
+#[cfg(any(windows, test))]
+fn parents_to_watch(roots: &[String]) -> Vec<&Path> {
+    let mut parents: Vec<&Path> = Vec::new();
+    for root in roots {
+        if let Some(parent) = Path::new(root).parent()
+            && !parent.as_os_str().is_empty()
+            && !roots.iter().any(|other| parent.starts_with(other))
+            && !parents.contains(&parent)
+        {
+            parents.push(parent);
+        }
+    }
+    parents
 }
 
 /// Past this many waiting paths the individual changes are dropped in favor of the roots:
@@ -857,6 +879,16 @@ mod tests {
         .await
         .unwrap();
         manager.stop_all().await;
+    }
+
+    #[test]
+    fn parents_are_watched_once_unless_a_root_covers_them() {
+        let roots = ["/data/a", "/data/b", "/data/a/sub", "/other", "relative"].map(String::from);
+        assert_eq!(
+            parents_to_watch(&roots),
+            [Path::new("/data"), Path::new("/")]
+        );
+        assert!(parents_to_watch(&[]).is_empty());
     }
 
     #[tokio::test]

@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Update Channel Explained**: The App Update Channel setting and the channel list in the About window now say what each channel offers: Stable only stable releases, Beta the newest release, whether it is stable or a beta. A stable release newer than every beta therefore reaches the Beta channel too. For Rclone, Beta stays the latest beta build from beta.rclone.org, and the list says so.
 - **Server Releases Are Tagged `server-v`**: Server releases on GitHub are now tagged `server-v<version>` instead of `headless-v<version>`. The server finds them by itself from 0.3.7 on, and the AUR `rclone-manager-server` package follows them. Scripts that download a server release by its tag need the new name. Installations of the RClone Manager Headless app (0.3.6 and older) still move to the server through the `headless-v0.3.7` release.
 
+### Fixed
+
+- **Folder Watcher Stopped After Its Folder Was Deleted (Windows)**: When a watched folder was deleted and created again, for example by removing and re-adding a folder or by a tool that rebuilds it, the watcher stayed running but no longer saw any change in it, because Windows tells only the parent folder about the deletion. The watcher now also watches the parent of each watched folder (not its subfolders) and picks the folder up again when it returns, as it already did on Linux and macOS.
+
 ## [0.3.7] - 2026-11-27
 
 ### Warning
