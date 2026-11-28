@@ -613,6 +613,7 @@
       },
       "app_update_channel": {
         "label": "Canal de actualización de la aplicación",
+        "description": "Estable ofrece solo versiones estables. Beta ofrece la versión más reciente, sea estable o beta.",
         "options": {
           "stable": "Estable",
           "beta": "Beta"
@@ -2339,7 +2340,8 @@
       "channelBeta": "Beta",
       "channelDev": "Desarrollo",
       "channelStableDesc": "Recomendado para la mayoría de los usuarios",
-      "channelBetaDesc": "Últimas funciones",
+      "channelBetaDesc": "La versión más reciente, estable o beta",
+      "channelBetaDescRclone": "Última compilación beta de beta.rclone.org",
       "downloadPage": "Página de descarga",
       "managedBuildNotice": "Esta compilación no puede ser actualizada por el actualizador de la aplicación. Por favor, instala las actualizaciones manualmente.",
       "openFlathub": "Abrir Flathub",
@@ -4244,6 +4246,7 @@
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher.",
       "noPrivilegePrompt": "Aquí no hay forma de pedir la contraseña de administrador (pkexec con un agente de polkit, o sudo con zenity o kdialog). Descarga el paquete con «Ver en GitHub» e instálalo en una terminal: {{command}}",
+      "authorizationDenied": "La actualización no se instaló porque no se concedió el permiso de administrador.",
       "verificationFailed": "No se pudo verificar la actualización: su firma, suma de comprobación o metadatos no coinciden.",
       "insecureDownload": "La descarga de la actualización no se sirvió mediante HTTPS.",
       "downloadTooLarge": "La descarga de la actualización es más grande de lo esperado.",
