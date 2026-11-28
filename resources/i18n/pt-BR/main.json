@@ -774,6 +774,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Adicionar menu remoto",
+    "skipToNavigation": "Pular para a navegação",
     "home": "Início",
     "internetStatus": "Status da conexão de Internet",
     "appMenu": "Menu de aplicativo",
